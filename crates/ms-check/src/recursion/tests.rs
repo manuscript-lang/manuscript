@@ -3,7 +3,10 @@ use super::*;
 use crate::CheckOptions;
 use std::sync::Arc;
 
-fn diagnostics(sources: &[(&str, &str)]) -> Vec<(String, u32, u32, String)> {
+fn diagnostics(
+    syms: ms_syntax::Names,
+    sources: &[(&str, &str)],
+) -> Vec<(String, u32, u32, String)> {
     let session = crate::Session::new();
     session.ensure_standard();
     let modules = sources
@@ -11,7 +14,7 @@ fn diagnostics(sources: &[(&str, &str)]) -> Vec<(String, u32, u32, String)> {
         .map(|(file, source)| {
             let file: Arc<str> = Arc::from(*file);
             let ast = ms_syntax::parser::parse(&file, source).expect("parses");
-            crate::load_module(&ast)
+            crate::load_module(syms, &ast)
         })
         .collect();
     Checker::new(&session, &CheckOptions::default())
@@ -24,6 +27,7 @@ fn diagnostics(sources: &[(&str, &str)]) -> Vec<(String, u32, u32, String)> {
 
 #[test]
 fn branch_exclusive_prefix_into_preserving_cycle() {
+    let syms = ms_syntax::Names::global();
     let mut source = String::new();
     // Forty branch levels represent over a trillion paths, but only 41 declarations.
     for i in 0..40 {
@@ -32,26 +36,28 @@ fn branch_exclusive_prefix_into_preserving_cycle() {
     source.push_str(
         "fn f40[T](n: Int) Int:\n    if n <= 0:\n        return 0\n    return f40[T](n - 1)\n",
     );
-    assert!(diagnostics(&[("branches.ms", &source)]).is_empty());
+    assert!(diagnostics(syms, &[("branches.ms", &source)]).is_empty());
 }
 
 #[test]
 fn distinct_diamond_arms_into_mutual_cycle() {
+    let syms = ms_syntax::Names::global();
     let mut source = String::new();
     for i in 0..30 {
         source.push_str(&format!("fn f{i}[T](n: Int) Int:\n    if n < 0:\n        return left{i}[T](n)\n    return right{i}[T](n)\n\nfn left{i}[T](n: Int) Int:\n    return f{}[T](n)\n\nfn right{i}[T](n: Int) Int:\n    return f{}[T](n)\n\n", i+1, i+1));
     }
     source.push_str("fn f30[T](n: Int) Int:\n    if n <= 0:\n        return 0\n    return other[T](n - 1)\n\nfn other[U](n: Int) Int:\n    return f30[U](n)\n");
-    assert!(diagnostics(&[("diamonds.ms", &source)]).is_empty());
+    assert!(diagnostics(syms, &[("diamonds.ms", &source)]).is_empty());
 }
 
 const ERROR: &str = "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])";
 
 #[test]
 fn ancestor_context_and_failure_order_are_preserved() {
+    let syms = ms_syntax::Names::global();
     let source = "fn root[T](n: Int) Unit:\n    b[Int](n)\n    a[List[T]](n)\n\nfn a[T](n: Int) Unit:\n    b[Int](n)\n\nfn b[T](n: Int) Unit:\n    a[Int](n)\n";
     assert_eq!(
-        diagnostics(&[("ancestors.ms", source)]),
+        diagnostics(syms, &[("ancestors.ms", source)]),
         vec![
             ("ancestors.ms".into(), 9, 5, ERROR.into()),
             ("ancestors.ms".into(), 6, 5, ERROR.into()),
@@ -61,11 +67,12 @@ fn ancestor_context_and_failure_order_are_preserved() {
 
 #[test]
 fn reused_success_does_not_hide_a_later_changing_specialization() {
+    let syms = ms_syntax::Names::global();
     let source = "fn root[T](n: Int) Unit:\n    fixed[Int](n)\n    fixed[T](n)\n    fixed[Int](n)\n    fixed[T](n)\n\nfn fixed[T](n: Int) Unit:\n    fixed[Int](n)\n";
     // The public frontend result deduplicates identical diagnostics; the graph oracle
     // below also checks the pre-deduplication sequence, including repeated failures.
     assert_eq!(
-        diagnostics(&[("mixed.ms", source)]),
+        diagnostics(syms, &[("mixed.ms", source)]),
         vec![("mixed.ms".into(), 8, 5, ERROR.into())]
     );
 }
@@ -101,6 +108,7 @@ fn reference(
 
 #[test]
 fn all_three_node_graphs_match_original_diagnostics() {
+    let syms = ms_syntax::Names::global();
     let ids = [n("a"), n("b"), n("c")];
     let variables: HashMap<_, _> = ids
         .iter()
@@ -108,8 +116,9 @@ fn all_three_node_graphs_match_original_diagnostics() {
             (
                 id,
                 vec![std::rc::Rc::new(Type::new(
+                    syms,
                     n("T"),
-                    n(&format!("{id}.T")),
+                    n(&format!("{id_t}.T", id_t = syms.str(id))),
                     Kind::Variable,
                 ))],
             )
@@ -132,7 +141,7 @@ fn all_three_node_graphs_match_original_diagnostics() {
                                 0 => variables[&id][0].clone(),
                                 1 if (i + j) % 2 == 0 => int(),
                                 _ => {
-                                    let mut t = Type::new(n("List"), n("List"), Kind::Record);
+                                    let mut t = Type::new(syms, n("List"), n("List"), Kind::Record);
                                     t.args = variables[&id].clone();
                                     std::rc::Rc::new(t)
                                 }

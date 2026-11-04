@@ -27,6 +27,7 @@ pub struct SymbolMatch {
 /// subsequences and near-misses of five or more letters. At most `limit`
 /// matches are described; the count returned is every match found.
 pub fn search_symbols(
+    syms: ms_syntax::Names,
     dir: &str,
     query: &str,
     limit: usize,
@@ -39,6 +40,7 @@ pub fn search_symbols(
         root = ms_driver::project::pathops::dir(&manifest);
     }
     let symbols = workspace_symbols_matching(
+        syms,
         &ms_check::Session::new(),
         &Documents::new(),
         &[root],
@@ -72,7 +74,7 @@ pub fn search_symbols(
         let Some((file, line, column)) = split_location(&location) else {
             continue;
         };
-        let Ok(info) = query_symbol(file, line, column) else {
+        let Ok(info) = query_symbol(syms, file, line, column) else {
             continue;
         };
         matches.push(SymbolMatch {
@@ -116,25 +118,30 @@ fn split_location(location: &str) -> Option<(&str, usize, usize)> {
 }
 
 /// Hover text and references for a 1-based line and character column.
-fn query_symbol(path: &str, line: usize, column: usize) -> Result<(String, Vec<String>), String> {
+fn query_symbol(
+    syms: ms_syntax::Names,
+    path: &str,
+    line: usize,
+    column: usize,
+) -> Result<(String, Vec<String>), String> {
     let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     let absolute = std::path::absolute(path).map_err(|e| e.to_string())?;
     let d = Document::new(uri::file_uri(&absolute.to_string_lossy()), text);
     let at = character_position(&d.text, line, column)?;
     let docs = Documents::new();
-    let checked = analyze(&ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
     if checked.program.is_none() {
         return Err(format!("cannot analyze {path}; run check for diagnostics"));
     }
-    let index = checked.index();
-    let hover = nav::navigation(&checked, &d, at, Navigate::Hover, index);
+    let index = checked.occurrence_index(syms);
+    let hover = nav::navigation(syms, &checked, &d, at, Navigate::Hover, index);
     let hover = hover
         .get("contents")
         .and_then(|c| c.get("value"))
         .and_then(Json::as_str)
         .unwrap_or_default()
         .to_string();
-    let references = workspace_references(&checked, index, &d, &docs, at, true, None);
+    let references = workspace_references(syms, &checked, index, &d, &docs, at, true, None);
     Ok((hover, references.iter().flat_map(flatten).collect()))
 }
 

@@ -105,7 +105,7 @@ test "timestamp methods and expected range failures":
     let shifted = maximum.shift(nanoseconds(1))
     try expect_false(shifted.is_ok())
     try expect_equal(
-        shifted.err(), Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        shifted.err(), Error("time: value out of range", kind: "ERANGE")
     )
 
     let minimum = try timestamp(-62135596800, 0)
@@ -113,7 +113,7 @@ test "timestamp methods and expected range failures":
     try expect_false(difference.is_ok())
     try expect_equal(
         difference.err(),
-        Error("time: value out of range", kind: ErrorCategory.OutOfRange)
+        Error("time: value out of range", kind: "ERANGE")
     )
     try expect_equal(maximum.compare(minimum), 1)
 

@@ -25,9 +25,7 @@ test "missing embedded files report NotFound":
     files().read(
         "nope.txt", none
     ) | try expect_error | try expect_equal(
-        Error(
-            "filesystem: file or directory not found", kind: ErrorCategory.NotFound
-        )
+        Error("filesystem: file or directory not found", kind: "ENOENT")
     )
 
 test "embedded trees respect read limits and directories":
@@ -35,15 +33,15 @@ test "embedded trees respect read limits and directories":
     tree.read(
         "data.bin", 10
     ) | try expect_error | try expect_equal(
-        Error("filesystem: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("filesystem: limit exceeded", kind: "EOVERFLOW")
     )
     tree.read(
         "nested", none
     ) | try expect_error | try expect_equal(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )
     tree.children(
         "hello.txt", none
     ) | try expect_error | try expect_equal(
-        Error("filesystem: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("filesystem: invalid input", kind: "EINVAL")
     )

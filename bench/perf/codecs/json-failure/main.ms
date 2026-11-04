@@ -44,7 +44,7 @@ export fn main() Int:
                 if result.get() != wanted: return 8
             else:
                 if result.is_ok(): return 3
-                if result.err().kind != ErrorCategory.InvalidData: return 5
+                if result.err().kind != "EBADMSG": return 5
         else:
             let result = parse(text)
 
@@ -56,7 +56,7 @@ export fn main() Int:
                 if parsed.as_string().get("") != wanted: return 8
             else:
                 if result.is_ok(): return 3
-                if result.err().kind != ErrorCategory.InvalidData: return 5
+                if result.err().kind != "EBADMSG": return 5
 
         checksum += 1
 

@@ -17,11 +17,11 @@ struct Entry {
     module_words: Vec<String>,
 }
 
-fn standard_index() -> &'static [Entry] {
+fn standard_index(syms: ms_syntax::Names) -> &'static [Entry] {
     static INDEX: OnceLock<Vec<Entry>> = OnceLock::new();
     INDEX.get_or_init(|| {
         let mut index = Vec::new();
-        for module in standard_library() {
+        for module in standard_library(syms) {
             let short = short_name(&module.path);
             for d in &module.declarations {
                 let signature = d.declaration.trim();
@@ -145,7 +145,7 @@ const STRONG_SCORE: i64 = 25;
 /// Ranks standard declarations and members against a loose query. Every query
 /// word must match somewhere, tolerating prefixes, subsequences and small
 /// typos, so "read file", "jsn parse" and "fs.read" all find APIs.
-pub fn search(query: &str, limit: usize) -> Vec<Match> {
+pub fn search(syms: ms_syntax::Names, query: &str, limit: usize) -> Vec<Match> {
     let tokens = significant_words(query);
     if tokens.is_empty() {
         return Vec::new();
@@ -155,7 +155,7 @@ pub fn search(query: &str, limit: usize) -> Vec<Match> {
     // entries matching the most words so "read stdin lines" still finds help.
     let mut matches: Vec<Match> = Vec::new();
     let mut best = 0;
-    for e in standard_index() {
+    for e in standard_index(syms) {
         let (mut total, mut matched, mut strong) = (0i64, 0usize, 0usize);
         for token in &tokens {
             let score = score_token(token, e);

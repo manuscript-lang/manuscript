@@ -6,17 +6,20 @@ use ms_rt as _;
 
 #[test]
 fn fault_assertions_keep_caller_values_outside_the_trap() {
+    let syms = ms_syntax::Names::global();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../tests/e2e/testdata/accept/implicit-close-shielded.ms"
     );
     for level in [Level::None, Level::Speed] {
         let loaded = check_graph(
-            load_file(path, LoadOptions { tests: true }),
+            syms,
+            load_file(syms, path, LoadOptions { tests: true }),
             CheckRequest::default(),
         );
         assert!(loaded.success(), "{:?}", loaded.diagnostics);
         let (mut module, _) = ms_lower::lower_tests(
+            syms,
             &loaded.program.expect("program"),
             &ms_lower::Options {
                 entry: loaded.entry,

@@ -2,15 +2,16 @@
 use crate::types::*;
 use std::{cell::Cell, rc::Rc};
 
-fn pair(left: Ty, right: Ty) -> Ty {
-    let mut t = Type::new(n("Pair"), n("test/Pair"), Kind::Record);
+fn pair(syms: ms_syntax::Names, left: Ty, right: Ty) -> Ty {
+    let mut t = Type::new(syms, n("Pair"), n("test/Pair"), Kind::Record);
     t.args = vec![left, right];
     Rc::new(t)
 }
 
 fn shared(mut t: Ty, depth: usize) -> Ty {
+    let syms = ms_syntax::Names::global();
     for _ in 0..depth {
-        t = pair(t.clone(), t);
+        t = pair(syms, t.clone(), t);
     }
     t
 }
@@ -30,21 +31,23 @@ fn shared_negative_search_visits_a_bounded_number_of_nodes() {
 
 #[test]
 fn searches_keep_late_matches_and_do_not_cache_across_queries() {
-    let variable = Rc::new(Type::new(n("T"), n("test/T"), Kind::Variable));
+    let syms = ms_syntax::Names::global();
+    let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
     let negative = shared(int(), 20);
-    let t = pair(negative.clone(), variable.clone());
+    let t = pair(syms, negative.clone(), variable.clone());
     let mut variables = VarSet::from([variable.id]);
     assert!(mentions_variable(&t, &variables));
     variables.clear();
     assert!(!mentions_variable(&t, &variables));
     assert!(type_any::<false>(&t, |t| t.kind == Kind::Variable));
-    assert!(invalid_ty(&pair(negative, invalid())));
+    assert!(invalid_ty(&pair(syms, negative, invalid())));
 }
 
 #[test]
 fn callable_edges_remain_part_of_only_callable_queries() {
-    let variable = Rc::new(Type::new(n("T"), n("test/T"), Kind::Variable));
-    let mut function = Type::new(n("fn"), n("fn"), Kind::Function);
+    let syms = ms_syntax::Names::global();
+    let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
+    let mut function = Type::new(syms, n("fn"), n("fn"), Kind::Function);
     function.params.push(Param {
         name: n("value"),
         ty: variable.clone(),
@@ -56,7 +59,7 @@ fn callable_edges_remain_part_of_only_callable_queries() {
     assert!(mentions_variable(&t, &VarSet::from([variable.id])));
     assert!(!type_any::<false>(&t, |t| t.kind == Kind::Variable));
     let calls = Cell::new(0);
-    assert!(type_any::<true>(&pair(variable, invalid()), |_| {
+    assert!(type_any::<true>(&pair(syms, variable, invalid()), |_| {
         calls.set(calls.get() + 1);
         calls.get() == 2
     }));
@@ -65,11 +68,15 @@ fn callable_edges_remain_part_of_only_callable_queries() {
 
 #[test]
 fn structural_equality_keeps_missing_results_and_late_mismatches() {
+    let syms = ms_syntax::Names::global();
     let left = shared(int(), 25);
     let right = shared(int(), 25);
     assert!(same(&left, &right));
-    assert!(!same(&pair(left.clone(), int()), &pair(right, invalid())));
-    let mut incomplete = Type::new(n("fn"), n("fn"), Kind::Function);
+    assert!(!same(
+        &pair(syms, left.clone(), int()),
+        &pair(syms, right, invalid())
+    ));
+    let mut incomplete = Type::new(syms, n("fn"), n("fn"), Kind::Function);
     incomplete.params.push(Param {
         name: n("value"),
         ty: left,
@@ -80,7 +87,7 @@ fn structural_equality_keeps_missing_results_and_late_mismatches() {
         !same(&incomplete, &incomplete),
         "a missing result remains unequal even after a large successful prefix"
     );
-    let empty = Rc::new(Type::new(n("fn"), n("fn"), Kind::Function));
+    let empty = Rc::new(Type::new(syms, n("fn"), n("fn"), Kind::Function));
     assert!(
         same(&empty, &empty),
         "preserve the existing empty-pointer shortcut"
@@ -90,13 +97,14 @@ fn structural_equality_keeps_missing_results_and_late_mismatches() {
 
 #[test]
 fn required_types_preserve_sharing_and_changed_variable_snapshots() {
+    let syms = ms_syntax::Names::global();
     let concrete = shared(int(), 25);
     assert!(Rc::ptr_eq(&concrete, &required_type(&concrete)));
-    let mut variable = Type::new(n("T"), n("test/T"), Kind::Variable);
+    let mut variable = Type::new(syms, n("T"), n("test/T"), Kind::Variable);
     variable.defaults = Some(Rc::new(ParameterDefaults::new(Default::default())));
     *variable.default.borrow_mut() = Some(int());
     let variable = Rc::new(variable);
-    let t = pair(variable.clone(), variable.clone());
+    let t = pair(syms, variable.clone(), variable.clone());
     let required = required_type(&t);
     assert!(!Rc::ptr_eq(&t, &required));
     assert!(!Rc::ptr_eq(&required.args[0], &required.args[1]));
@@ -118,7 +126,8 @@ fn required_types_preserve_sharing_and_changed_variable_snapshots() {
 
 #[test]
 fn required_types_erase_permissions_in_every_original_child_position() {
-    let mut permitted = Type::new(n("fn"), n("fn"), Kind::Function);
+    let syms = ms_syntax::Names::global();
+    let mut permitted = Type::new(syms, n("fn"), n("fn"), Kind::Function);
     permitted.defaults = Some(Rc::new(ParameterDefaults::new(VarSet::from([n("value")]))));
     permitted.params.push(Param {
         name: n("value"),
@@ -127,7 +136,7 @@ fn required_types_erase_permissions_in_every_original_child_position() {
     });
     permitted.result = Some(int());
     let permitted = Rc::new(permitted);
-    let mut container = Type::new(n("Container"), n("test/Container"), Kind::Record);
+    let mut container = Type::new(syms, n("Container"), n("test/Container"), Kind::Record);
     container.args.push(permitted.clone());
     container.params.push(Param {
         name: n("unusual"),

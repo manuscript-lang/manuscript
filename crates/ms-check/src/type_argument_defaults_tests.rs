@@ -5,12 +5,13 @@ use ms_syntax::Diagnostic;
 use std::sync::Arc;
 
 fn diagnostics(source: &str) -> Vec<Diagnostic> {
+    let syms = ms_syntax::Names::global();
     let session = crate::Session::new();
     session.ensure_standard();
     let file: Arc<str> = Arc::from("type_argument_defaults.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("valid fixture");
     Checker::new(&session, &CheckOptions::default())
-        .check_modules(vec![crate::load_module(&module)], None)
+        .check_modules(vec![crate::load_module(syms, &module)], None)
         .diagnostics
 }
 

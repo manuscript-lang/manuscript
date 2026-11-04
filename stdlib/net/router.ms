@@ -238,7 +238,7 @@ fn insert(var routes: List[Route], route: Route) Unit!:
             return error(
                 Error(
                     "router: duplicate route {route.method} {route.pattern}",
-                    kind: AlreadyExists,
+                    kind: "EEXIST",
                     details: {
                         "method": route.method.clone(), "pattern": route.pattern.clone()
                     }
@@ -275,7 +275,7 @@ fn in_order[T](var from: List[T]) List[T]:
 
 fn invalid_pattern(pattern: String) Error:
     return Error(
-        "router: invalid pattern {pattern}", kind: InvalidInput,
+        "router: invalid pattern {pattern}", kind: "EINVAL",
         details: {"pattern": pattern.clone()}
     )
 
@@ -583,12 +583,12 @@ impl HttpExchange for TestExchange:
 
     var fn read(max_bytes: Int?) Bytes?!:
         let requested = max_bytes.get(65536)
-        if requested <= 0: return error(Error("I/O: invalid input", kind: InvalidInput))
+        if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
 
         let max = if requested > 65536: 65536 else: requested
         var guard = hold[TestState](self.state)
         if guard.items[0].closed: return error(
-            Error("I/O: resource is closed", kind: Closed)
+            Error("I/O: resource is closed", kind: "EBADF")
         )
 
         let chunk = guard.items[0].unread.clone()
@@ -606,24 +606,24 @@ impl HttpExchange for TestExchange:
 
     var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
         if status < 200 or status > 599: return error(
-            Error("HTTP: invalid input", kind: InvalidInput)
+            Error("HTTP: invalid input", kind: "EINVAL")
         )
         if headers.contains("Content-Length"): return error(
-            Error("HTTP: invalid input", kind: InvalidInput)
+            Error("HTTP: invalid input", kind: "EINVAL")
         )
         if headers.contains("Transfer-Encoding"): return error(
-            Error("HTTP: invalid input", kind: InvalidInput)
+            Error("HTTP: invalid input", kind: "EINVAL")
         )
         if headers.contains("Connection"): return error(
-            Error("HTTP: invalid input", kind: InvalidInput)
+            Error("HTTP: invalid input", kind: "EINVAL")
         )
 
         var guard = hold[TestState](self.state)
         if guard.items[0].closed: return error(
-            Error("HTTP: resource is closed", kind: Closed)
+            Error("HTTP: resource is closed", kind: "EBADF")
         )
         if guard.items[0].sent: return error(
-            Error("HTTP: invalid input", kind: InvalidInput)
+            Error("HTTP: invalid input", kind: "EINVAL")
         )
 
         guard.items[0].status = status
@@ -646,11 +646,7 @@ impl HttpExchange for TestExchange:
         subprotocols: List[String],
         max_message_bytes: Int?
     ) RawWebSocket!:
-        return error(
-            Error(
-                "router: WebSocket upgrades need a server", kind: Unsupported
-            )
-        )
+        return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
     var fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
@@ -658,13 +654,13 @@ impl HttpExchange for TestExchange:
     var fn write_bytes(data: Bytes) Unit!:
         var guard = hold[TestState](self.state)
         if guard.items[0].closed: return error(
-            Error("I/O: resource is closed", kind: Closed)
+            Error("I/O: resource is closed", kind: "EBADF")
         )
         if not guard.items[0].sent or guard.items[0].complete: return error(
-            Error("I/O: invalid input", kind: InvalidInput)
+            Error("I/O: invalid input", kind: "EINVAL")
         )
         if not has_body(guard.items[0].status): return error(
-            Error("I/O: invalid input", kind: InvalidInput)
+            Error("I/O: invalid input", kind: "EINVAL")
         )
         if self.request.method.text() == "HEAD": return ok(unit)
 
@@ -800,7 +796,7 @@ fn usable_id(id: String) Bool:
 
 fn new_id() String!:
     let made = uuid_v4()
-    if made.is_error(): return error(Error(made.err().message, kind: Failed))
+    if made.is_error(): return error(Error(made.err().message, kind: "EIO"))
 
     return ok(made.get().clone())
 

@@ -43,6 +43,7 @@ fn parse_type(text: &str) -> TypeRef {
 
 #[test]
 fn source_type_compositions_preserve_the_parsed_structure() {
+    let syms = ms_syntax::Names::global();
     for seed in [
         "Int",
         "Int?",
@@ -60,7 +61,7 @@ fn source_type_compositions_preserve_the_parsed_structure() {
             format!("Map[String, {seed}]"),
         ] {
             let original = parse_type(&text);
-            let rendered = type_text(&original);
+            let rendered = type_text(syms, &original);
             assert_same_type(&original, &parse_type(&rendered));
         }
     }
@@ -68,6 +69,7 @@ fn source_type_compositions_preserve_the_parsed_structure() {
 
 #[test]
 fn source_optional_types_render_as_parseable_suffixes() {
+    let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("types.ms");
     let module =
         ms_syntax::parser::parse(&file, include_str!("guide_testdata/type-display/types.ms"))
@@ -86,8 +88,8 @@ fn source_optional_types_render_as_parseable_suffixes() {
     assert_eq!(function.params.len(), expected.len());
     for (parameter, expected) in function.params.iter().zip(expected) {
         let original = parameter.ty.as_ref().unwrap();
-        let text = type_text(original);
-        assert_eq!(text, expected, "{}", parameter.name);
+        let text = type_text(syms, original);
+        assert_eq!(text, expected, "{}", syms.str(parameter.name));
         let source =
             include_str!("guide_testdata/type-display/roundtrip.ms").replace("Printed", &text);
         let reparsed = ms_syntax::parser::parse(&file, &source).unwrap();
@@ -100,9 +102,10 @@ fn source_optional_types_render_as_parseable_suffixes() {
 
 #[test]
 fn standard_source_signatures_do_not_teach_rejected_optional_syntax() {
-    let text = page("fs.read_file").unwrap();
+    let syms = ms_syntax::Names::global();
+    let text = page(syms, "fs.read_file").unwrap();
     assert!(text.contains("max_bytes: Int?"), "{text}");
-    let matches = search("fs.read_file", 10);
+    let matches = search(syms, "fs.read_file", 10);
     let read_file = matches
         .iter()
         .find(|m| m.module == "@std/os/fs.ms" && m.name == "read_file")

@@ -122,19 +122,22 @@ impl Sources {
 
 /// The bundled standard library sorted by import path (`prelude` sorts after
 /// the `@std/` modules). Checks every bundled source module on first use.
-pub fn standard_library() -> &'static [ApiModule] {
+pub fn standard_library(syms: ms_syntax::Names) -> &'static [ApiModule] {
     static CACHE: OnceLock<Vec<ApiModule>> = OnceLock::new();
-    CACHE.get_or_init(compute_standard_library)
+    CACHE.get_or_init(|| compute_standard_library(syms))
 }
 
-fn compute_standard_library() -> Vec<ApiModule> {
+fn compute_standard_library(syms: ms_syntax::Names) -> Vec<ApiModule> {
     let session = Session::new();
     session.ensure_all_sources();
     let mut sources = HashMap::new();
     for (name, text, _) in stdlib::SOURCES {
         let file = n(&format!("@std/{name}"));
         // The source half of a mixed module shares its file's text.
-        sources.insert(n(&format!("{file}+source")), Source::new(Arc::from(*text)));
+        sources.insert(
+            n(&format!("{file_t}+source", file_t = syms.str(file))),
+            Source::new(Arc::from(*text)),
+        );
         sources.insert(file, Source::new(Arc::from(*text)));
     }
     let sources = Sources(sources);
@@ -167,12 +170,12 @@ fn compute_standard_library() -> Vec<ApiModule> {
     modules
         .into_iter()
         .map(|(path, mut symbols)| {
-            symbols.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+            symbols.sort_by(|a, b| syms.str(a.name).cmp(syms.str(b.name)));
             let declarations = symbols
                 .iter()
                 .map(|symbol| {
-                    let mut d = document_symbol(&session, symbol, &sources);
-                    document_implementations(&mut d, symbol, &methods, &sources);
+                    let mut d = document_symbol(syms, &session, symbol, &sources);
+                    document_implementations(syms, &mut d, symbol, &methods, &sources);
                     d
                 })
                 .collect();
@@ -198,7 +201,7 @@ fn primitive_symbol(name: &str) -> SymRef {
 
 /// The exports declared by each checked source module. Imported symbols and
 /// private declarations do not become public documentation.
-pub fn module_documentation(program: &Program) -> Vec<ApiModule> {
+pub fn module_documentation(syms: ms_syntax::Names, program: &Program) -> Vec<ApiModule> {
     let mut sources = HashMap::new();
     for module in &program.modules {
         sources.insert(module.file, Source::new(module.source.clone()));
@@ -220,13 +223,13 @@ pub fn module_documentation(program: &Program) -> Vec<ApiModule> {
             if !symbol.decl.as_ref().is_some_and(|d| d.same(decl)) {
                 continue;
             }
-            let mut d = document_symbol(&program.session, &symbol, &sources);
-            document_implementations(&mut d, &symbol, &program.methods, &sources);
+            let mut d = document_symbol(syms, &program.session, &symbol, &sources);
+            document_implementations(syms, &mut d, &symbol, &program.methods, &sources);
             declarations.push(d);
         }
         declarations.sort_by(|a, b| a.name.cmp(&b.name));
         modules.push(ApiModule {
-            path: module.file.as_str().to_string(),
+            path: syms.str(module.file).to_string(),
             declarations,
         });
     }
@@ -234,63 +237,78 @@ pub fn module_documentation(program: &Program) -> Vec<ApiModule> {
     modules
 }
 
-fn variable_text(v: &Ty) -> String {
-    let mut parameter = v.name.as_str().to_string();
+fn variable_text(syms: ms_syntax::Names, v: &Ty) -> String {
+    let mut parameter = syms.str(v.name).to_string();
     for (i, b) in v.bounds().iter().enumerate() {
         parameter += if i == 0 { ": " } else { " & " };
-        parameter += &b.to_string();
+        parameter += &b.display(syms).to_string();
     }
     parameter
 }
 
-fn document_operation_name(session: &Rc<Session>, receiver: &Ty, name: &str) -> String {
-    let variables = session.operation_variables(&format!("{}/{}", receiver.id, name));
+fn document_operation_name(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    receiver: &Ty,
+    name: &str,
+) -> String {
+    let variables = session.operation_variables(&format!("{}/{}", syms.str(receiver.id), name));
     if variables.is_empty() {
         return name.to_string();
     }
-    let params: Vec<String> = variables.iter().map(variable_text).collect();
+    let params: Vec<String> = variables.iter().map(|a| variable_text(syms, a)).collect();
     format!("{name}[{}]", params.join(", "))
 }
 
-fn fn_declaration(name: &str, f: &Func, mutating: bool, source: Option<&Source>) -> String {
+fn fn_declaration(
+    syms: ms_syntax::Names,
+    name: &str,
+    f: &Func,
+    mutating: bool,
+    source: Option<&Source>,
+) -> String {
     format!(
         "{}{name}{}{} {}:\n",
         if mutating { "var fn " } else { "fn " },
-        render::type_parameters(&f.type_params),
-        render::parameters(&f.params, source),
-        render::type_text(&f.result)
+        render::type_parameters(syms, &f.type_params),
+        render::parameters(syms, &f.params, source),
+        render::type_text(syms, &f.result)
     )
 }
 
 /// Keeps source names and declaration order, omitting function bodies.
 fn document_declaration(
+    syms: ms_syntax::Names,
     decl: &DeclRef,
     keyword: &str,
     name: &str,
     source: Option<&Source>,
 ) -> String {
     if let Some(f) = decl.func() {
-        return fn_declaration(name, f, false, source);
+        return fn_declaration(syms, name, f, false, source);
     }
     let mut b = format!(
         "{keyword} {name}{}:\n",
-        render::type_parameters(decl.type_params())
+        render::type_parameters(syms, decl.type_params())
     );
     for field in decl.record_fields() {
         b += &format!(
             "    {}: {}",
-            field.name,
-            field.ty.as_ref().map_or(String::new(), render::type_text)
+            syms.str(field.name),
+            field
+                .ty
+                .as_ref()
+                .map_or(String::new(), |a| render::type_text(syms, a))
         );
         if field.default.is_some() {
-            b += &format!(" = {}", render::default_text(field, source));
+            b += &format!(" = {}", render::default_text(syms, field, source));
         }
         b.push('\n');
     }
     for c in decl.cases() {
-        b += &format!("    case {}", c.name);
+        b += &format!("    case {}", syms.str(c.name));
         if !c.fields.is_empty() {
-            b += &render::parameters(&c.fields, source);
+            b += &render::parameters(syms, &c.fields, source);
         }
         b.push('\n');
     }
@@ -298,12 +316,13 @@ fn document_declaration(
         // A type's own methods are written in an `impl Type:` block.
         b += &format!(
             "\nimpl {name}{}:\n",
-            render::type_arguments(decl.type_params())
+            render::type_arguments(syms, decl.type_params())
         );
     }
     for method in decl.methods() {
         let mut header = fn_declaration(
-            method.func.name.as_str(),
+            syms,
+            syms.str(method.func.name),
             &method.func,
             method.mutating,
             source,
@@ -331,6 +350,7 @@ fn sort_members(members: &mut [ApiMember]) {
 }
 
 fn document_members(
+    syms: ms_syntax::Names,
     session: &Rc<Session>,
     decl: &DeclRef,
     source: Option<&Source>,
@@ -342,14 +362,17 @@ fn document_members(
     for field in decl.record_fields() {
         let mut signature = format!(
             "{}: {}",
-            field.name,
-            field.ty.as_ref().map_or(String::new(), render::type_text)
+            syms.str(field.name),
+            field
+                .ty
+                .as_ref()
+                .map_or(String::new(), |a| render::type_text(syms, a))
         );
         if field.default.is_some() {
-            signature += &format!(" = {}", render::default_text(field, source));
+            signature += &format!(" = {}", render::default_text(syms, field, source));
         }
         members.push(ApiMember {
-            name: field.name.as_str().to_string(),
+            name: syms.str(field.name).to_string(),
             kind: "field".into(),
             signature,
             doc: comment(field.pos.offset),
@@ -357,12 +380,12 @@ fn document_members(
         });
     }
     for c in decl.cases() {
-        let mut signature = format!("case {}", c.name);
+        let mut signature = format!("case {}", syms.str(c.name));
         if !c.fields.is_empty() {
-            signature += &render::parameters(&c.fields, None);
+            signature += &render::parameters(syms, &c.fields, None);
         }
         members.push(ApiMember {
-            name: c.name.as_str().to_string(),
+            name: syms.str(c.name).to_string(),
             kind: "case".into(),
             signature,
             doc: comment(c.pos.offset),
@@ -370,12 +393,15 @@ fn document_members(
         });
         for field in &c.fields {
             members.push(ApiMember {
-                name: format!("{}.{}", c.name, field.name),
+                name: format!("{}.{}", syms.str(c.name), syms.str(field.name)),
                 kind: "field".into(),
                 signature: format!(
                     "{}: {}",
-                    field.name,
-                    field.ty.as_ref().map_or(String::new(), render::type_text)
+                    syms.str(field.name),
+                    field
+                        .ty
+                        .as_ref()
+                        .map_or(String::new(), |a| render::type_text(syms, a))
                 ),
                 doc: comment(field.pos.offset),
                 contract: String::new(),
@@ -383,9 +409,10 @@ fn document_members(
         }
     }
     for method in decl.methods() {
-        let name = document_operation_name(session, receiver, method.func.name.as_str());
+        let name = document_operation_name(syms, session, receiver, syms.str(method.func.name));
         let mut signature = fn_declaration(
-            method.func.name.as_str(),
+            syms,
+            syms.str(method.func.name),
             &method.func,
             method.mutating,
             source,
@@ -410,21 +437,26 @@ fn document_members(
     members
 }
 
-fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) -> ApiDeclaration {
-    let ty = symbol.ty();
+fn document_symbol(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    symbol: &SymRef,
+    sources: &Sources,
+) -> ApiDeclaration {
+    let ty = symbol.ty(syms);
     let source = sources.of(symbol.module);
     let kind = match symbol.kind {
         SymKind::Type => "type",
         SymKind::Fn => "fn",
     };
     let mut d = ApiDeclaration {
-        name: symbol.name.as_str().to_string(),
+        name: syms.str(symbol.name).to_string(),
         kind: kind.to_string(),
-        ty: ty.to_string(),
+        ty: ty.display(syms).to_string(),
         ..ApiDeclaration::default()
     };
     if symbol.decl.is_none() {
-        d.doc = primitive_documentation(ty.id.as_str()).to_string();
+        d.doc = primitive_documentation(syms.str(ty.id)).to_string();
     }
     let intrinsic = session.intrinsic_operations(ty.id);
     if let Some(decl) = &symbol.decl {
@@ -438,14 +470,14 @@ fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) ->
             }
             _ => "type",
         };
-        d.declaration = document_declaration(decl, keyword, symbol.name.as_str(), source);
+        d.declaration = document_declaration(syms, decl, keyword, syms.str(symbol.name), source);
         if decl.is_constant() {
             d.kind = "constant".into();
-            d.ty = ty.result_ty().to_string();
-            d.declaration = format!("let {}: {}\n", symbol.name, d.ty);
+            d.ty = ty.result_ty().display(syms).to_string();
+            d.declaration = format!("let {}: {}\n", syms.str(symbol.name), d.ty);
         }
         d.doc = leading_comment(source.map_or("", Source::text), decl.pos().offset as usize);
-        d.members = document_members(session, decl, source, &ty);
+        d.members = document_members(syms, session, decl, source, &ty);
     } else if let Some(decl) = intrinsic
         .as_ref()
         .and_then(|t| t.def.as_ref())
@@ -453,12 +485,16 @@ fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) ->
         .and_then(|s| s.decl.clone().map(|decl| (decl, s.module)))
     {
         let (decl, module) = decl;
-        d.declaration = document_declaration(&decl, "type", symbol.name.as_str(), None);
-        d.members = document_members(session, &decl, sources.of(module), &ty);
+        d.declaration = document_declaration(syms, &decl, "type", syms.str(symbol.name), None);
+        d.members = document_members(syms, session, &decl, sources.of(module), &ty);
     } else {
-        d.declaration = format!("type {}:\n", symbol.name);
+        d.declaration = format!("type {}:\n", syms.str(symbol.name));
     }
-    d.parameters = symbol.variables().iter().map(variable_text).collect();
+    d.parameters = symbol
+        .variables()
+        .iter()
+        .map(|a| variable_text(syms, a))
+        .collect();
     let mut operations: BTreeMap<String, String> = BTreeMap::new();
     if let Some(def) = &ty.def {
         d.kind = def_kind(def).to_string();
@@ -466,15 +502,16 @@ fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) ->
             d.kind = "interface".into();
         }
         for f in def.fields.borrow().iter() {
-            d.fields.push(format!("{}: {}", f.name, f.ty));
+            d.fields
+                .push(format!("{}: {}", syms.str(f.name), f.ty.display(syms)));
         }
         for c in def.cases.borrow().iter() {
-            let mut value = c.name.as_str().to_string();
+            let mut value = syms.str(c.name).to_string();
             if !c.fields.is_empty() {
                 let fields: Vec<String> = c
                     .fields
                     .iter()
-                    .map(|f| format!("{}: {}", f.name, f.ty))
+                    .map(|f| format!("{}: {}", syms.str(f.name), f.ty.display(syms)))
                     .collect();
                 value += &format!("({})", fields.join(", "));
             }
@@ -482,8 +519,8 @@ fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) ->
         }
         for op in def.operations.borrow().iter() {
             operations.insert(
-                document_operation_name(session, &ty, op.name.as_str()),
-                op.ty.to_string(),
+                document_operation_name(syms, session, &ty, syms.str(op.name)),
+                op.ty.display(syms).to_string(),
             );
         }
     }
@@ -491,7 +528,10 @@ fn document_symbol(session: &Rc<Session>, symbol: &SymRef, sources: &Sources) ->
         && let Some(def) = &intrinsic.def
     {
         for op in def.operations.borrow().iter() {
-            operations.insert(op.name.as_str().to_string(), op.ty.to_string());
+            operations.insert(
+                syms.str(op.name).to_string(),
+                op.ty.display(syms).to_string(),
+            );
         }
     }
     d.operations = operations
@@ -506,18 +546,18 @@ fn def_kind(def: &Definition) -> &'static str {
     def.kind.as_str()
 }
 
-fn receiver_context(method: &MethodRef, declaration: &Ty) -> String {
+fn receiver_context(syms: ms_syntax::Names, method: &MethodRef, declaration: &Ty) -> String {
     let bounds: Vec<_> = method
         .split_variables()
         .0
         .iter()
         .filter(|variable| !variable.bounds().is_empty())
-        .map(variable_text)
+        .map(|a| variable_text(syms, a))
         .collect();
     if bounds.is_empty() && same(&method.receiver, declaration) {
         return String::new();
     }
-    let mut context = format!("// Receiver: {}", method.receiver);
+    let mut context = format!("// Receiver: {}", method.receiver.display(syms));
     if !bounds.is_empty() {
         context += &format!("; {}", bounds.join(", "));
     }
@@ -526,12 +566,13 @@ fn receiver_context(method: &MethodRef, declaration: &Ty) -> String {
 }
 
 fn document_implementations(
+    syms: ms_syntax::Names,
     d: &mut ApiDeclaration,
     symbol: &SymRef,
     methods: &[MethodRef],
     sources: &Sources,
 ) {
-    let ty = symbol.ty();
+    let ty = symbol.ty(syms);
     let mut contracts: BTreeSet<String> = BTreeSet::new();
     let mut seen: BTreeSet<String> = d.operations.iter().cloned().collect();
     let mut declarations = BTreeSet::new();
@@ -542,7 +583,7 @@ fn document_implementations(
         let contract = method
             .contract
             .as_ref()
-            .map_or_else(|| "<unknown>".to_string(), |c| c.to_string());
+            .map_or_else(|| "<unknown>".to_string(), |c| c.display(syms).to_string());
         contracts.insert(contract.clone());
         let Some(decl) = &method.decl else { continue };
         let Some(f) = decl.func() else { continue };
@@ -551,21 +592,34 @@ fn document_implementations(
         if !declarations.insert((method.module, decl.decl.id(), decl.index)) {
             continue;
         }
-        let name = f.name.as_str();
-        let context = receiver_context(method, &ty);
+        let name = syms.str(f.name);
+        let context = receiver_context(syms, method, &ty);
         d.implementation_declarations.push(format!(
             "{context}impl {contract} for {}:\n    {}",
-            method.receiver,
-            fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), None)
+            method.receiver.display(syms),
+            fn_declaration(
+                syms,
+                name,
+                f,
+                decl.method().is_some_and(|m| m.mutating),
+                None
+            )
         ));
-        let operation = format!("{name}: {}", method.ty);
+        let operation = format!("{name}: {}", method.ty.display(syms));
         let source = sources.of(method.module);
         d.members.push(ApiMember {
             name: name.to_string(),
             kind: "operation".into(),
             signature: format!(
                 "{context}{}",
-                fn_declaration(name, f, decl.method().is_some_and(|m| m.mutating), source).trim()
+                fn_declaration(
+                    syms,
+                    name,
+                    f,
+                    decl.method().is_some_and(|m| m.mutating),
+                    source
+                )
+                .trim()
             ),
             doc: leading_comment(
                 source.map_or("", Source::text),

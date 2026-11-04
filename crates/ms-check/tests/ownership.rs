@@ -8,13 +8,15 @@ use std::path::Path;
 use std::sync::Arc;
 
 fn diagnostics(source: &str) -> Vec<(u32, String)> {
+    let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("t.ms");
     let module = match ms_syntax::parser::parse(&file, source) {
         Ok(m) => m,
         Err(d) => return vec![(d.pos.line, format!("parse: {}", d.message))],
     };
     let program = ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     );
@@ -118,17 +120,19 @@ fn rejected_programs_report_exactly_the_marked_lines() {
 fn facts_expose_moves_modes_and_drops() {
     use ms_check::ownership::{Access, ParamMode};
     run_on_big_stack(|| {
+        let syms = ms_syntax::Names::global();
         let source = "fn take(xs: List[Int]) List[Int]:\n    return xs\n\nfn grow(var xs: List[Int]) Unit:\n    xs.append(1)\n\nfn f() Int:\n    var a = [1]\n    grow(var a)\n    let b = take(a)\n    let n = b.length()\n    a = [2]\n    return n + a.length()\n";
         let file: Arc<str> = Arc::from("t.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("parses");
         let program = ms_check::check(
-            vec![ms_check::load_module(&module)],
+            syms,
+            vec![ms_check::load_module(syms, &module)],
             ImportMap::default(),
             CheckOptions::default(),
         );
         assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
         let hir = program.hir();
-        let ownership = hir.ownership();
+        let ownership = hir.ownership(syms);
         assert!(
             ownership.diagnostics.is_empty(),
             "{:?}",
@@ -138,7 +142,7 @@ fn facts_expose_moves_modes_and_drops() {
         let mode = |name: &str| {
             let c = callables
                 .iter()
-                .find(|c| c.name.as_str() == name)
+                .find(|c| syms.str(c.name) == name)
                 .expect("callable");
             ownership.of(c).expect("facts").parameters.clone()
         };
@@ -146,7 +150,7 @@ fn facts_expose_moves_modes_and_drops() {
         assert_eq!(mode("grow"), vec![ParamMode::Mutate]);
         let c = callables
             .iter()
-            .find(|c| c.name.as_str() == "f")
+            .find(|c| syms.str(c.name) == "f")
             .expect("f");
         let facts = ownership.of(c).expect("facts");
         let moves = facts

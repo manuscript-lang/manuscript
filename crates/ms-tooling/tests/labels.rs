@@ -5,10 +5,12 @@ use ms_tooling::labels::drop_redundant_labels;
 use std::sync::Arc;
 
 fn check(source: &str) -> Program {
+    let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("labels.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("parses");
     ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     )

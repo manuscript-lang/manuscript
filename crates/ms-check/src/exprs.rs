@@ -56,43 +56,48 @@ fn is_ordering(op: BinaryOp) -> bool {
 }
 
 /// Whether a type is an integer of any width.
-pub(crate) fn integer(t: &Ty) -> bool {
-    int_bits(t).is_some()
+pub(crate) fn integer(syms: ms_syntax::Names, t: &Ty) -> bool {
+    int_bits(syms, t).is_some()
 }
 
 /// Whether a type is an integer or float of any width, or Decimal.
-pub(crate) fn numeric(t: &Ty) -> bool {
-    integer(t) || float_bits(t).is_some() || t.is(Builtin::Decimal) || t.is(Builtin::BigInt)
+pub(crate) fn numeric(syms: ms_syntax::Names, t: &Ty) -> bool {
+    integer(syms, t)
+        || float_bits(syms, t).is_some()
+        || t.is(Builtin::Decimal)
+        || t.is(Builtin::BigInt)
 }
 
 /// An unsuffixed number literal, possibly negated.
-pub(crate) fn is_plain_literal(e: &Expr) -> bool {
+pub(crate) fn is_plain_literal(syms: ms_syntax::Names, e: &Expr) -> bool {
     match &e.kind {
-        ExprKind::Number(t) => !t.ends_with('d'),
+        ExprKind::Number(t) => !syms.str(t).ends_with('d'),
         ExprKind::Unary {
             op: UnaryOp::Neg,
             operand,
-        } => is_plain_literal(operand),
+        } => is_plain_literal(syms, operand),
         _ => false,
     }
 }
 
 /// Whether `e` is a plain literal or arithmetic over plain literals only, and if so whether its
 /// literals are fractional. Mixed integer and fractional literals have no common kind.
-fn literal_tree_fractional(e: &Expr) -> Option<bool> {
+fn literal_tree_fractional(syms: ms_syntax::Names, e: &Expr) -> Option<bool> {
     match &e.kind {
-        ExprKind::Number(t) if !t.ends_with('d') => Some(t.contains(['.', 'e', 'E'])),
+        ExprKind::Number(t) if !syms.str(t).ends_with('d') => {
+            Some(syms.str(t).contains(['.', 'e', 'E']))
+        }
         ExprKind::Unary {
             op: UnaryOp::Neg,
             operand,
-        } => literal_tree_fractional(operand),
+        } => literal_tree_fractional(syms, operand),
         ExprKind::Binary {
             op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem,
             left,
             right,
         } => {
-            let l = literal_tree_fractional(left)?;
-            (l == literal_tree_fractional(right)?).then_some(l)
+            let l = literal_tree_fractional(syms, left)?;
+            (l == literal_tree_fractional(syms, right)?).then_some(l)
         }
         _ => None,
     }
@@ -101,32 +106,39 @@ fn literal_tree_fractional(e: &Expr) -> Option<bool> {
 /// The sized number type a literal operand takes from the other operand, if any. Only a literal
 /// (or arithmetic over literals) of the same kind adopts it, so a mismatch keeps the ordinary
 /// operand-type diagnostic.
-pub(crate) fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+pub(crate) fn literal_hint<'a>(
+    syms: ms_syntax::Names,
+    literal: &Expr,
+    other: &'a Ty,
+) -> Option<&'a Ty> {
     if let ExprKind::List(items) = &literal.kind {
         // A list of plain literals takes the element type of a `List` of a sized number.
         let element = (other.is(Builtin::List) && other.args.len() == 1).then(|| &other.args[0])?;
-        let all = !items.is_empty() && items.iter().all(|i| literal_hint(i, element).is_some());
+        let all = !items.is_empty()
+            && items
+                .iter()
+                .all(|i| literal_hint(syms, i, element).is_some());
         return all.then_some(other);
     }
-    let fractional = literal_tree_fractional(literal)?;
-    let sized_int = int_bits(other).is_some() && other.id != "Int";
-    let sized_float = float_bits(other).is_some() && other.id != "Float";
+    let fractional = literal_tree_fractional(syms, literal)?;
+    let sized_int = int_bits(syms, other).is_some() && syms.str(other.id) != "Int";
+    let sized_float = float_bits(syms, other).is_some() && syms.str(other.id) != "Float";
     ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
 }
 
 /// Whether the decimal integer literal `text`, negated when `negated`, fits the integer type `t`.
-fn int_literal_fits(text: &str, negated: bool, t: &Ty) -> bool {
+fn int_literal_fits(syms: ms_syntax::Names, text: &str, negated: bool, t: &Ty) -> bool {
     let Ok(v) = text.parse::<i128>() else {
         return false;
     };
     let v = if negated { -v } else { v };
-    int_range(t).is_some_and(|(lo, hi)| (lo..=hi).contains(&v))
+    int_range(syms, t).is_some_and(|(lo, hi)| (lo..=hi).contains(&v))
 }
 
-fn is_time_operand(types: &[&Ty]) -> bool {
+fn is_time_operand(syms: ms_syntax::Names, types: &[&Ty]) -> bool {
     types
         .iter()
-        .any(|t| t.is_time("Duration") || t.is_time("Instant"))
+        .any(|t| t.is_time(syms, "Duration") || t.is_time(syms, "Instant"))
 }
 
 const TIME_ARITHMETIC: [(BinaryOp, &str, &str, &str); 5] = [
@@ -149,8 +161,8 @@ fn unknown_expected(expected: Option<&Ty>) -> bool {
     expected.is_some_and(|t| t.is_invalid())
 }
 
-fn finish_info(mut i: Info) -> Info {
-    if i.ty.as_ref().is_some_and(|t| t.is_never()) {
+fn finish_info(syms: ms_syntax::Names, mut i: Info) -> Info {
+    if i.ty.as_ref().is_some_and(|t| t.is_never(syms)) {
         i.no_return = true;
     }
     i
@@ -211,7 +223,7 @@ impl Checker {
             i.ty = Some(invalid());
         }
         let actual = i.t();
-        if actual.is_never() {
+        if actual.is_never(self.syms) {
             i.no_return = true;
         }
         if let Some(exp) = expected {
@@ -226,7 +238,7 @@ impl Checker {
             if !actual.is_invalid()
                 && !exp.is_invalid()
                 && !inference_reported
-                && !compatible(&Some(actual.clone()), exp)
+                && !compatible(self.syms, &Some(actual.clone()), exp)
             {
                 if self.interface_assignable(&actual, exp) {
                     i.interface_source = Some(actual.clone());
@@ -236,14 +248,14 @@ impl Checker {
                     if let Some(context) = context {
                         msg = with_mismatch_context(msg, &context);
                     }
-                    let fix = if suggestions::promise_wait_fits(&actual, exp) {
+                    let fix = if suggestions::promise_wait_fits(self.syms, &actual, exp) {
                         suggestions::append_call(&self.m().source, e, "wait()")
                     } else {
                         suggestions::conversion_fix(
                             &self.m().source,
                             e,
-                            actual.id.as_str(),
-                            exp.id.as_str(),
+                            self.syms.str(actual.id),
+                            self.syms.str(exp.id),
                         )
                     };
                     self.type_error_with_fix(e.pos, msg, fix);
@@ -319,7 +331,7 @@ impl Checker {
             ExprKind::Number(text) => {
                 return self.infer_number(
                     e,
-                    &ms_syntax::number::canonical(text.as_str()),
+                    &ms_syntax::number::canonical(self.syms.str(text)),
                     expected,
                     false,
                     i,
@@ -349,7 +361,7 @@ impl Checker {
                 return self.infer_binary(e, *op, left, right, expected, i);
             }
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_number(
@@ -381,7 +393,8 @@ impl Checker {
             }
         } else if text.contains(['.', 'e', 'E']) {
             // An expected sized float type gives the literal that type.
-            let narrow = expected.filter(|t| float_bits(t) == Some(32) && t.id != "Float");
+            let narrow = expected
+                .filter(|t| float_bits(self.syms, t) == Some(32) && self.syms.str(t.id) != "Float");
             match (text.parse::<f64>(), narrow) {
                 (Ok(v), Some(_)) if (v as f32).is_infinite() => self.type_error(
                     e.pos,
@@ -400,18 +413,19 @@ impl Checker {
             i.ty = Some(narrow.cloned().unwrap_or_else(|| primitive("Float")));
         } else {
             // An expected sized integer type gives the literal that type.
-            let sized = expected.filter(|t| int_bits(t).is_some() && t.id != "Int");
+            let sized = expected
+                .filter(|t| int_bits(self.syms, t).is_some() && self.syms.str(t.id) != "Int");
             match sized {
                 Some(t) => {
-                    if !int_literal_fits(text, negated, t) {
-                        let (lo, hi) = int_range(t).unwrap_or_default();
+                    if !int_literal_fits(self.syms, text, negated, t) {
+                        let (lo, hi) = int_range(self.syms, t).unwrap_or_default();
                         self.type_error(
                             e.pos,
                             format!(
-                                "literal {}{text} is out of range for {t}; use a value between {} and {}",
+                                "literal {}{text} is out of range for {t_t}; use a value between {} and {}",
                                 if negated { "-" } else { "" },
                                 lo, hi
-                            ),
+                            , t_t = t.display(self.syms)),
                         );
                     }
                     i.ty = Some(t.clone());
@@ -427,7 +441,7 @@ impl Checker {
                 }
             }
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_text(&mut self, parts: &[TextPart], mut i: Info) -> Info {
@@ -438,11 +452,11 @@ impl Checker {
                 i.no_return = i.no_return || p.no_return;
             }
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_name(&mut self, e: &Expr, name: Name, expected: Option<&Ty>, mut i: Info) -> Info {
-        if name == "fixture" && self.scope.binding(name).is_none() {
+        if self.syms.str(name) == "fixture" && self.scope.binding(name).is_none() {
             self.res_error(
                 e.pos,
                 "fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file",
@@ -465,8 +479,8 @@ impl Checker {
                 self.type_error(
                     e.pos,
                     format!(
-                        "type name requires a constructor call; write {name}(field: value, ...) to build a value"
-                    ),
+                        "type name requires a constructor call; write {name_t}(field: value, ...) to build a value"
+                    , name_t = self.syms.str(name)),
                 );
                 i.ty = Some(invalid());
             } else if s.is_constant() {
@@ -481,8 +495,8 @@ impl Checker {
                     self.type_error(
                         e.pos,
                         format!(
-                            "a generic function value requires explicit specialization; write {name}[Type] or call it with arguments"
-                        ),
+                            "a generic function value requires explicit specialization; write {name_t}[Type] or call it with arguments"
+                        , name_t = self.syms.str(name)),
                     );
                     i.ty = Some(invalid());
                 } else if s.decl.as_ref().is_some_and(|d| {
@@ -494,8 +508,8 @@ impl Checker {
                     self.type_error(
                         e.pos,
                         format!(
-                            "{name} has both a var parameter and a parameter default, so it cannot be a function value; call {name} from a closure that supplies the default"
-                        ),
+                            "{name_t} has both a var parameter and a parameter default, so it cannot be a function value; call {name_t} from a closure that supplies the default"
+                        , name_t = self.syms.str(name)),
                     );
                     i.ty = Some(invalid());
                 }
@@ -512,9 +526,9 @@ impl Checker {
             i.constructor = Some(constructor);
         } else {
             let msg = self.unknown_name(name);
-            self.res_error_name(e.pos, name.len(), msg);
+            self.res_error_name(e.pos, self.syms.str(name).len(), msg);
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_apply(
@@ -542,9 +556,16 @@ impl Checker {
             if opt_args.len() >= required_type_arguments(&variables) {
                 opt_args = complete_type_arguments(&variables, &opt_args);
             }
-            i.ty =
-                Some(self.specialize(&callable.t(), &variables, &opt_args, e.pos, &callee_name(e)));
-            if callable.native_str().is_empty() || callable.native_str() == "contract" {
+            i.ty = Some(self.specialize(
+                &callable.t(),
+                &variables,
+                &opt_args,
+                e.pos,
+                &callee_name(self.syms, e),
+            ));
+            if callable.native_str(self.syms).is_empty()
+                || callable.native_str(self.syms) == "contract"
+            {
                 i.type_args = opt_args;
             }
             self.set_info(left, i.clone());
@@ -558,7 +579,13 @@ impl Checker {
                 supplied = complete_type_arguments(&vars, &supplied);
             }
             i.symbol = Some(s.clone());
-            i.ty = Some(self.specialize(&s.ty(), &vars, &supplied, e.pos, &callee_name(e)));
+            i.ty = Some(self.specialize(
+                &s.ty(self.syms),
+                &vars,
+                &supplied,
+                e.pos,
+                &callee_name(self.syms, e),
+            ));
             i.type_args = supplied;
         } else if let Some(typ) = self.type_expression(e) {
             self.type_error(
@@ -575,7 +602,7 @@ impl Checker {
                 && self.sym(*nm).is_none()
             {
                 let msg = self.unknown_name(*nm);
-                self.res_error_name(left.pos, nm.len(), msg);
+                self.res_error_name(left.pos, self.syms.str(nm).len(), msg);
                 i.ty = Some(invalid());
                 return i;
             }
@@ -584,7 +611,7 @@ impl Checker {
                 "brackets require type arguments on a generic declaration or one Int index on a List",
             );
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_member(
@@ -610,7 +637,14 @@ impl Checker {
                 return i;
             }
             if let Some(cs) = case_of(&typ, name).filter(|c| c.fields.is_empty()) {
-                self.opaque_denied(e.pos, &typ, &format!("case {name} cannot be built here"));
+                self.opaque_denied(
+                    e.pos,
+                    &typ,
+                    &format!(
+                        "case {name_t} cannot be built here",
+                        name_t = self.syms.str(name)
+                    ),
+                );
                 let constructor = self.instantiate(&typ, &[], &[], expected, e.pos);
                 i.ty = Some(constructor.clone());
                 i.constructor = Some(constructor);
@@ -620,10 +654,10 @@ impl Checker {
             self.res_error(
                 e.pos,
                 format!(
-                    "unknown or non-nullary alternative case {name} of {}; cases: {} (cases with payloads need call syntax)",
-                    typ.name,
-                    list(&crate::stmts::case_names(&typ), 12)
-                ),
+                    "unknown or non-nullary alternative case {name_t} of {}; cases: {} (cases with payloads need call syntax)",
+                    self.syms.str(typ.name),
+                    list(&crate::stmts::case_names(self.syms, &typ), 12)
+                , name_t = self.syms.str(name)),
             );
             i.ty = Some(invalid());
             return i;
@@ -639,15 +673,19 @@ impl Checker {
             return i;
         }
         if rt.kind == Kind::Record
-            && name != "to_string"
+            && self.syms.str(name) != "to_string"
             && let Some(f) = field_of(&rt, name)
         {
-            self.opaque_denied(e.pos, &rt, &format!("field {name} is hidden"));
+            self.opaque_denied(
+                e.pos,
+                &rt,
+                &format!("field {name_t} is hidden", name_t = self.syms.str(name)),
+            );
             i.ty = Some(f.ty);
             return i;
         }
         // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
-        let index_set = name == ms_syntax::parser::INDEX_SET;
+        let index_set = self.syms.str(name) == ms_syntax::parser::INDEX_SET;
         let name = match index_set {
             true if rt.is(Builtin::Map) => n("add"),
             true => n("set"),
@@ -692,13 +730,13 @@ impl Checker {
         }
         if methods.len() != 1 {
             let mut msg = self.unknown_member(&rt, name);
-            if rt.is_source_type(suggestions::PROMISE_MODULE, "Promise") {
+            if rt.is_source_type(self.syms, suggestions::PROMISE_MODULE, "Promise") {
                 // A call that used to wait now returns a promise: `read(p).length()` is `read(p).wait().length()`.
                 msg.push_str("; a Promise has `wait()` and `done()`: call `wait()` first");
                 let fix = suggestions::append_call(&self.m().source, left, "wait()");
                 self.res_error_with_fix(e.pos, msg, fix);
             } else {
-                self.res_error_name(e.pos, name.as_str().len(), msg);
+                self.res_error_name(e.pos, self.syms.str(name).len(), msg);
             }
             // Later diagnostics that only restate the missing member are noise.
             i.ty = Some(invalid());
@@ -706,12 +744,12 @@ impl Checker {
         }
         let m = methods[0].clone();
         i.ty = Some(m.ty.clone());
-        i.native = if m.native.as_str().is_empty() {
+        i.native = if self.syms.str(m.native).is_empty() {
             None
         } else {
             Some(m.native)
         };
-        let native = !m.native.as_str().is_empty() && m.native != "contract";
+        let native = !self.syms.str(m.native).is_empty() && self.syms.str(m.native) != "contract";
         let source_generic = arity.is_none() && !native && !m.variables.is_empty();
         if (native && !m.variables.is_empty()) || source_generic {
             self.type_error(
@@ -720,7 +758,7 @@ impl Checker {
             );
         }
         i.method = Some(m);
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_list(&mut self, e: &Expr, items: &[Expr], expected: Option<&Ty>, mut i: Info) -> Info {
@@ -763,7 +801,7 @@ impl Checker {
         };
         self.literal_items(items, &independent, std::slice::from_ref(&element), &mut i);
         i.ty = Some(self.session.standard("List", vec![element]));
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_map_literal(
@@ -819,7 +857,7 @@ impl Checker {
         // Key and value types were checked where they were written or
         // instantiated; rechecking them makes nested literals quartic in depth.
         self.bounds_hold(&map_type, e.pos);
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn independent_items(
@@ -848,7 +886,7 @@ impl Checker {
         while at < items.len() {
             if !self.contextual(items[at]) {
                 let v = self.expression(items[at], None);
-                if typ.is_none() && !v.t().is_never() {
+                if typ.is_none() && !v.t().is_never(self.syms) {
                     let t = v.t();
                     typ = Some(if t.kind == Kind::Function {
                         required_type(&t)
@@ -931,7 +969,7 @@ impl Checker {
             i.no_return = i.no_return || v.no_return;
         }
         i.ty = expected.cloned();
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn infer_unary(
@@ -944,7 +982,7 @@ impl Checker {
     ) -> Info {
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
-            && ms_syntax::number::canonical(t.as_str()) == "9223372036854775808"
+            && ms_syntax::number::canonical(self.syms.str(t)) == "9223372036854775808"
         {
             i.ty = Some(int());
             self.set_info(
@@ -959,55 +997,55 @@ impl Checker {
         // A negated literal takes its sized type from the expected type; -128 fits Int8.
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
-            && !t.ends_with('d')
+            && !self.syms.str(t).ends_with('d')
         {
             let literal = self.infer_number(
                 operand,
-                &ms_syntax::number::canonical(t.as_str()),
+                &ms_syntax::number::canonical(self.syms.str(t)),
                 expected,
                 true,
                 Info::default(),
             );
             self.set_info(operand, literal.clone());
             i.ty = literal.ty.clone();
-            return finish_info(i);
+            return finish_info(self.syms, i);
         }
         let hint = expected
             .filter(|_| op == UnaryOp::Neg && matches!(operand.kind, ExprKind::Binary { .. }))
-            .filter(|t| literal_hint(operand, t).is_some());
+            .filter(|t| literal_hint(self.syms, operand, t).is_some());
         let v = self.expression(operand, hint);
         i.no_return = v.no_return;
         let vt = v.t();
         match op {
             UnaryOp::Not => {
-                if !compatible(&Some(vt.clone()), &bool_()) {
+                if !compatible(self.syms, &Some(vt.clone()), &bool_()) {
                     self.type_error(
                         e.pos,
                         format!(
-                            "not requires Bool, found {vt}; compare explicitly, e.g. not (x == 0)"
-                        ),
+                            "not requires Bool, found {vt_t}; compare explicitly, e.g. not (x == 0)"
+                        , vt_t = vt.display(self.syms)),
                     );
                 }
                 i.ty = Some(bool_());
             }
             UnaryOp::Try => self.check_try(e, &v, &mut i),
             UnaryOp::Neg | UnaryOp::Plus => {
-                if op == UnaryOp::Neg && int_unsigned(&vt) {
+                if op == UnaryOp::Neg && int_unsigned(self.syms, &vt) {
                     self.type_error(
                         e.pos,
-                        format!("unary - is not defined for {vt}; subtract from zero with a wider signed type, e.g. 0 - x.to_int()"),
+                        format!("unary - is not defined for {vt_t}; subtract from zero with a wider signed type, e.g. 0 - x.to_int()", vt_t = vt.display(self.syms)),
                     );
                 }
-                if !numeric(&vt) {
+                if !numeric(self.syms, &vt) {
                     self.type_error(
                         e.pos,
-                        format!("numeric sign requires an independently known numeric operand, found {vt}; apply + or - to Int, Float, Decimal, or BigInt"),
+                        format!("numeric sign requires an independently known numeric operand, found {vt_t}; apply + or - to Int, Float, Decimal, or BigInt", vt_t = vt.display(self.syms)),
                     );
                 }
                 i.ty = Some(vt);
             }
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     /// Types `try operand`: the operand must be a Result whose error the
@@ -1016,21 +1054,21 @@ impl Checker {
     fn check_try(&mut self, e: &Expr, operand: &Info, i: &mut Info) {
         let result = operand.t();
         if !result.is(Builtin::Result) || result.args.len() != 2 {
-            if result.is_source_type(suggestions::PROMISE_MODULE, "Promise")
+            if result.is_source_type(self.syms, suggestions::PROMISE_MODULE, "Promise")
                 && let ExprKind::Unary { operand: inner, .. } = &e.kind
             {
                 // A call that used to wait now returns a promise: `try read(p)` is `try read(p).wait()`.
                 let fix = suggestions::append_call(&self.m().source, inner, "wait()");
                 self.type_error_with_fix(
                     e.pos,
-                    format!("try requires Result, found {result}; a promise gives its result from wait(), so write `try ...wait()`"),
+                    format!("try requires Result, found {result_t}; a promise gives its result from wait(), so write `try ...wait()`", result_t = result.display(self.syms)),
                     fix,
                 );
                 return;
             }
             self.type_error(
                 e.pos,
-                format!("try requires Result, found {result}; apply try only to a call returning Result[T, E]"),
+                format!("try requires Result, found {result_t}; apply try only to a call returning Result[T, E]", result_t = result.display(self.syms)),
             );
             return;
         }
@@ -1053,7 +1091,7 @@ impl Checker {
         }
         self.type_error(
             e.pos,
-            format!("try requires the same error type; this function returns {enclosing} but the operand fails with {failure}, so change the return error type or translate the error with map_error"),
+            format!("try requires the same error type; this function returns {enclosing_t} but the operand fails with {failure_t}, so change the return error type or translate the error with map_error", enclosing_t = enclosing.display(self.syms), failure_t = failure.display(self.syms)),
         );
     }
 
@@ -1066,9 +1104,14 @@ impl Checker {
         expected: Option<&Ty>,
         mut i: Info,
     ) -> Info {
-        if matches!(op, BinaryOp::Eq | BinaryOp::Ne) && (is_none_name(left) || is_none_name(right))
+        if matches!(op, BinaryOp::Eq | BinaryOp::Ne)
+            && (is_none_name(self.syms, left) || is_none_name(self.syms, right))
         {
-            let other = if is_none_name(left) { right } else { left };
+            let other = if is_none_name(self.syms, left) {
+                right
+            } else {
+                left
+            };
             let other = self.expression(other, None);
             if !invalid_ty(&other.t()) {
                 self.type_error(
@@ -1085,20 +1128,20 @@ impl Checker {
             op,
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
         );
-        let (a, b) = if let Some(hint) = expected
-            .filter(|_| arithmetic)
-            .filter(|t| literal_hint(left, t).is_some() && literal_hint(right, t).is_some())
-        {
+        let (a, b) = if let Some(hint) = expected.filter(|_| arithmetic).filter(|t| {
+            literal_hint(self.syms, left, t).is_some()
+                && literal_hint(self.syms, right, t).is_some()
+        }) {
             (
                 self.expression(left, Some(hint)),
                 self.expression(right, Some(hint)),
             )
-        } else if literal_tree_fractional(left).is_some()
-            && literal_tree_fractional(right).is_none()
+        } else if literal_tree_fractional(self.syms, left).is_some()
+            && literal_tree_fractional(self.syms, right).is_none()
         {
             let b = self.expression(right, None);
             let bt = b.t();
-            (self.expression(left, literal_hint(left, &bt)), b)
+            (self.expression(left, literal_hint(self.syms, left, &bt)), b)
         } else {
             let a = self.expression(left, None);
             let at = a.t();
@@ -1109,7 +1152,7 @@ impl Checker {
             let hint = if wraps {
                 Some(&at)
             } else {
-                literal_hint(right, &at)
+                literal_hint(self.syms, right, &at)
             };
             (a, self.expression(right, hint))
         };
@@ -1118,24 +1161,24 @@ impl Checker {
         i.no_return = a.no_return || (!logical && b.no_return);
         if logical {
             i.ty = Some(bool_());
-            if (!compatible(&Some(at.clone()), &bool_())
-                || !compatible(&Some(bt.clone()), &bool_()))
+            if (!compatible(self.syms, &Some(at.clone()), &bool_())
+                || !compatible(self.syms, &Some(bt.clone()), &bool_()))
                 && !invalid_ty(&at)
                 && !invalid_ty(&bt)
             {
                 self.type_error(
                     e.pos,
-                    format!("logical operands require Bool, found {at} and {bt}; compare explicitly, e.g. x != 0"),
+                    format!("logical operands require Bool, found {at_t} and {bt_t}; compare explicitly, e.g. x != 0", at_t = at.display(self.syms), bt_t = bt.display(self.syms)),
                 );
             }
             return i;
         }
-        if matches!(op, BinaryOp::Add | BinaryOp::Sub) && is_time_operand(&[&at, &bt]) {
+        if matches!(op, BinaryOp::Add | BinaryOp::Sub) && is_time_operand(self.syms, &[&at, &bt]) {
             self.check_time_arithmetic(e, op, &at, &bt, &mut i);
             return i;
         }
         let mut common = at.clone();
-        if common.is_never() {
+        if common.is_never(self.syms) {
             common = bt.clone();
         }
         let comparison = matches!(op, BinaryOp::Eq | BinaryOp::Ne) || is_ordering(op);
@@ -1147,14 +1190,14 @@ impl Checker {
         let wrapped_operand = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
             && common.is(Builtin::Optional)
             && common.args.len() == 1
-            && compatible(&Some(bt.clone()), &common.args[0]);
-        if common.is_never()
-            || !compatible(&Some(at.clone()), &common)
-            || !(wrapped_operand || compatible(&Some(bt.clone()), &common))
+            && compatible(self.syms, &Some(bt.clone()), &common.args[0]);
+        if common.is_never(self.syms)
+            || !compatible(self.syms, &Some(at.clone()), &common)
+            || !(wrapped_operand || compatible(self.syms, &Some(bt.clone()), &common))
         {
-            let mut hint = optional_use_hint(&at, &bt);
+            let mut hint = optional_use_hint(self.syms, &at, &bt);
             if hint.is_empty() {
-                hint = optional_use_hint(&bt, &at);
+                hint = optional_use_hint(self.syms, &bt, &at);
             }
             if hint.is_empty() {
                 hint = result_use_hint(&at, &bt);
@@ -1163,13 +1206,13 @@ impl Checker {
                 hint = result_use_hint(&bt, &at);
             }
             if hint.is_empty() {
-                hint = int_float_mix_hint(&at, &bt);
+                hint = int_float_mix_hint(self.syms, &at, &bt);
             }
             if hint.is_empty() {
                 hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }
             let source = self.m().source.clone();
-            let fix = match (at.id.as_str(), bt.id.as_str()) {
+            let fix = match (self.syms.str(at.id), self.syms.str(bt.id)) {
                 ("Int", "Float") => suggestions::to_float(&source, left),
                 ("Float", "Int") => suggestions::to_float(&source, right),
                 _ => None,
@@ -1177,9 +1220,9 @@ impl Checker {
             self.type_error_with_fix(
                 e.pos,
                 format!(
-                    "operator operands require the same independently known type, found {at} {} {bt}; {hint}",
+                    "operator operands require the same independently known type, found {at_t} {} {bt_t}; {hint}",
                     op.as_str()
-                ),
+                , at_t = at.display(self.syms), bt_t = bt.display(self.syms)),
                 fix,
             );
             self.unknown_type = true; // later "<invalid>" diagnostics only restate this one
@@ -1192,42 +1235,46 @@ impl Checker {
                 if !self.property(&common, crate::contracts::Property::Equal, None) {
                     self.type_error(
                         e.pos,
-                        format!("equality requires Equal operands; {common} has no equality, so add 'impl Equal for {common}:' or compare fields"),
+                        format!("equality requires Equal operands; {common_t} has no equality, so add 'impl Equal for {common_t}:' or compare fields", common_t = common.display(self.syms)),
                     );
                 }
             }
             _ if is_ordering(op) => {
                 i.ty = Some(bool_());
-                if !numeric(&common)
-                    && common.id != "String"
-                    && !common.is_time("Duration")
-                    && !common.is_time("Instant")
+                if !numeric(self.syms, &common)
+                    && self.syms.str(common.id) != "String"
+                    && !common.is_time(self.syms, "Duration")
+                    && !common.is_time(self.syms, "Instant")
                 {
                     self.type_error(
                         e.pos,
-                        format!("ordering requires numeric, String, or time operands, found {common}; compare a numeric field or convert first"),
+                        format!("ordering requires numeric, String, or time operands, found {common_t}; compare a numeric field or convert first", common_t = common.display(self.syms)),
                     );
                 }
             }
             _ => {
                 i.ty = Some(common.clone());
                 if !common.is_invalid()
-                    && !numeric(&common)
-                    && !(common.id == "String" && op == BinaryOp::Add)
-                    && !(common.is_time("Duration") && matches!(op, BinaryOp::Add | BinaryOp::Sub))
+                    && !numeric(self.syms, &common)
+                    && !(self.syms.str(common.id) == "String" && op == BinaryOp::Add)
+                    && !(common.is_time(self.syms, "Duration")
+                        && matches!(op, BinaryOp::Add | BinaryOp::Sub))
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
                 self.constant_arithmetic(e, op, left, right, &common);
-                if op == BinaryOp::Rem && !integer(&common) && !common.is(Builtin::BigInt) {
+                if op == BinaryOp::Rem
+                    && !integer(self.syms, &common)
+                    && !common.is(Builtin::BigInt)
+                {
                     self.type_error(
                         e.pos,
-                        format!("remainder requires integer operands, found {common}; convert to Int or use math functions"),
+                        format!("remainder requires integer operands, found {common_t}; convert to Int or use math functions", common_t = common.display(self.syms)),
                     );
                 }
             }
         }
-        finish_info(i)
+        finish_info(self.syms, i)
     }
 
     fn check_time_arithmetic(
@@ -1241,8 +1288,8 @@ impl Checker {
         let mut matches = 0;
         for (row_op, l, r, result) in TIME_ARITHMETIC {
             if row_op == op
-                && compatible(&Some(left.clone()), &self.session.time_type(l))
-                && compatible(&Some(right.clone()), &self.session.time_type(r))
+                && compatible(self.syms, &Some(left.clone()), &self.session.time_type(l))
+                && compatible(self.syms, &Some(right.clone()), &self.session.time_type(r))
             {
                 i.ty = Some(self.session.time_type(result));
                 matches += 1;
@@ -1258,24 +1305,24 @@ impl Checker {
 }
 
 /// The dotted name of a callee (`a.b.c`), or the empty string.
-pub(crate) fn callee_name(e: &Expr) -> String {
+pub(crate) fn callee_name(syms: ms_syntax::Names, e: &Expr) -> String {
     match &e.kind {
-        ExprKind::Name(n) => n.to_string(),
+        ExprKind::Name(n) => syms.str(n).to_string(),
         ExprKind::Member { left, name } => {
-            let l = callee_name(left);
+            let l = callee_name(syms, left);
             if l.is_empty() {
-                name.to_string()
+                syms.str(name).to_string()
             } else {
-                format!("{l}.{name}")
+                format!("{l}.{name_t}", name_t = syms.str(name))
             }
         }
-        ExprKind::Apply { left, .. } => callee_name(left),
+        ExprKind::Apply { left, .. } => callee_name(syms, left),
         _ => String::new(),
     }
 }
 
-fn is_none_name(e: &Expr) -> bool {
-    matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none")
+fn is_none_name(syms: ms_syntax::Names, e: &Expr) -> bool {
+    matches!(&e.kind, ExprKind::Name(n) if syms.str(n) == "none")
 }
 
 /// Whether a call with `count` arguments can fill the parameters of `callable`, leaving out only omittable ones.

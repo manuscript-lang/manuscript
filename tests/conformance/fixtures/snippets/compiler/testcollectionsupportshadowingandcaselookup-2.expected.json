@@ -73,7 +73,7 @@
       {
         "code": "MS2003",
         "phase": "resolution",
-        "message": "redundant prelude import ErrorCategory; remove ErrorCategory from this import and use its prelude declaration directly",
+        "message": "redundant prelude import Error; remove Error from this import and use its prelude declaration directly",
         "position": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
@@ -83,8 +83,8 @@
         "end": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
-          "column": 21,
-          "offset": 394
+          "column": 13,
+          "offset": 386
         },
         "fix": {
           "position": {
@@ -96,8 +96,8 @@
           "end": {
             "file": "testcollectionsupportshadowingandcaselookup-2.ms",
             "line": 11,
-            "column": 23,
-            "offset": 396
+            "column": 15,
+            "offset": 388
           },
           "replacement": ""
         }
@@ -105,25 +105,25 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export category; @std/core.ms exports: Clonable, Closeable, Comparable, Copy, Data, Equal, Error, ErrorCategory, Hashable, Iterator, Optional, Result, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/core.ms\"'",
+        "message": "module does not export category; @std/core.ms exports: Clonable, Closeable, Comparable, Copy, Data, Equal, Error, Hashable, Iterator, Optional, Result, join_errors, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/core.ms\"'",
         "position": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
-          "column": 23,
-          "offset": 396
+          "column": 15,
+          "offset": 388
         },
         "end": {
           "file": "testcollectionsupportshadowingandcaselookup-2.ms",
           "line": 11,
-          "column": 31,
-          "offset": 404
+          "column": 23,
+          "offset": 396
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:5:5: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 5 |     ListEntry,\n   |     ^^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:6:5: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 6 |     MapEntry,\n   |     ^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:11:8: resolution: redundant prelude import ErrorCategory; remove ErrorCategory from this import and use its prelude declaration directly\n    |\n 11 | import ErrorCategory, category from \"@std/core.ms\"\n    |        ^^^^^^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:11:23: resolution: module does not export category; @std/core.ms exports: Clonable, Closeable, Comparable, Copy, Data, Equal, Error, ErrorCategory, Hashable, Iterator, Optional, Result, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/core.ms\"'\n    |\n 11 | import ErrorCategory, category from \"@std/core.ms\"\n    |                       ^^^^^^^^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:5:5: resolution: redundant prelude import ListEntry; remove ListEntry from this import and use its prelude declaration directly\n   |\n 5 |     ListEntry,\n   |     ^^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:6:5: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 6 |     MapEntry,\n   |     ^^^^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:11:8: resolution: redundant prelude import Error; remove Error from this import and use its prelude declaration directly\n    |\n 11 | import Error, category from \"@std/core.ms\"\n    |        ^^^^^\n<DIR>/testcollectionsupportshadowingandcaselookup-2.ms:11:15: resolution: module does not export category; @std/core.ms exports: Clonable, Closeable, Comparable, Copy, Data, Equal, Error, Hashable, Iterator, Optional, Result, join_errors, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/core.ms\"'\n    |\n 11 | import Error, category from \"@std/core.ms\"\n    |               ^^^^^^^^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

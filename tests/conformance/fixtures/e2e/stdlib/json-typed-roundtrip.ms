@@ -27,11 +27,11 @@ test "JSON payloadless cases are their names and round-trip":
 
 test "JSON rejects an unknown case name":
     try expect_equal(
-        (try expect_error(parse[Color]("\"Blue\""))).kind, ErrorCategory.InvalidData
+        (try expect_error(parse[Color]("\"Blue\""))).kind, "EBADMSG"
     )
     try expect_equal(
         (try expect_error(parse[Color]("\"Color.Red\""))).kind,
-        ErrorCategory.InvalidData
+        "EBADMSG"
     )
 
 test "JSON writes and reads IpAddress and Cidr as strings":

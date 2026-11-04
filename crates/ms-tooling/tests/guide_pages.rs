@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 /// Diagnostics (or the parse error) for one source file.
 fn issues(file: &str, source: &str) -> Vec<String> {
+    let syms = ms_syntax::Names::global();
     let (file, source) = (file.to_string(), source.to_string());
     std::thread::Builder::new()
         .stack_size(64 << 20)
@@ -19,7 +20,8 @@ fn issues(file: &str, source: &str) -> Vec<String> {
                 Err(error) => return vec![error.message.clone()],
             };
             let program = ms_check::check(
-                vec![ms_check::load_module(&module)],
+                syms,
+                vec![ms_check::load_module(syms, &module)],
                 ImportMap::default(),
                 CheckOptions::default(),
             );
@@ -103,13 +105,18 @@ fn bare(name: &str) -> &str {
 // Agents read these pages whole, so every page of the real library must fit its budget.
 #[test]
 fn std_pages_stay_bounded() {
-    assert!(index().len() <= 4000, "index is {} bytes", index().len());
-    for module in standard_library() {
+    let syms = ms_syntax::Names::global();
+    assert!(
+        index(syms).len() <= 4000,
+        "index is {} bytes",
+        index(syms).len()
+    );
+    for module in standard_library(syms) {
         let name = module
             .path
             .trim_start_matches("@std/")
             .trim_end_matches(".ms");
-        let text = page(name).unwrap();
+        let text = page(syms, name).unwrap();
         assert!(
             text.len() <= 3500 && text.matches('\n').count() <= 45 + 4,
             "Page({name:?}): {} bytes",
@@ -117,7 +124,7 @@ fn std_pages_stay_bounded() {
         );
         for d in &module.declarations {
             let path = format!("{name}.{}", bare(&d.name));
-            let text = page(&path).unwrap();
+            let text = page(syms, &path).unwrap();
             assert!(
                 text.len() <= 3500 + 200,
                 "Page({path:?}): {} bytes",
@@ -125,7 +132,7 @@ fn std_pages_stay_bounded() {
             );
             for member in &d.members {
                 let path = format!("{path}.{}", bare(&member.name));
-                let text = page(&path).unwrap();
+                let text = page(syms, &path).unwrap();
                 assert!(
                     text.len() <= 3 * (300 + 800 + 200) + 3500 / 2,
                     "Page({path:?}): {} bytes",
@@ -138,6 +145,7 @@ fn std_pages_stay_bounded() {
 
 #[test]
 fn std_pages_resolve_forms() {
+    let syms = ms_syntax::Names::global();
     for path in [
         "json",
         "@std/data/json.ms",
@@ -147,26 +155,26 @@ fn std_pages_resolve_forms() {
         "prelude.List.sorted",
         "prelude.List.group_by",
     ] {
-        let text = page(path).unwrap_or_else(|e| panic!("Page({path:?}): {e}"));
+        let text = page(syms, path).unwrap_or_else(|e| panic!("Page({path:?}): {e}"));
         assert!(!text.is_empty(), "Page({path:?}) is empty");
     }
     assert!(
-        page("json")
+        page(syms, "json")
             .unwrap()
             .contains("import Name from \"@std/data/json.ms\"")
     );
     for path in ["nope", "json.nope", "prelude.List.nope"] {
-        let error = page(path).unwrap_err();
+        let error = page(syms, path).unwrap_err();
         assert!(error.len() <= 700, "Page({path:?}) error = {error}");
     }
-    let index = index();
+    let index = index(syms);
     assert!(index.contains("json "));
     assert!(
         index.split_once("\n\n").unwrap().1.starts_with("prelude"),
         "index = {:.200}",
         index
     );
-    let names = module_names();
+    let names = module_names(syms);
     assert!(
         names.len() >= 20 && names.iter().any(|n| n == "json") && names[0] == "prelude",
         "{names:?}"
@@ -175,8 +183,9 @@ fn std_pages_resolve_forms() {
 
 #[test]
 fn search_output_stays_bounded() {
+    let syms = ms_syntax::Names::global();
     for query in ["list", "read", "file", "string", "parse", "a", "map set"] {
-        let text = format_matches(query, &search(query, 15));
+        let text = format_matches(query, &search(syms, query, 15));
         assert!(
             text.len() <= 3000 + 100,
             "search {query:?} output is {} bytes",
@@ -187,6 +196,7 @@ fn search_output_stays_bounded() {
 
 #[test]
 fn search_finds_apis_from_loose_queries() {
+    let syms = ms_syntax::Names::global();
     let cases = [
         ("jsn parse", "@std/data/json.ms", "parse"),
         ("read file", "@std/os/fs.ms", "read_file"),
@@ -202,7 +212,7 @@ fn search_finds_apis_from_loose_queries() {
         ("uppercase", "prelude", "String.upper"),
     ];
     for (query, module, name) in cases {
-        let matches = search(query, 3);
+        let matches = search(syms, query, 3);
         assert!(
             matches.iter().any(|m| m.module == module && m.name == name),
             "search({query:?}) top 3 = {:?}, want {module} {name}",
@@ -216,16 +226,18 @@ fn search_finds_apis_from_loose_queries() {
 
 #[test]
 fn search_exact_name_outranks_fuzzy_names() {
-    let matches = search("sleep", 5);
+    let syms = ms_syntax::Names::global();
+    let matches = search(syms, "sleep", 5);
     assert!(!matches.is_empty() && matches[0].name == "sleep");
 }
 
 #[test]
 fn search_is_stable_and_bounded() {
-    let (a, b) = (search("list", 5), search("list", 5));
+    let syms = ms_syntax::Names::global();
+    let (a, b) = (search(syms, "list", 5), search(syms, "list", 5));
     assert!(a.len() == 5 && a == b);
     let mut seen = std::collections::HashSet::new();
-    for m in search("sorted", 25) {
+    for m in search(syms, "sorted", 25) {
         assert!(
             seen.insert(format!("{}{}", m.name, m.signature)),
             "duplicate declaration {} from {}",
@@ -237,13 +249,14 @@ fn search_is_stable_and_bounded() {
 
 #[test]
 fn search_rejects_noise_and_empty_queries() {
-    assert!(search("   ", 5).is_empty());
-    let partial = search("split zzqxjv", 3);
+    let syms = ms_syntax::Names::global();
+    assert!(search(syms, "   ", 5).is_empty());
+    let partial = search(syms, "split zzqxjv", 3);
     assert!(
         !partial.is_empty() && partial[0].name == "String.split",
         "{partial:?}"
     );
-    assert!(search("zzqxjv", 5).is_empty());
+    assert!(search(syms, "zzqxjv", 5).is_empty());
     assert!(format_matches("zzqxjv", &[]).contains("No standard-library match"));
 }
 

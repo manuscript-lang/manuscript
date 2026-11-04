@@ -22,14 +22,14 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
 }
 
 /// `x` of `x.clone()`.
-fn clone_receiver(e: &Expr) -> Option<&Expr> {
+fn clone_receiver(syms: ms_syntax::Names, e: &Expr) -> Option<&Expr> {
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
     let ExprKind::Member { left, name } = &callee.kind else {
         return None;
     };
-    (name.as_str() == "clone" && args.is_empty()).then_some(&**left)
+    (syms.str(name) == "clone" && args.is_empty()).then_some(&**left)
 }
 
 impl<'a> FnLower<'a> {
@@ -58,7 +58,7 @@ impl<'a> FnLower<'a> {
         let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
         // `m.add(w.clone(), m.get(w).get(0) + 1)`: the explicit copy is only needed when the key
         // is absent, so the runtime makes it then and the lookup borrows `w`.
-        let key = clone_receiver(key).unwrap_or(key);
+        let key = clone_receiver(self.syms, key).unwrap_or(key);
         let ExprKind::Binary { op, left, right } = &value.kind else {
             return Ok(None);
         };
@@ -90,7 +90,7 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         // The fused update checks 64-bit overflow only; sized integers take the general path.
-        if ct::int_bits(&self.hir.ty(value)).is_some_and(|bits| bits < 64) {
+        if ct::int_bits(self.syms, &self.hir.ty(value)).is_some_and(|bits| bits < 64) {
             return Ok(None);
         }
         let read_is_left = read_left.is_some();
@@ -156,13 +156,13 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         let (key_e, value_e) = (view.arguments[0].expr, view.arguments[1].expr);
-        let Some(inner) = clone_receiver(key_e) else {
+        let Some(inner) = clone_receiver(self.syms, key_e) else {
             return Ok(None);
         };
         if !self.is_place(recv_expr) || !self.is_place(inner) {
             return Ok(None);
         }
-        let base = crate::mutation::place_base(&self.hir, inner);
+        let base = crate::mutation::place_base(self.syms, &self.hir, inner);
         if !matches!(self.hir.resolution(base), Resolution::Local(b) if !b.mutable) {
             return Ok(None);
         }
@@ -217,7 +217,7 @@ impl<'a> FnLower<'a> {
             return None;
         };
         let [d] = args.as_slice() else { return None };
-        if name.as_str() != "get"
+        if self.syms.str(name) != "get"
             || !matches!(d.value.kind, ExprKind::Number(_))
             || d.name.is_some()
         {
@@ -238,7 +238,7 @@ impl<'a> FnLower<'a> {
             return None;
         };
         let [k2] = a2.as_slice() else { return None };
-        if n2.as_str() != "get" || k2.name.is_some() {
+        if self.syms.str(n2) != "get" || k2.name.is_some() {
             return None;
         }
         let same_map = matches!(map.kind, ExprKind::Name(_))
@@ -257,7 +257,8 @@ impl<'a> FnLower<'a> {
                 (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
             ),
             (ExprKind::Number(x), ExprKind::Number(y)) => {
-                ms_syntax::number::canonical(x.as_str()) == ms_syntax::number::canonical(y.as_str())
+                ms_syntax::number::canonical(self.syms.str(x))
+                    == ms_syntax::number::canonical(self.syms.str(y))
             }
             _ => false,
         }
@@ -287,7 +288,7 @@ impl<'a> FnLower<'a> {
         let [key] = args.as_slice() else {
             return Ok(None);
         };
-        if n.as_str() != "get" || key.name.is_some() || !self.ety(map).is(Builtin::Map) {
+        if self.syms.str(n) != "get" || key.name.is_some() || !self.ety(map).is(Builtin::Map) {
             return Ok(None);
         }
         // A key the checker converts on the way in (an `Optional` key given a plain value) takes
@@ -665,7 +666,7 @@ impl<'a> FnLower<'a> {
             return self.add_default_from(old, decl, args, copy_result);
         }
         let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(Native::Set, _));
-        let text = decl.first().is_some_and(|p| p.ty.to_string() == "String");
+        let text = decl.first().is_some_and(|p| p.ty.is_string(self.syms));
         let sym = match (set, name) {
             (true, "add") => "msrt_set_add_copy".to_string(),
             (_, "insert") if matches!(self.b.m.types.kind(mt), TyKind::List(_)) => {
@@ -681,8 +682,8 @@ impl<'a> FnLower<'a> {
         // value to drop, and a resource would close twice.
         if let ("msrt_list_insert_copy", TyKind::List(elem)) =
             (sym.as_str(), self.b.m.types.kind(mt).clone())
-            && let Some(value) = args.iter().find(|a| a.name.as_str() == "value")
-            && let Some(index) = args.iter().find(|a| a.name.as_str() == "index")
+            && let Some(value) = args.iter().find(|a| self.syms.str(a.name) == "value")
+            && let Some(index) = args.iter().find(|a| self.syms.str(a.name) == "index")
             && value.val.own
             && !value.wrapped
             && value.val.v != old
@@ -735,24 +736,24 @@ impl<'a> FnLower<'a> {
         let mt = self.ty_of(old);
         let key = args
             .iter()
-            .find(|a| a.name.as_str() == "key")
+            .find(|a| self.syms.str(a.name) == "key")
             .copied()
             .ok_or_else(|| Error::new("add_default_from without a key"))?;
         let create = args
             .iter()
-            .find(|a| a.name.as_str() == "create")
+            .find(|a| self.syms.str(a.name) == "create")
             .copied()
             .ok_or_else(|| Error::new("add_default_from without create"))?;
         let value_ty = decl
             .iter()
-            .find(|p| p.name.as_str() == "create")
+            .find(|p| self.syms.str(p.name) == "create")
             .and_then(|p| p.ty.result.clone())
             .ok_or_else(|| Error::new("add_default_from create is not a function"))?;
         let key_decl = decl[..1].to_vec();
         let add_decl = vec![
             decl[0].clone(),
             ct::Param {
-                name: ct::Name::from("value"),
+                name: self.syms.intern("value"),
                 ty: value_ty,
                 mutable: false,
             },
@@ -776,7 +777,7 @@ impl<'a> FnLower<'a> {
         let f = self.borrow(create.val);
         let made = self.b.call_ind(f, &[k]);
         let value = NArg {
-            name: ct::Name::from("value"),
+            name: self.syms.intern("value"),
             val: Val { v: made, own: true },
             wrapped: false,
         };
@@ -823,13 +824,13 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let fallback = args
             .iter()
-            .find(|a| a.name.as_str() == "fallback")
+            .find(|a| self.syms.str(a.name) == "fallback")
             .ok_or_else(|| Error::new("get_or without a fallback"))?
             .val;
         // A key the checker converts on the way in takes the ordinary call, which converts it.
         let key = args
             .iter()
-            .find(|a| a.name.as_str() == "key" && !a.wrapped)
+            .find(|a| self.syms.str(a.name) == "key" && !a.wrapped)
             .map(|a| a.val);
         let Some(key) = key else {
             return self.map_get_or_copied(recv, decl, args, result, fallback);

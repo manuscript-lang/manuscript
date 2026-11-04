@@ -4,6 +4,6 @@
 fn work() Bool:
     return (
         Error(
-            "command diagnostic", kind: ErrorCategory.Failed
+            "command diagnostic", kind: "EIO"
         ).message != "command diagnostic"
     )

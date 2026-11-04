@@ -24,25 +24,34 @@ fn nested_projects() -> Workspace {
 
 #[test]
 fn references_do_not_cross_independent_project_identities() {
+    let syms = ms_syntax::Names::global();
     let ws = nested_projects();
     let d = Document::new(ws.uri("project/util.ms"), ws.read("project/util.ms"));
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let analysis = analyze(&ms_check::Session::new(), &d, &docs);
+    let analysis = analyze(syms, &ms_check::Session::new(), &d, &docs);
     assert!(analysis.success(), "{:?}", analysis.diagnostics);
     for name in ["double", "n", "Counter", "count"] {
         let selected = analysis
-            .index()
+            .occurrence_index(syms)
             .iter()
             .find(|entry| {
                 entry.declaration
                     && entry.name == name
-                    && entry.file.as_str() == analysis.module_file(&d)
+                    && syms.str(entry.file) == analysis.module_file(syms, &d)
             })
             .unwrap();
         let at = text::position(&d.text, selected.offset);
         for include in [false, true] {
-            let locations =
-                workspace_references(&analysis, analysis.index(), &d, &docs, at, include, None);
+            let locations = workspace_references(
+                syms,
+                &analysis,
+                analysis.occurrence_index(syms),
+                &d,
+                &docs,
+                at,
+                include,
+                None,
+            );
             assert!(!locations.is_empty(), "{name}: no references");
             assert!(
                 locations.iter().all(|location| {
@@ -54,7 +63,14 @@ fn references_do_not_cross_independent_project_identities() {
                 "{name}: {locations:?}"
             );
         }
-        let definition = nav::navigation(&analysis, &d, at, Navigate::Definition, analysis.index());
+        let definition = nav::navigation(
+            syms,
+            &analysis,
+            &d,
+            at,
+            Navigate::Definition,
+            analysis.occurrence_index(syms),
+        );
         assert_eq!(
             definition.as_array().unwrap()[0]
                 .get("uri")
@@ -66,6 +82,7 @@ fn references_do_not_cross_independent_project_identities() {
 
 #[test]
 fn rename_does_not_edit_an_identical_module_in_a_nested_project() {
+    let syms = ms_syntax::Names::global();
     let ws = nested_projects();
     let d = Document {
         version: 7,
@@ -79,21 +96,22 @@ fn rename_does_not_edit_an_identical_module_in_a_nested_project() {
         (d.uri.clone(), d.clone()),
         (nested.uri.clone(), nested.clone()),
     ]);
-    let analysis = analyze(&ms_check::Session::new(), &d, &docs);
+    let analysis = analyze(syms, &ms_check::Session::new(), &d, &docs);
     assert!(analysis.success(), "{:?}", analysis.diagnostics);
     for name in ["double", "n", "Counter", "count"] {
         let selected = analysis
-            .index()
+            .occurrence_index(syms)
             .iter()
             .find(|entry| {
                 entry.declaration
                     && entry.name == name
-                    && entry.file.as_str() == analysis.module_file(&d)
+                    && syms.str(entry.file) == analysis.module_file(syms, &d)
             })
             .unwrap();
         let answer = ms_lsp::rename::rename(
+            syms,
             &analysis,
-            analysis.index(),
+            analysis.occurrence_index(syms),
             &d,
             text::position(&d.text, selected.offset),
             "renamed",
@@ -121,6 +139,7 @@ fn rename_does_not_edit_an_identical_module_in_a_nested_project() {
 
 #[test]
 fn one_source_keeps_its_identity_when_analysis_roots_differ() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("navigation-root-identity");
     std::fs::create_dir(ws.path("sub")).unwrap();
     let source = ws.read("project/util.ms");
@@ -138,20 +157,20 @@ fn one_source_keeps_its_identity_when_analysis_roots_differ() {
         (d.uri.clone(), d.clone()),
         (caller.uri.clone(), caller.clone()),
     ]);
-    let direct = workspace_analysis(&ms_check::Session::new(), &d, &docs);
-    let imported = workspace_analysis(&ms_check::Session::new(), &caller, &docs);
+    let direct = workspace_analysis(syms, &ms_check::Session::new(), &d, &docs);
+    let imported = workspace_analysis(syms, &ms_check::Session::new(), &caller, &docs);
     for analysis in [&direct, &imported] {
         assert!(analysis.success(), "{:?}", analysis.diagnostics);
     }
     for name in ["double", "n", "Counter", "count"] {
         let key = |analysis: &ms_lsp::analysis::Analysis| {
             analysis
-                .index()
+                .occurrence_index(syms)
                 .iter()
                 .find(|entry| {
                     entry.declaration
                         && entry.name == name
-                        && entry.file.as_str() == analysis.module_file(&d)
+                        && syms.str(entry.file) == analysis.module_file(syms, &d)
                 })
                 .unwrap()
                 .key
@@ -163,27 +182,36 @@ fn one_source_keeps_its_identity_when_analysis_roots_differ() {
 
 #[test]
 fn methods_contract_operations_and_cases_stay_in_their_project() {
+    let syms = ms_syntax::Names::global();
     let ws = nested_projects();
     let source = include_str!("navigation_identity/operations.ms");
     std::fs::write(ws.path("project/operations.ms"), source).unwrap();
     std::fs::write(ws.path("project/nested/operations.ms"), source).unwrap();
     let d = Document::new(ws.uri("project/operations.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let analysis = analyze(&ms_check::Session::new(), &d, &docs);
+    let analysis = analyze(syms, &ms_check::Session::new(), &d, &docs);
     assert!(analysis.success(), "{:?}", analysis.diagnostics);
     for name in ["amount", "label", "Number"] {
         let entry = analysis
-            .index()
+            .occurrence_index(syms)
             .iter()
             .find(|entry| {
                 entry.declaration
                     && entry.name == name
-                    && entry.file.as_str() == analysis.module_file(&d)
+                    && syms.str(entry.file) == analysis.module_file(syms, &d)
             })
             .unwrap();
         let at = text::position(source, entry.offset);
-        let references =
-            workspace_references(&analysis, analysis.index(), &d, &docs, at, true, None);
+        let references = workspace_references(
+            syms,
+            &analysis,
+            analysis.occurrence_index(syms),
+            &d,
+            &docs,
+            at,
+            true,
+            None,
+        );
         assert!(references.len() >= 2, "{name}: {references:?}");
         assert!(
             references.iter().all(|location| {
@@ -192,8 +220,9 @@ fn methods_contract_operations_and_cases_stay_in_their_project() {
             "{name}: {references:?}"
         );
         let rename = ms_lsp::rename::rename(
+            syms,
             &analysis,
-            analysis.index(),
+            analysis.occurrence_index(syms),
             &d,
             at,
             "renamed",

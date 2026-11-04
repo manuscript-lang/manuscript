@@ -34,7 +34,7 @@ export interface Transport:
     fn flush() Unit!
     // A new transport onto the same destination with its own handle; child loggers write through one each.
     fn duplicate() Transport!
-    // Releases owned resources. Later writes return `Closed`.
+    // Releases owned resources. Later writes return `EBADF`.
     var fn close() Unit
 
 // The number a level writes into the record's `level` field. Silent is a threshold that no record reaches.
@@ -63,12 +63,10 @@ fn now_ms() Int:
     let now = now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
-// Encodes `fields` as JSON text. Anything `stringify` rejects is `InvalidData`.
+// Encodes `fields` as JSON text. Anything `stringify` rejects is `EBADMSG`.
 fn encode_fields[F: Data](fields: F) String!:
     let text = stringify(fields)
-    if text.is_error(): return error(
-        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
-    )
+    if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
 
@@ -81,7 +79,7 @@ fn merge_context(parent: String?, child: String) String!:
     let left = parse(base)
     let right = parse(child)
     if left.is_error() or right.is_error(): return error(
-        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+        Error("logging: invalid data", kind: "EBADMSG")
     )
 
     let members = left.get().as_map()
@@ -93,18 +91,16 @@ fn merge_context(parent: String?, child: String) String!:
         merged.add(entry.key, entry.value.clone())
 
     let text = stringify(JsonValue.ObjectValue(merged))
-    if text.is_error(): return error(
-        Error("logging: invalid data", kind: ErrorCategory.InvalidData)
-    )
+    if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
 
 fn encode_error(cause: Error) Error:
-    if cause.kind == ErrorCategory.LimitExceeded: return Error(
-        "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
+    if cause.kind == "EOVERFLOW": return Error(
+        "logging: limit exceeded", kind: "EOVERFLOW"
     )
 
-    return Error("logging: invalid data", kind: ErrorCategory.InvalidData)
+    return Error("logging: invalid data", kind: "EBADMSG")
 
 // Appends to an open file. Each logger owns its handle (`duplicate` dups it), so loggers on several threads write without sharing state.
 type FileTransport:
@@ -117,21 +113,21 @@ impl Transport for FileTransport:
 
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return self.file.write_bytes(data)
 
     fn flush() Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return self.file.sync()
 
     fn duplicate() Transport!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(FileTransport(file: try self.file.clone(), closed: false))
@@ -149,7 +145,7 @@ type StdoutTransport:
 impl Transport for StdoutTransport:
     fn write(data: String) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var out = stdout()
@@ -157,7 +153,7 @@ impl Transport for StdoutTransport:
 
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var out = stdout_bytes()
@@ -165,7 +161,7 @@ impl Transport for StdoutTransport:
 
     fn flush() Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var out = stdout()
@@ -173,7 +169,7 @@ impl Transport for StdoutTransport:
 
     fn duplicate() Transport!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(StdoutTransport(closed: false))
@@ -210,9 +206,7 @@ impl Logger:
         line = "{line}\}\n"
         if let max = self.max_bytes:
             if line.byte_length() > max: return error(
-                Error(
-                    "logging: limit exceeded", kind: ErrorCategory.LimitExceeded
-                )
+                Error("logging: limit exceeded", kind: "EOVERFLOW")
             )
         return self.transport.write(line)
 
@@ -221,15 +215,13 @@ impl Logger:
 
     The value is written as is under the record's `data` key, so a record, map, list, or number
     keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
-    such as a cyclic one, returns `InvalidData`; encoding happens only when the level is enabled.
+    such as a cyclic one, returns `EBADMSG`; encoding happens only when the level is enabled.
     The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
-    record level, and returns `InvalidInput`.
+    record level, and returns `EINVAL`.
     */
     fn log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
         if level == LogLevel.Silent: return error(
-            Error(
-                "logging: invalid input", kind: ErrorCategory.InvalidInput
-            )
+            Error("logging: invalid input", kind: "EINVAL")
         )
         if not self.enabled(level): return ok(unit)
 
@@ -266,7 +258,7 @@ impl Logger:
     /*
     Returns a logger that writes `fields` under `context` in each record. A child of a child merges
     object members, the newer value winning; any other combination keeps the newer value. A value
-    that cannot be encoded returns `InvalidData`.
+    that cannot be encoded returns `EBADMSG`.
     */
     fn child[F: Data](fields: F) Logger!:
         let text = try encode_fields(fields)
@@ -305,11 +297,7 @@ export fn create(
     max_bytes: Int?
 ) Logger!:
     if let max = max_bytes:
-        if max < 0: return error(
-            Error(
-                "logging: invalid input", kind: ErrorCategory.InvalidInput
-            )
-        )
+        if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
 
     var threshold = 30
     if let chosen = level:
@@ -357,7 +345,7 @@ impl Transport for RotatingTransport:
 
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         var size = 0
@@ -372,14 +360,14 @@ impl Transport for RotatingTransport:
 
     fn flush() Unit!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(unit)
 
     fn duplicate() Transport!:
         if self.closed: return error(
-            Error("logging: resource is closed", kind: ErrorCategory.Closed)
+            Error("logging: resource is closed", kind: "EBADF")
         )
 
         return ok(
@@ -394,12 +382,12 @@ impl Transport for RotatingTransport:
 
 /*
 Appends log records to the file at `path` and rotates it by size.
-When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `InvalidInput`. An existing file keeps being appended to, counting its current size.
+When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `EINVAL`. An existing file keeps being appended to, counting its current size.
 Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5), none, none, none)`.
 */
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
     if max_bytes <= 0 or keep < 0: return error(
-        Error("logging: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("logging: invalid input", kind: "EINVAL")
     )
 
     match open(path, "a", 420):

@@ -5,25 +5,25 @@ use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::ast::*;
 
-fn is_none(e: &Expr) -> bool {
-    matches!(&e.kind, ExprKind::Name(nm) if nm == "none")
+fn is_none(syms: ms_syntax::Names, e: &Expr) -> bool {
+    matches!(&e.kind, ExprKind::Name(nm) if syms.str(nm) == "none")
 }
 
 /// Extended defaults need source preparation rather than the native none adapter.
-fn has_extended_defaults(params: &[ms_syntax::ast::Param]) -> bool {
+fn has_extended_defaults(syms: ms_syntax::Names, params: &[ms_syntax::ast::Param]) -> bool {
     params
         .iter()
-        .any(|p| p.default.as_ref().is_some_and(|e| !is_none(e)))
+        .any(|p| p.default.as_ref().is_some_and(|e| !is_none(syms, e)))
 }
 
-fn closed_literal_defaults(params: &[ms_syntax::ast::Param]) -> bool {
+fn closed_literal_defaults(syms: ms_syntax::Names, params: &[ms_syntax::ast::Param]) -> bool {
     params.iter().all(|p| match &p.default {
         None => true,
         Some(e) => {
             matches!(
                 e.kind,
                 ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit
-            ) || is_none(e)
+            ) || is_none(syms, e)
         }
     })
 }
@@ -38,13 +38,13 @@ impl Checker {
         variables: &[Ty],
         contract: bool,
     ) {
-        if !has_extended_defaults(params) {
+        if !has_extended_defaults(self.syms, params) {
             // Existing Optional.none adapters retain their allocation-free path.
             for parameter in params {
                 let optional = parameter
                     .ty
                     .as_ref()
-                    .is_some_and(|ty| ty.name() == "Optional");
+                    .is_some_and(|ty| ty.name(self.syms) == "Optional");
                 if parameter.default.is_some() && !optional {
                     self.type_error(
                         parameter.pos,
@@ -57,7 +57,7 @@ impl Checker {
         // Keep this first native-default slice bounded. Source generic defaults and
         // generic calls through nongeneric standard contracts retain their existing
         // rules; native generic expression defaults need a substitution design.
-        if !variables.is_empty() && !closed_literal_defaults(params) {
+        if !variables.is_empty() && !closed_literal_defaults(self.syms, params) {
             self.type_error(
                 d.pos(),
                 "native generic expression defaults are not supported; keep '= none' on Optional parameters or use a source wrapper",
@@ -104,13 +104,13 @@ impl Checker {
         match &e.kind {
             ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit => true,
             ExprKind::Name(nm) => {
-                nm == "none"
+                self.syms.str(nm) == "none"
                     && self.info_of(e).is_some_and(|i| {
                         i.binding.is_none()
                             && i.constructor
                                 .as_ref()
                                 .is_some_and(|c| c.is(Builtin::Optional))
-                            && i.case.is_some_and(|c| c == "none")
+                            && i.case.is_some_and(|c| self.syms.str(c) == "none")
                     })
             }
             ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
@@ -120,9 +120,10 @@ impl Checker {
                 };
                 args.is_empty()
                     && self.info_of(callee).is_some_and(|i| {
-                        i.method
-                            .as_ref()
-                            .is_some_and(|m| m.native == "to_bytes" && m.receiver.id == "String")
+                        i.method.as_ref().is_some_and(|m| {
+                            self.syms.str(m.native) == "to_bytes"
+                                && self.syms.str(m.receiver.id) == "String"
+                        })
                     })
                     && self.closed_interface_default(left)
             }

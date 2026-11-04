@@ -30,11 +30,7 @@ impl Commands for Capture:
         cwd: String?,
         env: Map[String, String]
     ) Subprocess!:
-        return error(
-            Error(
-                "process: service unavailable", kind: ErrorCategory.Unavailable
-            )
-        )
+        return error(Error("process: service unavailable", kind: "EAGAIN"))
 
 import Duration from "@std/os/time.ms"
 
@@ -65,11 +61,7 @@ impl Commands for Override:
         cwd: String?,
         env: Map[String, String]
     ) Subprocess!:
-        return error(
-            Error(
-                "process: service unavailable", kind: ErrorCategory.Unavailable
-            )
-        )
+        return error(Error("process: service unavailable", kind: "EAGAIN"))
 
 test "concrete implementation defaults and interface defaults stay distinct":
     let service = Override("custom".to_bytes())
@@ -109,7 +101,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
     let limited: List[List[String]]! = error(
-        Error("CSV: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("CSV: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_false(
         (
@@ -118,9 +110,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         )
     )
 
-    let invalid: String! = error(
-        Error("CSV: invalid input", kind: ErrorCategory.InvalidInput)
-    )
+    let invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
     try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
@@ -149,14 +139,10 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let decode = base64_decode
     try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
-    let invalid: Bytes! = error(
-        Error("encoding: invalid data", kind: ErrorCategory.InvalidData)
-    )
+    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
     try expect_equal(base64_decode("_w=="), invalid)
 
-    let limited: Bytes! = error(
-        Error("encoding: limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
+    let limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
@@ -184,8 +170,6 @@ test "Commands defaults cross concrete bound view and generic boundaries":
         42
     )
 
-    let invalid: CommandOutput! = error(
-        Error("process: invalid input", kind: ErrorCategory.InvalidInput)
-    )
+    let invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
     let native = run
     try expect_equal(native("", []).wait(), invalid)

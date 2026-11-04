@@ -4,15 +4,16 @@ use ms_check::{CheckOptions, ImportMap};
 use std::sync::Arc;
 
 fn diagnostics(sources: &[(&str, &str)]) -> Vec<(String, u32, u32, String)> {
+    let syms = ms_syntax::Names::global();
     let modules = sources
         .iter()
         .map(|(file, source)| {
             let file: Arc<str> = Arc::from(*file);
             let module = ms_syntax::parser::parse(&file, source).expect("parses");
-            ms_check::load_module(&module)
+            ms_check::load_module(syms, &module)
         })
         .collect();
-    ms_check::check(modules, ImportMap::default(), CheckOptions::default())
+    ms_check::check(syms, modules, ImportMap::default(), CheckOptions::default())
         .diagnostics
         .into_iter()
         .map(|d| (d.file.to_string(), d.pos.line, d.pos.column, d.message))

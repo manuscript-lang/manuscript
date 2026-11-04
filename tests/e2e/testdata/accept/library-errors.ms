@@ -5,9 +5,9 @@ import hex_decode from "@std/data/encoding.ms"
 // Library failures are plain Error values: callers branch on `kind`, not on a domain type.
 
 fn describe_error(cause: Error) String:
-    if cause.kind == ErrorCategory.InvalidInput: return "bad limits"
-    if cause.kind == ErrorCategory.InvalidData: return "malformed input"
-    if cause.kind == ErrorCategory.LimitExceeded: return "bound exceeded"
+    if cause.kind == "EINVAL": return "bad limits"
+    if cause.kind == "EBADMSG": return "malformed input"
+    if cause.kind == "EOVERFLOW": return "bound exceeded"
 
     return cause.message.clone()
 
@@ -38,16 +38,16 @@ test "propagation with try forwards the same Error":
             return fail(message: "invalid data succeeded")
         error(cause): cause
 
-    cause.kind | try expect_equal(ErrorCategory.InvalidData)
+    cause.kind | try expect_equal("EBADMSG")
     cause.message | try expect_equal("encoding: invalid data")
 
 test "an Error built by hand has a message, a kind and details":
     let read = Error(
-        "read failed", kind: Unavailable,
+        "read failed", kind: "EAGAIN",
         details: {"path": "settings.json", "attempt": "2"}
     )
     read.message | try expect_equal("read failed")
-    read.kind | try expect_equal(ErrorCategory.Unavailable)
+    read.kind | try expect_equal("EAGAIN")
     read.details["path"] | try expect_equal("settings.json")
     read.details["attempt"] | try expect_equal("2")
 
@@ -79,7 +79,7 @@ fn general_read(cause: ReadError) Unit!:
     if failed.is_error():
         return error(
             Error(
-                "read failed", kind: Failed, details: {"path": failed.err().path}
+                "read failed", kind: "EIO", details: {"path": failed.err().path}
             )
         )
 
@@ -87,5 +87,5 @@ fn general_read(cause: ReadError) Unit!:
 
 test "a domain record converts to Error by an ordinary function":
     let outcome = general_read(ReadError("a.txt", 1, false))
-    outcome.err().kind | try expect_equal(ErrorCategory.Failed)
+    outcome.err().kind | try expect_equal("EIO")
     outcome.err().details["path"] | try expect_equal("a.txt")

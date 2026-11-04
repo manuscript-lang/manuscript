@@ -64,7 +64,7 @@ test "verify rejects a wrong key, a tampered body and a different algorithm":
     let secret = "secret".to_bytes()
     let token = (sign_token(session(1900000000), secret) | try expect_ok)
     (try failure(verify_token[Session](token, "other".to_bytes()))) | try expect_equal(
-        Error("jwt: bad signature", kind: ErrorCategory.InvalidData)
+        Error("jwt: bad signature", kind: "EBADMSG")
     )
 
     let parts = token.split(".")
@@ -75,7 +75,7 @@ test "verify rejects a wrong key, a tampered body and a different algorithm":
     )
     let swapped = "{parts[0]}.{forged.split(".")[1]}.{parts[2]}"
     (try failure(verify_token[Session](swapped, secret))) | try expect_equal(
-        Error("jwt: bad signature", kind: ErrorCategory.InvalidData)
+        Error("jwt: bad signature", kind: "EBADMSG")
     )
     (
         try failure(
@@ -83,7 +83,7 @@ test "verify rejects a wrong key, a tampered body and a different algorithm":
                 token, secret, JwtCheck(algorithm: JwtAlgorithm.Hs512)
             )
         )
-    ) | try expect_equal(Error("jwt: wrong algorithm", kind: ErrorCategory.InvalidData))
+    ) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
 test "verify rejects the none algorithm and malformed tokens":
     let secret = "secret".to_bytes()
@@ -91,16 +91,16 @@ test "verify rejects the none algorithm and malformed tokens":
     // {"alg":"none"} . {"sub":"42","exp":1900000000,"iss":"me"} . (empty signature)
     let unsigned = "eyJhbGciOiJub25lIn0.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ."
     (try failure(verify_token[Session](unsigned, secret))) | try expect_equal(
-        Error("jwt: wrong algorithm", kind: ErrorCategory.InvalidData)
+        Error("jwt: wrong algorithm", kind: "EBADMSG")
     )
     for text in ["", "a.b", "a.b.c.d", "...", "!!!.???.***"]:
         (try failure(verify_token[Session](text, secret))) | try expect_equal(
-            Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+            Error("jwt: malformed token", kind: "EBADMSG")
         )
 
     let big = "a".repeat(20000).get("")
     (try failure(verify_token[Session](big, secret))) | try expect_equal(
-        Error("jwt: malformed token", kind: ErrorCategory.InvalidData)
+        Error("jwt: malformed token", kind: "EBADMSG")
     )
 
 test "verify enforces exp, nbf, iss and aud":
@@ -110,7 +110,7 @@ test "verify enforces exp, nbf, iss and aud":
         "42"
     )
     (try failure(verify_token[Session](stamp, secret, JwtCheck(at: 1000)))) | try expect_equal(
-        Error("jwt: token expired", kind: ErrorCategory.InvalidData)
+        Error("jwt: token expired", kind: "EBADMSG")
     )
     (
         verify_token[Session](
@@ -123,7 +123,7 @@ test "verify enforces exp, nbf, iss and aud":
         ) | try expect_ok
     ).sub | try expect_equal("42")
     (try failure(verify_token[Session](stamp, secret, JwtCheck(at: 5, issuer: "you")))) | try expect_equal(
-        Error("jwt: wrong issuer", kind: ErrorCategory.InvalidData)
+        Error("jwt: wrong issuer", kind: "EBADMSG")
     )
 
     let doc = (verify_token(stamp, secret, JwtCheck(at: 5)) | try expect_ok)
@@ -140,7 +140,7 @@ test "verify checks nbf and audience claims":
     let secret = "secret".to_bytes()
     let later = (sign_token(Timed(nbf: 100, aud: ["a", "b"]), secret) | try expect_ok)
     (try failure(verify_token[Timed](later, secret, JwtCheck(at: 50)))) | try expect_equal(
-        Error("jwt: token not yet valid", kind: ErrorCategory.InvalidData)
+        Error("jwt: token not yet valid", kind: "EBADMSG")
     )
     (
         verify_token[Timed](
@@ -148,7 +148,7 @@ test "verify checks nbf and audience claims":
         ) | try expect_ok
     ).nbf | try expect_equal(100)
     (try failure(verify_token[Timed](later, secret, JwtCheck(at: 100, audience: "c")))) | try expect_equal(
-        Error("jwt: wrong audience", kind: ErrorCategory.InvalidData)
+        Error("jwt: wrong audience", kind: "EBADMSG")
     )
 
     let single = (sign_token(Audience(aud: "a"), secret) | try expect_ok)
@@ -156,7 +156,7 @@ test "verify checks nbf and audience claims":
         "a"
     )
     (try failure(verify_token[Audience](single, secret, JwtCheck(audience: "b")))) | try expect_equal(
-        Error("jwt: wrong audience", kind: ErrorCategory.InvalidData)
+        Error("jwt: wrong audience", kind: "EBADMSG")
     )
 
 test "rs256 signs with a private key and verifies with the public key":
@@ -174,7 +174,7 @@ test "rs256 signs with a private key and verifies with the public key":
 
     let other = (public_key_der((rsa_generate(2048) | try expect_ok)) | try expect_ok)
     (try failure(verify_token[Session](token, other, check))) | try expect_equal(
-        Error("jwt: bad signature", kind: ErrorCategory.InvalidData)
+        Error("jwt: bad signature", kind: "EBADMSG")
     )
 
 test "es256 signatures are raw 64 bytes and verify":
@@ -200,7 +200,7 @@ test "es256 signatures are raw 64 bytes and verify":
         ) | try expect_ok
     )
     (try failure(verify_token[Session](token, other, check))) | try expect_equal(
-        Error("jwt: bad signature", kind: ErrorCategory.InvalidData)
+        Error("jwt: bad signature", kind: "EBADMSG")
     )
 
 test "eddsa signs with a seed and verifies with the public key":
@@ -216,13 +216,11 @@ test "eddsa signs with a seed and verifies with the public key":
         "42"
     )
     (try failure(verify_token[Session](token, public, JwtCheck()))) | try expect_equal(
-        Error("jwt: wrong algorithm", kind: ErrorCategory.InvalidData)
+        Error("jwt: wrong algorithm", kind: "EBADMSG")
     )
 
 test "sign returns InvalidKey for a key that does not fit":
     let result = sign_token(session(1), "short".to_bytes(), JwtAlgorithm.EdDsa)
     if let _ = result: return fail("accepted")
 
-    result | try expect_equal(
-        error(Error("jwt: invalid key", kind: ErrorCategory.InvalidInput))
-    )
+    result | try expect_equal(error(Error("jwt: invalid key", kind: "EINVAL")))

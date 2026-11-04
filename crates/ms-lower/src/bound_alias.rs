@@ -27,7 +27,7 @@ impl FnLower<'_> {
         left: &Expr,
         method: &ct::MethodRef,
     ) -> Result<Option<Val>, Error> {
-        if !crate::mutation::method_changes_receiver(method, &self.cx.mutated) {
+        if !crate::mutation::method_changes_receiver(self.syms, method, &self.cx.mutated) {
             return Ok(None);
         }
         let Resolution::Local(binding) = self.hir.resolution(left) else {
@@ -75,6 +75,7 @@ impl FnLower<'_> {
 }
 
 pub(crate) fn build_bound_alias(
+    syms: ms_syntax::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -84,7 +85,7 @@ pub(crate) fn build_bound_alias(
     let FuncKind::Closure { captures } = proto.kind.clone() else {
         return Err(Error::new("bound alias without closure kind"));
     };
-    let file = m.add_file(job.hir.data.file.as_str());
+    let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);

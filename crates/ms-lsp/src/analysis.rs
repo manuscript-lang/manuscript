@@ -80,11 +80,12 @@ pub struct Analysis {
 
 impl Analysis {
     /// The occurrence index, built once per analysis; empty without a program.
-    pub fn index(&self) -> &[Occurrence] {
+    pub fn occurrence_index(&self, syms: ms_syntax::Names) -> &[Occurrence] {
         if self.program.is_none() {
             return &[];
         }
-        self.index.get_or_init(|| crate::index::source_index(self))
+        self.index
+            .get_or_init(|| crate::index::source_index(syms, self))
     }
 
     /// Program lint findings, computed once per analysis.
@@ -137,14 +138,14 @@ impl Analysis {
     /// Project modules followed by every bundled standard module. Standard
     /// declarations are immutable virtual documents from the compiler that
     /// checked this workspace, so navigation cannot drift to another version.
-    pub fn source_modules(&self) -> Vec<ModRef> {
+    pub fn source_modules(&self, syms: ms_syntax::Names) -> Vec<ModRef> {
         let Some(program) = &self.program else {
             return Vec::new();
         };
         let mut modules: Vec<ModRef> = program
             .modules
             .iter()
-            .filter(|m| !m.file.as_str().starts_with("@std/"))
+            .filter(|m| !syms.str(m.file).starts_with("@std/"))
             .cloned()
             .collect();
         modules.extend(self.session.standard_modules());
@@ -152,9 +153,9 @@ impl Analysis {
     }
 
     /// The module whose source a document is, if the program contains it.
-    pub fn module(&self, d: &Document) -> Option<ModRef> {
+    pub fn module(&self, syms: ms_syntax::Names, d: &Document) -> Option<ModRef> {
         let program = self.program.as_ref()?;
-        if let Some(m) = standard_library_document(&self.session, d) {
+        if let Some(m) = standard_library_document(syms, &self.session, d) {
             return Some(m);
         }
         let mut path = d.path();
@@ -164,23 +165,27 @@ impl Analysis {
         program
             .modules
             .iter()
-            .find(|m| m.file.as_str() == path || self.module_path(m.file.as_str()) == path)
+            .find(|m| syms.str(m.file) == path || self.module_path(syms.str(m.file)) == path)
             .cloned()
     }
 
     /// The logical file of a document's module, or empty.
-    pub fn module_file(&self, d: &Document) -> String {
-        self.module(d)
-            .map(|m| m.file.as_str().to_string())
+    pub fn module_file(&self, syms: ms_syntax::Names, d: &Document) -> String {
+        self.module(syms, d)
+            .map(|m| syms.str(m.file).to_string())
             .unwrap_or_default()
     }
 }
 
 /// The bundled module a document stands for: a `manuscript-stdlib:` URI, or a
 /// file that is byte-for-byte a bundled declaration file.
-pub fn standard_library_document(session: &Rc<Session>, d: &Document) -> Option<ModRef> {
+pub fn standard_library_document(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    d: &Document,
+) -> Option<ModRef> {
     if uri::is_standard_library(&d.uri) {
-        return standard_library_module(session, &d.uri).ok();
+        return standard_library_module(syms, session, &d.uri).ok();
     }
     let url = uri::parse(&d.uri)?;
     if url.scheme != "file" || url.query || url.fragment {
@@ -188,19 +193,22 @@ pub fn standard_library_document(session: &Rc<Session>, d: &Document) -> Option<
     }
     let base = ms_driver::project::pathops::base(&d.path());
     session.standard_modules().into_iter().find(|m| {
-        m.file.as_str().strip_prefix("@std/") == Some(base.as_str()) && *m.source == *d.text
+        syms.str(m.file).strip_prefix("@std/") == Some(base.as_str()) && *m.source == *d.text
     })
 }
 
 /// The bundled module a `manuscript-stdlib:` URI names.
-pub fn standard_library_module(session: &Rc<Session>, uri: &str) -> Result<ModRef, &'static str> {
+pub fn standard_library_module(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    uri: &str,
+) -> Result<ModRef, &'static str> {
     let path = uri::standard_library_path(uri)?;
     session
         .standard_modules()
         .into_iter()
         .find(|m| {
-            m.file
-                .as_str()
+            syms.str(m.file)
                 .strip_prefix("@std/")
                 .is_some_and(|rest| path == format!("/{rest}"))
         })
@@ -208,24 +216,33 @@ pub fn standard_library_module(session: &Rc<Session>, uri: &str) -> Result<ModRe
 }
 
 /// The source of a bundled module by URI.
-pub fn standard_library_source(session: &Rc<Session>, uri: &str) -> Result<String, &'static str> {
-    standard_library_module(session, uri).map(|m| m.source.to_string())
+pub fn standard_library_source(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    uri: &str,
+) -> Result<String, &'static str> {
+    standard_library_module(syms, session, uri).map(|m| m.source.to_string())
 }
 
 /// Checks a file or manifest with unsaved sources (`compiler.CompileFile`).
-pub fn compile_file(filename: &str, options: &Options) -> Analysis {
+pub fn compile_file(syms: ms_syntax::Names, filename: &str, options: &Options) -> Analysis {
     let editor = EditorOptions {
         recover: options.recover,
         module: options.module.clone(),
         project_sources: options.project_sources,
         overlay: options.overlay.clone(),
     };
-    let graph = ms_driver::load_editor_file(filename, LoadOptions::default(), &editor);
-    check(graph, options)
+    let graph = ms_driver::load_editor_file(syms, filename, LoadOptions::default(), &editor);
+    check(syms, graph, options)
 }
 
 /// Checks in-memory source without filesystem resolution (`compiler.CompileSource`).
-pub fn compile_source(filename: &str, source: &str, options: &Options) -> Analysis {
+pub fn compile_source(
+    syms: ms_syntax::Names,
+    filename: &str,
+    source: &str,
+    options: &Options,
+) -> Analysis {
     let file: Arc<str> = Arc::from(filename);
     let mut graph = Graph {
         entry: filename.to_string(),
@@ -262,15 +279,16 @@ pub fn compile_source(filename: &str, source: &str, options: &Options) -> Analys
             usable &= options.recover;
         }
         if usable {
-            graph.modules.push(ms_check::load_module(&module));
+            graph.modules.push(ms_check::load_module(syms, &module));
         }
     }
-    check(graph, options)
+    check(syms, graph, options)
 }
 
-fn check(graph: Graph, options: &Options) -> Analysis {
+fn check(syms: ms_syntax::Names, graph: Graph, options: &Options) -> Analysis {
     let session = options.session.clone().unwrap_or_default();
     let checked = ms_driver::check_graph_in(
+        syms,
         &session,
         graph,
         CheckRequest::default(),
@@ -301,6 +319,7 @@ fn library_analysis(session: Rc<Session>) -> Analysis {
 
 /// Selection and overlay validation shared by uncached and cached analysis.
 pub fn analyze_with(
+    syms: ms_syntax::Names,
     d: &Document,
     docs: &Documents,
     mut options: Options,
@@ -308,7 +327,7 @@ pub fn analyze_with(
 ) -> Rc<Analysis> {
     let session = options.session.clone().unwrap_or_default();
     options.session = Some(session.clone());
-    if standard_library_document(&session, d).is_some() {
+    if standard_library_document(syms, &session, d).is_some() {
         return Rc::new(library_analysis(session));
     }
     if uri::is_standard_library(&d.uri) {
@@ -321,7 +340,7 @@ pub fn analyze_with(
     let mut overlay = Overlay::new();
     for open in docs.values() {
         if uri::is_standard_library(&open.uri)
-            || standard_library_document(&session, open).is_some()
+            || standard_library_document(syms, &session, open).is_some()
         {
             continue;
         }
@@ -335,9 +354,9 @@ pub fn analyze_with(
     }
     let result = compile(&target, &options);
     if result.program.is_none() && result.source_root.is_empty() && target == path {
-        return Rc::new(compile_source(&path, &d.text, &options));
+        return Rc::new(compile_source(syms, &path, &d.text, &options));
     }
-    if target != path && result.program.is_some() && result.module(d).is_none() {
+    if target != path && result.program.is_some() && result.module(syms, d).is_none() {
         options.module = Some(path);
         return compile(&target, &options);
     }
@@ -345,8 +364,14 @@ pub fn analyze_with(
 }
 
 /// An uncached analysis of one document.
-pub fn analyze(session: &Rc<Session>, d: &Document, docs: &Documents) -> Rc<Analysis> {
+pub fn analyze(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    d: &Document,
+    docs: &Documents,
+) -> Rc<Analysis> {
     analyze_options(
+        syms,
         d,
         docs,
         Options {
@@ -358,15 +383,26 @@ pub fn analyze(session: &Rc<Session>, d: &Document, docs: &Documents) -> Rc<Anal
 }
 
 /// An uncached analysis with explicit options.
-pub fn analyze_options(d: &Document, docs: &Documents, options: Options) -> Rc<Analysis> {
-    analyze_with(d, docs, options, &mut |target, options| {
-        Rc::new(compile_file(target, options))
+pub fn analyze_options(
+    syms: ms_syntax::Names,
+    d: &Document,
+    docs: &Documents,
+    options: Options,
+) -> Rc<Analysis> {
+    analyze_with(syms, d, docs, options, &mut |target, options| {
+        Rc::new(compile_file(syms, target, options))
     })
 }
 
 /// A strict analysis of a workspace file, for cross-file queries.
-pub fn workspace_analysis(session: &Rc<Session>, d: &Document, docs: &Documents) -> Rc<Analysis> {
+pub fn workspace_analysis(
+    syms: ms_syntax::Names,
+    session: &Rc<Session>,
+    d: &Document,
+    docs: &Documents,
+) -> Rc<Analysis> {
     analyze_options(
+        syms,
         d,
         docs,
         Options {

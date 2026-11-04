@@ -15,6 +15,7 @@ fn a_long_call_chain_checks_in_linear_time() {
 }
 
 fn chain() {
+    let syms = ms_syntax::Names::global();
     // Each link used to spell the whole chain before it as text for a diagnostic that is almost
     // never reported: 1600 links took 1.7 s, 4800 about 15 s.
     let links = 4_800;
@@ -26,7 +27,8 @@ fn chain() {
     let module = ms_syntax::parser::parse(&file, &source).expect("parses");
     let start = std::time::Instant::now();
     let result = ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     );
@@ -36,6 +38,7 @@ fn chain() {
 
 #[test]
 fn a_match_over_many_cases_checks_in_linear_time() {
+    let syms = ms_syntax::Names::global();
     // Naming a case used to substitute the type arguments of every case of the alternative, so
     // each arm cost the number of cases: 4000 arms took 1.2 s and 16 000 about 20 s.
     let cases = 8_000;
@@ -51,7 +54,8 @@ fn a_match_over_many_cases_checks_in_linear_time() {
     let module = ms_syntax::parser::parse(&file, &source).expect("parses");
     let start = std::time::Instant::now();
     let result = ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     );

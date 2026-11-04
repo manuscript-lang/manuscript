@@ -3,7 +3,7 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error
-    if cause.kind != ErrorCategory.InvalidData:
+    if cause.kind != "EBADMSG":
         return fail("expected malformed implicit key, got {cause}")
 
     cause.details["reason"] | try expect_equal(

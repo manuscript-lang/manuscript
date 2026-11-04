@@ -33,7 +33,12 @@ pub struct Member {
 
 /// The fields and methods available on `receiver`, sorted by name. Local
 /// extensions are included only when `module` names the asking module.
-pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) -> Vec<Member> {
+pub fn members(
+    syms: ms_syntax::Names,
+    program: &crate::Program,
+    receiver: &Ty,
+    module: Option<Name>,
+) -> Vec<Member> {
     program.session.ensure_standard();
     let mut checker = Checker::new(&program.session, &CheckOptions::default());
     for method in &program.methods {
@@ -44,7 +49,7 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
     }
     let mut candidates: BTreeSet<Name> = BTreeSet::new();
     candidates.insert(n("to_string"));
-    if native_method(&program.session, receiver, n("clone")).is_some() {
+    if native_method(syms, &program.session, receiver, n("clone")).is_some() {
         candidates.insert(n("clone"));
     }
     let mut seen: Vec<Ty> = Vec::new();
@@ -96,6 +101,8 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
             });
         }
     }
+    let mut candidates: Vec<Name> = candidates.into_iter().collect();
+    candidates.sort_by(|a, b| syms.cmp(*a, *b));
     for name in candidates {
         if field_names.contains(&name) {
             continue;
@@ -110,13 +117,14 @@ pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) ->
             });
         }
     }
-    result.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+    result.sort_by(|a, b| syms.str(a.name).cmp(syms.str(b.name)));
     result
 }
 
 /// Every exported standard declaration by module path, sorted by name, for
 /// import completion without introducing ambient names.
 pub fn standard_export_inventory(
+    syms: ms_syntax::Names,
     session: &Rc<crate::stdlib::Session>,
 ) -> BTreeMap<String, Vec<SymRef>> {
     session.ensure_standard();
@@ -130,7 +138,7 @@ pub fn standard_export_inventory(
         if exports.is_empty() {
             continue;
         }
-        exports.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
+        exports.sort_by(|a, b| syms.str(a.name).cmp(syms.str(b.name)));
         inventory.insert(path.to_string(), exports);
     }
     inventory

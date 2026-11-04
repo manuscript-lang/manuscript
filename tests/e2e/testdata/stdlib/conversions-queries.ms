@@ -525,4 +525,4 @@ test "ok_or without a cause records the calling file and line":
     named.err().message | try expect_equal("port")
 
     let missing_port = find_port(none)
-    missing_port.err().kind | try expect_equal(ErrorCategory.NotFound)
+    missing_port.err().kind | try expect_equal("ENOENT")

@@ -45,7 +45,7 @@ export opaque type Promise[T]:
     id: Int
 
 // What bounds a promise, fixed when it is made: `timeout` counts from construction and is enforced whether or not anyone
-// waits; when it passes the work is cancelled and `wait` reports `Timeout`. A negative timeout is no time at all.
+// waits; when it passes the work is cancelled and `wait` reports `ETIMEDOUT`. A negative timeout is no time at all.
 export type PromiseOptions:
     // How long the work may run, counted from construction; none means no limit.
     timeout: Duration? = none
@@ -101,18 +101,15 @@ fn nanos(limit: Duration?) Int:
 // The error a `wait` that did not produce a result reports, from the runtime outcome code of the promise `id`.
 fn outcome(id: Int, code: Int) Error:
     if code == 2:
-        return Error("promise: timed out", kind: ErrorCategory.Timeout)
+        return Error("promise: timed out", kind: "ETIMEDOUT")
     if code == 3:
-        return Error("promise: cancelled", kind: ErrorCategory.Other)
+        return Error("promise: cancelled", kind: "ECANCELED")
     if code == 4:
-        return Error(
-            "promise: the result was already taken", kind: ErrorCategory.Closed
-        )
+        return Error("promise: the result was already taken", kind: "EBADF")
 
     let report = msrt_promise_fault_report(id)
     return Error(
-        "promise: fault: " + report, kind: ErrorCategory.Failed,
-        details: {"report": report.clone()}
+        "promise: fault: " + report, kind: "EIO", details: {"report": report.clone()}
     )
 
 // Applies `options` to the promise `id`.
@@ -127,7 +124,7 @@ fn limit(id: Int, options: PromiseOptions) Unit:
 export fn set_options[T](target: Promise[T], options: PromiseOptions) Unit:
     limit(target.id, options)
 
-// The result in the slot of `id`, moved out; `Closed` when it is gone.
+// The result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
     if let value = msrt_promise_take[V](id):
         return ok(value)
@@ -143,7 +140,7 @@ fn taken_error(id: Int) Error:
 
 impl Promise[T]:
     // Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its
-// report in `details`); `Cancelled`; `Closed` (an earlier wait already took the result); `Timeout` once the promise's
+// report in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
     // `timeout` option has passed, which also cancelled the work.
     fn wait() T!:
         let code = msrt_promise_wait(self.id, -1)
@@ -237,7 +234,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 export fn wait_first[T](promises: List[Promise[T]]) T!:
     var pending = promises
     if pending.is_empty():
-        return error(Error("promise: nothing to wait for", kind: ErrorCategory.Other))
+        return error(Error("promise: nothing to wait for"))
 
     var ids: List[Int] = []
     for p in pending:

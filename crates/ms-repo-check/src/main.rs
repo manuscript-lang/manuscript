@@ -16,15 +16,16 @@ use std::process::{Command, ExitCode};
 use std::sync::Arc;
 
 fn main() -> ExitCode {
+    let syms = ms_syntax::Names::global();
     // Deeply nested sources need more stack than the default main thread has.
     let handle = std::thread::Builder::new()
         .stack_size(256 << 20)
-        .spawn(run)
+        .spawn(move || run(syms))
         .expect("spawn");
     handle.join().unwrap_or(ExitCode::from(2))
 }
 
-fn run() -> ExitCode {
+fn run(syms: ms_syntax::Names) -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     match arguments.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         [] => {}
@@ -59,7 +60,7 @@ fn run() -> ExitCode {
     issues.extend(inline_source::check(&files));
     issues.extend(portability::check(&files));
     issues.extend(fixture_twins::check(&files));
-    issues.extend(stream_names::check(&files));
+    issues.extend(stream_names::check(syms, &files));
     if issues.is_empty() {
         println!(
             "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, and stream names agree."

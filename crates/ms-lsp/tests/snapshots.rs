@@ -643,6 +643,7 @@ fn opaque_is_a_keyword_only_before_type() {
 
 #[test]
 fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("text-none-references");
     let main = ws.uri("main.ms");
     let mut script = Script::initialize(&ws.root.to_string_lossy(), true);
@@ -656,7 +657,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     let expected = std::collections::BTreeMap::from([
         ("collections/collections.ms", 6),
         ("concurrency/promise.ms", 2),
-        ("core.ms", 1),
+        ("core.ms", 2),
         ("io/io.ms", 9),
         ("internal/random.ms", 1),
         ("main.ms", 1),
@@ -690,7 +691,8 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
             let source = if uri == main {
                 ws.read("main.ms")
             } else {
-                ms_lsp::analysis::standard_library_source(&ms_check::Session::new(), uri).unwrap()
+                ms_lsp::analysis::standard_library_source(syms, &ms_check::Session::new(), uri)
+                    .unwrap()
             };
             let start = ms_lsp::text::offset(&source, range.start).unwrap();
             let end = ms_lsp::text::offset(&source, range.end).unwrap();

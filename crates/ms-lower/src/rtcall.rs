@@ -18,11 +18,12 @@ use ms_mir::types::{Ty as MTy, TyKind};
 /// by `build.rs` from the exported items of `ms-rt` and the `ms-std-*` crates.
 static SYMBOLS: &[RtEntry] = include!(concat!(env!("OUT_DIR"), "/rt_symbols.rs"));
 
-/// A runtime function in the generated table: name, parameters as (name, type, is a handle),
+/// A runtime function in the generated table: name, parameters as (name, type, is a handle, is a
+/// kept function value),
 /// return type and flag bits.
 type RtEntry = (
     &'static str,
-    &'static [(&'static str, &'static str, bool)],
+    &'static [(&'static str, &'static str, bool, bool)],
     &'static str,
     u8,
 );
@@ -55,12 +56,7 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
 /// Whether the runtime function `sym` takes ownership of its parameter `i`: a function value an
 /// extern keeps after it returns (the checker moving_params the argument; the runtime drops it once).
 pub(crate) fn hands_over(sym: &str, i: usize) -> bool {
-    ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"))
-        && rt_sig(sym).is_some_and(|sig| {
-            sig.params
-                .get(i)
-                .is_some_and(|p| p.ty == "*mut Closure" || p.name == "env" || p.name == "closure")
-        })
+    rt_sig(sym).is_some_and(|sig| sig.params.get(i).is_some_and(|p| p.closure))
 }
 
 /// One declared runtime parameter.
@@ -69,6 +65,8 @@ pub(crate) struct RtParam {
     pub ty: String,
     /// Declared as a runtime handle object (`ObjCell<T>`) rather than a value.
     pub handle: bool,
+    /// Declared `// ms: keeps:<param>`: a function value the runtime stores and drops itself.
+    pub closure: bool,
 }
 
 impl RtSig {
@@ -107,10 +105,11 @@ pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     Some(RtSig {
         params: params
             .iter()
-            .map(|(name, ty, handle)| RtParam {
+            .map(|(name, ty, handle, closure)| RtParam {
                 name: (*name).to_string(),
                 ty: (*ty).to_string(),
                 handle: *handle,
+                closure: *closure,
             })
             .collect(),
         ret: (*ret).to_string(),
@@ -214,8 +213,12 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
 const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
-pub(crate) fn typed_method_symbol(recv: &ct::Ty, method: &str) -> Option<String> {
-    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(t))?;
+pub(crate) fn typed_method_symbol(
+    syms: ms_syntax::Names,
+    recv: &ct::Ty,
+    method: &str,
+) -> Option<String> {
+    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(syms, t))?;
     let ty = ty.to_lowercase();
     ["msstd", "msrt"].iter().find_map(|prefix| {
         [
@@ -369,7 +372,7 @@ impl FnLower<'_> {
                     // `value` argument, or of the result (`T?` gives that of `T`).
                     let by_value = decl
                         .iter()
-                        .position(|p| p.name == "value")
+                        .position(|p| self.syms.str(p.name) == "value")
                         .and_then(|k| inputs.get(k))
                         .and_then(|input| input.val)
                         .map(|v| self.ty_of(v.v));
@@ -1126,7 +1129,7 @@ impl FnLower<'_> {
             .split_first()
             .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
-            let text = if kind == "Failed" {
+            let text = if kind == "EIO" {
                 match s.err_slot {
                     Some(slot) => {
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
@@ -1187,7 +1190,7 @@ impl FnLower<'_> {
         Ok(r.v)
     }
 
-    /// An `Error` record: the owned `message`, the `ErrorCategory` case named `kind`, and the
+    /// An `Error` record: the owned `message`, the error code `kind` (such as `ENOENT`), and the
     /// details `{"site": site}` when a failed test expectation passes its source `site`.
     pub(crate) fn error_record(
         &mut self,
@@ -1197,16 +1200,12 @@ impl FnLower<'_> {
         site: Option<Value>,
     ) -> Result<Value, Error> {
         let fields = self.b.m.records[er.index()].fields.clone();
-        let kind_ty = fields[1].1;
-        let TyKind::Alt(ka) = self.b.m.types.kind(kind_ty).clone() else {
-            return Err(Error::new("Error.kind is an ErrorCategory"));
-        };
-        let idx = self.b.m.alts[ka.index()]
-            .cases
-            .iter()
-            .position(|c| c.name == kind)
-            .ok_or_else(|| Error::new(format!("ErrorCategory lacks {kind}")))?;
-        let kind_value = self.b.alt_new(ka, idx as u32, &[]);
+        let code = self.b.str_lit(kind);
+        let code = self.owned(Val {
+            v: code,
+            own: false,
+        });
+        let kind_value = self.b.opt_some(code);
         let mut details = self.map_new(fields[2].1)?;
         if let Some(site) = site {
             let key = self.b.str_lit("site");
@@ -1317,7 +1316,7 @@ impl FnLower<'_> {
     }
 }
 
-/// The `ErrorCategory` case and message words of each runtime status of `sym`'s module, as
+/// The error code and message words of each runtime status of `sym`'s module, as
 /// `(status, kind, words)`. Every runtime crate uses the shared `ms-rt-abi` `STATUS_*` numbers;
 /// only the `NotFound` words name the module.
 pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
@@ -1327,23 +1326,23 @@ pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> 
         "not found"
     };
     vec![
-        (1, "InvalidInput", "invalid input"),
-        (2, "OutOfRange", "value out of range"),
-        (3, "LimitExceeded", "limit exceeded"),
-        (4, "InvalidData", "invalid data"),
-        (5, "NotFound", not_found),
-        (6, "AlreadyExists", "already exists"),
-        (7, "Other", "directory not empty"),
-        (8, "PermissionDenied", "permission denied"),
-        (9, "Unsupported", "operation not supported"),
-        (10, "Closed", "resource is closed"),
-        (11, "Failed", ""),
-        (12, "Unavailable", "service unavailable"),
-        (13, "Timeout", "operation timed out"),
-        (14, "LimitExceeded", "output limit exceeded"),
-        (15, "Unsupported", "not a terminal"),
-        (17, "Unavailable", "terminal is busy"),
-        (18, "Other", "authentication failed"),
+        (1, "EINVAL", "invalid input"),
+        (2, "ERANGE", "value out of range"),
+        (3, "EOVERFLOW", "limit exceeded"),
+        (4, "EBADMSG", "invalid data"),
+        (5, "ENOENT", not_found),
+        (6, "EEXIST", "already exists"),
+        (7, "ENOTEMPTY", "directory not empty"),
+        (8, "EACCES", "permission denied"),
+        (9, "ENOTSUP", "operation not supported"),
+        (10, "EBADF", "resource is closed"),
+        (11, "EIO", ""),
+        (12, "EAGAIN", "service unavailable"),
+        (13, "ETIMEDOUT", "operation timed out"),
+        (14, "EOVERFLOW", "output limit exceeded"),
+        (15, "ENOTTY", "not a terminal"),
+        (17, "EBUSY", "terminal is busy"),
+        (18, "EAUTH", "authentication failed"),
     ]
 }
 
@@ -1391,4 +1390,19 @@ fn domain_of(sym: &str) -> String {
                 .unwrap_or("error")
                 .to_string()
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The checker's list of callback-keeping externs and the runtime's `// ms: keeps:` markers agree.
+    #[test]
+    fn kept_callbacks_have_a_closure_parameter() {
+        for (sym, params, ..) in SYMBOLS {
+            let marked = params.iter().any(|p| p.3);
+            let listed = ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"));
+            assert_eq!(marked, listed, "{sym}");
+        }
+    }
 }

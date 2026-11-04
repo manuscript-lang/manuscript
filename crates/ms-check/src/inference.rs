@@ -128,7 +128,7 @@ impl Checker {
             }
             return;
         }
-        if typ.is_never() {
+        if typ.is_never(self.syms) {
             return;
         }
         let Some(r) = self.return_inference.as_mut() else {
@@ -142,7 +142,7 @@ impl Checker {
             r.context_dependent = true;
             let msg = format!(
                 "callback returns require the same type: {}; make every return in the callback produce one type",
-                format_mismatch(typ, &previous)
+                format_mismatch(self.syms, typ, &previous)
             );
             self.type_error(pos, msg);
         }
@@ -169,11 +169,13 @@ impl Checker {
         for arg in args {
             if matches!(arg.value.kind, ExprKind::Lambda(_)) {
                 pending.push(*arg);
-            } else if is_plain_literal(arg.value) && sized_number(parameter_type(params, arg)) {
+            } else if is_plain_literal(self.syms, arg.value)
+                && sized_number(self.syms, parameter_type(params, arg))
+            {
                 // The literal takes the parameter's own sized type when it is checked.
-            } else if sized_literal_list(arg.value, parameter_type(params, arg)) {
+            } else if sized_literal_list(self.syms, arg.value, parameter_type(params, arg)) {
                 // The elements take the parameter's sized element type when it is checked.
-            } else if is_plain_literal(arg.value)
+            } else if is_plain_literal(self.syms, arg.value)
                 && parameter_type(params, arg).is_some_and(|p| vars.contains(&p.id))
             {
                 literals.push(*arg);
@@ -187,7 +189,7 @@ impl Checker {
             let bound = parameter_type(params, &arg).map(|p| sub(&p, s));
             let adopts = bound
                 .as_ref()
-                .is_some_and(|t| literal_hint(arg.value, t).is_some());
+                .is_some_and(|t| literal_hint(self.syms, arg.value, t).is_some());
             if !adopts
                 && !self.contextual(arg.value)
                 && let Some(actual) = self.independent_argument(arg.value)
@@ -295,7 +297,7 @@ impl Checker {
             && actual_ty.is(Builtin::Optional)
             && actual_ty.args.len() == 1
             && !substituted.is(Builtin::Optional)
-            && compatible(&Some(substituted.clone()), &actual_ty.args[0])
+            && compatible(self.syms, &Some(substituted.clone()), &actual_ty.args[0])
         {
             s.insert(pattern.id, actual_ty.clone());
             return;
@@ -303,7 +305,7 @@ impl Checker {
         // A plain value beside an inferred `T?` wraps into it, as at a typed binding.
         if substituted.is(Builtin::Optional)
             && substituted.args.len() == 1
-            && compatible(&Some(actual_ty.clone()), &substituted.args[0])
+            && compatible(self.syms, &Some(actual_ty.clone()), &substituted.args[0])
         {
             return;
         }
@@ -336,8 +338,8 @@ impl Checker {
             self.type_error(
                 arg.pos,
                 format!(
-                    "cannot infer {pattern} from {actual_ty}; passing a value as an interface adds no inference evidence, so give type arguments explicitly, e.g. f[Int](...)"
-                ),
+                    "cannot infer {pattern_t} from {actual_ty_t}; passing a value as an interface adds no inference evidence, so give type arguments explicitly, e.g. f[Int](...)"
+                , pattern_t = pattern.display(self.syms), actual_ty_t = actual_ty.display(self.syms)),
             );
             self.unknown_type = true;
             self.label_mismatch = true;
@@ -389,8 +391,8 @@ impl Checker {
             self.type_error(
                 context.pos,
                 format!(
-                    "conflicting generic inference; expected result type {expected} does not match {result}; give consistent argument and result types or specify the type arguments"
-                ),
+                    "conflicting generic inference; expected result type {expected_t} does not match {result_t}; give consistent argument and result types or specify the type arguments"
+                , expected_t = expected.display(self.syms), result_t = result.display(self.syms)),
             );
             context.conflict = true;
             for v in variables {
@@ -479,20 +481,21 @@ fn parameter_type(params: &[Param], arg: &Arg) -> Option<Ty> {
 }
 
 /// Whether `e` is a list of plain number literals passed for a `List` of a sized number type.
-fn sized_literal_list(e: &Expr, parameter: Option<Ty>) -> bool {
+fn sized_literal_list(syms: ms_syntax::Names, e: &Expr, parameter: Option<Ty>) -> bool {
     let ExprKind::List(items) = &e.kind else {
         return false;
     };
     !items.is_empty()
-        && items.iter().all(is_plain_literal)
+        && items.iter().all(|x| is_plain_literal(syms, x))
         && parameter.is_some_and(|p| {
-            p.is(Builtin::List) && p.args.len() == 1 && sized_number(Some(p.args[0].clone()))
+            p.is(Builtin::List) && p.args.len() == 1 && sized_number(syms, Some(p.args[0].clone()))
         })
 }
 
 /// Whether `t` is a sized integer or `Float32`, which a number literal takes as its own type.
-fn sized_number(t: Option<Ty>) -> bool {
+fn sized_number(syms: ms_syntax::Names, t: Option<Ty>) -> bool {
     t.is_some_and(|t| {
-        (int_bits(&t).is_some() && t.id != "Int") || (float_bits(&t) == Some(32) && t.id != "Float")
+        (int_bits(syms, &t).is_some() && syms.str(t.id) != "Int")
+            || (float_bits(syms, &t) == Some(32) && syms.str(t.id) != "Float")
     })
 }

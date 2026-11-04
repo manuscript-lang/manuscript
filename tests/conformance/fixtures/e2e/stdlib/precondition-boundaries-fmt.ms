@@ -51,7 +51,7 @@ test "radix formatting retains inclusive boundaries and parse errors":
     )
 
     let invalid: Int! = error(
-        Error("number: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("number: invalid input", kind: "EINVAL")
     )
     try expect_equal(parse_int("1", 1), invalid)
     try expect_false(not "invalid".parse_int().is_none())

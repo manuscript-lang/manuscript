@@ -28,12 +28,12 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 ```manuscript
 export type Error:
     message: String
-    kind: ErrorCategory = ErrorCategory.Other
+    kind: String? = none
     details: Map[String, String] = Map[String, String]()
 ```
 
 - `message` is the text to show a person.
-- `kind` is an `ErrorCategory` a caller can branch on: `InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`, `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Timeout`, `Unavailable`, `OutOfRange`, `Failed`, or `Other` (the default).
+- `kind` is an optional short code a caller can branch on; it is `none` when no code fits (the default). The standard library uses POSIX errno names such as `"ENOENT"` (not found), `"EEXIST"`, `"EACCES"`, `"EINVAL"` (invalid input), `"EBADMSG"` (malformed data), `"EOVERFLOW"` (limit exceeded), `"ERANGE"`, `"ENOTSUP"`, `"EBADF"` (closed), `"EIO"`, `"EAGAIN"`, `"EBUSY"`, `"ETIMEDOUT"`, and `"ECANCELED"`; the full list is in the `Error` declaration. Your own code uses any string, preferably with its own prefix such as `"EQUOTA"`. A literal, or any string of at most 15 bytes, never allocates.
 - `details` holds extra named context as text, such as a path or a line number.
 
 Build one with the record call. There is no separate constructor and no namespace.
@@ -41,13 +41,13 @@ Build one with the record call. There is no separate constructor and no namespac
 ```manuscript
 fn find_user(id: Int) String!:
     if id < 0:
-        return error(Error("negative id", kind: ErrorCategory.InvalidInput))
-    return error(Error("no such user", kind: ErrorCategory.NotFound, details: {"id": id.to_string()}))
+        return error(Error("negative id", kind: "EINVAL"))
+    return error(Error("no such user", kind: "ENOENT", details: {"id": id.to_string()}))
 
 fn describe(id: Int) String:
     let outcome = find_user(id)
     if outcome.is_ok(): return outcome.get()
-    if outcome.err().kind == ErrorCategory.NotFound: return "missing {outcome.err().details["id"]}"
+    if outcome.err().kind == "ENOENT": return "missing {outcome.err().details["id"]}"
     return outcome.err().message.clone()
 ```
 
@@ -139,7 +139,7 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 ```manuscript
 fn discount_error(cause: DiscountError) Error:
-    return Error("discount failed", kind: ErrorCategory.InvalidInput)
+    return Error("discount failed", kind: "EINVAL")
 
 fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
     return discount(price, percent).map_error(discount_error)

@@ -97,22 +97,22 @@ test "decompression budget, garbage and level are errors":
         compressed(chunked(text.clone(), 7), CompressionFormat.Gzip)
     )
     let limited = read_all(decompressed(chunked(packed, 7), CompressionFormat.Gzip, 4))
-    try expect_equal(limited.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(limited.err().kind, "EOVERFLOW")
 
     let garbage = read_all(
         decompressed(chunked(text.clone(), 7), CompressionFormat.Gzip, none)
     )
-    try expect_equal(garbage.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(garbage.err().kind, "EBADMSG")
 
     let whole = try compress(text.clone(), "gzip", 6)
     let head = try whole.slice(0, 12)
     let truncated = read_all(
         decompressed(chunked(head, 5), CompressionFormat.Gzip, none)
     )
-    try expect_equal(truncated.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(truncated.err().kind, "EBADMSG")
 
     let level = read_all(compressed(chunked(text, 7), CompressionFormat.Gzip, 10))
-    try expect_equal(level.err().kind, ErrorCategory.InvalidInput)
+    try expect_equal(level.err().kind, "EINVAL")
 
 fn sample() List[ArchiveEntry]:
     return [
@@ -152,17 +152,17 @@ test "tar entries match unpack under every chunk size":
 test "tar entries enforce limits and report truncation":
     let archive = try pack(sample(), "tar")
     let few = read_entries(chunked(archive.clone(), 700), ArchiveLimits(max_entries: 2))
-    try expect_equal(few.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(few.err().kind, "EOVERFLOW")
 
     let big = read_entries(
         chunked(archive.clone(), 700), ArchiveLimits(max_entry_bytes: 100)
     )
-    try expect_equal(big.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(big.err().kind, "EOVERFLOW")
 
     let total = read_entries(
         chunked(archive.clone(), 700), ArchiveLimits(max_total_bytes: 1000)
     )
-    try expect_equal(total.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(total.err().kind, "EOVERFLOW")
 
     let cut = read_entries(chunked(archive.slice(0, 1000).get("".to_bytes()), 300))
-    try expect_equal(cut.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(cut.err().kind, "EBADMSG")

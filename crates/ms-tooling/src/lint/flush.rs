@@ -14,7 +14,12 @@ use std::collections::{HashMap, HashSet};
 /// Zero-argument methods that return a `Result` and make earlier writes durable.
 const FINISHERS: [&str; 3] = ["flush", "sync", "commit"];
 
-pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Finding>) {
+pub(super) fn lint(
+    syms: ms_syntax::Names,
+    program: &Program,
+    module: &ModuleData,
+    findings: &mut Vec<Finding>,
+) {
     let mut scan = Scan {
         module,
         moves: &program.close_moves,
@@ -23,7 +28,7 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
         kept: HashSet::new(),
     };
     walk_module(module, &mut scan);
-    let file = module_file(module);
+    let file = module_file(syms, module);
     for (uid, name, pos, ty) in scan.owned {
         // A binding every path moves is left alone: the new owner reports the close.
         let kept = !program.close_moves.contains_key(&uid) || scan.kept.contains(&uid);
@@ -35,14 +40,14 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
         {
             continue;
         }
-        let Some(method) = finisher(program, module, &ty) else {
+        let Some(method) = finisher(syms, program, module, &ty) else {
             continue;
         };
         findings.push(finding(
             "MSL114",
             format!(
-                "`{name}` is closed when its scope ends, and unflushed data is lost if that fails; call `try {name}.{method}()` before the scope ends to see the failure"
-            ),
+                "`{name_t}` is closed when its scope ends, and unflushed data is lost if that fails; call `try {name_t}.{method_t}()` before the scope ends to see the failure"
+            , name_t = syms.str(name), method_t = syms.str(method)),
             &file,
             pos,
         ));
@@ -50,8 +55,13 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
 }
 
 /// The first finisher `ty` offers: no parameters, returning a `Result`.
-fn finisher(program: &Program, module: &ModuleData, ty: &Ty) -> Option<Name> {
-    members(program, ty, Some(module.file))
+fn finisher(
+    syms: ms_syntax::Names,
+    program: &Program,
+    module: &ModuleData,
+    ty: &Ty,
+) -> Option<Name> {
+    members(syms, program, ty, Some(module.file))
         .into_iter()
         .find(|m| {
             m.kind == MemberKind::Method

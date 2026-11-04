@@ -113,10 +113,10 @@ test "base64 decoding matches under every text piece size":
 
 test "base64 decoding rejects malformed text and truncated groups":
     let bad = join_bytes(base64_decoded(stream[String](Texts(["aGVs", "bG8*"], 0))))
-    try expect_equal(bad.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(bad.err().kind, "EBADMSG")
 
     let cut = join_bytes(base64_decoded(stream[String](Texts(["aGVsb"], 0))))
-    try expect_equal(cut.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(cut.err().kind, "EBADMSG")
 
 test "hex steps round trip under every chunk size":
     let data = "hex \u{0}\u{ff} data".to_bytes()
@@ -132,4 +132,4 @@ test "hex steps round trip under every chunk size":
 
 test "hex decoding rejects an odd tail":
     let outcome = join_bytes(hex_decoded(stream[String](Texts(["abc"], 0))))
-    try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(outcome.err().kind, "EBADMSG")

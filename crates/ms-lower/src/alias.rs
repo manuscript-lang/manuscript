@@ -90,7 +90,8 @@ impl<'a> FnLower<'a> {
                 Ok(a)
             }
             _ => {
-                let Some((left, index)) = crate::mutation::index_parts(&self.hir, e) else {
+                let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, e)
+                else {
                     return Err(Error::new(
                         "a mutable borrow needs a field or element of a variable",
                     ));
@@ -108,10 +109,12 @@ impl<'a> FnLower<'a> {
     /// test for whether it exists.
     pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Value), Error> {
         let (left, index) = match &cond.kind {
-            ExprKind::Probe(target) => crate::mutation::index_parts(&self.hir, target)
-                .ok_or_else(|| Error::new("`?` needs an index of a map or list"))?,
+            ExprKind::Probe(target) => {
+                crate::mutation::index_parts(self.syms, &self.hir, target)
+                    .ok_or_else(|| Error::new("`?` needs an index of a map or list"))?
+            }
             ExprKind::Call { callee, args }
-                if matches!(&callee.kind, ExprKind::Member { name, .. } if name.as_str() == "get")
+                if matches!(&callee.kind, ExprKind::Member { name, .. } if self.syms.str(name) == "get")
                     && args.len() == 1 =>
             {
                 let ExprKind::Member { left, .. } = &callee.kind else {
@@ -144,7 +147,22 @@ impl<'a> FnLower<'a> {
                 // One lookup finds the entry: the test is its address, and the borrow reads
                 // and writes through it.
                 let k = self.expr(index)?;
-                let key = self.bind_hidden(k);
+                // A key named by an unchanging variable is borrowed for the alias's lifetime.
+                let unchanging = !k.own
+                    && matches!(&index.kind, ExprKind::Name(_))
+                    && matches!(
+                        self.hir.resolution(index),
+                        Resolution::Local(b) if !b.mutable
+                    );
+                let key = if unchanging {
+                    let var = self
+                        .b
+                        .declare_var(self.ty_of(k.v), ms_mir::ir::Mode::Borrow);
+                    self.b.def_var(var, k.v);
+                    var
+                } else {
+                    self.bind_hidden(k)
+                };
                 let ptr = self.map_entry_ptr(whole.v, key)?;
                 let missing = self
                     .b
@@ -270,8 +288,10 @@ impl<'a> FnLower<'a> {
         let idx = self.b.m.records[rid.index()]
             .fields
             .iter()
-            .position(|f| f.0 == name.as_str())
-            .ok_or_else(|| Error::new(format!("no field {name}")))?;
+            .position(|f| f.0 == self.syms.str(name))
+            .ok_or_else(|| {
+                Error::new(format!("no field {name_t}", name_t = self.syms.str(name)))
+            })?;
         Ok((rid, idx as u32))
     }
 

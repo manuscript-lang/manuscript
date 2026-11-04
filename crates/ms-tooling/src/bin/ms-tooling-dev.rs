@@ -14,22 +14,23 @@ use std::path::Path;
 use std::sync::Arc;
 
 fn main() {
+    let syms = ms_syntax::Names::global();
     let handle = std::thread::Builder::new()
         .stack_size(512 << 20)
-        .spawn(run)
+        .spawn(move || run(syms))
         .expect("spawn");
     std::process::exit(handle.join().unwrap_or(2));
 }
 
-fn run() -> i32 {
+fn run(syms: ms_syntax::Names) -> i32 {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some((command, files)) = args.split_first() else {
         eprintln!("usage: ms-tooling-dev lint FILE...");
         return 2;
     };
     match command.as_str() {
-        "lint" => lint(files),
-        "inspect" => inspect(files),
+        "lint" => lint(syms, files),
+        "inspect" => inspect(syms, files),
         other => {
             eprintln!("unknown command {other}");
             2
@@ -37,7 +38,7 @@ fn run() -> i32 {
     }
 }
 
-fn lint(files: &[String]) -> i32 {
+fn lint(syms: ms_syntax::Names, files: &[String]) -> i32 {
     let mut status = 0;
     for path in files {
         let text = std::fs::read_to_string(path).expect("read source");
@@ -56,7 +57,8 @@ fn lint(files: &[String]) -> i32 {
             }
         };
         let program = ms_check::check(
-            vec![ms_check::load_module(&module)],
+            syms,
+            vec![ms_check::load_module(syms, &module)],
             ImportMap::default(),
             CheckOptions::default(),
         );
@@ -67,7 +69,7 @@ fn lint(files: &[String]) -> i32 {
             status = 1;
             continue;
         }
-        for f in ms_tooling::lint::lint_modules(&program) {
+        for f in ms_tooling::lint::lint_modules(syms, &program) {
             println!(
                 "{}:{}:{}: {} {}",
                 f.file, f.pos.line, f.pos.column, f.code, f.message
@@ -79,7 +81,7 @@ fn lint(files: &[String]) -> i32 {
 }
 
 /// Parses and checks one standalone file, printing diagnostics on failure.
-fn checked(path: &str) -> Option<ms_check::Program> {
+fn checked(syms: ms_syntax::Names, path: &str) -> Option<ms_check::Program> {
     let text = std::fs::read_to_string(path).expect("read source");
     let file: Arc<str> = Arc::from(
         Path::new(path)
@@ -95,7 +97,8 @@ fn checked(path: &str) -> Option<ms_check::Program> {
         }
     };
     let program = ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     );
@@ -108,13 +111,13 @@ fn checked(path: &str) -> Option<ms_check::Program> {
     None
 }
 
-fn inspect(files: &[String]) -> i32 {
-    let Some(program) = files.first().and_then(|f| checked(f)) else {
+fn inspect(syms: ms_syntax::Names, files: &[String]) -> i32 {
+    let Some(program) = files.first().and_then(|f| checked(syms, f)) else {
         return 1;
     };
     println!(
         "{}",
-        ms_tooling::inspect::inspect(&program)
+        ms_tooling::inspect::inspect(syms, &program)
             .to_json()
             .pretty(ms_json::Escape::HtmlSafe)
     );

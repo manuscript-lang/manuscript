@@ -5,15 +5,17 @@ use ms_tooling::lint::{Finding, lint_program};
 use std::sync::Arc;
 
 fn findings(source: &str) -> Vec<Finding> {
+    let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("lint.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("parses");
     let program = ms_check::check(
-        vec![ms_check::load_module(&module)],
+        syms,
+        vec![ms_check::load_module(syms, &module)],
         ImportMap::default(),
         CheckOptions::default(),
     );
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
-    lint_program(&program)
+    lint_program(syms, &program)
         .into_iter()
         .filter(|f| f.code == "MSL114")
         .collect()

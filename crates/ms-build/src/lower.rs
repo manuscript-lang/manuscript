@@ -38,17 +38,19 @@ pub struct Native;
 
 impl Lower for Native {
     fn lower(&self, program: &Program, entry: &str) -> Result<Module, String> {
+        let syms = program.syms;
         let options = ms_lower::Options {
             entry: entry.to_string(),
         };
-        ms_lower::lower_program(program, &options).map_err(|e| e.to_string())
+        ms_lower::lower_program(syms, program, &options).map_err(|e| e.to_string())
     }
 
     fn lower_tests(&self, program: &Program, entry: &str) -> Result<(Module, Vec<String>), String> {
+        let syms = program.syms;
         let options = ms_lower::Options {
             entry: entry.to_string(),
         };
-        ms_lower::lower_tests(program, &options).map_err(|e| e.to_string())
+        ms_lower::lower_tests(syms, program, &options).map_err(|e| e.to_string())
     }
 
     fn lower_benches(
@@ -56,10 +58,11 @@ impl Lower for Native {
         program: &Program,
         entry: &str,
     ) -> Result<(Module, Vec<String>), String> {
+        let syms = program.syms;
         let options = ms_lower::Options {
             entry: entry.to_string(),
         };
-        ms_lower::lower_benches(program, &options).map_err(|e| e.to_string())
+        ms_lower::lower_benches(syms, program, &options).map_err(|e| e.to_string())
     }
 }
 

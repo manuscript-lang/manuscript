@@ -143,19 +143,19 @@ fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
 fn charge(var context: Context, size: Int) Unit!:
     context.values += size
     if not within(context.values, context.limits.max_values): return error(
-        Error("YAML limit exceeded", kind: LimitExceeded)
+        Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(unit)
 
 fn count(var context: Context, depth: Int) Unit!:
     if not within(depth, context.limits.max_depth): return error(
-        Error("YAML limit exceeded", kind: LimitExceeded)
+        Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     context.values += 1
     if not within(context.values, context.limits.max_values): return error(
-        Error("YAML limit exceeded", kind: LimitExceeded)
+        Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(unit)
@@ -175,7 +175,7 @@ fn source_column(context: Context, row: Int, column: Int) Int:
 fn yaml_invalid(line: Int, column: Int, reason: String) Error:
     return Error(
         "YAML {line}:{column}: {reason}",
-        kind: InvalidData,
+        kind: "EBADMSG",
         details: {
             "line": line.to_string(), "column": column.to_string(),
             "reason": reason.clone()
@@ -185,7 +185,7 @@ fn yaml_invalid(line: Int, column: Int, reason: String) Error:
 // An error for syntax this configuration parser does not support.
 fn yaml_unsupported(line: Int, reason: String) Error:
     return Error(
-        "YAML {line}: {reason}", kind: Unsupported,
+        "YAML {line}: {reason}", kind: "ENOTSUP",
         details: {"line": line.to_string(), "reason": reason.clone()}
     )
 
@@ -597,7 +597,7 @@ fn flow_entry(
             ok(_): return ok(unit)
             error(cause): cause
 
-        if cause.kind != ErrorCategory.InvalidData: return error(cause)
+        if cause.kind != "EBADMSG": return error(cause)
 
         let reason = cause.details.get("reason").get("").clone()
 
@@ -1812,9 +1812,9 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!:
         options = value
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
-            if value < 0: return error(Error("invalid YAML input", kind: InvalidInput))
+            if value < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
     if not within(text.byte_length(), options.max_bytes): return error(
-        Error("YAML limit exceeded", kind: LimitExceeded)
+        Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     var normalized = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -2002,7 +2002,7 @@ fn scalar_text(value: YamlValue) String!:
         StringValue(text): return ok(quote_text(text))
         NumberValue(text):
             if not valid_number(text.clone()): return error(
-                Error("invalid YAML input", kind: InvalidInput)
+                Error("invalid YAML input", kind: "EINVAL")
             )
 
             return ok(text)
@@ -2059,7 +2059,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 // Serializes a YAML value in block style with double-quoted strings.
 export fn stringify(value: YamlValue, max_bytes: Int?) String!:
     if let limit = max_bytes:
-        if limit < 0: return error(Error("invalid YAML input", kind: InvalidInput))
+        if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
 
     var out = StringBuilder()
 
@@ -2070,7 +2070,7 @@ export fn stringify(value: YamlValue, max_bytes: Int?) String!:
 
     let text = out.build()
     if not within(text.byte_length(), max_bytes): return error(
-        Error("YAML limit exceeded", kind: LimitExceeded)
+        Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(text)

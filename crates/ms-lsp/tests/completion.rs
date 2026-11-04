@@ -11,11 +11,13 @@ use support::Workspace;
 
 #[test]
 fn numeric_imports_preserve_main_fuzzy_completions() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-numeric");
     let source = include_str!("completion/numeric-imports.ms");
     let document = Document::new(workspace.uri("numeric.ms"), source.to_string());
     for snippets in [false, true] {
         let items: Vec<_> = completion_at(
+            syms,
             &ms_check::Session::new(),
             &document,
             &Documents::new(),
@@ -155,11 +157,13 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
 
 #[test]
 fn checksum_imports_preserve_numeric_fuzzy_completions() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-checksum");
     let source = include_str!("completion/checksum-imports.ms");
     let document = Document::new(workspace.uri("checksum.ms"), source.to_string());
     for snippets in [false, true] {
         let items: Vec<_> = completion_at(
+            syms,
             &ms_check::Session::new(),
             &document,
             &Documents::new(),
@@ -304,6 +308,7 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
 
 #[test]
 fn for_snippet_inserts_a_checked_loop() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-snippet");
     let source = include_str!("completion/for-snippet-inserts-a-checked-loop.ms");
     for source in [source.to_string(), source.replace('\n', "\r\n")] {
@@ -315,6 +320,7 @@ fn for_snippet_inserts_a_checked_loop() {
             character: 6,
         };
         let item = completion_at(
+            syms,
             &ms_check::Session::new(),
             &document,
             &Documents::new(),
@@ -345,7 +351,12 @@ fn for_snippet_inserts_a_checked_loop() {
             .replace("$0", "return unit")
             .replace('\n', "\n    ");
         document.text.replace_range(start..end, &insertion);
-        let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+        let checked = analyze(
+            syms,
+            &ms_check::Session::new(),
+            &document,
+            &Documents::new(),
+        );
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         assert!(checked.program.is_some(), "inserted source must check");
         assert_eq!(Path::new(&checked.source_root), workspace.root.as_path());
@@ -354,6 +365,7 @@ fn for_snippet_inserts_a_checked_loop() {
 
 #[test]
 fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-overlay");
     let name = "edited é #%.ms";
     let path = workspace.path(name);
@@ -364,11 +376,16 @@ fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
         let document = Document::new(workspace.uri(name), source);
         assert!(Path::new(&document.path()).is_absolute());
         assert_eq!(std::fs::read_to_string(document.path()).unwrap(), stale);
-        let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+        let checked = analyze(
+            syms,
+            &ms_check::Session::new(),
+            &document,
+            &Documents::new(),
+        );
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         assert!(checked.program.is_some(), "unsaved source must check");
         assert_eq!(Path::new(&checked.source_root), workspace.root.as_path());
-        let module = checked.module(&document).expect("checked document");
+        let module = checked.module(syms, &document).expect("checked document");
         assert_eq!(&*module.source, document.text.as_str());
         assert_eq!(std::fs::read_to_string(&path).unwrap(), stale);
     }
@@ -376,6 +393,7 @@ fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
 
 #[test]
 fn an_opaque_record_offers_no_fields_outside_its_file() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-opaque");
     std::fs::write(
         workspace.path("gate.ms"),
@@ -385,6 +403,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
     let labels = |name: &str, source: &str, line: usize, character: usize| {
         let document = Document::new(workspace.uri(name), source.to_string());
         completion_at(
+            syms,
             &ms_check::Session::new(),
             &document,
             &Documents::new(),
@@ -420,6 +439,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
 
 #[test]
 fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-cases");
     std::fs::write(
         workspace.path("shapes.ms"),
@@ -429,6 +449,7 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
     let labels = |source: &str, line: usize, character: usize| {
         let document = Document::new(workspace.uri("main.ms"), source.to_string());
         completion_at(
+            syms,
             &ms_check::Session::new(),
             &document,
             &Documents::new(),
@@ -459,12 +480,18 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
 
 #[test]
 fn callable_snippets_preserve_mutable_arguments() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-mutable");
     let fixture = include_str!("completion/mutable-calls.ms");
     for newline in ["\n", "\r\n"] {
         let fixture = fixture.replace('\n', newline);
         let baseline = Document::new(workspace.uri("mutable.ms"), fixture.clone());
-        let checked = analyze(&ms_check::Session::new(), &baseline, &Documents::new());
+        let checked = analyze(
+            syms,
+            &ms_check::Session::new(),
+            &baseline,
+            &Documents::new(),
+        );
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         for (call, prefix, label, expected) in [
             (
@@ -500,6 +527,7 @@ fn callable_snippets_preserve_mutable_arguments() {
                 + prefix.len();
             let mut document = Document::new(workspace.uri("mutable.ms"), source);
             let item = completion_at(
+                syms,
                 &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
@@ -527,7 +555,12 @@ fn callable_snippets_preserve_mutable_arguments() {
                 .replace("${3:value}", "2")
                 .replace("$0", "");
             document.text.replace_range(start..end, &insertion);
-            let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+            let checked = analyze(
+                syms,
+                &ms_check::Session::new(),
+                &document,
+                &Documents::new(),
+            );
             assert!(
                 checked.diagnostics.is_empty(),
                 "{call}: {:?}",
@@ -540,6 +573,7 @@ fn callable_snippets_preserve_mutable_arguments() {
 
 #[test]
 fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-mutable-import");
     std::fs::write(
         workspace.path("mutators.ms"),
@@ -558,6 +592,7 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
             let offset = source.rfind("upd").unwrap() + 3;
             let mut document = Document::new(workspace.uri("use.ms"), source);
             let item = completion_at(
+                syms,
                 &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
@@ -601,7 +636,12 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
             } else {
                 assert!(item.get("additionalTextEdits").is_none());
             }
-            let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+            let checked = analyze(
+                syms,
+                &ms_check::Session::new(),
+                &document,
+                &Documents::new(),
+            );
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
             assert!(checked.program.is_some());
         }
@@ -610,6 +650,7 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
 
 #[test]
 fn argument_completion_and_signature_help_preserve_mutation() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-mutable-arguments");
     let fixture = include_str!("completion/mutable-calls.ms");
     for newline in ["\n", "\r\n"] {
@@ -619,6 +660,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             let offset = source.find("return update(val").unwrap() + "return update(val".len();
             let mut document = Document::new(workspace.uri("mutable.ms"), source);
             let item = completion_at(
+                syms,
                 &ms_check::Session::new(),
                 &document,
                 &Documents::new(),
@@ -649,12 +691,18 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
             let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
             document.text.replace_range(start..end, &insertion);
-            let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+            let checked = analyze(
+                syms,
+                &ms_check::Session::new(),
+                &document,
+                &Documents::new(),
+            );
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         }
         let document = Document::new(workspace.uri("mutable.ms"), fixture.clone());
         let offset = fixture.find("return update(").unwrap() + "return update(".len();
         let help = signature_help(
+            syms,
             &document,
             &Documents::new(),
             ms_lsp::text::position(&fixture, offset),
@@ -670,6 +718,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
 
 #[test]
 fn mutable_positional_arguments_complete_local_bindings() {
+    let syms = ms_syntax::Names::global();
     let workspace = Workspace::new("completion-mutable-positional");
     let fixture = include_str!("completion/mutable-calls.ms");
     for newline in ["\n", "\r\n"] {
@@ -682,6 +731,7 @@ fn mutable_positional_arguments_complete_local_bindings() {
                 let offset = source.find(&prefix).unwrap() + prefix.len();
                 let mut document = Document::new(workspace.uri("mutable.ms"), source);
                 let item = completion_at(
+                    syms,
                     &ms_check::Session::new(),
                     &document,
                     &Documents::new(),
@@ -700,7 +750,12 @@ fn mutable_positional_arguments_complete_local_bindings() {
                 let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
                 let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
                 document.text.replace_range(start..end, insertion);
-                let checked = analyze(&ms_check::Session::new(), &document, &Documents::new());
+                let checked = analyze(
+                    syms,
+                    &ms_check::Session::new(),
+                    &document,
+                    &Documents::new(),
+                );
                 assert!(
                     checked.diagnostics.is_empty(),
                     "{argument}: {:?}",

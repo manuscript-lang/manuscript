@@ -434,7 +434,7 @@ export fn read_body(var exchange: HttpExchange, limit: Int?) Bytes!:
 fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
     var total = head.length()
     if over_limit(total, limit): return error(
-        Error("HTTP: limit exceeded", kind: LimitExceeded)
+        Error("HTTP: limit exceeded", kind: "EOVERFLOW")
     )
 
     let second = try exchange.read()
@@ -442,7 +442,7 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
     if let next = second:
         total += next.length()
         if over_limit(total, limit): return error(
-            Error("HTTP: limit exceeded", kind: LimitExceeded)
+            Error("HTTP: limit exceeded", kind: "EOVERFLOW")
         )
 
         return read_more(var exchange, [head, next], total, limit)
@@ -459,7 +459,7 @@ fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit:
         if let bytes = chunk:
             size += bytes.length()
             if over_limit(size, limit): return error(
-                Error("HTTP: limit exceeded", kind: LimitExceeded)
+                Error("HTTP: limit exceeded", kind: "EOVERFLOW")
             )
 
             parts.append(bytes)
@@ -484,7 +484,7 @@ export fn text(status: Int, body: String) HttpResponse:
 // A value `stringify` cannot encode returns Failed with its diagnostic.
 export fn json[T: Data](status: Int, value: T) HttpResponse!:
     let body = stringify(value)
-    if body.is_error(): return error(Error(body.err().message, kind: Failed))
+    if body.is_error(): return error(Error(body.err().message, kind: "EIO"))
 
     var sent = headers()
     try sent.append("Content-Type", "application/json")

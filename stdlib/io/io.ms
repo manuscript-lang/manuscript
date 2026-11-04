@@ -95,7 +95,7 @@ fn step[T](id: Int, cell: Int) Unit:
                 id,
                 error(
                     Error(
-                        "stream: a read is already waiting", kind: ErrorCategory.Closed
+                        "stream: a read is already waiting", kind: "EBADF"
                     )
                 )
             )
@@ -135,11 +135,7 @@ impl Iterator[T!] for Waiting[T]:
 
         if self.held.length() == 0:
             self.ended = true
-            return error(
-                Error(
-                    "stream: a read is already waiting", kind: ErrorCategory.Closed
-                )
-            )
+            return error(Error("stream: a read is already waiting", kind: "EBADF"))
 
         // The loop runs the source's step itself, on this stack: no promise, closure or cell round trip per item.
         let result = self.held[0].next()
@@ -217,7 +213,7 @@ impl Source[Bytes] for DescriptorSource:
 
         if code != 0:
             msrt_promise_drop(p)
-            return error(Error("stream: read timed out", kind: ErrorCategory.Timeout))
+            return error(Error("stream: read timed out", kind: "ETIMEDOUT"))
 
         let chunk = msrt_promise_take[Bytes](p)
         msrt_promise_drop(p)
@@ -226,7 +222,7 @@ impl Source[Bytes] for DescriptorSource:
 
         let message = msrt_streams_error(self.id)
         if message.length() > 0:
-            return error(Error(message, kind: ErrorCategory.Failed))
+            return error(Error(message, kind: "EIO"))
 
         return ok(none)
 
@@ -239,14 +235,14 @@ impl Source[Bytes] for DescriptorSource:
 export fn descriptor_reader(id: Int) ReadStream[Bytes]:
     return stream[Bytes](DescriptorSource(id))
 
-// Writes to the runtime stream-table descriptor `id`; a negative id fails every write with `Closed`.
+// Writes to the runtime stream-table descriptor `id`; a negative id fails every write with `EBADF`.
 type DescriptorSink:
     id: Int
 
 impl Sink[Bytes] for DescriptorSink:
     var fn put(value: Bytes) Unit!:
         if msrt_streams_write(self.id, value) != 0:
-            return error(Error("stream: closed", kind: ErrorCategory.Closed))
+            return error(Error("stream: closed", kind: "EBADF"))
 
         return ok(unit)
 
@@ -290,7 +286,7 @@ export opaque type WriteStream[T]:
     collects: Bool
 
 impl WriteStream[T]:
-    // Moves `value` into the stream's buffer. `Closed` once the reader is gone.
+    // Moves `value` into the stream's buffer. `EBADF` once the reader is gone.
     var fn write(value: T) Unit!:
         if self.collects:
             self.items.append(value)
@@ -324,7 +320,7 @@ type Collected[T]:
 
 impl Sink[T] for Collected[T]:
     var fn put(value: T) Unit!:
-        return error(Error("stream: closed", kind: ErrorCategory.Closed))
+        return error(Error("stream: closed", kind: "EBADF"))
 
     var fn drain() Promise[Unit]:
         return adopt[Unit](msrt_promise_finished())
@@ -346,7 +342,7 @@ impl Source[T] for PipeSource[T]:
 
         if code != 0:
             msrt_promise_drop(p)
-            return error(Error("pipe: read cancelled", kind: ErrorCategory.Other))
+            return error(Error("pipe: read cancelled", kind: "ECANCELED"))
 
         let value = msrt_promise_take[T](p)
         msrt_promise_drop(p)
@@ -363,7 +359,7 @@ type PipeSink[T: Clonable]:
 impl Sink[T] for PipeSink[T]:
     var fn put(value: T) Unit!:
         if msrt_pipe_write[T](self.id, value) != 0:
-            return error(Error("pipe: the reader is gone", kind: ErrorCategory.Closed))
+            return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
         return ok(unit)
 
@@ -381,7 +377,7 @@ impl Sink[T] for PipeSink[T]:
 // (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
 // `capacity` is the number of queued values above which a writer's `flush` waits. The pipe itself is not a writer: the
 // reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
-// makes later writes fail with `Closed`.
+// makes later writes fail with `EBADF`.
 export opaque type Pipe[T: Clonable]:
     // The runtime pipe's id.
     id: Int
@@ -708,7 +704,7 @@ impl RawTerminal:
             )
         )
 
-    // Returns the current terminal size, or `Closed` after close.
+    // Returns the current terminal size, or `EBADF` after close.
     fn size() TerminalSize!:
         try msstd_terminal_raw_terminal_size_status(self.handle.native)
         return ok(
@@ -722,7 +718,7 @@ impl RawTerminal:
             )
         )
 
-    // Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
+    // Moves the cursor to a zero-based row and column; negative or very large values return `EINVAL`.
     fn move_cursor(row: Int, column: Int) Unit!:
         return msstd_terminal_raw_terminal_move_cursor(self.handle.native, row, column)
 

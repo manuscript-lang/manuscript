@@ -25,21 +25,45 @@ use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
 use std::time::{Duration, Instant};
 
+/// Identifier text a server may accumulate before it starts over with a fresh name table. The
+/// standard library is about 6 KB; every name typed while editing adds to the table, so this
+/// bounds a long session (about 150,000 distinct names) at the cost of one reload.
+const NAME_BYTES_LIMIT: usize = 1 << 20;
+
 const MAX_BATCH: usize = 32;
 const BATCH_WINDOW: Duration = Duration::from_millis(25);
 
 /// Runs a session until the client exits or input ends.
-pub fn serve(input: impl Read + Send + 'static, output: impl Write) -> Result<(), String> {
-    serve_with(input, output, &Tooling)
+pub fn serve(
+    syms: ms_syntax::Names,
+    input: impl Read + Send + 'static,
+    output: impl Write,
+) -> Result<(), String> {
+    serve_with(syms, input, output, &Tooling)
 }
 
 /// Runs a session that takes its lint findings from `lint`.
 pub fn serve_with(
+    syms: ms_syntax::Names,
     input: impl Read + Send + 'static,
     output: impl Write,
     lint: &dyn Lint,
 ) -> Result<(), String> {
+    serve_recycling(syms, input, output, lint, NAME_BYTES_LIMIT)
+}
+
+/// Runs a session that starts over with fresh names when its name table passes `limit` bytes.
+pub fn serve_recycling(
+    syms: ms_syntax::Names,
+    input: impl Read + Send + 'static,
+    output: impl Write,
+    lint: &dyn Lint,
+    limit: usize,
+) -> Result<(), String> {
     let mut server = Server {
+        names: None,
+        entered: None,
+        name_limit: limit,
         session: ms_check::Session::new(),
         transport: Transport::new(input),
         output: Box::new(output),
@@ -55,7 +79,7 @@ pub fn serve_with(
         defer_diagnostics: false,
         diagnostics_dirty: false,
     };
-    server.serve_messages()
+    server.serve_messages(syms)
 }
 
 /// How a request ended.
@@ -223,6 +247,11 @@ impl Params {
 
 /// Two sessions never share this state; one thread mutates it.
 struct Server<'a> {
+    /// The name table this server made when it last started over; absent while it still uses the
+    /// one it was given.
+    names: Option<ms_syntax::Session>,
+    entered: Option<ms_syntax::Entered>,
+    name_limit: usize,
     /// The standard library every analysis of this server reads.
     session: Rc<ms_check::Session>,
     transport: Transport,
@@ -244,18 +273,19 @@ impl Server<'_> {
     /// Only the main loop mutates documents and analyses. Batch consecutive
     /// changes already available from the bounded transport, applying every
     /// range in order. Empty queues and non-change frames are barriers.
-    fn serve_messages(&mut self) -> Result<(), String> {
+    fn serve_messages(&mut self, mut syms: ms_syntax::Names) -> Result<(), String> {
         let mut next: Option<Incoming> = None;
         loop {
+            self.recycle_names(&mut syms);
             let mut current = match next.take() {
                 Some(queued) => queued,
                 None => match self.transport.messages.recv() {
                     Ok(message) => message,
-                    Err(_) => return Self::finish(self.flush_diagnostics()),
+                    Err(_) => return Self::finish(self.flush_diagnostics(syms)),
                 },
             };
             if let Some(error) = current.error.take() {
-                Self::finish(self.flush_diagnostics())?;
+                Self::finish(self.flush_diagnostics(syms))?;
                 return match error {
                     FrameError::Eof => Ok(()),
                     FrameError::Failed(message) => Err(message),
@@ -266,7 +296,7 @@ impl Server<'_> {
                 let started = Instant::now();
                 let mut count = 0;
                 loop {
-                    if let Err(stop) = self.serve(&current.body) {
+                    if let Err(stop) = self.serve(syms, &current.body) {
                         self.defer_diagnostics = false;
                         return Self::ended(stop);
                     }
@@ -284,12 +314,36 @@ impl Server<'_> {
                     }
                 }
                 self.defer_diagnostics = false;
-                Self::finish(self.flush_diagnostics())?;
+                Self::finish(self.flush_diagnostics(syms))?;
                 continue;
             }
-            if let Err(stop) = self.serve(&current.body) {
+            if let Err(stop) = self.serve(syms, &current.body) {
                 return Self::ended(stop);
             }
+        }
+    }
+
+    /// Starts over with an empty name table once the current one is large: drops every cache and
+    /// the loaded standard library (all of which hold symbols), then frees the old table. Documents
+    /// are text, so they survive; analyses and the library reload on demand.
+    #[allow(unsafe_code)]
+    fn recycle_names(&mut self, syms: &mut ms_syntax::Names) {
+        if syms.text_bytes() <= self.name_limit {
+            return;
+        }
+        self.invalidate();
+        // Restore the previous current table before entering the new one.
+        self.entered = None;
+        let fresh = ms_syntax::Session::new();
+        self.entered = Some(fresh.enter());
+        *syms = fresh.names();
+        // Made after entering: a library session keeps the table that is current when it is made.
+        self.session = ms_check::Session::new();
+        if let Some(old) = self.names.replace(fresh) {
+            // SAFETY: the caches, the library session and the handle held here were the only users
+            // of the old table, and all of them were replaced above. Nothing else of this server
+            // holds a symbol (documents are text), and the server runs on one thread.
+            unsafe { old.release() };
         }
     }
 
@@ -307,9 +361,9 @@ impl Server<'_> {
         }
     }
 
-    fn flush_diagnostics(&mut self) -> Flow {
+    fn flush_diagnostics(&mut self, syms: ms_syntax::Names) -> Flow {
         if self.diagnostics_dirty {
-            return self.publish();
+            return self.publish(syms);
         }
         Ok(())
     }
@@ -327,10 +381,10 @@ impl Server<'_> {
     }
 
     /// The live analysis of an open document, cached per generation.
-    fn checked_document(&mut self, d: &Document) -> Rc<Analysis> {
+    fn checked_document(&mut self, syms: ms_syntax::Names, d: &Document) -> Rc<Analysis> {
         if self.docs.get(&d.uri) != Some(d) {
             // Private repaired/cursor snapshots cannot read or poison live caches.
-            return analyze(&self.session, d, &self.docs);
+            return analyze(syms, &self.session, d, &self.docs);
         }
         if let Some(result) = self.cache.get(&d.uri) {
             return result.clone();
@@ -342,11 +396,11 @@ impl Server<'_> {
             session: Some(self.session.clone()),
             ..Options::default()
         };
-        let result = analyze_with(d, &self.docs, options, &mut |target, options| {
+        let result = analyze_with(syms, d, &self.docs, options, &mut |target, options| {
             if share {
-                compile_snapshot(analyses, target, options)
+                compile_snapshot(syms, analyses, target, options)
             } else {
-                Rc::new(compile_file(target, options))
+                Rc::new(compile_file(syms, target, options))
             }
         });
         self.cache.insert(d.uri.clone(), result.clone());
@@ -386,7 +440,7 @@ impl Server<'_> {
 
     /// Keep successful graphs that did not read the changed source. Failed
     /// loads may have missing imports, so their dependency set is incomplete.
-    fn invalidate_document(&mut self, changed: &Document) {
+    fn invalidate_document(&mut self, syms: ms_syntax::Names, changed: &Document) {
         let resolve = |path: String| {
             use ms_driver::project::{Overlay, pathops, source_path};
             pathops::eval_symlinks(&path)
@@ -422,8 +476,8 @@ impl Server<'_> {
             a.success()
                 && a.program.as_ref().is_some_and(|program| {
                     program.modules.iter().all(|module| {
-                        module.file.as_str().starts_with("@std/")
-                            || resolve(a.module_path(module.file.as_str())) != changed_path
+                        syms.str(module.file).starts_with("@std/")
+                            || resolve(a.module_path(syms.str(module.file))) != changed_path
                     })
                 })
         };
@@ -453,7 +507,7 @@ impl Server<'_> {
     }
 
     /// Sends diagnostics for invalidated open documents, in URI order.
-    fn publish(&mut self) -> Flow {
+    fn publish(&mut self, syms: ms_syntax::Names) -> Flow {
         self.diagnostics_dirty = false;
         let mut uris: Vec<String> = self
             .docs
@@ -470,13 +524,13 @@ impl Server<'_> {
                 self.publish_diagnostics(&uri, Some(d.version), Vec::new())?;
                 continue;
             }
-            let checked = self.checked_document(&d);
-            let module = checked.module(&d);
+            let checked = self.checked_document(syms, &d);
+            let module = checked.module(syms, &d);
             let mut diagnostics = Vec::new();
             let mut ranges = None;
             for issue in &checked.diagnostics {
                 if let Some(m) = &module
-                    && issue.file.as_ref() != m.file.as_str()
+                    && issue.file.as_ref() != syms.str(m.file)
                 {
                     continue;
                 }
@@ -496,7 +550,7 @@ impl Server<'_> {
                     checked
                         .lints(self.lint)
                         .iter()
-                        .filter(|f| f.file == m.file.as_str())
+                        .filter(|f| f.file == syms.str(m.file))
                         .cloned(),
                 );
             }
@@ -521,7 +575,7 @@ impl Server<'_> {
     }
 
     /// Decodes one message, runs it, and sends the response a request expects.
-    fn serve(&mut self, body: &[u8]) -> Flow {
+    fn serve(&mut self, syms: ms_syntax::Names, body: &[u8]) -> Flow {
         let message = match json::parse(body) {
             Ok(message) => message,
             Err(_) => return self.reply_error(None, -32700, "invalid JSON"),
@@ -574,7 +628,7 @@ impl Server<'_> {
         let outcome = if self.request_canceled(&r) {
             Outcome::Error(failure(-32800, "request canceled"))
         } else {
-            self.handle(&r)?
+            self.handle(syms, &r)?
         };
         let Some(id) = &r.id else { return Ok(()) };
         let outcome = if self.transport.canceled(id) {
@@ -600,13 +654,13 @@ impl Server<'_> {
     }
 
     /// Routes a request to its method.
-    fn handle(&mut self, r: &Request) -> Result<Outcome, Stop> {
+    fn handle(&mut self, syms: ms_syntax::Names, r: &Request) -> Result<Outcome, Stop> {
         let p = &r.fields;
         match r.method.as_str() {
             "initialize" => return Ok(ok(self.initialize(r))),
             "manuscript/standardLibrarySource" => {
                 return Ok(
-                    match analysis::standard_library_source(&self.session, &p.document.uri) {
+                    match analysis::standard_library_source(syms, &self.session, &p.document.uri) {
                         Ok(source) => ok(source.into()),
                         Err(message) => Outcome::Error(failure(-32602, message)),
                     },
@@ -636,23 +690,24 @@ impl Server<'_> {
                     }
                 }
                 self.invalidate();
-                self.publish()?;
+                self.publish(syms)?;
                 return Ok(ok(Json::Null));
             }
             "textDocument/didClose" => {
                 self.docs.remove(&p.document.uri);
                 self.invalidate();
-                self.publish()?;
+                self.publish(syms)?;
                 self.publish_diagnostics(&p.document.uri, None, Vec::new())?;
                 return Ok(ok(Json::Null));
             }
             "textDocument/didOpen" | "textDocument/didChange" => {
-                self.did_change(r)?;
+                self.did_change(syms, r)?;
                 return Ok(ok(Json::Null));
             }
             "workspace/symbol" => {
                 let cancel = || self.request_canceled(r);
                 let found = workspace_symbols(
+                    syms,
                     &self.session,
                     &self.docs,
                     &self.roots,
@@ -670,7 +725,7 @@ impl Server<'_> {
                 ok(Json::Null)
             });
         }
-        Ok(self.document_request(r))
+        Ok(self.document_request(syms, r))
     }
 
     /// Records the client's roots and snippet support and answers with the
@@ -763,14 +818,14 @@ impl Server<'_> {
 
     /// Stores an opened or edited document and republishes diagnostics. Stale,
     /// empty, or malformed edits are ignored.
-    fn did_change(&mut self, r: &Request) -> Flow {
+    fn did_change(&mut self, syms: ms_syntax::Names, r: &Request) -> Flow {
         let p = &r.fields;
         let mut d = p.document.clone();
         if uri::is_standard_library(&d.uri) {
             if r.method == "textDocument/didChange" {
                 return Ok(());
             }
-            match analysis::standard_library_source(&self.session, &d.uri) {
+            match analysis::standard_library_source(syms, &self.session, &d.uri) {
                 Ok(source) => d.text = source,
                 Err(_) => return Ok(()),
             }
@@ -806,39 +861,39 @@ impl Server<'_> {
             }
         }
         self.docs.insert(d.uri.clone(), d.clone());
-        self.invalidate_document(&d);
+        self.invalidate_document(syms, &d);
         if self.defer_diagnostics {
             self.diagnostics_dirty = true;
             return Ok(());
         }
-        self.publish()
+        self.publish(syms)
     }
 
     /// Answers the `textDocument/*` requests that read one open document.
-    fn document_request(&mut self, r: &Request) -> Outcome {
+    fn document_request(&mut self, syms: ms_syntax::Names, r: &Request) -> Outcome {
         let p = &r.fields;
         let open = self.docs.get(&p.document.uri).cloned();
         match r.method.as_str() {
             "textDocument/semanticTokens/full" => {
                 let Some(d) = open else { return not_open() };
-                let checked = self.checked_document(&d);
+                let checked = self.checked_document(syms, &d);
                 if self.request_canceled(r) {
                     return ok(Json::Null);
                 }
-                let index = checked.index();
-                ok(semantic_tokens(Some(&checked), index, &d))
+                let index = checked.occurrence_index(syms);
+                ok(semantic_tokens(syms, Some(&checked), index, &d))
             }
             "textDocument/codeAction" => {
                 let Some(d) = open else { return not_open() };
                 if uri::is_standard_library(&d.uri) {
                     return ok(Json::Arr(Vec::new()));
                 }
-                let checked = self.checked_document(&d);
+                let checked = self.checked_document(syms, &d);
                 if self.request_canceled(r) {
                     return ok(Json::Null);
                 }
                 ok(Json::Arr(editor_actions(
-                    &d, &checked, self.lint, &self.docs, p.range, &p.only,
+                    syms, &d, &checked, self.lint, &self.docs, p.range, &p.only,
                 )))
             }
             "textDocument/formatting" => {
@@ -863,11 +918,11 @@ impl Server<'_> {
             }
             "textDocument/prepareRename" | "textDocument/rename" => {
                 let Some(d) = open else { return not_open() };
-                self.rename(r, &d)
+                self.rename(syms, r, &d)
             }
             "textDocument/signatureHelp" => {
                 let Some(d) = open else { return ok(Json::Null) };
-                match signature_help(&d, &self.docs, p.position) {
+                match signature_help(syms, &d, &self.docs, p.position) {
                     Ok(help) => ok(help),
                     Err(message) => Outcome::Error(failure(-32602, message)),
                 }
@@ -877,27 +932,35 @@ impl Server<'_> {
             | "textDocument/typeDefinition"
             | "textDocument/documentHighlight" => {
                 let Some(d) = open else { return ok(Json::Null) };
-                ok(self.document_feature(r, &d))
+                ok(self.document_feature(syms, r, &d))
             }
             "textDocument/completion" => {
                 let Some(d) = open else {
                     return ok(Json::Arr(Vec::new()));
                 };
-                match completion_at(&self.session, &d, &self.docs, p.position, self.snippets) {
+                match completion_at(
+                    syms,
+                    &self.session,
+                    &d,
+                    &self.docs,
+                    p.position,
+                    self.snippets,
+                ) {
                     Ok(items) => ok(Json::Arr(items.iter().map(|i| i.json()).collect())),
                     Err(message) => Outcome::Error(failure(-32602, message)),
                 }
             }
             "textDocument/hover" | "textDocument/definition" | "textDocument/references" => {
                 let Some(d) = open else { return ok(Json::Null) };
-                let checked = self.checked_document(&d);
+                let checked = self.checked_document(syms, &d);
                 if self.request_canceled(r) || checked.program.is_none() {
                     return ok(Json::Null);
                 }
-                let index = checked.index();
+                let index = checked.occurrence_index(syms);
                 if r.method == "textDocument/references" {
                     let cancel = || self.request_canceled(r);
                     return ok(Json::Arr(workspace_references(
+                        syms,
                         &checked,
                         index,
                         &d,
@@ -915,26 +978,28 @@ impl Server<'_> {
                 } else {
                     Navigate::Definition
                 };
-                ok(nav::navigation(&checked, &d, p.position, method, index))
+                ok(nav::navigation(
+                    syms, &checked, &d, p.position, method, index,
+                ))
             }
             "textDocument/documentSymbol" => {
                 let Some(d) = open else {
                     return ok(Json::Arr(Vec::new()));
                 };
-                let checked = self.checked_document(&d);
+                let checked = self.checked_document(syms, &d);
                 if self.request_canceled(r) {
                     return ok(Json::Null);
                 }
-                ok(document_symbols(&checked, &d))
+                ok(document_symbols(syms, &checked, &d))
             }
             _ if r.id.is_some() => Outcome::Error(failure(-32601, "method not supported")),
             _ => ok(Json::Null),
         }
     }
 
-    fn rename(&mut self, r: &Request, d: &Document) -> Outcome {
+    fn rename(&mut self, syms: ms_syntax::Names, r: &Request, d: &Document) -> Outcome {
         let p = &r.fields;
-        let checked = self.checked_document(d);
+        let checked = self.checked_document(syms, d);
         if self.request_canceled(r) {
             return ok(Json::Null);
         }
@@ -950,8 +1015,9 @@ impl Server<'_> {
         }
         let cancel = || self.request_canceled(r);
         match rename(
+            syms,
             &checked,
-            checked.index(),
+            checked.occurrence_index(syms),
             d,
             p.position,
             name,
@@ -965,27 +1031,27 @@ impl Server<'_> {
 
     /// Answers the folding, inlay hint, type definition, and highlight
     /// requests, which share one checked document.
-    fn document_feature(&mut self, r: &Request, d: &Document) -> Json {
+    fn document_feature(&mut self, syms: ms_syntax::Names, r: &Request, d: &Document) -> Json {
         let p = &r.fields;
-        let checked = self.checked_document(d);
+        let checked = self.checked_document(syms, d);
         if self.request_canceled(r) {
             return Json::Null;
         }
         match r.method.as_str() {
             "textDocument/foldingRange" => return folding_ranges(d),
-            "textDocument/inlayHint" => return inlay_hints(&checked, d, p.range),
+            "textDocument/inlayHint" => return inlay_hints(syms, &checked, d, p.range),
             _ => {}
         }
-        let index = checked.index();
+        let index = checked.occurrence_index(syms);
         if self.request_canceled(r) {
             return Json::Null;
         }
         if r.method == "textDocument/typeDefinition" {
-            return nav::type_definition(&checked, d, p.position, index);
+            return nav::type_definition(syms, &checked, d, p.position, index);
         }
         let mut highlights = Vec::new();
         if checked.program.is_some() {
-            for location in nav::references_with_index(&checked, index, d, p.position, true) {
+            for location in nav::references_with_index(syms, &checked, index, d, p.position, true) {
                 let same = location
                     .get("uri")
                     .and_then(|u| u.as_str())
@@ -1012,6 +1078,7 @@ fn diagnostic(range: Range, severity: i64, source: &str, code: &str, message: &s
 /// A recovering analysis shared by every document of one live generation. A
 /// selected fallback never replaces the default manifest entry.
 fn compile_snapshot(
+    syms: ms_syntax::Names,
     analyses: &mut HashMap<(String, Option<String>), Rc<Analysis>>,
     target: &str,
     options: &Options,
@@ -1029,7 +1096,7 @@ fn compile_snapshot(
     if let Some(result) = analyses.get(&key) {
         return result.clone();
     }
-    let result = Rc::new(compile_file(target, options));
+    let result = Rc::new(compile_file(syms, target, options));
     analyses.insert(key, result.clone());
     result
 }

@@ -6,7 +6,7 @@ type Other:
 
 fn other() Other: Other.OutOfRange
 
-fn standard() Error: Error("collection: out of range", kind: ErrorCategory.OutOfRange)
+fn standard() Error: Error("collection: out of range", kind: "ERANGE")
 
 fn recognize(value: Other) Int:
     match value:

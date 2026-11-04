@@ -449,7 +449,7 @@ impl Dec {
     }
 }
 
-/// Why `round` or `to_fixed` failed (`ErrorCategory` kinds).
+/// Why `round` or `to_fixed` failed (statuses that lower to error codes).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RoundFail {
     InvalidInput,

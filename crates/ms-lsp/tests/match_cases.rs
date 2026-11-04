@@ -10,17 +10,25 @@ use support::Workspace;
 
 #[test]
 fn case_references_and_rename_include_bare_and_qualified_match_arms() {
+    let syms = ms_syntax::Names::global();
     let fixture = include_str!("match_cases/source.ms");
     for newline in ["\n", "\r\n"] {
         let ws = Workspace::new("match-case-navigation");
         let source = fixture.replace('\n', newline);
         let d = Document::new(ws.uri("cases.ms"), &source);
         let docs = Documents::from([(d.uri.clone(), d.clone())]);
-        let checked = analyze(&ms_check::Session::new(), &d, &docs);
+        let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
         assert!(checked.success(), "{:?}", checked.diagnostics);
         let declaration = source.find("Value").unwrap();
         let at = text::position(&source, declaration);
-        let references = nav::references_with_index(&checked, checked.index(), &d, at, true);
+        let references = nav::references_with_index(
+            syms,
+            &checked,
+            checked.occurrence_index(syms),
+            &d,
+            at,
+            true,
+        );
         let starts: Vec<usize> = references
             .iter()
             .map(|location| {
@@ -38,19 +46,21 @@ fn case_references_and_rename_include_bare_and_qualified_match_arms() {
         for &offset in &starts {
             let position = text::position(&source, offset);
             let definition = nav::navigation(
+                syms,
                 &checked,
                 &d,
                 position,
                 Navigate::Definition,
-                checked.index(),
+                checked.occurrence_index(syms),
             );
             let found = &definition.as_array().unwrap()[0];
             let range = text::Range::from_json(found.get("range").unwrap()).unwrap();
             assert_eq!(text::offset(&source, range.start), Ok(declaration));
         }
         let renamed = ms_lsp::rename::rename(
+            syms,
             &checked,
-            checked.index(),
+            checked.occurrence_index(syms),
             &d,
             at,
             "Renamed",
@@ -71,12 +81,13 @@ fn case_references_and_rename_include_bare_and_qualified_match_arms() {
             updated.replace_range(start..end, name);
         }
         let d = Document::new(d.uri, updated);
-        assert!(analyze(&ms_check::Session::new(), &d, &Documents::new()).success());
+        assert!(analyze(syms, &ms_check::Session::new(), &d, &Documents::new()).success());
     }
 }
 
 #[test]
 fn invalid_match_paths_do_not_acquire_a_case_identity() {
+    let syms = ms_syntax::Names::global();
     let fixture = include_str!("match_cases/source.ms");
     for (from, to, selected) in [
         ("Value(n):", "Missing(n):", "Missing"),
@@ -87,15 +98,16 @@ fn invalid_match_paths_do_not_acquire_a_case_identity() {
         let offset = fixture.find(from).unwrap();
         let source = fixture.replacen(from, to, 1);
         let d = Document::new(ws.uri("invalid.ms"), &source);
-        let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
+        let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
         assert!(!checked.success());
         // Select the case component, preserving navigation of a valid qualifier.
         let offset = offset + selected.rfind('.').map_or(0, |at| at + 1);
         let found = nav::occurrence_at(
+            syms,
             &checked,
             &d,
             text::position(&source, offset),
-            checked.index(),
+            checked.occurrence_index(syms),
         );
         assert!(found.is_none(), "{to}: unexpectedly resolved match path");
     }
@@ -103,16 +115,17 @@ fn invalid_match_paths_do_not_acquire_a_case_identity() {
 
 #[test]
 fn synthesized_paths_and_type_suffixes_do_not_become_written_occurrences() {
+    let syms = ms_syntax::Names::global();
     let ws = Workspace::new("case-navigation-controls");
     let source = include_str!("match_cases/controls.ms");
     let d = Document::new(ws.uri("controls.ms"), source);
-    let checked = analyze(&ms_check::Session::new(), &d, &Documents::new());
+    let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
     assert!(checked.success(), "{:?}", checked.diagnostics);
-    let file = checked.module_file(&d);
+    let file = checked.module_file(syms, &d);
     for entry in checked
-        .index()
+        .occurrence_index(syms)
         .iter()
-        .filter(|entry| entry.file.as_str() == file)
+        .filter(|entry| syms.str(entry.file) == file)
     {
         assert_eq!(
             source.get(entry.offset..entry.end),
@@ -131,10 +144,11 @@ fn synthesized_paths_and_type_suffixes_do_not_become_written_occurrences() {
     ] {
         let offset = source.find(name).unwrap();
         let entry = nav::occurrence_at(
+            syms,
             &checked,
             &d,
             text::position(source, offset),
-            checked.index(),
+            checked.occurrence_index(syms),
         )
         .unwrap();
         assert!(entry.key.starts_with(kind));

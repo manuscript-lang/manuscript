@@ -3,7 +3,7 @@ import parse, YamlValue from "@std/data/yaml.ms"
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != ErrorCategory.InvalidData:
+    if cause.kind != "EBADMSG":
         return fail("expected InvalidData, got {cause}")
 
     return expect_equal(
@@ -83,7 +83,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != ErrorCategory.InvalidData:
+    if cause.kind != "EBADMSG":
         return fail("expected InvalidData, got {cause}")
 
     return expect_equal(cause.details["reason"], reason)

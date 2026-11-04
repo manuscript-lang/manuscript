@@ -59,6 +59,7 @@ pub struct NativeOps {
 
 impl NativeOps {
     pub(crate) fn new(
+        syms: ms_syntax::Names,
         program: &Program,
         callables: &HashMap<(Name, NodeId), Rc<Callable>>,
     ) -> NativeOps {
@@ -67,19 +68,19 @@ impl NativeOps {
             let Some(decl) = method.decl.as_ref() else {
                 continue;
             };
-            let op = match decl.name().as_str() {
+            let op = match syms.str(decl.name()) {
                 "compare" => NativeOp::Compare,
                 "to_string" => NativeOp::ToString,
                 _ => continue,
             };
             let r = &method.receiver;
-            let rec = if r.is_time("Timestamp") {
+            let rec = if r.is_time(syms, "Timestamp") {
                 NativeRec::Timestamp
-            } else if r.is_time("Instant") {
+            } else if r.is_time(syms, "Instant") {
                 NativeRec::Instant
-            } else if r.is_time("Duration") {
+            } else if r.is_time(syms, "Duration") {
                 NativeRec::Duration
-            } else if r.is_std("Decimal") {
+            } else if r.is_std(syms, "Decimal") {
                 NativeRec::Decimal
             } else {
                 continue;

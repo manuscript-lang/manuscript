@@ -30,13 +30,14 @@ use crate::util::{emit_json, file_error, plural, write_output};
 
 /// Load and check `filename` the way the source tools do: no lowering, and
 /// `main` is required only for a project manifest that has an entry.
-fn analyze(filename: &str, overlay: &Overlay) -> Checked {
-    analyze_with(filename, overlay, false, true)
+fn analyze(syms: ms_syntax::Names, filename: &str, overlay: &Overlay) -> Checked {
+    analyze_with(syms, filename, overlay, false, true)
 }
 
 /// `project_sources` also checks every source file of a manifest's project
 /// (`ms check`); `entry` allows the entry requirement (never for `ms lint`).
 pub(super) fn analyze_with(
+    syms: ms_syntax::Names,
     filename: &str,
     overlay: &Overlay,
     project_sources: bool,
@@ -47,15 +48,20 @@ pub(super) fn analyze_with(
         project_sources,
         ..EditorOptions::default()
     };
-    let graph = load_editor_file(filename, LoadOptions::default(), &editor);
+    let graph = load_editor_file(syms, filename, LoadOptions::default(), &editor);
     let entry = entry && !graph.library && pathops::base(filename) == "ms.toml";
-    check_graph(graph, CheckRequest { entry })
+    check_graph(syms, graph, CheckRequest { entry })
 }
 
 /// The checked program, or the failure that stopped it.
 /// `project` also loads a manifest's discovered test files, as `ms check` does.
-fn accepted(filename: &str, overlay: &Overlay, project: bool) -> Result<Checked, Failure> {
-    let checked = analyze_with(filename, overlay, project, true);
+fn accepted(
+    syms: ms_syntax::Names,
+    filename: &str,
+    overlay: &Overlay,
+    project: bool,
+) -> Result<Checked, Failure> {
+    let checked = analyze_with(syms, filename, overlay, project, true);
     if checked.success() && checked.program.is_some() {
         return Ok(checked);
     }
@@ -72,15 +78,15 @@ fn failure_status(failure: &Failure, json: bool, io: &mut Io) -> i32 {
     failure.report(io)
 }
 
-fn facts_of(checked: &Checked) -> Facts {
+fn facts_of(syms: ms_syntax::Names, checked: &Checked) -> Facts {
     let program = checked.program.as_ref().expect("accepted program");
-    collect_facts(&inspect(program).rows(), program)
+    collect_facts(syms, &inspect(syms, program).rows(), program)
 }
 
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
-pub fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     if !request.watch {
-        return Ok(analysis_once(request, io).0);
+        return Ok(analysis_once(syms, request, io).0);
     }
     let stops = Stops::catch();
     let mut watched = BTreeMap::new();
@@ -88,7 +94,7 @@ pub fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     loop {
         if due.is_some_and(|at| Instant::now() >= at) {
             due = None;
-            let (_, files) = analysis_once(request, io);
+            let (_, files) = analysis_once(syms, request, io);
             watched = files
                 .into_iter()
                 .chain(request.targets.iter().filter_map(|t| absolute(t)))
@@ -112,7 +118,11 @@ pub fn analysis(request: &AnalysisRequest, io: &mut Io) -> BackendResult {
 }
 
 /// One run of the command, and the files that decide its result.
-fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
+fn analysis_once(
+    syms: ms_syntax::Names,
+    request: &AnalysisRequest,
+    io: &mut Io,
+) -> (i32, Vec<String>) {
     let check = request.command == AnalysisCommand::Check;
     let selection = match select_analysis_inputs(&request.targets) {
         Ok(selection) => selection,
@@ -140,11 +150,11 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         );
     }
     for input in &selection.inputs {
-        let checked = analyze_with(&input.path, &Overlay::new(), check, check);
+        let checked = analyze_with(syms, &input.path, &Overlay::new(), check, check);
         if request.fix {
             fixes.extend(source_fixes(&checked));
         }
-        files.extend(watched_files(&input.path, &checked));
+        files.extend(watched_files(syms, &input.path, &checked));
         for issue in &checked.diagnostics {
             diagnostics.push(placed(&selection, &checked.source_root, issue));
         }
@@ -156,11 +166,11 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         };
         if check {
             if text {
-                summaries.push(checked_line(input, &checked));
+                summaries.push(checked_line(syms, input, &checked));
             }
             continue;
         }
-        for finding in ms_tooling::lint::lint_modules(program) {
+        for finding in ms_tooling::lint::lint_modules(syms, program) {
             if request.fix
                 && let Some(fix) = &finding.fix
             {
@@ -215,7 +225,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 fix: waited,
                 ..request.clone()
             };
-            return analysis_once(&rerun, io);
+            return analysis_once(syms, &rerun, io);
         }
     }
     // Keep compiler diagnostics ahead of lint findings and defer output until
@@ -366,7 +376,7 @@ fn apply_fixes(
 }
 
 /// The check summary for one input that passed.
-fn checked_line(input: &AnalysisInput, checked: &Checked) -> String {
+fn checked_line(syms: ms_syntax::Names, input: &AnalysisInput, checked: &Checked) -> String {
     let Some(program) = checked
         .program
         .as_ref()
@@ -374,7 +384,11 @@ fn checked_line(input: &AnalysisInput, checked: &Checked) -> String {
     else {
         return format!("Checked {}", input.display);
     };
-    let count = program.modules.iter().filter(|m| !m.is_standard()).count();
+    let count = program
+        .modules
+        .iter()
+        .filter(|m| !m.is_standard(syms))
+        .count();
     format!(
         "Checked {} ({count} {})",
         input.display,
@@ -388,7 +402,7 @@ pub(super) const WATCH_INTERVAL: Duration = Duration::from_millis(10);
 pub(super) const WATCH_SETTLE: Duration = Duration::from_millis(10);
 
 /// The input, its manifest, and every local module the analysis loaded.
-pub(super) fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
+pub(super) fn watched_files(syms: ms_syntax::Names, input: &str, checked: &Checked) -> Vec<String> {
     let mut files = Vec::new();
     files.extend(absolute(input));
     if !checked.project_root.is_empty() {
@@ -397,8 +411,8 @@ pub(super) fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
     let Some(program) = &checked.program else {
         return files;
     };
-    for module in program.modules.iter().filter(|m| !m.is_standard()) {
-        let file = module.file.as_str();
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
+        let file = syms.str(module.file);
         if pathops::is_abs(file) || checked.source_root.is_empty() {
             files.extend(absolute(file));
         } else {
@@ -464,13 +478,14 @@ fn ordered(diagnostics: Vec<CommandDiagnostic>) -> Vec<CommandDiagnostic> {
 
 /// The source of a program that checks, before any output is chosen.
 fn source_program(
+    syms: ms_syntax::Names,
     filename: &str,
     output: &str,
     json: bool,
     project: bool,
     io: &mut Io,
 ) -> Result<Checked, BackendResult> {
-    let checked = match accepted(filename, &Overlay::new(), project) {
+    let checked = match accepted(syms, filename, &Overlay::new(), project) {
         Ok(checked) => checked,
         Err(failure) => return Err(Ok(failure_status(&failure, json, io))),
     };
@@ -486,31 +501,47 @@ fn source_program(
     Ok(checked)
 }
 
-pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
-    let checked = match source_program(&request.filename, &request.output, request.json, false, io)
-    {
+pub fn inspect_command(
+    syms: ms_syntax::Names,
+    request: &OutputRequest,
+    io: &mut Io,
+) -> BackendResult {
+    let checked = match source_program(
+        syms,
+        &request.filename,
+        &request.output,
+        request.json,
+        false,
+        io,
+    ) {
         Ok(checked) => checked,
         Err(done) => return done,
     };
     let program = checked.program.as_ref().expect("accepted program");
-    let mut text = inspect(program)
+    let mut text = inspect(syms, program)
         .to_json()
         .pretty_line(ms_json::Escape::HtmlSafe);
     text.push('\n');
     Ok(write_output(io, &request.output, text.as_bytes()))
 }
 
-pub fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
-    let checked = match source_program(&request.filename, &request.output, request.json, false, io)
-    {
+pub fn diagram(syms: ms_syntax::Names, request: &DiagramRequest, io: &mut Io) -> BackendResult {
+    let checked = match source_program(
+        syms,
+        &request.filename,
+        &request.output,
+        request.json,
+        false,
+        io,
+    ) {
         Ok(checked) => checked,
         Err(done) => return done,
     };
     if request.json || !request.view.is_empty() || !request.entity.is_empty() {
-        return Ok(view(request, &checked, io));
+        return Ok(view(syms, request, &checked, io));
     }
     let program = checked.program.as_ref().expect("accepted program");
-    let mut inspection = inspect(program);
+    let mut inspection = inspect(syms, program);
     // Keep application structure readable; standard calls remain boundary leaves.
     inspection
         .entities
@@ -525,13 +556,13 @@ pub fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
 }
 
 /// One scoped diagram view, optionally marked with what a diff changes.
-fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
+fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
     let name = if request.view.is_empty() {
         "calls"
     } else {
         &request.view
     };
-    let facts = facts_of(head);
+    let facts = facts_of(syms, head);
     let mut tree = match build_view(&facts, name, &request.entity, request.depth as i64) {
         Ok(tree) => tree,
         Err(message) => {
@@ -540,10 +571,11 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
         }
     };
     if !request.diff.is_empty() {
-        let (input, base) = match diff_inputs(&request.filename, &request.diff, head, false, io) {
-            Ok(inputs) => inputs,
-            Err(status) => return status,
-        };
+        let (input, base) =
+            match diff_inputs(syms, &request.filename, &request.diff, head, false, io) {
+                Ok(inputs) => inputs,
+                Err(status) => return status,
+            };
         mark_changes(
             &mut tree,
             &compare_facts(&base, &facts, &input),
@@ -567,8 +599,9 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
     write_output(io, &request.output, text.as_bytes())
 }
 
-pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
+pub fn review(syms: ms_syntax::Names, request: &ReviewRequest, io: &mut Io) -> BackendResult {
     let head = match source_program(
+        syms,
         &request.filename,
         &request.output,
         request.format == "json",
@@ -578,7 +611,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
         Ok(head) => head,
         Err(done) => return done,
     };
-    let head_facts = facts_of(&head);
+    let head_facts = facts_of(syms, &head);
     let options = ReviewOptions {
         all: request.all || request.format == "json",
     };
@@ -590,7 +623,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
             report.render(&request.format).as_bytes(),
         ));
     }
-    let (input, base) = match diff_inputs(&request.filename, &request.diff, &head, true, io) {
+    let (input, base) = match diff_inputs(syms, &request.filename, &request.diff, &head, true, io) {
         Ok(inputs) => inputs,
         Err(status) => return Ok(status),
     };
@@ -622,6 +655,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
 /// change summary with the base facts; an error carries the status of a
 /// problem already reported.
 fn diff_inputs(
+    syms: ms_syntax::Names,
     filename: &str,
     diff: &str,
     head: &Checked,
@@ -667,9 +701,9 @@ fn diff_inputs(
         }
     };
     let mut base = Facts::default();
-    if let Ok(checked) = accepted(filename, &overlay, project) {
+    if let Ok(checked) = accepted(syms, filename, &overlay, project) {
         input.base_checked = true;
-        base = facts_of(&checked);
+        base = facts_of(syms, &checked);
     }
     Ok((input, base))
 }
@@ -764,8 +798,12 @@ fn locate_diff_path(root: &str, path: &str, deleted: bool) -> String {
     }
 }
 
-pub fn drop_redundant_labels(file: &FormatFile, source: &str) -> Result<String, FormatFailure> {
-    let checked = analyze(&file.path, &Overlay::new());
+pub fn drop_redundant_labels(
+    syms: ms_syntax::Names,
+    file: &FormatFile,
+    source: &str,
+) -> Result<String, FormatFailure> {
+    let checked = analyze(syms, &file.path, &Overlay::new());
     let program = checked.program.as_ref().filter(|_| checked.success());
     let Some(program) = program else {
         let Some(first) = checked.diagnostics.first() else {

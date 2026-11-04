@@ -79,7 +79,8 @@ fn declaration_kind_presentation() {
 
 #[test]
 fn source_declarations_reach_documentation() {
-    for module in standard_library() {
+    let syms = ms_syntax::Names::global();
+    for module in standard_library(syms) {
         for output in [render_site_module(module), render_module(module)] {
             for d in &module.declarations {
                 if !d.declaration.is_empty() {
@@ -111,7 +112,7 @@ fn source_declarations_reach_documentation() {
             );
         }
     }
-    assert!(site_files().contains_key("website/static/stdlib.json"));
+    assert!(site_files(syms).contains_key("website/static/stdlib.json"));
 }
 
 #[test]
@@ -119,7 +120,7 @@ fn mixed_prelude_module_import_guidance() {
     for (path, guidance) in [
         (
             "@std/core.ms",
-            "`Error`, `ErrorCategory`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
+            "`Error`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations",
         ),
         (
             "@std/collections/collections.ms",
@@ -194,6 +195,7 @@ fn member_descriptions_reach_markdown_and_compatible_json() {
 
 #[test]
 fn description_inventory_includes_missing_members() {
+    let syms = ms_syntax::Names::global();
     let modules = vec![module(
         "fixture.ms",
         vec![
@@ -221,7 +223,7 @@ fn description_inventory_includes_missing_members() {
             && report.entries.len() == 4
     );
     assert!(!report.entries[2].described && report.entries[2].name == "missing");
-    let standard = inventory(standard_library());
+    let standard = inventory(standard_library(syms));
     assert!(
         standard.members > 0 && standard.entries.len() == standard.declarations + standard.members
     );
@@ -351,16 +353,20 @@ fn description_inventory_distinguishes_presence_from_quality() {
 
 #[test]
 fn the_standard_library_passes_its_own_gate() {
-    let report = inventory(standard_library());
+    let syms = ms_syntax::Names::global();
+    let report = inventory(standard_library(syms));
     let policy = standard_description_policy().unwrap();
     assert_eq!(check_descriptions(&report, &policy), Vec::<String>::new());
-    assert!(standard_library_markdown().starts_with("# Manuscript implemented standard library"));
+    assert!(
+        standard_library_markdown(syms).starts_with("# Manuscript implemented standard library")
+    );
 }
 
 #[test]
 fn generated_pages_link_to_tracked_sources() {
+    let syms = ms_syntax::Names::global();
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let files = site_files();
+    let files = site_files(syms);
     let mut pages = 0;
     for (path, bytes) in &files {
         let text = String::from_utf8_lossy(bytes);
@@ -375,5 +381,5 @@ fn generated_pages_link_to_tracked_sources() {
         assert!(root.join(source).is_file(), "{path} edits missing {source}");
     }
     assert!(pages > 0, "no generated page names its source");
-    assert!(!standard_library_markdown().contains("ms doc"));
+    assert!(!standard_library_markdown(syms).contains("ms doc"));
 }

@@ -13,7 +13,7 @@ type ClosedFile:
 
 impl File for ClosedFile:
     fn read(max_bytes: Int?) Bytes?!:
-        return error(Error("I/O: resource is closed", kind: ErrorCategory.Closed))
+        return error(Error("I/O: resource is closed", kind: "EBADF"))
 
     fn close() Unit:
         return
@@ -24,5 +24,5 @@ test "contract-valued cleanup":
     let read = file.read(1)
     try expect_false(read.is_ok())
     try expect_equal(
-        read.err(), Error("I/O: resource is closed", kind: ErrorCategory.Closed)
+        read.err(), Error("I/O: resource is closed", kind: "EBADF")
     )

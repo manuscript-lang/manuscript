@@ -13,24 +13,19 @@ test "ASCII identity covers every byte and preserves exact byte budgets":
         try expect_equal(form.normalize(text, 128).get(), text.clone())
         try expect_equal(
             form.normalize(text, 127).err(),
-            Error(
-                "string: limit exceeded", kind: ErrorCategory.LimitExceeded
-            )
+            Error("string: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(
             form.normalize(text, 0).err(),
-            Error(
-                "string: limit exceeded", kind: ErrorCategory.LimitExceeded
-            )
+            Error("string: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(
             form.normalize(text, -1).err(),
-            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+            Error("string: invalid input", kind: "EINVAL")
         )
         try expect_equal(form.normalize("", 0).get(), "")
         try expect_equal(
-            form.normalize("", -1).err(),
-            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+            form.normalize("", -1).err(), Error("string: invalid input", kind: "EINVAL")
         )
 
 test "ASCII identity retains spelling validation before normalization":
@@ -38,19 +33,13 @@ test "ASCII identity retains spelling validation before normalization":
         for form in ["", "nfc", "NFC\u{0}", "UNKNOWN"]:
             try expect_equal(
                 text.normalize(form).err(),
-                Error(
-                    "string: invalid input", kind: ErrorCategory.InvalidInput
-                )
+                Error("string: invalid input", kind: "EINVAL")
             )
             try expect_equal(
                 text.normalize(form, 0).err(),
-                Error(
-                    "string: invalid input", kind: ErrorCategory.InvalidInput
-                )
+                Error("string: invalid input", kind: "EINVAL")
             )
             try expect_equal(
                 text.normalize(form, -1).err(),
-                Error(
-                    "string: invalid input", kind: ErrorCategory.InvalidInput
-                )
+                Error("string: invalid input", kind: "EINVAL")
             )

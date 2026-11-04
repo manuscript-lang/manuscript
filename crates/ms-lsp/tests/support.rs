@@ -160,7 +160,7 @@ impl Script {
         )
     }
 
-    fn frames(&self) -> Vec<u8> {
+    pub fn frames(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut finish = Script {
             next: self.next,
@@ -185,8 +185,9 @@ impl Script {
     }
 
     pub fn rust_with(&self, lint: &dyn ms_lsp::lint::Lint) -> Vec<Json> {
+        let syms = ms_syntax::Names::global();
         let mut out = Vec::new();
-        let _ = ms_lsp::server::serve_with(Cursor::new(self.frames()), &mut out, lint);
+        let _ = ms_lsp::server::serve_with(syms, Cursor::new(self.frames()), &mut out, lint);
         decode(&out)
     }
 }
@@ -268,7 +269,8 @@ fn mask_workspace_ids(text: &str) -> String {
 
 /// The source text a standard-library location's `range` covers.
 fn stdlib_range_text(uri: &str, range: &Json) -> String {
-    let source = ms_lsp::analysis::standard_library_source(&ms_check::Session::new(), uri)
+    let syms = ms_syntax::Names::global();
+    let source = ms_lsp::analysis::standard_library_source(syms, &ms_check::Session::new(), uri)
         .expect("bundled stdlib module");
     let position = |key: &str| {
         let at = range.get(key).expect("range end");

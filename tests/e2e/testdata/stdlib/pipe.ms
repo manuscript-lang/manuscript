@@ -64,7 +64,7 @@ test "a write fails with Closed once the reader is gone":
     try input.close()
 
     let refused = try expect_error(out.write(1))
-    try expect_equal(refused.kind, ErrorCategory.Closed)
+    try expect_equal(refused.kind, "EBADF")
 
 test "a pipe has one reader; asking again gives a stream that has already ended":
     var p = pipe[Int](2)

@@ -111,11 +111,11 @@ test "host names resolve whatever their case":
 test "an empty Unix socket path is invalid input":
     try expect_equal(
         try expect_error(listen_unix("")),
-        Error("network: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("network: invalid input", kind: "EINVAL")
     )
     try expect_equal(
         try expect_error(connect_unix("", 1.seconds()).wait()),
-        Error("network: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("network: invalid input", kind: "EINVAL")
     )
 
 test "UDP loopback preserves datagram data and sender":
@@ -141,7 +141,7 @@ test "network restriction denies admission and close rejects acquisitions":
     try expect_false(
         (
             (try expect_error(scoped.listen("127.0.0.1:0"))) != Error(
-                "network: permission denied", kind: ErrorCategory.PermissionDenied
+                "network: permission denied", kind: "EACCES"
             )
         )
     )
@@ -153,7 +153,7 @@ test "network restriction denies admission and close rejects acquisitions":
                 try expect_error(
                     closing.connect("127.0.0.1:1", 1.seconds())
                 )
-            ) != Error("network: resource is closed", kind: ErrorCategory.Closed)
+            ) != Error("network: resource is closed", kind: "EBADF")
         )
     )
 
@@ -167,7 +167,7 @@ test "typed addresses preserve normalization and reject zones":
 fn expect_ip_error(input: String) Unit!:
     try expect_equal(
         (try expect_error(parse_ip(input))),
-        Error("network: invalid data", kind: ErrorCategory.InvalidData)
+        Error("network: invalid data", kind: "EBADMSG")
     )
     return ok(unit)
 

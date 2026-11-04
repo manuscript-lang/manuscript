@@ -58,7 +58,7 @@ interface StringOperations:
     // Returns each Unicode scalar value as an integer.
     fn scalar_values() List[Int]
     // Selects [start, end) in Unicode scalars; requires 0 <= start <= end <= scalar_length().
-    // Negative, inverted, or out-of-range bounds return an `Error` of kind `OutOfRange`.
+    // Negative, inverted, or out-of-range bounds return an `Error` of kind `ERANGE`.
     fn slice_scalars(start: Int, end: Int) String!
     // Returns the first min(count, scalar_length()) Unicode scalars; a negative count is a programming fault.
     fn take(count: Int) String
@@ -92,7 +92,7 @@ interface StringOperations:
     // Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
     fn pad_end(target_length: Int, padding: String) String
     // Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
-    // Bounds outside 0 <= start <= end <= scalar_length() return an `Error` of kind `OutOfRange`; the receiver is unchanged.
+    // Bounds outside 0 <= start <= end <= scalar_length() return an `Error` of kind `ERANGE`; the receiver is unchanged.
     fn slice(start: Int, end: Int) String!
     // Returns the UTF-8 encoded byte length.
     fn byte_length() Int

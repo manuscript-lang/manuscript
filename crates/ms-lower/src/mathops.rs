@@ -53,7 +53,7 @@ impl FnLower<'_> {
                 m.contract
                     .as_ref()
                     .is_some_and(|c| c.is(Builtin::Comparable))
-                    && m.name().is_some_and(|n| n.as_str() == "compare")
+                    && m.name().is_some_and(|n| self.syms.str(n) == "compare")
                     && tys.shape(&m.receiver) == key
             })
             .cloned()
@@ -97,7 +97,11 @@ impl FnLower<'_> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        let find = |n: &str| args.iter().find(|a| a.name.as_str() == n).map(|a| a.val);
+        let find = |n: &str| {
+            args.iter()
+                .find(|a| self.syms.str(a.name) == n)
+                .map(|a| a.val)
+        };
         let (Some(left), Some(right)) = (find("left"), find("right")) else {
             return Err(Error::new("min and max take two operands"));
         };
@@ -105,7 +109,7 @@ impl FnLower<'_> {
         let concrete = view
             .arguments
             .iter()
-            .find(|a| a.slot.name.as_str() == "left")
+            .find(|a| self.syms.str(a.slot.name) == "left")
             .map(|a| self.ety(a.expr))
             .ok_or_else(|| Error::new("min and max take two operands"))?;
         let (l, r) = (self.borrow(left), self.borrow(right));

@@ -337,10 +337,10 @@ test "growth limits and invalid inputs return values":
     "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
     let list_limit: List[Int]! = error(
-        Error("collection: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("collection: limit exceeded", kind: "EOVERFLOW")
     )
     let list_invalid: List[Int]! = error(
-        Error("collection: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("collection: invalid input", kind: "EINVAL")
     )
     range_by(start: 0, end: 4, step: 1, max_items: 3) | try expect_equal(list_limit)
     range_by(start: 0, end: 4, step: 0, max_items: 3) | try expect_equal(list_invalid)
@@ -429,12 +429,8 @@ test "normalization, empty separators, and precision formatting":
     "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
-    let invalid: String! = error(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
-    )
-    let limit: String! = error(
-        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
-    )
+    let invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
+    let limit: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 

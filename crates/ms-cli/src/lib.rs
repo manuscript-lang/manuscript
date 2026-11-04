@@ -41,7 +41,12 @@ use ms_build::Lower;
 pub const VERSION: &str = env!("MS_VERSION");
 
 /// Run `ms` with `args` (without the program name) and return the exit status.
-pub fn run<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) -> i32 {
+pub fn run<L: Lower>(
+    syms: ms_syntax::Names,
+    args: &[String],
+    engine: &Engine<L>,
+    io: &mut Io,
+) -> i32 {
     if args.is_empty() || args[0] == "--help" || args[0] == "-h" {
         let _ = write!(io.stdout, "{}", help::HELP);
         return 0;
@@ -60,13 +65,13 @@ pub fn run<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) -> i32 {
     match args[0].as_str() {
         "help" => commands::run_help(&args[1..], io),
         "init" => init::run_init(&args[1..], io),
-        "verify" => verify::run_verify(&args[1..], engine, io),
-        "fmt" => fmt::run_format(&args[1..], io),
-        "lsp" => commands::run_lsp(args, io),
-        "review" => commands::run_review(args, io),
-        "search_symbol" => commands::run_search_symbol(args, io),
+        "verify" => verify::run_verify(syms, &args[1..], engine, io),
+        "fmt" => fmt::run_format(syms, &args[1..], io),
+        "lsp" => commands::run_lsp(syms, args, io),
+        "review" => commands::run_review(syms, args, io),
+        "search_symbol" => commands::run_search_symbol(syms, args, io),
         "guide" => commands::run_guide(args, io),
-        _ => run_source_command(args, &usage, engine, io),
+        _ => run_source_command(syms, args, &usage, engine, io),
     }
 }
 
@@ -100,6 +105,7 @@ pub fn unknown_command(io: &mut Io, name: &str) {
 /// A command that takes a source file or project: parse and validate its
 /// options, then hand the request to the engine.
 fn run_source_command<L: Lower>(
+    syms: ms_syntax::Names,
     args: &[String],
     usage: &str,
     engine: &Engine<L>,
@@ -139,13 +145,14 @@ fn run_source_command<L: Lower>(
                 deny_warnings: inv.deny_warnings,
                 with_text: inv.with_text,
             };
-            engine::analysis(&request, io)
+            engine::analysis(syms, &request, io)
         }
         "profile" => {
-            let build = |request: &BuildRequest, io: &mut Io| engine.build(request, io);
+            let build = |request: &BuildRequest, io: &mut Io| engine.build(syms, request, io);
             return profile::run_profile(&inv, plan.build_type, &build, io);
         }
         "build" => engine.build(
+            syms,
             &BuildRequest {
                 filename: inv.filename.clone(),
                 output: inv.output.clone(),
@@ -156,6 +163,7 @@ fn run_source_command<L: Lower>(
             io,
         ),
         "run" => engine.run(
+            syms,
             &RunRequest {
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
@@ -167,6 +175,7 @@ fn run_source_command<L: Lower>(
             io,
         ),
         "test" => engine.test(
+            syms,
             &TestRequest {
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
@@ -178,6 +187,7 @@ fn run_source_command<L: Lower>(
             io,
         ),
         "bench" => engine.bench(
+            syms,
             &TestRequest {
                 filename: inv.filename.clone(),
                 build_type: plan.build_type,
@@ -189,6 +199,7 @@ fn run_source_command<L: Lower>(
             io,
         ),
         "emit" => engine.emit(
+            syms,
             &OutputRequest {
                 filename: inv.filename.clone(),
                 output: inv.output.clone(),
@@ -197,6 +208,7 @@ fn run_source_command<L: Lower>(
             io,
         ),
         "inspect" => engine::inspect(
+            syms,
             &OutputRequest {
                 filename: inv.filename.clone(),
                 output: inv.output.clone(),
@@ -205,6 +217,7 @@ fn run_source_command<L: Lower>(
             io,
         ),
         _ => engine::diagram(
+            syms,
             &DiagramRequest {
                 filename: inv.filename.clone(),
                 output: inv.output.clone(),

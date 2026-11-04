@@ -21,14 +21,14 @@ fn pointer(mode: Mode) -> Param {
     Param { ty: MTy::PTR, mode }
 }
 
-/// The kinds an HTTP handler failure keeps; any other kind is `Failed`, which carries its text.
+/// The kinds an HTTP handler failure keeps; any other kind is `EIO`, which carries its text.
 pub(crate) const HTTP_KINDS: [&str; 6] = [
-    "InvalidInput",
-    "InvalidData",
-    "LimitExceeded",
-    "PermissionDenied",
-    "Closed",
-    "Timeout",
+    "EINVAL",
+    "EBADMSG",
+    "EOVERFLOW",
+    "EACCES",
+    "EBADF",
+    "ETIMEDOUT",
 ];
 
 impl FnLower<'_> {
@@ -211,62 +211,67 @@ impl FnLower<'_> {
         err: ms_mir::ir::Value,
         kinds: &[&str],
     ) -> Result<ms_mir::ir::Value, Error> {
-        let TyKind::Rec(er) = self.b.m.types.kind(self.ty_of(e)).clone() else {
-            return Err(Error::new("a stream method must fail with an Error"));
-        };
-        let kind = self.b.rec_get(er, 1, e);
-        let TyKind::Alt(ka) = self.b.m.types.kind(self.ty_of(kind)).clone() else {
-            return Err(Error::new("Error.kind is an ErrorCategory"));
-        };
-        let tag = self.b.alt_tag(kind);
-        self.kind_status(er, ka, e, tag, err, kinds, 0)
+        let kind = self.b.rec_get(er_of(self, e)?, 1, e);
+        let present = self.b.opt_is_some(kind);
+        let r = self.two_ways(
+            present,
+            MTy::INT,
+            &mut |s| {
+                let code = s.b.opt_get(kind);
+                s.kind_status(e, code, err, kinds, 0).map(Some)
+            },
+            &mut |s| s.failed_status(e, err).map(Some),
+        )?;
+        Ok(r.v)
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// `STATUS_FAILED`, storing the message of the `Error` `e` through `err`.
+    fn failed_status(
+        &mut self,
+        e: ms_mir::ir::Value,
+        err: ms_mir::ir::Value,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        let er = er_of(self, e)?;
+        let text = self.b.rec_get(er, 0, e);
+        let text = self.owned(Val {
+            v: text,
+            own: false,
+        });
+        self.b.emit(Op::Put, &[err, text], Imm::None, None);
+        Ok(self.b.iconst(i64::from(ms_rt_abi::STATUS_FAILED)))
+    }
+
     fn kind_status(
         &mut self,
-        er: ms_mir::types::RecId,
-        ka: ms_mir::types::AltId,
         e: ms_mir::ir::Value,
-        tag: ms_mir::ir::Value,
+        kind: ms_mir::ir::Value,
         err: ms_mir::ir::Value,
         kinds: &[&str],
         at: usize,
     ) -> Result<ms_mir::ir::Value, Error> {
-        let listed = at < kinds.len();
-        let case = if listed {
-            self.b.m.alts[ka.index()]
-                .cases
-                .iter()
-                .position(|c| c.name == kinds[at])
-        } else {
-            None
+        let Some(code) = kinds.get(at).copied() else {
+            return self.failed_status(e, err);
         };
-        let Some(case) = case.filter(|_| listed) else {
-            if listed {
-                return self.kind_status(er, ka, e, tag, err, kinds, at + 1);
-            }
-            let text = self.b.rec_get(er, 0, e);
-            let text = self.owned(Val {
-                v: text,
-                own: false,
-            });
-            self.b.emit(Op::Put, &[err, text], Imm::None, None);
-            return Ok(self.b.iconst(i64::from(ms_rt_abi::STATUS_FAILED)));
-        };
-        let k = self.b.iconst(case as i64);
-        let hit = self.b.icmp(Cc::Eq, tag, k);
+        let lit = self.b.str_lit(code);
+        let hit = self.call_runtime("msrt_string_eq", &[kind, lit], MTy::BOOL)?;
         let r = self.two_ways(
             hit,
             MTy::INT,
-            &mut |s| Ok(Some(s.b.iconst(kind_status_number(kinds[at])))),
-            &mut |s| s.kind_status(er, ka, e, tag, err, kinds, at + 1).map(Some),
+            &mut |s| Ok(Some(s.b.iconst(kind_status_number(code)))),
+            &mut |s| s.kind_status(e, kind, err, kinds, at + 1).map(Some),
         )?;
         Ok(r.v)
     }
 }
 
-/// The shared status number of an `ErrorCategory` case name: the first row of the status table.
+fn er_of(s: &FnLower<'_>, e: ms_mir::ir::Value) -> Result<ms_mir::types::RecId, Error> {
+    match s.b.m.types.kind(s.ty_of(e)) {
+        TyKind::Rec(er) => Ok(*er),
+        _ => Err(Error::new("a stream method must fail with an Error")),
+    }
+}
+
+/// The shared status number of an error code: the first row of the status table.
 fn kind_status_number(kind: &str) -> i64 {
     crate::rtcall::status_table("")
         .iter()

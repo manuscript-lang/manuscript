@@ -25,6 +25,14 @@ const UNIT_DATA: &[(&str, &str)] = &[
     ("path_win", "PathOperations"),
 ];
 
+/// Interfaces whose handles belong to one runtime module whichever symbol returns them: streams are
+/// `@std/io` handles, and a WebSocket is the same handle from a client dial and a server upgrade.
+const HANDLE_MODULE: &[(&str, &str)] = &[
+    ("ReadStream", "io"),
+    ("WriteStream", "io"),
+    ("WebSocket", "websocket"),
+];
+
 /// A constant argument the runtime symbol takes after the operation's own.
 #[derive(Clone, Copy)]
 enum Extra {
@@ -213,13 +221,11 @@ impl Cx {
             .get(&iface)
             .cloned()
             .ok_or_else(|| Error::new("unknown interface"))?;
-        // Streams are `@std/io` handles whichever module hands them out.
-        if matches!(ity.name.to_string().as_str(), "ReadStream" | "WriteStream") {
-            module = "io";
-        }
-        // A WebSocket is the same handle from a client dial and a server upgrade.
-        if ity.name == "WebSocket" {
-            module = "websocket";
+        if let Some((_, owner)) = HANDLE_MODULE
+            .iter()
+            .find(|(name, _)| *name == self.syms.str(ity.name))
+        {
+            module = owner;
         }
         self.handle_vtable(m, hir, module, &ity, iface)
     }
@@ -234,13 +240,13 @@ impl Cx {
         iface: IfaceId,
     ) -> Result<VtableId, Error> {
         let key = VtableKey::Handle {
-            module: ct::Name::intern(module),
+            module: self.syms.intern(module),
             iface: iface.0,
         };
         if let Some(v) = self.vtables.get(&key) {
             return Ok(*v);
         }
-        let iface_name = ity.name.to_string();
+        let iface_name = self.syms.str(ity.name).to_string();
         let data_ty = if UNIT_DATA.contains(&(module, iface_name.as_str())) {
             MTy::UNIT
         } else {
@@ -257,7 +263,7 @@ impl Cx {
         for s in &sigs {
             let decl = ops
                 .iter()
-                .find(|op| op.name.as_str() == s.name)
+                .find(|op| self.syms.str(op.name) == s.name)
                 .map(|op| ct::sub(&op.ty, &subst).params.clone())
                 .unwrap_or_default();
             let row = METHODS

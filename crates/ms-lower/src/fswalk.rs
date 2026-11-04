@@ -31,10 +31,11 @@ impl FnLower<'_> {
     ) -> Result<Val, Error> {
         let sig = crate::rtcall::rt_sig(sym)
             .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+        let syms = self.syms;
         let arg = |name: &str| -> Result<Val, Error> {
             decl.iter()
                 .zip(args)
-                .find(|(p, _)| p.name.as_str() == name)
+                .find(|(p, _)| syms.str(p.name) == name)
                 .map(|(_, a)| a.val)
                 .ok_or_else(|| Error::new(format!("{sym}: missing argument {name}")))
         };

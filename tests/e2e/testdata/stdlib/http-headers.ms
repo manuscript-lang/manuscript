@@ -71,7 +71,7 @@ test "one header type preserves repeated values through buffered requests":
 fn echo_headers(var exchange: HttpExchange) Unit!:
     let received = exchange.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
-        Error("HTTP: invalid data", kind: ErrorCategory.InvalidData)
+        Error("HTTP: invalid data", kind: "EBADMSG")
     )
 
     var output = received.clone()
@@ -120,12 +120,7 @@ test "string lookup leaves out values that are not UTF-8":
     match fields.append("bad name", "value"):
         ok(_): return fail("malformed name accepted")
         error(cause):
-            try expect_equal(
-                cause,
-                Error(
-                    "HTTP: invalid input", kind: ErrorCategory.InvalidInput
-                )
-            )
+            try expect_equal(cause, Error("HTTP: invalid input", kind: "EINVAL"))
 
 test "empty options and an omitted request body use checked defaults":
     let client_options = HttpClientOptions()

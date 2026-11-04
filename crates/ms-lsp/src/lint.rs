@@ -78,7 +78,8 @@ impl Lint for Tooling {
     }
 
     fn program(&self, program: &Program) -> Vec<LintFinding> {
-        ms_tooling::lint::lint_program(program)
+        let syms = ms_syntax::Names::global();
+        ms_tooling::lint::lint_program(syms, program)
             .into_iter()
             .map(|finding| LintFinding {
                 code: finding.code.to_string(),

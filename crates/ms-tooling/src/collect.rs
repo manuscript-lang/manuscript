@@ -40,7 +40,11 @@ pub struct InspectionRows {
 }
 
 /// Derives the review fact model from a checked program.
-pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
+pub fn collect_facts(
+    syms: ms_syntax::Names,
+    inspection: &InspectionRows,
+    program: &Program,
+) -> Facts {
     let mut facts = Facts::default();
     let mut id_to_key: HashMap<String, String> = HashMap::new();
     for e in inspection
@@ -99,16 +103,16 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
             )
         })
         .collect();
-    for module in program.modules.iter().filter(|m| !m.is_standard()) {
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
         facts
             .imports
-            .entry(module.file.as_str().to_string())
+            .entry(syms.str(module.file).to_string())
             .or_default();
         for import in &module.imports {
             append_unique(
                 facts
                     .imports
-                    .entry(module.file.as_str().to_string())
+                    .entry(syms.str(module.file).to_string())
                     .or_default(),
                 &import.path,
             );
@@ -126,14 +130,14 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
             .map(|(id, _)| *id)
             .collect();
         let flow = FlowBuilder {
-            file: module.file.as_str(),
+            file: syms.str(module.file),
             lines: source.split('\n').collect(),
             sites: &sites,
             keys: &id_to_key,
             const_use: &module_facts.const_use,
             scoped: &scoped,
         };
-        collect_bodies(&mut facts, module, &flow);
+        collect_bodies(syms, &mut facts, module, &flow);
     }
     for fact in facts.entities.values_mut() {
         fact.calls.sort();
@@ -147,21 +151,21 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
 }
 
 /// The entity kind and name Go gives a declaration.
-fn kind_and_name(decl: &DeclRef) -> (&'static str, String) {
+fn kind_and_name(syms: ms_syntax::Names, decl: &DeclRef) -> (&'static str, String) {
     let d = decl.decl();
     match &d.kind {
-        DeclKind::Fn(f) => ("fn", f.name.as_str().to_string()),
-        DeclKind::Const(c) => ("constant", c.name.as_str().to_string()),
-        DeclKind::Record(r) => ("type", r.name.as_str().to_string()),
-        DeclKind::Alternative(a) => ("type", a.name.as_str().to_string()),
-        DeclKind::Interface(i) => ("interface", i.name.as_str().to_string()),
-        DeclKind::Impl(i) => ("impl", i.display_name(d.synthetic)),
+        DeclKind::Fn(f) => ("fn", syms.str(f.name).to_string()),
+        DeclKind::Const(c) => ("constant", syms.str(c.name).to_string()),
+        DeclKind::Record(r) => ("type", syms.str(r.name).to_string()),
+        DeclKind::Alternative(a) => ("type", syms.str(a.name).to_string()),
+        DeclKind::Interface(i) => ("interface", syms.str(i.name).to_string()),
+        DeclKind::Impl(i) => ("impl", i.display_name(syms, d.synthetic)),
         DeclKind::Test(t) => (if t.bench { "bench" } else { "test" }, t.name.to_string()),
     }
 }
 
 /// Counts try and with sites and records each entity's line range.
-fn collect_bodies(facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
+fn collect_bodies(syms: ms_syntax::Names, facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
     let total = module.source.matches('\n').count() + 1;
     let decls = &module.decls;
     for (index, decl) in decls.iter().enumerate() {
@@ -169,8 +173,8 @@ fn collect_bodies(facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
             Some(next) => next.pos().line as usize - 1,
             None => total,
         };
-        let (kind, name) = kind_and_name(decl);
-        let key = fact_key(module.file.as_str(), kind, &name);
+        let (kind, name) = kind_and_name(syms, decl);
+        let key = fact_key(syms.str(module.file), kind, &name);
         if let Some(fact) = facts.entities.get_mut(&key) {
             fact.first = decl.pos().line as usize;
             fact.last = last;
@@ -191,9 +195,9 @@ fn collect_bodies(facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
                 .get(i + 1)
                 .map_or(last, |next| next.pos.line as usize - 1);
             let key = fact_key(
-                module.file.as_str(),
+                syms.str(module.file),
                 "method",
-                &format!("{name}.{}", method.func.name.as_str()),
+                &format!("{name}.{}", syms.str(method.func.name)),
             );
             if let Some(fact) = facts.entities.get_mut(&key) {
                 fact.first = method.pos.line as usize;
@@ -269,7 +273,8 @@ mod tests {
 
     #[test]
     fn call_edges_deduplicate_resolved_identity_per_owner_and_boundary() {
-        let program = ms_check::check(Vec::new(), Default::default(), Default::default());
+        let syms = ms_syntax::Names::global();
+        let program = ms_check::check(syms, Vec::new(), Default::default(), Default::default());
         let rows = InspectionRows {
             entities: vec![
                 EntityRow {
@@ -322,7 +327,7 @@ mod tests {
             })
             .collect(),
         };
-        let facts = collect_facts(&rows, &program);
+        let facts = collect_facts(syms, &rows, &program);
         let owner = &facts.entities["a.ms#fn#owner"];
         assert_eq!(owner.calls, ["a.ms#fn#other"]);
         assert_eq!(owner.external, ["a.ms#fn#other", "standard"]);

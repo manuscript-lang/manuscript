@@ -8,16 +8,16 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     let url = try arguments().first().ok_or(
-        Error("HTTP: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("HTTP: invalid input", kind: "EINVAL")
     )
     let response = try request(
         HttpMethod.Get, url, headers(), "", max_response_bytes: 1048576
     )
     if response.metadata().status != 200:
-        return error(Error("HTTP: invalid data", kind: ErrorCategory.InvalidData))
+        return error(Error("HTTP: invalid data", kind: "EBADMSG"))
 
     let text = try response.body.decode_utf8().ok_or(
-        Error("HTTP: invalid data", kind: ErrorCategory.InvalidData)
+        Error("HTTP: invalid data", kind: "EBADMSG")
     )
     try stdout().write(text)
     return stdout().flush().wait()

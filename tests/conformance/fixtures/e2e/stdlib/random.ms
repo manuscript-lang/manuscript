@@ -16,13 +16,13 @@ test "random bytes returns the requested count and rejects out-of-range counts":
     try expect_equal((try random_bytes(0)).length(), 0)
 
     let invalid: Int! = error(
-        Error("random: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("random: invalid input", kind: "EINVAL")
     )
     try expect_equal(random_bytes(-1).map(fn bytes: bytes.length()), invalid)
 
 test "secure_int stays in range and rejects an empty range":
     let invalid: Int! = error(
-        Error("random: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("random: invalid input", kind: "EINVAL")
     )
     try expect_equal(secure_int(3, 3), invalid)
     try expect_equal(

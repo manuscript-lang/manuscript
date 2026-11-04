@@ -33,10 +33,10 @@ test "TOML quoting retains exact and invalid output budgets":
     let text = try stringify(root)
     stringify(root, max_bytes: text.byte_length()) | try expect_equal(ok(text.clone()))
     stringify(root, max_bytes: text.byte_length() - 1) | try expect_equal(
-        error(Error("TOML limit exceeded", kind: ErrorCategory.LimitExceeded))
+        error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
     )
     stringify(root, max_bytes: -1) | try expect_equal(
-        error(Error("invalid TOML input", kind: ErrorCategory.InvalidInput))
+        error(Error("invalid TOML input", kind: "EINVAL"))
     )
 
 test "TOML quoting preserves quoted keys and all ASCII control escapes":

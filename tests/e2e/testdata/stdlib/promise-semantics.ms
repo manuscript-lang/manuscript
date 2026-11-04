@@ -10,7 +10,7 @@ import (expect_equal, expect_error, expect_ok, expect_true) from "@std/test/test
 import milliseconds, nanoseconds, sleep from "@std/os/time.ms"
 
 fn report(reason: Error) String:
-    if reason.kind == ErrorCategory.Failed:
+    if reason.kind == "EIO":
         return reason.details["report"].split("\n").get(0).clone()
 
     return reason.message.clone()
@@ -32,7 +32,7 @@ test "a timed out wait reports Timeout and cancels the work":
         fn: ok(forever()), options: PromiseOptions(timeout: milliseconds(20))
     )
     let reason = slow.wait() | try expect_error
-    try expect_equal(reason.kind, ErrorCategory.Timeout)
+    try expect_equal(reason.kind, "ETIMEDOUT")
 
 test "wait_all keeps order and wait_first returns the first result":
     let all = wait_all([promise(fn: ok(1)), promise(fn: ok(2)), promise(fn: ok(3))])
@@ -46,14 +46,14 @@ test "a second wait reports that the result was taken":
     work.wait() | try expect_ok | try expect_equal(5)
 
     let again = work.wait() | try expect_error
-    try expect_equal(again.kind, ErrorCategory.Closed)
+    try expect_equal(again.kind, "EBADF")
 
 test "a negative timeout waits no time instead of waiting forever":
     let slow = promise(
         fn: ok(forever()), options: PromiseOptions(timeout: nanoseconds(-1))
     )
     let reason = slow.wait() | try expect_error
-    try expect_equal(reason.kind, ErrorCategory.Timeout)
+    try expect_equal(reason.kind, "ETIMEDOUT")
 
 test "a timeout counts from construction, so a late wait still reports Timeout":
     let slow = promise(
@@ -63,14 +63,14 @@ test "a timeout counts from construction, so a late wait still reports Timeout":
     try expect_true(slow.done())
 
     let reason = slow.wait() | try expect_error
-    try expect_equal(reason.kind, ErrorCategory.Timeout)
+    try expect_equal(reason.kind, "ETIMEDOUT")
 
 test "a promise from another call takes its limit with with":
     let quiet = sleep(milliseconds(5000)).with(
         options: PromiseOptions(timeout: milliseconds(20))
     )
     let reason = quiet.wait() | try expect_error
-    try expect_equal(reason.kind, ErrorCategory.Timeout)
+    try expect_equal(reason.kind, "ETIMEDOUT")
 
 test "a result that arrives before the limit is kept":
     let quick = promise(fn: ok(9), options: PromiseOptions(timeout: milliseconds(5000)))
@@ -81,7 +81,7 @@ test "cancel ends unfinished work and wait reports Cancelled":
     slow.cancel()
 
     let reason = slow.wait() | try expect_error
-    try expect_equal(reason.kind, ErrorCategory.Other)
+    try expect_equal(reason.kind, "ECANCELED")
     try expect_equal(reason.message, "promise: cancelled")
 
 test "one Cancel switch cancels every promise made with its signal":

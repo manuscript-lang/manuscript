@@ -12,7 +12,7 @@ type ClosedSource:
 
 impl Source[Bytes] for ClosedSource:
     var fn next() Bytes?!:
-        return error(Error("I/O: resource is closed", kind: ErrorCategory.Closed))
+        return error(Error("I/O: resource is closed", kind: "EBADF"))
 
     var fn close() Unit!:
         return ok(unit)

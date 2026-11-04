@@ -58,16 +58,12 @@ export fn parse(text: String) List[PemBlock]!:
         if line.starts_with(END):
             let closing = line.drop(END.length())
             if closing != "{label}{DASHES}": return error(
-                Error(
-                    "PEM: invalid armor", kind: ErrorCategory.InvalidData
-                )
+                Error("PEM: invalid armor", kind: "EBADMSG")
             )
 
             let data = base64_decode(body)
             if data.is_error(): return error(
-                Error(
-                    "PEM: invalid data", kind: ErrorCategory.InvalidData
-                )
+                Error("PEM: invalid data", kind: "EBADMSG")
             )
 
             blocks.append(
@@ -79,7 +75,7 @@ export fn parse(text: String) List[PemBlock]!:
             continue
 
         if line.starts_with(BEGIN): return error(
-            Error("PEM: invalid armor", kind: ErrorCategory.InvalidData)
+            Error("PEM: invalid armor", kind: "EBADMSG")
         )
 
         if in_headers and line.contains(":"):
@@ -90,7 +86,7 @@ export fn parse(text: String) List[PemBlock]!:
         in_headers = false
         body = "{body}{line}"
 
-    if open: return error(Error("PEM: invalid armor", kind: ErrorCategory.InvalidData))
+    if open: return error(Error("PEM: invalid armor", kind: "EBADMSG"))
 
     return ok(blocks)
 

@@ -15,7 +15,7 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
 test "closed codec strings reject spelling changes with their domain errors":
     let data = "text".to_bytes()
     let normalization_error: String! = error(
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     for form in ["nfc", "NFC ", ""]:
         try expect_equal("text".normalize(form), normalization_error)
@@ -23,9 +23,7 @@ test "closed codec strings reject spelling changes with their domain errors":
         try expect_equal((try "text".normalize(form)), "text")
 
     let compression_error: Bytes! = error(
-        Error(
-            "compression: operation not supported", kind: ErrorCategory.Unsupported
-        )
+        Error("compression: operation not supported", kind: "ENOTSUP")
     )
 
     for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
@@ -43,21 +41,15 @@ test "closed codec strings reject spelling changes with their domain errors":
                 data
             )
 
-    let level_error: Bytes! = error(
-        Error("compression: invalid input", kind: ErrorCategory.InvalidInput)
-    )
+    let level_error: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
     for level in [-1, 10]:
         try expect_equal(compress(data, "gzip", level), level_error)
 
     let pack_error: Bytes! = error(
-        Error(
-            "archive: operation not supported", kind: ErrorCategory.Unsupported
-        )
+        Error("archive: operation not supported", kind: "ENOTSUP")
     )
     let unpack_error: List[ArchiveEntry]! = error(
-        Error(
-            "archive: operation not supported", kind: ErrorCategory.Unsupported
-        )
+        Error("archive: operation not supported", kind: "ENOTSUP")
     )
 
     for format in ["ZIP", "TAR", ""]:
@@ -79,7 +71,7 @@ test "all ten string open modes are accepted and changed spellings are invalid":
 
     for mode in ["R", "rs", "w+x", " r", ""]:
         let refused = try expect_error(open(invalid, mode, 384))
-        try expect_equal(refused.kind, ErrorCategory.InvalidInput)
+        try expect_equal(refused.kind, "EINVAL")
         try expect_equal(refused.message, "filesystem: invalid input: {invalid}")
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
@@ -115,14 +107,14 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
     try handle.close()
 
     let closed_read: Bytes! = error(
-        Error("filesystem: resource is closed", kind: ErrorCategory.Closed)
+        Error("filesystem: resource is closed", kind: "EBADF")
     )
     try expect_equal(handle.read_at(0), closed_read)
     try reader.close()
 
     let missing = "{temporary.path()}/missing"
     let absent = try expect_error(open(missing, "r", 384))
-    try expect_equal(absent.kind, ErrorCategory.NotFound)
+    try expect_equal(absent.kind, "ENOENT")
     try expect_equal(
         absent.message, "filesystem: file or directory not found: {missing}"
     )

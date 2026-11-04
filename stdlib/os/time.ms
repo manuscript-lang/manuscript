@@ -346,12 +346,12 @@ A syntactically valid result outside -9223372036854775808 through 92233720368547
 export fn parse_duration(text: String) Duration!:
     let data = text.to_bytes()
     let size = data.length()
-    if size == 0: return error(Error("time: invalid data", kind: InvalidData))
+    if size == 0: return error(Error("time: invalid data", kind: "EBADMSG"))
 
     var pos = 0
     let negative = data.get(0).to_int() == 45
     if negative or data.get(0).to_int() == 43: pos += 1
-    if pos == size: return error(Error("time: invalid data", kind: InvalidData))
+    if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
     if size - pos == 1 and data.get(pos).to_int() == 48:
         return ok(nanoseconds(0))
 
@@ -394,8 +394,8 @@ export fn parse_duration(text: String) Duration!:
 
         let fraction_end = pos
         if not has_whole and fraction_start == fraction_end:
-            return error(Error("time: invalid data", kind: InvalidData))
-        if pos == size: return error(Error("time: invalid data", kind: InvalidData))
+            return error(Error("time: invalid data", kind: "EBADMSG"))
+        if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
 
         var scale = 0
         let suffix = data.get(pos).to_int()
@@ -413,7 +413,7 @@ export fn parse_duration(text: String) Duration!:
                 pos += 1
         else if suffix == 110 or suffix == 117:
             if pos == size or data.get(pos).to_int() != 115:
-                return error(Error("time: invalid data", kind: InvalidData))
+                return error(Error("time: invalid data", kind: "EBADMSG"))
 
             scale = if suffix == 110: 1 else: 1000
             pos += 1
@@ -424,12 +424,12 @@ export fn parse_duration(text: String) Duration!:
                 or data.get(pos).to_int() != second
                 or data.get(pos + 1).to_int() != 115
             ):
-                return error(Error("time: invalid data", kind: InvalidData))
+                return error(Error("time: invalid data", kind: "EBADMSG"))
 
             scale = 1000
             pos += 2
         else:
-            return error(Error("time: invalid data", kind: InvalidData))
+            return error(Error("time: invalid data", kind: "EBADMSG"))
 
         // Continue syntax validation after overflow, but skip further arithmetic.
         if overflow: continue
@@ -460,7 +460,7 @@ export fn parse_duration(text: String) Duration!:
         else:
             total -= fraction
 
-    if overflow: return error(Error("time: value out of range", kind: OutOfRange))
+    if overflow: return error(Error("time: value out of range", kind: "ERANGE"))
 
     return ok(nanoseconds(if negative: total else: -total))
 

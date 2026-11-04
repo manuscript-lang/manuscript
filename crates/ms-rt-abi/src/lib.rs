@@ -507,33 +507,33 @@ pub const FATPTR_SIZE: usize = 16;
 /// Success. Fallible natives return a `u8` status and write the ok value
 /// through a trailing out-pointer. Non-zero values are error cases.
 pub const STATUS_OK: u8 = 0;
-/// `ErrorCategory.InvalidInput`.
+/// `"EINVAL"`.
 pub const STATUS_INVALID_INPUT: u8 = 1;
-/// `ErrorCategory.OutOfRange`.
+/// `"ERANGE"`.
 pub const STATUS_OUT_OF_RANGE: u8 = 2;
-/// `ErrorCategory.LimitExceeded`.
+/// `"EOVERFLOW"`.
 pub const STATUS_LIMIT_EXCEEDED: u8 = 3;
-/// `ErrorCategory.InvalidData`.
+/// `"EBADMSG"`.
 pub const STATUS_INVALID_DATA: u8 = 4;
-/// `ErrorCategory.NotFound`.
+/// `"ENOENT"`.
 pub const STATUS_NOT_FOUND: u8 = 5;
-/// `ErrorCategory.AlreadyExists`.
+/// `"EEXIST"`.
 pub const STATUS_ALREADY_EXISTS: u8 = 6;
-/// Directory not empty; surfaces as `ErrorCategory.Failed` with the text in `details`.
+/// Directory not empty; surfaces as `"EIO"` with the text in `details`.
 pub const STATUS_NOT_EMPTY: u8 = 7;
-/// `ErrorCategory.PermissionDenied`.
+/// `"EACCES"`.
 pub const STATUS_PERMISSION_DENIED: u8 = 8;
-/// `ErrorCategory.Unsupported`.
+/// `"ENOTSUP"`.
 pub const STATUS_UNSUPPORTED: u8 = 9;
-/// `ErrorCategory.Closed`.
+/// `"EBADF"`.
 pub const STATUS_CLOSED: u8 = 10;
-/// `ErrorCategory.Failed`: the diagnostic text comes back through the call's `message` out-pointer.
+/// `"EIO"`: the diagnostic text comes back through the call's `message` out-pointer.
 pub const STATUS_FAILED: u8 = 11;
-/// `ErrorCategory.Unavailable`.
+/// `"EAGAIN"`.
 pub const STATUS_UNAVAILABLE: u8 = 12;
-/// `ErrorCategory.Timeout`.
+/// `"ETIMEDOUT"`.
 pub const STATUS_TIMEOUT: u8 = 13;
-/// Process output limit exceeded; surfaces as `ErrorCategory.LimitExceeded`.
+/// Process output limit exceeded; surfaces as `"EOVERFLOW"`.
 pub const STATUS_OUTPUT_LIMIT: u8 = 14;
 /// A standard stream is redirected.
 pub const STATUS_NOT_TERMINAL: u8 = 15;
@@ -541,7 +541,7 @@ pub const STATUS_NOT_TERMINAL: u8 = 15;
 pub const STATUS_NONE: u8 = 16;
 /// Another raw terminal holds the terminal.
 pub const STATUS_BUSY: u8 = 17;
-/// A credential or tag did not verify; surfaces as `ErrorCategory.Other` ("authentication failed").
+/// A credential or tag did not verify; surfaces as `"EAUTH"` ("authentication failed").
 pub const STATUS_AUTHENTICATION_FAILED: u8 = 18;
 
 // ---------------------------------------------------------------------------

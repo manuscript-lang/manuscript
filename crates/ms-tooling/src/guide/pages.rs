@@ -144,10 +144,10 @@ fn cap_doc(doc: &str, limit: usize) -> String {
 }
 
 /// The standard modules, `prelude` first and the rest by path.
-pub(crate) fn modules() -> &'static [ApiModule] {
+pub(crate) fn modules(syms: ms_syntax::Names) -> &'static [ApiModule] {
     static SORTED: OnceLock<Vec<ApiModule>> = OnceLock::new();
     SORTED.get_or_init(|| {
-        let mut all = standard_library().to_vec();
+        let mut all = standard_library(syms).to_vec();
         all.sort_by(|a, b| {
             (a.path != "prelude")
                 .cmp(&(b.path != "prelude"))
@@ -158,8 +158,8 @@ pub(crate) fn modules() -> &'static [ApiModule] {
 }
 
 /// The short names of every standard module, prelude first.
-pub fn module_names() -> Vec<String> {
-    modules()
+pub fn module_names(syms: ms_syntax::Names) -> Vec<String> {
+    modules(syms)
         .iter()
         .map(|m| short_name(&m.path).to_string())
         .collect()
@@ -170,11 +170,11 @@ pub fn module_names() -> Vec<String> {
 const INDEX_BUDGET: usize = 3400;
 
 /// Lists each module with a few of its names.
-pub fn index() -> String {
+pub fn index(syms: ms_syntax::Names) -> String {
     let header = "Standard modules (prelude needs no import).\n`ms search_symbol <module>` lists one, `ms search_symbol <module>.<Name>` shows a declaration, `ms search_symbol <words>` searches.\n\n";
     let mut width = 84;
     loop {
-        let body = index_lines(width);
+        let body = index_lines(syms, width);
         if header.len() + body.len() <= INDEX_BUDGET || width <= 24 {
             return format!("{header}{body}");
         }
@@ -183,9 +183,9 @@ pub fn index() -> String {
 }
 
 /// One line per module: the name, then declarations while the line stays within `width`.
-fn index_lines(width: usize) -> String {
+fn index_lines(syms: ms_syntax::Names, width: usize) -> String {
     let mut b = String::new();
-    for m in modules() {
+    for m in modules(syms) {
         let mut line = format!("{:<12}", short_name(&m.path));
         let mut shown = 0;
         for d in &m.declarations {
@@ -212,13 +212,13 @@ fn index_lines(width: usize) -> String {
 /// Renders `ms search_symbol <path>`: a module (`json`), a declaration
 /// (`json.parse`), or one member (`prelude.List.sorted`). A leading `@std/`
 /// and `.ms` are accepted.
-pub fn page(path: &str) -> Result<String, String> {
+pub fn page(syms: ms_syntax::Names, path: &str) -> Result<String, String> {
     let parts = split_path(path);
-    let Some(module) = find_module(&parts[0]) else {
+    let Some(module) = find_module(syms, &parts[0]) else {
         return Err(format!(
             "no standard module {:?}; modules: {}",
             parts[0],
-            module_names().join(", ")
+            module_names(syms).join(", ")
         ));
     };
     if parts.len() == 1 {
@@ -254,8 +254,8 @@ fn split_path(path: &str) -> Vec<String> {
     path.splitn(3, '.').map(str::to_string).collect()
 }
 
-fn find_module(name: &str) -> Option<&'static ApiModule> {
-    modules()
+fn find_module(syms: ms_syntax::Names, name: &str) -> Option<&'static ApiModule> {
+    modules(syms)
         .iter()
         .find(|m| short_name(&m.path) == name || package_name(&m.path) == name)
 }

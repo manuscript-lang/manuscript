@@ -65,7 +65,7 @@ impl<'a> FnLower<'a> {
                     d.operations
                         .borrow()
                         .iter()
-                        .any(|o| o.name.as_str() == "close")
+                        .any(|o| self.syms.str(o.name) == "close")
                 });
                 let x = if x.own && !hands_on && self.is_resource(self.ty_of(x.v)) {
                     self.temps.push(x.v);
@@ -100,7 +100,7 @@ impl<'a> FnLower<'a> {
                 }
             }
             Some(_) if !self.dead => {
-                let o = self.owned(x);
+                let o = self.owned_wrap(x);
                 Val {
                     v: self.b.opt_some(o),
                     own: true,
@@ -117,7 +117,7 @@ impl<'a> FnLower<'a> {
         }
         self.at(e.pos);
         match &e.kind {
-            ExprKind::Number(text) => self.number(e, text.as_str(), false),
+            ExprKind::Number(text) => self.number(e, self.syms.str(text), false),
             ExprKind::Bool(b) => {
                 let v = self.b.bconst(*b);
                 Ok(Val { v, own: false })
@@ -128,7 +128,7 @@ impl<'a> FnLower<'a> {
             }
             ExprKind::Text(parts) => self.text(parts),
             ExprKind::Name(_) => self.name(e),
-            ExprKind::Member { left, name } => self.member(e, left, name.as_str()),
+            ExprKind::Member { left, name } => self.member(e, left, self.syms.str(name)),
             ExprKind::Index { left, index } => self.index(e, left, index),
             ExprKind::Probe(_) => Err(Error::new("`place[key]?` is only lowered by `if var`")),
             ExprKind::Apply { value, .. } => match value {
@@ -155,15 +155,15 @@ impl<'a> FnLower<'a> {
 
     /// Whether an `Apply` node is really an index read (`xs[i]`).
     fn is_index_apply(&self, e: &Expr) -> bool {
-        crate::mutation::is_index_apply(&self.hir, e)
+        crate::mutation::is_index_apply(self.syms, &self.hir, e)
     }
 
     /// A method used as a value (`value.name`).
     fn method_value(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
-        if m.native.as_str() == "to_string" && m.ty.params.is_empty() {
+        if self.syms.str(m.native) == "to_string" && m.ty.params.is_empty() {
             return self.bound_to_string(e, left);
         }
-        if !m.native.as_str().is_empty() && m.native.as_str() != "contract" {
+        if !self.syms.str(m.native).is_empty() && self.syms.str(m.native) != "contract" {
             return self.bound_native_method(e, left, m);
         }
         self.bound_method(e, left, m)
@@ -180,7 +180,7 @@ impl<'a> FnLower<'a> {
             r => r,
         };
         match (&left.kind, res) {
-            (_, Resolution::Function(sym)) if sym.native.as_str().is_empty() => {
+            (_, Resolution::Function(sym)) if self.syms.str(sym.native).is_empty() => {
                 self.function_value(e, &sym)
             }
             (_, Resolution::Function(sym)) => self.native_function_value(e, &sym),
@@ -206,7 +206,7 @@ impl<'a> FnLower<'a> {
 
     fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
         let t = self.ety(e);
-        match t.id.as_str() {
+        match self.syms.str(t.id) {
             "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
                 let n: i128 = parse_int(text)
                     .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
@@ -228,7 +228,7 @@ impl<'a> FnLower<'a> {
                     .parse()
                     .map_err(|_| Error::new(format!("bad float literal {text}")))?;
                 let f = if negate { -f } else { f };
-                let f = if ct::float_bits(&t) == Some(32) {
+                let f = if ct::float_bits(self.syms, &t) == Some(32) {
                     f64::from(f as f32)
                 } else {
                     f
@@ -304,18 +304,18 @@ impl<'a> FnLower<'a> {
     fn const_scalar(&self, e: &Expr) -> Option<i64> {
         let (text, negate) = match &e.kind {
             ExprKind::Bool(b) => return Some(i64::from(*b)),
-            ExprKind::Number(text) => (text.as_str(), false),
+            ExprKind::Number(text) => (self.syms.str(text), false),
             ExprKind::Unary {
                 op: UnaryOp::Neg,
                 operand,
             } => match &operand.kind {
-                ExprKind::Number(text) => (text.as_str(), true),
+                ExprKind::Number(text) => (self.syms.str(text), true),
                 _ => return None,
             },
             _ => return None,
         };
         let t = self.ety(e);
-        match t.id.as_str() {
+        match self.syms.str(t.id) {
             "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
                 let n = parse_int(text)?;
                 i64::try_from(if negate { -n } else { n }).ok()
@@ -324,7 +324,7 @@ impl<'a> FnLower<'a> {
             "Float" | "Float32" | "Float64" => {
                 let f: f64 = ms_syntax::number::canonical(text).parse().ok()?;
                 let f = if negate { -f } else { f };
-                let f = if ct::float_bits(&t) == Some(32) {
+                let f = if ct::float_bits(self.syms, &t) == Some(32) {
                     f64::from(f as f32)
                 } else {
                     f
@@ -420,7 +420,7 @@ impl<'a> FnLower<'a> {
             }
             Resolution::Constant(_) => self.call_expr(e),
             Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
-            Resolution::Function(sym) if sym.native.as_str().is_empty() => {
+            Resolution::Function(sym) if self.syms.str(sym.native).is_empty() => {
                 self.function_value(e, &sym)
             }
             Resolution::Function(sym) => self.native_function_value(e, &sym),
@@ -459,8 +459,8 @@ impl<'a> FnLower<'a> {
         let idx = self.b.m.alts[a.index()]
             .cases
             .iter()
-            .position(|c| c.name == case.as_str())
-            .ok_or_else(|| Error::new(format!("no case {case}")))?;
+            .position(|c| c.name == self.syms.str(case))
+            .ok_or_else(|| Error::new(format!("no case {case_t}", case_t = self.syms.str(case))))?;
         let v = self.b.alt_new(a, idx as u32, &[]);
         Ok(Val { v, own: true })
     }
@@ -611,7 +611,7 @@ impl<'a> FnLower<'a> {
             }
             UnaryOp::Neg => {
                 if let ExprKind::Number(text) = &operand.kind {
-                    return self.number(operand, text.as_str(), true);
+                    return self.number(operand, self.syms.str(text), true);
                 }
                 let x = self.expr(operand)?;
                 if self.dead {
@@ -695,10 +695,10 @@ impl<'a> FnLower<'a> {
     /// Brings a 64-bit result back to its sized type: integers fault when out of range,
     /// binary32 floats round. Default-width and 64-bit types pass through.
     fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
-        if ct::int_bits(t).is_some_and(|bits| bits < 64) {
+        if ct::int_bits(self.syms, t).is_some_and(|bits| bits < 64) {
             return self.b.narrow_chk(v);
         }
-        if ct::float_bits(t) == Some(32) {
+        if ct::float_bits(self.syms, t) == Some(32) {
             return self.b.f32_round(v);
         }
         v

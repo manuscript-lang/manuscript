@@ -38,17 +38,17 @@ test "typed normalization keeps UTF-8 byte budgets and domain errors":
     try expect_equal(form.normalize("", 0).get(), "")
     try expect_equal(
         form.normalize("é", 1).err(),
-        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("string: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(
         form.normalize("x", 0).err(),
-        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("string: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(
         form.normalize("", -1).err(),
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )
     try expect_equal(
         "x".normalize("nfc").err(),
-        Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+        Error("string: invalid input", kind: "EINVAL")
     )

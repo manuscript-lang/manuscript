@@ -93,7 +93,7 @@ fn expect_http_error[T](outcome: T!) Unit!:
     match outcome:
         ok(_): return error(Error("invalid URL succeeded"))
         error(cause):
-            if cause.kind != ErrorCategory.InvalidInput: return error(
+            if cause.kind != "EINVAL": return error(
                 Error("malformed URL leaked transport error")
             )
 

@@ -20,7 +20,7 @@ impl Checker {
         let constant = decl.constant().expect("constant");
         if self.constants_visiting.contains(&s.key()) {
             self.report_constant_cycle(s);
-            *s.ty.borrow_mut() = Some(function(Vec::new(), invalid()));
+            *s.ty.borrow_mut() = Some(function(self.syms, Vec::new(), invalid()));
             return;
         }
         self.constants_visiting.insert(s.key());
@@ -43,7 +43,7 @@ impl Checker {
         };
         self.constants_visiting.remove(&s.key());
         if s.ty_opt().is_none() {
-            *s.ty.borrow_mut() = Some(function(Vec::new(), result));
+            *s.ty.borrow_mut() = Some(function(self.syms, Vec::new(), result));
         }
     }
 
@@ -83,7 +83,7 @@ impl Checker {
                     let description = self.symbol_description(&s);
                     self.type_error(
                         e.pos,
-                        format!("a constant can refer only to other constants, but {name} is a {description}; compute the value in a function"),
+                        format!("a constant can refer only to other constants, but {name_t} is a {description}; compute the value in a function", name_t = self.syms.str(name)),
                     );
                     return false;
                 }
@@ -177,7 +177,7 @@ impl Checker {
             decl.pos(),
             format!(
                 "constant {} depends on itself; break the cycle or compute the value in a function",
-                decl.name()
+                self.syms.str(decl.name())
             ),
         );
     }

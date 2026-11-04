@@ -142,18 +142,15 @@ pub enum VtableKey {
     },
 }
 
-impl std::fmt::Display for VtableKey {
+impl VtableKey {
     /// The table's name in the module, as before keys were typed.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn name(&self, syms: ms_syntax::Names) -> String {
         match self {
-            VtableKey::Impl { ty, iface, scope } => {
-                write!(f, "impl:{}:{iface}", ty.index())?;
-                match scope {
-                    Some(s) => write!(f, "@{s}"),
-                    None => Ok(()),
-                }
-            }
-            VtableKey::Handle { module, iface } => write!(f, "handle:{module}:{iface}"),
+            VtableKey::Impl { ty, iface, scope } => match scope {
+                Some(s) => format!("impl:{}:{iface}@{}", ty.index(), syms.str(s)),
+                None => format!("impl:{}:{iface}", ty.index()),
+            },
+            VtableKey::Handle { module, iface } => format!("handle:{}:{iface}", syms.str(module)),
         }
     }
 }
@@ -328,6 +325,8 @@ pub struct Job {
 
 /// Whole-program lowering context.
 pub struct Cx {
+    /// Reads and interns identifier text.
+    pub syms: ms_syntax::Names,
     /// The session whose standard library the program was checked against.
     pub session: Rc<ms_check::Session>,
     /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
@@ -427,7 +426,7 @@ impl Cx {
     }
 
     /// Indexes every module of the program.
-    pub fn new(program: &Program) -> Cx {
+    pub fn new(syms: ms_syntax::Names, program: &Program) -> Cx {
         let mut mods = HashMap::new();
         let mut callables = HashMap::new();
         for m in program.hir().modules() {
@@ -436,8 +435,8 @@ impl Cx {
             }
             mods.insert(m.data.file, Rc::new(m));
         }
-        let mutated = crate::mutation::infer_mutated(&mods, &callables);
-        let native_ops = crate::nativerec::NativeOps::new(program, &callables);
+        let mutated = crate::mutation::infer_mutated(syms, &mods, &callables);
+        let native_ops = crate::nativerec::NativeOps::new(syms, program, &callables);
         let extended = program
             .methods
             .iter()
@@ -445,6 +444,7 @@ impl Cx {
             .map(|m| m.receiver.id)
             .collect();
         Cx {
+            syms: program.syms,
             session: program.session.clone(),
             node_facts: program.node_facts.clone(),
             binding_facts: program.binding_facts.clone(),
@@ -484,8 +484,12 @@ impl Cx {
     pub fn module(&self, file: Name) -> Result<Rc<ModuleHir>, Error> {
         self.mods.get(&file).cloned().ok_or_else(|| {
             Error::new(format!(
-                "unknown module {file} (have {:?})",
-                self.mods.keys().map(|k| k.to_string()).collect::<Vec<_>>()
+                "unknown module {file_t} (have {:?})",
+                self.mods
+                    .keys()
+                    .map(|k| self.syms.str(k).to_string())
+                    .collect::<Vec<_>>(),
+                file_t = self.syms.str(file)
             ))
         })
     }
@@ -494,7 +498,7 @@ impl Cx {
     pub fn lower_ty(&mut self, m: &mut Module, t: &ct::Ty) -> Result<MTy, Error> {
         match t.kind {
             Kind::Primitive => {
-                return match t.id.as_str() {
+                return match self.syms.str(t.id) {
                     "Int" | "Int64" => Ok(MTy::INT),
                     "Int8" => Ok(MTy::INT8),
                     "Int16" => Ok(MTy::INT16),
@@ -512,12 +516,15 @@ impl Cx {
                 };
             }
             Kind::Invalid | Kind::Inferred => {
-                return Err(Error::new(format!("unsupported primitive type {}", t.id)));
+                return Err(Error::new(format!(
+                    "unsupported primitive type {}",
+                    self.syms.str(t.id)
+                )));
             }
             Kind::Variable => {
                 return Err(Error::new(format!(
                     "unsubstituted type variable {}",
-                    t.name
+                    self.syms.str(t.name)
                 )));
             }
             _ => {}
@@ -585,12 +592,12 @@ impl Cx {
                 self.lower_native_ty(m, t)
             }
             Kind::Record => {
-                let (id, ty) = m.add_record(&t.to_string(), Vec::new());
-                m.records[id.index()].native = if t.is_time("Timestamp") {
+                let (id, ty) = m.add_record(&t.display(self.syms).to_string(), Vec::new());
+                m.records[id.index()].native = if t.is_time(self.syms, "Timestamp") {
                     Some(NativeRec::Timestamp)
-                } else if t.is_time("Instant") {
+                } else if t.is_time(self.syms, "Instant") {
                     Some(NativeRec::Instant)
-                } else if t.is_time("Duration") {
+                } else if t.is_time(self.syms, "Duration") {
                     Some(NativeRec::Duration)
                 } else {
                     None
@@ -602,13 +609,13 @@ impl Cx {
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
                     let ty = self.lower_ty(m, &f.ty)?;
-                    fields.push((f.name.to_string(), ty));
+                    fields.push((self.syms.str(f.name).to_string(), ty));
                 }
                 m.records[id.index()].fields = fields;
                 Ok(ty)
             }
             Kind::Alternative => {
-                let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
+                let (id, ty) = m.add_alt(&t.display(self.syms).to_string(), Vec::new());
                 self.set_lowered(key, ty);
                 if t.opaque_module().is_some() {
                     self.opaque_tys.set_if_absent(ty.0 as usize, ());
@@ -617,10 +624,10 @@ impl Cx {
                 for c in ct::cases(t) {
                     let mut fields = Vec::new();
                     for f in &c.fields {
-                        fields.push((f.name.to_string(), self.lower_ty(m, &f.ty)?));
+                        fields.push((self.syms.str(f.name).to_string(), self.lower_ty(m, &f.ty)?));
                     }
                     cases.push(CaseDef {
-                        name: c.name.to_string(),
+                        name: self.syms.str(c.name).to_string(),
                         fields,
                     });
                 }
@@ -633,7 +640,7 @@ impl Cx {
             Kind::Contract => {
                 let id = ms_mir::types::IfaceId(m.ifaces.len() as u32);
                 m.ifaces.push(IfaceDef {
-                    name: t.to_string(),
+                    name: t.display(self.syms).to_string(),
                     std: if t.is(Builtin::Comparable) {
                         Std::Comparable
                     } else if t.is(Builtin::Equal) {
@@ -649,7 +656,7 @@ impl Cx {
                 self.contracts.insert(id, t.clone());
                 let mut subst = ct::substitution(t);
                 // `Self` in an operation is the interface value itself.
-                subst.insert(ms_check::self_variable(t.id).id, t.clone());
+                subst.insert(ms_check::self_variable(self.syms, t.id).id, t.clone());
                 let mut methods = Vec::new();
                 if let Some(def) = &t.def {
                     let ops = def.operations.borrow().clone();
@@ -667,7 +674,7 @@ impl Cx {
                             .ty
                             .params
                             .iter()
-                            .map(|p| p.ty.id.as_str().ends_with("/Self"))
+                            .map(|p| self.syms.str(p.ty.id).ends_with("/Self"))
                             .collect();
                         let sig = ct::sub(&op.ty, &subst);
                         let vars = op_var_params(&op);
@@ -681,11 +688,11 @@ impl Cx {
                             }
                         }
                         let ret = self.lower_ty(m, &sig.result_ty())?;
-                        if op.name.as_str() == "close" {
+                        if self.syms.str(op.name) == "close" {
                             m.ifaces[id.index()].close = Some(methods.len() as u32);
                         }
                         methods.push(MethodSig {
-                            name: op.name.to_string(),
+                            name: self.syms.str(op.name).to_string(),
                             params,
                             ret,
                             self_params,
@@ -723,13 +730,13 @@ impl Cx {
             return Ok(m.types.native(native, args));
         }
         // Bytes is a growable byte buffer; the text and byte builders are owned values over one.
-        if t.is(Builtin::Bytes) || ms_check::effects::is_text_builder(t) {
+        if t.is(Builtin::Bytes) || ms_check::effects::is_text_builder(self.syms, t) {
             return Ok(MTy::BYTES);
         }
         // Plain-data natives share the runtime's `repr(C)` layout.
         let pod: &[(&str, &[&str])] = &[("Decimal", &["lo", "hi", "exp"])];
         for (name, fields) in pod {
-            if t.is_std(name) {
+            if t.is_std(self.syms, name) {
                 let (id, ty) = m.add_record(name, Vec::new());
                 m.records[id.index()].native = Some(NativeRec::Decimal);
                 m.records[id.index()].fields =
@@ -743,7 +750,7 @@ impl Cx {
             return Ok(m.types.obj("BigInt", Vec::new()));
         }
         // Any other opaque runtime type is a reference-counted handle.
-        Ok(m.types.obj(t.name.as_str(), Vec::new()))
+        Ok(m.types.obj(self.syms.str(t.name), Vec::new()))
     }
 }
 

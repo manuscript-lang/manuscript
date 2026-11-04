@@ -73,20 +73,20 @@ test "truncated and malformed input fails the read":
 
         if text == "\{\"a\":[1" or text == "\"open":
             let cut = decode(text.to_bytes(), 3)
-            try expect_equal(cut.err().kind, ErrorCategory.InvalidData)
+            try expect_equal(cut.err().kind, "EBADMSG")
         else:
-            try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+            try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "invalid UTF-8 inside a value is InvalidData":
     let bad = "\"a\"".to_bytes()
     let outcome = decode(bad.with_value(1, 255), 2)
-    try expect_equal(outcome.err().kind, ErrorCategory.InvalidData)
+    try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "per-value budgets report LimitExceeded":
     try expect_equal((try decode("[1,2]".to_bytes(), 2, JsonLimits(5))), ["[1,2]"])
 
     let wide = decode("[1,2,3]".to_bytes(), 2, JsonLimits(5))
-    try expect_equal(wide.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(wide.err().kind, "EOVERFLOW")
 
     let deep = decode("[[[".to_bytes(), 2, JsonLimits(max_depth: 2))
-    try expect_equal(deep.err().kind, ErrorCategory.LimitExceeded)
+    try expect_equal(deep.err().kind, "EOVERFLOW")

@@ -22,7 +22,7 @@ const MAX_FILES: usize = 2000;
 
 /// Names declared by top-level exports, without checking the source. Ordinary
 /// headers need no body parsing; grouped constants share the lexer's delimiters.
-pub fn exported_names(source: &str) -> Vec<String> {
+pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
     let mut names = Vec::new();
     let mut groups = None;
     for (line, text) in source.lines().enumerate() {
@@ -41,7 +41,7 @@ pub fn exported_names(source: &str) -> Vec<String> {
         {
             let Some(groups) = groups.get_or_insert_with(|| grouped_exports(source)) else {
                 // Keep valid neighboring exports when lexing an incomplete file fails.
-                return parsed_exported_names(source);
+                return parsed_exported_names(syms, source);
             };
             if let Some(group) = groups.get(&((line + 1) as u32)) {
                 names.extend(group.iter().cloned());
@@ -107,7 +107,7 @@ fn grouped_exports(source: &str) -> Option<BTreeMap<u32, Vec<String>>> {
     Some(groups)
 }
 
-fn parsed_exported_names(source: &str) -> Vec<String> {
+fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
     let file = Arc::from("<import-hints>");
     let (module, _) = ms_syntax::parse_partial(&file, source);
     module
@@ -115,11 +115,11 @@ fn parsed_exported_names(source: &str) -> Vec<String> {
         .into_iter()
         .filter(|decl| decl.export)
         .filter_map(|decl| match decl.kind {
-            DeclKind::Fn(function) => Some(function.name.to_string()),
-            DeclKind::Const(constant) => Some(constant.name.to_string()),
-            DeclKind::Record(record) => Some(record.name.to_string()),
-            DeclKind::Alternative(alternative) => Some(alternative.name.to_string()),
-            DeclKind::Interface(interface) => Some(interface.name.to_string()),
+            DeclKind::Fn(function) => Some(syms.str(function.name).to_string()),
+            DeclKind::Const(constant) => Some(syms.str(constant.name).to_string()),
+            DeclKind::Record(record) => Some(syms.str(record.name).to_string()),
+            DeclKind::Alternative(alternative) => Some(syms.str(alternative.name).to_string()),
+            DeclKind::Interface(interface) => Some(syms.str(interface.name).to_string()),
             DeclKind::Impl(_) | DeclKind::Test(_) => None,
         })
         .collect()
@@ -171,7 +171,11 @@ fn walk(dir: &Path, files: &mut Vec<String>) {
 }
 
 /// Rewrites the hint of each unresolved name that a project file exports.
-pub fn suggest_project_imports(diagnostics: &mut [Diagnostic], source_root: &str) {
+pub fn suggest_project_imports(
+    syms: ms_syntax::Names,
+    diagnostics: &mut [Diagnostic],
+    source_root: &str,
+) {
     let wanted = |d: &Diagnostic| {
         d.phase == Phase::Resolution
             && !d.file.starts_with('@')
@@ -188,7 +192,7 @@ pub fn suggest_project_imports(diagnostics: &mut [Diagnostic], source_root: &str
         let Ok(data) = std::fs::read(&file) else {
             continue;
         };
-        for name in exported_names(&String::from_utf8_lossy(&data)) {
+        for name in exported_names(syms, &String::from_utf8_lossy(&data)) {
             exports.entry(name).or_default().push(file.clone());
         }
     }
@@ -255,6 +259,7 @@ mod tests {
 
     #[test]
     fn a_project_export_replaces_the_standard_hint() {
+        let syms = ms_syntax::Names::global();
         let root = std::env::temp_dir().join(format!("ms-imports-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("lib")).unwrap();
@@ -271,7 +276,7 @@ mod tests {
             ("src/nested/main.ms", "../../lib/blobs.ms"),
         ] {
             let mut found = vec![unknown(file)];
-            suggest_project_imports(&mut found, &root);
+            suggest_project_imports(syms, &mut found, &root);
             assert_eq!(
                 found[0].message,
                 format!("unknown type Bytes; add: import Bytes from \"{expected}\"")
@@ -286,7 +291,8 @@ mod tests {
 
     #[test]
     fn exports_are_read_from_top_level_declarations() {
+        let syms = ms_syntax::Names::global();
         let source = "export type A:\n    x: Int\nexport extern fn b() Int\nexport let C = 1\nfn d() Int:\n    return 0\n";
-        assert_eq!(exported_names(source), ["A", "b", "C"]);
+        assert_eq!(exported_names(syms, source), ["A", "b", "C"]);
     }
 }

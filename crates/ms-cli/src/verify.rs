@@ -55,7 +55,12 @@ impl Step {
     }
 }
 
-pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) -> i32 {
+pub fn run_verify<L: Lower>(
+    syms: ms_syntax::Names,
+    args: &[String],
+    engine: &Engine<L>,
+    io: &mut Io,
+) -> i32 {
     let (mut structured, mut skip_test, mut positional) = (false, false, false);
     let mut deny_warnings = false;
     let mut targets: Vec<&String> = Vec::new();
@@ -119,17 +124,23 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
         step.reason = reason.to_string();
         step
     };
-    let check = run_step("check", &["check", &input, "--json"], engine, io);
+    let check = run_step(syms, "check", &["check", &input, "--json"], engine, io);
     let check_passed = check.status == "passed";
     record(io, check, &mut steps);
-    let format = run_step("fmt", &["fmt", &input, "--check", "--json"], engine, io);
+    let format = run_step(
+        syms,
+        "fmt",
+        &["fmt", &input, "--check", "--json"],
+        engine,
+        io,
+    );
     record(io, format, &mut steps);
     if check_passed {
         let mut lint_args = vec!["lint", &input, "--json"];
         if deny_warnings {
             lint_args.push("--deny-warnings");
         }
-        let lint = run_step("lint", &lint_args, engine, io);
+        let lint = run_step(syms, "lint", &lint_args, engine, io);
         record(io, lint, &mut steps);
     } else {
         record(io, skip("lint", "check failed"), &mut steps);
@@ -139,7 +150,7 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
     } else if !check_passed {
         record(io, skip("test", "check failed"), &mut steps);
     } else {
-        let test = run_step("test", &["test", &input, "--json"], engine, io);
+        let test = run_step(syms, "test", &["test", &input, "--json"], engine, io);
         record(io, test, &mut steps);
     }
     let status = i32::from(!ok);
@@ -177,7 +188,13 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
 }
 
 /// Run one command in process with stdout and stderr captured.
-fn run_step<L: Lower>(name: &'static str, args: &[&str], engine: &Engine<L>, io: &mut Io) -> Step {
+fn run_step<L: Lower>(
+    syms: ms_syntax::Names,
+    name: &'static str,
+    args: &[&str],
+    engine: &Engine<L>,
+    io: &mut Io,
+) -> Step {
     let args: Vec<String> = args.iter().map(|a| a.to_string()).collect();
     let (mut out, mut err): (Vec<u8>, Vec<u8>) = (Vec::new(), Vec::new());
     let start = Instant::now();
@@ -187,7 +204,7 @@ fn run_step<L: Lower>(name: &'static str, args: &[&str], engine: &Engine<L>, io:
             stdout: &mut out,
             stderr: &mut err,
         };
-        crate::run(&args, engine, &mut step_io)
+        crate::run(syms, &args, engine, &mut step_io)
     };
     let mut step = Step::new(name, "failed");
     step.exit_code = code;

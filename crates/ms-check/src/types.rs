@@ -16,7 +16,7 @@ use std::rc::{Rc, Weak};
 
 /// Interns a string.
 pub fn n(text: &str) -> Name {
-    Name::intern(text)
+    ms_syntax::Names::global().intern(text)
 }
 
 /// A shared, immutable checked type.
@@ -266,12 +266,31 @@ impl Clone for Type {
 
 impl fmt::Debug for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self}")
+        write!(f, "Type({:?}, {} args)", self.id, self.args.len())
     }
 }
 
-impl fmt::Display for Type {
+/// A type paired with the handle that reads its names, so it can be formatted.
+pub struct TypeDisplay<'a> {
+    ty: &'a Type,
+    syms: ms_syntax::Names,
+}
+
+impl Type {
+    /// A value that formats this type with `syms`.
+    pub fn display(&self, syms: ms_syntax::Names) -> TypeDisplay<'_> {
+        TypeDisplay { ty: self, syms }
+    }
+}
+
+impl fmt::Display for TypeDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.ty.write_to(self.syms, f)
+    }
+}
+
+impl Type {
+    fn write_to(&self, syms: ms_syntax::Names, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.kind == Kind::Function {
             f.write_str("fn(")?;
             for (i, a) in self.params.iter().enumerate() {
@@ -281,30 +300,30 @@ impl fmt::Display for Type {
                 if a.mutable {
                     f.write_str("var ")?;
                 }
-                write!(f, "{}", a.ty)?;
+                write!(f, "{}", a.ty.display(syms))?;
             }
             f.write_str(") ")?;
             return match &self.result {
-                Some(r) => write!(f, "{r}"),
+                Some(r) => write!(f, "{}", r.display(syms)),
                 None => f.write_str("<unknown>"),
             };
         }
         if self.is(Builtin::Optional) && self.args.len() == 1 {
             let inner = &self.args[0];
             return if inner.kind == Kind::Function {
-                write!(f, "({inner})?")
+                write!(f, "({})?", inner.display(syms))
             } else {
-                write!(f, "{inner}?")
+                write!(f, "{}?", inner.display(syms))
             };
         }
-        f.write_str(self.name.as_str())?;
+        f.write_str(syms.str(self.name))?;
         if !self.args.is_empty() {
             f.write_char('[')?;
             for (i, a) in self.args.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
                 }
-                write!(f, "{a}")?;
+                write!(f, "{}", a.display(syms))?;
             }
             f.write_char(']')?;
         }
@@ -313,16 +332,21 @@ impl fmt::Display for Type {
 }
 
 /// Formats an optional type; `None` prints as `<unknown>`.
-pub fn show(t: &Option<Ty>) -> String {
+pub fn show(syms: ms_syntax::Names, t: &Option<Ty>) -> String {
     match t {
-        Some(t) => t.to_string(),
+        Some(t) => t.display(syms).to_string(),
         None => "<unknown>".to_string(),
     }
 }
 
 impl Type {
     /// A bare type of one kind.
-    pub fn new(name: Name, id: Name, kind: Kind) -> Type {
+    pub fn new(syms: ms_syntax::Names, name: Name, id: Name, kind: Kind) -> Type {
+        Type::with_builtin(name, id, kind, Builtin::from_id(syms.str(id)))
+    }
+
+    /// A bare type of one kind whose built-in identity is already known.
+    pub fn with_builtin(name: Name, id: Name, kind: Kind, builtin: Option<Builtin>) -> Type {
         Type {
             name,
             id,
@@ -334,7 +358,7 @@ impl Type {
             bounds: RefCell::new(Vec::new()),
             default: RefCell::new(None),
             defaults: None,
-            builtin: Builtin::from_id(id.as_str()),
+            builtin,
         }
     }
 
@@ -349,8 +373,8 @@ impl Type {
     }
 
     /// The id as text.
-    pub fn id_str(&self) -> &'static str {
-        self.id.as_str()
+    pub fn id_str(&self, syms: ms_syntax::Names) -> &'static str {
+        syms.str(self.id)
     }
 
     /// The result of a function type (panics if absent: function types always have one).
@@ -379,13 +403,18 @@ impl Type {
     }
 
     /// The `Never` primitive.
-    pub fn is_never(&self) -> bool {
-        self.kind == Kind::Primitive && self.id == "Never"
+    pub fn is_never(&self, syms: ms_syntax::Names) -> bool {
+        self.kind == Kind::Primitive && syms.str(self.id) == "Never"
+    }
+
+    /// The `String` primitive.
+    pub fn is_string(&self, syms: ms_syntax::Names) -> bool {
+        self.kind == Kind::Primitive && syms.str(self.id) == "String"
     }
 
     /// Standard type test: id is `@std/<name>`.
-    pub fn is_std(&self, name: &str) -> bool {
-        let id = self.id.as_str();
+    pub fn is_std(&self, syms: ms_syntax::Names, name: &str) -> bool {
+        let id = syms.str(self.id);
         id.len() == 5 + name.len() && id.starts_with("@std/") && &id[5..] == name
     }
 
@@ -395,18 +424,18 @@ impl Type {
     }
 
     /// Whether this is `TestHooks` of `@std/test/test.ms`.
-    pub fn is_test_hooks(&self) -> bool {
-        self.is_source_type("@std/test/test.ms", "TestHooks")
+    pub fn is_test_hooks(&self, syms: ms_syntax::Names) -> bool {
+        self.is_source_type(syms, "@std/test/test.ms", "TestHooks")
     }
 
     /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
-    pub fn is_time(&self, name: &str) -> bool {
-        self.is_source_type("@std/os/time.ms", name)
+    pub fn is_time(&self, syms: ms_syntax::Names, name: &str) -> bool {
+        self.is_source_type(syms, "@std/os/time.ms", name)
     }
 
     /// Whether this is the type `name` declared by the bundled source module `module`.
-    pub fn is_source_type(&self, module: &str, name: &str) -> bool {
-        self.name.as_str() == name && self.symbol().is_some_and(|s| s.module.as_str() == module)
+    pub fn is_source_type(&self, syms: ms_syntax::Names, module: &str, name: &str) -> bool {
+        syms.str(self.name) == name && self.symbol().is_some_and(|s| syms.str(s.module) == module)
     }
 
     /// The nominal definition's symbol, if any.
@@ -427,8 +456,8 @@ impl Type {
 }
 
 /// `std(t, name)` for an optional type.
-pub fn std_is(t: &Option<Ty>, name: &str) -> bool {
-    t.as_ref().is_some_and(|t| t.is_std(name))
+pub fn std_is(syms: ms_syntax::Names, t: &Option<Ty>, name: &str) -> bool {
+    t.as_ref().is_some_and(|t| t.is_std(syms, name))
 }
 
 /// A named type slot of a case.
@@ -571,11 +600,14 @@ pub type SymRef = Rc<Sym>;
 
 impl Sym {
     /// The symbol's type (panics if not yet resolved).
-    pub fn ty(&self) -> Ty {
-        self.ty
-            .borrow()
-            .clone()
-            .unwrap_or_else(|| panic!("symbol type resolved: {} in {}", self.name, self.module))
+    pub fn ty(&self, syms: ms_syntax::Names) -> Ty {
+        self.ty.borrow().clone().unwrap_or_else(|| {
+            panic!(
+                "symbol type resolved: {} in {}",
+                syms.str(self.name),
+                syms.str(self.module)
+            )
+        })
     }
 
     /// The symbol's type if resolved.
@@ -700,7 +732,24 @@ impl Clone for Method {
 // ----------------------------------------------------------------- builders
 
 thread_local! {
-    static PRIMS: Prims = Prims::new();
+    /// The primitives of the interner they were made for, rebuilt when the current one changes.
+    static PRIMS: RefCell<Option<(u64, Rc<Prims>)>> = const { RefCell::new(None) };
+}
+
+fn with_prims<R>(f: impl FnOnce(&Prims) -> R) -> R {
+    let generation = ms_syntax::Names::global().generation();
+    let prims = PRIMS.with(|cell| {
+        let mut cell = cell.borrow_mut();
+        match &*cell {
+            Some((g, prims)) if *g == generation => prims.clone(),
+            _ => {
+                let prims = Rc::new(Prims::new());
+                *cell = Some((generation, prims.clone()));
+                prims
+            }
+        }
+    });
+    f(&prims)
 }
 
 struct Prims {
@@ -716,7 +765,7 @@ struct Prims {
 
 impl Prims {
     fn new() -> Prims {
-        let p = |s: &str| Rc::new(Type::new(n(s), n(s), Kind::Primitive));
+        let p = |s: &str| Rc::new(Type::with_builtin(n(s), n(s), Kind::Primitive, None));
         Prims {
             int: p("Int"),
             float: p("Float"),
@@ -724,22 +773,37 @@ impl Prims {
             string: p("String"),
             unit: p("Unit"),
             never: p("Never"),
-            invalid: Rc::new(Type::new(n("<invalid>"), n("<invalid>"), Kind::Invalid)),
-            inferred: Rc::new(Type::new(n("<inferred>"), n("<inferred>"), Kind::Inferred)),
+            invalid: Rc::new(Type::with_builtin(
+                n("<invalid>"),
+                n("<invalid>"),
+                Kind::Invalid,
+                None,
+            )),
+            inferred: Rc::new(Type::with_builtin(
+                n("<inferred>"),
+                n("<inferred>"),
+                Kind::Inferred,
+                None,
+            )),
         }
     }
 }
 
 /// A primitive type by name.
 pub fn primitive(name: &str) -> Ty {
-    PRIMS.with(|p| match name {
+    with_prims(|p| match name {
         "Int" => p.int.clone(),
         "Float" => p.float.clone(),
         "Bool" => p.bool_.clone(),
         "String" => p.string.clone(),
         "Unit" => p.unit.clone(),
         "Never" => p.never.clone(),
-        other => Rc::new(Type::new(n(other), n(other), Kind::Primitive)),
+        other => Rc::new(Type::with_builtin(
+            n(other),
+            n(other),
+            Kind::Primitive,
+            None,
+        )),
     })
 }
 
@@ -766,8 +830,8 @@ pub fn primitive_id(name: &'static str) -> &'static str {
 }
 
 /// Bit width of an integer type, or none for any other type.
-pub fn int_bits(t: &Type) -> Option<u32> {
-    match t.id.as_str() {
+pub fn int_bits(syms: ms_syntax::Names, t: &Type) -> Option<u32> {
+    match syms.str(t.id) {
         "Int" => Some(DEFAULT_INT_BITS),
         "Int8" => Some(8),
         "Int16" => Some(16),
@@ -782,14 +846,14 @@ pub fn int_bits(t: &Type) -> Option<u32> {
 }
 
 /// Whether `t` is an unsigned integer type.
-pub fn int_unsigned(t: &Type) -> bool {
-    matches!(t.id.as_str(), "UInt8" | "UInt16" | "UInt32" | "UInt64")
+pub fn int_unsigned(syms: ms_syntax::Names, t: &Type) -> bool {
+    matches!(syms.str(t.id), "UInt8" | "UInt16" | "UInt32" | "UInt64")
 }
 
 /// The inclusive range of values an integer type holds, or none for any other type.
-pub fn int_range(t: &Type) -> Option<(i128, i128)> {
-    let bits = int_bits(t)?;
-    Some(if int_unsigned(t) {
+pub fn int_range(syms: ms_syntax::Names, t: &Type) -> Option<(i128, i128)> {
+    let bits = int_bits(syms, t)?;
+    Some(if int_unsigned(syms, t) {
         (0, (1i128 << bits) - 1)
     } else {
         (-(1i128 << (bits - 1)), (1i128 << (bits - 1)) - 1)
@@ -797,8 +861,8 @@ pub fn int_range(t: &Type) -> Option<(i128, i128)> {
 }
 
 /// Bit width of a floating-point type, or none for any other type.
-pub fn float_bits(t: &Type) -> Option<u32> {
-    match t.id.as_str() {
+pub fn float_bits(syms: ms_syntax::Names, t: &Type) -> Option<u32> {
+    match syms.str(t.id) {
         "Float" => Some(DEFAULT_FLOAT_BITS),
         "Float32" => Some(32),
         "Float64" => Some(64),
@@ -823,24 +887,29 @@ pub fn never() -> Ty {
 }
 /// The `<invalid>` marker type.
 pub fn invalid() -> Ty {
-    PRIMS.with(|p| p.invalid.clone())
+    with_prims(|p| p.invalid.clone())
 }
 /// The `<inferred>` placeholder type.
 pub fn inferred() -> Ty {
-    PRIMS.with(|p| p.inferred.clone())
+    with_prims(|p| p.inferred.clone())
 }
 
 /// A function type.
-pub fn function(params: Vec<Param>, result: Ty) -> Ty {
-    let mut t = Type::new(n("fn"), n("fn"), Kind::Function);
+pub fn function(syms: ms_syntax::Names, params: Vec<Param>, result: Ty) -> Ty {
+    let mut t = Type::new(syms, n("fn"), n("fn"), Kind::Function);
     t.params = params;
     t.result = Some(result);
     Rc::new(t)
 }
 
 /// A function type with omittable parameters.
-pub fn function_with(params: Vec<Param>, result: Ty, defaults: Defaults) -> Ty {
-    let mut t = Type::new(n("fn"), n("fn"), Kind::Function);
+pub fn function_with(
+    syms: ms_syntax::Names,
+    params: Vec<Param>,
+    result: Ty,
+    defaults: Defaults,
+) -> Ty {
+    let mut t = Type::new(syms, n("fn"), n("fn"), Kind::Function);
     t.params = params;
     t.result = Some(result);
     t.defaults = defaults;
@@ -855,10 +924,10 @@ pub fn with_args(t: &Ty, args: Vec<Ty>) -> Ty {
 }
 
 /// Whether `t` is `Result[Unit, Error]`, the result of every `close`.
-pub fn is_close_result(t: &Ty) -> bool {
+pub fn is_close_result(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.is(Builtin::Result)
         && t.args.len() == 2
-        && t.args[0].id == "Unit"
+        && syms.str(t.args[0].id) == "Unit"
         && t.args[1].is(Builtin::Error)
 }
 
@@ -946,9 +1015,9 @@ pub fn same_opt(a: &Option<Ty>, b: &Option<Ty>) -> bool {
 }
 
 /// `compatible`: the actual type is `Never` or the same as expected.
-pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
+pub fn compatible(syms: ms_syntax::Names, actual: &Option<Ty>, expected: &Ty) -> bool {
     match actual {
-        Some(a) => a.is_never() || same(a, expected),
+        Some(a) => a.is_never(syms) || same(a, expected),
         None => false,
     }
 }
@@ -1154,12 +1223,12 @@ fn holds_function_in(t: &Ty, seen: &mut Vec<Name>) -> bool {
 /// Whether the native `t` declares an infallible `clone` of its own as an operation of its
 /// definition (`fn clone() Bytes: ...` in `impl Bytes:`): the runtime can duplicate its storage.
 /// A clone implemented in source (`BigInt`, `List` through `ListCopies`) is a method instead.
-pub fn native_declares_clone(t: &Ty) -> bool {
+pub fn native_declares_clone(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.def.as_ref().is_some_and(|d| {
         d.operations
             .borrow()
             .iter()
-            .any(|o| o.name.as_str() == "clone" && o.ty.result_ty().id == t.id)
+            .any(|o| syms.str(o.name) == "clone" && o.ty.result_ty().id == t.id)
     })
 }
 
@@ -1230,7 +1299,11 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
 }
 
 /// Constructor inputs and omission permissions.
-pub fn constructor_signature(session: &Rc<crate::stdlib::Session>, t: &Ty) -> Ty {
+pub fn constructor_signature(
+    syms: ms_syntax::Names,
+    session: &Rc<crate::stdlib::Session>,
+    t: &Ty,
+) -> Ty {
     let mut params = fields(t);
     if t.is(Builtin::Bytes) {
         params = vec![Param::new(
@@ -1259,32 +1332,32 @@ pub fn constructor_signature(session: &Rc<crate::stdlib::Session>, t: &Ty) -> Ty
     } else {
         Some(Rc::new(ParameterDefaults::new(defaults)))
     };
-    function_with(params, t.clone(), defaults)
+    function_with(syms, params, t.clone(), defaults)
 }
 
 /// A key identifying a type's structure.
-pub fn type_key(t: &Ty) -> String {
+pub fn type_key(syms: ms_syntax::Names, t: &Ty) -> String {
     let mut key = String::new();
-    write_type_key(&mut key, t, false);
+    write_type_key(syms, &mut key, t, false);
     key
 }
 
 /// `type_key` plus which function parameters are represented as optionals.
-pub fn lowering_key(t: &Ty) -> String {
+pub fn lowering_key(syms: ms_syntax::Names, t: &Ty) -> String {
     let mut key = String::new();
-    write_type_key(&mut key, t, true);
+    write_type_key(syms, &mut key, t, true);
     key
 }
 
-fn write_type_key(key: &mut String, t: &Ty, lifted: bool) {
-    key.push_str(t.id.as_str());
+fn write_type_key(syms: ms_syntax::Names, key: &mut String, t: &Ty, lifted: bool) {
+    key.push_str(syms.str(t.id));
     if t.kind == Kind::Function {
         for p in &t.params {
             key.push('[');
             if p.mutable {
                 key.push_str("var ");
             }
-            write_type_key(key, &p.ty, lifted);
+            write_type_key(syms, key, &p.ty, lifted);
             if lifted && t.is_lifted(p.name) {
                 key.push('=');
             }
@@ -1292,13 +1365,13 @@ fn write_type_key(key: &mut String, t: &Ty, lifted: bool) {
         }
         key.push_str("[result:");
         if let Some(r) = &t.result {
-            write_type_key(key, r, lifted);
+            write_type_key(syms, key, r, lifted);
         }
         key.push(']');
     }
     for a in &t.args {
         key.push('[');
-        write_type_key(key, a, lifted);
+        write_type_key(syms, key, a, lifted);
         key.push(']');
     }
 }
@@ -1346,8 +1419,12 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
 }
 
 /// "expected X, found Y" plus a result hint.
-pub fn format_mismatch(actual: &Ty, expected: &Ty) -> String {
-    let mut message = format!("expected {expected}, found {actual}");
+pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
+    let mut message = format!(
+        "expected {expected_t}, found {actual_t}",
+        expected_t = expected.display(syms),
+        actual_t = actual.display(syms)
+    );
     let hint = crate::hints::result_use_hint(actual, expected);
     if !hint.is_empty() {
         message.push_str("; ");
@@ -1486,6 +1563,6 @@ pub fn mentions_variable(t: &Ty, variables: &VarSet) -> bool {
 }
 
 /// Names of params.
-pub fn param_names(params: &[Param]) -> Vec<&'static str> {
-    params.iter().map(|p| p.name.as_str()).collect()
+pub fn param_names(syms: ms_syntax::Names, params: &[Param]) -> Vec<&'static str> {
+    params.iter().map(|p| syms.str(p.name)).collect()
 }

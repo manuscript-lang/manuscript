@@ -37,29 +37,24 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
             normalization.text.normalize(
                 normalization.form, size - 1
             ).err(),
-            Error(
-                "string: limit exceeded", kind: ErrorCategory.LimitExceeded
-            )
+            Error("string: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(
             normalization.text.normalize(normalization.form, 0).err(),
-            Error(
-                "string: limit exceeded", kind: ErrorCategory.LimitExceeded
-            )
+            Error("string: limit exceeded", kind: "EOVERFLOW")
         )
         try expect_equal(
             normalization.text.normalize(normalization.form, -1).err(),
-            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+            Error("string: invalid input", kind: "EINVAL")
         )
 
     for form in ["", "nfc", "NFC\u{0}", "UNKNOWN"]:
         try expect_equal(
-            "é".normalize(form).err(),
-            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+            "é".normalize(form).err(), Error("string: invalid input", kind: "EINVAL")
         )
         try expect_equal(
             "é".normalize(form, -1).err(),
-            Error("string: invalid input", kind: ErrorCategory.InvalidInput)
+            Error("string: invalid input", kind: "EINVAL")
         )
 
 test "normalization retains lookahead across a complete combining segment":
@@ -72,5 +67,5 @@ test "normalization retains lookahead across a complete combining segment":
     try expect_equal(text.normalize("NFKD").get(), decomposed)
     try expect_equal(
         text.normalize("NFC", 0).err(),
-        Error("string: limit exceeded", kind: ErrorCategory.LimitExceeded)
+        Error("string: limit exceeded", kind: "EOVERFLOW")
     )

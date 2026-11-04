@@ -48,6 +48,7 @@ const fn plain(symbol: &'static str, identity: &'static str) -> HandLowered {
 
 const HAND_LOWERED: &[HandLowered] = &[
     plain("msstd_test_repr", "test/repr"),
+    plain("msstd_embed_bytes", "embed/bytes"),
     plain("msstd_test_catch_fault", "test/catch_fault"),
     handle("msstd_fs_filesystem", "fs/filesystem", "fs", ""),
     // The rules are the table: `path_win` forwards with the Windows flag set.

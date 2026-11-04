@@ -24,6 +24,7 @@ fn write(dir: &Path, name: &str, text: &str) -> String {
 
 #[test]
 fn imports_are_loaded_before_their_importers() {
+    let syms = ms_syntax::Names::global();
     let dir = scratch("order");
     write(&dir, "lib.ms", "export fn one() Int:\n    return 1\n");
     let entry = write(
@@ -31,16 +32,17 @@ fn imports_are_loaded_before_their_importers() {
         "main.ms",
         "import one from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
     );
-    let graph = load_file(&entry, LoadOptions::default());
+    let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty());
     assert_eq!(graph.entry, "main.ms");
     assert_eq!(graph.modules.len(), 2);
-    let checked = check_graph(graph, CheckRequest { entry: true });
+    let checked = check_graph(syms, graph, CheckRequest { entry: true });
     assert!(checked.success(), "{:?}", checked.diagnostics);
 }
 
 #[test]
 fn cycles_are_reported_at_the_closing_import() {
+    let syms = ms_syntax::Names::global();
     let dir = scratch("cycle");
     write(
         &dir,
@@ -52,7 +54,7 @@ fn cycles_are_reported_at_the_closing_import() {
         "a.ms",
         "import y from \"./b.ms\"\n\nexport fn main() Int:\n    return 0\n",
     );
-    let graph = load_file(&entry, LoadOptions::default());
+    let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.modules.is_empty());
     let issue = &graph.diagnostics[0];
     assert_eq!(&*issue.file, "b.ms");
@@ -66,11 +68,13 @@ fn cycles_are_reported_at_the_closing_import() {
 
 #[test]
 fn imported_parse_diagnostics_keep_their_source_in_strict_and_recovery_loads() {
+    let syms = ms_syntax::Names::global();
     let dir = scratch("import-diagnostic");
     write(&dir, "broken.ms", "\n\nfn broken(:\n");
     let entry = write(&dir, "main.ms", "import broken from \"./broken.ms\"\n");
-    let strict = load_file(&entry, LoadOptions::default());
+    let strict = load_file(syms, &entry, LoadOptions::default());
     let recovered = load_editor_file(
+        syms,
         &entry,
         LoadOptions::default(),
         &EditorOptions {
@@ -91,6 +95,7 @@ fn imported_parse_diagnostics_keep_their_source_in_strict_and_recovery_loads() {
 
 #[test]
 fn project_aliases_and_discovered_tests() {
+    let syms = ms_syntax::Names::global();
     let dir = scratch("project");
     write(
         &dir,
@@ -111,12 +116,12 @@ fn project_aliases_and_discovered_tests() {
     let manifest = dir.join("ms.toml");
     let manifest = manifest.to_str().unwrap();
 
-    let plain = load_file(manifest, LoadOptions::default());
+    let plain = load_file(syms, manifest, LoadOptions::default());
     assert!(plain.diagnostics.is_empty(), "{:?}", plain.diagnostics);
     assert_eq!(plain.modules.len(), 2);
     assert!(!plain.library);
 
-    let with_tests = load_file(manifest, LoadOptions { tests: true });
+    let with_tests = load_file(syms, manifest, LoadOptions { tests: true });
     assert!(
         with_tests.diagnostics.is_empty(),
         "{:?}",
@@ -127,6 +132,7 @@ fn project_aliases_and_discovered_tests() {
 
 #[test]
 fn entry_diagnostics_name_the_required_signature() {
+    let syms = ms_syntax::Names::global();
     let dir = scratch("entry");
     let entry = write(
         &dir,
@@ -134,7 +140,8 @@ fn entry_diagnostics_name_the_required_signature() {
         "export fn main() String:\n    return \"a\"\n",
     );
     let checked = check_graph(
-        load_file(&entry, LoadOptions::default()),
+        syms,
+        load_file(syms, &entry, LoadOptions::default()),
         CheckRequest { entry: true },
     );
     let issue = &checked.diagnostics[0];
@@ -144,7 +151,8 @@ fn entry_diagnostics_name_the_required_signature() {
     );
     // Without the entry requirement the same file checks.
     let fine = check_graph(
-        load_file(&entry, LoadOptions::default()),
+        syms,
+        load_file(syms, &entry, LoadOptions::default()),
         CheckRequest::default(),
     );
     assert!(fine.success());
@@ -152,6 +160,7 @@ fn entry_diagnostics_name_the_required_signature() {
 
 #[test]
 fn file_entries_share_a_library_under_the_enclosing_manifest() {
+    let syms = ms_syntax::Names::global();
     let dir = scratch("enclosing");
     write(&dir, "ms.toml", include_str!("fixtures/enclosing/ms.toml"));
     write(&dir, "lib.ms", include_str!("fixtures/enclosing/lib.ms"));
@@ -160,9 +169,9 @@ fn file_entries_share_a_library_under_the_enclosing_manifest() {
         "suite/driver.ms",
         include_str!("fixtures/enclosing/suite/driver.ms"),
     );
-    let graph = load_file(&entry, LoadOptions::default());
+    let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
     assert_eq!(graph.entry, "suite/driver.ms");
-    let checked = check_graph(graph, CheckRequest { entry: true });
+    let checked = check_graph(syms, graph, CheckRequest { entry: true });
     assert!(checked.success(), "{:?}", checked.diagnostics);
 }

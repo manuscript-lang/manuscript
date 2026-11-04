@@ -53,7 +53,7 @@ pub fn run_version(command: &str, args: &[String], io: &mut Io) -> i32 {
     0
 }
 
-pub fn run_lsp(args: &[String], io: &mut Io) -> i32 {
+pub fn run_lsp(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     if args.len() != 1 {
         let _ = writeln!(
             io.stderr,
@@ -61,7 +61,7 @@ pub fn run_lsp(args: &[String], io: &mut Io) -> i32 {
         );
         return 2;
     }
-    finish(engine::lsp(io), io)
+    finish(engine::lsp(syms, io), io)
 }
 
 pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
@@ -137,7 +137,7 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
     status
 }
 
-pub fn run_search_symbol(args: &[String], io: &mut Io) -> i32 {
+pub fn run_search_symbol(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     let mut names: Vec<String> = Vec::new();
     let (mut limit, mut json) = (DEFAULT_SYMBOL_LIMIT, false);
     let mut i = 1;
@@ -170,14 +170,14 @@ pub fn run_search_symbol(args: &[String], io: &mut Io) -> i32 {
         i += 1;
     }
     finish(
-        engine::search_symbol(&SearchSymbolRequest { names, limit, json }, io),
+        engine::search_symbol(syms, &SearchSymbolRequest { names, limit, json }, io),
         io,
     )
 }
 
-pub fn run_review(args: &[String], io: &mut Io) -> i32 {
+pub fn run_review(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     match parse_review(args, io) {
-        Ok(request) => finish(engine::review(&request, io), io),
+        Ok(request) => finish(engine::review(syms, &request, io), io),
         Err(status) => status,
     }
 }

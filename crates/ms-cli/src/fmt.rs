@@ -26,7 +26,7 @@ enum FmtError {
     Plain(String),
 }
 
-pub fn run_format(args: &[String], io: &mut Io) -> i32 {
+pub fn run_format(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     let (mut check, mut structured, mut positional, mut drop_labels) = (false, false, false, false);
     let mut targets: Vec<String> = Vec::new();
     for arg in args {
@@ -115,7 +115,7 @@ pub fn run_format(args: &[String], io: &mut Io) -> i32 {
             path: path.clone(),
             display: display.clone(),
         };
-        let (state, error) = format_file(&file, check, drop_labels);
+        let (state, error) = format_file(syms, &file, check, drop_labels);
         files_report.push((display, state));
         if let Some(error) = error {
             report(io, &path, error);
@@ -217,6 +217,7 @@ fn path_error(
 }
 
 fn format_file(
+    syms: ms_syntax::Names,
     file: &FormatFile,
     check: bool,
     drop_labels: bool,
@@ -254,7 +255,7 @@ fn format_file(
     };
     let mut text = source.clone();
     if drop_labels {
-        match engine::drop_redundant_labels(file, &text) {
+        match engine::drop_redundant_labels(syms, file, &text) {
             Ok(changed) => text = changed,
             Err(failure) => return ("error", Some(failure_error(failure, file))),
         }

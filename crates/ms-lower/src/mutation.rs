@@ -33,31 +33,35 @@ struct Edge {
 
 /// The base and index of an element read `xs[i]`. The parser reads `xs[name]` as an `Apply`
 /// node that the checker resolves to an index, so both spellings count.
-pub(crate) fn index_parts<'e>(hir: &ModuleHir, e: &'e Expr) -> Option<(&'e Expr, &'e Expr)> {
+pub(crate) fn index_parts<'e>(
+    syms: ms_syntax::Names,
+    hir: &ModuleHir,
+    e: &'e Expr,
+) -> Option<(&'e Expr, &'e Expr)> {
     match &e.kind {
         ExprKind::Index { left, index } => Some((left, index)),
         ExprKind::Apply {
             left,
             value: Some(index),
             ..
-        } if is_index_apply(hir, e) => Some((left, index)),
+        } if is_index_apply(syms, hir, e) => Some((left, index)),
         _ => None,
     }
 }
 
 /// Whether an `Apply` node is really an index read (`xs[i]`).
-pub(crate) fn is_index_apply(hir: &ModuleHir, e: &Expr) -> bool {
-    hir.info(e).native_str() == "index"
-        || matches!(hir.resolution(e), Resolution::Native(n) if n.as_str() == "index")
+pub(crate) fn is_index_apply(syms: ms_syntax::Names, hir: &ModuleHir, e: &Expr) -> bool {
+    hir.info(e).native_str(syms) == "index"
+        || matches!(hir.resolution(e), Resolution::Native(n) if syms.str(n) == "index")
 }
 
 /// Peels field selections and element reads off a place expression down to its base.
-pub(crate) fn place_base<'e>(hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
+pub(crate) fn place_base<'e>(syms: ms_syntax::Names, hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
     let mut cur = e;
     loop {
         if let ExprKind::Member { left, .. } = &cur.kind {
             cur = left;
-        } else if let Some((left, _)) = index_parts(hir, cur) {
+        } else if let Some((left, _)) = index_parts(syms, hir, cur) {
             cur = left;
         } else {
             return cur;
@@ -66,8 +70,8 @@ pub(crate) fn place_base<'e>(hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
 }
 
 /// Finds the root local of a place expression (`a`, `a.b.c`, `a[i].c`).
-pub(crate) fn place_root(hir: &ModuleHir, e: &Expr) -> Option<usize> {
-    let cur = place_base(hir, e);
+pub(crate) fn place_root(syms: ms_syntax::Names, hir: &ModuleHir, e: &Expr) -> Option<usize> {
+    let cur = place_base(syms, hir, e);
     match hir.resolution(cur) {
         Resolution::Local(b) => Some(b.uid),
         _ => None,
@@ -166,8 +170,14 @@ pub(crate) fn block_mentions(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool
 /// Whether `body` names the list `uid` only as the receiver of a read in place (`get`,
 /// `length`, `is_empty`) or as the iterable of a `for`, never inside a closure: nothing can keep
 /// the list or move it.
-pub(crate) fn only_read_in_place(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool {
+pub(crate) fn only_read_in_place(
+    syms: ms_syntax::Names,
+    hir: &ModuleHir,
+    body: &[Stmt],
+    uid: usize,
+) -> bool {
     struct Reads<'h> {
+        syms: ms_syntax::Names,
         hir: &'h ModuleHir,
         uid: usize,
         mentions: usize,
@@ -182,11 +192,12 @@ pub(crate) fn only_read_in_place(hir: &ModuleHir, body: &[Stmt], uid: usize) -> 
     }
     impl Visitor for Reads<'_> {
         fn expr(&mut self, e: &Expr) {
+            let syms = self.syms;
             match &e.kind {
                 ExprKind::Lambda(_) => self.lambdas += 1,
                 ExprKind::Call { callee, .. } => {
                     if let ExprKind::Member { left, name } = &callee.kind
-                        && matches!(name.as_str(), "get" | "length" | "is_empty")
+                        && matches!(syms.str(name), "get" | "length" | "is_empty")
                         && self.names(left)
                     {
                         self.reads += 1;
@@ -219,6 +230,7 @@ pub(crate) fn only_read_in_place(hir: &ModuleHir, body: &[Stmt], uid: usize) -> 
         }
     }
     let mut v = Reads {
+        syms,
         hir,
         uid,
         mentions: 0,
@@ -232,6 +244,7 @@ pub(crate) fn only_read_in_place(hir: &ModuleHir, body: &[Stmt], uid: usize) -> 
 
 /// The locals a body assigns to or mutates in place, and the source calls they feed.
 struct Mutations<'h> {
+    syms: ms_syntax::Names,
     hir: &'h ModuleHir,
     roots: HashSet<usize>,
     edges: Vec<Edge>,
@@ -239,16 +252,18 @@ struct Mutations<'h> {
 
 impl Visitor for Mutations<'_> {
     fn stmt(&mut self, s: &Stmt) {
+        let syms = self.syms;
         if let StmtKind::Assign { target, value, .. } = &s.kind {
             let root = match target {
                 AssignTarget::Name(_) => self.hir.assigned(value).map(|b| b.uid),
-                AssignTarget::Member(t) => place_root(self.hir, t),
+                AssignTarget::Member(t) => place_root(syms, self.hir, t),
             };
             self.roots.extend(root);
         }
     }
 
     fn expr(&mut self, e: &Expr) {
+        let syms = self.syms;
         let ExprKind::Call { callee, .. } = &e.kind else {
             return;
         };
@@ -260,18 +275,18 @@ impl Visitor for Mutations<'_> {
             c = left;
         }
         match &view.target {
-            Resolution::Method(m) if !m.native.as_str().is_empty() => {
+            Resolution::Method(m) if !syms.str(m.native).is_empty() => {
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && ms_check::effects::collection_mutation(m)
+                    && ms_check::effects::collection_mutation(syms, m)
                 {
-                    self.roots.extend(place_root(self.hir, left));
+                    self.roots.extend(place_root(syms, self.hir, left));
                 }
             }
             Resolution::Method(m) => {
                 let Some(decl) = &m.decl else { return };
                 let callee_key = (m.module, decl.id());
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && let Some(root) = place_root(self.hir, left)
+                    && let Some(root) = place_root(syms, self.hir, left)
                 {
                     self.edges.push(Edge {
                         root,
@@ -279,11 +294,11 @@ impl Visitor for Mutations<'_> {
                         target: Target::Receiver,
                     });
                 }
-                self.argument_edges(&view, callee_key);
+                self.argument_edges(syms, &view, callee_key);
             }
-            Resolution::Function(sym) if sym.native.as_str().is_empty() => {
+            Resolution::Function(sym) if syms.str(sym.native).is_empty() => {
                 let Some(decl) = &sym.decl else { return };
-                self.argument_edges(&view, (sym.module, decl.id()));
+                self.argument_edges(syms, &view, (sym.module, decl.id()));
             }
             _ => {}
         }
@@ -291,9 +306,14 @@ impl Visitor for Mutations<'_> {
 }
 
 impl Mutations<'_> {
-    fn argument_edges(&mut self, view: &ms_check::hir::CallView<'_>, callee: FnKey) {
+    fn argument_edges(
+        &mut self,
+        syms: ms_syntax::Names,
+        view: &ms_check::hir::CallView<'_>,
+        callee: FnKey,
+    ) {
         for a in &view.arguments {
-            if let Some(root) = place_root(self.hir, a.expr) {
+            if let Some(root) = place_root(syms, self.hir, a.expr) {
                 self.edges.push(Edge {
                     root,
                     callee,
@@ -305,8 +325,9 @@ impl Mutations<'_> {
 }
 
 /// A body to scan.
-fn scan<'h>(hir: &'h ModuleHir, body: Body<'_>) -> Mutations<'h> {
+fn scan<'h>(syms: ms_syntax::Names, hir: &'h ModuleHir, body: Body<'_>) -> Mutations<'h> {
     let mut v = Mutations {
+        syms,
         hir,
         roots: HashSet::new(),
         edges: Vec::new(),
@@ -339,13 +360,14 @@ fn target_position(callables: &HashMap<FnKey, Rc<Callable>>, edge: &Edge) -> Opt
 
 /// Whether a method changes its receiver, for a method used as a value.
 pub(crate) fn method_changes_receiver(
+    syms: ms_syntax::Names,
     m: &ms_check::types::MethodRef,
     mutated: &HashSet<ParamKey>,
 ) -> bool {
-    match (&m.decl, m.native.as_str()) {
+    match (&m.decl, syms.str(m.native)) {
         (Some(d), "contract") => d.method().is_some_and(|x| x.mutating),
         (_, "contract") => false,
-        (_, native) if !native.is_empty() => ms_check::effects::collection_mutation(m),
+        (_, native) if !native.is_empty() => ms_check::effects::collection_mutation(syms, m),
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
         _ => false,
     }
@@ -354,11 +376,13 @@ pub(crate) fn method_changes_receiver(
 /// The variables whose changing methods `body` takes as values (`xs.append` without a call):
 /// the value shares the variable, so it must live in memory.
 pub(crate) fn changing_method_roots(
+    syms: ms_syntax::Names,
     hir: &ModuleHir,
     body: Body<'_>,
     mutated: &HashSet<ParamKey>,
 ) -> HashSet<usize> {
     struct Values<'h> {
+        syms: ms_syntax::Names,
         hir: &'h ModuleHir,
         mutated: &'h HashSet<ParamKey>,
         called: HashSet<ms_syntax::NodeId>,
@@ -366,6 +390,7 @@ pub(crate) fn changing_method_roots(
     }
     impl Visitor for Values<'_> {
         fn expr(&mut self, e: &Expr) {
+            let syms = self.syms;
             if let ExprKind::Call { callee, .. } = &e.kind {
                 self.called.insert(callee.id);
                 if let ExprKind::Apply { left, .. } = &callee.kind {
@@ -381,7 +406,7 @@ pub(crate) fn changing_method_roots(
             let Resolution::Method(m) = self.hir.resolution(e) else {
                 return;
             };
-            if method_changes_receiver(&m, self.mutated)
+            if method_changes_receiver(syms, &m, self.mutated)
                 && let Resolution::Local(b) = self.hir.resolution(left)
             {
                 self.roots.insert(b.uid);
@@ -389,6 +414,7 @@ pub(crate) fn changing_method_roots(
         }
     }
     let mut v = Values {
+        syms,
         hir,
         mutated,
         called: HashSet::new(),
@@ -403,16 +429,17 @@ pub(crate) fn changing_method_roots(
 
 /// The locals of `body` that it changes, directly or through calls.
 pub(crate) fn mutated_locals(
+    syms: ms_syntax::Names,
     hir: &ModuleHir,
     body: Body<'_>,
     callables: &HashMap<FnKey, Rc<Callable>>,
     mutated: &HashSet<ParamKey>,
 ) -> HashSet<usize> {
     let values = match &body {
-        Body::Block(b) => changing_method_roots(hir, Body::Block(b), mutated),
-        Body::Expr(e) => changing_method_roots(hir, Body::Expr(e), mutated),
+        Body::Block(b) => changing_method_roots(syms, hir, Body::Block(b), mutated),
+        Body::Expr(e) => changing_method_roots(syms, hir, Body::Expr(e), mutated),
     };
-    let m = scan(hir, body);
+    let m = scan(syms, hir, body);
     let mut roots = m.roots;
     for e in &m.edges {
         if let Some(p) = target_position(callables, e)
@@ -428,6 +455,7 @@ pub(crate) fn mutated_locals(
 /// The parameters (receiver first) every source function changes: declared `var`, or changed
 /// by the body of a reference-shared type.
 pub(crate) fn infer_mutated(
+    syms: ms_syntax::Names,
     mods: &HashMap<Name, Rc<ModuleHir>>,
     callables: &HashMap<FnKey, Rc<Callable>>,
 ) -> HashSet<ParamKey> {
@@ -454,7 +482,7 @@ pub(crate) fn infer_mutated(
         let Some(hir) = mods.get(&c.module.file) else {
             continue;
         };
-        let m = scan(hir, c.body());
+        let m = scan(syms, hir, c.body());
         for (i, b) in bindings.iter().enumerate() {
             if !by_reference(b.ty.kind) {
                 continue;

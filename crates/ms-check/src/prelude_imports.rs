@@ -15,7 +15,7 @@ impl Checker {
         module: &ModRef,
         item: &ms_syntax::ast::Import,
     ) {
-        let name_len = item.name.len() as u32;
+        let name_len = self.syms.str(item.name).len() as u32;
         let end = Pos::new(
             item.name_pos.offset + name_len,
             item.name_pos.line,
@@ -24,14 +24,14 @@ impl Checker {
         let name = &item.name;
         self.p.diagnostics.push(Diagnostic {
             opener_line: 0,
-            file: module.file.as_str().into(),
+            file: self.syms.str(module.file).into(),
             pos: item.name_pos,
             phase: Phase::Resolution,
             message: format!(
-                "redundant prelude import {name}; remove {name} from this import and use its prelude declaration directly"
-            ),
+                "redundant prelude import {name_t}; remove {name_t} from this import and use its prelude declaration directly"
+            , name_t = self.syms.str(name)),
             end: Some(end),
-            fix: prelude_import_fix(module, item),
+            fix: prelude_import_fix(self.syms, module, item),
         });
     }
 }
@@ -39,8 +39,12 @@ impl Checker {
 /// Removes one binding, preserving comments, neighboring bindings and
 /// original line endings. This stays an exact source edit rather than
 /// formatting the file.
-fn prelude_import_fix(module: &ModRef, item: &ms_syntax::ast::Import) -> Option<DiagnosticFix> {
-    let file: Arc<str> = module.file.as_str().into();
+fn prelude_import_fix(
+    syms: ms_syntax::Names,
+    module: &ModRef,
+    item: &ms_syntax::ast::Import,
+) -> Option<DiagnosticFix> {
+    let file: Arc<str> = syms.str(module.file).into();
     let source: &str = &module.source;
     let tokens = match lexer::lex(&file, source) {
         Ok(lexed) => lexed.tokens,

@@ -7,16 +7,18 @@ use ms_syntax::ast::*;
 
 /// The value of an integer expression built from literals and `+ - * / %`, or none when an
 /// operand is not constant, a division is by zero, or an intermediate leaves `range`.
-fn fold(e: &Expr, range: (i128, i128)) -> Option<i128> {
+fn fold(syms: ms_syntax::Names, e: &Expr, range: (i128, i128)) -> Option<i128> {
     let fits = |v: i128| (range.0..=range.1).contains(&v).then_some(v);
     match &e.kind {
-        ExprKind::Number(t) if !t.as_str().contains(['.', 'e', 'E']) && !t.ends_with('d') => {
-            ms_syntax::number::canonical(t.as_str())
+        ExprKind::Number(t)
+            if !syms.str(t).contains(['.', 'e', 'E']) && !syms.str(t).ends_with('d') =>
+        {
+            ms_syntax::number::canonical(syms.str(t))
                 .parse::<i128>()
                 .ok()
         }
         ExprKind::Unary { op, operand } => {
-            let v = fold(operand, range)?;
+            let v = fold(syms, operand, range)?;
             match op {
                 UnaryOp::Neg => fits(-v),
                 UnaryOp::Plus => Some(v),
@@ -24,7 +26,7 @@ fn fold(e: &Expr, range: (i128, i128)) -> Option<i128> {
             }
         }
         ExprKind::Binary { op, left, right } => {
-            let (a, b) = (fold(left, range)?, fold(right, range)?);
+            let (a, b) = (fold(syms, left, range)?, fold(syms, right, range)?);
             fits(apply(*op, a, b)?)
         }
         _ => None,
@@ -52,26 +54,27 @@ impl Checker {
         right: &Expr,
         ty: &Ty,
     ) {
-        let Some(range) = int_range(ty) else {
+        let Some(range) = int_range(self.syms, ty) else {
             return;
         };
-        if matches!(op, BinaryOp::Div | BinaryOp::Rem) && fold(right, range) == Some(0) {
+        if matches!(op, BinaryOp::Div | BinaryOp::Rem) && fold(self.syms, right, range) == Some(0) {
             self.type_error(
                 e.pos,
                 "division by zero always faults; guard the divisor or use a nonzero constant",
             );
             return;
         }
-        let (Some(a), Some(b)) = (fold(left, range), fold(right, range)) else {
+        let (Some(a), Some(b)) = (fold(self.syms, left, range), fold(self.syms, right, range))
+        else {
             return;
         };
         if apply(op, a, b).is_some_and(|v| !(range.0..=range.1).contains(&v)) {
             self.type_error(
                 e.pos,
                 format!(
-                    "{a} {} {b} overflows {ty} and always faults; use a smaller value or a wider type such as BigInt",
+                    "{a} {} {b} overflows {ty_t} and always faults; use a smaller value or a wider type such as BigInt",
                     op.as_str()
-                ),
+                , ty_t = ty.display(self.syms)),
             );
         }
     }
@@ -81,7 +84,11 @@ impl Checker {
         let ExprKind::List(items) = &left.kind else {
             return;
         };
-        let Some(i) = fold(index, int_range(&int()).unwrap_or_default()) else {
+        let Some(i) = fold(
+            self.syms,
+            index,
+            int_range(self.syms, &int()).unwrap_or_default(),
+        ) else {
             return;
         };
         let len = items.len() as i128;

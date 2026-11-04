@@ -368,7 +368,7 @@ impl FnLower<'_> {
         // A resource, or a record or list holding one (only read in place: the checker rejects
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
-        if self.cx.classes.class(&ty) != ms_check::ownership::Class::Resource
+        if self.cx.classes.class(self.syms, &ty) != ms_check::ownership::Class::Resource
             || (self.closeable_impl(&ty).is_none()
                 && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
@@ -589,7 +589,11 @@ impl FnLower<'_> {
             .ok_or_else(|| Error::new("a split binding lives in memory"))?;
         let ty = ct::sub(&binding.ty, &self.subst);
         let mut tails: Vec<Vec<ct::Name>> = places.into_values().collect();
-        tails.sort_by_key(|t| t.iter().map(|n| n.as_str().to_string()).collect::<Vec<_>>());
+        tails.sort_by_key(|t| {
+            t.iter()
+                .map(|n| self.syms.str(n).to_string())
+                .collect::<Vec<_>>()
+        });
         tails.dedup();
         let mut split = Split {
             items: Vec::new(),
@@ -638,7 +642,7 @@ impl FnLower<'_> {
             return Err(Error::new("a moved field of a non-record"));
         };
         for (i, f) in ct::fields(ty).iter().enumerate() {
-            if self.cx.classes.class(&f.ty) != ms_check::ownership::Class::Resource {
+            if self.cx.classes.class(self.syms, &f.ty) != ms_check::ownership::Class::Resource {
                 continue;
             }
             let fty = self.b.m.records[r.index()].fields[i].1;
@@ -860,16 +864,20 @@ impl FnLower<'_> {
 
     /// The close operation `cleanup` names for the concrete receiver `ty`.
     fn own_closer(&mut self, cleanup: &ct::MethodRef, ty: &ct::Ty) -> Result<CloseKind, Error> {
-        let im = if cleanup.native.as_str() == "contract" {
-            self.contract_impl(cleanup, ty)
-                .ok_or_else(|| Error::new(format!("{ty} has no close operation")))?
+        let im = if self.syms.str(cleanup.native) == "contract" {
+            self.contract_impl(cleanup, ty).ok_or_else(|| {
+                Error::new(format!(
+                    "{ty_t} has no close operation",
+                    ty_t = ty.display(self.syms)
+                ))
+            })?
         } else {
             cleanup.clone()
         };
-        if !im.native.is_empty() {
+        if !self.syms.str(im.native).is_empty() {
             return Err(Error::new(format!(
                 "unsupported native close {}",
-                im.native
+                self.syms.str(im.native)
             )));
         }
         let decl = im
@@ -904,7 +912,7 @@ impl FnLower<'_> {
             .methods
             .iter()
             .find(|m| {
-                m.name().is_some_and(|n| n.as_str() == "close")
+                m.name().is_some_and(|n| self.syms.str(n) == "close")
                     && m.contract
                         .as_ref()
                         .is_some_and(|c| c.is(Builtin::Closeable))
@@ -921,7 +929,7 @@ impl FnLower<'_> {
     /// The close of a resource held inside another: its own `close`, then what it holds in turn.
     /// `None` for a value that is not a resource.
     pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
-        if self.cx.classes.class(ty) != ms_check::ownership::Class::Resource {
+        if self.cx.classes.class(self.syms, ty) != ms_check::ownership::Class::Resource {
             return Ok(None);
         }
         let mt = self.mty(ty)?;
@@ -935,7 +943,8 @@ impl FnLower<'_> {
         match self.close_with_parts(ty, own)? {
             Some(k) => Ok(Some(k)),
             None => Err(Error::new(format!(
-                "{ty} holds a resource with no close operation"
+                "{ty_t} holds a resource with no close operation",
+                ty_t = ty.display(self.syms)
             ))),
         }
     }

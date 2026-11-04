@@ -8,16 +8,17 @@ use ms_syntax::visit::{Visitor, walk_decl, walk_expr};
 use std::collections::HashMap;
 
 /// Errors for every unread binding in the program's own (non-standard) modules.
-pub(crate) fn check(program: &Program) -> Vec<Diagnostic> {
+pub(crate) fn check(syms: ms_syntax::Names, program: &Program) -> Vec<Diagnostic> {
     let mut found = Vec::new();
     // Unfinished code (an editor buffer with a parse error) has bindings it has not read yet.
     for module in program
         .modules
         .iter()
-        .filter(|m| !m.is_standard() && m.recovered.is_empty() && m.omitted.is_empty())
+        .filter(|m| !m.is_standard(syms) && m.recovered.is_empty() && m.omitted.is_empty())
     {
         let reads = binding_reads(module);
         let mut scan = Scan {
+            syms: ms_syntax::Names::global(),
             module,
             reads: &reads,
             found: &mut found,
@@ -93,6 +94,7 @@ impl Visitor for Discount<'_> {
 }
 
 struct Scan<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModuleData,
     reads: &'a HashMap<usize, i64>,
     found: &'a mut Vec<Diagnostic>,
@@ -101,18 +103,18 @@ struct Scan<'a> {
 impl Scan<'_> {
     fn unread(&self, binding: &BindingRef) -> bool {
         self.reads.get(&binding.uid).copied().unwrap_or(0) == 0
-            && !binding.name.as_str().starts_with('_')
+            && !self.syms.str(binding.name).starts_with('_')
     }
 
     fn report(&mut self, binding: &BindingRef, pos: ms_syntax::Pos) {
         self.found.push(Diagnostic {
             opener_line: 0,
-            file: std::sync::Arc::from(self.module.file.as_str()),
+            file: std::sync::Arc::from(self.syms.str(self.module.file)),
             pos,
             phase: ms_syntax::Phase::Type,
             message: format!(
                 "local binding {} is never read; remove it, use it, or name it with a leading '_' to ignore it",
-                binding.name.as_str()
+                self.syms.str(binding.name)
             ),
             end: None,
             fix: None,

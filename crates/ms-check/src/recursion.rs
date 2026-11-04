@@ -123,6 +123,7 @@ fn application_key(
 }
 
 struct EdgeScan<'a> {
+    syms: ms_syntax::Names,
     module: &'a ModRef,
     nodes: &'a HashMap<Name, Node>,
     methods: &'a HashMap<Name, MethodRef>,
@@ -165,7 +166,7 @@ impl Visitor for EdgeScan<'_> {
             });
         }
         if let Some(im) = &info.method
-            && !im.id.as_str().is_empty()
+            && !self.syms.str(im.id).is_empty()
             && self.nodes.contains_key(&im.id)
             && let Some(m) = self.methods.get(&im.id)
         {
@@ -250,6 +251,7 @@ impl Checker {
                 continue;
             };
             let mut scan = EdgeScan {
+                syms: ms_syntax::Names::global(),
                 module,
                 nodes: &nodes,
                 methods: &methods,
@@ -387,7 +389,7 @@ impl Checker {
                 if !symbol.decl.as_ref().is_some_and(|sd| sd.same(d)) {
                     continue;
                 }
-                let t = symbol.ty();
+                let t = symbol.ty(self.syms);
                 nodes.insert(t.id, (symbol.variables(), d.clone(), module.file));
                 roots.push(t.id);
                 types.insert(t.id, t);
@@ -429,13 +431,24 @@ impl Checker {
             };
             for (i, f) in def.fields.borrow().iter().enumerate() {
                 let pos = d.record_fields()[i].pos;
-                names.insert((*file, pos), format!("{}.{}", d.name(), f.name));
+                names.insert(
+                    (*file, pos),
+                    format!("{}.{}", self.syms.str(d.name()), self.syms.str(f.name)),
+                );
                 reference(&f.ty, pos);
             }
             for (i, cs) in def.cases.borrow().iter().enumerate() {
                 for (j, f) in cs.fields.iter().enumerate() {
                     let pos = d.cases()[i].fields[j].pos;
-                    names.insert((*file, pos), format!("{}.{}.{}", d.name(), cs.name, f.name));
+                    names.insert(
+                        (*file, pos),
+                        format!(
+                            "{}.{}.{}",
+                            self.syms.str(d.name()),
+                            self.syms.str(cs.name),
+                            self.syms.str(f.name)
+                        ),
+                    );
                     reference(&f.ty, pos);
                 }
             }
@@ -446,7 +459,10 @@ impl Checker {
                     continue;
                 };
                 let pos = m.pos;
-                names.insert((*file, pos), format!("{}.{}", d.name(), op.name));
+                names.insert(
+                    (*file, pos),
+                    format!("{}.{}", self.syms.str(d.name()), self.syms.str(op.name)),
+                );
                 reference(&op.ty, pos);
             }
             edges.insert(*id, found);
@@ -498,7 +514,7 @@ impl Checker {
     ) {
         // Shared dependencies need checking once for each specialization.
         // Check active cycles at the edge before consulting this cache.
-        let mut probe = Type::new(id, id, Kind::Primitive);
+        let mut probe = Type::new(self.syms, id, id, Kind::Primitive);
         probe.args = args.clone();
         if !visited.insert(self.shape(&std::rc::Rc::new(probe))) {
             return;

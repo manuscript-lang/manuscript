@@ -100,8 +100,8 @@ impl Hir<'_> {
     }
 
     /// The module checked from this file.
-    pub fn module(&self, file: &str) -> Option<ModuleHir> {
-        self.modules().find(|m| m.data.file.as_str() == file)
+    pub fn module(&self, syms: ms_syntax::Names, file: &str) -> Option<ModuleHir> {
+        self.modules().find(|m| syms.str(m.data.file) == file)
     }
 
     /// Every callable of every module.

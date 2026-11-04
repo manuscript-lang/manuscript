@@ -594,6 +594,15 @@ impl Verifier<'_> {
                     _ => Err("bad string literal".into()),
                 }
             }
+            Op::BytesLit => {
+                arity(0)?;
+                match inst.imm {
+                    Imm::Int(i) if (i as usize) < m.blobs.len() => {
+                        want(res == Some(Ty::BYTES), "bytes yields Bytes")
+                    }
+                    _ => Err("bad bytes literal".into()),
+                }
+            }
             Op::IAdd
             | Op::ISub
             | Op::IMul

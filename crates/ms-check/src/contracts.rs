@@ -154,10 +154,10 @@ fn overlap(a: &Ty, b: &Ty, x: &Ty, y: &Ty, vars: &[Ty]) -> bool {
 }
 
 /// Binds an interface's `Self` to the type implementing it.
-pub(crate) fn self_binding(contract: &Ty, implementor: &Ty) -> Subst {
+pub(crate) fn self_binding(syms: ms_syntax::Names, contract: &Ty, implementor: &Ty) -> Subst {
     let mut s = Subst::new();
     s.insert(
-        crate::checker::self_variable(contract.id).id,
+        crate::checker::self_variable(syms, contract.id).id,
         implementor.clone(),
     );
     s
@@ -186,6 +186,7 @@ fn instantiate_operation_variables(variables: &[Ty], bindings: &Subst) -> Vec<Ty
 
 /// The operation `name` of `contract` as called on a value of type `implementor`.
 fn contract_operation(
+    syms: ms_syntax::Names,
     session: &Rc<crate::stdlib::Session>,
     contract: &Ty,
     name: Name,
@@ -199,7 +200,7 @@ fn contract_operation(
         .find(|o| o.name == name)
         .cloned()?;
     let mut s = substitution(contract);
-    s.extend(self_binding(contract, implementor));
+    s.extend(self_binding(syms, contract, implementor));
     Some(Rc::new(Method {
         id: n(""),
         module: n(""),
@@ -208,7 +209,7 @@ fn contract_operation(
         contract: Some(contract.clone()),
         ty: sub(&op.ty, &s),
         variables: instantiate_operation_variables(
-            &session.operation_variables(&format!("{}/{}", contract.id, name)),
+            &session.operation_variables(&format!("{}/{}", syms.str(contract.id), syms.str(name))),
             &s,
         ),
         decl: op.decl.clone(),
@@ -237,7 +238,7 @@ pub(crate) struct DataBlocker {
 
 impl DataBlocker {
     /// The diagnostic for a failed `Data` bound, naming the part and a fix.
-    pub(crate) fn message(&self, t: &Ty) -> String {
+    pub(crate) fn message(&self, syms: ms_syntax::Names, t: &Ty) -> String {
         let (what, fix) = match self.reason {
             DataReason::Resource => (
                 "a resource (Closeable)".to_string(),
@@ -257,7 +258,10 @@ impl DataBlocker {
             ),
             DataReason::Unbounded => (
                 "a type parameter with no Data bound".to_string(),
-                format!("add `{}: Data` to the type parameter", self.ty),
+                format!(
+                    "add `{}: Data` to the type parameter",
+                    self.ty.display(syms)
+                ),
             ),
             DataReason::Collection => (
                 "a Set or a Map whose key is not a String, which has no portable form".to_string(),
@@ -273,11 +277,16 @@ impl DataBlocker {
             ),
         };
         if self.path.is_empty() {
-            format!("{t} does not satisfy Data; it is {what}; {fix}")
+            format!(
+                "{t_t} does not satisfy Data; it is {what}; {fix}",
+                t_t = t.display(syms)
+            )
         } else {
             format!(
-                "{t} does not satisfy Data; field {} is {}, {what}; {fix}",
-                self.path, self.ty
+                "{t_t} does not satisfy Data; field {} is {}, {what}; {fix}",
+                self.path,
+                self.ty.display(syms),
+                t_t = t.display(syms)
             )
         }
     }
@@ -285,9 +294,9 @@ impl DataBlocker {
 
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
-fn builtin_comparable(t: &Ty) -> bool {
+fn builtin_comparable(syms: ms_syntax::Names, t: &Ty) -> bool {
     matches!(
-        t.id.as_str(),
+        syms.str(t.id),
         "Int"
             | "Int8"
             | "Int16"
@@ -305,11 +314,11 @@ fn builtin_comparable(t: &Ty) -> bool {
             | "@std/BigInt"
     ) || ["Duration", "Instant", "Timestamp"]
         .iter()
-        .any(|name| t.is_time(name))
+        .any(|name| t.is_time(syms, name))
 }
 
-fn operation_names(ops: &[Operation]) -> Vec<String> {
-    ops.iter().map(|o| o.name.to_string()).collect()
+fn operation_names(syms: ms_syntax::Names, ops: &[Operation]) -> Vec<String> {
+    ops.iter().map(|o| syms.str(o.name).to_string()).collect()
 }
 
 impl Checker {
@@ -347,7 +356,7 @@ impl Checker {
         let old = std::mem::replace(&mut self.scope, Scope::new(None));
         // Implementations inherit names and bounds from the nominal receiver declaration.
         let mut vars: Vec<Ty> = Vec::new();
-        let receiver_name = n(imp.receiver.name());
+        let receiver_name = n(imp.receiver.name(self.syms));
         if let Some(symbol) = self.sym(receiver_name)
             && symbol.decl.is_some()
             && symbol.kind == SymKind::Type
@@ -357,7 +366,7 @@ impl Checker {
             let mut substitution = Subst::new();
             for parameter in symbol.variables() {
                 let id = self.unique("typevar");
-                let v: Ty = Rc::new(Type::new(parameter.name, id, Kind::Variable));
+                let v: Ty = Rc::new(Type::new(self.syms, parameter.name, id, Kind::Variable));
                 vars.push(v.clone());
                 self.scope.types.borrow_mut().insert(v.name, v.clone());
                 substitution.insert(parameter.id, v);
@@ -385,18 +394,19 @@ impl Checker {
                 .is_some_and(|s| s.module == self.current_file());
         let foreign_native = nominal
             .as_ref()
-            .is_some_and(|s| !s.native.as_str().is_empty())
+            .is_some_and(|s| !self.syms.str(s.native).is_empty())
             && !self.standard_declarations
             && !own_extern
-            && !self.m().is_standard();
+            && !self.m().is_standard(self.syms);
         // A bundled module may add source-written methods to a built-in scalar or String.
-        let scalar_extension = self.m().is_standard() && builtin_comparable(&receiver);
+        let scalar_extension =
+            self.m().is_standard(self.syms) && builtin_comparable(self.syms, &receiver);
         if !scalar_extension
             && (nominal.is_none()
                 || foreign_native
                 || !(own_extern
                     || matches!(receiver.kind, Kind::Record | Kind::Alternative)
-                    || (self.m().is_standard() && receiver.kind == Kind::Native)))
+                    || (self.m().is_standard(self.syms) && receiver.kind == Kind::Native)))
         {
             if !receiver.is_invalid() {
                 self.type_error(
@@ -491,15 +501,15 @@ impl Checker {
             self.type_error(
                 d.pos(),
                 format!(
-                    "duplicate or overlapping implementation; {contract} is already implemented for {receiver} (or an overlapping type), so remove one impl"
-                ),
+                    "duplicate or overlapping implementation; {contract_t} is already implemented for {receiver_t} (or an overlapping type), so remove one impl"
+                , contract_t = contract.display(self.syms), receiver_t = receiver.display(self.syms)),
             );
         }
         let mut seen: HashSet<Name> = HashSet::new();
         let mut ops: Vec<Operation> = Vec::new();
         if let Some(def) = &contract.def {
             let mut s = substitution(&contract);
-            s.extend(self_binding(&contract, &receiver));
+            s.extend(self_binding(self.syms, &contract, &receiver));
             for op in def.operations.borrow().iter() {
                 let mut op = op.clone();
                 op.ty = sub(&op.ty, &s);
@@ -513,7 +523,8 @@ impl Checker {
                 .and_then(|d| d.symbol())
                 .is_some_and(|s| {
                     // A bundled module's methods on a native standard type apply wherever it is used.
-                    let extends_native = this.m().is_standard() && !s.native.as_str().is_empty();
+                    let extends_native =
+                        this.m().is_standard(this.syms) && !this.syms.str(s.native).is_empty();
                     s.module != this.current_file() && !extends_native
                 })
         };
@@ -527,7 +538,7 @@ impl Checker {
                     method.pos,
                     format!(
                         "duplicate implementation operation {}; define each operation once per impl",
-                        method.func.name
+                        self.syms.str(method.func.name)
                     ),
                 );
             }
@@ -551,9 +562,11 @@ impl Checker {
                     }
                     t.defaults = Some(Rc::new(ParameterDefaults::new(merged)));
                 }
-                let declared = self
-                    .session
-                    .operation_variables(&format!("{}/{}", contract.id, op.name));
+                let declared = self.session.operation_variables(&format!(
+                    "{}/{}",
+                    self.syms.str(contract.id),
+                    self.syms.str(op.name)
+                ));
                 let renamed: Subst = declared
                     .iter()
                     .zip(&own)
@@ -570,7 +583,7 @@ impl Checker {
                         method.pos,
                         format!(
                             "implementation operation type parameters do not match contract; {} must declare the type parameters of the interface operation, with the same bounds",
-                            method.func.name
+                            self.syms.str(method.func.name)
                         ),
                     );
                 } else if let Some(declared_names) = op
@@ -584,12 +597,15 @@ impl Checker {
                     })
                     && same(&Rc::new(t.clone()), &sub(&op.ty, &renamed))
                 {
-                    let names: Vec<String> = declared_names.iter().map(|n| n.to_string()).collect();
+                    let names: Vec<String> = declared_names
+                        .iter()
+                        .map(|n| self.syms.str(n).to_string())
+                        .collect();
                     self.type_error(
                         method.pos,
                         format!(
                             "implementation operation parameter names do not match contract; {} must name its parameters ({}) like the interface, since a call through the interface labels arguments by those names",
-                            method.func.name,
+                            self.syms.str(method.func.name),
                             names.join(", ")
                         ),
                     );
@@ -598,7 +614,7 @@ impl Checker {
                         method.pos,
                         format!(
                             "implementation operation signature does not match contract; {} must be declared as {} {}{}",
-                            method.func.name,
+                            self.syms.str(method.func.name),
                             if op
                                 .decl
                                 .as_ref()
@@ -609,8 +625,8 @@ impl Checker {
                             } else {
                                 "fn"
                             },
-                            method.func.name,
-                            signature_text(&op.ty)
+                            self.syms.str(method.func.name),
+                            signature_text(self.syms, &op.ty)
                         ),
                     );
                 }
@@ -630,9 +646,9 @@ impl Checker {
                 self.type_error(
                     method.pos,
                     format!(
-                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var fn` in the interface too",
-                        method.func.name
-                    ),
+                        "implementation of {} is declared {have} but {contract_t} declares it {want}; an operation that changes its receiver is declared `var fn` in the interface too",
+                        self.syms.str(method.func.name)
+                    , contract_t = contract.display(self.syms)),
                 );
             }
             if !found {
@@ -640,9 +656,9 @@ impl Checker {
                     method.pos,
                     format!(
                         "extra operation {}; {} declares: {} (remove it or add it to the interface)",
-                        method.func.name,
-                        contract,
-                        list(&operation_names(&ops), 12)
+                        self.syms.str(method.func.name),
+                        contract.display(self.syms),
+                        list(&operation_names(self.syms, &ops), 12)
                     ),
                 );
             }
@@ -673,13 +689,13 @@ impl Checker {
             // implementation itself.
             if contract.is(Builtin::Data)
                 && receiver.kind != Kind::Native
-                && !self.m().is_standard()
+                && !self.m().is_standard(self.syms)
             {
                 self.type_error(
                     d.pos(),
                     format!(
-                        "{receiver} is Data when its parts are; only an extern type or the standard library declares Data, so remove this impl"
-                    ),
+                        "{receiver_t} is Data when its parts are; only an extern type or the standard library declares Data, so remove this impl"
+                    , receiver_t = receiver.display(self.syms)),
                 );
             }
             let id = self.unique("method");
@@ -699,7 +715,7 @@ impl Checker {
             if seen.contains(&op.name) {
                 continue;
             }
-            if contract.is_test_hooks() {
+            if contract.is_test_hooks(self.syms) {
                 // This standard lifecycle contract has no-op defaults; retain ordinary
                 // checked methods so interface calls and generic bounds use normal dispatch.
                 let decl_id = self.m().facts_mut().fresh_id();
@@ -744,9 +760,9 @@ impl Checker {
                     d.pos(),
                     format!(
                         "missing implementation operation {}; add fn {}{} to this impl",
-                        op.name,
-                        op.name,
-                        signature_text(&op.ty)
+                        self.syms.str(op.name),
+                        self.syms.str(op.name),
+                        signature_text(self.syms, &op.ty)
                     ),
                 );
             }
@@ -765,7 +781,7 @@ impl Checker {
                     param.pos,
                     format!(
                         "type parameter {} shadows a type parameter of the impl; choose a different name",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
             } else if self.intrinsic_type_parameter(param.name) {
@@ -773,12 +789,12 @@ impl Checker {
                     param.pos,
                     format!(
                         "duplicate or intrinsic type parameter {}; choose a different type parameter name",
-                        param.name
+                        self.syms.str(param.name)
                     ),
                 );
             }
             let id = self.unique("typevar");
-            let v: Ty = Rc::new(Type::new(param.name, id, Kind::Variable));
+            let v: Ty = Rc::new(Type::new(self.syms, param.name, id, Kind::Variable));
             own.push(v.clone());
             self.scope.types.borrow_mut().insert(param.name, v);
         }
@@ -822,7 +838,7 @@ impl Checker {
                 return true;
             }
         }
-        contract.is(Builtin::Comparable) && builtin_comparable(receiver)
+        contract.is(Builtin::Comparable) && builtin_comparable(self.syms, receiver)
     }
 
     /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
@@ -860,16 +876,18 @@ impl Checker {
 
     /// Whether the native `t` declares `impl Copy`: its values are plain words.
     fn copy_native(&self, t: &Ty) -> bool {
-        self.p
-            .methods
-            .iter()
-            .any(|m| m.receiver.id == t.id && m.contract.as_ref().is_some_and(|c| c.is_std("Copy")))
+        self.p.methods.iter().any(|m| {
+            m.receiver.id == t.id
+                && m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is_std(self.syms, "Copy"))
+        })
     }
 
     /// Whether the native `t` declares an infallible `clone` of its own, as an operation of its
     /// definition or as an implemented method.
     fn declares_clone(&self, t: &Ty) -> bool {
-        if native_declares_clone(t) {
+        if native_declares_clone(self.syms, t) {
             return true;
         }
         // The bounds of a generic `clone` ask again whether `t`'s element is clonable; a cycle
@@ -932,7 +950,7 @@ impl Checker {
             self.method_visible(m)
                 && m.contract
                     .as_ref()
-                    .is_some_and(|c| c.is_source_type("@std/data/json.ms", "JsonEncode"))
+                    .is_some_and(|c| c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode"))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -968,7 +986,7 @@ impl Checker {
                     blocked(DataReason::Unbounded, path)
                 };
             }
-            Kind::Primitive if t.is_never() => return blocked(DataReason::Never, path),
+            Kind::Primitive if t.is_never(self.syms) => return blocked(DataReason::Never, path),
             Kind::Primitive => return None,
             Kind::Function => return blocked(DataReason::Function, path),
             Kind::Contract => return blocked(DataReason::Interface, path),
@@ -980,7 +998,11 @@ impl Checker {
                 .first()
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
-        if t.is(Builtin::Map) && t.args.first().is_some_and(|k| k.id.as_str() == "String") {
+        if t.is(Builtin::Map)
+            && t.args
+                .first()
+                .is_some_and(|k| self.syms.str(k.id) == "String")
+        {
             // A `Map[String, T]` is a JSON object.
             return t
                 .args
@@ -1018,7 +1040,7 @@ impl Checker {
         visiting.push(key);
         let mut found = None;
         for f in fields(t) {
-            path.push(f.name.as_str().to_string());
+            path.push(self.syms.str(f.name).to_string());
             found = self.data_blocker(&f.ty, visiting, path);
             if found.is_some() {
                 break;
@@ -1028,7 +1050,7 @@ impl Checker {
         if found.is_none() {
             'cases: for c in cases(t) {
                 for f in &c.fields {
-                    path.push(f.name.as_str().to_string());
+                    path.push(self.syms.str(f.name).to_string());
                     found = self.data_blocker(&f.ty, visiting, path);
                     if found.is_some() {
                         break 'cases;
@@ -1154,13 +1176,15 @@ impl Checker {
         }
         match t.kind {
             Kind::Function | Kind::Contract => return false,
-            Kind::Primitive => return float_bits(t).is_none() || property != Property::Hashable,
+            Kind::Primitive => {
+                return float_bits(self.syms, t).is_none() || property != Property::Hashable;
+            }
             _ => {}
         }
         if t.is(Builtin::Decimal)
             || t.is(Builtin::Bytes)
-            || t.is_time("Duration")
-            || t.is_time("Instant")
+            || t.is_time(self.syms, "Duration")
+            || t.is_time(self.syms, "Instant")
         {
             return true;
         }
@@ -1170,7 +1194,7 @@ impl Checker {
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
-        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is_time("Timestamp") {
+        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is_time(self.syms, "Timestamp") {
             return property == Property::Equal && !t.is(Builtin::Regex);
         }
         if t.kind == Kind::Native {
@@ -1226,17 +1250,20 @@ impl Checker {
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
         // A type's own `clone` replaces the structural one: a resource's clone duplicates its
         // handle and returns a `Result`.
-        if name == "clone" && matches!(receiver.kind, Kind::Record | Kind::Alternative) {
+        if self.syms.str(name) == "clone"
+            && matches!(receiver.kind, Kind::Record | Kind::Alternative)
+        {
             let own = self.implemented_methods(receiver, name);
             if !own.is_empty() {
                 return own;
             }
         }
-        if let Some(m) = native_method(&self.session, receiver, name) {
+        if let Some(m) = native_method(self.syms, &self.session, receiver, name) {
             return vec![Rc::new(m)];
         }
         if receiver.kind == Kind::Contract
-            && let Some(method) = contract_operation(&self.session, receiver, name, receiver)
+            && let Some(method) =
+                contract_operation(self.syms, &self.session, receiver, name, receiver)
         {
             return vec![method];
         }
@@ -1251,7 +1278,7 @@ impl Checker {
                 }
                 seen_bounds.push(b.clone());
                 // `Self` in a bound's operation is the bounded variable itself.
-                match contract_operation(&self.session, &b, name, receiver) {
+                match contract_operation(self.syms, &self.session, &b, name, receiver) {
                     Some(method) => result.push(method),
                     None => result.extend(self.methods(&b, name)),
                 }
@@ -1259,8 +1286,8 @@ impl Checker {
             return result;
         }
         let result = self.implemented_methods(receiver, name);
-        if result.is_empty() && (name == "equals" || name == "hash") {
-            let property = if name == "hash" {
+        if result.is_empty() && (self.syms.str(name) == "equals" || self.syms.str(name) == "hash") {
+            let property = if self.syms.str(name) == "hash" {
                 Property::Hashable
             } else {
                 Property::Equal
@@ -1272,7 +1299,7 @@ impl Checker {
                     .as_ref()
                     .map(|d| d.operations.borrow()[0].clone())
                     .expect("operation");
-                operation.ty = sub(&operation.ty, &self_binding(&contract, receiver));
+                operation.ty = sub(&operation.ty, &self_binding(self.syms, &contract, receiver));
                 return vec![Rc::new(Method {
                     id: n(""),
                     module: n(""),
@@ -1300,7 +1327,7 @@ impl Checker {
             return self
                 .methods(t, n("close"))
                 .iter()
-                .any(|m| m.ty.params.is_empty() && is_close_result(&m.ty.result_ty()));
+                .any(|m| m.ty.params.is_empty() && is_close_result(self.syms, &m.ty.result_ty()));
         }
         self.implements(t, &self.session.standard("Closeable", vec![]))
     }
@@ -1371,9 +1398,9 @@ impl Checker {
             let old = self.scope.clone();
             self.scope = self.variable_scope(&s.variables());
             if s.kind == SymKind::Fn {
-                self.check_declared(&s.ty(), d.pos(), s.export);
+                self.check_declared(&s.ty(self.syms), d.pos(), s.export);
             } else {
-                let t = s.ty();
+                let t = s.ty(self.syms);
                 let def = t.def.clone().expect("def");
                 for f in def.fields.borrow().clone() {
                     self.check_declared(&f.ty, d.pos(), s.export);
@@ -1385,10 +1412,11 @@ impl Checker {
                 }
                 for op in def.operations.borrow().clone() {
                     self.check_declared(&op.ty, d.pos(), s.export);
-                    for v in self
-                        .session
-                        .operation_variables(&format!("{}/{}", t.id, op.name))
-                    {
+                    for v in self.session.operation_variables(&format!(
+                        "{}/{}",
+                        self.syms.str(t.id),
+                        self.syms.str(op.name)
+                    )) {
                         for b in v.bounds() {
                             self.check_declared(&b, d.pos(), s.export);
                         }
@@ -1423,7 +1451,7 @@ impl Checker {
                     pos,
                     format!(
                         "public signature exposes private type {}; add 'export' to its declaration or keep the function private",
-                        t.name
+                        self.syms.str(t.name)
                     ),
                 );
         }
@@ -1442,15 +1470,20 @@ impl Checker {
     /// suggested only for data the module may declare an impl for; built-in and
     /// collection types cannot take one, so they are told what to use instead.
     pub(crate) fn unsatisfied_message(&self, t: &Ty, bound: &Ty, alternative: &str) -> String {
-        let prefix = format!("{t} does not satisfy {bound}; ");
+        let prefix = format!(
+            "{t_t} does not satisfy {bound_t}; ",
+            t_t = t.display(self.syms),
+            bound_t = bound.display(self.syms)
+        );
         if bound.is(Builtin::Data)
             && let Some(blocker) = self.data_blocker(t, &mut Vec::new(), &mut Vec::new())
         {
-            return blocker.message(t);
+            return blocker.message(self.syms, t);
         }
-        if bound.is(Builtin::Hashable) && float_bits(t).is_some() {
+        if bound.is(Builtin::Hashable) && float_bits(self.syms, t).is_some() {
             return format!(
-                "{t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"
+                "{t_t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal",
+                t_t = t.display(self.syms)
             );
         }
         if bound.is(Builtin::Hashable)
@@ -1479,9 +1512,13 @@ impl Checker {
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)
             && let Some(symbol) = t.symbol()
-            && (symbol.native.as_str().is_empty() || self.standard_declarations)
+            && (self.syms.str(symbol.native).is_empty() || self.standard_declarations)
         {
-            return format!("{prefix}add 'impl {bound} for {t}:' or {alternative}");
+            return format!(
+                "{prefix}add 'impl {bound_t} for {t_t}:' or {alternative}",
+                bound_t = bound.display(self.syms),
+                t_t = t.display(self.syms)
+            );
         }
         format!("{prefix}{alternative}")
     }
@@ -1497,6 +1534,7 @@ impl Checker {
 
 /// A standard method that exists without an impl.
 pub(crate) fn native_method(
+    syms: ms_syntax::Names,
     session: &Rc<crate::stdlib::Session>,
     t: &Ty,
     name: Name,
@@ -1513,10 +1551,10 @@ pub(crate) fn native_method(
             decl,
             native,
         };
-    if name == "clone"
+    if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
-            || (t.kind == Kind::Primitive && t.id.as_str() == "String")
+            || (t.kind == Kind::Primitive && syms.str(t.id) == "String")
             || t.is(Builtin::List)
             || t.is(Builtin::Map)
             || t.is(Builtin::Set)
@@ -1527,19 +1565,19 @@ pub(crate) fn native_method(
             t.kind,
             Kind::Record | Kind::Alternative | Kind::Primitive | Kind::Variable
         ) {
-            owner = session.standard_symbol("CloneOperations")?.ty();
+            owner = session.standard_symbol("CloneOperations")?.ty(syms);
         }
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(
             name,
             t,
-            function(Vec::new(), t.clone()),
+            function(syms, Vec::new(), t.clone()),
             Vec::new(),
             decl,
         ));
     }
-    if name == "to_string" {
-        let owner = session.standard_symbol("ValueOperations")?.ty();
+    if syms.str(name) == "to_string" {
+        let owner = session.standard_symbol("ValueOperations")?.ty(syms);
         let ty = owner.def.as_ref()?.operations.borrow()[0].ty.clone();
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(name, t, ty, Vec::new(), decl));
@@ -1548,12 +1586,12 @@ pub(crate) fn native_method(
     if let Some(intrinsic) = session.intrinsic_operations(t.id) {
         receiver = intrinsic;
     }
-    let key = format!("{}/{}", receiver.id, name);
+    let key = format!("{}/{}", syms.str(receiver.id), syms.str(name));
     let binding = session.is_receiver_native(&key);
     let opaque_alternative = receiver.kind == Kind::Alternative
         && receiver
             .symbol()
-            .is_some_and(|s| !s.native.as_str().is_empty());
+            .is_some_and(|s| !syms.str(s.native).is_empty());
     if receiver.kind == Kind::Native || !Rc::ptr_eq(&receiver, t) || binding || opaque_alternative {
         let def = receiver.def.as_ref()?;
         let operations = def.operations.borrow();
