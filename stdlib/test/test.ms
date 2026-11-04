@@ -23,7 +23,7 @@ export interface TestHooks:
 export fn caller_site() String:
     panic("caller_site() is only valid as a parameter default")
 
-// A failed expectation: `message`, kind Failed, and the failing call's position in `details["site"]`.
+// A failed expectation: `message`, kind EIO, and the failing call's position in `details["site"]`.
 fn failure(message: String, site: String) Error:
     var details = Map[String, String]()
     details.add("site", site)

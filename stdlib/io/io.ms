@@ -745,7 +745,7 @@ export fn terminal_capabilities() TerminalCapabilities:
         colors: msstd_terminal_capabilities_colors()
     )
 
-// Returns the terminal size, or `NotTerminal` when output is redirected.
+// Returns the terminal size, or `ENOTTY` when output is redirected.
 export fn terminal_size() TerminalSize!:
     try msstd_terminal_size_status()
     return ok(
@@ -754,7 +754,7 @@ export fn terminal_size() TerminalSize!:
         )
     )
 
-// Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
+// Acquires raw input with an optional alternate screen; returns `EBUSY` while another raw terminal is open and `ENOTTY` when streams are redirected.
 export fn raw_mode(alternate_screen: Bool) RawTerminal!:
     let native = try msstd_terminal_raw_mode(alternate_screen)
     return ok(RawTerminal(handle: RawHandle(native)))

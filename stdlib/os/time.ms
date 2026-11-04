@@ -253,14 +253,14 @@ impl Timestamp:
         return self
 
     // Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
-    // An unknown zone returns InvalidInput.
+    // An unknown zone returns EINVAL.
     fn calendar(zone: String) Calendar!:
         return msstd_time_timestamp_calendar(self, zone)
 
     /*
     Formats this timestamp in a zone with a token pattern.
     Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
-    An unknown zone returns InvalidInput.
+    An unknown zone returns EINVAL.
     */
     fn format(pattern: String, zone: String) String!:
         return msstd_time_timestamp_format(self, pattern, zone)
@@ -340,8 +340,8 @@ Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.t
 Accepts one optional leading `+` or `-`, then decimal components with units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m`, or `h`.
 Components may repeat or appear in any order; `.5s` and `1.s` are valid. Bare `0` is also valid, including `+0` and `-0`.
 Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
-Whitespace, exponents, missing units, and other syntax return InvalidData, even after an overflowing prefix.
-A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns OutOfRange.
+Whitespace, exponents, missing units, and other syntax return EBADMSG, even after an overflowing prefix.
+A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns ERANGE.
 */
 export fn parse_duration(text: String) Duration!:
     let data = text.to_bytes()
@@ -470,7 +470,7 @@ export fn parse_timestamp(text: String) Timestamp!:
 
 /*
 Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
-Fields outside their calendar range, such as month 13 or February 30, return OutOfRange; an unknown zone returns InvalidInput.
+Fields outside their calendar range, such as month 13 or February 30, return ERANGE; an unknown zone returns EINVAL.
 A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
 */
 export fn from_calendar(

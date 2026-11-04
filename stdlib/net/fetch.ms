@@ -56,7 +56,7 @@ export type FetchOptions:
     body: FetchBody = FetchBody.Empty
     // Whole-exchange deadline; none waits without limit.
     timeout: Duration? = seconds(30)
-    // Largest accepted response body in bytes; none sets no cap. Larger bodies return `Http(LimitExceeded)`.
+    // Largest accepted response body in bytes; none sets no cap. Larger bodies return `EOVERFLOW`.
     max_response_bytes: Int? = 16777216
 
 // Settings fixed when a `Fetcher` is created.
@@ -135,7 +135,7 @@ impl Fetcher:
         )
 
 impl Closeable for Fetcher:
-    // Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.
+    // Cancels in-flight requests and drops pooled connections; later calls return `EBADF`.
     var fn close() Unit!:
         return self.client.close()
 
@@ -153,7 +153,7 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
 
     return ok(FetchResponse(head: metadata, body: whole))
 
-// Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
+// Maps a body read failure to a fetch error, reporting ETIMEDOUT once the deadline has passed.
 fn read_failure(cause: Error, options: FetchOptions, started: Instant) Error:
     if expired(options.timeout, started):
         return Error("HTTP: operation timed out", kind: "ETIMEDOUT")

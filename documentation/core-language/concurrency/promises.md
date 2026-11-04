@@ -5,21 +5,25 @@ weight = 1
 
 # Promises
 
-A `Promise[T]` is work that has started; its result arrives later. Calls such as `read(path)`, `write(path, ...)`, `fetch`, `connect`, `sleep`, `exec` and `Listener.accept` return one, and so does `promise(fn: ...)` for your own function.
+A `Promise[T]` is work that has started; its result arrives later. Calls such as `read_file(path)`, `write_file(path, ...)`, `fetch`, `connect`, `sleep`, `exec` and `Listener.accept` return one, and so does `promise(fn: ...)` for your own function.
 
+Save this complete program as `read-config.ms` and run `ms run read-config.ms` in a directory containing `config.json`:
+
+<!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"},"stdout":"2\n"} -->
 ```manuscript
-fn summarize(urls: List[String]) Summary!:
-    let config = read("config.json")                 // Promise[Bytes], already running
-    let pages = urls.map(fn u: fetch(u))             // all in flight together
-    let stats = promise(                             // may run on another core
-        fn: count_words(urls), options: PromiseOptions(timeout: seconds(5))
-    )
+import read_file from "@std/os/fs.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
 
-    let settings = try config.wait()
-    let bodies = try wait_all(pages)
-    let words = try stats.wait()
-    let mirror = try wait_first([fetch(a), fetch(b)])
-    return ok(Summary(settings, bodies, words, mirror))
+export fn main() Int:
+    let pending = read_file("config.json").with(
+        options: PromiseOptions(timeout: 5.seconds())
+    )
+    let contents = pending.wait()
+    if contents.is_error():
+        print(contents.err().message)
+        return 1
+    print(contents.get().length())
+    return 0
 ```
 
 ## Waiting
@@ -28,19 +32,21 @@ fn summarize(urls: List[String]) Summary!:
 
 | Error kind | Meaning |
 | --- | --- |
-| `Failed` | A fault happened inside the promise; the report is in `details`. |
-| `Cancelled` | The promise was cancelled before it finished. |
-| `Closed` | An earlier `wait` already took the result. |
-| `Timeout` | The promise's `timeout` option passed; the work was cancelled. |
+| `"EIO"` | A fault happened inside the promise; the report is in `details["report"]`. |
+| `"ECANCELED"` | The promise was cancelled before it finished. |
+| `"EBADF"` | An earlier `wait` already took the result. |
+| `"ETIMEDOUT"` | The promise's `timeout` option passed; the work was cancelled. |
 
-`PromiseOptions(timeout: ...)` is given when a promise is made, with `promise(fn: ..., options: ...)`, or to a promise another call returned with `.with(options: ...)`, as in `read(path).with(options: PromiseOptions(timeout: seconds(5)))`. The timeout counts from creation and is enforced whether or not anyone waits; `wait` itself takes no timeout. A negative timeout is no time at all.
+`PromiseOptions(timeout: ...)` is given when a promise is made, with `promise(fn: ..., options: ...)`, or to a promise another call returned with `.with(options: ...)`, as in `read_file(path).with(options: PromiseOptions(timeout: 5.seconds()))`. The timeout counts from creation for `promise`, or from applying `.with` to an existing promise, and is enforced whether or not anyone waits; `wait` itself takes no timeout. A negative timeout is no time at all.
 
-`cancel_switch()` makes a `Cancel` that stops many promises at once. Give each promise `PromiseOptions(cancel: stop.signal())`; `stop.cancel()` then cancels all of them, now or later, and `wait` reports `Cancelled`. A signal is a copy you can hand around, and `signal.cancelled()` tells a loop that never waits to stop. Dropping the `Cancel` cancels nothing.
+`cancel_switch()` makes a `Cancel` that stops many promises at once. Give each promise `PromiseOptions(cancel: stop.signal())`; `stop.cancel()` then cancels all of them, now or later, and `wait` reports `"ECANCELED"`. A signal is a copy you can hand around, and `signal.cancelled()` tells a loop that never waits to stop. Dropping the `Cancel` cancels nothing. Applying another signal with `.with` replaces the previous one; `cancel: none` leaves it unchanged.
+
+For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
 
 ```manuscript
 let stop = cancel_switch()
-let options = PromiseOptions(timeout: seconds(30), cancel: stop.signal())
-let pages = urls.map(fn u: promise(fn: fetch_page(u.clone()), options: options.clone()))
+let options = PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
+let reads = paths.map(fn path: read_file(path).with(options: options.clone()))
 stop.cancel()
 ```
 
@@ -70,7 +76,7 @@ I/O operations copy their small arguments (paths, URLs, headers), so their promi
 
 ## Faults
 
-A fault inside a promise ends only that promise, and `wait` reports it as `Failed`. Because a promise cannot write outside state, nothing is left half-written. A fault in runtime code, or in code outside any promise, ends the program.
+A fault inside a promise ends only that promise, and `wait` reports it as `"EIO"`. Because a promise cannot write outside state, nothing is left half-written. A fault in runtime code, or in code outside any promise, ends the program.
 
 ## Threads
 

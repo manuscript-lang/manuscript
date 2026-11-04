@@ -132,7 +132,7 @@ fn quote_with(text: String, ascii_only: Bool) String:
 /*
 Reverses quote: reads a double-quoted literal and returns its text. Supports `\"`, `\\`, `\n`,
 `\r`, `\t`, `\0`, escaped braces and `\u{hex}` with 1 to 6 hexadecimal digits;
-anything else, or text that is not fully quoted, is InvalidInput.
+anything else, or text that is not fully quoted, is EINVAL.
 */
 export fn unquote(text: String) String!:
     let cs = text.scalar_values()

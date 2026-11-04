@@ -7,12 +7,18 @@ weight = 1
 
 A `let` or `var` that holds a resource closes it when its scope ends. There is no extra syntax: bind the value and use it.
 
+This function reads a file and closes its handle on every exit:
+
 ```manuscript
-let file = try files.open("data.txt")
-let chunk = try file.read(max_bytes: 4096)
+import open from "@std/os/fs.ms"
+import Bytes from "@std/bytes.ms"
+
+fn read_head(path: String) Bytes?!:
+    let file = try open(path, flags: "r", mode: 0)
+    return file.read(max_bytes: 4096)
 ```
 
-This sits inside a function returning `Result[U, Error]` that receives `files` as a capability. `Files.open` returns a shared File view; `read` returns `Bytes?`. The file closes when the function returns, whichever path it takes.
+`open` returns an owned `FileHandle`; `read` returns bytes or `none` at end of file, with an error on failure.
 
 ## What happens, step by step
 
@@ -26,15 +32,7 @@ Cleanup runs on every exit: end of scope, `break`, `continue`, `return`, `try` p
 
 ## Which values are closed?
 
-The compiler needs a valid close operation:
-
-| Value's type | Required evidence |
-| --- | --- |
-| Concrete type | An explicit implementation of standard `Closeable`. |
-| Contract view | A declared `fn close() Unit` operation. |
-| Generic parameter | A bound proving one of those operations. |
-
-A holder closes its parts: a record, an alternative, an `Optional`, a `List` or a `Map` of resources closes each one it holds. See [Closeable](closeable.md) for exact checks.
+A concrete type opts in through an implementation of the standard `Closeable` interface. A value of the standard `Closeable` interface also closes automatically. An unrelated interface does not acquire cleanup merely by declaring a method named `close`; retain a concrete owner or close it explicitly. Records, alternatives, optionals and collections close the resource parts they own, including in generic instances. See [Closeable](closeable.md) for the exact checks and close order.
 
 ## Control the lifetime
 
@@ -49,4 +47,4 @@ let _ = file.close()
 slow_work(head)
 ```
 
-`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush first (`try x.flush()`) so buffered data is not lost. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.
+`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush().wait()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.

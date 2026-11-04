@@ -17,13 +17,16 @@ Everything else, including strings, records, lists and maps, is handed around by
 
 The compiler checks that references stay in bounds. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot be stored, returned, or captured by a closure that outlives it. If you want that, clone. Nothing dangles at runtime because the checker refuses the program first.
 
-Functions join in: when every return path hands back a part of a parameter, the result *is* that part, and the caller holds the arguments while it uses it. Wrapping the part in an `Optional` or a `Result`, passing an error on with `try`, or converting it to an interface keeps it a reference, so `return ok(r.name)` and `return cause` as `Error` cost no copy. The sections below give the exact rules; the compiler's own notes are in the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
+Functions can return a borrow of an argument without a marker. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `try`, preserves that borrow. The caller keeps the owner available while it uses the result. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for the compiler contract.
 
 ## Borrowing
 
 A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
 
-- A function that returns a part of a parameter or the receiver on every path returns a borrow of it (a borrow-returning function): `fn list() List[Int]: return self.items`. The caller holds the result as a borrow of the arguments, so `let xs = b.list()` reads `b.items` in place and `var xs = b.list()` changes it. Storing or returning the result elsewhere needs `.clone()`, and a function that returns a part on one path and a new value on another is an error until the part is cloned. Wrapping the part keeps it a reference: `fn first() String?: return self.items[0]` and `fn name() String!Missing: return ok(self.name)` lend, and `try` hands a borrowed error on. Converting it to an interface keeps it one too: `fn first_error(cause: Cause) Error: return cause` and `return error(cause)` as `Int!` return a view of `cause`, the caller holds `cause` while the view lives, and `let e: Error = cause` binds such a view. Storing a view needs an owned value (`cause.clone()` before the conversion). An interface with a `var fn` operation, such as `ReadStream`, is the one conversion that still copies a borrowed value, since calls through it may change the value. A lambda or an interface method always owns its result. Names bound to a borrow-returning result are borrows: `let first = xs.first()` keeps `xs` readable but not changeable until `first` is last used. `xs.get(i)` without a default lends the element the same way, and a function that returns it lends it too (`fn at(i: Int) T?: return self.slots.get(i)`); `return none` beside such a path keeps the function lending, since `none` owns nothing, while any other new value makes the function own its result. `xs.first()`, `xs.last()` and `m.get(k)` lend to the binding that reads them, but wrap the element in an `Optional`, so a function that returns one owns its result. A borrow-returning call over a temporary argument owns its result: the temporary itself when the function hands it back whole, otherwise a copy of the part, so the result type must be `Clonable`; for a `Regex` or another value with one owner and no `clone`, bind the argument first.
+- A function can return a borrowed part of a parameter or receiver: `fn list() List[Int]: return self.items`. A binding of that result borrows the original place; `let xs = b.list()` reads it and `var xs = b.list()` changes it exclusively.
+- `Optional` and `Result` can carry borrowed payloads. When the relevant return paths borrow the payload, `ok(self.name)` or `self.slots.get(i)` keeps it borrowed; `none` needs no owner. A `Result` can own its success value while borrowing its error from an argument, and `try` preserves the ownership of the active case. A borrowed payload must be cloned before storing it in a new owner.
+- A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A lambda or an interface method owns its result.
+- A call that borrows from a temporary must leave an owned result: it can move the whole temporary, but retaining a part requires a clonable result. Bind the argument first to borrow a part of a non-clonable value.
 - A record field owns its value. A record cannot view another variable.
 - A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid. The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable: `f(match m: _: f = g; 1)` is rejected, as is `r.m(match m: _: r = other; 1)`; reassign before the call instead.
 
@@ -40,12 +43,12 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` lend the element, so `let x = m.get(k)` keeps `m` unchangeable until `x` is last used and `if var x = m.get(k)` changes the entry in place; `trim` and `Optional.get` return owned values, so `m.get(k).get(default)` cannot take a value with one owner (a function value, a resource) out of the borrowed element; read it in place with `if let`. `Error.message` is an interface method, so an implementation that returns a stored field writes `.clone()`.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `let x = m.get(k)` keeps `m` unchangeable until `x` is last used, and `if var x = m.get(k)` changes the entry in place. Use `if let` to read a borrowed resource or function value without moving it out of its container.
 
 ## Reassignment
 
-- Reassigning a `var` replaces its value; it does not close the old object or affect other references. A `let` cannot be reassigned.
-- A resource in a `let` binding cannot be reassigned. A `var` binding can change, and the scope-end cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
+- Reassigning an owning `var` drops its previous value and closes any resources it held. A live borrow prevents reassignment. A `let` cannot be reassigned.
+- A resource in a `let` binding cannot be reassigned. A `var` binding can change; replacement closes its previous resource and scope-end cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
 - Non-escaping closures borrow captures; escaping closures own them, so a parameter captured by one is moved by the function (the caller passes `.clone()` to keep the value). Borrowed roots cannot be changed or moved while the borrow is live.
 
@@ -61,29 +64,20 @@ There is no shared mutable value. A value has one owner; a promise reads what it
 
 ## References inside other values
 
-Records, alternatives, collections, and closures may hold resource references. Storing a resource neither closes it nor keeps it open; arrange cleanup for the resource itself.
+Record fields and collection slots own their values. Moving a resource into one transfers the cleanup duty to the holder. At scope end, a holder closes the resources it owns, including nested parts; its own `Closeable.close`, if present, runs before its parts. See [the close-order table](../cleanup/closeable.md#records-and-collections-close-what-they-hold).
 
-- Closing a resource affects every alias, including nested ones.
-- Dropping an aggregate does not close its fields.
-- A library object managing several resources can implement `Closeable` and close them itself.
-- Builders follow the same rules.
-- [Destructuring](destructuring.md) does not change cleanup.
+A borrow of a resource field keeps the holder available and prevents closing or changing it while that borrow is still used. Destructuring transfers only the fields that move out; omitted resource fields are still closed.
 
 ## Memory and open resources
 
 Owned values are dropped deterministically; there is no tracing garbage collector. Releasing a file, socket, or other external resource is separate. Use `close()`, or let the scope that owns the resource close it.
 
-A borrow keeps its owner available until the borrow ends, without extending the external resource lifetime. Once one reference closes it, all others see it closed. Dropping a reference, closure, or work ID closes nothing.
+A borrow keeps its owner available until the borrow ends, without extending the external resource lifetime. Explicitly closing a resource leaves it closed for subsequent operations. A borrow does not acquire a second cleanup duty; an owning closure or promise does have the obligations of the resources it owns.
 
 ## Returning a resource
 
-A factory can return an open resource for its caller to own. A resource bound in the factory and not handed on is already closed when the caller receives it.
+A factory returns an open resource by moving it to the caller. Returning a locally owned resource transfers its cleanup duty; the factory does not close the moved value on its way out. A resource left owned by a local binding closes when that scope ends. A borrow cannot escape a local owner that is about to close.
 
-| What the function does | What the caller receives |
-| --- | --- |
-| Returns an open resource without registering local cleanup | An open resource; the caller must arrange cleanup. |
-| Returns a resource a local binding still owns | A reference to the resource after its scope has closed it. |
-
-Using a closed resource raises its runtime closed-state error. A `let` or `var` that holds a resource and is never moved on is closed when its scope ends; move it on (return it, pass it to a moving parameter, or store it) to hand the duty to a new owner. A resource made by another resource, such as a child of a `ProcessGroup`, is closed by its owner. Use after close is still a runtime error, and ownership transfer does not replace explicit resource cleanup.
+Use after an explicit close still returns the resource's closed-state error. Ownership transfer does not reopen a closed handle.
 
 See [Closeable](../cleanup/closeable.md), [scope-end cleanup](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).

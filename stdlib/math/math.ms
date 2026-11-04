@@ -437,12 +437,12 @@ export fn multiply_wide(left: UInt64, right: UInt64) WideProduct:
     return msstd_math_multiply_wide(left, right)
 
 // Divides the unsigned 128-bit value high * 2^64 + low by divisor, returning a 64-bit quotient and remainder.
-// A zero divisor returns InvalidInput; otherwise high >= divisor returns OutOfRange because the quotient cannot fit.
+// A zero divisor returns EINVAL; otherwise high >= divisor returns ERANGE because the quotient cannot fit.
 export fn divide_wide(high: UInt64, low: UInt64, divisor: UInt64) WordDivision!:
     return msstd_math_divide_wide(high, low, divisor)
 
 // Returns the remainder of the unsigned 128-bit value high * 2^64 + low divided by divisor.
-// A zero divisor returns InvalidInput; any nonzero divisor is valid, even when the quotient would not fit in 64 bits.
+// A zero divisor returns EINVAL; any nonzero divisor is valid, even when the quotient would not fit in 64 bits.
 export fn remainder_wide(high: UInt64, low: UInt64, divisor: UInt64) UInt64!:
     return msstd_math_remainder_wide(high, low, divisor)
 
@@ -493,19 +493,19 @@ impl BigInt:
     fn lcm(other: BigInt) BigInt:
         return msstd_bigint_lcm(self, other)
 
-    // Returns the floor of the exact integer square root; a negative receiver returns InvalidInput.
+    // Returns the floor of the exact integer square root; a negative receiver returns EINVAL.
     fn sqrt() BigInt!:
         return msstd_bigint_sqrt(self)
 
     /*
     Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
-    A negative exponent or non-positive modulus returns InvalidInput. A zero exponent gives 1 modulo modulus, including 0^0.
+    A negative exponent or non-positive modulus returns EINVAL. A zero exponent gives 1 modulo modulus, including 0^0.
     Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
     */
     fn pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
         return msstd_bigint_pow_mod(self, exponent, modulus)
 
-    // Returns the multiplicative inverse modulo a positive modulus, in 0 through modulus - 1; a non-positive modulus returns InvalidInput.
+    // Returns the multiplicative inverse modulo a positive modulus, in 0 through modulus - 1; a non-positive modulus returns EINVAL.
     // No inverse gives ok(none); modulus 1 gives zero. Variable-time; unsuitable for secret operands.
     fn inverse_mod(modulus: BigInt) BigInt?!:
         if modulus.sign() <= 0: return error(
@@ -515,12 +515,12 @@ impl BigInt:
         return ok(msstd_bigint_inverse_mod(self, modulus))
 
     // Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
-    // A zero divisor returns InvalidInput.
+    // A zero divisor returns EINVAL.
     fn divide(other: BigInt) BigInt!:
         return msstd_bigint_divide(self, other)
 
     // Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
-    // A zero divisor returns InvalidInput.
+    // A zero divisor returns EINVAL.
     fn remainder(other: BigInt) BigInt!:
         return msstd_bigint_remainder(self, other)
 
@@ -581,15 +581,15 @@ impl BigInt:
     fn sign() Int:
         return msstd_bigint_sign(self)
 
-    // Raises to a nonnegative `exponent`. A negative exponent returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
+    // Raises to a nonnegative `exponent`. A negative exponent returns EINVAL, and a result above 16777216 bits returns EOVERFLOW.
     fn pow(exponent: Int) BigInt!:
         return msstd_bigint_pow(self, exponent)
 
-    // Shifts left by `count` bits, multiplying by two to that power. A negative count returns InvalidInput, and a result above 16777216 bits returns LimitExceeded.
+    // Shifts left by `count` bits, multiplying by two to that power. A negative count returns EINVAL, and a result above 16777216 bits returns EOVERFLOW.
     fn shift_left(count: Int) BigInt!:
         return msstd_bigint_shift_left(self, count)
 
-    // Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by 1 is -3. A negative count returns InvalidInput.
+    // Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by 1 is -3. A negative count returns EINVAL.
     fn shift_right(count: Int) BigInt!:
         return msstd_bigint_shift_right(self, count)
 
@@ -624,7 +624,7 @@ impl BigInt:
 
     /*
     Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
-    The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns InvalidInput
+    The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns EINVAL
     (a composite modulus is detected only when the computation fails to produce a root).
     */
     fn mod_sqrt(modulus: BigInt) BigInt?!:
@@ -638,7 +638,7 @@ export fn from_int(value: Int) BigInt:
 export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
     return msstd_bigint_parse(text, radix, max_digits)
 
-// Returns n! for a non-negative n; a negative n returns InvalidInput. Work and result size grow quickly with n.
+// Returns n! for a non-negative n; a negative n returns EINVAL. Work and result size grow quickly with n.
 export fn factorial(n: Int) BigInt!:
     if n < 0:
         return error(Error("big integer: invalid input", kind: "EINVAL"))
@@ -658,7 +658,7 @@ fn range_product(low: Int, high: Int) BigInt:
     let middle = low + (high - low) / 2
     return range_product(low, middle) * range_product(middle + 1, high)
 
-// Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns InvalidInput.
+// Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns EINVAL.
 export fn binomial(n: Int, k: Int) BigInt!:
     if n < 0 or k < 0:
         return error(Error("big integer: invalid input", kind: "EINVAL"))

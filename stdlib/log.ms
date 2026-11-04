@@ -19,7 +19,7 @@ export type LogLevel:
     case Error
     // Critical records at numeric level 60; logging does not terminate the process.
     case Fatal
-    // Filtering threshold that disables records; passing it to log returns InvalidInput.
+    // Filtering threshold that disables records; passing it to log returns EINVAL.
     case Silent
 
 // A destination that accepts encoded log records and can be flushed and closed.

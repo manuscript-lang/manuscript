@@ -25,7 +25,7 @@ fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
 
     return BigRat(num: top, den: bottom)
 
-// Returns `numerator / denominator` in lowest terms; a zero denominator returns InvalidInput.
+// Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
     if denominator.sign() == 0:
         return error(Error("bigrat: invalid input", kind: "EINVAL"))
@@ -68,7 +68,7 @@ fn parse_digits(text: String) BigInt!:
     return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 // Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`, `1.25`, `6.02e23`, `5e-3`.
-// A zero denominator returns InvalidInput, malformed text InvalidData and an exponent beyond 100000 in magnitude LimitExceeded.
+// A zero denominator returns EINVAL, malformed text EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
 export fn parse_rat(text: String) BigRat!:
     let slash = text.split("/")
     if slash.length() > 2:
@@ -116,7 +116,7 @@ export fn parse_rat(text: String) BigRat!:
 
     return rat(numerator, pow10(scale))
 
-// Parses a signed decimal exponent; returns -1000001 for malformed text, a value the LimitExceeded check would otherwise reject.
+// Parses a signed decimal exponent; returns -1000001 for malformed text, a value the EOVERFLOW check would otherwise reject.
 fn parse_exponent(text: String) Int:
     if let value = parse_int(text, 10):
         return value
@@ -152,11 +152,11 @@ impl BigRat:
     fn multiply(other: BigRat) BigRat:
         return reduced(self.num * other.num, self.den * other.den)
 
-    // Returns the exact quotient; a zero divisor returns InvalidInput.
+    // Returns the exact quotient; a zero divisor returns EINVAL.
     fn divide(other: BigRat) BigRat!:
         return rat(self.num * other.den, self.den * other.num)
 
-    // Returns `1 / self`; zero returns InvalidInput.
+    // Returns `1 / self`; zero returns EINVAL.
     fn invert() BigRat!:
         return rat(self.den.clone(), self.num.clone())
 
@@ -194,7 +194,7 @@ impl BigRat:
 
         return self.clone()
 
-    // Returns the exact power. A negative exponent inverts first, so zero with a negative exponent returns InvalidInput.
+    // Returns the exact power. A negative exponent inverts first, so zero with a negative exponent returns EINVAL.
     // An exponent too large for BigInt.pow faults as BigInt does.
     fn pow(exponent: Int) BigRat!:
         let count = exponent.abs()
@@ -231,7 +231,7 @@ impl BigRat:
         return binary_to_float(div_round(self.num, self.den, 53))
 
     // Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
-    // A negative digit count returns InvalidInput; a result that rounds to zero has no minus sign.
+    // A negative digit count returns EINVAL; a result that rounds to zero has no minus sign.
     fn to_fixed(digits: Int) String!:
         if digits < 0:
             return error(Error("bigrat: invalid input", kind: "EINVAL"))
@@ -319,7 +319,7 @@ export fn big_float_of_rat(value: BigRat, precision: Int) BigFloat:
     return make(div_round(value.numerator(), value.denominator(), bits), bits)
 
 // Parses an integer or decimal with optional exponent (`2`, `-0.1`, `6.02e23`) and rounds once to `precision` bits.
-// Malformed text returns InvalidData and an exponent beyond 100000 in magnitude LimitExceeded.
+// Malformed text returns EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
 export fn parse_big_float(text: String, precision: Int) BigFloat!:
     let bits = checked(precision)
     if text.contains("/"):
@@ -392,7 +392,7 @@ impl BigFloat:
             bits
         )
 
-    // Returns the quotient, rounded once at the larger operand precision; a zero divisor returns InvalidInput.
+    // Returns the quotient, rounded once at the larger operand precision; a zero divisor returns EINVAL.
     fn divide(other: BigFloat) BigFloat!:
         if other.mant.sign() == 0:
             return error(Error("bigfloat: invalid input", kind: "EINVAL"))
@@ -413,7 +413,7 @@ impl BigFloat:
             )
         )
 
-    // Returns the square root rounded once; a negative operand returns InvalidInput.
+    // Returns the square root rounded once; a negative operand returns EINVAL.
     fn sqrt() BigFloat!:
         if self.mant.sign() < 0:
             return error(Error("bigfloat: invalid input", kind: "EINVAL"))
@@ -483,7 +483,7 @@ impl BigFloat:
         return binary_to_float(binary_of(self))
 
     // Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
-    // A negative digit count returns InvalidInput.
+    // A negative digit count returns EINVAL.
     fn to_fixed(digits: Int) String!:
         if let text = self.to_rat().to_fixed(digits):
             return ok(text)

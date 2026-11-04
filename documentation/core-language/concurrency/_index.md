@@ -37,7 +37,7 @@ The terminal (raw mode and key events in `@std/io/io.ms`) belongs to the main th
 
 | Page | What you will learn |
 | --- | --- |
-| [Promises](promises.md) | Start work, wait with a timeout, cancel, and collect many results. |
+| [Promises](promises.md) | Start work with a deadline, wait, cancel, and collect many results. |
 | [Streams and pipes](streams.md) | Read and write values over time, build pipelines, and pass values between promises. |
 | [HTTP server](http-server.md) | Serve on every core with one `serve` call. |
 
