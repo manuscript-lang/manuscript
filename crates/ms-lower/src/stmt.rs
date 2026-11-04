@@ -1229,7 +1229,14 @@ impl<'a> FnLower<'a> {
         body: &[Stmt],
     ) -> Result<(), Error> {
         let item = if scalars { MTy::INT } else { MTy::STR };
-        let text_var = self.bind_hidden(text);
+        // The checker keeps a borrowed text unchanged while the loop reads it: walk it in place.
+        let text_var = if !text.own && self.ownership_checked() {
+            let var = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
+            self.b.def_var(var, text.v);
+            var
+        } else {
+            self.bind_hidden(text)
+        };
         let empty = self.b.str_lit("");
         let keep = self.bind_hidden(Val {
             v: empty,
