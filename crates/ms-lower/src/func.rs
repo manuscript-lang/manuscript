@@ -287,7 +287,7 @@ impl Cx {
             "test".to_string()
         } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
             // Fault traces name a method after its receiver type.
-            format!("{}.{}", i.receiver.name(), self.syms.str(c.name))
+            format!("{}.{}", i.receiver.name(self.syms), self.syms.str(c.name))
         } else {
             self.syms.str(c.name).to_string()
         };

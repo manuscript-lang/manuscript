@@ -1347,7 +1347,7 @@ impl Checker {
                             b.pos,
                             format!(
                                 "a bound must be an interface, but {} resolves to a type parameter; rename the type parameter or name an interface",
-                                b.name()
+                                b.name(self.syms)
                             ),
                         );
                     } else if !t.is_invalid() {

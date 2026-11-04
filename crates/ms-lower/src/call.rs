@@ -209,7 +209,7 @@ impl<'a> FnLower<'a> {
                 let name = if let DeclKind::Impl(implementation) = &callee.func.decl.decl().kind {
                     format!(
                         "{}.{}",
-                        implementation.receiver.name(),
+                        implementation.receiver.name(self.syms),
                         self.syms.str(callee.name)
                     )
                 } else {

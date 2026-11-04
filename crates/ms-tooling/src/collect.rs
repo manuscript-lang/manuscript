@@ -159,7 +159,7 @@ fn kind_and_name(syms: ms_syntax::Names, decl: &DeclRef) -> (&'static str, Strin
         DeclKind::Record(r) => ("type", syms.str(r.name).to_string()),
         DeclKind::Alternative(a) => ("type", syms.str(a.name).to_string()),
         DeclKind::Interface(i) => ("interface", syms.str(i.name).to_string()),
-        DeclKind::Impl(i) => ("impl", i.display_name(d.synthetic)),
+        DeclKind::Impl(i) => ("impl", i.display_name(syms, d.synthetic)),
         DeclKind::Test(t) => (if t.bench { "bench" } else { "test" }, t.name.to_string()),
     }
 }

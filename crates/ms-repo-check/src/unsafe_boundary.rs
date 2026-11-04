@@ -11,6 +11,7 @@ const ALLOWED: &[&str] = &[
     "crates/ms-native/src/entry.rs", // glibc process entry (`_start`) in global_asm
     "crates/ms-native/tests/std_natives.rs", // drives the exported natives through the C ABI with raw runtime values
     "crates/ms-cli/src/process.rs",          // libc signal/kill; std has no signal API
+    "crates/ms-syntax/src/symbol.rs", // the name table hands out text that lives until its interner is dropped or released
     "crates/ms-cli/tests/terminal.rs", // libc pseudo-terminal to drive RawTerminal end to end; std has no pty API
 ];
 

@@ -16,7 +16,7 @@ use std::rc::{Rc, Weak};
 
 /// Interns a string.
 pub fn n(text: &str) -> Name {
-    Name::intern(text)
+    ms_syntax::Names::global().intern(text)
 }
 
 /// A shared, immutable checked type.

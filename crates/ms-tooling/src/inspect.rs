@@ -132,7 +132,7 @@ fn entity_kind(decl: &DeclRef) -> &'static str {
 fn decl_name(syms: ms_syntax::Names, decl: &DeclRef) -> String {
     match &decl.decl().kind {
         DeclKind::Test(t) => t.name.to_string(),
-        DeclKind::Impl(i) => i.display_name(decl.decl().synthetic),
+        DeclKind::Impl(i) => i.display_name(syms, decl.decl().synthetic),
         _ => syms.str(decl.name()).to_string(),
     }
 }

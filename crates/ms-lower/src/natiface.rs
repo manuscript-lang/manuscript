@@ -237,7 +237,7 @@ impl Cx {
         iface: IfaceId,
     ) -> Result<VtableId, Error> {
         let key = VtableKey::Handle {
-            module: ct::Name::intern(module),
+            module: self.syms.intern(module),
             iface: iface.0,
         };
         if let Some(v) = self.vtables.get(&key) {

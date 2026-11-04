@@ -66,7 +66,7 @@ impl Outline<'_> {
             DeclKind::Interface(_) => kind = INTERFACE,
             DeclKind::Impl(i) => {
                 kind = CLASS;
-                name = i.display_name(decl.synthetic);
+                name = i.display_name(syms, decl.synthetic);
                 selection_name = String::new();
             }
             DeclKind::Test(t) => {

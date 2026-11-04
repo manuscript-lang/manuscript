@@ -671,7 +671,7 @@ impl<'a> FnLower<'a> {
         (sym, param, as_text): (&str, &str, bool),
     ) -> Result<Val, Error> {
         let val = self.format_argument(m, recv, as_text)?;
-        let name = ct::Name::from(param);
+        let name = self.syms.intern(param);
         args.push(NArg {
             name,
             val,

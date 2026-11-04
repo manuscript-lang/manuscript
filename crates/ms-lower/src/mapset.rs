@@ -755,7 +755,7 @@ impl<'a> FnLower<'a> {
         let add_decl = vec![
             decl[0].clone(),
             ct::Param {
-                name: ct::Name::from("value"),
+                name: self.syms.intern("value"),
                 ty: value_ty,
                 mutable: false,
             },
@@ -779,7 +779,7 @@ impl<'a> FnLower<'a> {
         let f = self.borrow(create.val);
         let made = self.b.call_ind(f, &[k]);
         let value = NArg {
-            name: ct::Name::from("value"),
+            name: self.syms.intern("value"),
             val: Val { v: made, own: true },
             wrapped: false,
         };
