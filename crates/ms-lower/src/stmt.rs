@@ -1350,7 +1350,11 @@ impl<'a> FnLower<'a> {
                 if borrowed && call_root.is_some_and(|r| self.unchanged_by(r, body)) {
                     self.map_walk_for = Some(iter as *const Expr);
                 }
-                self.split_iter_for = Some(iter as *const Expr);
+                // A loop variable the body moves on (an escaping closure, a store) owns its piece:
+                // the split streams borrowed slices of its buffer, so it iterates the owned list.
+                if !self.cx.moves.contains_key(&loop_var.uid) {
+                    self.split_iter_for = Some(iter as *const Expr);
+                }
                 self.chars_iter_for = Some(iter as *const Expr);
                 self.keys_view_for = Some(iter as *const Expr);
                 let it = self.expr(iter);
