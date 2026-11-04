@@ -1279,6 +1279,7 @@ impl Module {
             name: name.to_string(),
             fields,
             native: None,
+            indirect: false,
         });
         let id = RecId(self.records.len() as u32 - 1);
         (id, self.types.rec(id))
