@@ -1226,11 +1226,12 @@ impl<'a> FnLower<'a> {
         loop_var: &ms_check::types::BindingRef,
         text: Val,
         scalars: bool,
+        untouched: bool,
         body: &[Stmt],
     ) -> Result<(), Error> {
         let item = if scalars { MTy::INT } else { MTy::STR };
         // The checker keeps a borrowed text unchanged while the loop reads it: walk it in place.
-        let text_var = if !text.own && self.ownership_checked() {
+        let text_var = if !text.own && untouched && self.ownership_checked() {
             let var = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
             self.b.def_var(var, text.v);
             var
@@ -1403,7 +1404,16 @@ impl<'a> FnLower<'a> {
                 }
                 if ity == MTy::STR {
                     let scalars = std::mem::take(&mut self.scalars_scan);
-                    return self.chars_loop(&loop_var, it, scalars, body);
+                    let untouched = match &iter.kind {
+                        ExprKind::Call { callee, .. } => match &callee.kind {
+                            ExprKind::Member { left, .. } => {
+                                self.iterates_untouched_local(left, body)
+                            }
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+                    return self.chars_loop(&loop_var, it, scalars, untouched, body);
                 }
                 if crate::mapset::is_map_or_set(self.b.m, ity) {
                     // A map yields its entries and a set its values, as a list snapshot.
