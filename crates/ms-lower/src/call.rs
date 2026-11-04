@@ -896,8 +896,10 @@ impl<'a> FnLower<'a> {
             .position(|s| s.name == name)
             .ok_or_else(|| Error::new(format!("no interface method {name}")))?;
         let sig = self.b.m.ifaces[iface.index()].methods[k].clone();
+        let op_vars = self.cx.iface_op_vars(iface, &name);
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        let mut places: Vec<Option<Expr>> = vec![None; params.len()];
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -923,9 +925,16 @@ impl<'a> FnLower<'a> {
                 .iter()
                 .position(|p| p.name == a.slot.name)
                 .ok_or_else(|| Error::new(format!("no parameter {}", a.slot.name)))?;
+            if op_vars.get(idx).copied().unwrap_or(false) {
+                places[idx] = Some(a.expr.clone());
+            }
             slots[idx] = Some(x);
         }
         let mut args = Vec::new();
+        // A `var` argument moves into a slot the implementation changes, then back.
+        let mut slots_out: Vec<VarArgument> = Vec::new();
+        let lone_var = places.iter().filter(|p| p.is_some()).count() == 1;
+        let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, s) in slots.into_iter().enumerate() {
             let x = match s {
                 Some(x) => x,
@@ -939,11 +948,43 @@ impl<'a> FnLower<'a> {
                     }
                 }
             };
+            if op_vars.get(i).copied().unwrap_or(false) {
+                // A lone `var` field argument changes in place, as for a source function.
+                if lone_var
+                    && !x.own
+                    && let Some(place) = places[i].clone()
+                    && (!matches!(place.kind, ExprKind::Name(_)) || self.is_alias_name(&place))
+                    && self.is_place(&place)
+                    && self.place_is_owned(&place)
+                {
+                    args.push(x.v);
+                    in_place = Some((i, place, self.ty_of(x.v)));
+                    continue;
+                }
+                let slot = self.var_argument(e, i, x, places[i].as_ref(), &mut slots_out);
+                args.push(slot);
+                continue;
+            }
             args.push(self.borrow(x));
         }
         let r = self.borrow(recv);
         self.at(e.pos);
-        let v = self.b.call_method(iface, k as u32, r, &args);
+        let v = if let Some((i, place, ty)) = in_place {
+            let mut result = None;
+            self.place_update(&place, &mut |s, old| {
+                let slot =
+                    s.b.emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
+                        .expect("slot");
+                s.move_into(slot, old);
+                args[i] = slot;
+                result = Some(s.b.call_method(iface, k as u32, r, &args));
+                Ok(s.move_out(slot, ty))
+            })?;
+            result.expect("call emitted")
+        } else {
+            self.b.call_method(iface, k as u32, r, &args)
+        };
+        self.restore_var_arguments(slots_out, |p| places.get(p).cloned().flatten())?;
         Ok(self.val(v, true))
     }
 

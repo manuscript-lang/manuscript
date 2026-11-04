@@ -16,7 +16,7 @@ Implemented 2026-11-03 on `6242dcc1`. Chinmay's direction: keep the semantics an
 - **Direct pull.** `through` moves the input's source out of its cell (`source_of`); when a pending `read()` holds it, the stage reads through the stream as before (`Reading`), so "a read is already waiting" keeps its meaning.
 - **The loop holds the source.** `Waiting` (now opaque) takes the source once and puts it back when the loop ends, breaks or fails. `msrt_cells_out` tells it whether the stream is still there; if not, the source closes with the loop. Inside the body, `s.read()` fails with `Closed` and `s.close()` takes effect at the end of the loop.
 - **Readable vtables.** Each LLVM unit gets an `available_externally` copy of the vtables it names; the Cranelift object still defines them.
-- **Remaining cost.** `stream-map` is about 30 ns: the one-item `List` that `Mapper.feed` returns, behind a source LLVM cannot trace. A hand `Source` chain is 2.7 ns. Closing the gap without changing `Transform` is open.
+- **Remaining cost.** `stream-map` is about 30 ns: the one-item `List` that `Mapper.feed` returns, behind a source LLVM cannot trace. A hand `Source` chain is 2.7 ns. `Transform` now writes to a `var out: WriteStream[B]` instead of returning a `List`, which removes that allocation.
 
 ## Rejected
 

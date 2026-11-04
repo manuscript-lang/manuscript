@@ -1,5 +1,5 @@
 import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/io.ms"
+import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
 import (
     msstd_compress_encoder_new,
     msstd_compress_encoder_push,
@@ -112,25 +112,22 @@ type Compressing:
     failure: Error?
 
 impl Transform[Bytes, Bytes] for Compressing:
-    var fn feed(value: Bytes) List[Bytes]!:
+    var fn step(value: Bytes, var out: WriteStream[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
-
-        var out: List[Bytes] = []
 
         if let encoder = self.encoder:
             let packed = msstd_compress_encoder_push(encoder, value)
-            if not packed.is_empty(): out.append(packed)
+            if not packed.is_empty(): try out.write(packed)
 
-        return ok(out)
+        return ok(unit)
 
-    var fn finish() List[Bytes]!:
+    var fn finish(var out: WriteStream[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
-        var out: List[Bytes] = []
         if let encoder = self.encoder:
-            out.append(msstd_compress_encoder_end(encoder))
+            try out.write(msstd_compress_encoder_end(encoder))
         self.encoder = none
-        return ok(out)
+        return ok(unit)
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's window. `level` defaults to 6
 // and must be 0..9, otherwise reads fail with `InvalidInput`. Closing the result closes `input`.
@@ -154,28 +151,24 @@ type Decompressing:
     failure: Error?
 
 impl Transform[Bytes, Bytes] for Decompressing:
-    var fn feed(value: Bytes) List[Bytes]!:
+    var fn step(value: Bytes, var out: WriteStream[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
-
-        var out: List[Bytes] = []
 
         if let decoder = self.decoder:
             let plain = try msstd_compress_decoder_push(decoder, value)
-            if not plain.is_empty(): out.append(plain)
+            if not plain.is_empty(): try out.write(plain)
 
-        return ok(out)
+        return ok(unit)
 
-    var fn finish() List[Bytes]!:
+    var fn finish(var out: WriteStream[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
-
-        var out: List[Bytes] = []
 
         if let decoder = self.decoder:
             let plain = try msstd_compress_decoder_end(decoder)
-            if not plain.is_empty(): out.append(plain)
+            if not plain.is_empty(): try out.write(plain)
 
         self.decoder = none
-        return ok(out)
+        return ok(unit)
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated data fails the read with
 // `InvalidData`; `max_bytes` bounds the total output and exceeding it fails with `LimitExceeded`. Closing the
@@ -262,9 +255,8 @@ impl TarEntries:
         return ok(0)
 
 impl Transform[Bytes, ArchiveEntry] for TarEntries:
-    var fn feed(value: Bytes) List[ArchiveEntry]!:
-        var out: List[ArchiveEntry] = []
-        if self.done: return ok(out)
+    var fn step(value: Bytes, var out: WriteStream[ArchiveEntry]) Unit!:
+        if self.done: return ok(unit)
 
         self.buffer = self.buffer.concat(value)
 
@@ -288,7 +280,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
             for entry in try unpack(end, "tar", self.limits):
                 self.count += 1
                 self.total += entry.data.length()
-                out.append(entry)
+                try out.write(entry)
 
             if let most = self.limits.max_entries:
                 if self.count > most: return error(
@@ -303,10 +295,10 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
                     )
                 )
 
-        return ok(out)
+        return ok(unit)
 
-    var fn finish() List[ArchiveEntry]!:
-        if self.done or self.buffer.is_empty(): return ok(List[ArchiveEntry]())
+    var fn finish(var out: WriteStream[ArchiveEntry]) Unit!:
+        if self.done or self.buffer.is_empty(): return ok(unit)
 
         return error(Error("archive: truncated tar", kind: InvalidData))
 

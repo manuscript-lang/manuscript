@@ -1115,12 +1115,6 @@ impl Checker {
                     );
                 }
                 for method in &i.methods {
-                    for param in method.func.params.iter().filter(|p| p.mutable) {
-                        self.type_error(
-                            param.pos,
-                            "an interface operation cannot take a `var` parameter, only a `var` receiver; return the new value, or pass a type that holds the state",
-                        );
-                    }
                     for param in &method.func.params {
                         let Some(default) = &param.default else {
                             continue;

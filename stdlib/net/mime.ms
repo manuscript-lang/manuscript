@@ -1,6 +1,6 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
-import ReadStream, Transform, through from "@std/io/io.ms"
+import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
 
 /*
 MIME building blocks: media types, header blocks, and multipart bodies.
@@ -315,9 +315,8 @@ type MultipartParts:
     done: Bool
 
 impl Transform[Bytes, Part] for MultipartParts:
-    var fn feed(value: Bytes) List[Part]!:
-        var out: List[Part] = []
-        if self.done: return ok(out)
+    var fn step(value: Bytes, var out: WriteStream[Part]) Unit!:
+        if self.done: return ok(unit)
 
         self.buffer = self.buffer.concat(value)
 
@@ -355,17 +354,17 @@ impl Transform[Bytes, Part] for MultipartParts:
                             "MIME: limit exceeded", kind: ErrorCategory.LimitExceeded
                         )
                     )
-                out.append(try make_part(try self.buffer.slice(0, end)))
+                try out.write(try make_part(try self.buffer.slice(0, end)))
 
             self.buffer = try self.buffer.slice(
                 end + self.delimiter.length(), self.buffer.length()
             )
             self.in_part = true
 
-        return ok(out)
+        return ok(unit)
 
-    var fn finish() List[Part]!:
-        if self.done: return ok(List[Part]())
+    var fn finish(var out: WriteStream[Part]) Unit!:
+        if self.done: return ok(unit)
 
         return error(
             Error(

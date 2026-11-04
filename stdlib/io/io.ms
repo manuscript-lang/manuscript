@@ -284,10 +284,18 @@ export interface Sink[T]:
 export opaque type WriteStream[T]:
     // The destination the stream's writes go to.
     sink: Sink[T]
+    // What a stream that collects for its owner holds, oldest first; `through` reads its transform's output here.
+    items: List[T]
+    // True for a collecting stream: writes go to `items`, not to the sink.
+    collects: Bool
 
 impl WriteStream[T]:
     // Moves `value` into the stream's buffer. `Closed` once the reader is gone.
     var fn write(value: T) Unit!:
+        if self.collects:
+            self.items.append(value)
+            return ok(unit)
+
         return self.sink.put(value)
 
     // A promise that finishes when the buffer has drained.
@@ -296,6 +304,9 @@ impl WriteStream[T]:
 
     // Items or bytes not yet drained.
     fn buffered() Int:
+        if self.collects:
+            return self.items.length()
+
         return self.sink.buffered()
 
 impl Closeable for WriteStream[T]:
@@ -305,7 +316,24 @@ impl Closeable for WriteStream[T]:
 
 // Wraps `sink` as a WriteStream that owns it.
 export fn writer[T](sink: Sink[T]) WriteStream[T]:
-    return WriteStream[T](sink: sink)
+    return WriteStream[T](sink, [], false)
+
+// The sink of a collecting stream: its writes never reach it.
+type Collected[T]:
+    unused: Bool = false
+
+impl Sink[T] for Collected[T]:
+    var fn put(value: T) Unit!:
+        return error(Error("stream: closed", kind: ErrorCategory.Closed))
+
+    var fn drain() Promise[Unit]:
+        return adopt[Unit](msrt_promise_finished())
+
+    fn buffered() Int:
+        return 0
+
+    var fn close() Unit!:
+        return ok(unit)
 
 // The reading end of a pipe: the one reader, ended by the last writer closing.
 type PipeSource[T]:
@@ -484,39 +512,43 @@ export fn stdout() WriteStream[String]:
 export fn stderr() WriteStream[String]:
     return writer[String](StderrSink(false))
 
-// A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
+// A changed stream: never waits; writes zero or more items per input, and what it held back at the end.
 export interface Transform[A, B]:
-    // Takes one input item and returns the output items it completes, possibly none.
-    var fn feed(value: A) List[B]!
-    // Called once at the end of the input; returns the items held back.
-    var fn finish() List[B]!
+    // Takes one input item and writes the output items it completes, possibly none, to `out`.
+    var fn step(value: A, var out: WriteStream[B]) Unit!
+    // Called once at the end of the input; writes the items held back to `out`.
+    var fn finish(var out: WriteStream[B]) Unit!
 
-// Items a transform produced and the reader has not taken yet, newest first so `pop` moves the next one out.
+// A transform over a source: its output collects in `out`, reversed after each step so `pop` moves the next one out.
 type Through[A, B]:
     input: Source[A]
     transform: Transform[A, B]
-    pending: List[B]
+    out: WriteStream[B]
     finished: Bool
 
 impl Source[B] for Through[A, B]:
     var fn next() B?!:
         while true:
-            if let item = self.pending.pop():
+            if let item = self.out.items.pop():
                 return ok(item)
             if self.finished:
                 return ok(none)
 
             let step = try self.input.next()
-            var produced: List[B] = []
+            var wrote: Unit! = ok(unit)
 
             if let value = step:
-                produced = try self.transform.feed(value)
+                wrote = self.transform.step(value, var self.out)
             else:
                 self.finished = true
-                produced = try self.transform.finish()
+                wrote = self.transform.finish(var self.out)
 
-            produced.reverse()
-            self.pending = produced
+            // A failed step's partial output is dropped, so the failure is the next item.
+            if wrote.is_error():
+                self.out.items = []
+                return error(wrote.err())
+
+            if self.out.items.length() > 1: self.out.items.reverse()
 
         return ok(none)
 
@@ -525,7 +557,8 @@ impl Source[B] for Through[A, B]:
 
 // A stream of `transform`'s output over `input`; closing it closes `input`.
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:
-    return stream[B](Through[A, B](source_of[A](input), transform, [], false))
+    let out = WriteStream[B](Collected[B](), [], true)
+    return stream[B](Through[A, B](source_of[A](input), transform, out, false))
 
 // One of this process's three standard streams.
 export type StdStream:

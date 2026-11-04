@@ -1,6 +1,6 @@
 // Server-Sent Events decoder implemented in Manuscript.
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Transform, through from "@std/io/io.ms"
+import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
 
 // One dispatched event, with the `message` type used when no `event:` field was sent.
 export type SseEvent:
@@ -87,7 +87,7 @@ fn exceeds(value: Int, limit: Int?) Bool:
     return false
 
 impl Transform[Bytes, SseEvent] for Decoder:
-    var fn feed(value: Bytes) List[SseEvent]!:
+    var fn step(value: Bytes, var out: WriteStream[SseEvent]) Unit!:
         var events = List[SseEvent]()
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(Error("SSE invalid input", kind: InvalidInput))
@@ -130,9 +130,10 @@ impl Transform[Bytes, SseEvent] for Decoder:
                 self.failure = failure.clone()
                 return error(failure)
 
-        return ok(events)
+        for event in events: try out.write(event)
+        return ok(unit)
 
-    var fn finish() List[SseEvent]!:
+    var fn finish(var out: WriteStream[SseEvent]) Unit!:
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(Error("SSE invalid input", kind: InvalidInput))
 
@@ -142,7 +143,7 @@ impl Transform[Bytes, SseEvent] for Decoder:
             self.failure = Error("SSE stream ended inside an event", kind: InvalidData)
             return error(Error("SSE stream ended inside an event", kind: InvalidData))
 
-        return ok(List[SseEvent]())
+        return ok(unit)
 
 impl Decoder:
     // Buffers the unterminated tail of a chunk as part of the line being assembled.
