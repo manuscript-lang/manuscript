@@ -19,6 +19,6 @@ pub mod visit;
 pub use ast::*;
 pub use diag::{Diagnostic, DiagnosticFix, Phase};
 pub use format::format;
-pub use partial::parse_partial;
+pub use partial::{is_declaration_line, parse_partial};
 pub use pos::{Pos, Span};
 pub use symbol::{Entered, Interner, Names, Session, Symbol};
