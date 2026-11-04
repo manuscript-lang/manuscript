@@ -486,7 +486,27 @@ impl<'m> FuncBuilder<'m> {
     /// `call` a module function.
     pub fn call(&mut self, f: FuncId, args: &[Value]) -> Value {
         let ret = self.m.funcs[f.index()].ret;
-        self.val(Op::Call, args, Imm::Func(f), ret)
+        // A borrowing variant passed where its ordinary alternative is expected is read as one.
+        let args: Vec<Value> = args
+            .iter()
+            .enumerate()
+            .map(|(i, &a)| match self.m.funcs[f.index()].params.get(i) {
+                Some(p) if p.mode == Mode::Borrow && self.is_variant_of(self.ty(a), p.ty) => {
+                    self.alt_plain(a, p.ty)
+                }
+                _ => a,
+            })
+            .collect();
+        self.val(Op::Call, &args, Imm::Func(f), ret)
+    }
+    /// Whether `have` is a borrowing variant of the ordinary alternative `want`.
+    pub fn is_variant_of(&self, have: Ty, want: Ty) -> bool {
+        let (TyKind::Alt(h), TyKind::Alt(w)) = (self.m.types.kind(have), self.m.types.kind(want))
+        else {
+            return false;
+        };
+        let (dh, dw) = (&self.m.alts[h.index()], &self.m.alts[w.index()]);
+        dh.borrowed != 0 && dw.borrowed == 0 && dh.name == dw.name && dh.cases == dw.cases
     }
     /// A position in the current block, for [`FuncBuilder::outline`].
     pub fn mark(&self) -> Mark {
