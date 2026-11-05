@@ -20,8 +20,8 @@ impl Door:
 fn use(var door: Door) Int!:
     return ok(door.swing())
 
-// A promise that passes a captured `var` resource on shares the variable's storage: the scope still
-// closes the door once and drops its names (`make leak-check` reports a block left behind).
+// A promise that passes a captured `var` resource on owns it from the capture: it closes the door once
+// when its work ends and drops its names (`make leak-check` reports a block left behind).
 export fn main() Int:
     var door = Door(["front", "back"])
     let moved = promise(fn: use(var door))
