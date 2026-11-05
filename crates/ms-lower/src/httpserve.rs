@@ -69,7 +69,7 @@ impl FnLower<'_> {
             },
             &mut |s| {
                 let r = s.method_token(a, method, tag, from + 1)?;
-                Ok(Some(s.owned(r)))
+                Ok(Some(s.owned_boundary(r)))
             },
         )
     }
@@ -83,7 +83,7 @@ impl FnLower<'_> {
     ) -> Result<ms_mir::ir::Value, Error> {
         let ty = self.b.m.types.alt(a);
         if from >= METHOD_TOKENS.len() {
-            let own = self.owned(Val {
+            let own = self.owned_boundary(Val {
                 v: text,
                 own: false,
             });
@@ -233,7 +233,7 @@ impl FnLower<'_> {
     ) -> Result<ms_mir::ir::Value, Error> {
         let er = er_of(self, e)?;
         let text = self.b.rec_get(er, 0, e);
-        let text = self.owned(Val {
+        let text = self.owned_boundary(Val {
             v: text,
             own: false,
         });

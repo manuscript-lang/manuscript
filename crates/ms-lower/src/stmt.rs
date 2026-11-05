@@ -1154,7 +1154,15 @@ impl<'a> FnLower<'a> {
             && matches!(
                 self.hir.resolution(root),
                 ms_check::hir::Resolution::Local(b)
-                    if !b.mutable || !crate::mutation::block_mentions(&self.hir, body, b.uid)
+                    if !b.mutable
+                        || !crate::mutation::mutated_locals(
+                            self.syms,
+                            &self.hir,
+                            ms_check::hir::Body::Block(body),
+                            &self.cx.callables,
+                            &self.cx.mutated,
+                        )
+                        .contains(&b.uid)
             )
     }
 
@@ -1329,7 +1337,17 @@ impl<'a> FnLower<'a> {
         });
         self.push_scope();
         let ch = self.b.use_var(cur);
-        self.bind_local(loop_var, Val { v: ch, own: false });
+        // The piece stays in `cur` (the slow path's is held by `keep` until the next one): a
+        // variable the body only reads borrows it; one it moves or changes owns a copy.
+        if !scalars
+            && !loop_var.mutable
+            && !self.slotted.contains(&loop_var.uid)
+            && !self.cx.moves.contains_key(&loop_var.uid)
+        {
+            self.bind_borrow_of(loop_var, ch);
+        } else {
+            self.bind_local(loop_var, Val { v: ch, own: false });
+        }
         self.stmts(body)?;
         self.pop_scope();
         self.loops.pop();
