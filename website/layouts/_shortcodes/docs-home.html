@@ -10,18 +10,10 @@
     <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One native binary, no runtime to install</p>
   </div>
   <div class="home-example" aria-label="A complete Manuscript program">
-    <div class="home-example-intro"><strong>Stream the changes. Build the release notes.</strong><p>Read the template in a promise while a stream pipeline prepares the changelog highlights.</p></div>
+    <div class="home-example-intro"><strong>A web server in a few lines.</strong><p>Serve a handler and wait for it. Shutdown on SIGINT or SIGTERM drains open connections.</p></div>
     {{ .Page.RenderString (dict "display" "block") .Inner }}
     <p class="home-code-hint">Scroll code horizontally <span aria-hidden="true">↔</span></p>
-    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run generate_release_notes.ms</code><samp>Release notes<br>+ Add CSV export<br>+ Fix date parsing</samp><span class="home-run-status">Inputs are UTF-8 text files.</span></div>
-    <details class="home-inputs">
-      <summary>View the two input files</summary>
-      <p><code>changes.txt</code></p><pre>Internal cleanup
-+ Add CSV export
-+ Fix date parsing</pre>
-      <p><code>template.txt</code></p><pre>Release notes
-$changes</pre>
-    </details>
+    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run server.ms</code><code><span aria-hidden="true">$ </span>curl localhost:8080/docs</code><samp>Hello from /docs</samp></div>
   </div>
 </section>
 <section class="home-benefits" aria-labelledby="benefits-title">

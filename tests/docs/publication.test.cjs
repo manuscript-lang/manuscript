@@ -47,13 +47,13 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  for (const name of ['read_file', 'reader', 'filter', 'join', 'print']) {
+  for (const name of ['serve', 'buffered', 'text', 'wait', 'is_ok']) {
     assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
   }
-  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"changes.txt"'),
-    'The input filename must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Helper and entrypoint returns retain keyword styling');
+  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '":8080"'),
+    'The listen address must receive string styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 1,
+    'The entrypoint return retains keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -269,7 +269,7 @@ test('the landing page offers a trial while documentation keeps its reading navi
     .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
-  assert.ok(home.includes('ms run generate_release_notes.ms'), 'Show how to run the displayed program');
+  assert.ok(home.includes('ms run server.ms'), 'Show how to run the displayed program');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });
