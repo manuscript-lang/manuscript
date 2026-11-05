@@ -252,7 +252,7 @@ fn standard_methods_are_named_not_numbered() {
     let dir = scratch("std-methods");
     std::fs::write(
         dir.join("main.ms"),
-        "import stdout from \"@std/io/io.ms\"\n\nexport fn main() Int:\n    stdout().write(\"a\").get()\n    return 0\n",
+        include_str!("diagram_std_methods/main.ms"),
     )
     .unwrap();
     let outputs = [
