@@ -6,7 +6,7 @@ Links are relative to this file so GitHub Pages project paths and custom domains
 
 ## Read in order
 - [Get started](learn/getting-started/): a complete application and CLI commands
-- [Language tour](learn/tour/): functions, data, and expected failures
+- [Guide](guide/): one program, chapter by chapter
 - [Language](core-language/): basics, functions, types, control flow, errors, modules, and resources
 - [Standard library API reference](standard-library/reference/): generated declarations and import paths
 - [Developer tools](developer-tooling/): commands, projects, source tools, and debugging
@@ -17,4 +17,4 @@ Links are relative to this file so GitHub Pages project paths and custom domains
 - [Glossary](glossary/): language terminology
 
 ## Contribute
-- [Contributor documentation](contributing/): architecture, development checks, compiler internals, and releases
+- [Contributor documentation](https://github.com/manuscript-lang/manuscript/tree/main/documentation/contributing): architecture, development checks, compiler internals, and releases

@@ -10,7 +10,7 @@ Create a project, run it, change it, and build a native executable. `ms` include
 
 ## 1. Get the compiler and run
 
-For the latest implementation, [build from source](../contributing/rust-toolchain.md#build-and-run) with `make build`. Alternatively, extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture.
+For the latest implementation, [build from source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) with `make build`. Alternatively, extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture.
 
 Add the directory containing the compiler to your `PATH`: the checkout's `target/release` directory for a source build, or the extracted archive directory. Use the full path to that directory so the command still works after changing directories. On Windows, the compiler is `ms.exe`. Open a new terminal if your PATH settings require it, then confirm:
 
@@ -56,7 +56,7 @@ export fn main() Int:
 - `write` takes text and returns a `Result`; `is_error()` tests for failure.
 - Four spaces open a block; statements need no terminator.
 
-For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](common-tasks.md#print-a-line) for output and error handling.
+For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](../cookbook/command-line.md#print-a-line) for output and error handling.
 
 ## 3. Make it yours
 
@@ -122,8 +122,8 @@ The command succeeds silently and writes `code-map.html`. Open it in a browser t
 
 ## Compiler versions and setup
 
-Manuscript is in alpha. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](../contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
+Manuscript is in alpha. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
 
 ## Keep going
 
-Next: the [language tour](tour.md), then [testing](testing.md) and [task recipes](common-tasks.md). For editors, see [developer tools](../developer-tooling/implementation.md).
+Next: the [guide](../guide/_index.md), then [testing](testing.md) and [cookbook](../cookbook/_index.md). For editors, see [developer tools](../developer-tooling/implementation.md).

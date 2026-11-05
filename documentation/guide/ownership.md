@@ -46,7 +46,7 @@ Sam has 4 items; archived: 3
 - `summary(cart)` only reads the cart. It borrows it, and `cart` is still yours afterwards.
 - `add_gift(var cart)` may change the cart, so you write `var` at the call as well as at the declaration. Mutation is visible at both ends.
 - `archive` stores the cart in `history`. Storing moves the value, so the call passes `cart.clone()` and keeps the original.
-- `.clone()` is the only way to copy. Nothing copies a list, a record or a string behind your back, so scanning a change for `.clone()` and `var` shows you where data is duplicated or changed.
+- `.clone()` is the only way to copy. Nothing copies a list, a type or a string behind your back, so scanning a change for `.clone()` and `var` shows you where data is duplicated or changed.
 
 ## What the compiler says
 

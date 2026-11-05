@@ -44,4 +44,4 @@ Unlike `err != nil`, dropping a `Result` is a compile error. `kind` plays the ro
 
 There is no GC and no `&`. A value has one owner and moves at its last use; `var` marks mutation and `.clone()` marks a copy. Where Go shares a slice, Manuscript lends it or you clone it. [Ownership and borrowing](../core-language/types/references.md)
 
-Next: [the language tour](../learn/tour.md).
+Next: [the guide](../guide/_index.md).

@@ -5,7 +5,7 @@ weight = 6
 
 # Destructuring bindings
 
-Destructuring names parts of a value in one declaration: `[...]` for positions, `{...}` for record fields. Each name takes the type of the part it selects.
+Destructuring names parts of a value in one declaration: `[...]` for positions, `{...}` for fields. Each name takes the type of the part it selects.
 
 ## Positional bindings
 
@@ -26,14 +26,14 @@ Ada and Grace
 
 Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `let (a, b) = value` are not binding patterns.
 
-## Record bindings
+## Type bindings
 
 ```manuscript
 let {name, email} = customer
 let {name: customer_name, email: customer_email} = customer
 ```
 
-Shorthand binds a field to a same-named local; `field: local` renames it. A pattern may select a subset of fields, which must exist on the statically known record type. A `Map` is not a record and takes no field patterns.
+Shorthand binds a field to a same-named local; `field: local` renames it. A pattern may select a subset of fields, which must exist on the statically known type. A `Map` has no named fields and takes no field patterns.
 
 ## Nested patterns
 
