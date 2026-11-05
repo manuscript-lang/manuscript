@@ -5,19 +5,19 @@ weight = 6
 
 # Why Manuscript
 
-Manuscript is designed for agents to write and people to understand. Its small language, compiler feedback and native toolchain support one workflow: write a program, catch mistakes, review the important decisions, and build an executable.
+Manuscript is designed for agents to write and people to understand. Its small language, compiler feedback and native toolchain support writing useful programs, understanding their behavior, checking changes, and building executables.
 
 ## Read the code, ship the executable {#familiar-to-read-native-to-run}
 
-Manuscript chooses a small type system with generics, no `any` escape hatch and no runtime reflection API. Every expression has a compiler-checked type, including values used through interface contracts. This keeps data shapes and operation signatures available to analysis while catching mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every enum, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
+Manuscript chooses a small type system with generics, no `any` escape hatch and no runtime reflection API. Every expression has a compiler-checked type, including values used through interface contracts. This keeps data shapes and operation signatures available to analysis while catching mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every enum, and ownership tells you where a value can change or move. `var` marks mutation and `.clone()` marks an explicit copy, whether you are writing code or reading it.
 
 The same `ms` command checks, formats, tests and builds your project. Use debug builds while iterating and optimized release builds when sharing your program. The executable runs without Manuscript installed. See [build levels](../developer-tooling/builds/build-levels.md) for deployment choices.
 
-## Understand what your agent built
+## Explore a program {#understand-what-your-agent-built}
 
 `ms diagram ms.toml --format html -o code-map.html` turns the checked program into one interactive file you can open offline. Read the source beside its call graph, inspect identifier types, and explore behavior and sequence views alongside parameter borrow modes. A diff overlay highlights the declarations a change touches, so you can move from a broad overview to the code that needs attention.
 
-The map presents checked source relationships. Tests and profiling show how the program behaves when run. Pair it with `ms review --diff` to prioritize changed contracts, error flow and resource scopes. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map).
+The map presents checked source relationships. Tests and profiling show how the program behaves when run. When reviewing a change, pair it with `ms review --diff` to prioritize changed contracts, error flow and resource scopes. This also helps when evaluating agent-written code. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map).
 
 ## Feedback an agent can act on
 

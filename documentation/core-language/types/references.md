@@ -7,17 +7,53 @@ weight = 5
 
 ## How memory works
 
-Strings, records and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
+Strings, records and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums whose payloads are all primitives) copy freely. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
 
 Everything else, including strings, records, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
-- `let b = a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` and `f(var a)` borrow exclusively, so changes reach `a`.
+- `let b = a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` exclusively borrows when `a` is mutable; `f(var a)` also borrows exclusively, so changes reach `a`. A `var` binding initialized from an immutable owned name takes ownership instead.
 - Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
 - `.clone()` is the only copy. Write it when you want a value of your own that outlives or diverges from the original.
 
 The compiler checks that borrows do not outlive their owners. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot escape the owner’s lifetime. Clone when a new owner needs to keep the data independently.
 
 Functions can return a borrow of an argument without a marker. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `try`, preserves that borrow. The caller keeps the owner available while it uses the result. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for the compiler contract.
+
+## Choose a view or an independent value
+
+Start by asking whether you want to work on existing data or keep a separate version. A borrow gives temporary access to existing data. A clone makes independent data that can change without affecting the original. A move hands responsibility to a new owner without copying the data.
+
+Save as `lists.ms` and run `ms run lists.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"[1, 2, 3]\n[1, 2]\n[1, 2, 3, 4]\n"} -->
+```manuscript
+fn append_next(var values: List[Int]) Unit:
+    values.append(3)
+
+export fn main() Int:
+    var values = [1, 2]
+    let snapshot = values.clone()
+    append_next(var values)
+    print(values)
+    print(snapshot)
+
+    var alias = values
+    alias.append(4)
+    print(values)
+    return 0
+```
+
+```text
+[1, 2, 3]
+[1, 2]
+[1, 2, 3, 4]
+```
+
+The `var` parameter and `var` argument make the mutation visible at both ends of the call. `snapshot` owns its clone, so appending to `values` leaves it unchanged. The later `alias` exclusively borrows the mutable `values`; appending through it changes that same list. Its last use is `alias.append(4)`, after which the original name can be read again. Reading `values` while `alias` is still needed would overlap the exclusive borrow and fail checking.
+
+The snapshot uses `let` because it will only be read. `var` permits change; it does not itself request a copy. In contrast, `var next = previous` takes ownership when `previous` is an immutable owned binding. The old binding cannot be used after that transfer. [Moving a record field](records.md#moving-a-field-out) shows how a container can transfer just one part.
+
+For a read-only view, `let view = values` borrows the list. Finish using that view before mutating `values`, or clone the list if you need the earlier version after the mutation. This is why a lookup result can prevent a later container update: the result may still refer to a part of that container.
 
 ## Borrowing
 

@@ -6,7 +6,9 @@ aliases = ["/getting-started/"]
 
 # Run your first program
 
-Create a project, run it, change it, and build a native executable. `ms` includes the compiler, standard library, formatter, and test runner.
+Create a small command-line program, change what it prints, check it, and build an
+executable you can run on its own. `ms` includes the compiler, standard library,
+formatter, and test runner. You will use the same project throughout this page.
 
 ## 1. Get the compiler and run
 
@@ -50,11 +52,16 @@ export fn main() Int:
     return 0
 ```
 
-- `import … from "…"` selects the APIs the file uses.
-- `main` starts the program; its returned integer is the exit status.
-- `let` names a value and infers its type; `{...}` interpolates into strings.
-- `write` takes text and returns a `Result`; `is_error()` tests for failure.
-- Four spaces open a block; statements need no terminator.
+Read the program from its entry point, `main`. `arguments()` supplies the values
+passed after `--`; `.length()` counts them. The `let` declaration names a string,
+and `{arguments().length()}` inserts the count into that text. The compiler infers
+that `message` has type `String` from the value assigned to it.
+
+The imports select the operations this module uses. `stdout().write(message)`
+writes the text; its stream API returns a `Result`, and `is_error()` selects the
+failure branch. Returning `1` reports failure to the shell; returning `0` reports
+success. The returned integer is an exit status, not text to print. Four spaces
+indent a block, and statements need no terminator.
 
 For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](common-tasks.md#print-a-line) for output and error handling.
 
@@ -76,7 +83,10 @@ ms run ms.toml -- first second
 Hello! You passed 2 arguments.
 ```
 
-`ms run` rebuilds from your saved source every time.
+`ms run` uses your saved source on each invocation. Changing the string changes
+what the program does; changing the command's arguments changes its input. Try
+running without `-- first second`: the greeting reports zero arguments. This is
+the basic edit-and-run loop you will use while learning the language.
 
 ## 4. Build something you can share {#build-and-test}
 
@@ -93,7 +103,9 @@ On Windows, use `ms build ms.toml -o hello.exe`, then `.\hello.exe first second`
 
 ## 5. Check and test your project {#create-your-own-project}
 
-Run the generated test and check your changes:
+Running the program checks one visible behavior. The compiler can also check the
+source without executing it, and a test can compare a computed value with an
+expected one. Run these commands on the project:
 
 ```sh
 ms check ms.toml

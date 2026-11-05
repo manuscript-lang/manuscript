@@ -11,17 +11,17 @@ Save as `adjust.ms` and run `ms run adjust.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"12\n"} -->
 ```manuscript
-interface Increment:
+interface Transform:
     fn apply(value: Int) Int
 
 type Offset:
     delta: Int
 
-impl Increment for Offset:
+impl Transform for Offset:
     fn apply(value: Int) Int:
         return value + self.delta
 
-fn adjusted(value: Int, operation: Increment) Int:
+fn adjusted(value: Int, operation: Transform) Int:
     return operation.apply(value)
 
 export fn main() Int:
@@ -35,13 +35,32 @@ export fn main() Int:
 
 `adjusted` knows the operation it can call. `Offset` supplies that operation through its explicit implementation; another type can supply a different one without changing `adjusted`.
 
+## Decide what belongs in the contract
+
+The interface above says what a caller can do, while `Offset` says what data one implementation stores. This separation lets a caller use another implementation without knowing its fields. Keep only the operations the caller needs in the interface; use an own-method `impl Offset:` when the operation is specific to `Offset` and callers already know that concrete type.
+
+For example, another implementation could multiply rather than add. These declarations extend the program above; change its `main` call to `adjusted(10, Scale(2))` to obtain `20`:
+
+```manuscript
+type Scale:
+    factor: Int
+
+impl Transform for Scale:
+    fn apply(value: Int) Int:
+        return value * self.factor
+```
+
+The implementation still uses the parameter name `value`, returns `Int`, and supplies exactly the declared operation. A same-named method on `Scale` alone would not satisfy `Transform`: the `impl Transform for Scale` declaration establishes the relationship.
+
+Use a [generic bound](generics.md) when a helper must retain a particular caller-selected type. Use an interface parameter when the helper only needs the interface's behavior. The conversion and visibility rules below explain which implementation each call sees.
+
 ## Explicit implementations
 
 Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
 
 `impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
 
-In the example above, `impl Increment for Offset` supplies `apply` and reads the offset's `delta` through `self`.
+In the example above, `impl Transform for Offset` supplies `apply` and reads the offset's `delta` through `self`.
 
 `self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
 
@@ -49,7 +68,7 @@ After substituting generic arguments, an implementation must match the contract 
 
 ```manuscript
 // Rejected: amount does not match the contract's value label.
-impl Increment for Offset:
+impl Transform for Offset:
     fn apply(amount: Int) Int:
         return amount + self.delta
 ```
@@ -154,26 +173,26 @@ A value whose type has a declared implementation of an interface converts implic
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
 ```manuscript
-fn use_increment(operation: Increment) Int:
+fn use_transform(operation: Transform) Int:
     return operation.apply(1)
 
 let offset = Offset(2)
-let result = use_increment(offset)
+let result = use_transform(offset)
 let again = offset.delta
-let kept: Increment = offset.clone()
+let kept: Transform = offset.clone()
 ```
 
-An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`let view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
+An interface is never constructed: `Transform(value: offset)` is rejected, so annotate the binding (`let view: Transform = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Transform` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 
-A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `let view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
+A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `let view: Transform = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
-fn invoke[T: Increment](operation: T) Int:
-    let view: Increment = operation
+fn invoke[T: Transform](operation: T) Int:
+    let view: Transform = operation
     return view.apply(1)
 
 let from_concrete = invoke(offset)

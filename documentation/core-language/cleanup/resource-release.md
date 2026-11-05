@@ -7,6 +7,8 @@ weight = 2
 
 Usually, let [scope-end cleanup](scopes.md) close a file, socket or stream. Close explicitly when the next operation should begin only after the resource is released, or when you need to handle a close error.
 
+Consider writing a report. There are three different questions: did the writer accept the data, did buffered data drain far enough for the destination's contract, and was the resource released? A successful `write` answers the first. An explicit `flush().wait()` lets you handle the second. Closing answers the third. Do not replace the first two checks with an assumption that scope exit means delivery succeeded.
+
 Flush before closing when you need the destination to catch up or need to handle a flush failure:
 
 <!-- manuscript-example: {"mode":"check"} -->

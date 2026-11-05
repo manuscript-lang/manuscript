@@ -13,4 +13,6 @@ A file, socket, or response body closes when the binding that holds it goes out 
 4. [Cleanup order](exit-order.md)
 5. [Cleanup failures](cleanup-faults.md)
 
-A reference keeps an object reachable, not a closed resource open; see [mutation and references](../types/references.md).
+Cleanup answers who releases a resource, and when. It does not by itself prove that a write reached its destination or that a transaction committed. First establish an owner, then handle the operation's Result, and finally release the resource. The chapters below separate those responsibilities.
+
+A borrow does not create another owner or another close action. It must remain within the lifetime of its owner; see [ownership and borrowing](../types/references.md).

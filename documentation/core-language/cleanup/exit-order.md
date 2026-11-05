@@ -34,9 +34,12 @@ impl Closeable for Tracked:
             print("close {self.name}")
         return ok(unit)
 
+fn acquire(name: String) Tracked:
+    return Tracked(name)
+
 fn work() Unit!:
-    let _first = Tracked("first")
-    let _second = Tracked("second")
+    let _first = acquire("first")
+    let _second = acquire("second")
     print("work")
     return ok(unit)
 
@@ -51,5 +54,7 @@ work
 close second
 close first
 ```
+
+`acquire` returns the resource to `work`; it does not close it at the end of the factory. Ownership and the close duty move together. The return from `work` is prepared before either close, but `main` receives it only after both resources have closed. Change `work` to return an error after printing and the same close order still applies.
 
 Declare dependencies in an outer scope, or before the resources that use them, so they close after the resources that use them. See [fault selection](cleanup-faults.md).

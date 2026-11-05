@@ -12,19 +12,23 @@ Run a program, learn the language, then build something useful. The same `ms` co
 [Why Manuscript](why-manuscript.md) is a one-page summary of what makes it worth trying.
 
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
-2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
+2. **[Take the language tour](tour.md).** Work through values, functions, data models, ownership, errors, and concurrent work.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
-Read in order with **Next**.
+The tour gives you a working vocabulary. Then follow the
+[language guide](../core-language/_index.md) from basic values through functions,
+types, ownership, errors, and resource lifetimes. Its chapters explain both how to
+use a feature and the precise rules you can rely on. You can read in sequence or
+follow the links from the problem you are solving.
 
 ## Ready to build?
 
-[Task recipes](common-tasks.md) are complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
+[Task recipes](common-tasks.md) are complete programs: arguments, files, JSON, and HTTP. [Library recipes](../recipes/_index.md) develop library tasks and explain the choices behind them. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
 
 ## Need an exact answer?
 
-- [Language reference](../core-language/_index.md): syntax and semantics
+- [Language guide and reference](../core-language/_index.md): explanations, syntax, and semantics
 - [API reference](../standard-library/reference/_index.md): signatures and behavior
 - [Glossary](../glossary.md): unfamiliar terms
 

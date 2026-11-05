@@ -16,6 +16,36 @@ let remaining = decrement(3)
 
 Parameters and return types are explicit; local annotations are optional.
 
+## Turn a calculation into a function
+
+Suppose a checkout needs to calculate a line total. Put the calculation in a function so every caller uses the same rule. Parameters describe the inputs; the return type describes the value the caller receives. Calling the function runs its body with the supplied arguments.
+
+Save as `pricing.ms` and run `ms run pricing.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"36\n12\n24\n"} -->
+```manuscript
+fn line_total(price: Int, quantity: Int = 1) Int:
+    return price * quantity
+
+export fn main() Int:
+    print(line_total(12, 3))
+    print(line_total(12))
+    print(line_total(quantity: 2, price: 12))
+    return 0
+```
+
+```text
+36
+12
+24
+```
+
+The first call supplies both inputs. The second omits `quantity`, so the default is `1`. The third uses labels to make the meaning of each number visible; labels can change the written order without changing which parameter receives each value. They do not change the order in which argument expressions run.
+
+Changing the default to `2` changes only calls that omit `quantity`. Passing `0` explicitly still supplies zero. Passing `"3"` fails checking because text is not an `Int`; parse external input before passing it to the calculation. The [argument](#argument-names) and [default](#default-arguments) rules below explain the less common cases.
+
+A returned value is separate from output: `line_total` computes an integer and `print` displays it. Keeping that boundary lets you use the same function from a command-line program, another calculation, or a [test](../../learn/testing.md).
+
 ## Declarations and resolution
 
 - Named functions are module declarations or operations inside an `impl`. A `fn` inside a function body declares a local function: sugar for binding a `fn` to the name (`let f = fn ...`). It cannot call itself; module-level functions recurse.

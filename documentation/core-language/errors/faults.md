@@ -7,6 +7,8 @@ weight = 3
 
 A programming fault means an assumption the code relies on has failed. For invalid user input, return a [Result](results.md) error instead.
 
+Choose the failure model from the caller's perspective. A missing configuration file can be reported or replaced with a default, so reading it returns a Result. An internal calculation reaching a state the program claims is impossible indicates a bug; continuing with a made-up value would hide that bug. Faults stop that operation after cleanup. They are not a second error-return mechanism to use for ordinary validation.
+
 ## Invariant checks
 
 Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails.

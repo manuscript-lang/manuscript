@@ -3,12 +3,16 @@ label = "Learn Manuscript"
 paths = ["learn"]
 
 [[groups]]
+label = "Language guide"
+paths = ["core-language"]
+
+[[groups]]
 label = "Build with Manuscript"
-paths = ["learn/common-tasks", "developer-tooling"]
+paths = ["learn/common-tasks", "recipes", "developer-tooling"]
 
 [[groups]]
 label = "Reference"
-paths = ["core-language", "standard-library/reference", "glossary"]
+paths = ["standard-library/reference", "glossary"]
 
 [[groups]]
 label = "Contribute"

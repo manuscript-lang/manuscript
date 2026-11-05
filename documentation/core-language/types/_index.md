@@ -5,7 +5,9 @@ weight = 3
 
 # Types
 
-Use a record for named fields, an enum for a fixed set of cases, an interface for operations a caller needs, and generics to reuse a model across element types.
+A type describes which values a program can hold and which operations make sense for them. Start by modeling data: records group fields, enums distinguish cases, and collections hold several values. Optional values make absence explicit. Then learn ownership before combining values into larger models. Interfaces describe shared behavior, and generics reuse a model or calculation while preserving its concrete types.
+
+The chapters include examples to build on and precise rules to return to. Use the compatibility chapter when an assignment or call fails to type-check; it explains why a value does or does not fit an expected type.
 
 | Concept | What you will learn |
 | --- | --- |

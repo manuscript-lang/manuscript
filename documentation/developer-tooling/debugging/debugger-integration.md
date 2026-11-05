@@ -22,7 +22,7 @@ export fn main() Int:
     let repeats = arguments().get(0, default: "1000000").parse_int().get(1000000)
     var total = 0
     for index in 0..repeats:
-        total += count_words("small programs are easy to review")
+        total += count_words("small programs can process many words")
     print(total)
     return 0
 ```

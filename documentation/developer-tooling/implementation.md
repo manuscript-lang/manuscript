@@ -20,6 +20,10 @@ Run project commands from the directory containing `ms.toml`. For a single-file 
 | Find an API | `ms search_symbol json` | A bounded page of matching declarations |
 | Understand a program visually | `ms diagram ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
 
+Choose a command by the question you need answered. `check` asks whether the source follows the language rules; it cannot tell whether a calculation is correct. `test` runs your assertions about behavior. `lint` points out suspicious or unnecessary code that can still type-check. `fmt` handles layout. Use `verify` when you want these checks together, and use the individual command while fixing one kind of failure.
+
+For example, after changing a calculation, run `ms check ms.toml`, then `ms test ms.toml`. If the checker reports an error, repair it before interpreting a test result. If the tests fail, compare the expected behavior with the implementation. A successful check and passing tests describe only the rules and cases they examine; the executable still needs to be exercised with the inputs and environment it will serve.
+
 Start with the [first-program workflow](../learn/getting-started.md) for a complete example and its output. The sections below explain command options and structured results for automation.
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
@@ -32,6 +36,8 @@ Start with the [first-program workflow](../learn/getting-started.md) for a compl
 
 ## Rebuild on save
 
+Use watch mode for a running application you are editing, or for a short test loop. Start one of these commands in a terminal, save a source change in your editor, and read the next build or test result there. Stop the watcher with Ctrl-C when finished.
+
 ```sh
 ms run ms.toml --watch -- arg1
 ms test test.ms --watch
@@ -40,6 +46,8 @@ ms test test.ms --watch
 - `run` and `test` rebuild after each saved change to the manifest or a loaded local module, then restart. The old program gets an interrupt and five seconds for cleanup, and is stopped only after its replacement builds. A failed edit prints diagnostics and keeps watching.
 - `ms check <targets> --watch` and `ms lint <targets> --watch` rerun after each saved change and keep watching through errors and findings. `--json` cannot be combined with `--watch`.
 - Interrupting `ms` exits with status 130. See [cache boundaries](builds/incremental-compilation.md) for what a rebuild still compiles.
+
+A watch session is a sequence of builds, not live mutation of the running program. A syntax error leaves the watcher available for the next save; a successful replacement starts a new process. Keep persistent application data outside process memory if it must survive a restart.
 
 Project lint covers every reachable local module. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests.
 
@@ -150,7 +158,7 @@ Replace the example ID with `diagram.entity` from the explanation. The diff must
 
 ## Commands for agents
 
-Two small commands answer what the compiler commands do not and print only what is needed to act.
+These commands help both people and coding agents discover the language and library without guessing names. Search by a task such as `json`, then use the returned module or declaration path for a focused page. Use `ms guide` for a compact reminder after working through the [tour](../learn/tour.md); it is a cheat sheet, not the full language guide.
 
 | Command | Behavior |
 | --- | --- |

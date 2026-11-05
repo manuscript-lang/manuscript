@@ -7,6 +7,35 @@ weight = 5
 
 Expressions combine values into a result. Parentheses make grouping explicit; pipe flows make a sequence of transformations read from top to bottom. The tables below define precedence and accepted operand types.
 
+## Read an expression in steps
+
+For a basket containing three items costing 12 each, `3 * 12 + 5` calculates the item total before adding delivery. Multiplication binds more tightly than addition. Parentheses can choose a different grouping: `3 * (12 + 5)` adds the delivery amount to each item's price.
+
+Save as `totals.ms` and run `ms run totals.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"41\n51\ntrue\n"} -->
+```manuscript
+export fn main() Int:
+    let quantity = 3
+    let price = 12
+    let delivery = 5
+    let total = quantity * price + delivery
+    print(total)
+    print(quantity * (price + delivery))
+    print(total >= 40 and total <= 50)
+    return 0
+```
+
+```text
+41
+51
+true
+```
+
+The last expression combines two comparisons with `and`. Write both comparisons: `40 <= total <= 50` is rejected. `and` evaluates its right operand only if its left operand is true; `or` evaluates its right operand only if its left operand is false. Both operands must still be valid, Boolean expressions.
+
+Precedence determines grouping, not a license to reorder effects. Calls and other subexpressions evaluate in source order under the [evaluation rules](#evaluation). Parenthesize a calculation when its intended grouping would otherwise take effort to read.
+
 ## Precedence and grammar
 
 Rows are ordered from highest to lowest precedence.

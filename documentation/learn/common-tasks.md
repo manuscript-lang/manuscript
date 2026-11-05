@@ -38,7 +38,7 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     for name in arguments():
         try stdout().write("Hello, {name}!\n")
     return stdout().flush().wait()
@@ -110,7 +110,7 @@ import arguments from "@std/os/process.ms"
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
     let text = try read_file(path, max_bytes: 1048576).wait()
         | .decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
@@ -144,7 +144,7 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 import arguments from "@std/os/process.ms"
 import write_file from "@std/os/fs.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
     return write_file(path, "saved notes\n", replace: false).wait()
 
@@ -174,7 +174,7 @@ Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `read().wa
 import stdin, stdout from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     var input = lines(stdin())
     while true:
         let line = try input.read().wait()
@@ -211,7 +211,7 @@ Save as `number.ms`. `parse_int()` returns an `Int?`.
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
-fn show(number: Int) Result[Unit, Error]:
+fn show(number: Int) Unit!:
     try stdout().write("{number}\n")
     return stdout().flush().wait()
 
@@ -243,7 +243,7 @@ import arguments from "@std/os/process.ms"
 import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
     return stdout().flush().wait()
@@ -280,7 +280,7 @@ type Config:
     name: String
     enabled: Bool = true
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
     let encoded = try stringify(config, strict: true)
@@ -316,7 +316,7 @@ import arguments from "@std/os/process.ms"
 import fetch, FetchOptions from "@std/net/fetch.ms"
 import stdout from "@std/io/io.ms"
 
-fn run() Result[Unit, Error]:
+fn run() Unit!:
     let url = try arguments().first().ok_or(Error("missing URL", kind: "EINVAL"))
     let response = try fetch(url, FetchOptions(max_response_bytes: 1048576)).wait()
     try response.check_status()

@@ -2,7 +2,7 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "Help agents build correct, fast programs you can understand. Simple types and generics keep code clear, compiler feedback guides repairs, and interactive code maps make review easier."
+description = "Write, understand, test, and ship native programs with a small typed language, a bundled standard library, and one development toolchain. Built for agents and people working together."
 +++
 
 {{< docs-home >}}
@@ -19,8 +19,8 @@ fn render() Unit!:
         | .filter(fn line: line.starts_with("+ "))
         | .join("\n")
     let page = try template.wait()
-    print(page.decode_utf8().get()
-        .replace("$changes", highlights))
+    let text = try page.decode_utf8().ok_or()
+    print(text.replace("$changes", highlights))
     return ok(unit)
 
 export fn main() Int:

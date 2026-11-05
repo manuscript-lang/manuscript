@@ -23,7 +23,7 @@ The check prints:
 Checked ms.toml (2 modules)
 ```
 
-`init` creates `ms.toml`, `src/main.ms`, `test.ms` and a `.gitignore` excluding the local build cache. Run the following examples from `store`. You can add aliases to the generated manifest as the project grows:
+`init` creates `ms.toml`, `src/main.ms`, `test.ms` and a `.gitignore` excluding the local build cache. Run the following examples from `store`. Keep the generated manifest for the exercises below. The following configuration illustrates aliases for a larger project; add those entries only after creating the directories and files they name:
 
 ```toml
 [project]
@@ -43,6 +43,31 @@ entry = "./src/main.ms"
 - Application modules are found by following imports from the entry, not listed in the manifest.
 - The compiler supplies the prelude and version-matched `@std` modules. To reuse other Manuscript source today, use [copied dependencies](#library-projects-and-copied-dependencies); `ms` does not fetch third-party packages.
 
+## Split a program into modules
+
+A manifest chooses the project boundary; imports describe dependencies inside it. To move pricing logic out of `main`, create `src/pricing.ms` with this complete module:
+
+```manuscript
+export fn total(price: Int, quantity: Int) Int:
+    return price * quantity
+```
+
+Replace `src/main.ms` with:
+
+```manuscript
+import total from "./pricing.ms"
+
+export fn main() Int:
+    print(total(price: 12, quantity: 3))
+    return 0
+```
+
+Run `ms run ms.toml` from `store`. It prints `36`. The import is relative to the file containing it, so `./pricing.ms` means `src/pricing.ms`, regardless of the shell's working directory. `export` makes `total` available to another module; leaving it off makes this import an error. You do not add a list of modules to the manifest.
+
+An alias makes frequently used paths shorter without changing visibility. For example, add `"@pricing" = "./src/pricing.ms"` under `[aliases]`, then use `import total from "@pricing"`. Both imports identify the same module; an alias does not copy code or install a dependency. Use directory aliases when several modules share a prefix, and file aliases for one module. The exact rules are under [resolving an import](#resolving-an-import).
+
+Keep `ms check ms.toml` in your workflow as the source tree grows. Running the entry checks what that program imports; checking the project also finds mistakes in a module that no running program uses yet.
+
 ## Embedded files
 
 `[embed]` bakes a directory into the program. Each key is an import name written like an alias, and each value is a directory below the project root:
@@ -52,13 +77,25 @@ entry = "./src/main.ms"
 "@assets" = "./assets"
 ```
 
-Create `assets/message.txt` containing `hello from assets` followed by a newline. Add `import files from "@assets"` above the generated `main`, then replace its body with this fragment:
+Create `assets/message.txt` containing `hello from assets` followed by a newline. Replace `src/main.ms` with this complete program:
 
+<!-- manuscript-example: {"mode":"run","build_files":{"ms.toml":"[project]\nname = \"embedded-example\"\nsource = \".\"\nentry = \"example.ms\"\n[embed]\n\"@assets\" = \"assets\"\n","assets/message.txt":"hello from assets\n"},"stdout":"hello from assets\n"} -->
 ```manuscript
+import files from "@assets"
+
+fn message() String!:
     let tree = files()
-    let text = tree.read("message.txt", none).get().decode_utf8().get()
-    print(text.trim())
-    return 0
+    let bytes = try tree.read("message.txt", none)
+    let text = try bytes.decode_utf8().ok_or()
+    return ok(text.trim())
+
+export fn main() Int:
+    let result = message()
+    if let text = result:
+        print(text)
+        return 0
+    print("Could not read the embedded message")
+    return 1
 ```
 
 ```sh
@@ -69,7 +106,7 @@ ms run ms.toml
 hello from assets
 ```
 
-This example uses `get()` because the file and its UTF-8 contents are known at build time. For variable paths or data, handle missing files and decode failures explicitly.
+Embedding makes bytes available without a separate asset directory at runtime. It does not prove that a requested path exists or that its contents are UTF-8. `read` returns a `Result`; decoding returns an `Optional`, which `ok_or()` converts to a `Result`. The helper propagates either failure with `try`, and `main` chooses the message and exit status. Change the requested path to `missing.txt` to take that failure path: the program prints `Could not read the embedded message` and exits 1. See [Results](../../core-language/errors/results.md) for preserving a more specific error.
 
 - `import files from "@assets"` imports a module that `ms` generates from the directory when the project loads. Write the name alone: `"@assets/x.ms"` is an error.
 - `files()` returns an `EmbeddedTree` from `@std/os/tree.ms`, so `read`, `children` and `walk` work as they do on a `host_tree`. Making it costs one map entry per file; `read` copies only the file it returns.
@@ -87,12 +124,12 @@ This example uses `get()` because the file and its UTF-8 contents are known at b
 | `ms lint <ms.toml>` | Check and lint reachable modules; libraries include all source modules and discovered tests |
 | `ms test <ms.toml>` | Execute tests from entry and discovered test files; libraries include all source modules too |
 
-`ms check ms.toml` checks every `.ms` file below `project.source`, including modules the entry does not import, plus `test.ms` and `*_test.ms` anywhere below the project root. It never runs `main` or tests and needs no native toolchain. Text output reports the number of modules checked.
+`ms check ms.toml` checks every `.ms` file below `project.source`, including modules the entry does not import, plus `test.ms`, `*_test.ms`, `bench.ms`, and `*_bench.ms` anywhere below the project root. It never runs `main` or tests and needs no native toolchain. Text output reports the number of modules checked.
 
 Discovered source filenames and visited directory names must be valid UTF-8. Invalid names report a resolution error with a rename remedy; discovery never replaces them with another path. Excluded files and directories keep their existing discovery rules.
 
 - Discovery skips hidden directories (such as `.ms-cache`), `vendor`, `node_modules`, and directory symlinks. Entries and imports are always followed.
-- Files outside the source directory are checked only if imported, the entry, or tests.
+- Files outside the source directory are checked only if imported, the entry, or discovered test/benchmark files.
 - `ms check file.ms` checks that file and its imports only.
 - `check` and `lint` also take several targets; see [analysis input selection](../implementation.md#selecting-independent-analysis-inputs).
 

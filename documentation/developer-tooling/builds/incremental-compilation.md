@@ -7,6 +7,14 @@ weight = 4
 
 `ms build` can reuse an unchanged executable. `run`, `test`, and `profile` always check and compile the program again. Both paths reuse cached build tools and the embedded runtime archive, so you can keep working without manually cleaning caches.
 
+## Understand what is being reused
+
+There are three different things to reuse: tools that link or optimize any program, the runtime archive shared by programs built with this compiler, and a finished executable for one particular set of inputs. Keeping a linker in the cache does not mean the source check was skipped. Conversely, a finished-executable cache hit can skip the frontend entirely.
+
+During ordinary editing, use `run` or a [watch session](../implementation.md#rebuild-on-save) for fresh execution. If a `build` result seems stale after changing the project layout or preserving file timestamps, rebuild with `MS_CACHE=off` to separate reuse from compilation. This environment setting applies to the finished-executable cache; it does not remove downloaded tools. Use your shell's environment-variable syntax when setting it.
+
+## Cache locations and contracts
+
 The runtime and native standard library are already compiled into a static archive embedded in `ms`. The first link extracts `libms_native.a` into a cache keyed by the embedded runtime identity; later links reuse that archive. It is not rebuilt for each build level.
 
 - The runtime cache is under `$XDG_CACHE_HOME/ms/native/`, falling back to `$HOME/.cache/ms/native/` or the OS temporary directory when neither variable is set.

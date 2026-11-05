@@ -5,7 +5,7 @@ weight = 2
 
 # Functions
 
-Declare and call functions, then pass them as values.
+Functions let you name a calculation, reuse it, and test it separately from input and output. Start with declarations and calls, then pass functions as values to describe behavior that varies. Read native declarations when integrating linked code; ordinary Manuscript functions need no native setup.
 
 | Concept | What you will learn |
 | --- | --- |

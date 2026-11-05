@@ -49,7 +49,7 @@ ms fmt src/*.ms --check
 
 - Files are rewritten in place, keeping permissions. Invalid source gets diagnostics and is left unchanged; other files still format.
 - `--check` writes nothing, lists every file needing changes in path order, and returns 1 if any file needs changes or fails.
-- A manifest selects its entry, every `.ms` file below `source`, and `test.ms`/`*_test.ms`. A directory selects all `.ms` files recursively.
+- A manifest selects its entry, every `.ms` file below `source`, and discovered `test.ms`/`*_test.ms` and `bench.ms`/`*_bench.ms` files. A directory selects all `.ms` files recursively.
 - Discovery skips hidden, `vendor`, and `node_modules` directories and directory symlinks; file symlinks must stay in the root. Explicit files can select excluded paths. Overlaps format once; an empty directory succeeds.
 - Paths display relative to the invocation directory when inside it, otherwise absolute. See the [JSON contract](../implementation.md#machine-readable-checks-and-tests).
 

@@ -7,6 +7,31 @@ weight = 4
 
 `String` is immutable, always valid UTF-8, and needs no import. `Bytes` is immutable raw data; import it from `@std/bytes.ms` to name the type.
 
+## Prepare text for a message
+
+Text often arrives with surrounding whitespace, then needs to be included in a message. String operations return new values; they do not edit the original string. Interpolation puts a value inside text using braces.
+
+Save as `message.ms` and run `ms run message.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\n3 scalars, 4 bytes\n"} -->
+```manuscript
+export fn main() Int:
+    let entered = "  Ada  "
+    let name = entered.trim()
+    print("Hello, {name}!")
+
+    let ending = "afé"
+    print("{ending.length()} scalars, {ending.byte_length()} bytes")
+    return 0
+```
+
+```text
+Hello, Ada!
+3 scalars, 4 bytes
+```
+
+The accented `é` occupies one Unicode scalar and two UTF-8 bytes. A displayed character can also contain several scalars, so neither count is a general count of what a reader sees as characters. Choose string operations for text and byte operations for file or network formats; the [indexing](#indexing-and-character-boundaries) and [encoding](#encoding-and-parsing) rules below make their units explicit.
+
 ## String literals
 
 A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. [Multi-line and raw literals](#multi-line-and-raw-literals) span lines. There are no single-quoted or byte literals.

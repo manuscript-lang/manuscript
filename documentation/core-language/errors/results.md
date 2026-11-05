@@ -15,7 +15,7 @@ Save this as `quantity.ms` and run `ms run quantity.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Quantity: 3\nQuantity must be positive\n"} -->
 ```manuscript
-fn quantity(value: Int) Result[Int, Error]:
+fn quantity(value: Int) Int!:
     if value <= 0:
         return error(Error("Quantity must be positive", kind: "EINVAL"))
     return ok(value)
@@ -38,7 +38,9 @@ Quantity: 3
 Quantity must be positive
 ```
 
-Both calls return normally. The second returns an error value, and `show` chooses how to present it. Use [`try`](propagation.md) when the caller should pass that error on instead.
+Both calls return normally. The second returns an error value, and `show` chooses how to present it. A quantity of zero is ordinary input the application can reject; it does not mean the program has broken an invariant. The return type makes that possibility visible before the caller runs the function.
+
+The error branch exits before the success payload is read. That ordering matters: `get()` without a fallback faults on an error, and `err()` faults on a success. Prefer `if let` when only the successful value matters, or [`try`](propagation.md) when the caller should pass the cause on. Use `is_error()` when you need to inspect and present the cause, as this program does.
 
 ## Shorthand: `T!` and `T!E`
 
@@ -88,6 +90,7 @@ Standard-library failures are `Error` values too: branch on `kind`, read `detail
 
 An `Error` fits most code. Use your own type as `E` when callers need typed payloads or exhaustive cases.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
@@ -95,7 +98,7 @@ enum DiscountError:
     InvalidPrice
     InvalidPercent
 
-fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
+fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:
     if price < 0d:
         return error(InvalidPrice)
     if percent < 0d or percent > 100d:
@@ -104,7 +107,9 @@ fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     return ok(price * (1d - percent / 100d))
 ```
 
-The function validates inputs, returns an explicit error for each failure, and wraps the result in `ok`.
+The function validates inputs, returns an explicit error for each failure, and wraps the result in `ok`. The enum distinguishes two decisions a caller can make: correct the price or correct the percentage. Its cases are values, not exceptions. Adding a case changes the set of outcomes callers need to consider.
+
+Zero and a 100 percent discount are accepted here. Validation rules belong to the application; choose them deliberately rather than using a fault to reject an expected input.
 
 ## Handling the result
 
@@ -170,11 +175,59 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 ```manuscript
 fn discount_error(cause: DiscountError) Error:
-    return Error("discount failed", kind: "EINVAL")
+    match cause:
+        InvalidPrice:
+            return Error("price must not be negative", kind: "EINVAL")
+        InvalidPercent:
+            return Error("percent must be between 0 and 100", kind: "EINVAL")
 
 fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
     return discount(price, percent).map_error(discount_error)
 ```
+
+The translator handles every domain case and preserves a useful explanation. `map_error` runs it only on failure; a successful price is unchanged. This is useful at a boundary where application-specific errors meet standard-library operations that return `Error`.
+
+## Compose validation and calculation
+
+Suppose an order form supplies its quantity as text. Parsing can fail before the quantity rule is even checked. Keep these separate steps, then let `try` carry either error to the caller:
+
+Save as `order.ms` and run `ms run order.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Total: 36\nQuantity must be positive\nEnter a whole number\n"} -->
+```manuscript
+fn quantity(text: String) Int!:
+    let value = try text.parse_int().ok_or(Error("Enter a whole number"))
+    if value <= 0:
+        return error(Error("Quantity must be positive"))
+    return ok(value)
+
+fn order_total(text: String) Int!:
+    let count = try quantity(text)
+    return ok(count * 12)
+
+fn show_order(text: String) Unit:
+    let outcome = order_total(text)
+    if let value = outcome:
+        print("Total: {value}")
+        return
+    print(outcome.err().message)
+
+export fn main() Int:
+    show_order("3")
+    show_order("0")
+    show_order("three")
+    return 0
+```
+
+```text
+Total: 36
+Quantity must be positive
+Enter a whole number
+```
+
+`order_total` returns `Int!` for the same reason `quantity` does: it cannot produce a total for every input. It changes the successful value while preserving the failure. `show_order` is the boundary that chooses to print the error and continue with another order. For a command that must stop instead, return a nonzero exit status from `main`.
+
+The corresponding composition is `quantity(text).map(fn count: count * 12)`. Use `map` for a callback returning a plain value; use `and_then` when the next operation itself returns a Result with the same error type. Using `map` with a fallible callback keeps a nested Result rather than removing a layer.
 
 Add context with `wrap_error(context, cause)` from `@std/core.ms`: `error(wrap_error("read config", cause))` reports `read config: <cause message>`, keeps the kind and details, and stores the original message in `details["cause"]`. `join_errors(errors)` combines several errors into one `Error` whose message holds theirs, one per line, with a `count` detail (none when the list is empty).
 

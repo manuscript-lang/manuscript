@@ -9,6 +9,8 @@ A stream is anything that produces or accepts values over time and can wait. `Re
 
 Both types are opaque, own what is behind them, and are `Closeable`: scope end closes them. Built-in descriptor and pipe ends close without waiting for delivery; a custom source or sink controls its own close behavior and may wait.
 
+A stream is useful when input arrives incrementally or is too large to keep at once. A promise gives one result; a read stream can give one item, then another, then an end marker. Keep handling failures as you consume it: opening a stream successfully does not guarantee that every later read will succeed.
+
 ## Reading
 
 <!-- manuscript-example: {"mode":"check"} -->
@@ -77,6 +79,8 @@ test "measure lines":
 | `map(input, f)` | Transform each item. |
 | `collect(input, max_items)`, `read_all(input, max_bytes)` | Consume a stream into a list or `Bytes`. |
 | `copy(input, output)` | Move everything across and return the count. |
+
+In the example, `from_bytes` supplies the bytes, `lines` finds line boundaries, and `map` changes each line to its length. No stage needs the whole document as text. `collect` is the point where the example deliberately gathers all lengths, bounded by `max_items: 10`. For a large input, use a consuming loop when the next step only needs one item at a time. A bound on collection prevents an unexpectedly long stream from growing an unbounded result.
 
 Consumers such as `collect` wait internally and return a value directly. Pipelines are pulled lazily by the task that waits on them. Built-in stages pull the preceding stage with plain calls. A source may wait for input, and a custom source or transform may also wait inside its implementation; composing stages does not require starting separate work for each item.
 

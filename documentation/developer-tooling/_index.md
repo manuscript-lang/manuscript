@@ -5,7 +5,9 @@ weight = 5
 
 # Developer tools
 
-One `ms` toolchain takes you from source check to standalone executable.
+One `ms` toolchain takes you from source check to standalone executable. After the [first program](../learn/getting-started.md), follow [Build and share a program](how-it-works.md) to check a project, run it during development, and produce a native binary. The same workflow applies as you add modules and tests.
+
+Use the task links below when you need a particular tool. The command guide includes exact options, output formats, and failure behavior; project and cache chapters explain what those commands select and reuse. You can read those contracts when the question arises rather than before your first run.
 
 | You want to… | Read |
 | --- | --- |

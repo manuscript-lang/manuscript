@@ -7,6 +7,8 @@ weight = 5
 
 Cleanup runs when cancellation or a fault ends work, ignoring the cancellation signal and expired deadline that caused the exit (*shielding*). It keeps its access to external services and may wait.
 
+This matters when an operation times out while holding a resource. The original work must stop, but releasing the resource may itself need to wait. Reusing the expired deadline for the release would interrupt cleanup at exactly the moment it is needed. Shielding lets that release finish; it does not turn the interrupted operation into a success.
+
 ## If close itself faults
 
 Every registered close action is attempted once; a fault in one does not skip the rest.

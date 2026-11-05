@@ -121,6 +121,37 @@ fn display_name(name: String?) String:
 
 A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
 
+## Keep two kinds of absence distinct
+
+Nested optionals are useful when absence has two meanings. A lookup can fail to find a setting, while a setting that exists can deliberately have no value. `String??` keeps those states separate: the outer layer describes whether the setting was found, and the inner layer describes its value.
+
+Save as `setting.ms` and run `ms run setting.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"missing\ncleared\nAda\n"} -->
+```manuscript
+fn describe(setting: String??) String:
+    if let value = setting:
+        return value.get("cleared")
+    return "missing"
+
+export fn main() Int:
+    let missing: String?? = none
+    let cleared: String? = none
+    let named: String? = "Ada"
+    print(describe(missing))
+    print(describe(cleared))
+    print(describe(named))
+    return 0
+```
+
+```text
+missing
+cleared
+Ada
+```
+
+Passing `cleared` wraps its `String?` in one present outer layer; it does not discard the inner `none`. Passing `missing` already has the required type, so it is unchanged. Use an explicit annotation for such values so the intended layer is clear. For a simple optional name, a single `String?` remains the better model.
+
 ## Optional chaining
 
 `a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.

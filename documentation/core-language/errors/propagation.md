@@ -10,10 +10,12 @@ weight = 2
 The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
 
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+fn discounted_label(price: Decimal, percent: Decimal) String!DiscountError:
     let value = try discount(price, percent)
     return ok("Discounted price: {value}")
 ```
+
+Read this as two paths through one function. A successful discount continues to build the label. A failed discount leaves immediately, before interpolation runs; the caller receives the same domain error. `try` is useful precisely when this function has no better recovery decision to make.
 
 ## Success and failure paths
 
@@ -50,7 +52,7 @@ Omitting `try` discards the Result, which the checker rejects. To ignore it deli
 `| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `let value = try discount(...)` then `label(value)`:
 
 ```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
+fn discounted_label(price: Decimal, percent: Decimal) String!DiscountError:
     return ok(try discount(price, percent) | label)
 ```
 

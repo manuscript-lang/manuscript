@@ -9,6 +9,7 @@ A `let` or `var` that holds a resource closes it when its scope ends. There is n
 
 This function reads a file and closes its handle on every exit:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -18,7 +19,7 @@ fn read_head(path: String) Bytes?!:
     return file.read(max_bytes: 4096)
 ```
 
-`open` returns an owned `FileHandle`; `read` returns bytes or `none` at end of file, with an error on failure.
+`open` returns an owned `FileHandle`; `read` returns bytes or `none` at end of file, with an error on failure. The function returns the data, not the handle. Once the read's return value is ready, the scope closes the file before delivering that value to the caller. If opening fails, `try` returns the error before a file binding exists.
 
 ## What happens, step by step
 
@@ -30,6 +31,8 @@ fn read_head(path: String) Bytes?!:
 
 Cleanup runs on every exit: end of scope, `break`, `continue`, `return`, `try` propagation, fault, or cancellation. Nested scopes close inner to outer, and bindings in one scope close last declared first.
 
+The registration belongs to a successful acquisition. If a factory acquires a native handle but cannot deliver it because of an error or cancellation, the factory must release it. After delivery, the new owner takes over that responsibility. This prevents a gap between acquiring a handle and registering its cleanup.
+
 ## Which values are closed?
 
 A concrete type opts in through an implementation of the standard `Closeable` interface. A value of the standard `Closeable` interface also closes automatically. An unrelated interface does not acquire cleanup merely by declaring a method named `close`; retain a concrete owner or close it explicitly. Records, enums, optionals and collections close the resource parts they own, including in generic instances. See [Closeable](closeable.md) for the exact checks and close order.
@@ -38,12 +41,12 @@ A concrete type opts in through an implementation of the standard `Closeable` in
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a moving parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `try` or `let _ =`.
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; propagate the close failure with `try`, or inspect the Result if the caller can recover. This fragment belongs in a function returning `T!`, with `path` and `slow_work` supplied by the application:
 
 ```manuscript
 var file = try open(path, flags: "r", mode: 0)
 let head = try file.read_lines(max_lines: 1)
-let _ = file.close()
+try file.close()
 slow_work(head)
 ```
 

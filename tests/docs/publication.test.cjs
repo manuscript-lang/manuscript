@@ -206,8 +206,10 @@ test('previous and next links follow the rendered sidebar reading order', () => 
     .map(match => attribute(match[0], 'href')));
   assert.deepEqual(routes.slice(0, 6), [
     'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
-    'learn/why-manuscript/', 'learn/common-tasks/',
-  ].map(route => prefix + route), 'Teach running, reading, and testing before task recipes');
+    'learn/why-manuscript/', 'core-language/',
+  ].map(route => prefix + route), 'Continue from orientation into the full language guide');
+  assert.ok(routes.indexOf(prefix + 'learn/common-tasks/') > routes.indexOf(prefix + 'core-language/cleanup/'),
+    'Keep practical recipes after the language chapters');
   assert.deepEqual(routes.filter(route => route.startsWith(prefix + 'developer-tooling/')).slice(0, 3),
     ['developer-tooling/', 'developer-tooling/how-it-works/', 'developer-tooling/implementation/'].map(route => prefix + route),
     'Teach building and sharing before the tooling command reference');
@@ -273,4 +275,24 @@ test('landing and documentation pages share one favicon and a loadable brand mar
   const svg = fs.readFileSync(path.join(book, icons[0].slice(prefix.length)), 'utf8');
   assert.match(svg, /viewBox="0 0 32 32"/);
   assert.ok(!/<(?:image|text|script)\b/.test(svg), 'Brand mark stays self-contained vector geometry');
+});
+
+test('the book separates learning, language chapters, practical work, and reference', () => {
+  const start = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
+  const nav = start.match(/<nav\b[^>]*aria-label=(?:"Documentation"|'Documentation'|Documentation)[^>]*>[\s\S]*?<\/nav>/)[0];
+  const groups = [...nav.matchAll(/<div\b[^>]*class=(?:"nav-group"|'nav-group'|nav-group)[^>]*>([\s\S]*?)<\/div>/g)]
+    .map(match => match[1]);
+  const language = groups.find(group => group.includes('Language guide'));
+  assert.ok(language, 'Offer an explanatory language guide beside the introductory tour');
+  for (const chapter of ['basics', 'types', 'control-flow', 'functions', 'errors', 'modules', 'concurrency', 'cleanup']) {
+    assert.ok(language.includes(`/core-language/${chapter}/`), `Keep the complete ${chapter} chapter reachable`);
+  }
+  const build = groups.find(group => group.includes('Build with Manuscript'));
+  for (const route of ['/learn/common-tasks/', '/recipes/', '/developer-tooling/']) {
+    assert.ok(build.includes(route), `Keep practical work reachable at ${route}`);
+  }
+  const reference = groups.find(group => /<[^>]*>Reference<\//.test(group));
+  assert.ok(reference.includes('/standard-library/reference/'));
+  assert.ok(reference.includes('/glossary/'));
+  assert.ok(!reference.includes('/core-language/'), 'The language guide has its own reading path');
 });

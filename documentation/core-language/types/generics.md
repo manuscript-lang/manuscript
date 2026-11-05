@@ -14,6 +14,36 @@ String?
 Result[Decimal, DiscountError]
 ```
 
+## Reuse a calculation without losing its types
+
+A function that compares two integer values can declare `Int` parameters. If the same operation is needed for strings, copying the function creates two bodies to maintain. A type parameter names the part that varies, while a bound states which operations that type must support.
+
+Save as `same.ms` and run `ms run same.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"true\nfalse\ntrue\n"} -->
+```manuscript
+fn same[T: Equal](left: T, right: T) Bool:
+    return left == right
+
+export fn main() Int:
+    print(same(12, 12))
+    print(same("draft", "published"))
+    print(same[Int](4, 4))
+    return 0
+```
+
+```text
+true
+false
+true
+```
+
+In the first call `T` is `Int`; in the second it is `String`. Both arguments must be the same type. `same(12, "12")` is rejected, because one `T` cannot mean both types in the same call. The third call writes the type argument explicitly; the first two infer it from their arguments.
+
+`Equal` is needed because the body uses `==`. Removing the bound makes the declaration invalid even if today's callers only use integers. A generic body must work for every type its declaration permits. It cannot inspect an unknown value at runtime to discover extra methods: add the necessary bound, or accept a callback that performs the operation.
+
+Collections use the same idea. `List[String]` and `List[Int]` share the list operations, but their element types remain distinct. Generics preserve compiler-visible types; they do not introduce an `any` value or runtime reflection. See [interfaces](contracts.md) when the varying part is behavior supplied by an implementation.
+
 ## Bounds
 
 Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds (`T: Compare[T]` is valid, `T: T` is not). Don't name a parameter `Error`; use `E`. `Error` is a record, not an interface or a bound; use it directly when a helper needs its `message`, `kind`, or `details`.
@@ -45,6 +75,33 @@ fn same_key(left: Equal, right: Equal) Bool:
 fn use_view() Bool:
     return same_key(Key(1), Key(1))
 ```
+
+### Make ownership part of a generic operation
+
+A bound also explains how a helper may keep data. To make two independent copies of a value, require `Clonable` and clone explicitly. Without that bound the caller might pass a file or a function value, neither of which can be cloned.
+
+Save as `copies.ms` and run `ms run copies.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"[[1, 2], [1]]\n[1]\n"} -->
+```manuscript
+fn two_copies[T: Clonable](value: T) List[T]:
+    return [value.clone(), value.clone()]
+
+export fn main() Int:
+    let source = [1]
+    var copies = two_copies(source)
+    copies[0].append(2)
+    print(copies)
+    print(source)
+    return 0
+```
+
+```text
+[[1, 2], [1]]
+[1]
+```
+
+The function borrows `source` and produces two owned copies. Changing the first copy changes neither the second nor the source. The result is a `List[List[Int]]`: substituting a concrete type for `T` also substitutes it wherever `T` occurs in the result. See [ownership](references.md) for when cloning is necessary and when borrowing or moving is enough.
 
 ## Declarations and applications
 

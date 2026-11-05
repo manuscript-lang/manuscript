@@ -31,6 +31,19 @@ make verify-full
 
 It adds `make conform` (the conformance corpus), `make e2e` (every `tests/e2e/testdata` fixture), `make book-check`, and `make dist-check` (package the binary and run the archive on the hello example). Set `HUGO=/path/to/hugo` if it is not on PATH.
 
+## Choose checks for the change
+
+A useful first check is one that can distinguish the old behavior from the intended behavior. For a parser repair, that can be an accepted or rejected source fixture; for a runtime repair, execute the path and assert its result or cleanup order. A declaration that merely compiles does not demonstrate that its body runs correctly.
+
+| Work you changed | Start with | Then check the connected surfaces |
+| --- | --- | --- |
+| Authored documentation | Run complete examples and displayed commands in a disposable directory | `make docs-check`, `make repo-check`, `make book-check`; inspect the production book |
+| Syntax, types, or diagnostics | The affected crate test and an accepted/rejected source fixture | Formatter, editor queries, conformance, and the language guide |
+| Native operations or ownership | A program that calls the operation and checks values or cleanup | Runtime tests, conformance, leak/copy/count checks as applicable |
+| Project selection or CLI behavior | A temporary project covering source, manifest, and command outcome | Exit status, text/JSON output, diagnostics, and preservation of existing artifacts on failure |
+
+Run the focused test while iterating, then the applicable broader gates. Report which commands passed, which failed, and which were not run. A Linux result does not establish native macOS or Windows behavior; debugger line lookup also needs an actual debugger session, not merely the presence of debug metadata.
+
 ## Conformance
 
 `make conform` builds the Rust `ms` and `ms-conform`, lints the corpus, and replays the run, check, and test phases of `tests/conformance/` against `ms`, excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
@@ -53,7 +66,7 @@ Complete tutorial fences carry a `manuscript-example` JSON comment giving `test`
 
 ## Preview and publish the book
 
-Author guides in `documentation/`; standard-library descriptions live above declarations in `stdlib/*.ms`. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
+Author guides and complete runnable library recipes in `documentation/`; standard-library API descriptions live above declarations in `stdlib/*.ms`. Keep tutorial programs, fixture setup, commands, and expected outputs in documentation or example locations, rather than adding them to standard-library implementations or comments. Site config, assets, and the vendored theme live in `website/`. Lexical rules live in `extensions/vscode/syntaxes/manuscript.tmLanguage.json`.
 
 ```sh
 make docs
@@ -67,6 +80,8 @@ hugo --source website server --bind 127.0.0.1 --port 4000 --renderToMemory
 - `make book-check` generates that tree, then validates links, highlighting, and published pages under a project URL prefix.
 - `make book` writes the site to ignored `.artifacts/book/`. It passes `--cleanDestinationDir` so removed modules do not survive.
 - `make docs-coverage` writes `.artifacts/stdlib-doc-coverage.json`, inventorying every public declaration and member. The same quality and new-gap gate runs in `make docs` and `make docs-check`: describe behavior, units, defaults, errors, or ownership, not names or signatures.
+
+Open the preview and follow the learning path as a reader would: run the first program, navigate to the next concept, follow links to exact rules, and use search. Check narrow and wide layouts in both themes. Build and link checks catch broken destinations; they do not tell you whether an explanation teaches its subject or whether a page is legible.
 
 The book uses vendored Hugo Book v13; put styling in `website/assets/_custom.scss`, behavior in `docs.js`, overrides in `website/layouts/`, never the theme. `.msversion` supplies release labels; older sites go in `website/data/docs_versions.toml`. See [maintenance](maintenance.md) for pins and releases.
 
