@@ -3,6 +3,7 @@
 
 mod fixture_twins;
 mod inline_source;
+mod internal_externs;
 mod licenses;
 mod nested;
 mod portability;
@@ -61,9 +62,10 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(portability::check(&files));
     issues.extend(fixture_twins::check(&files));
     issues.extend(stream_names::check(syms, &files));
+    issues.extend(internal_externs::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, and stream names agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, and internal externs agree."
         );
         return ExitCode::SUCCESS;
     }

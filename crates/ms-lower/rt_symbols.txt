@@ -58,7 +58,6 @@ msrt_cells_new(value: *mut u8, d: ValueDesc) -> i64
 msrt_cells_out(id: i64) -> u8
 msrt_cells_put(id: i64, value: *mut u8, d: ValueDesc)
 msrt_cells_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
-msrt_cells_take_result(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_cleanup_cancel(handle: usize) @leaf
 msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
@@ -809,7 +808,6 @@ msstd_system_user_info_shell(out: *mut StrVal)
 msstd_system_user_info_status(err: ErrSlot) -> u8
 msstd_system_user_info_uid() -> i64
 msstd_system_user_info_username(out: *mut StrVal)
-msstd_system_working_directory(out: *mut StrVal)
 msstd_table_cell_width(text: *const StrVal, out: *mut i64) -> u8
 msstd_terminal_capabilities_colors() -> i64
 msstd_terminal_capabilities_error_is_terminal() -> u8
@@ -864,7 +862,6 @@ msstd_time_int_minutes(n: i64) -> i64
 msstd_time_int_seconds(n: i64) -> i64
 msstd_time_local_zone(out: *mut StrVal)
 msstd_time_parse_timestamp(text: *const StrVal, out: *mut Timestamp) -> u8
-msstd_time_sleep(duration: i64)
 msstd_time_timestamp(seconds: i64, nanoseconds: i64, out: *mut Timestamp) -> u8
 msstd_time_timestamp_calendar(value: *const Timestamp, zone: *const StrVal, out: *mut CalendarOut) -> u8
 msstd_time_timestamp_compare(left: *const Timestamp, other: *const Timestamp) -> i64
