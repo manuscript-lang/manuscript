@@ -1481,7 +1481,7 @@ impl FnLower<'_> {
         let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
             return;
         };
-        let err = Std::ERROR as usize;
+        let err = Std::ERROR;
         // A function that cannot return the close's `Error` faults on a failed close instead.
         let returned = match self.b.m.types.kind(self.result_ty()).clone() {
             TyKind::Alt(ra)
