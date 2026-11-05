@@ -333,6 +333,16 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.alt(a);
         self.val(Op::AltView, fields, Imm::Case(a, case), t)
     }
+    /// `alt.plain`: the borrowing variant `v` read as its ordinary alternative `plain`, a borrow
+    /// of every case (the borrowed cases and the owned ones alike).
+    pub fn alt_plain(&mut self, v: Value, plain: Ty) -> Value {
+        self.val(Op::AltPlain, &[v], Imm::None, plain)
+    }
+    /// `alt.own`: a copy of the borrowing variant `v` as its ordinary alternative `plain`, every
+    /// case owned (the borrowed cases are copied out of the value they borrow from).
+    pub fn alt_own(&mut self, v: Value, plain: Ty) -> Value {
+        self.val(Op::AltOwn, &[v], Imm::None, plain)
+    }
     /// `iface.borrow`: an interface value whose box holds a bitwise copy of the borrowed `data`
     /// leaves (vtable word tagged 1): dropping it frees the box and leaves the payload alone.
     pub fn iface_borrow(&mut self, vt: VtableId, data: Value, t: Ty) -> Value {
@@ -481,7 +491,27 @@ impl<'m> FuncBuilder<'m> {
     /// `call` a module function.
     pub fn call(&mut self, f: FuncId, args: &[Value]) -> Value {
         let ret = self.m.funcs[f.index()].ret;
-        self.val(Op::Call, args, Imm::Func(f), ret)
+        // A borrowing variant passed where its ordinary alternative is expected is read as one.
+        let args: Vec<Value> = args
+            .iter()
+            .enumerate()
+            .map(|(i, &a)| match self.m.funcs[f.index()].params.get(i) {
+                Some(p) if p.mode == Mode::Borrow && self.is_variant_of(self.ty(a), p.ty) => {
+                    self.alt_plain(a, p.ty)
+                }
+                _ => a,
+            })
+            .collect();
+        self.val(Op::Call, &args, Imm::Func(f), ret)
+    }
+    /// Whether `have` is a borrowing variant of the ordinary alternative `want`.
+    pub fn is_variant_of(&self, have: Ty, want: Ty) -> bool {
+        let (TyKind::Alt(h), TyKind::Alt(w)) = (self.m.types.kind(have), self.m.types.kind(want))
+        else {
+            return false;
+        };
+        let (dh, dw) = (&self.m.alts[h.index()], &self.m.alts[w.index()]);
+        dh.borrowed != 0 && dw.borrowed == 0 && dh.name == dw.name && dh.cases == dw.cases
     }
     /// A position in the current block, for [`FuncBuilder::outline`].
     pub fn mark(&self) -> Mark {

@@ -9,7 +9,9 @@ use std::io::Read as _;
 const ARCHIVE_GZ: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/libms_native.a.gz"));
 const TABLE: &str = include_str!("../../ms-lower/rt_symbols.txt");
 
-/// Exports the table cannot list: data symbols and assembly entry points, which have no Rust signature.
+/// Exports the table cannot list: data symbols and assembly entry points, which have no Rust
+/// signature or one that differs per platform (the stack switches take the thread environment
+/// block fields on Windows).
 const UNLISTED: &[&str] = &[
     "msrt_desc_int",
     "msrt_desc_float",
@@ -20,6 +22,8 @@ const UNLISTED: &[&str] = &[
     "msrt_ascii_chars",
     "msrt_guard_jump",
     "msrt_task_tramp",
+    "msrt_ctx_switch",
+    "msrt_call_on_stack",
 ];
 
 /// Runtime prefixes the compiler calls; other exports (libc shims, Rust internals) are not catalogued.
@@ -27,10 +31,10 @@ fn runtime_name(name: &str) -> bool {
     name.starts_with("msrt_") || name.starts_with("msstd_")
 }
 
-/// Assembly entry points that exist on one platform family only. Windows has no context-switch
-/// task stacks and uses a setjmp-style trap restore instead of fork.
+/// Assembly entry points that exist on one platform family only. Windows uses a setjmp-style
+/// trap restore instead of fork.
 #[cfg(windows)]
-const UNIX_ONLY: &[&str] = &["msrt_ctx_switch", "msrt_task_tramp"];
+const UNIX_ONLY: &[&str] = &[];
 #[cfg(windows)]
 const WINDOWS_ONLY: &[&str] = &["msrt_trap_restore"];
 #[cfg(not(windows))]

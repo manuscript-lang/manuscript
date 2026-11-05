@@ -146,7 +146,7 @@ fn use_increment(operation: Increment) Int:
 
 let offset = Offset(2)
 let result = use_increment(offset)
-let again = offset.value
+let again = offset.delta
 let kept: Increment = offset.clone()
 ```
 

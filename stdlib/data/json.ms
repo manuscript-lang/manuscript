@@ -18,9 +18,9 @@ export type JsonLimits:
 A JSON value. Number text is retained to avoid losing precision during parsing.
 
 `get` and `at` read one level and `as_*` read a scalar or container, each returning `none` on a
-mismatch. `get`, `at`, `as_string`, `as_list` and `as_map` return an owned copy of the part they
-find, so the result stays valid when the document changes, and nested reads bind each level
-with `if let`:
+mismatch. `get` and `at` borrow the selected part; keep the document available and unchanged
+while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads. Nested reads
+bind each level with `if let`:
 
 ```manuscript
 if let user = doc.get("user"):
@@ -50,7 +50,7 @@ export type JsonValue:
     )
     // An ordered JSON array whose mutable list can be updated before serialization.
     case ArrayValue(
-        // Element values in source order; nested mutable payloads retain their references.
+        // Element values in source order; the array owns its elements.
         values: List[JsonValue]
     )
     // A JSON object retaining insertion order and rejecting duplicate keys during parsing.
@@ -59,11 +59,11 @@ export type JsonValue:
         values: Map[String, JsonValue]
     )
 
-// A JSON document is Data even though its objects are maps.
+// A JSON document is Data, including its string-keyed object members.
 impl Data for JsonValue:
 
 impl JsonValue:
-    // Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result is an owned copy.
+    // Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
     fn get(key: String) JsonValue?:
         match self:
             ObjectValue(values): return values.get(key)
@@ -78,7 +78,7 @@ impl JsonValue:
         return member_path(self, keys, 0)
 
     // Returns the array element at `index`, counting a negative index from the end. An index out of
-    // range, or a value that is not an array, returns `none`. The result is an owned copy.
+    // range, or a value that is not an array, returns `none`. The result borrows from the receiver.
     fn at(index: Int) JsonValue?:
         match self:
             ArrayValue(values):
@@ -124,7 +124,7 @@ impl JsonValue:
             ObjectValue(values): return values.clone()
             _: return none
 
-    // Returns True only for the Null case; a missing key or any other value returns False.
+    // Returns true only for the Null case; any other value returns false.
     fn is_null() Bool:
         match self:
             Null: return true
@@ -136,16 +136,16 @@ Parses one JSON value and applies the supplied input, depth, and value limits.
 With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
 document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request! = parse(text)`
 return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
-`EBADMSG`; nothing is rejected at compile time, as with `stringify`. Input, depth and value limits
+`EBADMSG`; a type that is not `Data` is rejected at compile time. Input, depth and value limits
 apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field; an absent required field returns `EBADMSG`, so a field
-  with no JSON form (a function, say) needs a default to be readable. A member that is not a field
-  is ignored, unless `ignore_unknown_fields` is `False`, which makes it return `EBADMSG`.
+  else `none` for an `Optional` field. An absent `Unit` field becomes `unit`; any other absent
+  required field returns `EBADMSG`. A member that is not a field is ignored, unless
+  `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
-  as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
+  as `Result` follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
 - `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`. `List` reads an array.
 - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
@@ -153,7 +153,7 @@ apply to the document before decoding.
   `EBADMSG`.
 - `Timestamp` reads an RFC 3339 string, `Duration` integer nanoseconds, `Bytes` a standard base64
   string, and `Url`, `IpAddress` and `Cidr` their string forms.
-- `JsonValue` keeps its subtree as parsed.
+- `Map[String, T]` reads an object when `T` is `Data`; `JsonValue` keeps its subtree as parsed.
 
 The record-or-document choice comes from `T`, not from the text: `parse[Request]` reads an object as a
 record and `parse[JsonValue]` keeps it as a document.
@@ -211,7 +211,7 @@ Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at co
 - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
   the labeled fields under the record rules. Payload labels never collide with a discriminator.
-- A `Map` or `Set` is not `Data`; carry an object as a `JsonValue` and a set as a `List`.
+- `Map[String, T]` is an object when `T` is `Data`. Other map keys and `Set` fail the `Data` bound.
 - The sized integers (`Int8` to `Int32`, `UInt8` to `UInt64`) are exact decimal digits, as `Int`.
   `Float32` is the shortest decimal that reads back as the same `Float32`; NaN and infinities are `null`.
 - Int, BigInt and Decimal are exact decimal digits. Float uses the shortest decimal that parses
@@ -222,12 +222,12 @@ Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at co
 - A `JsonValue` is written as stored, so parsed documents mix with typed data.
 - A type that implements `JsonEncode` is written as the `JsonValue` its `to_json` returns, instead of any rule above.
 - Strings are UTF-8 JSON strings; only quotes, backslashes and control characters are escaped, so `<`, `>` and `&` stay as written.
-- Values are read when `stringify` runs, so later mutation does not change the text. A value reachable
-  from itself returns `EBADMSG`; shared but acyclic values are written each time they appear.
+- Values are read when `stringify` runs, so later mutation does not change the text. Ownership
+  prevents cyclic values; each contained value is encoded where it appears.
 
 `strict` makes any value without a JSON form, anywhere in the document, return `EBADMSG` instead
-of being omitted or written as `null`, so a function, resource, interface value or `Unit` is never
-dropped silently. A field holding `none` is still omitted: that is a value, not a loss.
+of being omitted or written as `null`. This covers `Unit`; functions, resources and interface values
+fail the `Data` bound at compile time. A field holding `none` is still omitted.
 
 `indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
 containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
@@ -240,7 +240,7 @@ type Request:
     stream: Bool
     user: String?
 
-stringify(value: Request(model: "example", stream: true, user: none))
+let text = try stringify(Request(model: "example", stream: true, user: none))
 ```
 */
 export fn stringify[T: Data](
@@ -452,7 +452,7 @@ impl Sink[T] for JsonLines[T]:
 /*
 Writes values of type `T` to a byte stream as JSON Lines: each value is encoded as `stringify` does, on a
 single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
-`EOVERFLOW`. Writes never wait; `flush` waits for `output` to drain. Closing the result closes `output`.
+`EOVERFLOW`. Writes never wait; wait on the promise from `flush()` to drain `output`. Closing closes `output`.
 */
 export fn json_writer[T: Data](
     output: WriteStream[Bytes],

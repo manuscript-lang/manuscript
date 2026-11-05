@@ -87,7 +87,7 @@ fn rows_of_copy(rows: List[Int]) Int:
     return rows.length()
 ```
 
-- Each function above moving_params the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
+- Each function above takes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
 - It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), `ref` fields, borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
 - `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
 - A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).
@@ -204,7 +204,7 @@ let n = approve("u2").nonce                  # error: field nonce is hidden
 let {entity} = approve("u2")                 # error: its fields cannot be destructured here
 ```
 
-Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no `impl` (so no new methods or interface implementations). Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and the message types of processes, workers, tasks, and channels reject it at compile time.
+Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no `impl` (so no new methods or interface implementations). Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.
 
 Opaque is visibility, not ownership: an opaque value can still be copied and cloned, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
 

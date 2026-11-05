@@ -275,7 +275,7 @@ fn fold_inherent_impls(syms: ms_syntax::Names, module: &Module) -> Result<Vec<De
             continue;
         }
         let at = || position_text(syms, n(&module.file), d.pos);
-        let idx = match types.get(&n(i.receiver.name())) {
+        let idx = match types.get(&n(i.receiver.name(syms))) {
             Some(&idx) if !matches!(kept[idx].0.kind, DeclKind::Interface(_)) => idx,
             _ => {
                 return Err(format!(
@@ -425,7 +425,7 @@ fn interface_for_inherent(
         interface_name = format!("{base}{}", used.len());
     }
     used.push(interface_name.clone());
-    let interface_name = ms_syntax::Symbol::intern(&interface_name);
+    let interface_name = ms_syntax::Names::global().intern(&interface_name);
     let mut methods = Vec::new();
     for m in &i.methods {
         let mut type_params = Vec::new();
@@ -513,7 +513,7 @@ fn split_mixed(
     if !is_mixed(parsed) {
         return Ok(None);
     }
-    let implements = |d: &Decl, name: Name| matches!(&d.kind, DeclKind::Impl(i) if i.contract.as_ref().is_some_and(|c| n(c.name()) == name));
+    let implements = |d: &Decl, name: Name| matches!(&d.kind, DeclKind::Impl(i) if i.contract.as_ref().is_some_and(|c| n(c.name(syms)) == name));
     let mut native = Vec::new();
     let mut source = Vec::new();
     let mut ids = parsed.node_count;
@@ -955,11 +955,11 @@ impl Loader<'_> {
                 };
                 let start = self.c.p.methods.len();
                 self.c.implementation(d);
-                let receiver_name = imp.receiver.name().to_string();
+                let receiver_name = imp.receiver.name(syms).to_string();
                 let contract_name = imp
                     .contract
                     .as_ref()
-                    .map(|c| c.name().to_string())
+                    .map(|c| c.name(syms).to_string())
                     .unwrap_or_default();
                 for index in start..self.c.p.methods.len() {
                     let mut method = (*self.c.p.methods[index]).clone();

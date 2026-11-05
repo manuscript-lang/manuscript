@@ -4,7 +4,7 @@
 //! `ucontext`, walks the frame-pointer chain inside the stack bounds recorded at
 //! start and stores the pcs in a preallocated ring (no allocation, async-signal-safe).
 //! At exit the pcs are resolved through the function table and aggregated.
-use crate::fault::{STACK_HI, STACK_LO, TABLES, find_func};
+use crate::fault::{TABLES, find_func, segment_of, segment_state};
 use crate::global::Process;
 use crate::num;
 use crate::sys;
@@ -69,18 +69,27 @@ fn record(pc: usize, mut fp: usize) {
     // bounds.
     unsafe {
         let base = (*BUFFER.ptr()).add(n * SAMPLE_WORDS);
-        let (lo, hi) = (*STACK_LO.ptr(), *STACK_HI.ptr());
+        let mut seg = segment_state();
         let mut k = 0;
         *base.add(1) = pc;
         k += 1;
-        while k < MAX_FRAMES && fp != 0 && fp.is_multiple_of(8) && fp >= lo && fp + 16 <= hi {
+        while k < MAX_FRAMES && fp != 0 && fp.is_multiple_of(8) {
+            // Unknown bounds record the program counter alone.
+            let Some(bounds) = segment_of(fp, seg) else {
+                break;
+            };
+            if bounds.1 == 0 {
+                break;
+            }
+            seg = bounds;
             let (next, ret) = (*(fp as *const usize), *((fp + 8) as *const usize));
             if ret == 0 {
                 break;
             }
             *base.add(1 + k) = ret;
             k += 1;
-            if next <= fp {
+            // Frames go up within a segment; the segment below may lie anywhere.
+            if next <= fp && next >= seg.0 {
                 break;
             }
             fp = next;

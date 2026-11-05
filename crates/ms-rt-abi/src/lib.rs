@@ -719,14 +719,21 @@ unsafe impl Sync for Tables {}
 /// Names of the data symbols generated code reads or writes directly.
 pub mod symbols {
     /// Function returning the running task's header block (`msrt_isolate_hdr() -> *mut u8`).
-    /// On Linux and macOS task stacks are [`STACK_SLOT`]-aligned slots with the block in the
-    /// slot's last 16 bytes, so generated code finds it by masking the stack pointer instead of calling.
-    /// Word 0 (`usize`) is the lowest stack address recursive calls may reach (0 = no limit): on
-    /// entry to a recursive function compare the stack pointer against it and call
-    /// `msrt_fault_depth` when below.
+    /// Generated code does not call it: every task stack lies inside a [`STACK_REGION`]-aligned
+    /// region whose last 16 bytes hold a pointer to the running task's block, which the scheduler
+    /// writes before it switches to the task. Code finds the block as
+    /// `*((sp & !(STACK_REGION - 1)) + STACK_REGION - 16)`.
+    /// Word 0 (`usize`) of the block is the lowest stack address recursive calls may reach on
+    /// the task's current stack segment (0 = no limit): on entry to a recursive function compare
+    /// the stack pointer against it and, when below, call `msrt_task_grow(shim, block)` with the
+    /// function's parameters stored at `block` (one 8-byte cell each, then room for its results)
+    /// and return the results it leaves there. The runtime runs `shim(block)` on the task's next
+    /// segment, a guarded slot that keeps the frame-pointer chain continuous, and faults with the
+    /// stack overflow report when the task holds a region's worth of segments.
     pub const ISOLATE_HDR: &str = "msrt_isolate_hdr";
-    /// Size and alignment of a task stack slot (targets with slot-aligned stacks).
-    pub const STACK_SLOT: i64 = 256 << 20;
+    /// Size and alignment of a stack region: 512 KiB task slots are carved from a region, and
+    /// the main task's stack is a region of its own.
+    pub const STACK_REGION: i64 = 256 << 20;
     /// `u8` at this offset of the block: non-zero when a stop request (SIGINT, SIGTERM) is
     /// pending and not shielded.
     pub const ISOLATE_HDR_CANCEL: i64 = 8;

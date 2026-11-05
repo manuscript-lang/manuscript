@@ -209,7 +209,7 @@ impl<'a> FnLower<'a> {
                 let name = if let DeclKind::Impl(implementation) = &callee.func.decl.decl().kind {
                     format!(
                         "{}.{}",
-                        implementation.receiver.name(),
+                        implementation.receiver.name(self.syms),
                         self.syms.str(callee.name)
                     )
                 } else {
@@ -514,7 +514,37 @@ impl<'a> FnLower<'a> {
             let copy = self.clone_value(v);
             return Ok(self.val(copy, true));
         }
+        // A function that borrows some cases of its `Result` over a temporary source: the
+        // borrowed cases would end with the temporary, so the caller owns a copy of the whole
+        // result (the part of the temporary is copied out before it is dropped).
+        if self
+            .cx
+            .owned_borrows
+            .contains_key(&(self.hir.data.file, e.id))
+            && let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone()
+            && self.b.m.alts[a.index()].borrowed != 0
+        {
+            let (base, plain) = self.plain_of(a);
+            let _ = base;
+            let copy = self.b.alt_own(v, plain);
+            self.drop_value(v);
+            return Ok(self.val(copy, true));
+        }
         Ok(self.val(v, true))
+    }
+
+    /// The ordinary alternative a borrowing variant `a` is a variant of.
+    pub(crate) fn plain_of(&mut self, a: ms_mir::types::AltId) -> (ms_mir::types::AltId, MTy) {
+        let def = self.b.m.alts[a.index()].clone();
+        let id = self
+            .b
+            .m
+            .alts
+            .iter()
+            .position(|x| x.borrowed == 0 && x.name == def.name && x.cases == def.cases)
+            .map(|i| ms_mir::types::AltId(i as u32))
+            .unwrap_or(a);
+        (id, self.b.m.types.alt(id))
     }
 
     /// Moves a changed argument into a slot the callee takes from and puts back into, and
@@ -924,7 +954,7 @@ impl<'a> FnLower<'a> {
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned_wrap(x);
+                    let o = self.owned(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1054,6 +1084,26 @@ impl<'a> FnLower<'a> {
 
     // --------------------------------------------------------- constructors
 
+    /// The alternative a constructor in return position builds: the borrowing variant this function
+    /// returns when the checker marked the node (`Fact::RetCtor`), else `a`.
+    fn ret_variant(&self, e: &Expr, a: ms_mir::types::AltId) -> ms_mir::types::AltId {
+        if !self
+            .cx
+            .fact(self.hir.data.file, e.id, ms_check::ownership::Fact::RetCtor)
+        {
+            return a;
+        }
+        match self.b.m.types.kind(self.ret_ty) {
+            TyKind::Alt(v)
+                if self.b.m.alts[v.index()].borrowed != 0
+                    && self.b.m.alts[v.index()].name == self.b.m.alts[a.index()].name =>
+            {
+                *v
+            }
+            _ => a,
+        }
+    }
+
     fn construct(
         &mut self,
         e: &Expr,
@@ -1089,9 +1139,14 @@ impl<'a> FnLower<'a> {
                 .iter()
                 .position(|x| x.name == self.syms.str(c))
                 .ok_or_else(|| Error::new("unknown case"))?;
+            let variant = self.ret_variant(e, a);
             if !x.own && arg.wrap_optional.is_none() {
-                let v = self.b.alt_view(a, idx as u32, &[x.v]);
-                return Ok(Val { v, own: false });
+                let v = self.b.alt_view(variant, idx as u32, &[x.v]);
+                // In a borrowing variant the borrowed case is part of an owned result.
+                return Ok(Val {
+                    v,
+                    own: variant != a,
+                });
             }
             let o = self.owned(x);
             let v = self.b.alt_new(a, idx as u32, &[o]);
@@ -1115,7 +1170,7 @@ impl<'a> FnLower<'a> {
                 .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned_wrap(x);
+                    let o = self.owned(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1125,11 +1180,7 @@ impl<'a> FnLower<'a> {
             let x = if later_try {
                 self.hold_temp(x)
             } else {
-                let v = if t.is(Builtin::Result) {
-                    self.owned_wrap(x)
-                } else {
-                    self.owned(x)
-                };
+                let v = self.owned(x);
                 Val {
                     v,
                     own: self.holds(self.ty_of(v)),
@@ -1168,6 +1219,7 @@ impl<'a> FnLower<'a> {
                     .iter()
                     .position(|x| x.name == self.syms.str(c))
                     .ok_or_else(|| Error::new("unknown case"))?;
+                let a = self.ret_variant(e, a);
                 self.b.alt_new(a, idx as u32, &vals)
             }
             _ => {

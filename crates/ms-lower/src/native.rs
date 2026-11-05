@@ -671,7 +671,7 @@ impl<'a> FnLower<'a> {
         (sym, param, as_text): (&str, &str, bool),
     ) -> Result<Val, Error> {
         let val = self.format_argument(m, recv, as_text)?;
-        let name = ct::Name::from(param);
+        let name = self.syms.intern(param);
         args.push(NArg {
             name,
             val,
@@ -2377,6 +2377,12 @@ impl<'a> FnLower<'a> {
         alt: ms_mir::types::AltId,
         args: Vec<NArg>,
     ) -> Result<Val, Error> {
+        // A borrowing result is read through its own alternative, so its borrowed cases are
+        // never taken.
+        let alt = match self.b.m.types.kind(self.ty_of(recv.v)) {
+            TyKind::Alt(a) => *a,
+            _ => alt,
+        };
         let case = |m: &ms_mir::ir::Module, n: &str| {
             m.alts[alt.index()].cases.iter().position(|c| c.name == n)
         };
@@ -2409,7 +2415,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         // An owned result hands its payload over; a borrowed one is copied.
-                        let o = if recv.own {
+                        let o = if recv.own && !s.b.m.alts[alt.index()].borrows(ok as usize) {
                             let p = s.b.alt_take(alt, ok, 0, r);
                             s.b.alt_release(alt, ok, 1, r);
                             p

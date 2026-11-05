@@ -86,8 +86,8 @@ pub(crate) struct Start {
 
 /// What a thread tells another about a promise.
 pub(crate) enum Event {
-    /// To the creator: the work runs as a task on `thread`.
-    Started { id: i64, thread: u8 },
+    /// To the creator: the work runs as task `task` on `thread`.
+    Started { id: i64, thread: u8, task: u64 },
     /// To the creator: the work produced a value (or the operation's own error). The result block
     /// is in the process heap and now belongs to the promise.
     /// A null `ptr` completes without a value (the end of a pipe, a finished flush). `pipe` names
@@ -109,8 +109,8 @@ pub(crate) enum Event {
     },
     /// To the creator: a cancel switch fired; stop the promise if it has not finished.
     Stop { id: i64 },
-    /// To the runner: cancel the promise's task.
-    Cancel { id: i64 },
+    /// To the runner: cancel the promise's task `task` (a stale handle is ignored).
+    Cancel { task: u64 },
 }
 
 struct Mail {

@@ -2,20 +2,28 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "A statically typed, natively compiled language designed for agents to write and humans to understand: indentation-based syntax, ownership without a garbage collector, concurrency without async, and compiler feedback an agent can act on."
+description = "Help agents build correct, fast programs you can understand. Static checks catch mistakes, compiler feedback guides repairs, and straightforward code compiles to native executables."
 +++
 
 {{< docs-home >}}
-<!-- manuscript-example: {"mode":"run","args":["Ada"],"stdout":"Hello, Ada!\n","cases":[{"stdout":"Hello, world!\n"}]} -->
-```manuscript {filename="hello.ms"}
-import arguments from "@std/os/process.ms"
-import stdout from "@std/io/io.ms"
+<!-- manuscript-example: {"mode":"run","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
+```manuscript {filename="generate_release_notes.ms"}
+import open, read_file from "@std/os/fs.ms"
+import lines, collect from "@std/io/streams.ms"
+
+fn render() Unit!:
+    let template = read_file("template.txt")
+    let file = try open("changes.txt", "r", 0)
+    let source = try file.reader() | lines
+    let highlights = try collect(source)
+        | .filter(fn line: line.starts_with("+ "))
+        | .join("\n")
+    let page = try template.wait()
+    print(page.decode_utf8().get()
+        .replace("$changes", highlights))
+    return ok(unit)
 
 export fn main() Int:
-    let name = arguments().get(0, default: "world")
-    let message = "Hello, {name}!\n"
-    if stdout().write(message).is_error():
-        return 1
-    return 0
+    return if render().is_ok(): 0 else: 1
 ```
 {{< /docs-home >}}

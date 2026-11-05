@@ -172,7 +172,7 @@ impl MemoryTree:
         return ok(unit)
 
     // Removes a file or an empty directory; `recursive` removes a directory with everything under it.
-    // A missing path is `ENOENT`, a non-empty directory without `recursive` is `NotEmpty`, and the root cannot be removed.
+    // A missing path is `ENOENT`, a non-empty directory without `recursive` is `ENOTEMPTY`, and the root cannot be removed.
     var fn remove(path: String, recursive: Bool = false) Unit!:
         let inside = try clean(path)
         if inside == "": return error(

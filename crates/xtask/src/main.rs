@@ -191,7 +191,8 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
 /// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
-/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`); an unknown flag or a
+/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, and `keeps:<param>`
+/// for a function value the runtime stores and drops itself); an unknown flag or a
 /// marker with no function after it is an error.
 fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
     let mut found = Vec::new();
@@ -200,10 +201,9 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         let t = line.trim();
         if let Some(list) = t.strip_prefix("// ms:") {
             let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
-            if let Some(bad) = list
-                .iter()
-                .find(|f| !["leaf", "pure", "fresh"].contains(&f.as_str()))
-            {
+            if let Some(bad) = list.iter().find(|f| {
+                !["leaf", "pure", "fresh"].contains(&f.as_str()) && !f.starts_with("keeps:")
+            }) {
                 return Err(format!("line {}: unknown flag `{bad}`", n + 1));
             }
             pending = Some(list);

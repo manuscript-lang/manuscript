@@ -96,7 +96,7 @@ impl T?:
     fn or_else(create: fn() T?) T?: ...
 
     // Returns ok with the original payload, or error with the eager cause.
-    // Without a cause, E is Error (kind NotFound) and the message names the calling source file and line.
+    // Without a cause, E is Error (kind ENOENT) and the message names the calling source file and line.
     fn ok_or[E = Error](cause: E?) T!E: ...
 
     // Constructs an error once only for none; present payloads remain unchanged.
@@ -167,7 +167,7 @@ export interface Clonable:
 /*
 A type whose values are plain data: no resource, function, interface value, or runtime handle
 anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
-message types of processes, workers, tasks and channels require `T: Data`.
+typed JSON stream codecs require `T: Data`. Promises and pipes do not require this bound.
 There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
 only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
 is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.

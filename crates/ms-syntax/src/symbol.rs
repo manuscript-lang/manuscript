@@ -1,137 +1,121 @@
 //! Interned identifiers.
+//!
+//! A [`Symbol`] is a `u32` index into an [`Interner`]. Equality and hashing compare the integer;
+//! text, display and text order go through a [`Names`] handle. An interner owns its names and frees
+//! them when dropped. A [`Session`] owns one for a long-lived process (the language server) and
+//! frees it with [`Session::release`]; every other process uses the process-wide default and never
+//! frees it. See `proposals/session-owned-interner.md`.
+#![allow(unsafe_code)]
 
-use std::collections::HashMap;
+use std::cell::Cell;
+use std::cmp::Ordering;
 use std::fmt;
-use std::hash::{Hash, Hasher};
+use std::ptr::NonNull;
+use std::sync::atomic::{AtomicU64, Ordering as Atomic};
 use std::sync::{Mutex, OnceLock};
 
-/// The handle through which names are interned and read. Today every handle shares the process
-/// table; callers hold one so the table can later belong to a session and be freed with it (see
-/// `proposals/session-owned-interner.md`). Pass it down; do not reach for [`Names::global`] in new
-/// code.
-#[derive(Copy, Clone, Debug, Default)]
-pub struct Names;
+/// An interned string: an index into one [`Interner`], meaningful only with the [`Names`] that
+/// made it. Orders by intern order, which is deterministic but not alphabetical; use
+/// [`Names::cmp`] when output must be sorted by text.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Symbol(u32);
+
+impl fmt::Debug for Symbol {
+    /// Text when the symbol belongs to the current interner, else its index.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match Names::global().try_str(*self) {
+            Some(text) => write!(f, "{text:?}"),
+            None => write!(f, "#{}", self.0),
+        }
+    }
+}
+
+/// The handle through which names are interned and read. It is `Copy` and points at one
+/// [`Interner`]; pass it down and store it with the structure that owns the symbols.
+#[derive(Copy, Clone)]
+pub struct Names(&'static Interner);
+
+impl Default for Names {
+    fn default() -> Names {
+        Names::global()
+    }
+}
+
+impl fmt::Debug for Names {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Names")
+    }
+}
+
+thread_local! {
+    static CURRENT: Cell<Option<Names>> = const { Cell::new(None) };
+}
 
 impl Names {
-    /// The handle for the process table, for code not yet given one.
-    pub const fn global() -> Names {
-        Names
+    /// The interner of the session entered on this thread, else the process default. For code
+    /// that has no handle to take (tests, tools, `n(..)` helpers); give new code a parameter.
+    pub fn global() -> Names {
+        if let Some(names) = CURRENT.with(Cell::get) {
+            return names;
+        }
+        static DEFAULT: OnceLock<Interner> = OnceLock::new();
+        Names(DEFAULT.get_or_init(Interner::new))
     }
 
     /// Interns `text`.
     pub fn intern(self, text: &str) -> Symbol {
-        Symbol::intern(text)
+        self.0.intern(text)
     }
 
-    /// The text of `sym`. The lifetime is unconstrained while the table is process-wide; it becomes
-    /// the interner's borrow when the table is session-owned.
+    /// The text of `sym`. The text lives as long as the interner: forever for the process default,
+    /// until [`Session::release`] for a session.
     pub fn str<'a>(self, sym: impl std::borrow::Borrow<Symbol>) -> &'a str {
-        sym.borrow().as_str()
+        self.try_str(*sym.borrow())
+            .unwrap_or_else(|| panic!("symbol #{} is not in this interner", sym.borrow().0))
+    }
+
+    /// The text of `sym`, or `None` when its index is out of range for this interner.
+    pub fn try_str<'a>(self, sym: Symbol) -> Option<&'a str> {
+        self.0.get(sym.0)
+    }
+
+    /// Bytes of text this interner holds.
+    pub fn text_bytes(self) -> usize {
+        self.0.text_bytes()
+    }
+
+    /// Distinguishes this interner from every other made in the process, including freed ones.
+    /// Caches keyed by symbols compare it to notice a session change.
+    pub fn generation(self) -> u64 {
+        self.0.generation
+    }
+
+    /// Orders two symbols by text, so sorted output is deterministic and alphabetical.
+    pub fn cmp(self, a: Symbol, b: Symbol) -> Ordering {
+        self.str(a).cmp(self.str(b))
     }
 }
 
-/// An interned string. Equal strings intern to the same `Symbol`, so equality
-/// and hashing are pointer operations and `as_str` is free. Symbols are
-/// process-wide (the table is shared by all threads and never shrinks). Each symbol carries its
-/// intern order, which equality and hashing use, so hash-map iteration order does not depend on
-/// where the allocator placed a string.
-#[derive(Copy, Clone)]
-pub struct Symbol(u32, &'static str);
-
-fn table() -> &'static Mutex<HashMap<&'static str, Symbol>> {
-    static TABLE: OnceLock<Mutex<HashMap<&'static str, Symbol>>> = OnceLock::new();
-    TABLE.get_or_init(|| Mutex::new(HashMap::with_capacity(4096)))
-}
-
-impl Symbol {
-    /// Interns `text`.
-    pub fn intern(text: &str) -> Symbol {
-        if text.is_empty() {
-            return Symbol(0, "");
-        }
-        let mut map = table().lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(found) = map.get(text) {
-            return *found;
-        }
-        let leaked: &'static str = Box::leak(text.to_owned().into_boxed_str());
-        let symbol = Symbol(map.len() as u32 + 1, leaked);
-        map.insert(leaked, symbol);
-        symbol
-    }
-
-    /// The interned text.
-    pub fn as_str(self) -> &'static str {
-        self.1
-    }
-}
-
-impl PartialEq for Symbol {
-    fn eq(&self, other: &Symbol) -> bool {
-        self.0 == other.0
-    }
-}
-impl Eq for Symbol {}
-impl Hash for Symbol {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-impl PartialOrd for Symbol {
-    fn partial_cmp(&self, other: &Symbol) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for Symbol {
-    /// Orders by text, so sorted output is deterministic.
-    fn cmp(&self, other: &Symbol) -> std::cmp::Ordering {
-        self.1.cmp(other.1)
-    }
-}
-impl fmt::Debug for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.1)
-    }
-}
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.1)
-    }
-}
-impl From<&str> for Symbol {
-    fn from(text: &str) -> Symbol {
-        Symbol::intern(text)
-    }
-}
-impl std::ops::Deref for Symbol {
-    type Target = str;
-    fn deref(&self) -> &str {
-        self.1
-    }
-}
-impl PartialEq<str> for Symbol {
-    fn eq(&self, other: &str) -> bool {
-        self.1 == other
-    }
-}
-impl PartialEq<&str> for Symbol {
-    fn eq(&self, other: &&str) -> bool {
-        self.1 == *other
-    }
-}
-
-/// An index into an [`Interner`]. Plain data: it compares, hashes and copies as a `u32`, and
-/// means nothing without the interner that made it.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Sym(pub u32);
-
-/// A session-owned string table: every name in one byte buffer, one end offset per name, and an
-/// open-addressed slot array of ids. Interning hashes the text once and compares integers; the
-/// table owns its memory, so dropping it frees every name. Id 0 is the empty string.
+/// A string table that owns its names. Id 0 is the empty string.
 pub struct Interner {
-    bytes: String,
-    ends: Vec<u32>,
-    slots: Vec<u32>,
+    generation: u64,
+    state: Mutex<State>,
 }
+
+struct State {
+    /// Owned allocations from `Box::leak`, freed by `Interner::drop`. Index 0 is a placeholder.
+    texts: Vec<Text>,
+    /// Open-addressed ids, 0 for empty; the length is a power of two and at least twice `texts`.
+    slots: Vec<u32>,
+    /// Total length of the texts.
+    bytes: usize,
+}
+
+#[derive(Copy, Clone)]
+struct Text(NonNull<str>);
+
+// SAFETY: a `Text` owns an immutable heap string that only `Interner::drop` frees.
+unsafe impl Send for Text {}
 
 fn hash_text(text: &str) -> u32 {
     // FNV-1a, folded to 32 bits.
@@ -151,16 +135,24 @@ impl Default for Interner {
 impl Interner {
     /// An interner holding only the empty string.
     pub fn new() -> Interner {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
         Interner {
-            bytes: String::new(),
-            ends: vec![0],
-            slots: vec![0; 64],
+            generation: NEXT.fetch_add(1, Atomic::Relaxed),
+            state: Mutex::new(State {
+                texts: vec![Text(NonNull::from(""))],
+                slots: vec![0; 4096],
+                bytes: 0,
+            }),
         }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// The number of interned strings, counting the empty string.
     pub fn len(&self) -> usize {
-        self.ends.len()
+        self.lock().texts.len()
     }
 
     /// Always false: the empty string is interned from the start.
@@ -170,52 +162,56 @@ impl Interner {
 
     /// Bytes of text held.
     pub fn text_bytes(&self) -> usize {
-        self.bytes.len()
+        self.lock().bytes
     }
 
-    /// The text of `sym`. Panics on an id from another interner that is out of range.
-    pub fn str(&self, sym: Sym) -> &str {
-        let id = sym.0 as usize;
-        let start = if id == 0 {
-            0
-        } else {
-            self.ends[id - 1] as usize
-        };
-        &self.bytes[start..self.ends[id] as usize]
+    fn get<'a>(&self, id: u32) -> Option<&'a str> {
+        let text = *self.lock().texts.get(id as usize)?;
+        // SAFETY: the allocation is never moved or mutated, and is freed only when the interner is
+        // dropped (`Interner::drop`) or released (`Session::release`), which require that no text
+        // borrowed from it is still in use. The lifetime is chosen by the caller for that reason.
+        Some(unsafe { &*text.0.as_ptr() })
     }
 
     /// Interns `text`.
-    pub fn intern(&mut self, text: &str) -> Sym {
+    pub fn intern(&self, text: &str) -> Symbol {
         if text.is_empty() {
-            return Sym(0);
+            return Symbol(0);
         }
-        let mask = self.slots.len() - 1;
+        let mut state = self.lock();
+        let mask = state.slots.len() - 1;
         let mut at = hash_text(text) as usize & mask;
         loop {
-            let id = self.slots[at];
+            let id = state.slots[at];
             if id == 0 {
                 break;
             }
-            if self.str(Sym(id)) == text {
-                return Sym(id);
+            // SAFETY: every `Text` points at a live allocation owned by this interner.
+            if unsafe { state.texts[id as usize].0.as_ref() } == text {
+                return Symbol(id);
             }
             at = (at + 1) & mask;
         }
-        let id = self.ends.len() as u32;
-        self.bytes.push_str(text);
-        self.ends.push(self.bytes.len() as u32);
-        self.slots[at] = id;
-        if self.ends.len() * 2 > self.slots.len() {
-            self.grow();
+        let id = state.texts.len() as u32;
+        let leaked: &'static mut str = Box::leak(text.to_owned().into_boxed_str());
+        state.bytes += text.len();
+        state.texts.push(Text(NonNull::from(leaked)));
+        state.slots[at] = id;
+        if state.texts.len() * 2 > state.slots.len() {
+            state.grow();
         }
-        Sym(id)
+        Symbol(id)
     }
+}
 
+impl State {
     fn grow(&mut self) {
         let mut slots = vec![0u32; self.slots.len() * 2];
         let mask = slots.len() - 1;
-        for id in 1..self.ends.len() as u32 {
-            let mut at = hash_text(self.str(Sym(id))) as usize & mask;
+        for id in 1..self.texts.len() as u32 {
+            // SAFETY: every `Text` points at a live allocation owned by this interner.
+            let text = unsafe { self.texts[id as usize].0.as_ref() };
+            let mut at = hash_text(text) as usize & mask;
             while slots[at] != 0 {
                 at = (at + 1) & mask;
             }
@@ -225,40 +221,130 @@ impl Interner {
     }
 }
 
+impl Drop for Interner {
+    fn drop(&mut self) {
+        let state = self.state.get_mut().unwrap_or_else(|e| e.into_inner());
+        for text in state.texts.drain(1..) {
+            // SAFETY: allocated by `Box::leak` in `intern`, freed once here, and `&mut self`
+            // means no `get` borrow is alive.
+            drop(unsafe { Box::from_raw(text.0.as_ptr()) });
+        }
+    }
+}
+
+/// An interner that belongs to a long-lived unit of work (an editor workspace) and can be freed
+/// when that work ends. Dropping a `Session` leaks its names, which is always safe; freeing them
+/// is [`Session::release`].
+pub struct Session {
+    interner: NonNull<Interner>,
+}
+
+// SAFETY: the interner it points at is `Sync` and owned by the session.
+unsafe impl Send for Session {}
+
+impl Session {
+    /// A new, empty session.
+    pub fn new() -> Session {
+        Session {
+            interner: NonNull::from(Box::leak(Box::new(Interner::new()))),
+        }
+    }
+
+    /// The handle for this session's names.
+    pub fn names(&self) -> Names {
+        // SAFETY: the interner is live until `release`, which consumes the session; the `'static`
+        // lifetime is the contract `release` imposes on every handle.
+        Names(unsafe { self.interner.as_ref() })
+    }
+
+    /// Makes the names of this session current on this thread until the guard drops, so `n(..)`
+    /// and [`Names::global`] reach it.
+    pub fn enter(&self) -> Entered {
+        let names = self.names();
+        Entered(CURRENT.with(|c| c.replace(Some(names))))
+    }
+
+    /// Frees every name in the session.
+    ///
+    /// # Safety
+    ///
+    /// No [`Names`] handle, [`Symbol`], or `&str` obtained from this session may be used afterward:
+    /// not by a structure that still holds one, and not on another thread.
+    pub unsafe fn release(self) {
+        // SAFETY: allocated by `Box::leak` in `new`, freed once because `self` is consumed; the
+        // caller guarantees nothing borrowed from it remains.
+        drop(unsafe { Box::from_raw(self.interner.as_ptr()) });
+    }
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Session::new()
+    }
+}
+
+/// Restores the previously current interner when dropped.
+pub struct Entered(Option<Names>);
+
+impl Drop for Entered {
+    fn drop(&mut self) {
+        CURRENT.with(|c| c.set(self.0));
+    }
+}
+
 #[cfg(test)]
 mod interner_tests {
     use super::*;
 
     #[test]
     fn equal_text_shares_an_id_and_round_trips() {
-        let mut t = Interner::new();
-        let a = t.intern("alpha");
-        let b = t.intern("beta");
+        let t = Session::new();
+        let names = t.names();
+        let a = names.intern("alpha");
+        let b = names.intern("beta");
         assert_ne!(a, b);
-        assert_eq!(t.intern("alpha"), a);
-        assert_eq!((t.str(a), t.str(b)), ("alpha", "beta"));
-        assert_eq!(t.intern(""), Sym(0));
-        assert_eq!(t.str(Sym(0)), "");
+        assert_eq!(names.intern("alpha"), a);
+        assert_eq!((names.str(a), names.str(b)), ("alpha", "beta"));
+        assert_eq!(names.intern(""), Symbol(0));
+        assert_eq!(names.str(Symbol(0)), "");
+        assert_eq!(names.cmp(b, a), Ordering::Greater);
+        assert_eq!(names.text_bytes(), "alphabeta".len());
+        assert_ne!(names.generation(), Names::global().generation());
+        // SAFETY: nothing borrowed from the session is used afterward.
+        unsafe { t.release() };
     }
 
     #[test]
     fn survives_growth() {
-        let mut t = Interner::new();
-        let ids: Vec<Sym> = (0..5000).map(|i| t.intern(&format!("name{i}"))).collect();
-        for (i, id) in ids.iter().enumerate() {
-            assert_eq!(t.str(*id), format!("name{i}"));
-            assert_eq!(t.intern(&format!("name{i}")), *id);
+        let i = Interner::new();
+        let names = Names(Box::leak(Box::new(Interner::new())));
+        let ids: Vec<Symbol> = (0..9000)
+            .map(|k| names.intern(&format!("name{k}")))
+            .collect();
+        for (k, id) in ids.iter().enumerate() {
+            assert_eq!(names.str(*id), format!("name{k}"));
+            assert_eq!(names.intern(&format!("name{k}")), *id);
         }
-        assert_eq!(t.len(), 5001);
+        assert_eq!(names.0.len(), 9001);
+        assert_eq!(i.len(), 1);
     }
 
     #[test]
-    fn dropping_frees_the_names() {
-        // Two interners are independent: the same text gets ids from each, with no shared state.
-        let mut a = Interner::new();
-        let mut b = Interner::new();
-        a.intern("x");
-        assert_eq!(b.intern("y"), Sym(1));
-        assert_eq!(a.str(Sym(1)), "x");
+    fn sessions_are_independent_and_enter_restores() {
+        let a = Session::new();
+        let b = Session::new();
+        let before = Names::global().intern("outside");
+        {
+            let _in = a.enter();
+            let x = Names::global().intern("x");
+            assert_eq!(a.names().str(x), "x");
+            assert_eq!(b.names().intern("y"), Symbol(1));
+        }
+        assert_eq!(Names::global().str(before), "outside");
+        // SAFETY: nothing borrowed from either session is used afterward.
+        unsafe {
+            a.release();
+            b.release();
+        }
     }
 }

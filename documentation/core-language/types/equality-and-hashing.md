@@ -40,9 +40,9 @@ interface Hashable:
 | `Map[K, V]` | Equal associations, independent of insertion order | Unsupported |
 | `Set[T]` | Equal members, independent of insertion order | Unsupported |
 
-List equality captures both backing slices and lengths first, following the [captured-header traversal rules](collections.md#mutation-and-copies): element writes during comparison are visible, append, shrink, and reallocation are not.
+Equality reads both collections. The ownership rules prevent mutating a collection while it is borrowed for comparison.
 
-- Structural equality terminates on cyclic data.
+- Recursive comparisons have a depth limit; see [programming faults](../errors/faults.md#runaway-recursion). Ownership prevents constructing cyclic values.
 - Collections and recursive types get no automatic hashing; an explicit pair may hash a stable identity.
 - Functions, resource handles, and service handles have no implicit equality.
 - Compare through an `Equal`-typed parameter or binding with `.equals`.
@@ -70,6 +70,6 @@ These apply to operators, collection searches, and key lookup. Overriding equali
 
 Equality must be reflexive, symmetric, and transitive, and equal values must hash equally. Hashes are lookup aids, not stable IDs or a serialization format.
 
-A key is copied into the Map or Set, so changing the original never changes the stored one.
+Map keys and Set elements are owned by the collection. Inserting a non-scalar value moves it at its last use; clone it explicitly if you need an independent value afterwards.
 
 Never change a stored key's equality or hash. Remove it, mutate, and reinsert; a mutated key stays filed under its old hash and neither value finds it. Equality and hash must be deterministic and independent of authority, resource state, and wall-clock time.

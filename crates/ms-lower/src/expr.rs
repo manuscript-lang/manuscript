@@ -100,7 +100,7 @@ impl<'a> FnLower<'a> {
                 }
             }
             Some(_) if !self.dead => {
-                let o = self.owned_wrap(x);
+                let o = self.owned(x);
                 Val {
                     v: self.b.opt_some(o),
                     own: true,

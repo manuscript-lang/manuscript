@@ -49,6 +49,9 @@ pub enum Glue {
     BlockClone,
     /// `fn(arg: *mut u8)` thunk used by cleanup.push; key carries the closer function.
     CleanupThunk(u32),
+    /// `fn(block)` that calls the function in the key with the parameters stored at `block` and
+    /// stores its results after them: the body `msrt_task_grow` runs on a new stack segment.
+    GrowShim(u32),
     /// `fn(slot)` that drops the value stored in memory at `slot` (descriptor `drop`).
     SlotDrop,
     /// `fn(src, dst)` that copies the value at `src` into uninitialised `dst` (descriptor `copy`).
@@ -75,6 +78,7 @@ const RT: &[(&str, &str, &str)] = &[
     ("msrt_index_fault", "ii", ""),
     ("msrt_fault_unwrap_none", "", ""),
     ("msrt_fault_depth", "", ""),
+    ("msrt_task_grow", "ii", ""),
     ("msrt_cancelled", "", ""),
     ("msrt_isolate_hdr", "", "i"),
     ("msrt_cleanup_push", "ii", "i"),
@@ -386,9 +390,11 @@ impl<'m> Gen<'m> {
             Glue::Drop => self.sig(&leaves, &[]),
             Glue::Clone => self.sig(&leaves, &leaves),
             Glue::BlockClone | Glue::ClosureClone(_) => self.sig(&[Leaf::I64], &[Leaf::I64]),
-            Glue::ClosureDrop(_) | Glue::BlockDrop | Glue::CleanupThunk(_) | Glue::SlotDrop => {
-                self.sig(&[Leaf::I64], &[])
-            }
+            Glue::ClosureDrop(_)
+            | Glue::BlockDrop
+            | Glue::CleanupThunk(_)
+            | Glue::GrowShim(_)
+            | Glue::SlotDrop => self.sig(&[Leaf::I64], &[]),
             Glue::SlotCopy => self.sig(&[Leaf::I64, Leaf::I64], &[]),
         };
         let name = format!(
@@ -402,6 +408,7 @@ impl<'m> Gen<'m> {
                 Glue::BlockDrop => "block_drop",
                 Glue::BlockClone => "block_clone",
                 Glue::CleanupThunk(_) => "cleanup_thunk",
+                Glue::GrowShim(_) => "grow_shim",
                 Glue::SlotDrop => "slot_drop",
                 Glue::SlotCopy => "slot_copy",
             }
@@ -823,18 +830,20 @@ fn compile_with_isa(
     // on the other cores, so no stage waits for a whole batch of the others.
     std::thread::scope(|scope| -> Result<(), Error> {
         let mut pipe = Pipeline::start(scope, &worker_isa);
+        let mut temps;
         for (i, f) in m.funcs.iter().enumerate() {
             ctx.clear();
             ctx.func.signature = g.func_sig(f);
             ctx.func.name = UserFuncName::user(0, g.funcs[i].as_u32());
             {
                 let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
-                l.lower_func(f);
+                l.lower_func(i, f);
                 if let Some(u) = l.unsupported.clone() {
                     return Err(Error(format!("{}: unsupported: {u}", f.name)));
                 }
-                l.finish();
+                temps = l.finish();
             }
+            crate::slotshare::share(&mut ctx.func, &temps);
             let fid = g.funcs[i];
             if prepare(&mut g, &mut ctx, fid, &f.name, Some(f)) {
                 continue;
@@ -844,6 +853,7 @@ fn compile_with_isa(
         pipe.finish(&mut g)
     })?;
     while let Some((kind, ty)) = g.queue.pop() {
+        let temps;
         let id = g.glue[&(kind, ty)];
         ctx.clear();
         let leaves = g.lay.leaves(ty);
@@ -858,8 +868,9 @@ fn compile_with_isa(
         {
             let mut l = Lower::new(&mut g, &mut ctx.func, &mut fctx);
             l.lower_glue(kind, ty);
-            l.finish();
+            temps = l.finish();
         }
+        crate::slotshare::share(&mut ctx.func, &temps);
         define(&mut g, &mut ctx, id, "glue")?;
     }
     let triple = llvm_triple(g.module.isa().triple());
@@ -1430,11 +1441,13 @@ fn emit_main(
     ctx.clear();
     ctx.func.signature = sig;
     ctx.func.name = UserFuncName::user(0, id.as_u32());
+    let temps;
     {
         let mut l = Lower::new(g, &mut ctx.func, fctx);
         l.lower_main(entry.index());
-        l.finish();
+        temps = l.finish();
     }
+    crate::slotshare::share(&mut ctx.func, &temps);
     let llvm = g.llvm.take();
     let r = define(g, ctx, id, "main");
     g.llvm = llvm;

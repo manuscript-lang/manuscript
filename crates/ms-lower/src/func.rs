@@ -140,6 +140,9 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
+    /// Set while a match arm binds the payload of a scrutinee that stays in its own local for the
+    /// whole arm (no hidden temporary): the payload then outlives the binding.
+    pub scrutinee_lives: bool,
     /// Immutable bindings whose local is stored to again (a closing binding is replaced by what its
     /// close leaves behind), so they cannot be single-definition builder variables.
     pub redefined: HashSet<usize>,
@@ -243,6 +246,28 @@ impl Cx {
         }
     }
 
+    /// The result type of `c`: the borrowing variant of its `Result` when the checker found some
+    /// cases borrowed from the arguments and the others owned (`Fact::BorrowedOk`, `Fact::BorrowedError`).
+    fn borrowing_result_ty(&self, m: &mut Module, c: &Callable, ret: MTy) -> MTy {
+        use ms_check::ownership::Fact;
+        let (file, id) = (c.module.file, c.id());
+        let TyKind::Alt(a) = m.types.kind(ret).clone() else {
+            return ret;
+        };
+        let mut mask = 0u64;
+        for (fact, name) in [(Fact::BorrowedOk, "ok"), (Fact::BorrowedError, "error")] {
+            if self.fact(file, id, fact)
+                && let Some(i) = m.alts[a.index()].cases.iter().position(|k| k.name == name)
+            {
+                mask |= 1 << i;
+            }
+        }
+        if mask == 0 {
+            return ret;
+        }
+        m.borrowing_alt(a, mask).1
+    }
+
     /// Reserves (and queues) the instance of `c` under `subst`.
     pub(crate) fn function_for(
         &mut self,
@@ -284,13 +309,14 @@ impl Cx {
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
         let ret = self.lower_ty(m, &result)?;
+        let ret = self.borrowing_result_ty(m, c, ret);
         let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             format!("{} {}", if t.bench { "bench" } else { "test" }, t.name)
         } else if self.syms.str(c.name).is_empty() {
             "test".to_string()
         } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
             // Fault traces name a method after its receiver type.
-            format!("{}.{}", i.receiver.name(), self.syms.str(c.name))
+            format!("{}.{}", i.receiver.name(self.syms), self.syms.str(c.name))
         } else {
             self.syms.str(c.name).to_string()
         };
@@ -555,6 +581,7 @@ impl<'a> FnLower<'a> {
             scope_done: Vec::new(),
             var_slots: Vec::new(),
             slotted: HashSet::new(),
+            scrutinee_lives: false,
             redefined: HashSet::new(),
             views: HashSet::new(),
             borrowed_params: HashSet::new(),
@@ -626,6 +653,13 @@ impl<'a> FnLower<'a> {
     }
 
     /// The declared result type (without the `var` parameters a function hands back).
+    /// Whether this function returns a borrowing variant: some cases of its `Result` lend from the
+    /// arguments and the others are owned.
+    pub fn ret_borrowing(&self) -> bool {
+        matches!(self.b.m.types.kind(self.ret_ty),
+            TyKind::Alt(a) if self.b.m.alts[a.index()].borrowed != 0)
+    }
+
     pub fn result_ty(&self) -> MTy {
         self.ret_ty
     }
@@ -660,16 +694,12 @@ impl<'a> FnLower<'a> {
         self.clone_value(x.v)
     }
 
-    /// An owned value for the payload of a `Result` or `Optional` built from a borrowed part
-    /// (`ok(p.name)` beside a new value, `try` on a borrowed `Result`). Wrapping a borrowed
-    /// payload copies it by the language's rule for these two types, so the copy is declared
-    /// here and the strict gate does not report it. Interim workaround: delete it once these
-    /// positions lend instead of copying (#2540).
-    pub fn owned_wrap(&mut self, x: Val) -> Value {
-        if x.own {
-            return x.v;
+    /// The alternative `v` is a value of: the borrowing variant when it is one, else `plain`.
+    fn alt_of(&self, v: Value, plain: ms_mir::types::AltId) -> ms_mir::types::AltId {
+        match self.b.m.types.kind(self.ty_of(v)) {
+            TyKind::Alt(a) => *a,
+            _ => plain,
         }
-        self.clone_value(x.v)
     }
 
     /// An argument a native consumes: in a function value's thunk the argument is borrowed by
@@ -691,14 +721,17 @@ impl<'a> FnLower<'a> {
         field: u32,
         obj: Val,
     ) -> Value {
+        let alt = self.alt_of(obj.v, alt);
         let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
-        if obj.own && self.needs_drop(ty) {
+        // A borrowed case stays in its owner: its payload is copied out, as from any borrow.
+        let borrowed = self.b.m.alts[alt.index()].borrows(case as usize);
+        if obj.own && self.needs_drop(ty) && !borrowed {
             let p = self.b.alt_take(alt, case, field, obj.v);
             self.b.alt_release(alt, case, 1 << field, obj.v);
             return p;
         }
         let p = self.b.alt_get(alt, case, field, obj.v);
-        let o = self.owned_wrap(Val { v: p, own: false });
+        let o = self.owned(Val { v: p, own: false });
         self.finish(obj);
         o
     }
@@ -707,6 +740,13 @@ impl<'a> FnLower<'a> {
     /// object value a program may write, which the copy sweep leaves out.
     pub fn clone_value(&mut self, v: Value) -> Value {
         let t = self.ty_of(v);
+        // A copy of a borrowing variant owns every case: it is an ordinary alternative.
+        if let TyKind::Alt(a) = self.b.m.types.kind(t).clone()
+            && self.b.m.alts[a.index()].borrowed != 0
+        {
+            let plain = self.plain_of(a).1;
+            return self.b.alt_own(v, plain);
+        }
         if !self.needs_drop(t) {
             return v;
         }
@@ -870,7 +910,10 @@ impl<'a> FnLower<'a> {
                 && self
                     .b
                     .defining_operand(x.v)
-                    .is_some_and(|parent| self.b.is_borrowed(parent) && self.holder_borrowed(x.v, parent)));
+                    .is_some_and(|parent| {
+                        (self.scrutinee_lives || self.b.is_borrowed(parent))
+                            && self.holder_borrowed(x.v, parent)
+                    }));
         // A `let` of a borrow-returning call's result the checker holds as a borrow of the arguments.
         let borrowed = borrowed
             || (self.cx.shared(binding.uid)
@@ -1292,6 +1335,12 @@ impl<'a> FnLower<'a> {
         // when every surviving instruction originates in another module.
         self.b.func_mut().loc = self.loc(c.func.decl.decl().pos);
         let params = self.b.params();
+        // The recursion check comes before the parameters are bound: a check that finds the
+        // stack short re-invokes the function on a new segment with the caller's values, so
+        // nothing the prologue owns (a cloned parameter, a closer) may precede it.
+        self.counts_depth = true;
+        self.b
+            .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         let bindings: Vec<BindingRef> = c
             .self_binding
             .iter()
@@ -1354,9 +1403,6 @@ impl<'a> FnLower<'a> {
                 }
             }
         }
-        self.counts_depth = true;
-        self.b
-            .emit(Op::DepthEnter, &[], ms_mir::ir::Imm::None, None);
         if let Some(f) = &c.fixture {
             self.begin_fixture(c, f)?;
         }

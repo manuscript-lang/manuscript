@@ -16,16 +16,27 @@ import expect_equal from "@std/test/test.ms"
 // the single-task behaviour.
 fn churn(root: String, name: String) Int:
     let dir = "{root}/{name}"
-    let _made = create_directory(dir)
+    let made = create_directory(dir)
+    if made.is_error(): print("create_directory: {made.err()}")
+
     let path = "{dir}/a.txt"
-    let _written = write_file(path, name).wait()
-    let _appended = append_file(path, "!")
-    let _renamed = rename(path, "{dir}/b.txt")
-    let _copied = copy("{dir}/b.txt", "{dir}/c.txt")
+    let written = write_file(path, name).wait()
+    if written.is_error(): print("write_file: {written.err()}")
+
+    let appended = append_file(path, "!")
+    if appended.is_error(): print("append_file: {appended.err()}")
+
+    let renamed = rename(path, "{dir}/b.txt")
+    if renamed.is_error(): print("rename: {renamed.err()}")
+
+    let copied = copy("{dir}/b.txt", "{dir}/c.txt")
+    if copied.is_error(): print("copy: {copied.err()}")
+
     let listed = list(dir)
     if let names = listed:
         return names.length()
 
+    print("list: {listed.err()}")
     return -1
 
 test "file-system calls from concurrent tasks":

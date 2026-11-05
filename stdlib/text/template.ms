@@ -7,9 +7,9 @@ import escape from "@std/data/html.ms"
 /*
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
 
-    import compile, render, to_data from "@std/text/template.ms"
-    let page = compile("Hello {{ name | title }}! {{ for t in tags }}#{{ t }} {{ end }}").get()
-    page.render(to_data(user).get()).get()
+    import compile, to_data from "@std/text/template.ms"
+    let page = try compile("Hello \{\{ name | title \}\}!")
+    let rendered = try page.render(try to_data(user))
 
 Actions sit between `{{` and `}}`:
 

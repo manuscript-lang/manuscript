@@ -885,6 +885,15 @@ pub fn requested() -> [u64; 2] {
     unsafe { (*STATE.ptr()).requested }
 }
 
+/// Starts the `requested` counters over: called as the program's `main` begins, so that the
+/// counts a gate reads cover the program and not the runtime's own start-up records (the main
+/// task, its stack region), which differ by platform and change with the runtime.
+#[cfg(feature = "stats")]
+pub fn reset_requested() {
+    // SAFETY: this thread's allocator state.
+    unsafe { (*STATE.ptr()).requested = [0; 2] };
+}
+
 /// Live allocation count (tests and the `stats` feature). Counting builds count the whole
 /// process, since a block may be freed on another thread than the one that allocated it.
 #[cfg(feature = "stats")]

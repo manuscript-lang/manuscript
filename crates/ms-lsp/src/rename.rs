@@ -3,7 +3,7 @@
 //! Every rename is validated by re-checking the affected workspace with the
 //! edits applied; nothing is proposed that would not check.
 
-use crate::analysis::{Analysis, Document, Documents, workspace_analysis};
+use crate::analysis::{Analysis, Document, Documents, source_identity, workspace_analysis};
 use crate::index::Occurrence;
 use crate::json::{Json, obj};
 use crate::nav::occurrence_at;
@@ -144,11 +144,12 @@ fn open_uri(docs: &Documents, path: &str) -> String {
     if docs.contains_key(&canonical) {
         return canonical;
     }
-    let resolve = |p: &str| ms_driver::project::pathops::eval_symlinks(p).unwrap_or(p.to_string());
-    let wanted = resolve(path);
+    let wanted = source_identity(path);
     let mut matches: Vec<&String> = docs
         .values()
-        .filter(|open| !uri::is_standard_library(&open.uri) && resolve(&open.path()) == wanted)
+        .filter(|open| {
+            !uri::is_standard_library(&open.uri) && source_identity(&open.path()) == wanted
+        })
         .map(|open| &open.uri)
         .collect();
     matches.sort();

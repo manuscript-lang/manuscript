@@ -1,0 +1,18 @@
+{{ $icon := resources.Get "brand/manuscript-mark.svg" }}
+{
+  "name": "{{ .Site.Title }}",
+  "short_name": "{{ .Site.Title }}",
+  "start_url": "{{ "./" | relURL }}",
+  "scope": "{{ "./" | relURL }}",
+  "display": "standalone",
+  "background_color": "#fcf7f0",
+  "theme_color": "#ff873e",
+  "icons": [
+    {
+      "src": "{{ $icon.RelPermalink }}",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

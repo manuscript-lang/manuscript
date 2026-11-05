@@ -128,8 +128,8 @@ export type Stdio:
 export interface Commands:
     /*
     Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-    Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-    `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    Output beyond `max_output_bytes` in total across both streams returns EOVERFLOW, `timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+    `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     */
     fn run(
         program: String,
@@ -140,8 +140,8 @@ export interface Commands:
         cwd: String?,
         env: Map[String, String] = Map[String, String]()
     ) CommandOutput!
-    // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-    // `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+    // `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     fn spawn(
         program: String,
         arguments: List[String],
@@ -158,7 +158,7 @@ export extern type NativeSubprocess
 /*
 A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 kills the child's process group, joins it, and closes all three streams.
-A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return Closed.
+A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return EBADF.
 */
 export type Subprocess:
     // The runtime handle; it is released by `close` and owned by this value.
@@ -183,7 +183,7 @@ impl Subprocess:
     fn stderr() ReadStream[Bytes]:
         return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 2))
 
-    // Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
+    // Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if `timeout` elapses first, leaving the child running.
     fn wait(timeout: Duration?) Int!:
         return msstd_process_subprocess_wait(self.native, timeout)
 
@@ -278,7 +278,7 @@ impl Source[Int] for SignalSource:
     var fn next() Int?!:
         return ok(try msstd_process_signal_next(self.signals))
 
-    // Stops observing signals and wakes a pending read with Closed.
+    // Stops observing signals and wakes a pending read with EBADF.
     var fn close() Unit!:
         msstd_process_signal_close(self.signals)
         return ok(unit)
@@ -407,8 +407,8 @@ type RunArgs:
 
 /*
 Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-Output beyond `max_output_bytes` in total across both streams returns OutputLimit, `timeout` returns Timeout, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-`cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+Output beyond `max_output_bytes` in total across both streams returns EOVERFLOW, `timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
+`cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 */
 export fn run(
     program: String,
@@ -431,8 +431,8 @@ export fn run(
         )
     )
 
-// Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-// `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns InvalidInput. A `cwd` that does not exist returns Unavailable. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+// Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+// `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 export fn spawn(
     program: String,
     arguments: List[String],
@@ -472,22 +472,22 @@ export fn available_memory() Int!:
     return msstd_process_available_memory()
 
 // Returns the current process title.
-// Platforms that cannot read it return Unsupported.
+// Platforms that cannot read it return ENOTSUP.
 export fn title() String!:
     return msstd_process_title()
 
 // Sets the process title shown by tools such as `ps`.
-// A title with NUL or newline returns InvalidInput, and platforms that cannot rename a process return Unsupported.
+// A title with NUL or newline returns EINVAL, and platforms that cannot rename a process return ENOTSUP.
 export fn set_title(title: String) Unit!:
     return msstd_process_set_title(title)
 
 // Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
-// A failed user lookup returns Failed, a `gid` outside 0 through 2147483647 returns InvalidInput, and a lack of privilege returns PermissionDenied.
+// A failed user lookup returns EIO, a `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns EACCES.
 export fn initialize_groups(username: String, gid: Int) Unit!:
     return msstd_process_initialize_groups(username, gid)
 
 // Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
-// `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return InvalidInput, and exec failures return NotFound, PermissionDenied, or Failed. Unsupported on Windows.
+// `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on Windows.
 export fn replace(
     program: String,
     arguments: List[String],
@@ -503,7 +503,7 @@ export fn replace(
     return msstd_process_replace(program, arguments, names, values)
 
 // Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
-// Text that is not valid UTF-8 returns Unsupported.
+// Text that is not valid UTF-8 returns ENOTSUP.
 export fn process_info() ProcessInfo!:
     return ok(
         ProcessInfo(
@@ -522,7 +522,7 @@ export fn memory_usage() MemoryUsage!:
     return msstd_process_memory_usage()
 
 // Returns cumulative user and kernel CPU time consumed by this process in microseconds.
-// Platforms without resource accounting return Unsupported.
+// Platforms without resource accounting return ENOTSUP.
 export fn cpu_usage() CpuUsage!:
     return msstd_process_cpu_usage()
 
@@ -580,17 +580,17 @@ fn runnable(path: String, windows: Bool) Bool:
 
     return access(path, 1).is_ok()
 
-// Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
+// Reads a fresh live process environment map; non-UTF-8 entries return ENOTSUP.
 export fn environment() Map[String, String]!:
     return msstd_process_environment_map()
 
 // Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
-// An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
+// An empty name, or a name or value with `=` or NUL, returns EINVAL. The change is visible to child processes started afterwards.
 export fn set_environment(name: String, value: String?) Unit!:
     return msstd_process_set_environment(name, value)
 
 // Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
-// Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
+// Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns EBADMSG and changes nothing. A file larger than `max_bytes` returns EOVERFLOW.
 export fn load_environment(path: String, max_bytes: Int?) Unit!:
     return msstd_process_load_environment(path, max_bytes)
 
@@ -599,36 +599,36 @@ export fn working_directory() String!:
     return msstd_process_working_directory()
 
 // Changes the working directory of the whole process, affecting relative paths everywhere.
-// A missing path returns NotFound, a path containing NUL returns InvalidInput, and a denied path returns PermissionDenied.
+// A missing path returns ENOENT, a path containing NUL returns EINVAL, and a denied path returns EACCES.
 export fn change_directory(path: String) Unit!:
     return msstd_process_change_directory(path)
 
 // Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
-// Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination. A pid that names no process returns NotFound.
+// Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination. A pid that names no process returns ENOENT.
 export fn send_signal(pid: Int, signal: Int) Unit!:
     return msstd_process_send_signal(pid, signal)
 
 // Returns the numeric ids of the supplementary groups of the process.
-// Windows returns Unsupported.
+// Windows returns ENOTSUP.
 export fn groups() List[Int]!:
     return msstd_process_groups()
 
 // Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
-// Platforms without them return Unsupported.
+// Platforms without them return ENOTSUP.
 export fn resource_usage() ResourceUsage!:
     return msstd_process_resource_usage()
 
-// Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
+// Sets mask 0..511 (0777) and returns the previous mask; ENOTSUP on Windows.
 export fn umask(mask: Int) Int!:
     return msstd_process_umask(mask)
 
-// Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
-// Identity changes require OS permission and are Unsupported on Windows.
+// Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return EINVAL.
+// Identity changes require OS permission and are ENOTSUP on Windows.
 export fn set_identity(kind: String, id: Int) Unit!:
     return msstd_process_set_identity(kind, id)
 
 // Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
-// Invalid ids return InvalidInput, a lack of privilege returns PermissionDenied, and Windows returns Unsupported.
+// Invalid ids return EINVAL, a lack of privilege returns EACCES, and Windows returns ENOTSUP.
 export fn set_groups(groups: List[Int]) Unit!:
     return msstd_process_set_groups(groups)
 
@@ -640,17 +640,17 @@ export fn system_info() SystemInfo:
     )
 
 // Returns the host's name as reported by the operating system.
-// A name that is not valid UTF-8 returns Unsupported.
+// A name that is not valid UTF-8 returns ENOTSUP.
 export fn hostname() String!:
     return msstd_system_hostname()
 
 // Returns the current user's home directory path, from the host's environment or account database.
-// A path that is not valid UTF-8 returns Unsupported.
+// A path that is not valid UTF-8 returns ENOTSUP.
 export fn home_directory() String!:
     return msstd_system_home_directory()
 
 // Returns the current user's name, numeric ids, home directory, and login shell.
-// The shell is empty when the host does not record one, and text that is not valid UTF-8 returns Unsupported.
+// The shell is empty when the host does not record one, and text that is not valid UTF-8 returns ENOTSUP.
 export fn user_info() UserInfo!:
     try msstd_system_user_info_status()
     return ok(
@@ -662,7 +662,7 @@ export fn user_info() UserInfo!:
     )
 
 // Returns one NetworkInterface for every address on every interface, including loopback.
-// An interface name that is not valid UTF-8 returns Unsupported.
+// An interface name that is not valid UTF-8 returns ENOTSUP.
 export fn network_interfaces() List[NetworkInterface]!:
     try msstd_system_network_interfaces_status()
 
@@ -722,12 +722,12 @@ export fn metrics() SystemMetrics!:
     )
 
 // Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
-// Returns Unsupported where the host does not expose it.
+// Returns ENOTSUP where the host does not expose it.
 export fn os_release() String!:
     return msstd_system_os_release()
 
 // Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
-// Returns Unsupported where the host does not expose it.
+// Returns ENOTSUP where the host does not expose it.
 export fn os_version() String!:
     return msstd_system_os_version()
 
@@ -736,7 +736,7 @@ export fn machine() String!:
     return msstd_system_machine()
 
 // Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
-// A pid outside 0 through 2147483647 returns InvalidInput, and platforms without priorities return Unsupported.
+// A pid outside 0 through 2147483647 returns EINVAL, and platforms without priorities return ENOTSUP.
 export fn get_priority(pid: Int) Int!:
     return msstd_system_get_priority(pid)
 

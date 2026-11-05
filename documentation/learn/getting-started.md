@@ -54,11 +54,13 @@ export fn main() Int:
     return 0
 ```
 
-- `from "…" import …` selects the APIs the file uses.
+- `import … from "…"` selects the APIs the file uses.
 - `main` starts the program; its returned integer is the exit status.
 - `let` names a value and infers its type; `{...}` interpolates into strings.
 - `write` takes text and returns a `Result`; `is_error()` tests for failure.
 - Four spaces open a block; statements need no terminator.
+
+For simple output, `print("Hello, Manuscript!")` is also available without an import. It returns `Unit` and buffers output until exit. The generated project uses `stdout().write` to handle its write failure explicitly. See [print a line](common-tasks.md#print-a-line).
 
 ## 3. Make it yours
 
@@ -99,7 +101,7 @@ ms fmt ms.toml
 ms test ms.toml
 ```
 
-`check` finds errors without running, `fmt` formats, and `test` runs the generated test block. `ms verify` runs check, fmt, lint, and test; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
+`check` finds errors without running, `fmt` formats, and `test` runs the generated test block. `ms verify ms.toml` checks source, checks formatting without rewriting files, lints, and runs tests; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
 
 ## Keep going
 

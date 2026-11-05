@@ -16,7 +16,7 @@ use std::rc::{Rc, Weak};
 
 /// Interns a string.
 pub fn n(text: &str) -> Name {
-    Name::intern(text)
+    ms_syntax::Names::global().intern(text)
 }
 
 /// A shared, immutable checked type.
@@ -407,6 +407,11 @@ impl Type {
         self.kind == Kind::Primitive && syms.str(self.id) == "Never"
     }
 
+    /// The `String` primitive.
+    pub fn is_string(&self, syms: ms_syntax::Names) -> bool {
+        self.kind == Kind::Primitive && syms.str(self.id) == "String"
+    }
+
     /// Standard type test: id is `@std/<name>`.
     pub fn is_std(&self, syms: ms_syntax::Names, name: &str) -> bool {
         let id = syms.str(self.id);
@@ -727,7 +732,24 @@ impl Clone for Method {
 // ----------------------------------------------------------------- builders
 
 thread_local! {
-    static PRIMS: Prims = Prims::new();
+    /// The primitives of the interner they were made for, rebuilt when the current one changes.
+    static PRIMS: RefCell<Option<(u64, Rc<Prims>)>> = const { RefCell::new(None) };
+}
+
+fn with_prims<R>(f: impl FnOnce(&Prims) -> R) -> R {
+    let generation = ms_syntax::Names::global().generation();
+    let prims = PRIMS.with(|cell| {
+        let mut cell = cell.borrow_mut();
+        match &*cell {
+            Some((g, prims)) if *g == generation => prims.clone(),
+            _ => {
+                let prims = Rc::new(Prims::new());
+                *cell = Some((generation, prims.clone()));
+                prims
+            }
+        }
+    });
+    f(&prims)
 }
 
 struct Prims {
@@ -769,7 +791,7 @@ impl Prims {
 
 /// A primitive type by name.
 pub fn primitive(name: &str) -> Ty {
-    PRIMS.with(|p| match name {
+    with_prims(|p| match name {
         "Int" => p.int.clone(),
         "Float" => p.float.clone(),
         "Bool" => p.bool_.clone(),
@@ -865,11 +887,11 @@ pub fn never() -> Ty {
 }
 /// The `<invalid>` marker type.
 pub fn invalid() -> Ty {
-    PRIMS.with(|p| p.invalid.clone())
+    with_prims(|p| p.invalid.clone())
 }
 /// The `<inferred>` placeholder type.
 pub fn inferred() -> Ty {
-    PRIMS.with(|p| p.inferred.clone())
+    with_prims(|p| p.inferred.clone())
 }
 
 /// A function type.

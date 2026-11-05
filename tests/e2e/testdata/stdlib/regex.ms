@@ -146,3 +146,15 @@ test "regex collection budgets preserve empty adjacency and exact counts":
             try expect_equal((try matching.captures_all(text, max)).length(), max)
             try expect_equal(matching.find_all(text + "x", max), find_limit)
             try expect_equal(matching.captures_all(text + "x", max), capture_limit)
+
+test "regex compile errors preserve columns after anchors and numbered lines":
+    for item in [
+        ["^(", "unclosed group at column 2"], ["^ (", "unclosed group at column 3"],
+        ["é🙂(", "unclosed group at column 3"], ["a\n(", "unclosed group at column 1"],
+        ["(?x)\n^(", "unclosed group at column 2"]
+    ]:
+        let invalid = compile(item[0])
+        try expect_equal(invalid.err().kind, "EBADMSG")
+        try expect_equal(
+            invalid.err().message, "regular expression: invalid data: " + item[1]
+        )

@@ -60,7 +60,7 @@ let mixed = [1, 2.0]
 let unknown = []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so `[none, some(value: 1)]` is `List[Int?]` and `[none]` is rejected. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so `[none, 1]` is `List[Int?]` and `[none]` is rejected. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
 
 ## Iteration
 
@@ -109,13 +109,13 @@ values.append(3)
 
 Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).
 
-List `slice` returns `Result[List[T], Error]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise an `Error` of kind `OutOfRange`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
+List `slice` returns `Result[List[T], Error]` with strict bounds `0 <= start <= end <= length()` after resolving negative bounds from the end; otherwise an `Error` of kind `"ERANGE"`. See the [half-open slice rules](../basics/text-and-bytes.md#half-open-slices).
 
 A collection loop or non-escaping callback borrows the receiver for the traversal. The checker rejects mutation, reassignment, or a move of that receiver while the borrow is live. To mutate the original while traversing independent data, make an explicit `.clone()` first.
 
 ### Naming and migration
 
-Verbs mutate; use `.clone()` for a separate result. Transforms such as `concat`, `filter`, `sorted`, and `reversed` copy. Bytes `with_value` copies, while Bytes `slice` and `split` may retain immutable views.
+Verbs mutate; use `.clone()` for a separate result. Transforms such as `concat`, `filter`, `sorted`, and `reversed` copy. Bytes `with_value` and `slice` copy. `view(start, end)` borrows a byte range without copying; invalid bounds fault, while `slice` returns an error. Use `.clone()` to keep bytes independently of the borrowed range.
 
 These removed spellings looked like copies but mutated. Labels and return types are unchanged.
 
@@ -132,7 +132,7 @@ These removed spellings looked like copies but mutated. Labels and return types 
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
 
-Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` moving_params them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
+Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
 
 ## Other collections
 

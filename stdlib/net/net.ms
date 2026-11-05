@@ -158,7 +158,7 @@ export type ConnectionInfo:
 
 impl ConnectionInfo:
     // Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
-    // A connection that is not TLS returns InvalidInput.
+    // A connection that is not TLS returns EINVAL.
     fn tls_info() TlsInfo!:
         if let info = self.tls:
             return ok(info.clone())
@@ -364,8 +364,8 @@ impl Closeable for Listener:
         return ok(unit)
 
 impl Listener:
-    // Starts waiting for the next incoming connection and returns its promise. A timeout gives Timeout and a closed listener gives Closed from `wait`.
-    // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives Failed.
+    // Starts waiting for the next incoming connection and returns its promise. A timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`.
+    // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives EIO.
     fn accept(timeout: Duration?) Promise[Connection]:
         return owned_promise[AcceptArgs, Connection](
             AcceptArgs(
@@ -375,7 +375,7 @@ impl Listener:
         )
 
     // Starts waiting for the next incoming connection and returns a promise of its socket handle without wrapping it. The caller owns the handle until then; one that is never adopted leaks its socket.
-    // A timeout gives Timeout and a closed listener gives Closed from `wait`. A TLS listener gives InvalidInput: the adopting server performs the handshake.
+    // A timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`. A TLS listener gives EINVAL: the adopting server performs the handshake.
     fn accept_raw(timeout: Duration?) Promise[Int]:
         return owned_promise[AcceptArgs, Int](
             AcceptArgs(
@@ -419,7 +419,7 @@ export type Network:
 
 impl Network:
     // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
-    // A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
+    // A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.
     fn bind_datagram(address: String) RawDatagramSocket!:
         return msstd_net_network_bind_datagram(self.native, address)
 
@@ -429,12 +429,12 @@ impl Network:
         msstd_net_network_close(self.native)
 
     // Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address.
-    // Returns PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
+    // Returns EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses.
     fn connect(address: String, timeout: Duration?) RawConnection!:
         return msstd_net_network_connect(self.native, address, timeout)
 
     // Connects over TCP to `address` and completes a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2.
-    // An empty `server_name` returns InvalidInput, and `timeout` bounds the whole attempt.
+    // An empty `server_name` returns EINVAL, and `timeout` bounds the whole attempt.
     fn connect_tls(
         address: String,
         server_name: String,
@@ -443,7 +443,7 @@ impl Network:
         return msstd_net_network_connect_tls(self.native, address, server_name, timeout)
 
     // Connects over TCP to `address` and completes a TLS handshake using `options`, with at least TLS 1.2.
-    // Invalid options return InvalidInput, handshake and verification failures return Failed, and `timeout` bounds the whole attempt.
+    // Invalid options return EINVAL, handshake and verification failures return EIO, and `timeout` bounds the whole attempt.
     fn connect_tls_config(
         address: String,
         options: TlsOptions,
@@ -454,22 +454,22 @@ impl Network:
         )
 
     // Connects to the Unix domain socket at `path`.
-    // Any restricted network returns PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path returns InvalidInput. `timeout` bounds the attempt.
+    // Any restricted network returns EACCES because Unix sockets bypass host and CIDR checks, and an empty path returns EINVAL. `timeout` bounds the attempt.
     fn connect_unix(path: String, timeout: Duration?) RawConnection!:
         return msstd_net_network_connect_unix(self.native, path, timeout)
 
     // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
-    // Invalid or negative options return InvalidInput. Closing the network closes the client.
+    // Invalid or negative options return EINVAL. Closing the network closes the client.
     fn http_client(options: HttpClientOptions) HttpClient!:
         return msstd_net_network_http_client(self.native, options)
 
     // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
-    // A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
+    // A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
     fn listen(address: String) Listener!:
         return msstd_net_network_listen(self.native, address)
 
     // Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
-    // `options` must hold a certificate and key, otherwise InvalidInput is returned.
+    // `options` must hold a certificate and key, otherwise EINVAL is returned.
     fn listen_tls(
         address: String,
         options: TlsOptions,
@@ -480,20 +480,20 @@ impl Network:
         )
 
     // Listens on a Unix domain socket at `path`.
-    // Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
+    // Any restricted network returns EACCES, and an empty path returns EINVAL.
     fn listen_unix(path: String) Listener!:
         return msstd_net_network_listen_unix(self.native, path)
 
     /*
     Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
-    More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
+    More than `max_records` addresses returns EOVERFLOW, `timeout` bounds the lookup, and a failed lookup returns EIO.
     System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
     */
     fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!:
         return msstd_net_network_lookup(self.native, name, max_records, timeout)
 
     // Performs one buffered HTTP request and returns the status, headers, and complete body.
-    // Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
+    // Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns EOVERFLOW; error statuses are ordinary responses.
     fn request(
         method: HttpMethod,
         url: String,
@@ -529,7 +529,7 @@ impl Network:
         return msstd_net_network_resolve(self.native, name, kind, max_records, timeout)
 
     // Returns a derived network limited to the given host names and CIDR ranges.
-    // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
+    // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
     fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!:
         return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
 
@@ -546,7 +546,7 @@ impl Network:
         )
 
     // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
-    // The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
+    // The address must be allowed by this network's restrictions, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
     fn with_resolver(address: String) Network!:
         return msstd_net_network_with_resolver(self.native, address)
 
@@ -642,7 +642,7 @@ export fn encode_component(text: String) String:
     return msstd_url_encode_component(text)
 
 // Formats URL components as an absolute hierarchical URL.
-// Missing or malformed schemes and hostless relative paths return InvalidInput, as do other invalid components.
+// Missing or malformed schemes and hostless relative paths return EINVAL, as do other invalid components.
 export fn format(value: Url) String!:
     return msstd_url_format(value)
 
@@ -715,7 +715,7 @@ type WebSocketSink:
     raw: RawWebSocket
 
 impl Sink[WebSocketMessage] for WebSocketSink:
-    // Sends one message. Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded.
+    // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a payload over `max_message_bytes` returns EOVERFLOW.
     var fn put(value: WebSocketMessage) Unit!:
         match value.kind:
             Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
@@ -774,12 +774,12 @@ export type WebSocketOptions:
     compression: Bool
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
-// A restricted network without listening permission, or an address outside its CIDRs, returns PermissionDenied.
+// A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.
 export fn bind_datagram(address: String) DatagramSocket!:
     return ok(datagram_socket(try host_network().bind_datagram(address)))
 
 // Starts resolving `address` (`host:port`) and opening a TCP connection to the first reachable permitted address, and returns its promise.
-// `wait` gives PermissionDenied for names or addresses a restricted network disallows, Timeout when `timeout` elapses, and Failed when every address refuses.
+// `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses.
 export fn connect(address: String, timeout: Duration?) Promise[Connection]:
     return owned_promise[ConnectArgs, Connection](
         ConnectArgs(address: address.clone(), timeout: timeout),
@@ -794,7 +794,7 @@ fn connected(address: String, timeout: Duration?) Connection!:
     return ok(connection(try host_network().connect(address, timeout)))
 
 // Starts connecting over TCP to `address` and completing a TLS handshake verifying the server certificate against the system roots for `server_name`, with at least TLS 1.2, and returns its promise.
-// An empty `server_name` gives InvalidInput from `wait`, and `timeout` bounds the whole attempt.
+// An empty `server_name` gives EINVAL from `wait`, and `timeout` bounds the whole attempt.
 export fn connect_tls(
     address: String,
     server_name: String,
@@ -816,7 +816,7 @@ fn connected_tls(address: String, server_name: String, timeout: Duration?) Conne
     return ok(connection(try host_network().connect_tls(address, server_name, timeout)))
 
 // Starts connecting over TCP to `address` and completing a TLS handshake using `options`, with at least TLS 1.2, and returns its promise.
-// Invalid options give InvalidInput from `wait`, handshake and verification failures give Failed, and `timeout` bounds the whole attempt.
+// Invalid options give EINVAL from `wait`, handshake and verification failures give EIO, and `timeout` bounds the whole attempt.
 export fn connect_tls_config(
     address: String,
     options: TlsOptions,
@@ -846,7 +846,7 @@ fn connected_tls_config(
     )
 
 // Starts connecting to the Unix domain socket at `path` and returns its promise.
-// Any restricted network gives PermissionDenied because Unix sockets bypass host and CIDR checks, and an empty path gives InvalidInput. `timeout` bounds the attempt.
+// Any restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and an empty path gives EINVAL. `timeout` bounds the attempt.
 export fn connect_unix(path: String, timeout: Duration?) Promise[Connection]:
     return owned_promise[ConnectArgs, Connection](
         ConnectArgs(address: path.clone(), timeout: timeout),
@@ -857,17 +857,17 @@ fn connected_unix(path: String, timeout: Duration?) Connection!:
     return ok(connection(try host_network().connect_unix(path, timeout)))
 
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
-// Invalid or negative options return InvalidInput. Closing the network closes the client.
+// Invalid or negative options return EINVAL. Closing the network closes the client.
 export fn http_client(options: HttpClientOptions) HttpClient!:
     return host_network().http_client(options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
-// A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
+// A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
 export fn listen(address: String) Listener!:
     return host_network().listen(address)
 
 // Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `handshake_timeout` when supplied.
-// `options` must hold a certificate and key, otherwise InvalidInput is returned.
+// `options` must hold a certificate and key, otherwise EINVAL is returned.
 export fn listen_tls(
     address: String,
     options: TlsOptions,
@@ -876,20 +876,20 @@ export fn listen_tls(
     return host_network().listen_tls(address, options, handshake_timeout)
 
 // Listens on a Unix domain socket at `path`.
-// Any restricted network returns PermissionDenied, and an empty path returns InvalidInput.
+// Any restricted network returns EACCES, and an empty path returns EINVAL.
 export fn listen_unix(path: String) Listener!:
     return host_network().listen_unix(path)
 
 /*
 Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
-More than `max_records` addresses returns LimitExceeded, `timeout` bounds the lookup, and a failed lookup returns Failed.
+More than `max_records` addresses returns EOVERFLOW, `timeout` bounds the lookup, and a failed lookup returns EIO.
 System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
 */
 export fn lookup(name: String, max_records: Int?, timeout: Duration?) List[String]!:
     return host_network().lookup(name, max_records, timeout)
 
 // Performs one buffered HTTP request and returns the status, headers, and complete body.
-// Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns LimitExceeded; error statuses are ordinary responses.
+// Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `max_response_bytes` returns EOVERFLOW; error statuses are ordinary responses.
 export fn request(
     method: HttpMethod,
     url: String,
@@ -925,7 +925,7 @@ export fn resolve_dns(
     return host_network().resolve(name, kind, max_records, timeout)
 
 // Returns a derived network limited to the given host names and CIDR ranges.
-// Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns InvalidInput.
+// Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
 export fn restrict(
     hosts: List[String],
     cidrs: List[String],
@@ -934,8 +934,8 @@ export fn restrict(
     return host_network().restrict(hosts, cidrs, allow_listen)
 
 // Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-// A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
-// Returns InvalidInput for invalid options (`cores` below 1 included). Close the server, or drop it, to stop it.
+// A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns EIO.
+// Returns EINVAL for invalid options (`cores` below 1 included). Close the server, or drop it, to stop it.
 // `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
 // A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
 // A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
@@ -1065,6 +1065,6 @@ export fn web_socket(
     )
 
 // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
-// The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
+// The address must be allowed by this network's restrictions, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
 export fn with_resolver(address: String) Network!:
     return host_network().with_resolver(address)

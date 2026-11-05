@@ -47,14 +47,13 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"Hello, '),
-    'The text opener must receive string styling');
-  assert.ok(rendered.some(node => node.className === 'se' && node.textContent === '\\n'),
-    'The shared escape rule must run inside the interpolating text');
-  assert.equal(rendered.filter(node => node.className === 'si').map(node => node.textContent).join(''), '{}',
-    'The shared interpolation rules must delimit the expression');
+  for (const name of ['read_file', 'reader', 'filter', 'join', 'print']) {
+    assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
+  }
+  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"changes.txt"'),
+    'The input filename must receive string styling');
   assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Both returns after the text must retain keyword styling');
+    'Helper and entrypoint returns retain keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -180,7 +179,7 @@ test('the landing page offers a trial while documentation keeps its reading navi
     .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
-  assert.ok(home.includes('ms run hello.ms -- Ada'), 'Show how to run the displayed program');
+  assert.ok(home.includes('ms run generate_release_notes.ms'), 'Show how to run the displayed program');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });
@@ -198,13 +197,22 @@ test('landing and documentation pages share one favicon and a loadable brand mar
       .filter(tag => attribute(tag, 'rel') === 'icon');
     assert.equal(favicons.length, 1, `${route}: avoid competing theme and project favicons`);
     icons.push(attribute(favicons[0], 'href'));
+    assert.equal(attribute(favicons[0], 'type'), 'image/svg+xml', 'Keep the favicon scalable');
     const brand = [...html.matchAll(/<img\b[^>]*>/g)].map(match => match[0])
       .find(tag => (attribute(tag, 'class') || '').split(' ').includes('brand-mark'));
     assert.ok(brand, `${route}: include the brand mark`);
+    assert.equal(attribute(brand, 'src'), icons.at(-1), 'Header and favicon use the same vector mark');
     for (const url of [icons.at(-1), attribute(brand, 'src')]) {
       assert.ok(url.startsWith(prefix), `${route}: branding must respect the site prefix`);
       assert.ok(fs.statSync(path.join(book, url.slice(prefix.length))).size > 0, `${route}: branding asset missing`);
     }
   }
   assert.equal(icons[0], icons[1], 'Use a consistent favicon across the site');
+  const manifest = JSON.parse(fs.readFileSync(path.join(book, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.start_url, prefix);
+  assert.equal(manifest.scope, prefix);
+  assert.deepEqual(manifest.icons, [{ src: icons[0], sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]);
+  const svg = fs.readFileSync(path.join(book, icons[0].slice(prefix.length)), 'utf8');
+  assert.match(svg, /viewBox="0 0 32 32"/);
+  assert.ok(!/<(?:image|text|script)\b/.test(svg), 'Brand mark stays self-contained vector geometry');
 });

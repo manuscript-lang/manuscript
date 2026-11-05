@@ -2,7 +2,7 @@
 
 **The language for the agentic era.**
 
-Manuscript starts from one premise: agents will write most of the code, and people have to understand, check and run it. An agent has a limited context, cannot hold a whole program in its head, and learns from the compiler one round trip at a time. Every design choice below exists because of that.
+Manuscript helps agents write programs that people can understand, check and run. Static types catch mistakes before execution, actionable diagnostics guide repairs, and native executables turn straightforward code into deployable programs. Explicit errors, ownership and resource scopes keep the important decisions visible in review.
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [Performance](bench/perf/README.md)
 
@@ -14,14 +14,14 @@ Every diagnostic reads `cause; fix`, and a habit from another language is answer
 count.ms:2:12: resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length()
 ```
 
-When the repair is mechanical, `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` is the whole language in 4 KB, `ms search_symbol` answers one API question in bounded output, and `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
+When the repair is mechanical, `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` gives a compact language cheat sheet, `ms search_symbol` answers one API question in bounded output, and `ms verify` is type checking, formatting checks, lint and tests in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
 
 ## Agent mistakes the toolchain catches
 
 - **Memory:** one owner per value, moved at its last use, dropped deterministically, with borrows inferred. No collector, no lifetime annotations. Every `var` and `.clone()` is visible in the source. [References](documentation/core-language/types/references.md)
-- **Compile errors:** a dropped `Result`, a `match` missing a case, an unclosed `Closeable`, literal overflow.
+- **Compile errors:** a dropped `Result`, a `match` missing a case, a borrow that outlives its owner, literal overflow.
 - **Runtime faults:** overflow, bounds, deadlock and skipped cleanup stop with a source trace. [Faults](documentation/core-language/errors/faults.md)
-- **Concurrency:** any function can wait, and tasks live in a group that cancels what is still running when its scope ends, so generated code cannot leak one. [Concurrency](documentation/core-language/concurrency/_index.md)
+- **Concurrency:** any function can wait. `Promise` represents an operation with one result, streams carry successive values, and a `pipe` transfers them between owners. Dropping a promise cancels it and waits for completion; cancellation is cooperative at waits. [Concurrency](documentation/core-language/concurrency/_index.md)
 - **Tests:** property tests draw inputs the agent did not think of and shrink failures; `ms test --fuzz 30s` turns them into a fuzzer. [Testing](documentation/learn/testing.md)
 
 ## Review agent-written changes
@@ -33,10 +33,10 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **A small, regular language:** indentation blocks, one way to do most things, and a few forms that compose. Habits from other languages get a pointed diagnostic, not a new feature. [Tour](documentation/learn/tour.md)  
   **Plain types:** records with defaults, alternatives (`case Draft`, `case Published(url)`) that `match` must cover, nominal types, and methods in `impl` blocks that satisfy an `interface`. [Types](documentation/learn/tour.md#types-for-application-data)  
   **Plain functions:** typed parameters and returns, labeled arguments and defaults, functions as values, and `|` pipes that read top to bottom. [Functions](documentation/learn/tour.md#functions)
-- **Deterministic memory:** one owner per value, dropped at its last use, borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
+- **Deterministic memory:** one owner per value, moves at last use, and deterministic drops, with borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
 - **Static types, native code:** checked ahead of time and compiled to a native executable, with a fast debug loop and optimized release builds.
-- **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, written in Manuscript. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
-- **Cleanup you cannot forget:** resources close at scope end on every exit, including faults and cancellation. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, with Manuscript APIs and native primitives. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
+- **Explicit resource lifetimes:** bind a file or connection locally to close it when its owning scope exits, including early returns, faults and cancellation. Flush fallible writes explicitly to observe errors. [Cleanup](documentation/core-language/cleanup/scopes.md)
 - **Explicit error handling:** `Result` and `Optional` instead of null and exceptions. `try` propagates an error, `if let` and `match` handle one, and a dropped `Result` is a compile error. [Errors](documentation/core-language/errors/propagation.md)
 - **Exact numbers:** sized integers, `Float32`, and `Decimal` literals like `12.50d`; conversions are explicit. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
 
@@ -48,9 +48,9 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## Fast code from the straightforward loop
 
-Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. List loops are auto-vectorized with SIMD. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
+Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM when available, including vectorization where applicable, and otherwise fall back to Cranelift. Set `MS_BACKEND=cranelift` to keep builds on Cranelift. The [performance suites](bench/perf/README.md) record revision-specific results, tradeoffs and reproduction commands for kernels, JSON, HTTP and other workloads.
 
-The standard library is about 14,000 lines of Manuscript across 40+ modules (HTTP, JSON, TOML, YAML, CSV, crypto, processes, and more), with Rust only for small primitives. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
+Typed JSON reads a known shape directly into a record: field defaults handle omitted settings, and a wrong type returns an error. Native typed decoding avoids constructing a public `JsonValue` tree first. Use `JsonValue` when the shape is unknown. [JSON recipes](documentation/learn/common-tasks.md)
 
 *Alpha. Syntax and APIs can change.*
 

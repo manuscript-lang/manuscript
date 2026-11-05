@@ -86,7 +86,7 @@ pub fn desugar_inherent_impls(
             out.push(d.clone());
             continue;
         }
-        let name = n(imp.receiver.name());
+        let name = n(imp.receiver.name(syms));
         match types.get(&name) {
             None => errors.push(InherentError {
                 pos: d.pos,
@@ -124,7 +124,7 @@ pub fn desugar_inherent_impls(
             final_decls.push(d);
             continue;
         }
-        let name = n(imp.receiver.name());
+        let name = n(imp.receiver.name(syms));
         let (params, _) = types[&name];
         let contract_name = n(&format!(
             "{name_t}{INHERENT_SUFFIX}",

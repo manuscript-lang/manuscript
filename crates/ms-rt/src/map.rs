@@ -916,6 +916,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_lent(
     key: *const u8,
     val: *mut u8,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         let (m, kd, vd) = (&mut *m, &*kd, &*vd);
@@ -949,6 +950,7 @@ pub unsafe extern "C-unwind" fn msrt_map_add_default_lent(
     key: *const u8,
     val: *mut u8,
 ) {
+    let kd = key_desc(m, kd);
     // SAFETY: caller contract.
     unsafe {
         let (m, kd, vd) = (&mut *m, &*kd, &*vd);
@@ -1640,6 +1642,15 @@ mod tests {
     use core::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
+    fn an_empty_map_is_all_zero_words() {
+        // Generated code builds `ExternRole::MapNew` as zero words instead of calling the runtime.
+        let m = empty();
+        // SAFETY: `MapVal` is `repr(C)` plain words.
+        let words: [usize; MAP_SIZE / 8] = unsafe { core::mem::transmute(m) };
+        assert!(words.iter().all(|w| *w == 0));
+    }
+
+    #[test]
     fn empty_set_relations_do_not_hash_members() {
         let _g = testutil::lock();
         // SAFETY: all set slots hold live i64 values of the static descriptor.
@@ -1963,6 +1974,149 @@ mod tests {
             drop_map(&mut cloned, foreign, Some(foreign));
             drop_map(&mut m, foreign, Some(foreign));
             assert_eq!(crate::alloc::live_blocks(), before);
+        }
+    }
+
+    #[test]
+    fn borrowed_adds_keep_creator_identity_and_release_owned_values() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        let unavailable = TypeDesc {
+            eq: None,
+            hash: None,
+            ..MODULO_KEY
+        };
+        for default in [false, true] {
+            for caller in [&msrt_desc_int, &unavailable] {
+                // SAFETY: keys are i64 slots, values are owned strings, and the stamped
+                // modulo descriptor supplies the creator's identity in both caller scopes.
+                unsafe {
+                    let mut m = empty();
+                    msrt_map_stamp(&mut m, &MODULO_KEY);
+                    let add = if default {
+                        msrt_map_add_default_lent
+                    } else {
+                        msrt_map_add_lent
+                    };
+                    let mut value = from_bytes(b"first independently owned value for the map");
+                    let key = 11i64;
+                    add(
+                        &mut m,
+                        caller,
+                        &msrt_desc_string,
+                        (&raw const key).cast(),
+                        (&raw mut value).cast(),
+                    );
+                    assert_eq!(key, 11);
+                    let probe = 1i64;
+                    let p =
+                        msrt_map_get_ptr(&m, caller, &msrt_desc_string, (&raw const probe).cast());
+                    assert!(
+                        !p.is_null(),
+                        "borrowed insertion must remain reachable through creator hashing"
+                    );
+                    assert_eq!(
+                        string::bytes(p.cast()),
+                        b"first independently owned value for the map"
+                    );
+
+                    let key = 21i64;
+                    let mut value =
+                        from_bytes(b"replacement independently owned value for the map");
+                    add(
+                        &mut m,
+                        caller,
+                        &msrt_desc_string,
+                        (&raw const key).cast(),
+                        (&raw mut value).cast(),
+                    );
+                    assert_eq!(key, 21);
+                    assert_eq!(
+                        m.len, 1,
+                        "equal borrowed keys must not create duplicate entries"
+                    );
+                    let p =
+                        msrt_map_get_ptr(&m, caller, &msrt_desc_string, (&raw const probe).cast());
+                    assert_eq!(
+                        string::bytes(p.cast()),
+                        if default {
+                            b"first independently owned value for the map".as_slice()
+                        } else {
+                            b"replacement independently owned value for the map".as_slice()
+                        }
+                    );
+                    let mut keys = core::mem::MaybeUninit::uninit();
+                    msrt_map_keys(&m, caller, &msrt_desc_string, keys.as_mut_ptr());
+                    let mut keys = keys.assume_init();
+                    assert_eq!(
+                        *(keys.ptr as *const i64),
+                        11,
+                        "replacement keeps the original key"
+                    );
+                    crate::vec::drop_list(&mut keys, &MODULO_KEY);
+
+                    let key = 12i64;
+                    let mut value = from_bytes(b"second independently owned value for the map");
+                    add(
+                        &mut m,
+                        caller,
+                        &msrt_desc_string,
+                        (&raw const key).cast(),
+                        (&raw mut value).cast(),
+                    );
+                    assert_eq!(m.len, 2);
+                    let probe = 2i64;
+                    let p =
+                        msrt_map_get_ptr(&m, caller, &msrt_desc_string, (&raw const probe).cast());
+                    assert!(!p.is_null());
+                    assert_eq!(
+                        string::bytes(p.cast()),
+                        b"second independently owned value for the map"
+                    );
+                    drop_map(&mut m, &MODULO_KEY, Some(&msrt_desc_string));
+                }
+                assert_eq!(alloc::live_blocks(), before);
+            }
+        }
+    }
+
+    #[test]
+    fn borrowed_adds_without_creator_evidence_use_the_caller_identity() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for default in [false, true] {
+            // SAFETY: these unstamped maps have i64 keys and values, described by the caller.
+            unsafe {
+                let mut m = empty();
+                let add = if default {
+                    msrt_map_add_default_lent
+                } else {
+                    msrt_map_add_lent
+                };
+                for (key, mut value) in [(1i64, 10i64), (11, 20), (1, 30)] {
+                    add(
+                        &mut m,
+                        &msrt_desc_int,
+                        &msrt_desc_int,
+                        (&raw const key).cast(),
+                        (&raw mut value).cast(),
+                    );
+                }
+                assert!(m.desc.is_null());
+                assert_eq!(m.len, 2);
+                for (key, expected) in [(1i64, if default { 10 } else { 30 }), (11, 20)] {
+                    let p = msrt_map_get_ptr(
+                        &m,
+                        &msrt_desc_int,
+                        &msrt_desc_int,
+                        (&raw const key).cast(),
+                    );
+                    assert!(!p.is_null());
+                    assert_eq!(*(p as *const i64), expected);
+                }
+                drop_map(&mut m, &msrt_desc_int, Some(&msrt_desc_int));
+            }
+            assert_eq!(alloc::live_blocks(), before);
         }
     }
 

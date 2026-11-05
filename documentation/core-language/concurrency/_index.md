@@ -5,7 +5,7 @@ weight = 8
 
 # Concurrent tasks
 
-A call that can wait starts its work at once and returns a `Promise[T]`. `wait()` gives the result, so there is no `async` or `await`: any function can wait, and callers do not change. `promise(fn: ...)` runs your own function the same way, on a thread the runtime picks. Values that arrive over time travel on [streams](streams.md), and an in-memory `pipe` connects promises.
+`promise(fn: ...)` starts concurrent work on a thread the runtime picks and returns a `Promise[T]`; `wait()` takes its result. Any function can wait, including functions that return a value directly, so there is no `async` or `await`. Streams are pulled lazily: a promise returned by `ReadStream.read()` defers its read until it is waited on. Values that arrive over time travel on [streams](streams.md), and an in-memory `pipe` connects promises.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -24,8 +24,8 @@ test "run work at once and collect it":
 
 ## The rules
 
-1. A call that can wait returns a `Promise[T]` that is already running. `wait()` gives `T!` and takes the result once.
-2. A task pauses only where `wait` appears. Code between two waits runs without interleaving.
+1. A `Promise[T]` represents an operation with one result. `wait()` gives `T!` and takes the result once. `promise(fn: ...)` starts work eagerly; stream reads may defer work until the wait.
+2. A task pauses at a wait, including waits inside called functions. Code between two waits runs without interleaving.
 3. `promise(fn: ...)` runs on a thread the runtime picks and stays there. A CPU-heavy promise delays the promises sharing its thread until it waits. A promise may borrow what it captures, so the values it reads must outlive it (rule 4).
 4. Work you start ends before the values it uses. Dropping a promise cancels it and waits for it to end.
 5. Concurrent code can read shared values but never change them. To change shared state, give it one owner and send it values over a `pipe`.
@@ -37,7 +37,7 @@ The terminal (raw mode and key events in `@std/io/io.ms`) belongs to the main th
 
 | Page | What you will learn |
 | --- | --- |
-| [Promises](promises.md) | Start work, wait with a timeout, cancel, and collect many results. |
+| [Promises](promises.md) | Start work with a deadline, wait, cancel, and collect many results. |
 | [Streams and pipes](streams.md) | Read and write values over time, build pipelines, and pass values between promises. |
 | [HTTP server](http-server.md) | Serve on every core with one `serve` call. |
 

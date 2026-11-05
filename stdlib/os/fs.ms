@@ -159,7 +159,7 @@ interface FileSystem:
         filter: (fn(String, String) Bool)?
     ) Unit!
     // Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
-    // Other policies return EINVAL. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
+    // Other policies return EINVAL. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with EOVERFLOW, the same on every platform; `max_events` bounds queued events.
     fn watch_native(
         path: String,
         recursive: Bool,
@@ -179,10 +179,10 @@ interface FileSystem:
     // Reads a file fully into memory. Supply `max_bytes` for untrusted or large files.
     fn read_file(path: String, max_bytes: Int?) Bytes!
     // Returns the target text stored in the symbolic link at `path`, without resolving it.
-    // A path that is not a link returns InvalidInput.
+    // A path that is not a link returns EINVAL.
     fn read_link(path: String) String!
     // Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
-    // A missing path returns NotFound, except that a recursive removal of a missing path succeeds.
+    // A missing path returns ENOENT, except that a recursive removal of a missing path succeeds.
     fn remove(path: String, recursive: Bool = false) Unit!
     // Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
     // It never falls back to copying, so a move across devices returns an error.
@@ -208,12 +208,12 @@ interface FileSystem:
     // Changes target permissions with mode 0..4095; follows a final symbolic link.
     fn chmod(path: String, mode: Int) Unit!
     // Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
-    // `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns Unsupported.
+    // `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns ENOTSUP.
     fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) Unit!
     // Sets the target size in bytes; follows a final symbolic link.
     fn truncate(path: String, size: Int) Unit!
     // Sets the access and modification times of `path`.
-    // `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return Unsupported where the host lacks them, such as Windows.
+    // `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return ENOTSUP where the host lacks them, such as Windows.
     fn set_times(
         path: String,
         accessed: Timestamp,
@@ -221,16 +221,16 @@ interface FileSystem:
         follow_links: Bool
     ) Unit!
     // Creates `destination` as another name for the file at `source`.
-    // An existing destination returns AlreadyExists; it must be on the same filesystem as `source`.
+    // An existing destination returns EEXIST; it must be on the same filesystem as `source`.
     fn hard_link(source: String, destination: String) Unit!
-    // Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
+    // Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return EINVAL.
     // Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
     fn open(path: String, flags: String, mode: Int) FileHandle!
     // Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
-    // A path that is not a directory returns InvalidInput.
+    // A path that is not a directory returns EINVAL.
     fn open_directory(path: String) Directory!
     // Returns a polling watcher that compares snapshots of `path` every `interval`, which must be positive.
-    // `max_entries` bounds the tracked paths; exceeding it returns LimitExceeded. Transient changes between polls can be missed.
+    // `max_entries` bounds the tracked paths; exceeding it returns EOVERFLOW. Transient changes between polls can be missed.
     fn watch(
         path: String,
         recursive: Bool,
@@ -241,9 +241,9 @@ interface FileSystem:
     // Prefix has the same validation as temporary_directory; this does not query the temp root.
     fn temporary(prefix: String) TemporaryDirectory!
     // Returns capacity and free-space statistics for the filesystem containing `path`.
-    // Hosts without the query return Unsupported.
+    // Hosts without the query return ENOTSUP.
     fn stat_filesystem(path: String) FileSystemInfo!
-    // Changes the link itself without following it; Unsupported on hosts lacking this operation.
+    // Changes the link itself without following it; ENOTSUP on hosts lacking this operation.
     fn chmod_link(path: String, mode: Int) Unit!
 
 // The runtime handle behind a `FileHandle`.
@@ -285,7 +285,7 @@ impl Sink[Bytes] for FileSink:
 
 impl Closeable for FileHandle:
     // Closes the file, interrupts calls in progress, and waits for them to stop.
-    // Safe to call repeatedly; later operations return Closed.
+    // Safe to call repeatedly; later operations return EBADF.
     var fn close() Unit!:
         msstd_io_close(self.native)
         return ok(unit)
@@ -294,12 +294,12 @@ impl FileHandle:
     /*
     Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
     Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
-    A closed handle returns Closed.
+    A closed handle returns EBADF.
     */
     fn clone() FileHandle!:
         return msstd_fs_file_clone(self.native)
 
-    // Adapts this handle to `Error`/Optional chunk reads; closing either view closes all aliases.
+    // Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
     fn reader() ReadStream[Bytes]!:
         let own = try self.clone()
         return ok(stream[Bytes](FileSource(own)))
@@ -333,11 +333,11 @@ impl FileHandle:
     fn read_at(offset: Int, max_bytes: Int?) Bytes!:
         return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
-    // Writes the UTF-8 text at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
+    // Writes the UTF-8 text at a nonnegative offset without moving the position; a handle opened for append returns EINVAL because the host would ignore the offset; errors can leave a prefix.
     fn write_at(offset: Int, data: String) Unit!:
         return msstd_fs_file_write_at(self.native, offset, data.to_bytes())
 
-    // Writes all bytes at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
+    // Writes all bytes at a nonnegative offset without moving the position; a handle opened for append returns EINVAL because the host would ignore the offset; errors can leave a prefix.
     fn write_at_bytes(offset: Int, data: Bytes) Unit!:
         return msstd_fs_file_write_at(self.native, offset, data)
 
@@ -346,16 +346,16 @@ impl FileHandle:
         return msstd_fs_file_read_file(self.native, max_bytes)
 
     // Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
-    // `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns InvalidInput.
+    // `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
     fn read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
         return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
-    // Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns InvalidInput.
+    // Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns EINVAL.
     fn write_vectors(buffers: List[Bytes], offset: Int) Unit!:
         return msstd_fs_file_write_vectors(self.native, buffers, offset)
 
     // Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
-    // Other origins return InvalidInput; the OS validates the resulting offset.
+    // Other origins return EINVAL; the OS validates the resulting offset.
     fn seek(offset: Int, origin: Int) Int!:
         return msstd_fs_file_seek(self.native, offset, origin)
 
@@ -364,7 +364,7 @@ impl FileHandle:
         return msstd_fs_file_stat(self.native)
 
     // Sets the file length to `size` bytes, discarding the excess or extending with zero bytes. The current position is not moved.
-    // A negative size returns InvalidInput.
+    // A negative size returns EINVAL.
     fn truncate(size: Int) Unit!:
         return msstd_fs_file_truncate(self.native, size)
 
@@ -380,7 +380,7 @@ impl FileHandle:
     /*
     Tries to take an advisory lock on the whole file without waiting: shared (many readers) or `exclusive` (one writer).
     Returns False when another handle holds a conflicting lock. The lock is advisory: it only excludes other lockers (`flock` on Unix, `LockFileEx` on Windows), and closing the handle releases it.
-    Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns Closed.
+    Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns EBADF.
     */
     fn try_lock(exclusive: Bool) Bool!:
         let taken = try msstd_fs_file_try_lock(self.native, exclusive)
@@ -412,12 +412,12 @@ impl FileHandle:
     fn chown(uid: Int, gid: Int) Unit!:
         return msstd_fs_file_chown(self.native, uid, gid)
 
-    // Sets the access and modification times of the open file. Returns Unsupported on hosts without descriptor timestamps.
+    // Sets the access and modification times of the open file. Returns ENOTSUP on hosts without descriptor timestamps.
     fn set_times(accessed: Timestamp, modified: Timestamp) Unit!:
         return msstd_fs_file_set_times(self.native, accessed, modified)
 
     // Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
-    // Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded. A negative `max_bytes` or `max_lines` returns InvalidInput.
+    // Invalid UTF-8 returns EBADMSG, and more bytes than `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes` or `max_lines` returns EINVAL.
     fn read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
         return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
@@ -431,7 +431,7 @@ export type Directory:
 
 impl Closeable for Directory:
     // Releases the directory handle.
-    // Safe to call repeatedly; later reads return Closed.
+    // Safe to call repeatedly; later reads return EBADF.
     var fn close() Unit!:
         msstd_fs_directory_close(self.native)
         return ok(unit)
@@ -527,11 +527,11 @@ export type FileSystemInfo:
 
 // Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:
-    // When True, directories are copied with their contents; when False, a directory source returns InvalidInput.
+    // When True, directories are copied with their contents; when False, a directory source returns EINVAL.
     recursive: Bool = false
     // When True, an existing destination file or link is replaced; when False, it is kept, or reported when `error_on_exists` is True.
     replace: Bool = false
-    // When True and `replace` is False, an existing destination file returns AlreadyExists instead of being skipped silently.
+    // When True and `replace` is False, an existing destination file returns EEXIST instead of being skipped silently.
     error_on_exists: Bool = true
     // When True, symbolic links are followed and their targets copied; when False, links are recreated as links.
     dereference: Bool = false
@@ -539,12 +539,12 @@ export type CopyOptions:
     preserve_timestamps: Bool = false
     // When True, a copied link keeps its target text unchanged. When False, a relative target is rewritten relative to the source directory so it still reaches the original file.
     verbatim_symlinks: Bool = false
-    // Exactly `none`, `try`, or `force`; other strings return InvalidInput.
+    // Exactly `none`, `try`, or `force`; other strings return EINVAL.
     // try falls back to byte copying; force requires a native clone operation.
     clone: String = "none"
-    // Most files, directories, and links visited, counting the root. Exceeding it returns LimitExceeded. none sets no limit.
+    // Most files, directories, and links visited, counting the root. Exceeding it returns EOVERFLOW. none sets no limit.
     max_entries: Int? = none
-    // Most file bytes copied in total. Exceeding it returns LimitExceeded. none sets no limit.
+    // Most file bytes copied in total. Exceeding it returns EOVERFLOW. none sets no limit.
     max_bytes: Int? = none
 
 /*
@@ -555,7 +555,7 @@ Every field has a default, so `WatchOptions()` watches natively with no limits a
 export type WatchOptions:
     // Polling period, which must be positive. none watches with native OS events.
     interval: Duration? = none
-    // Most paths under the root, counted when the watcher starts. Exceeding it returns LimitExceeded. none sets no limit.
+    // Most paths under the root, counted when the watcher starts. Exceeding it returns EOVERFLOW. none sets no limit.
     max_entries: Int? = none
     // Most queued native events. Native watchers only. none sets no limit.
     max_events: Int? = none
@@ -577,9 +577,9 @@ export type GlobOptions:
     exclude: List[String] = []
     // When True, symbolic links to directories are traversed, with cycles detected; when False, links are reported but not entered.
     follow_links: Bool = false
-    // Most filesystem entries visited while searching. Exceeding it returns LimitExceeded. none sets no limit.
+    // Most filesystem entries visited while searching. Exceeding it returns EOVERFLOW. none sets no limit.
     max_entries: Int? = none
-    // Most distinct matches returned. Exceeding it returns LimitExceeded. none sets no limit.
+    // Most distinct matches returned. Exceeding it returns EOVERFLOW. none sets no limit.
     max_results: Int? = none
 
 // The filesystem of the current host.
@@ -589,7 +589,7 @@ fn host() FileSystem:
 /*
 Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
-returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns InvalidInput.
+returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
 ```manuscript
 let sources = glob(".", GlobOptions(patterns: ["*.ms"]))
@@ -604,7 +604,7 @@ export fn glob(
 
 /*
 Copies a file or, with `options.recursive`, a directory tree.
-By default an existing destination returns AlreadyExists; set `replace` to overwrite it. `filter` is called with each
+By default an existing destination returns EEXIST; set `replace` to overwrite it. `filter` is called with each
 source and destination path and skips the entry when it returns False.
 Entry and byte limits apply cumulatively across the whole copy.
 
@@ -677,12 +677,12 @@ export fn read_file(path: String, max_bytes: Int?) Promise[Bytes]:
     )
 
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
-// A path that is not a link returns InvalidInput.
+// A path that is not a link returns EINVAL.
 export fn read_link(path: String) String!:
     return msstd_fs_read_link(path)
 
 // Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
-// A missing path returns NotFound, except that a recursive removal of a missing path succeeds.
+// A missing path returns ENOENT, except that a recursive removal of a missing path succeeds.
 export fn remove(path: String, recursive: Bool = false) Unit!:
     return msstd_fs_remove(path, recursive)
 
@@ -746,7 +746,7 @@ export fn chmod(path: String, mode: Int) Unit!:
     return msstd_fs_chmod(path, mode, true)
 
 // Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
-// `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns Unsupported.
+// `follow_links` chooses the link target (True) or the link itself (False). Usually needs privilege, and Windows returns ENOTSUP.
 export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool) Unit!:
     return msstd_fs_chown(path, uid, gid, follow_links)
 
@@ -755,7 +755,7 @@ export fn truncate(path: String, size: Int) Unit!:
     return msstd_fs_truncate(path, size)
 
 // Sets the access and modification times of `path`.
-// `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return Unsupported where the host lacks them, such as Windows.
+// `follow_links` chooses the link target (True) or the link itself (False); no-follow updates return ENOTSUP where the host lacks them, such as Windows.
 export fn set_times(
     path: String,
     accessed: Timestamp,
@@ -765,17 +765,17 @@ export fn set_times(
     return msstd_fs_set_times(path, accessed, modified, follow_links)
 
 // Creates `destination` as another name for the file at `source`.
-// An existing destination returns AlreadyExists; it must be on the same filesystem as `source`.
+// An existing destination returns EEXIST; it must be on the same filesystem as `source`.
 export fn hard_link(source: String, destination: String) Unit!:
     return msstd_fs_hard_link(source, destination)
 
-// Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return InvalidInput.
+// Opens with exactly r, r+, w, wx, w+, wx+, a, ax, a+, or ax+; other strings return EINVAL.
 // Mode is permission bits in 0..4095, applied on creation subject to umask/OS policy.
 export fn open(path: String, flags: String, mode: Int) FileHandle!:
     return msstd_fs_open(path, flags, mode)
 
 // Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
-// A path that is not a directory returns InvalidInput.
+// A path that is not a directory returns EINVAL.
 export fn open_directory(path: String) Directory!:
     return msstd_fs_directory_open(path)
 
@@ -789,8 +789,9 @@ export fn write_atomic(path: String, data: String) Unit!:
 
 // Replaces the file at `path` with raw bytes, with the same all-or-nothing rules as `write_atomic`.
 export fn write_atomic_bytes(path: String, data: Bytes) Unit!:
+    let existing = stat(path, true)
     var mode = 420
-    if let existing = stat(path, true): mode = existing.permissions
+    if let info = existing: mode = info.permissions
 
     let stamp = now()
     var attempt = 0
@@ -801,17 +802,28 @@ export fn write_atomic_bytes(path: String, data: Bytes) Unit!:
 
         match open(temporary, "wx", mode):
             ok(file):
-                return finish_atomic(file, temporary, path, data)
+                return finish_atomic(
+                    file, temporary, path, data, if existing.is_ok(): mode else: none
+                )
             error(cause):
                 if cause.kind != "EEXIST": return error(cause)
 
     return error(Error("filesystem: already exists", kind: "EEXIST"))
 
 // Writes, syncs, closes and renames the temporary file, removing it when any step fails.
-fn finish_atomic(file: FileHandle, temporary: String, path: String, data: Bytes) Unit!:
+fn finish_atomic(
+    file: FileHandle,
+    temporary: String,
+    path: String,
+    data: Bytes,
+    mode: Int?
+) Unit!:
     var out = file
-    let written = out.write_bytes(data)
-    let synced = if written.is_error(): written else: out.sync()
+    var prepared = out.write_bytes(data)
+    if prepared.is_ok():
+        if let permissions = mode: prepared = out.chmod(permissions)
+
+    let synced = if prepared.is_error(): prepared else: out.sync()
     let _closed = out.close()
 
     if synced.is_error():
@@ -824,7 +836,7 @@ fn finish_atomic(file: FileHandle, temporary: String, path: String, data: Bytes)
     return moved
 
 // Moves a file or tree from `source` to `destination`, across filesystems too.
-// It renames when it can. When the rename fails with a host error other than a missing or protected path, as a move across devices does, it copies the tree, then removes `source`, and removes the partial copy if copying fails. A destination that already exists is not replaced by the copy fallback and returns AlreadyExists.
+// It renames when it can. When the rename fails with a host error other than a missing or protected path, as a move across devices does, it copies the tree, then removes `source`, and removes the partial copy if copying fails. A destination that already exists is not replaced by the copy fallback and returns EEXIST.
 export fn move(source: String, destination: String) Unit!:
     let renamed = rename(source, destination)
     if renamed.is_ok(): return renamed
@@ -853,12 +865,12 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 Watches `path` for changes and returns the changes as a stream, one event per item. Dropping the stream stops the watcher.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
-`max_events` and `overflow` apply only to native events and return InvalidInput together with an interval.
+`max_events` and `overflow` apply only to native events and return EINVAL together with an interval.
 `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
-fails with LimitExceeded the same way on every platform.
+fails with EOVERFLOW the same way on every platform.
 
 ```manuscript
-var watcher = watch("src", true, WatchOptions(interval: some(seconds(1))))
+var watcher = watch("src", true, WatchOptions(interval: 1.seconds()))
 ```
 */
 export fn watch(
@@ -894,11 +906,11 @@ export fn temporary(prefix: String) TemporaryDirectory!:
     return msstd_fs_temporary_open(prefix)
 
 // Returns capacity and free-space statistics for the filesystem containing `path`.
-// Hosts without the query return Unsupported.
+// Hosts without the query return ENOTSUP.
 export fn stat_filesystem(path: String) FileSystemInfo!:
     return msstd_fs_stat_filesystem(path)
 
-// Changes the link itself without following it; Unsupported on hosts lacking this operation.
+// Changes the link itself without following it; ENOTSUP on hosts lacking this operation.
 export fn chmod_link(path: String, mode: Int) Unit!:
     return msstd_fs_chmod(path, mode, false)
 
@@ -960,7 +972,7 @@ export interface PathOperations:
     // Cleans repeated separators and dot segments lexically; it does not resolve symlinks.
     fn normalize(path: String) String
     // Computes a lexical relative path from absolute anchors; different roots return the original target.
-    // Nonabsolute anchors or invalid NUL input return InvalidInput.
+    // Nonabsolute anchors or invalid NUL input return EINVAL.
     fn relative(base: String, target: String) String!
     // Resolves parts against an explicit absolute base; no process working directory is consulted.
     fn resolve(base: String, parts: List[String]) String!
@@ -974,7 +986,7 @@ export interface PathOperations:
     fn delimiter() String
     // Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged.
     fn to_namespaced_path(path: String) String
-    // Tests one lexical path against the supported glob syntax; malformed patterns return InvalidInput.
+    // Tests one lexical path against the supported glob syntax; malformed patterns return EINVAL.
     fn matches_glob(path: String, pattern: String) Bool!
 
 // Returns path operations using POSIX separators and parsing rules.

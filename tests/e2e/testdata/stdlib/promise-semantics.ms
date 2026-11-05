@@ -123,3 +123,16 @@ test "dropping the switch cancels nothing":
         fn: ok(4), options: PromiseOptions(cancel: cancel_switch().signal())
     )
     slow.wait() | try expect_ok | try expect_equal(4)
+
+test "a replacement cancel signal detaches the previous switch":
+    let first = cancel_switch()
+    let second = cancel_switch()
+    let slow = sleep(milliseconds(5000)).with(
+        options: PromiseOptions(cancel: first.signal())
+    ).with(options: PromiseOptions(cancel: second.signal()))
+    first.cancel()
+    try expect_equal(slow.done(), false)
+    second.cancel()
+
+    let reason = slow.wait() | try expect_error
+    try expect_equal(reason.kind, "ECANCELED")

@@ -22,7 +22,7 @@ wide characters and supported emoji sequences are measured together; cell bytes 
 Widths are estimates, not a promise for every font, script or terminal. Controls (including
 tabs, CR/LF, ANSI ESC and C1), U+2028 and U+2029 are rejected, never expanded or interpreted.
 Optional limits count input rows, total cells and UTF-8 output bytes; none adds no budget.
-Negative budgets return InvalidInput; exhaustion returns LimitExceeded without partial output.
+Negative budgets return EINVAL; exhaustion returns EOVERFLOW without partial output.
 */
 export fn format(
     rows: List[List[String]],

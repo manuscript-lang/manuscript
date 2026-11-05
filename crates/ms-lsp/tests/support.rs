@@ -160,7 +160,7 @@ impl Script {
         )
     }
 
-    fn frames(&self) -> Vec<u8> {
+    pub fn frames(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut finish = Script {
             next: self.next,

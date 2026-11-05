@@ -17,7 +17,7 @@ export fn ascii85_encode(data: Bytes) String:
 /*
 Decodes unframed ASCII85, ignoring ASCII bytes 0 through 32; `z` is valid only between groups.
 Rejects Adobe delimiters, one-digit tails, invalid characters and overflowing complete or partial 32-bit groups.
-Negative `max_bytes` returns InvalidInput; decoded output above it returns LimitExceeded before allocating output.
+Negative `max_bytes` returns EINVAL; decoded output above it returns EOVERFLOW before allocating output.
 */
 export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
     return msstd_encoding_ascii85_decode(text, max_bytes)
@@ -28,7 +28,7 @@ export fn base64_encode_unpadded(data: Bytes, url_safe: Bool = false) String:
     return msstd_encoding_base64_encode_unpadded(data, url_safe)
 
 // Decodes unpadded standard Base64; `url_safe` selects the URL-safe alphabet.
-// Rejects `=`, whitespace and nonzero unused bits. Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
+// Rejects `=`, whitespace and nonzero unused bits. Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
 export fn base64_decode_unpadded(
     text: String,
     url_safe: Bool = false,
@@ -47,8 +47,8 @@ export fn base32_encode(
 
 /*
 Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
-Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return InvalidData.
-Negative `max_bytes` returns InvalidInput; output exceeding it returns LimitExceeded.
+Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return EBADMSG.
+Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
 */
 export fn base32_decode(
     text: String,
@@ -199,13 +199,13 @@ export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
-    let digits = text.to_bytes().values()
-    let length = digits.length()
+    let length = text.byte_length()
     if length / 2 > limit: return error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     if length % 2 != 0: return error(Error("encoding: invalid data", kind: "EBADMSG"))
 
+    let digits = text.to_bytes().values()
     var out = BytesBuilder()
 
     for pair in 0..(length / 2):
@@ -280,7 +280,7 @@ fn text_of(scalars: List[Int]) String:
     return ""
 
 // Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
-// An odd length or an unpaired surrogate returns InvalidData; a negative `max_bytes` returns InvalidInput, and decoded text longer than `max_bytes` UTF-8 bytes returns LimitExceeded.
+// An odd length or an unpaired surrogate returns EBADMSG; a negative `max_bytes` returns EINVAL, and decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
 export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
@@ -333,7 +333,7 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
 
     return ok(text_of(scalars))
 
-// Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns InvalidData.
+// Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns EBADMSG.
 export fn latin1_encode(text: String) Bytes!:
     return narrow(text, 255)
 
@@ -353,11 +353,11 @@ fn narrow(text: String, maximum: Int) Bytes!:
 export fn latin1_decode(data: Bytes) String:
     return text_of(data.values().map(fn b: b.to_int()))
 
-// Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
+// Encodes text as 7-bit ASCII. A scalar above U+007F returns EBADMSG.
 export fn ascii_encode(text: String) Bytes!:
     return narrow(text, 127)
 
-// Decodes 7-bit ASCII bytes. A byte above 0x7F returns InvalidData.
+// Decodes 7-bit ASCII bytes. A byte above 0x7F returns EBADMSG.
 export fn ascii_decode(data: Bytes) String!:
     let bytes = data.values()
     for byte in bytes:

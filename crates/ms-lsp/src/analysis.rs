@@ -44,6 +44,22 @@ impl Document {
 /// Open documents by URI.
 pub type Documents = HashMap<String, Document>;
 
+/// Identity for source comparisons, including a new unsaved file beneath an
+/// existing directory. Loading still validates the selected project's root.
+pub(crate) fn source_identity(path: &str) -> String {
+    use ms_driver::project::{pathops, source_path};
+    pathops::eval_symlinks(path)
+        .or_else(|_| {
+            let root = pathops::eval_symlinks(&pathops::dir(path))?;
+            source_path(
+                &root,
+                path,
+                &Overlay::from([(path.to_string(), String::new())]),
+            )
+        })
+        .unwrap_or_else(|_| path.to_string())
+}
+
 /// What one analysis needs beyond the document (`compiler.Options`).
 #[derive(Clone, Default)]
 pub struct Options {
@@ -158,10 +174,7 @@ impl Analysis {
         if let Some(m) = standard_library_document(syms, &self.session, d) {
             return Some(m);
         }
-        let mut path = d.path();
-        if let Ok(canonical) = ms_driver::project::pathops::eval_symlinks(&path) {
-            path = canonical;
-        }
+        let path = source_identity(&d.path());
         program
             .modules
             .iter()

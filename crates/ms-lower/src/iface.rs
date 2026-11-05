@@ -271,7 +271,9 @@ impl Cx {
         let method = std::rc::Rc::new(method);
         // A standard module's native half has no queries of its own: its source twin or the
         // module of the use stands in.
-        let twin = ct::Name::from(format!("{}+source", self.syms.str(mref.module)).as_str());
+        let twin = self
+            .syms
+            .intern(&format!("{}+source", self.syms.str(mref.module)));
         let hir = self
             .module(mref.module)
             .or_else(|_| self.module(twin))
@@ -417,9 +419,17 @@ impl FnLower<'_> {
         if have == want || self.dead {
             return Ok(x);
         }
-        if let (TyKind::Alt(_), TyKind::Alt(_)) =
+        if let (TyKind::Alt(h), TyKind::Alt(w)) =
             (self.b.m.types.kind(have), self.b.m.types.kind(want))
         {
+            let (dh, dw) = (&self.b.m.alts[h.index()], &self.b.m.alts[w.index()]);
+            if dh.borrowed != 0 && dw.borrowed == 0 && dh.name == dw.name && dh.cases == dw.cases {
+                // A borrowing variant read as the ordinary alternative: a borrow of the
+                // value, which stays owned (and is dropped) where it was made.
+                let v = self.borrow(x);
+                let v = self.b.alt_plain(v, want);
+                return Ok(Val { v, own: false });
+            }
             return self.convert_result(x, concrete, want);
         }
         let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {

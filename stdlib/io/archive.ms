@@ -31,11 +31,11 @@ export type ArchiveLimits:
     // Cumulative unpacked file bytes across all entries; none adds no total-output budget.
     max_total_bytes: Int?
 
-// Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
+// Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return ENOTSUP. `max_bytes` bounds output when supplied.
 export fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int?) Bytes!:
     return msstd_archive_pack(entries, format, max_bytes)
 
-// Decodes exactly `zip` or `tar` (case-sensitive); other formats return Unsupported.
+// Decodes exactly `zip` or `tar` (case-sensitive); other formats return ENOTSUP.
 // Applies each supplied entry and total-size limit.
 export fn unpack(
     data: Bytes,
@@ -66,14 +66,14 @@ impl ArchiveFormat:
 
 /*
 Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
-Other formats return Unsupported; level defaults to 6 (balanced DEFLATE compression).
-Explicit levels must be 0..9 (0 stores data), else InvalidInput.
+Other formats return ENOTSUP; level defaults to 6 (balanced DEFLATE compression).
+Explicit levels must be 0..9 (0 stores data), else EINVAL.
 `max_bytes` bounds the encoded output when supplied.
 */
 export fn compress(data: Bytes, format: String, level: Int = 6, max_bytes: Int?) Bytes!:
     return msstd_compress_compress(data, format, level, max_bytes)
 
-// Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return Unsupported.
+// Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return ENOTSUP.
 // Stops when the supplied output limit is reached.
 export fn decompress(data: Bytes, format: String, max_bytes: Int?) Bytes!:
     return msstd_compress_decompress(data, format, max_bytes)

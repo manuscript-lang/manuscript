@@ -28,5 +28,5 @@ pub mod transport;
 pub mod uri;
 pub mod workspace;
 
-pub use server::{serve, serve_with};
+pub use server::{serve, serve_recycling, serve_with};
 pub use supervise::supervise;

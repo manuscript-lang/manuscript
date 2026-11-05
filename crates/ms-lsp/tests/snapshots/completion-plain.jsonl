@@ -216,7 +216,7 @@
 {"id":215,"jsonrpc":"2.0","result":null}
 #large
 {"id":217,"jsonrpc":"2.0","result":null}
-{"id":218,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import NetworkInterface from \"@std/os/process.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NetworkInterface — @std/os/process.ms","documentation":{"kind":"markdown","value":"Address and link metadata for one host network interface."},"filterText":"NetworkInterface","insertTextFormat":1,"kind":7,"label":"NetworkInterface","sortText":"04_NetworkInterface","textEdit":{"newText":"NetworkInterface","range":{"end":{"character":9,"line":14},"start":{"character":0,"line":14}}}},{"additionalTextEdits":[{"newText":"import network_interfaces from \"@std/os/process.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Result[List[NetworkInterface], Error] — @std/os/process.ms","documentation":{"kind":"markdown","value":"Returns one NetworkInterface for every address on every interface, including loopback.\nAn interface name that is not valid UTF-8 returns Unsupported."},"filterText":"network_interfaces","insertTextFormat":1,"kind":3,"label":"network_interfaces","sortText":"04_network_interfaces","textEdit":{"newText":"network_interfaces","range":{"end":{"character":9,"line":14},"start":{"character":0,"line":14}}}},{"filterText":"interface","insertTextFormat":1,"kind":14,"label":"interface","sortText":"05_interface","textEdit":{"newText":"interface ","range":{"end":{"character":9,"line":14},"start":{"character":0,"line":14}}}}]}
+{"id":218,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"import NetworkInterface from \"@std/os/process.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NetworkInterface — @std/os/process.ms","documentation":{"kind":"markdown","value":"Address and link metadata for one host network interface."},"filterText":"NetworkInterface","insertTextFormat":1,"kind":7,"label":"NetworkInterface","sortText":"04_NetworkInterface","textEdit":{"newText":"NetworkInterface","range":{"end":{"character":9,"line":14},"start":{"character":0,"line":14}}}},{"additionalTextEdits":[{"newText":"import network_interfaces from \"@std/os/process.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Result[List[NetworkInterface], Error] — @std/os/process.ms","documentation":{"kind":"markdown","value":"Returns one NetworkInterface for every address on every interface, including loopback.\nAn interface name that is not valid UTF-8 returns ENOTSUP."},"filterText":"network_interfaces","insertTextFormat":1,"kind":3,"label":"network_interfaces","sortText":"04_network_interfaces","textEdit":{"newText":"network_interfaces","range":{"end":{"character":9,"line":14},"start":{"character":0,"line":14}}}},{"filterText":"interface","insertTextFormat":1,"kind":14,"label":"interface","sortText":"05_interface","textEdit":{"newText":"interface ","range":{"end":{"character":9,"line":14},"start":{"character":0,"line":14}}}}]}
 {"id":219,"jsonrpc":"2.0","result":null}
 #large
 {"id":221,"jsonrpc":"2.0","result":null}
@@ -560,9 +560,9 @@
 {"id":559,"jsonrpc":"2.0","result":null}
 {"id":560,"jsonrpc":"2.0","result":[{"detail":"fn(Int) Shape","filterText":"Circle","insertTextFormat":1,"kind":20,"label":"Circle","sortText":"02_Circle","textEdit":{"newText":"Circle","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}}}]}
 {"id":561,"jsonrpc":"2.0","result":null}
-{"id":562,"jsonrpc":"2.0","result":[]}
+#large
 {"id":563,"jsonrpc":"2.0","result":null}
-{"id":564,"jsonrpc":"2.0","result":[]}
+#large
 {"id":565,"jsonrpc":"2.0","result":null}
 #large
 {"id":567,"jsonrpc":"2.0","result":null}
@@ -580,9 +580,9 @@
 {"id":579,"jsonrpc":"2.0","result":null}
 {"id":580,"jsonrpc":"2.0","result":[{"detail":"fn(Int) Shape","filterText":"Square","insertTextFormat":1,"kind":20,"label":"Square","sortText":"02_Square","textEdit":{"newText":"Square","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}]}
 {"id":581,"jsonrpc":"2.0","result":null}
-{"id":582,"jsonrpc":"2.0","result":[]}
+#large
 {"id":583,"jsonrpc":"2.0","result":null}
-{"id":584,"jsonrpc":"2.0","result":[]}
+#large
 {"id":585,"jsonrpc":"2.0","result":null}
 #large
 {"id":587,"jsonrpc":"2.0","result":null}
@@ -644,7 +644,7 @@
 {"id":643,"jsonrpc":"2.0","result":null}
 {"id":644,"jsonrpc":"2.0","result":[{"detail":"fn() Int","filterText":"norm","insertTextFormat":1,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm","range":{"end":{"character":18,"line":49},"start":{"character":14,"line":49}}}}]}
 {"id":645,"jsonrpc":"2.0","result":null}
-{"id":646,"jsonrpc":"2.0","result":[]}
+#large
 {"id":647,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"p.norm() Int","parameters":[]}]}}
 #large
 {"id":649,"jsonrpc":"2.0","result":null}
@@ -716,7 +716,7 @@
 {"id":715,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 #large
 {"id":717,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
-{"id":718,"jsonrpc":"2.0","result":[]}
+#large
 {"id":719,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 {"id":720,"jsonrpc":"2.0","result":[]}
 {"id":721,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
@@ -766,13 +766,13 @@
 {"id":765,"jsonrpc":"2.0","result":null}
 #large
 {"id":767,"jsonrpc":"2.0","result":null}
-{"id":768,"jsonrpc":"2.0","result":[]}
+#large
 {"id":769,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 {"id":770,"jsonrpc":"2.0","result":[]}
 {"id":771,"jsonrpc":"2.0","result":null}
 #large
 {"id":773,"jsonrpc":"2.0","result":null}
-{"id":774,"jsonrpc":"2.0","result":[]}
+#large
 {"id":775,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 #large
 {"id":777,"jsonrpc":"2.0","result":null}
@@ -810,7 +810,7 @@
 {"id":809,"jsonrpc":"2.0","result":null}
 #large
 {"id":811,"jsonrpc":"2.0","result":null}
-{"id":812,"jsonrpc":"2.0","result":[]}
+#large
 {"id":813,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 {"id":814,"jsonrpc":"2.0","result":[]}
 {"id":815,"jsonrpc":"2.0","result":null}
@@ -818,7 +818,7 @@
 {"id":817,"jsonrpc":"2.0","result":null}
 {"id":818,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"tick","insertTextFormat":1,"kind":6,"label":"tick","sortText":"00_tick","textEdit":{"newText":"tick","range":{"end":{"character":26,"line":58},"start":{"character":22,"line":58}}}},{"additionalTextEdits":[{"newText":"import NativeDatagramSocket from \"@std/net/net.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NativeDatagramSocket — @std/net/net.ms","documentation":{"kind":"markdown","value":"The runtime handle behind a `RawDatagramSocket`."},"filterText":"NativeDatagramSocket","insertTextFormat":1,"kind":7,"label":"NativeDatagramSocket","sortText":"04_NativeDatagramSocket","textEdit":{"newText":"NativeDatagramSocket","range":{"end":{"character":26,"line":58},"start":{"character":22,"line":58}}}},{"additionalTextEdits":[{"newText":"import NativeWebSocket from \"@std/net/net.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NativeWebSocket — @std/net/net.ms","documentation":{"kind":"markdown","value":"The runtime handle behind a `RawWebSocket`."},"filterText":"NativeWebSocket","insertTextFormat":1,"kind":7,"label":"NativeWebSocket","sortText":"04_NativeWebSocket","textEdit":{"newText":"NativeWebSocket","range":{"end":{"character":26,"line":58},"start":{"character":22,"line":58}}}},{"additionalTextEdits":[{"newText":"import ticker from \"@std/os/time.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(Duration) ReadStream[Instant] — @std/os/time.ms","documentation":{"kind":"markdown","value":"Returns a ticker whose first tick comes one `period` from now. A period of zero or less is a programming fault."},"filterText":"ticker","insertTextFormat":1,"kind":3,"label":"ticker","sortText":"04_ticker","textEdit":{"newText":"ticker","range":{"end":{"character":26,"line":58},"start":{"character":22,"line":58}}}}]}
 {"id":819,"jsonrpc":"2.0","result":null}
-{"id":820,"jsonrpc":"2.0","result":[]}
+#large
 {"id":821,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 #large
 {"id":823,"jsonrpc":"2.0","result":null}
@@ -836,9 +836,9 @@
 {"id":835,"jsonrpc":"2.0","result":null}
 #large
 {"id":837,"jsonrpc":"2.0","result":null}
-{"id":838,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"b","insertTextFormat":1,"kind":6,"label":"b","sortText":"00_b","textEdit":{"newText":"b: ","range":{"end":{"character":22,"line":60},"start":{"character":21,"line":60}}}}]}
+#large
 {"id":839,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
-{"id":840,"jsonrpc":"2.0","result":[]}
+#large
 {"id":841,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
 #large
 {"id":843,"jsonrpc":"2.0","result":null}
@@ -898,7 +898,7 @@
 {"id":897,"jsonrpc":"2.0","result":null}
 {"id":898,"jsonrpc":"2.0","result":[{"detail":"fn() WriteStream[String]","documentation":{"kind":"markdown","value":"Standard output as text; writes are buffered until flushed or the process exits."},"filterText":"stdout","insertTextFormat":1,"kind":3,"label":"stdout","sortText":"02_stdout","textEdit":{"newText":"stdout","range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}}},{"additionalTextEdits":[{"newText":"import stdout_bytes from \"@std/io/io.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() WriteStream[Bytes] — @std/io/io.ms","documentation":{"kind":"markdown","value":"Standard output as bytes; it shares its buffer with `stdout()`."},"filterText":"stdout_bytes","insertTextFormat":1,"kind":3,"label":"stdout_bytes","sortText":"04_stdout_bytes","textEdit":{"newText":"stdout_bytes","range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}}},{"additionalTextEdits":[{"newText":"import stdout_transport from \"@std/log.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Transport — @std/log.ms","documentation":{"kind":"markdown","value":"Writes log records to the process standard-output stream."},"filterText":"stdout_transport","insertTextFormat":1,"kind":3,"label":"stdout_transport","sortText":"04_stdout_transport","textEdit":{"newText":"stdout_transport","range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}}}]}
 {"id":899,"jsonrpc":"2.0","result":null}
-{"id":900,"jsonrpc":"2.0","result":[]}
+#large
 {"id":901,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Standard output as text; writes are buffered until flushed or the process exits."},"label":"stdout() WriteStream[String]","parameters":[]}]}}
 {"id":902,"jsonrpc":"2.0","result":[{"detail":"fn() Int","documentation":{"kind":"markdown","value":"Items or bytes not yet drained."},"filterText":"buffered","insertTextFormat":1,"kind":2,"label":"buffered","sortText":"00_buffered","textEdit":{"newText":"buffered","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}},{"detail":"fn() WriteStream[String]","filterText":"clone","insertTextFormat":1,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}},{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Hands what is buffered to the runtime and releases the sink."},"filterText":"close","insertTextFormat":1,"kind":2,"label":"close","sortText":"00_close","textEdit":{"newText":"close","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}},{"detail":"fn() Promise[Unit]","documentation":{"kind":"markdown","value":"A promise that finishes when the buffer has drained."},"filterText":"flush","insertTextFormat":1,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":1,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}},{"detail":"fn(String) Result[Unit, Error]","documentation":{"kind":"markdown","value":"Moves `value` into the stream's buffer. `EBADF` once the reader is gone."},"filterText":"write","insertTextFormat":1,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}]}
 {"id":903,"jsonrpc":"2.0","result":null}
@@ -906,7 +906,7 @@
 {"id":905,"jsonrpc":"2.0","result":null}
 {"id":906,"jsonrpc":"2.0","result":[{"detail":"fn(String) Result[Unit, Error]","documentation":{"kind":"markdown","value":"Moves `value` into the stream's buffer. `EBADF` once the reader is gone."},"filterText":"write","insertTextFormat":1,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}]}
 {"id":907,"jsonrpc":"2.0","result":null}
-{"id":908,"jsonrpc":"2.0","result":[]}
+#large
 {"id":909,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Moves `value` into the stream's buffer. `EBADF` once the reader is gone."},"label":"stdout().write(value: String) Result[Unit, Error]","parameters":[{"label":"value: String"}]}]}}
 {"id":910,"jsonrpc":"2.0","result":[]}
 {"id":911,"jsonrpc":"2.0","result":null}
@@ -916,7 +916,7 @@
 {"id":915,"jsonrpc":"2.0","result":null}
 {"id":916,"jsonrpc":"2.0","result":[]}
 {"id":917,"jsonrpc":"2.0","result":null}
-{"id":918,"jsonrpc":"2.0","result":[]}
+#large
 {"id":919,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Moves `value` into the stream's buffer. `EBADF` once the reader is gone."},"label":"stdout().write(value: String) Result[Unit, Error]","parameters":[{"label":"value: String"}]}]}}
 #large
 {"id":921,"jsonrpc":"2.0","result":null}
@@ -928,7 +928,7 @@
 {"id":927,"jsonrpc":"2.0","result":null}
 {"id":928,"jsonrpc":"2.0","result":[{"detail":"fn() WriteStream[String]","documentation":{"kind":"markdown","value":"Standard output as text; writes are buffered until flushed or the process exits."},"filterText":"stdout","insertTextFormat":1,"kind":3,"label":"stdout","sortText":"02_stdout","textEdit":{"newText":"stdout","range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}},{"additionalTextEdits":[{"newText":"import stdout_bytes from \"@std/io/io.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() WriteStream[Bytes] — @std/io/io.ms","documentation":{"kind":"markdown","value":"Standard output as bytes; it shares its buffer with `stdout()`."},"filterText":"stdout_bytes","insertTextFormat":1,"kind":3,"label":"stdout_bytes","sortText":"04_stdout_bytes","textEdit":{"newText":"stdout_bytes","range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}},{"additionalTextEdits":[{"newText":"import stdout_transport from \"@std/log.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn() Transport — @std/log.ms","documentation":{"kind":"markdown","value":"Writes log records to the process standard-output stream."},"filterText":"stdout_transport","insertTextFormat":1,"kind":3,"label":"stdout_transport","sortText":"04_stdout_transport","textEdit":{"newText":"stdout_transport","range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}}]}
 {"id":929,"jsonrpc":"2.0","result":null}
-{"id":930,"jsonrpc":"2.0","result":[]}
+#large
 {"id":931,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Standard output as text; writes are buffered until flushed or the process exits."},"label":"stdout() WriteStream[String]","parameters":[]}]}}
 {"id":932,"jsonrpc":"2.0","result":[{"detail":"fn() Int","documentation":{"kind":"markdown","value":"Items or bytes not yet drained."},"filterText":"buffered","insertTextFormat":1,"kind":2,"label":"buffered","sortText":"00_buffered","textEdit":{"newText":"buffered","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}},{"detail":"fn() WriteStream[String]","filterText":"clone","insertTextFormat":1,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}},{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Hands what is buffered to the runtime and releases the sink."},"filterText":"close","insertTextFormat":1,"kind":2,"label":"close","sortText":"00_close","textEdit":{"newText":"close","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}},{"detail":"fn() Promise[Unit]","documentation":{"kind":"markdown","value":"A promise that finishes when the buffer has drained."},"filterText":"flush","insertTextFormat":1,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":1,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}},{"detail":"fn(String) Result[Unit, Error]","documentation":{"kind":"markdown","value":"Moves `value` into the stream's buffer. `EBADF` once the reader is gone."},"filterText":"write","insertTextFormat":1,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}]}
 {"id":933,"jsonrpc":"2.0","result":null}
@@ -936,16 +936,16 @@
 {"id":935,"jsonrpc":"2.0","result":null}
 {"id":936,"jsonrpc":"2.0","result":[{"detail":"fn() Promise[Unit]","documentation":{"kind":"markdown","value":"A promise that finishes when the buffer has drained."},"filterText":"flush","insertTextFormat":1,"kind":2,"label":"flush","sortText":"00_flush","textEdit":{"newText":"flush","range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}]}
 {"id":937,"jsonrpc":"2.0","result":null}
-{"id":938,"jsonrpc":"2.0","result":[]}
+#large
 {"id":939,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A promise that finishes when the buffer has drained."},"label":"stdout().flush() Promise[Unit]","parameters":[]}]}}
-{"id":940,"jsonrpc":"2.0","result":[{"detail":"fn() Unit","documentation":{"kind":"markdown","value":"Asks the work to stop at its next wait; `wait` then reports `Cancelled`. It returns at once, and dropping the promise\njoins the work. A finished promise is unchanged."},"filterText":"cancel","insertTextFormat":1,"kind":2,"label":"cancel","sortText":"00_cancel","textEdit":{"newText":"cancel","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Promise[Unit]","filterText":"clone","insertTextFormat":1,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped."},"filterText":"close","insertTextFormat":1,"kind":2,"label":"close","sortText":"00_close","textEdit":{"newText":"close","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Bool","documentation":{"kind":"markdown","value":"Whether the work has finished, however it ended. It never waits."},"filterText":"done","insertTextFormat":1,"kind":2,"label":"done","sortText":"00_done","textEdit":{"newText":"done","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":1,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its\nreport in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"filterText":"wait","insertTextFormat":1,"kind":2,"label":"wait","sortText":"00_wait","textEdit":{"newText":"wait","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn(PromiseOptions) Promise[Unit]","documentation":{"kind":"markdown","value":"Applies `options` to a promise made elsewhere (`read`, `fetch`, `sleep`, `exec`) and returns it, so\n`read(path).with(options: PromiseOptions(timeout: seconds(5))).wait()` bounds the read. The timeout counts from now."},"filterText":"with","insertTextFormat":1,"kind":2,"label":"with","sortText":"00_with","textEdit":{"newText":"with","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}}]}
+{"id":940,"jsonrpc":"2.0","result":[{"detail":"fn() Unit","documentation":{"kind":"markdown","value":"Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It returns at once, and dropping the promise\njoins the work. A finished promise is unchanged."},"filterText":"cancel","insertTextFormat":1,"kind":2,"label":"cancel","sortText":"00_cancel","textEdit":{"newText":"cancel","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Promise[Unit]","filterText":"clone","insertTextFormat":1,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped."},"filterText":"close","insertTextFormat":1,"kind":2,"label":"close","sortText":"00_close","textEdit":{"newText":"close","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Bool","documentation":{"kind":"markdown","value":"Whether the work has finished, however it ended. It never waits."},"filterText":"done","insertTextFormat":1,"kind":2,"label":"done","sortText":"00_done","textEdit":{"newText":"done","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() String","filterText":"to_string","insertTextFormat":1,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its\nreport in `details[\"report\"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"filterText":"wait","insertTextFormat":1,"kind":2,"label":"wait","sortText":"00_wait","textEdit":{"newText":"wait","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn(PromiseOptions) Promise[Unit]","documentation":{"kind":"markdown","value":"Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so\n`read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.\nA provided cancel signal replaces the previous signal."},"filterText":"with","insertTextFormat":1,"kind":2,"label":"with","sortText":"00_with","textEdit":{"newText":"with","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}}]}
 {"id":941,"jsonrpc":"2.0","result":null}
-{"id":942,"jsonrpc":"2.0","result":[{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its\nreport in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"filterText":"wait","insertTextFormat":1,"kind":2,"label":"wait","sortText":"00_wait","textEdit":{"newText":"wait","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn(PromiseOptions) Promise[Unit]","documentation":{"kind":"markdown","value":"Applies `options` to a promise made elsewhere (`read`, `fetch`, `sleep`, `exec`) and returns it, so\n`read(path).with(options: PromiseOptions(timeout: seconds(5))).wait()` bounds the read. The timeout counts from now."},"filterText":"with","insertTextFormat":1,"kind":2,"label":"with","sortText":"00_with","textEdit":{"newText":"with","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}}]}
+{"id":942,"jsonrpc":"2.0","result":[{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its\nreport in `details[\"report\"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"filterText":"wait","insertTextFormat":1,"kind":2,"label":"wait","sortText":"00_wait","textEdit":{"newText":"wait","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}},{"detail":"fn(PromiseOptions) Promise[Unit]","documentation":{"kind":"markdown","value":"Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so\n`read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.\nA provided cancel signal replaces the previous signal."},"filterText":"with","insertTextFormat":1,"kind":2,"label":"with","sortText":"00_with","textEdit":{"newText":"with","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}}]}
 {"id":943,"jsonrpc":"2.0","result":null}
-{"id":944,"jsonrpc":"2.0","result":[{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its\nreport in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"filterText":"wait","insertTextFormat":1,"kind":2,"label":"wait","sortText":"00_wait","textEdit":{"newText":"wait","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}}]}
+{"id":944,"jsonrpc":"2.0","result":[{"detail":"fn() Result[Unit, Error]","documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its\nreport in `details[\"report\"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"filterText":"wait","insertTextFormat":1,"kind":2,"label":"wait","sortText":"00_wait","textEdit":{"newText":"wait","range":{"end":{"character":32,"line":65},"start":{"character":28,"line":65}}}}]}
 {"id":945,"jsonrpc":"2.0","result":null}
-{"id":946,"jsonrpc":"2.0","result":[]}
-{"id":947,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `Failed` (a fault inside, with its\nreport in `details`); `Cancelled`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"label":"stdout().flush().wait() Result[Unit, Error]","parameters":[]}]}}
+#large
+{"id":947,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its\nreport in `details[\"report\"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's\n`timeout` option has passed, which also cancelled the work."},"label":"stdout().flush().wait() Result[Unit, Error]","parameters":[]}]}}
 #large
 {"id":949,"jsonrpc":"2.0","result":null}
 #large
@@ -972,17 +972,17 @@
 {"id":971,"jsonrpc":"2.0","result":null}
 {"id":972,"jsonrpc":"2.0","result":[{"detail":"fn(T, T, String) Result[Unit, Error]","documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"filterText":"expect_equal","insertTextFormat":1,"kind":3,"label":"expect_equal","sortText":"02_expect_equal","textEdit":{"newText":"expect_equal","range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}},{"additionalTextEdits":[{"newText":"import expect_not_equal from \"@std/test/test.ms\"\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"fn(T, T, String) Result[Unit, Error] — @std/test/test.ms","documentation":{"kind":"markdown","value":"Fails when values are equal under ordinary Equal semantics."},"filterText":"expect_not_equal","insertTextFormat":1,"kind":3,"label":"expect_not_equal","sortText":"04_expect_not_equal","textEdit":{"newText":"expect_not_equal","range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}]}
 {"id":973,"jsonrpc":"2.0","result":null}
-{"id":974,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"expected","insertTextFormat":1,"kind":6,"label":"expected","sortText":"00_expected","textEdit":{"newText":"expected: ","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}},{"detail":"String","filterText":"site","insertTextFormat":1,"kind":6,"label":"site","sortText":"00_site","textEdit":{"newText":"site: ","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}]}
+#large
 {"id":975,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"expect_equal(actual: Int, expected: Int, site: String = ...) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"},{"label":"site: String = ..."}]}]}}
-{"id":976,"jsonrpc":"2.0","result":[]}
+#large
 {"id":977,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"expect_equal(actual: Int, expected: Int, site: String = ...) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"},{"label":"site: String = ..."}]}]}}
-{"id":978,"jsonrpc":"2.0","result":[]}
+#large
 {"id":979,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"expect_equal(actual: Int, expected: Int, site: String = ...) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"},{"label":"site: String = ..."}]}]}}
-{"id":980,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"b","insertTextFormat":1,"kind":6,"label":"b","sortText":"00_b","textEdit":{"newText":"b: ","range":{"end":{"character":26,"line":68},"start":{"character":25,"line":68}}}}]}
+#large
 {"id":981,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
-{"id":982,"jsonrpc":"2.0","result":[]}
+#large
 {"id":983,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
-{"id":984,"jsonrpc":"2.0","result":[]}
+#large
 {"id":985,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"expect_equal(actual: Int, expected: Int, site: String = ...) Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"},{"label":"site: String = ..."}]}]}}
 #large
 {"id":987,"jsonrpc":"2.0","result":null}

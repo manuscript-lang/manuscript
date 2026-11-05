@@ -486,6 +486,11 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             format!("--top is valid only for ms profile, not ms {command}; {help_hint}"),
         ));
     }
+    match inv.view.as_str() {
+        "class" => inv.view = "types".into(),
+        "mutability" => inv.view = "ownership".into(),
+        _ => {}
+    }
     if !inv.view.is_empty() && !VIEWS.contains(&inv.view.as_str()) {
         return Err(usage_error(
             io,
@@ -496,7 +501,8 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             ),
         ));
     }
-    if !inv.diff.is_empty() && inv.view.is_empty() && inv.entity.is_empty() {
+    if !inv.diff.is_empty() && inv.view.is_empty() && inv.entity.is_empty() && inv.format != "html"
+    {
         return Err(usage_error(
             io,
             "--diff marks a scoped view; add --view or --entity, e.g. ms diagram ms.toml --view flow --entity save --diff change.patch",
@@ -515,14 +521,24 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         ));
     }
     if command == "diagram"
+        && inv.format == "html"
+        && (!inv.view.is_empty() || !inv.entity.is_empty())
+    {
+        return Err(usage_error(
+            io,
+            "--format html covers every view in one page; drop --view and --entity",
+        ));
+    }
+    if command == "diagram"
         && !inv.format.is_empty()
         && inv.format != "ascii"
         && inv.format != "mermaid"
+        && inv.format != "html"
     {
         return Err(usage_error(
             io,
             format!(
-                "unknown --format {} for ms diagram; use ascii or mermaid",
+                "unknown --format {} for ms diagram; use ascii, mermaid, or html",
                 quote(&inv.format)
             ),
         ));

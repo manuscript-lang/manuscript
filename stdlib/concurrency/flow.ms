@@ -80,7 +80,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    fetch(url).wait()
+    let _ = try fetch(url).wait()
 ```
 */
 export type RateLimiter:

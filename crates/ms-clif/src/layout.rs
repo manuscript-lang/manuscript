@@ -221,6 +221,15 @@ impl<'m> Layouts<'m> {
         fields
     }
 
+    /// The leaves of the heap block behind an indirect record: its fields' leaves in order.
+    pub fn rec_block(&self, r: ms_mir::types::RecId) -> Vec<Leaf> {
+        self.m.records[r.index()]
+            .fields
+            .iter()
+            .flat_map(|f| self.leaves(f.1))
+            .collect()
+    }
+
     /// The register leaves of `ty`.
     pub fn leaves(&self, ty: Ty) -> Vec<Leaf> {
         self.shape(ty).leaves.clone()
@@ -274,6 +283,7 @@ impl<'m> Layouts<'m> {
             TyKind::Obj(n, _) if n.is_map_or_set() => plain(vec![I64; ms_rt_abi::MAP_SIZE / 8]),
             TyKind::Obj(..) => plain(vec![I64]),
             TyKind::Iface(_) => plain(vec![I64, I64]),
+            TyKind::Rec(r) if self.m.records[r.index()].indirect => plain(vec![I64]),
             TyKind::Rec(r) => plain(
                 self.m.records[r.index()]
                     .fields
@@ -363,5 +373,16 @@ mod tests {
         assert_eq!(lay.mem(os).size, ms_rt_abi::OPT_STR_SIZE as u32);
         assert_eq!(lay.leaves(os), lay.leaves(Ty::STR));
         assert!(lay.is_str_like(os) && lay.is_str_like(Ty::STR) && !lay.is_str_like(oi));
+    }
+
+    #[test]
+    fn indirect_record_is_one_pointer() {
+        let mut m = Module::new("t");
+        let (id, ty) = m.add_record("Big", vec![("a".into(), Ty::STR), ("b".into(), Ty::INT)]);
+        assert_eq!(Layouts::new(&m).width(ty), 3);
+        m.records[id.index()].indirect = true;
+        let lay = Layouts::new(&m);
+        assert_eq!(lay.leaves(ty), vec![Leaf::I64]);
+        assert_eq!(lay.rec_block(id).len(), 3);
     }
 }

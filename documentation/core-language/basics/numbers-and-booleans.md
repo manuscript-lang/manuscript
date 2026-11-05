@@ -63,7 +63,7 @@ fn sized() Unit:
     let c = a + wide
 ```
 
-`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Sized types are not yet accepted as list indexes, `match` subjects or JSON values. Convert them explicitly to `Int` or `Float` at those boundaries; see [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/json.md).
+`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Typed JSON supports sized integers and `Float32`, preserving their range checks. List indexes and literal `match` subjects still use `Int`; convert a sized integer at those boundaries. See [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/json.md).
 
 ## Numeric conversion
 

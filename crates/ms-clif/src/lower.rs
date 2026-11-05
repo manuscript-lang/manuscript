@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, ExternRole, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_REGION};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_ASCII, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -56,12 +56,16 @@ pub struct Lower<'a, 'm> {
     lazy: Vec<bool>,
     /// MIR block being lowered.
     cur: usize,
+    /// MIR function being lowered (the key of its grow shim).
+    fid: u32,
     /// Result paired with the preceding overflow flag. Reuse only on the very
     /// next instruction, so the defining instruction always dominates the use.
     overflow_result: Option<(Op, Value, Value, Value)>,
     blocks: Vec<Option<ir::Block>>,
     /// First unsupported construct met, reported by the driver.
     pub unsupported: Option<String>,
+    /// Slots of statement-scoped temporaries, merged between blocks by `slotshare`.
+    temps: Vec<ir::StackSlot>,
 }
 
 fn bargs(vs: &[Value]) -> Vec<BlockArg> {
@@ -88,16 +92,28 @@ impl<'a, 'm> Lower<'a, 'm> {
             pslots: HashMap::new(),
             lazy: Vec::new(),
             cur: 0,
+            fid: 0,
             overflow_result: None,
             blocks: Vec::new(),
             unsupported: None,
+            temps: Vec::new(),
         }
     }
 
-    pub fn finish(mut self) {
+    /// Finishes the function and returns the slots of its temporaries for `slotshare::share`.
+    pub fn finish(mut self) -> Vec<ir::StackSlot> {
         self.b.seal_all_blocks();
         let config = self.g.module.target_config();
+        let temps = std::mem::take(&mut self.temps);
         self.b.finalize(config);
+        temps
+    }
+
+    /// A new slot for a temporary that lives within one statement.
+    fn temp_slot(&mut self, size: u32) -> ir::StackSlot {
+        let slot = self.new_slot(size);
+        self.temps.push(slot);
+        slot
     }
 
     // ---- small helpers ---------------------------------------------------
@@ -304,14 +320,11 @@ impl<'a, 'm> Lower<'a, 'm> {
 
     /// The running task's header block (see `ms_rt_abi::symbols::ISOLATE_HDR`).
     fn task_hdr(&mut self) -> Value {
-        let os = self.g.module.isa().triple().operating_system;
-        if os == target_lexicon::OperatingSystem::Windows {
-            return self.rt_call("msrt_isolate_hdr", &[])[0];
-        }
-        // The block is the last 16 bytes of the stack's slot.
+        // The last 16 bytes of the stack's region point at the running task's block.
         let sp = self.b.ins().get_stack_pointer(types::I64);
-        let base = self.b.ins().band_imm_s(sp, !(STACK_SLOT - 1));
-        self.b.ins().iadd_imm_s(base, STACK_SLOT - 16)
+        let base = self.b.ins().band_imm_s(sp, !(STACK_REGION - 1));
+        let cell = self.b.ins().iadd_imm_s(base, STACK_REGION - 16);
+        self.b.ins().load(types::I64, flags(), cell, 0)
     }
 
     fn add_imm(&mut self, p: Value, off: i64) -> Value {
@@ -383,6 +396,56 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.b.switch_to_block(fault);
         self.rt_call(name, &args);
         self.b.ins().trap(TrapCode::unwrap_user(1));
+        self.b.switch_to_block(cont);
+    }
+
+    /// The recursion check of a cyclic function: when the stack pointer is below the task's
+    /// limit, the function runs again on a new stack segment (`msrt_task_grow` calls the
+    /// function's grow shim there with the entry parameters, stored in a block on this frame)
+    /// and returns that run's results. The check is the first thing the function does, so the
+    /// parameters are still the caller's values (`ms_mir::verify`).
+    fn depth_enter(&mut self) {
+        let hdr = self.task_hdr();
+        let limit = self.b.ins().load(types::I64, flags(), hdr, 0);
+        let sp = self.b.ins().get_stack_pointer(types::I64);
+        let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
+        let grow = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.set_cold_block(grow);
+        let ok = self.negate(over);
+        self.b.ins().brif(ok, cont, &[], grow, &[]);
+        self.b.switch_to_block(grow);
+        let entry = self.blocks[0].expect("entry block");
+        let params = self.b.block_params(entry).to_vec();
+        let returns: Vec<ir::Type> = self
+            .b
+            .func
+            .signature
+            .returns
+            .iter()
+            .map(|p| p.value_type)
+            .collect();
+        // The block is a heap allocation, not a frame slot: a slot would widen the frame of
+        // every recursive function for a path taken once per segment.
+        let block = self.alloc(((params.len() + returns.len()) * 8) as i64);
+        for (i, p) in params.iter().enumerate() {
+            self.b.ins().store(flags(), *p, block, (i * 8) as i32);
+        }
+        let shim = self.g.glue(Glue::GrowShim(self.fid), Ty::UNIT);
+        let r = self.fref(shim);
+        let fa = self.b.ins().func_addr(types::I64, r);
+        self.rt_call("msrt_task_grow", &[fa, block]);
+        let results: Vec<Value> = returns
+            .iter()
+            .enumerate()
+            .map(|(j, t)| {
+                self.b
+                    .ins()
+                    .load(*t, flags(), block, ((params.len() + j) * 8) as i32)
+            })
+            .collect();
+        self.free(block);
+        self.b.ins().return_(&results);
         self.b.switch_to_block(cont);
     }
 
@@ -471,11 +534,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let same = [vs[0], vs[1]].map(BlockArg::Value);
                 self.b.ins().brif(shared, join, &same, dup, &[]);
                 self.b.switch_to_block(dup);
-                let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-                    StackSlotKind::ExplicitSlot,
-                    16,
-                    3,
-                ));
+                let slot = self.temp_slot(16);
                 let out = self.b.ins().stack_addr(types::I64, slot, 0);
                 self.rt_call("msrt_str_copy", &[vs[0], vs[1], out]);
                 let c = self.load_leaves(out, 0, &[Leaf::I64; 2]);
@@ -613,6 +672,31 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.call_id(fid, &vs);
                 self.b.ins().return_(&[]);
             }
+            Glue::GrowShim(f) => {
+                // `block` holds the function's parameters, one 8-byte cell each, followed by room
+                // for its results (see `depth_enter`).
+                let fid = self.g.funcs[f as usize];
+                let r = self.fref(fid);
+                let sig = self.b.func.dfg.ext_funcs[r].signature;
+                let want: Vec<ir::Type> = self.b.func.dfg.signatures[sig]
+                    .params
+                    .iter()
+                    .map(|p| p.value_type)
+                    .collect();
+                let block = params[0];
+                let args: Vec<Value> = want
+                    .iter()
+                    .enumerate()
+                    .map(|(i, t)| self.b.ins().load(*t, flags(), block, (i * 8) as i32))
+                    .collect();
+                let results = self.call_id(fid, &args);
+                for (j, v) in results.iter().enumerate() {
+                    self.b
+                        .ins()
+                        .store(flags(), *v, block, ((want.len() + j) * 8) as i32);
+                }
+                self.b.ins().return_(&[]);
+            }
         }
     }
 
@@ -630,6 +714,36 @@ impl<'a, 'm> Lower<'a, 'm> {
             at += w;
         }
         out
+    }
+
+    /// The block leaves of `ty` when it is an indirect record (one pointer in registers).
+    fn rec_block(&self, ty: Ty) -> Option<Vec<Leaf>> {
+        match self.g.m.types.kind(ty) {
+            TyKind::Rec(r) if self.g.m.records[r.index()].indirect => {
+                Some(self.g.lay.rec_block(*r))
+            }
+            _ => None,
+        }
+    }
+
+    /// The field leaves of record `vs`, loaded from its block when it is indirect.
+    fn rec_expand(&mut self, ty: Ty, vs: &[Value]) -> Vs {
+        match self.rec_block(ty) {
+            Some(block) => self.load_leaves(vs[0], 0, &block),
+            None => vs.to_vec(),
+        }
+    }
+
+    /// The register value of a record with field leaves `flat`: a fresh block when indirect.
+    fn rec_pack(&mut self, ty: Ty, flat: Vs) -> Vs {
+        match self.rec_block(ty) {
+            Some(block) => {
+                let p = self.alloc(mem_layout(&block).size as i64);
+                self.store_leaves(p, 0, &block, &flat);
+                vec![p]
+            }
+            None => flat,
+        }
     }
 
     /// Per-case, per-field `(type, leaf indices into the alt's leaf/block list)`.
@@ -684,15 +798,19 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Obj(..) => {
                 // Map and Set are owned `MapVal`s the runtime knows how to drop.
                 let leaves = self.g.lay.leaves(ty);
-                let slot = self.spill(vs, &leaves);
+                let slot = self.spill_temp(vs, &leaves);
                 let d = self.typedesc_addr(ty);
                 self.rt_call("msrt_slot_drop", &[d, slot]);
             }
             TyKind::Rec(_) => {
+                let flat = self.rec_expand(ty, vs);
                 for (fty, at, w) in self.fields_of(ty) {
                     if m.needs_drop(fty) {
-                        self.drop_value(fty, &vs[at..at + w]);
+                        self.drop_value(fty, &flat[at..at + w]);
                     }
+                }
+                if self.rec_block(ty).is_some() {
+                    self.free(vs[0]);
                 }
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
@@ -805,7 +923,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         };
         let done = self.b.create_block();
         for (c, case) in fields.iter().enumerate() {
-            if !case.iter().any(|(t, _)| self.g.m.needs_drop(*t)) {
+            if self.g.m.alts[a.index()].borrows(c)
+                || !case.iter().any(|(t, _)| self.g.m.needs_drop(*t))
+            {
                 continue;
             }
             let this = self.b.create_block();
@@ -1047,11 +1167,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
             TyKind::Rec(_) => {
+                let flat = self.rec_expand(ty, vs);
                 let mut out = Vec::new();
                 for (fty, at, w) in self.fields_of(ty) {
-                    out.extend(self.clone_value(fty, &vs[at..at + w]));
+                    out.extend(self.clone_value(fty, &flat[at..at + w]));
                 }
-                out
+                self.rec_pack(ty, out)
             }
             TyKind::Opt(inner) if self.g.lay.opt_is_boxed(inner) => {
                 // Null stays null; otherwise copy the payload into a fresh block.
@@ -1099,8 +1220,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             TyKind::Alt(_) => self.alt_copy(ty, vs),
             TyKind::Obj(..) => {
                 let leaves = self.g.lay.leaves(ty);
-                let src = self.spill(vs, &leaves);
-                let dst = self.spill(vs, &leaves);
+                let src = self.spill_temp(vs, &leaves);
+                let dst = self.spill_temp(vs, &leaves);
                 let d = self.typedesc_addr(ty);
                 self.rt_call("msrt_slot_copy", &[d, src, dst]);
                 self.load_leaves(dst, 0, &leaves)
@@ -1254,14 +1375,26 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.data_addr(d)
     }
 
-    /// Spills `vs` into a fresh stack slot laid out per `leaves` and returns its address.
+    /// Spills `vs` into a fresh stack slot laid out per `leaves` and returns its address. The slot
+    /// stays valid for the whole function: use it where the runtime keeps the address (a cleanup
+    /// entry).
     fn spill(&mut self, vs: &[Value], leaves: &[Leaf]) -> Value {
+        self.spill_in(vs, leaves, false)
+    }
+
+    /// Like [`Self::spill`] for a value only read during one call; the slot may be shared with
+    /// the temporaries of other blocks.
+    fn spill_temp(&mut self, vs: &[Value], leaves: &[Leaf]) -> Value {
+        self.spill_in(vs, leaves, true)
+    }
+
+    fn spill_in(&mut self, vs: &[Value], leaves: &[Leaf], temp: bool) -> Value {
         let lay = mem_layout(leaves);
-        let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-            StackSlotKind::ExplicitSlot,
-            lay.size.max(8),
-            3,
-        ));
+        let slot = if temp {
+            self.temp_slot(lay.size)
+        } else {
+            self.new_slot(lay.size)
+        };
         let addr = self.b.ins().stack_addr(types::I64, slot, 0);
         self.store_leaves(addr, 0, leaves, vs);
         addr
@@ -1348,7 +1481,8 @@ impl<'a, 'm> Lower<'a, 'm> {
         )
     }
 
-    pub fn lower_func(&mut self, f: &Func) {
+    pub fn lower_func(&mut self, fi: usize, f: &Func) {
+        self.fid = fi as u32;
         let rpo = f.rpo();
         self.g.scope_base = self.g.scopes.len() as u32;
         let base = self.g.scope_base;
@@ -2001,14 +2135,26 @@ impl<'a, 'm> Lower<'a, 'm> {
                     .map(|(x, y)| self.b.ins().select(c, *x, *y))
                     .collect()
             }
-            Op::RecNew => (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect(),
+            Op::RecNew => {
+                let flat: Vs = (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect();
+                self.rec_pack(res_ty.expect("rec.new result"), flat)
+            }
             Op::RecGet => {
                 let Imm::Field(_, i) = inst.imm else {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
                 let (_, at, w) = self.fields_of(ty)[i as usize];
-                self.a(inst, 0)[at..at + w].to_vec()
+                match self.rec_block(ty) {
+                    Some(block) => {
+                        let lay = mem_layout(&block);
+                        let p = self.a(inst, 0)[0];
+                        (at..at + w)
+                            .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
+                            .collect()
+                    }
+                    None => self.a(inst, 0)[at..at + w].to_vec(),
+                }
             }
             Op::RecSet | Op::RecFill => {
                 let Imm::Field(_, i) = inst.imm else {
@@ -2016,16 +2162,29 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let ty = f.ty(inst.args[0]);
                 let (fty, at, w) = self.fields_of(ty)[i as usize];
-                let mut obj = self.a(inst, 0);
+                let held = self.a(inst, 0);
+                let mut obj = self.rec_expand(ty, &held);
                 if inst.op == Op::RecSet && m.needs_drop(fty) {
                     let old = obj[at..at + w].to_vec();
                     self.drop_value(fty, &old);
                 }
                 let new = self.a(inst, 1);
                 obj.splice(at..at + w, new);
-                obj
+                // The old value is consumed by the set: an indirect record moves its fields into a
+                // fresh block and frees the old one, so no block is ever written in place.
+                if self.rec_block(ty).is_some() {
+                    self.free(held[0]);
+                }
+                self.rec_pack(ty, obj)
             }
             Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
+            Op::AltPlain => self.a(inst, 0),
+            Op::AltOwn => {
+                // Every case copied: the result is the ordinary alternative.
+                let ty = res_ty.expect("alt.own result");
+                let v = self.a(inst, 0);
+                self.clone_value(ty, &v)
+            }
             Op::AltTag => {
                 let ty = f.ty(inst.args[0]);
                 let v = self.a(inst, 0);
@@ -2065,12 +2224,16 @@ impl<'a, 'm> Lower<'a, 'm> {
                     unreachable!()
                 };
                 let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                // Drop the fields that were not moved out; a record owns no block of its own.
+                let held = self.a(inst, 0);
+                let v = self.rec_expand(ty, &held);
+                // Drop the fields that were not moved out, then free the block of an indirect record.
                 for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
                     if mask >> k & 1 == 0 {
                         self.drop_value(fty, &v[at..at + w]);
                     }
+                }
+                if self.rec_block(ty).is_some() {
+                    self.free(held[0]);
                 }
                 vec![]
             }
@@ -2314,7 +2477,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let s = self.a(inst, 0);
                 let at = match self.home_of(inst.args[0]) {
                     Some(h) => h.addr,
-                    None => self.spill(&s, &[Leaf::I64; 2]),
+                    None => self.spill_temp(&s, &[Leaf::I64; 2]),
                 };
                 vec![self.rt_call("msrt_string_length", &[at])[0]]
             }
@@ -2443,7 +2606,8 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
                 let (_, at, _) = self.fields_of(rty)[i as usize];
-                let lay = self.g.lay.mem(rty);
+                let block = self.rec_block(rty);
+                let lay = mem_layout(&block.clone().unwrap_or_else(|| self.g.lay.leaves(rty)));
                 let off = lay.offsets.get(at).copied().unwrap_or(0) as i64;
                 // The result is read and written with the field's own layout, so each of its
                 // leaves must sit at the same distance from the field's address as in the field.
@@ -2458,7 +2622,11 @@ impl<'a, 'm> Lower<'a, 'm> {
                     },
                     "field {i} of record {r:?} is laid out differently inside the record"
                 );
-                let p = self.a(inst, 0)[0];
+                let mut p = self.a(inst, 0)[0];
+                if block.is_some() {
+                    // The argument addresses the record's pointer.
+                    p = self.b.ins().load(types::I64, flags(), p, 0);
+                }
                 vec![self.add_imm(p, off)]
             }
             Op::Load | Op::Take => {
@@ -2534,11 +2702,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 vec![]
             }
             Op::DepthEnter => {
-                let hdr = self.task_hdr();
-                let limit = self.b.ins().load(types::I64, flags(), hdr, 0);
-                let sp = self.b.ins().get_stack_pointer(types::I64);
-                let over = self.b.ins().icmp(IntCC::UnsignedLessThan, sp, limit);
-                self.fault_if(over, "msrt_fault_depth", vec![]);
+                self.depth_enter();
                 vec![]
             }
             Op::DepthLeave => vec![],
@@ -3099,6 +3263,11 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.string_eq_inline(f, inst);
         }
+        if self.g.m.externs[e.index()].role == ExternRole::MapNew {
+            // `ms_rt::map::empty()` is all zero words (a unit test pins it).
+            let zero = self.iconst(0);
+            return vec![zero; ms_rt_abi::MAP_SIZE / 8];
+        }
         if self.g.m.externs[e.index()].role == ExternRole::CleanupDiscard {
             // Handle 0 is a registration skipped for lack of a guard.
             let h = self.a(inst, 0)[0];
@@ -3176,7 +3345,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                 args.push(h.addr);
             } else {
                 let leaves = self.g.lay.leaves(p.ty);
-                args.push(self.spill(&v, &leaves));
+                args.push(self.spill_temp(&v, &leaves));
             }
         }
         let ret_ty = def.ret;
@@ -3207,11 +3376,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         } else {
             let leaves = self.g.lay.leaves(ret_ty);
             let lay = mem_layout(&leaves);
-            let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-                StackSlotKind::ExplicitSlot,
-                lay.size.max(8),
-                3,
-            ));
+            let slot = self.temp_slot(lay.size);
             let out = self.b.ins().stack_addr(types::I64, slot, 0);
             args.push(out);
             self.call_id(id, &args);

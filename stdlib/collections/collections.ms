@@ -399,7 +399,7 @@ export interface ListCopies[T: Clonable]:
     // Returns a deep copy with independent list and nested value storage.
     fn clone() List[T]
     // Returns a new owned List containing copies of the elements in [start, end).
-    // Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return an Error of kind OutOfRange.
+    // Negative bounds are relative to the end; bounds outside 0 <= start <= end <= length() return an Error of kind ERANGE.
     fn slice(start: Int, end: Int) List[T]!
     // Copies the first min(count, length) elements into fresh owned List storage.
     // Leaves the receiver unchanged; negative count is a programming fault.

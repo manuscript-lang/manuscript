@@ -71,7 +71,7 @@ export fn ulid() String!:
 /*
 Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
 The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
-`size` follows `random_bytes`: 0 through 16 MiB, otherwise InvalidInput.
+`size` follows `random_bytes`: 0 through 16 MiB, otherwise EINVAL.
 */
 export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
@@ -90,7 +90,7 @@ export fn choice[T](values: List[T]) T?!:
     return draw_choice(values)
 
 // Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
-// A `count` outside 0 through the list length returns InvalidInput.
+// A `count` outside 0 through the list length returns EINVAL.
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     if count < 0 or count > values.length():
         return error(Error("random: invalid input", kind: "EINVAL"))
@@ -106,7 +106,7 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     return ok(out)
 
 // Returns an item chosen with probability proportional to its weight, or none for an empty list.
-// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns InvalidInput.
+// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns EINVAL.
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
     if values.is_empty() and weights.is_empty():
         return ok(none)
@@ -163,7 +163,7 @@ fn weighted_position(weights: List[Float], point: Float) Int:
     return last
 
 // Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
-// A negative or larger count returns InvalidInput; a source failure returns Failed. The call observes task cancellation between 64 KiB chunks.
+// A negative or larger count returns EINVAL; a source failure returns EIO. The call observes task cancellation between 64 KiB chunks.
 export fn random_bytes(count: Int) Bytes!:
     return msstd_random_os_bytes(count)
 

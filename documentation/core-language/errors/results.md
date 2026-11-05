@@ -23,7 +23,7 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 
 ## The Error record
 
-`Error` is a plain record with a fixed shape, in the style of Go's `errors.New`:
+`Error` is a plain record with a fixed shape:
 
 ```manuscript
 export type Error:
@@ -114,7 +114,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 ## Converting success to an Optional
 
-`to_optional() T?` returns the original payload as a present optional, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
+`to_optional() T?` returns the original payload as a present optional, or `none` on error. It does not flatten the payload or turn faults or cancellation into absence.
 
 ```manuscript
 fn successful_price(outcome: Result[Decimal, Error]) Decimal?:

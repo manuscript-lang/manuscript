@@ -112,7 +112,7 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 /*
 Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same call does both.
 `key` is 32 bytes, `nonce` 12 bytes and `counter` the initial 32-bit block counter (normally 1 after the Poly1305 key block).
-A wrong key or nonce length returns InvalidInput. Never reuse a key and nonce pair.
+A wrong key or nonce length returns EINVAL. Never reuse a key and nonce pair.
 */
 export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
     if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295:
@@ -297,7 +297,7 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
     return poly1305(one_time.slice(0, 32).get(Bytes([])), mac.build())
 
 // Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning the ciphertext followed by a 16-byte tag.
-// `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns InvalidInput. The caller supplies a nonce never reused with the key.
+// `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller supplies a nonce never reused with the key.
 export fn chacha20poly1305_seal(
     key: Bytes,
     nonce: Bytes,
@@ -315,7 +315,7 @@ export fn chacha20poly1305_seal(
     return ok(out.build())
 
 // Authenticates and decrypts a value produced by `chacha20poly1305_seal`.
-// A wrong key, nonce, associated data or altered ciphertext returns AuthenticationFailed; a wrong key or nonce length or input shorter than the 16-byte tag returns InvalidInput.
+// A wrong key, nonce, associated data or altered ciphertext returns EAUTH; a wrong key or nonce length or input shorter than the 16-byte tag returns EINVAL.
 export fn chacha20poly1305_open(
     key: Bytes,
     nonce: Bytes,

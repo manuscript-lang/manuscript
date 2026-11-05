@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Program map</title>
+<style>
+:root{--kw:#8250df;--ty:#0a7e8c;--st:#1a7f37;--nu:#b35900;--cm:#8a919e;--fnc:#0550ae;--bg:#fbfbfd;--fg:#1b2030;--mut:#6a7286;--line:#e3e6ee;--pan:#f3f4f8;--node:#fff;--sel:#e8edff;--acc:#4562e8;--pure:#e6f6ea;--pures:#3aa65a;--eff:#fdf3d8;--effs:#c28a14;--ent:#e8edff;--var:#d6403f;--own:#2f9a4f;--brw:#3a62c9}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--kw:#c297ff;--ty:#5fd3e0;--st:#7ee787;--nu:#ffb86b;--cm:#7d8590;--fnc:#79c0ff;--bg:#0e1117;--fg:#e6e9f0;--mut:#8b94a8;--line:#232938;--pan:#141822;--node:#171c27;--sel:#1b2542;--acc:#7c9bff;--pure:#16301f;--pures:#4cc272;--eff:#33290f;--effs:#e2b341;--ent:#1b2542;--var:#ff7070;--own:#4cc272;--brw:#7c9bff}}
+:root[data-theme=dark]{--kw:#c297ff;--ty:#5fd3e0;--st:#7ee787;--nu:#ffb86b;--cm:#7d8590;--fnc:#79c0ff;--bg:#0e1117;--fg:#e6e9f0;--mut:#8b94a8;--line:#232938;--pan:#141822;--node:#171c27;--sel:#1b2542;--acc:#7c9bff;--pure:#16301f;--pures:#4cc272;--eff:#33290f;--effs:#e2b341;--ent:#1b2542;--var:#ff7070;--own:#4cc272;--brw:#7c9bff}
+*{box-sizing:border-box}
+a{color:var(--acc)}
+body{margin:0;font:13px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);color:var(--fg);height:100vh;overflow:hidden;display:grid;
+  grid-template-columns:var(--w1,250px) 4px minmax(0,1fr) auto auto;grid-template-rows:40px minmax(0,1fr) 24px}
+button{font:inherit;color:inherit}
+kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:0 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;color:var(--mut);background:var(--pan)}
+.ib{border:1px solid transparent;background:none;color:var(--mut);width:26px;height:26px;border-radius:6px;cursor:pointer;display:inline-grid;place-items:center;font-size:14px;padding:0}
+.ib:hover:not(:disabled){background:var(--sel);color:var(--fg)}.ib:disabled{opacity:.35;cursor:default}.ib.on{color:var(--acc)}
+header{grid-column:1/-1;display:flex;gap:12px;align-items:center;padding:0 10px 0 14px;border-bottom:1px solid var(--line);background:var(--bg)}
+.brand{font-weight:700;letter-spacing:.02em;white-space:nowrap}.brand i{font-style:normal;color:var(--acc);margin-right:6px}
+nav{display:flex;gap:2px;height:100%;align-items:stretch;min-width:0;overflow-x:auto;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav button{flex:none}
+.brand,header>div:nth-of-type(2){flex:none}#navbtn{display:none}
+nav button{border:0;border-bottom:2px solid transparent;background:none;color:var(--mut);padding:0 10px;cursor:pointer}
+nav button:hover{color:var(--fg)}nav button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+.search{margin-left:auto;display:flex;gap:10px;align-items:center;flex:0 1 260px;min-width:36px;overflow:hidden;white-space:nowrap;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--pan);color:var(--mut);cursor:pointer}
+.search:hover{border-color:var(--acc)}.search span{flex:1;text-align:left}
+.opts{display:flex;gap:2px;align-items:center;color:var(--mut);position:relative;flex:none}
+.pop{position:absolute;top:34px;right:0;z-index:8;width:260px;padding:10px 12px;display:grid;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.25);color:var(--fg)}
+.pop[hidden]{display:none}.pop label{display:flex;gap:8px;align-items:center}.pop input[type=range]{flex:1;accent-color:var(--acc)}
+aside{grid-row:2;grid-column:1;display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
+.tbar{display:flex;gap:2px;align-items:center;padding:6px 8px 2px}.tbar input{flex:1;min-width:0;padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--pan);color:var(--fg);font:inherit}
+.tbar input:focus{outline:2px solid var(--acc);outline-offset:-1px;background:var(--bg)}
+.kinds{display:flex;flex-wrap:wrap;gap:4px;padding:2px 8px 6px;border-bottom:1px solid var(--line)}
+.kinds button{white-space:nowrap;border:1px solid var(--line);background:none;color:var(--mut);padding:0 8px;border-radius:10px;cursor:pointer;font-size:11px;line-height:18px}
+.kinds button.on{background:var(--sel);color:var(--acc);border-color:var(--acc)}
+#list{flex:1;overflow:auto;padding:4px 6px 12px}
+#list h4{margin:12px 6px 3px;font-size:10.5px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.file{display:flex;gap:3px;align-items:center;padding:2px 6px;border-radius:5px;color:var(--fg);cursor:pointer;white-space:nowrap}
+.file:hover,.item:hover{background:var(--pan)}.file .c{width:12px;color:var(--mut);font-size:10px;text-align:center}
+.file.cur{background:var(--sel)}.file.sub{color:var(--mut);font-size:12px}
+.item{padding:2px 6px;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.item.sel{background:var(--sel);color:var(--acc);font-weight:600}.item:focus,.file:focus{outline:1px solid var(--acc)}
+.k{display:inline-block;width:16px;color:var(--mut);font-size:11px;font-family:system-ui,sans-serif}
+.item.sel .k{color:var(--acc)}.star{color:#e0a82e}
+#sp1{grid-column:2}#sp2{grid-column:4}
+.split{grid-row:2;width:4px;cursor:col-resize;background:transparent;border-left:1px solid var(--line);margin-left:-1px;z-index:2}.split:hover,.split.drag{background:var(--acc);opacity:.45}
+main{grid-row:2;grid-column:3;overflow:auto;padding:0;min-width:0;display:flex;flex-direction:column}
+#info{padding:8px 14px 6px;border-bottom:1px solid var(--line);background:var(--bg)}
+#info .crumbs{color:var(--mut);font-size:12px;margin:0 0 2px}.crumbs a{color:var(--mut);cursor:pointer;text-decoration:none}.crumbs a:hover{color:var(--acc)}
+#info .ttl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#info .ttl code{font:600 15px ui-monospace,SFMono-Regular,Menlo,monospace}
+#info .ttl .sp{flex:1}#info .meta{margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--mut);font-size:12px}
+#info a{color:var(--acc);text-decoration:none}#info a:hover{text-decoration:underline}
+#view{padding:8px 14px 10px;flex:1;min-height:0;overflow:auto}
+.var{color:var(--var);font-weight:700}.brw{color:var(--brw)}.own{color:var(--own);font-weight:600}
+.badge{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;background:var(--pan);color:var(--fg);border:1px solid var(--line)}
+.badge.write{border-color:var(--effs);color:var(--effs)}.badge.read{border-color:var(--brw);color:var(--brw)}.badge.err{border-color:var(--var);color:var(--var)}
+svg text{fill:var(--fg);font:12px -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+svg .node{cursor:pointer}svg .node rect{fill:var(--node);stroke:var(--line);stroke-width:1.2}svg .node:hover rect{stroke:var(--acc)}
+svg .pure rect{stroke:var(--pures)}svg .effect rect{stroke:var(--effs)}
+svg .entry rect{fill:var(--ent);stroke:var(--acc);stroke-width:2}svg .ext rect{stroke:var(--mut);stroke-dasharray:4}
+svg .cls rect{stroke:var(--mut)}svg .sel rect{stroke:var(--acc);stroke-width:2.5}
+svg path.edge{fill:none;stroke:var(--mut);stroke-width:1.2;opacity:.7}svg text.code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}svg .elabel{fill:var(--mut);font-size:11px}
+svg .more rect{stroke:var(--mut);stroke-dasharray:4}svg .dir rect{fill:var(--pan);stroke:var(--acc)}
+svg .chg rect{stroke:var(--var);stroke-width:3px}
+svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);stroke:var(--effs)}svg .msg{stroke:var(--fg);stroke-width:1.2;fill:none}svg .msg.async{stroke-dasharray:5}svg .msg.ret{stroke:var(--mut);stroke-dasharray:2 3}
+.tools{display:flex;gap:4px;margin:0 0 6px;align-items:center;flex-wrap:wrap}.tools .hint{margin-left:8px}
+.tools button,.tools select{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:2px 9px;border-radius:6px;cursor:pointer}
+.tools button:hover{border-color:var(--acc);color:var(--acc)}
+.stage{border:1px solid var(--line);border-radius:10px;overflow:hidden;background-color:var(--bg);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px}
+.stage svg{touch-action:none;display:block;width:100%;height:calc(100vh - 215px);min-height:300px;cursor:grab}
+.flow ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line)}.flow>ul{border:0;padding:0}
+.flow li{margin:3px 0}.flow summary{cursor:pointer;list-style:none}.flow summary::-webkit-details-marker{display:none}
+.flow summary::before{content:'▾';display:inline-block;width:14px;color:var(--mut)}.flow details:not([open])>summary::before{content:'▸'}
+.flow .kind{font-size:10.5px;padding:0 6px;border-radius:4px;margin-right:6px;background:var(--pan);border:1px solid var(--line);color:var(--mut)}
+.kind.try{background:var(--var);color:#fff;border-color:var(--var)}.kind.spawn{background:#8a4fd6;color:#fff}.kind.scope{background:var(--effs);color:#fff}.kind.exit{background:var(--mut);color:#fff}.kind.native{background:var(--effs);color:#fff}
+.flow code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace}.flow button{border:0;background:none;color:var(--acc);cursor:pointer;font-size:12px}
+.hint{color:var(--mut)}.empty{display:grid;place-items:center;height:60%;color:var(--mut);text-align:center;gap:6px}.empty b{color:var(--fg);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 6px}.chip{padding:0 8px;border-radius:10px;border:1px solid var(--line);background:var(--bg);cursor:pointer;font-size:12px;line-height:20px}
+.chip:hover{border-color:var(--acc)}.chip.chg{border-color:var(--var);color:var(--var)}.gone{text-decoration:line-through;color:var(--mut)}
+.route{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}.route .step{padding:6px 12px;border-radius:8px;border:1px solid var(--effs);background:var(--eff);cursor:pointer}.route .arrow{color:var(--mut)}
+.tk-kw{color:var(--kw);font-weight:600}.tk-ty{color:var(--ty)}.tk-st{color:var(--st)}.tk-nu{color:var(--nu)}.tk-cm{color:var(--cm);font-style:italic}.tk-fn{color:var(--fnc)}
+.id{cursor:pointer;border-radius:3px}.id:hover,.id.on{background:var(--sel);box-shadow:0 0 0 1px var(--acc) inset}
+#tip{position:fixed;z-index:9;max-width:min(440px,92vw);padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:12.5px}
+#tip{pointer-events:none}#tip .go{pointer-events:auto}#tip[hidden]{display:none}#tip .nm{font:600 12.5px ui-monospace,SFMono-Regular,Menlo,monospace}#tip .ty{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:3px;overflow-wrap:anywhere}#tip .no{color:var(--mut)}#tip .go{display:block;margin-top:6px;color:var(--acc);text-decoration:none;font-size:12px}
+#src{grid-row:2;grid-column:5;width:var(--w2,430px);border-left:1px solid var(--line);overflow:auto;background:var(--bg)}#src[hidden],.split[hidden]{display:none}
+#src .hd{position:sticky;top:0;display:flex;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-bottom:1px solid var(--line);z-index:1}
+#src .hd .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px}#src .hd b{color:var(--fg);font-size:13px;margin-right:6px}
+.code{padding:6px 0 24px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;min-width:0}
+.code .r{display:flex}.code .r:hover{background:var(--pan)}
+.code .ln{flex:none;position:sticky;left:0;width:46px;padding-right:12px;text-align:right;color:var(--mut);user-select:none;background:inherit;opacity:.8}
+.code .r:not(:hover) .ln{background:var(--bg)}
+.code .tx{flex:1 1 auto;white-space:pre;padding-right:16px}
+.code.wrap .tx{white-space:pre-wrap;overflow-wrap:break-word;min-width:0;padding-left:calc(var(--i,0)*1ch + 2ch);text-indent:calc(-1*(var(--i,0)*1ch + 2ch))}
+.code:not(.wrap) .r{min-width:max-content}
+footer{grid-column:1/-1;display:flex;gap:16px;align-items:center;padding:0 12px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;background:var(--pan)}footer .sp{flex:1}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:10}
+.ov.on{display:flex}.ov .box{width:min(620px,92vw);background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
+#palq{width:100%;border:0;border-bottom:1px solid var(--line);padding:14px 16px;font:15px inherit;background:var(--bg);color:var(--fg);outline:none}
+#palres{max-height:50vh;overflow:auto;padding:6px}#palres .row{display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:7px;cursor:pointer}
+#palres .row.on{background:var(--sel)}#palres .row .k{width:18px}#palres .row .f{margin-left:auto;color:var(--mut);font-size:11.5px}#palres .row code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace}
+.ov .foot{padding:6px 12px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;display:flex;gap:12px}
+#help .box{padding:18px 22px;max-height:80vh;overflow:auto}#help h3{margin:0 0 8px}#help table{border-collapse:collapse;margin-bottom:12px}#help td{padding:3px 14px 3px 0;vertical-align:top}
+#help .sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:2px solid;margin-right:8px;vertical-align:-2px}
+@media (max-width:1100px){.search span,.search kbd{display:none}.search{flex:none;min-width:0;margin-left:auto}.search::before{content:'⌕'}}
+@media (max-width:900px){.brand{font-size:0}.brand i{font-size:15px;margin:0}body{--w1:200px}
+  #sp2{display:none!important}#src{position:fixed;right:0;top:var(--hh,40px);bottom:24px;width:min(94vw,520px);z-index:6;box-shadow:-12px 0 36px rgba(0,0,0,.25)}}
+@media (max-width:640px){#navbtn{display:inline-grid}
+  body{grid-template-columns:0 0 minmax(0,1fr) 0 0;grid-template-rows:auto minmax(0,1fr) 24px;--hh:78px}
+  header{flex-wrap:wrap;gap:0 4px;padding:0 6px}header nav{order:9;flex:1 0 100%;height:38px;border-top:1px solid var(--line)}
+  nav button{padding:0 14px}.ib{width:36px;height:36px}.search{margin-left:auto}
+  aside{position:fixed;left:0;top:var(--hh);bottom:24px;width:min(86vw,320px);z-index:6;box-shadow:12px 0 36px rgba(0,0,0,.25);transform:translateX(-102%);transition:transform .15s}
+  body.nav-open aside{transform:none}#sp1{display:none}.item,.file{padding-top:7px;padding-bottom:7px}
+  #info{padding:6px 10px 4px}#view{padding:6px 10px 8px}.stage svg{height:calc(100vh - 290px)}.pop{right:-80px}
+  #palq{font-size:16px}.ov{padding-top:8vh}}
+#scrim{display:none;position:fixed;inset:0;top:var(--hh,40px);background:rgba(0,0,0,.4);z-index:5}body.nav-open #scrim{display:block}
+body.focus{grid-template-columns:0 0 minmax(0,1fr) 0 0}body.focus aside,body.focus .split,body.focus #src{display:none}
+</style>
+</head>
+<body>
+<header>
+<button class="ib" id="navbtn" title="Explorer">☰</button><div class="brand"><i>◈</i>Program map</div>
+<div><button class="ib" id="back" title="Back (Alt+←)">‹</button><button class="ib" id="fwd" title="Forward (Alt+→)">›</button></div>
+<nav id="tabs"></nav>
+<button class="search" id="palbtn"><span>Go to symbol or file</span><kbd>Ctrl K</kbd></button>
+<div class="opts"><button class="ib" id="optbtn" title="View options">⚙</button>
+<div class="pop" id="optpop" hidden><label title="Show calls into the standard library"><input type="checkbox" id="all"> Include standard library calls</label><label id="onlywrap" hidden><input type="checkbox" id="only"> Show changed items only</label>
+<label title="How many call levels to show">Call depth <input type="range" id="depth" min="1" max="4" value="1"></label></div>
+<button class="ib" id="focusbtn" title="Focus the map (F)">⛶</button><button class="ib" id="theme" title="Theme: auto, dark, light">◐</button><button class="ib" id="helpbtn" title="Shortcuts and legend (?)">?</button></div>
+</header>
+<aside id="side"><div class="tbar"><input id="q" placeholder="Filter files and symbols"><button class="ib" id="collapse" title="Collapse all">⊟</button><button class="ib" id="expand" title="Expand all">⊞</button><button class="ib" id="locate" title="Reveal current item">◎</button></div>
+<div class="kinds" id="kinds"></div><div id="list" tabindex="0"></div></aside>
+<div class="split" id="sp1"></div>
+<main><div id="info"></div><div id="view"></div></main>
+<div class="split" id="sp2" hidden></div><section id="src" hidden></section>
+<footer id="status"></footer>
+<div id="tip" hidden></div><div id="scrim"></div><div id="pal" class="ov"><div class="box"><input id="palq" placeholder="Go to function, type, test or file" autocomplete="off"><div class="res" id="palres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div></div></div>
+<div id="help" class="pal-like" style="display:none"></div>
+<script id="data" type="application/json">__DATA__</script>
+<script>
+/* compact data: files, modules, entities as arrays with index references */
+const R=JSON.parse(document.getElementById('data').textContent);
+const D={modules:R.m.map(m=>({file:R.f[m[0]],imports:m[1]})),entities:[]};
+const keyOf=a=>R.f[a[0]]+'#'+a[1]+'#'+a[2];
+const KEYS=R.e.map(keyOf);
+const fl=ns=>ns.map(n=>({kind:n[0],label:n[1],reference:n[2]<0?'':KEYS[n[2]],children:fl(n[3])}));
+D.entities=R.e.map((a,i)=>({key:KEYS[i],file:R.f[a[0]],kind:a[1],name:a[15],line:a[3],exported:!!a[4],effects:a[5],error:a[6],scopes:a[7],
+  calls:a[8].map(j=>KEYS[j]),external:a[9],slots:a[10].map(s=>({name:s[0],ty:s[1],var:!!s[2],refs:s[3].map(j=>KEYS[j])})),
+  result:a[11]?{ty:a[11][0],refs:a[11][1].map(j=>KEYS[j])}:null,_flow:a[12],fi:a[0],first:a[13],last:a[14]}));
+const E=Object.fromEntries(D.entities.map(e=>[e.key,e]));
+const CH={},GONE=[],chFiles=new Set(),chDirs=new Set();
+for(const x of (R.x||[])){if(x[0]>=0){CH[KEYS[x[0]]]={tier:x[2],changes:x[3],name:x[1]};const f=R.f[R.e[x[0]][0]];chFiles.add(f);for(let i=f.indexOf('/');i>=0;i=f.indexOf('/',i+1))chDirs.add(f.slice(0,i+1))}else GONE.push({name:x[1],tier:x[2],changes:x[3]})}
+const HAS=!!R.x;
+const chgOf=n=>n.kind==='mod'?chFiles.has(n.id):n.kind==='dir'?chDirs.has(n.id):!!CH[n.id];
+/* flows decode on first use, so a large program loads fast */
+for(const e of D.entities)Object.defineProperty(e,'flow',{get(){const v=fl(e._flow);Object.defineProperty(e,'flow',{value:v});return v},configurable:true});
+const callers={};for(const e of D.entities)for(const c of e.calls)(callers[c]=callers[c]||[]).push(e.key);
+const TABS=['Overview','Calls','Sequence','Types','Behavior','Route'];
+const S={tab:'Overview',sel:null,mod:null,scope:'',cap:40,from:null,to:null,dir:'both'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const isType=e=>['record','alternative','interface'].includes(e.kind);
+const isFn=e=>['fn','method','test','bench'].includes(e.kind);
+const KI={fn:'ƒ',method:'ƒ',record:'T',alternative:'T',interface:'I',constant:'c',test:'✓',bench:'»',impl:'i'};
+const isCheck=e=>e.kind==='test'||e.kind==='bench';
+const KW=new Set('and break case continue else export extern false fixture fn for if impl import in interface let match not or ref return self test true try type unit var while'.split(' '));
+const TK=/(\/\/.*)|("(?:\\.|[^"\\])*")|(\b\d[\d_.]*[a-zA-Z]*)|([A-Za-z_]\w*)|(\s+|.)/g;
+function hl(line,sym){let o='',m;TK.lastIndex=0;
+  while((m=TK.exec(line))){const t=m[0];
+    if(m[1])o+='<span class="tk-cm">'+esc(t)+'</span>';
+    else if(m[2])o+='<span class="tk-st">'+esc(t)+'</span>';
+    else if(m[3])o+='<span class="tk-nu">'+esc(t)+'</span>';
+    else if(m[4]){
+      if(KW.has(t)){o+='<span class="tk-kw">'+t+'</span>';continue}
+      const k=/^[A-Z]/.test(t)?'tk-ty':line[TK.lastIndex]==='('?'tk-fn':'';
+      o+=sym?'<span class="id '+k+'" data-c="'+m.index+'">'+t+'</span>':k?'<span class="'+k+'">'+t+'</span>':t}
+    else o+=esc(t)}
+  return o}
+/* checked types of identifiers: file -> line -> [column, length, type] */
+const HT=R.t?R.t[0]:[],HF={};
+if(R.t){const a=R.t[1];for(let i=0;i<a.length;i+=5){const f=HF[a[i]]||(HF[a[i]]={}),l=f[a[i+1]]||(f[a[i+1]]=[]);l.push([a[i+2],a[i+3],a[i+4]])}}
+const base=f=>f.split('/').pop();
+const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
+const fx=e=>e.effects.filter(x=>x!=='unknown');
+const byFile={};for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
+function sigOf(e){
+  if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='record'||e.kind==='alternative'?'type':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
+  const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': <span class="'+(s.var?'var':'brw')+'">'+esc(s.ty)+'</span>').join(', ');
+  return '<code>'+esc(e.name)+'('+ps+') '+(e.result?'<span class="own">'+esc(e.result.ty)+'</span>':'')+'</code>';
+}
+const fns=D.entities.filter(e=>e.kind==='fn'||e.kind==='method');
+const firstN=(l,n)=>l.slice(0,n);
+const LAND={
+  'Entry':firstN(fns.filter(e=>e.name==="main"),5).concat(firstN(fns.filter(e=>e.exported&&e.name!=='main'),3)),
+  'Hubs':firstN(fns.filter(e=>(callers[e.key]||[]).length>1).sort((a,b)=>callers[b.key].length-callers[a.key].length),6),
+  'Writes data':firstN(fns.filter(e=>e.effects.includes('write')).sort((a,b)=>(callers[b.key]||[]).length-(callers[a.key]||[]).length),6)
+};
+/* what a selection can show: a function has behavior, a type has shape, a module only has its place on the map */
+function tabsFor(){const e=S.sel&&E[S.sel];
+  if(!e)return ['Overview','Types'];
+  if(isCheck(e))return ['Overview','Sequence','Behavior','Calls'];
+  if(isFn(e))return ['Overview','Calls','Sequence','Behavior','Types','Route'];
+  if(isType(e))return ['Overview','Types'];
+  return ['Overview']}
+function setTabs(){$('onlywrap').hidden=!HAS;$('tabs').innerHTML=tabsFor().map(t=>'<button class="'+(t===S.tab?'on':'')+'" data-tab="'+t+'">'+t+'</button>').join('');const on=$('tabs').querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
+function scopeKids(scope){
+  const dirs=new Set(),mods=[];
+  for(const m of D.modules)if(m.file.startsWith(scope)){const rest=m.file.slice(scope.length),i=rest.indexOf('/');if(i<0)mods.push(m.file);else dirs.add(scope+rest.slice(0,i+1))}
+  return {dirs:[...dirs],mods};
+}
+function normScope(){let k=scopeKids(S.scope);while(!k.mods.length&&k.dirs.length===1){S.scope=k.dirs[0];k=scopeKids(S.scope)}return k}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(_){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}}};
+const STAR=new Set(store.get('stars',[]).filter(k=>E[k]));
+const KF={fn:true,type:true,check:true};
+const kindOK=e=>isCheck(e)?KF.check:isType(e)?KF.type:isFn(e)?KF.fn:false;
+const TREE={dirs:{},files:[]};
+for(const m of D.modules){let n=TREE,p='';const parts=m.file.split('/');
+  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:{},files:[]})}
+  n.files.push(m.file)}
+const OPEN=new Set(['#lm']),CAP=150;let revealed=null;
+for(const d of Object.values(TREE.dirs))OPEN.add(d.path);
+const ancestors=f=>{const a=[];for(let i=f.indexOf('/');i>=0;i=f.indexOf('/',i+1))a.push(f.slice(0,i+1));return a};
+function reveal(f,check){if(!f)return;OPEN.add(f);if(check)OPEN.add(f+'#checks');ancestors(f).forEach(a=>OPEN.add(a))}
+function collapseAll(){OPEN.clear();OPEN.add('#lm');setList()}
+function expandAll(){const walk=n=>{for(const d of Object.values(n.dirs)){OPEN.add(d.path);walk(d)}};walk(TREE);
+  if(D.modules.length<=300)for(const m of D.modules){OPEN.add(m.file);OPEN.add(m.file+'#checks')}setList()}
+const row=(e,pad)=>'<div class="item'+(S.sel===e.key?' sel':'')+'" tabindex="-1" style="padding-left:'+pad+'px" data-key="'+esc(e.key)+'" title="'+esc(e.file+':'+e.line)+'"><span class="k">'+(KI[e.kind]||'·')+'</span>'+esc(e.name)+(STAR.has(e.key)?' <span class="star">★</span>':'')+'</div>';
+function treeHTML(n,depth){
+  const pad=depth*12+6;let h='';
+  const ds=Object.values(n.dirs).sort((a,b)=>a.name<b.name?-1:1);
+  for(const d of ds.slice(0,CAP)){const o=OPEN.has(d.path);
+    h+='<div class="file" tabindex="-1" style="padding-left:'+pad+'px" data-tg="'+esc(d.path)+'"><span class="c">'+(o?'▾':'▸')+'</span>'+esc(d.name)+'/</div>'+(o?treeHTML(d,depth+1):'')}
+  for(const f of n.files.slice(0,CAP)){const o=OPEN.has(f);
+    h+='<div class="file'+(f===S.mod?' cur':'')+'" tabindex="-1" style="padding-left:'+pad+'px" data-mod="'+esc(f)+'"><span class="c" data-tg="'+esc(f)+'">'+(o?'▾':'▸')+'</span>'+esc(base(f))+'</div>';
+    if(o){const es=(byFile[f]||[]).filter(e=>(isFn(e)||isType(e))&&kindOK(e));
+      h+=es.filter(e=>!isCheck(e)).slice(0,100).map(e=>row(e,pad+16)).join('');
+      const ck=es.filter(isCheck);
+      if(ck.length){const to=OPEN.has(f+'#checks');h+='<div class="file sub" tabindex="-1" style="padding-left:'+(pad+16)+'px" data-tg="'+esc(f+'#checks')+'"><span class="c">'+(to?'▾':'▸')+'</span>tests and benches ('+ck.length+')</div>'+(to?ck.slice(0,100).map(e=>row(e,pad+30)).join(''):'')}}}
+  if(ds.length>CAP||n.files.length>CAP)h+='<div class="hint" style="padding-left:'+pad+'px">more - use the filter</div>';
+  return h}
+const KIND_BTNS=[['fn','ƒ Functions'],['type','T Types'],['check','✓ Tests']];
+function setKinds(){$('kinds').innerHTML=KIND_BTNS.map(([k,l])=>'<button data-kf="'+k+'" class="'+(KF[k]?'on':'')+'" title="Show or hide">'+l+'</button>').join('')}
+const rid=el=>el&&el.dataset?(el.dataset.key?'k'+el.dataset.key:el.dataset.tg!==undefined?'t'+el.dataset.tg:el.dataset.mod?'m'+el.dataset.mod:''):'';
+function setList(){
+  const list=$('list'),had=list.contains(document.activeElement)&&document.activeElement!==list,want=had?rid(document.activeElement):'',top=list.scrollTop;
+  const q=$('q').value.toLowerCase();let h='';
+  if(q){
+    const ms=D.modules.filter(m=>m.file.toLowerCase().includes(q)).slice(0,20);
+    const es=D.entities.filter(e=>(isFn(e)||isType(e))&&kindOK(e)&&e.name.toLowerCase().includes(q)).slice(0,80);
+    h+=ms.map(m=>'<div class="file" tabindex="-1" data-mod="'+esc(m.file)+'" title="'+esc(m.file)+'"><span class="c"></span>'+esc(m.file)+'</div>').join('');
+    h+=es.map(e=>row(e,6).replace('</div>',' <span class="hint">'+esc(base(e.file))+'</span></div>')).join('');
+    if(!ms.length&&!es.length)h='<div class="empty"><span>No match for "'+esc(q)+'"</span></div>';
+    list.innerHTML=h;return}
+  if(STAR.size)h+='<h4>Starred</h4>'+[...STAR].map(k=>row(E[k],6)).join('');
+  if(HAS){const ks=Object.keys(CH);h+='<h4>Changed ('+(ks.length+GONE.length)+')</h4><div class="chips">'+ks.slice(0,40).map(k=>'<span class="chip chg" data-key="'+esc(k)+'" title="'+esc(CH[k].tier)+'">'+esc(CH[k].name)+'</span>').join('')+GONE.slice(0,10).map(g=>'<span class="chip gone" title="removed">'+esc(g.name)+'</span>').join('')+(ks.length>40?'<span class="hint">+'+(ks.length-40)+' more</span>':'')+'</div>'}
+  const lm=Object.entries(LAND).filter(([t,l])=>l.length);
+  if(lm.length){const o=OPEN.has('#lm');h+='<h4 data-tg="#lm" style="cursor:pointer">'+(o?'▾ ':'▸ ')+'Landmarks</h4>';
+    if(o)for(const [t,l] of lm)h+='<div class="hint" style="margin:4px 8px 0;font-size:11px">'+esc(t)+'</div><div class="chips">'+l.map(e=>'<span class="chip" data-key="'+esc(e.key)+'" title="'+esc(e.file)+'">'+esc(e.name)+'</span>').join('')+'</div>'}
+  const cur=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file)||'';
+  if(cur+'|'+S.sel!==revealed){revealed=cur+'|'+S.sel;const se=S.sel&&E[S.sel];reveal(cur,se&&isCheck(se))}
+  h+='<h4>Files</h4>'+treeHTML(TREE,0);
+  list.innerHTML=h;list.scrollTop=top;
+  if(want){for(const r of list.querySelectorAll('[tabindex]'))if(rid(r)===want){r.focus({preventScroll:true});break}}
+}
+function locate(){const cur=S.mod||(S.sel&&E[S.sel]&&E[S.sel].file);if(!cur)return;$('q').value='';const se=S.sel&&E[S.sel];reveal(cur,se&&isCheck(se));setList();const el=$('list').querySelector('.item.sel,.file.cur');if(el)el.scrollIntoView({block:'center'})}
+function crumbs(){
+  const e=S.sel&&E[S.sel],file=(e&&e.file)||S.mod;
+  let c='<a data-scope="">System</a>',p='';
+  const path=file?dirOf(file):S.scope;
+  for(const seg of path.split('/').filter(Boolean)){p+=seg+'/';c+=' › <a data-scope="'+esc(p)+'">'+esc(seg)+'</a>'}
+  if(file)c+=' › <a data-mod="'+esc(file)+'">'+esc(base(file))+'</a>';
+  if(e)c+=' › <b>'+esc(e.name)+'</b>';
+  return '<div class="crumbs">'+c+'</div>';
+}
+function counts(inScope){const c={fn:0,type:0,check:0};for(const e of D.entities){if(!inScope(e))continue;if(isCheck(e))c.check++;else if(isType(e))c.type++;else if(isFn(e))c.fn++}return c}
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+const summary=c=>[plural(c.fn,'function'),plural(c.type,'type'),c.check?plural(c.check,'test')+' and benches':''].filter(Boolean).join(' · ');
+function setInfo(){
+  const e=S.sel&&E[S.sel];let h=crumbs();
+  if(e){
+    const starred=STAR.has(e.key);
+    h+='<div class="ttl">'+sigOf(e)+'<span class="sp"></span><button class="ib'+(starred?' on':'')+'" data-star="1" title="'+(starred?'Unstar':'Star')+' (S)">'+(starred?'★':'☆')+'</button><button class="ib'+(srcOpen?' on':'')+'" data-src="1" title="Show or hide source">&lt;/&gt;</button><button class="ib" data-link="1" title="Copy link to this view">⧉</button></div><div class="meta"><span>'+esc(e.kind)+' · line '+e.line+'</span>';
+    h+=fx(e).map(x=>'<span class="badge '+esc(x)+'">'+esc(x)+'</span>').join('')+(e.error?'<span class="badge err">err '+esc(e.error)+'</span>':'')+(e.scopes?'<span class="badge">closes '+e.scopes+'</span>':'');
+    if(CH[e.key])h+='<span class="badge err">'+esc(CH[e.key].tier)+'</span><span>'+CH[e.key].changes.map(esc).join('; ')+'</span>';
+    const cs=callers[e.key]||[];
+    if(cs.length)h+='<span>callers</span>'+cs.slice(0,8).map(k=>'<a href="#" data-key="'+esc(k)+'">'+esc(E[k].name)+'</a>').join(' ')+(cs.length>8?'<span>+'+(cs.length-8)+'</span>':'');
+    if(isFn(e)&&!isCheck(e))h+='<a href="#" data-routefrom="1">route from here</a>';
+    h+='</div>';
+  }else if(S.mod){
+    h+='<div class="ttl"><code>'+esc(base(S.mod))+'</code></div><div class="meta"><span>'+summary(counts(x=>x.file===S.mod))+'</span></div>';
+  }else{
+    const sc=S.scope;
+    h+='<div class="ttl"><code>'+esc(sc||'System')+'</code></div><div class="meta"><span>'+plural(D.modules.filter(m=>m.file.startsWith(sc)).length,'module')+' · '+summary(counts(x=>x.file.startsWith(sc)))+'</span></div>';
+  }
+  $('info').innerHTML=h;
+}
+/* pan and zoom through the viewBox */
+function panzoom(box){
+  const svg=box.querySelector('svg');if(!svg)return;
+  const w=+svg.dataset.w,h=+svg.dataset.h;let vb={x:0,y:0,w:Math.max(w,300),h:Math.max(h,200)};
+  const apply=()=>svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
+  const fit=()=>{const r=svg.getBoundingClientRect();const k=Math.max(w/r.width,h/r.height,1);vb={x:0,y:0,w:r.width*k,h:r.height*k};apply()};
+  const zoom=(f,cx,cy)=>{cx=cx??vb.x+vb.w/2;cy=cy??vb.y+vb.h/2;vb={x:cx-(cx-vb.x)*f,y:cy-(cy-vb.y)*f,w:vb.w*f,h:vb.h*f};apply()};
+  svg.addEventListener('wheel',ev=>{ev.preventDefault();const r=svg.getBoundingClientRect();zoom(ev.deltaY>0?1.15:1/1.15,vb.x+(ev.clientX-r.left)/r.width*vb.w,vb.y+(ev.clientY-r.top)/r.height*vb.h)},{passive:false});
+  const ptr=new Map();let drag=null,pinch=null;
+  svg.addEventListener('pointerdown',ev=>{if(ev.target.closest('.node'))return;svg.setPointerCapture(ev.pointerId);ptr.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+    if(ptr.size===1)drag={x:ev.clientX,y:ev.clientY,vx:vb.x,vy:vb.y};
+    else if(ptr.size===2){drag=null;const [a,b]=[...ptr.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,vb:{...vb}}}
+    svg.style.cursor='grabbing'});
+  svg.addEventListener('pointermove',ev=>{if(!ptr.has(ev.pointerId))return;ptr.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});const r=svg.getBoundingClientRect();
+    if(pinch&&ptr.size>=2){const [a,b]=[...ptr.values()],f=pinch.d/(Math.hypot(a.x-b.x,a.y-b.y)||1),mx=((a.x+b.x)/2-r.left)/r.width,my=((a.y+b.y)/2-r.top)/r.height,nw=pinch.vb.w*f,nh=pinch.vb.h*f;
+      vb={x:pinch.vb.x+(pinch.vb.w-nw)*mx,y:pinch.vb.y+(pinch.vb.h-nh)*my,w:nw,h:nh};apply();return}
+    if(drag){vb.x=drag.vx-(ev.clientX-drag.x)/r.width*vb.w;vb.y=drag.vy-(ev.clientY-drag.y)/r.height*vb.h;apply()}});
+  const end=ev=>{ptr.delete(ev.pointerId);if(ptr.size<2)pinch=null;
+    if(ptr.size===0){drag=null;svg.style.cursor=''}else if(ptr.size===1){const [q]=[...ptr.values()];drag={x:q.x,y:q.y,vx:vb.x,vy:vb.y}}};
+  svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+  box.querySelector('[data-zoom="in"]').onclick=()=>zoom(1/1.3);box.querySelector('[data-zoom="out"]').onclick=()=>zoom(1.3);box.querySelector('[data-zoom="fit"]').onclick=fit;
+  const r=svg.getBoundingClientRect();if(w<=r.width*1.5&&h<=r.height*1.5)fit();else{vb={x:0,y:0,w:r.width,h:r.height};apply()}
+}
+function stage(svg,note){return '<div class="tools"><button data-zoom="in">＋</button><button data-zoom="out">－</button><button data-zoom="fit">fit</button><button data-export="svg" title="Save this view as an SVG file">Export SVG</button>'+(note?'<span class="hint">'+note+'</span>':'')+'</div><div class="stage">'+svg+'</div>'}
+/* layered layout; iterative so depth never overflows the stack */
+function graph(nodes,edges,note){
+  const ix=Object.fromEntries(nodes.map((n,i)=>[n.id,i]));
+  const out=nodes.map(()=>[]);edges.forEach(e=>{if(ix[e.from]!==undefined&&ix[e.to]!==undefined&&e.from!==e.to)out[ix[e.from]].push(ix[e.to])});
+  const st=nodes.map(()=>0),layer=nodes.map(()=>0);
+  for(let s=0;s<nodes.length;s++){if(st[s])continue;const stack=[[s,0]];st[s]=1;
+    while(stack.length){const f=stack[stack.length-1],u=f[0];
+      if(f[1]<out[u].length){const v=out[u][f[1]++];if(st[v]===0){st[v]=1;stack.push([v,0])}}
+      else{for(const v of out[u])if(st[v]===2)layer[u]=Math.max(layer[u],layer[v]+1);st[u]=2;stack.pop()}}}
+  const max=Math.max(0,...layer),cols=[];
+  nodes.forEach((n,i)=>{const c=max-layer[i];(cols[c]=cols[c]||[]).push(i)});
+  const W=260,GX=80,GY=24,pos=[];let H=0;
+  if(max>5&&nodes.length>12){cols.length=0;nodes.forEach((_,i)=>{const c=Math.floor(i/8);(cols[c]=cols[c]||[]).push(i)})}
+  const wrapped=[];cols.forEach(c=>{if(!c)return;for(let i=0;i<c.length;i+=10)wrapped.push(c.slice(i,i+10))});cols.length=0;wrapped.forEach(c=>cols.push(c));
+  cols.forEach((c,ci)=>{if(!c)return;let y=10;c.forEach(i=>{const h=Math.max(40,18+14*(nodes[i].lines||[]).length+14);pos[i]={x:10+ci*(W+GX),y,h};y+=h+GY});H=Math.max(H,y)});
+  const width=10+cols.length*(W+GX);
+  const parts=['<svg data-w="'+width+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--mut)"/></marker></defs>'];
+  for(const e of edges){const a=pos[ix[e.from]],b=pos[ix[e.to]];if(!a||!b||e.from===e.to)continue;
+    const x1=a.x+W,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2;let d;
+    if(x2>x1)d='M'+x1+' '+y1+'C'+(x1+GX/2)+' '+y1+' '+(x2-GX/2)+' '+y2+' '+x2+' '+y2;
+    else d='M'+a.x+' '+y1+'C'+(a.x-GX/2)+' '+y1+' '+(b.x+W+GX/2)+' '+y2+' '+(b.x+W)+' '+y2;
+    parts.push('<path class="edge" d="'+d+'" marker-end="url(#a)"/>');
+    if(e.label)parts.push('<text class="elabel" x="'+((x1+x2)/2)+'" y="'+((y1+y2)/2-4)+'" text-anchor="middle">'+esc(e.label)+'</text>')}
+  nodes.forEach((n,i)=>{const p=pos[i];if(!p)return;
+    parts.push('<g class="node '+(n.cls||'')+(chgOf(n)?' chg':'')+(n.id===S.sel||n.id===S.mod?' sel':'')+'" data-id="'+esc(n.id)+'" data-kind="'+(n.kind||'')+'"><title>'+esc(n.tip||n.title)+'</title><rect x="'+p.x+'" y="'+p.y+'" width="'+W+'" height="'+p.h+'" rx="7"/>'+(n.code?'<text class="code" x="'+(p.x+10)+'" y="'+(p.y+18)+'" font-weight="600">'+esc(n.title.slice(0,30))+':</text>':'<text x="'+(p.x+W/2)+'" y="'+(p.y+18)+'" text-anchor="middle" font-weight="600">'+esc(n.title.slice(0,26))+'</text>'));
+    (n.lines||[]).forEach((l,j)=>parts.push('<text'+(n.code?' class="code" x="'+(p.x+36):' x="'+(p.x+10))+'" y="'+(p.y+36+14*j)+'">'+esc(l)+'</text>'));
+    if(n.sub)parts.push('<text x="'+(p.x+W/2)+'" y="'+(p.y+p.h-8)+'" text-anchor="middle" class="elabel">'+esc(n.sub.slice(0,30))+'</text>');
+    parts.push('</g>')});
+  return stage(parts.join('')+'</svg>',note);
+}
+const fcls=x=>x.name==='main'?'entry':fx(x).length?'effect':'pure';
+/* overview: the current folder's modules and subfolders, or one module's functions; capped and ranked */
+function overview(){
+  normScope();
+  const open=S.mod,scope=S.scope,agg={},cnt={},weight={};
+  const endpoint=e=>{
+    if(open&&e.file===open)return {id:e.key,kind:'fn'};
+    if(!e.file.startsWith(scope))return null;
+    const rest=e.file.slice(scope.length),i=rest.indexOf('/');
+    return i<0?{id:e.file,kind:'mod'}:{id:scope+rest.slice(0,i+1),kind:'dir'};
+  };
+  for(const e of D.entities)if(!isCheck(e))for(const c of e.calls){const t=E[c];if(!t)continue;const a=endpoint(e),b=endpoint(t);if(!a||!b||a.id===b.id)continue;
+    agg[a.id]=a.kind;agg[b.id]=b.kind;const k=a.id+'\u0000'+b.id;cnt[k]=(cnt[k]||0)+1;weight[a.id]=(weight[a.id]||0)+1;weight[b.id]=(weight[b.id]||0)+1}
+  const kids=scopeKids(scope);
+  for(const m of kids.mods)if(!(m in agg)&&!open){agg[m]='mod';weight[m]=0}
+  for(const d of kids.dirs)if(!(d in agg)&&!open){agg[d]='dir';weight[d]=0}
+  if(open)for(const e of byFile[open]||[])if(isFn(e)&&!isCheck(e)&&!(e.key in agg)){agg[e.key]='fn';weight[e.key]=0}
+  const isc=id=>chgOf({id,kind:agg[id]});
+  if(HAS)for(const id of Object.keys(agg))if(isc(id))weight[id]=(weight[id]||0)+1e6;
+  let ids=Object.keys(agg).sort((a,b)=>(weight[b]-weight[a])||a.localeCompare(b));
+  if(HAS&&$('only').checked){const near=new Set(ids.filter(isc));for(const k of Object.keys(cnt)){const [a,b]=k.split('\u0000');if(isc(a))near.add(b);if(isc(b))near.add(a)}ids=ids.filter(i=>near.has(i))}
+  const keep=new Set(ids.slice(0,S.cap));if(S.sel&&agg[S.sel])keep.add(S.sel);
+  const nodes=[...keep].map(id=>{const kind=agg[id];
+    if(kind==='fn'){const x=E[id];return {id,title:x.name,sub:fx(x).join(' · ')||'pure',cls:fcls(x),kind}}
+    if(kind==='dir'){const n=D.modules.filter(m=>m.file.startsWith(id)).length;return {id,title:id.slice(scope.length),sub:n+' modules',cls:'dir',kind,tip:id}}
+    const es=byFile[id]||[],f=new Set();es.forEach(x=>fx(x).forEach(y=>f.add(y)));
+    return {id,title:base(id),sub:[...f].join(' · ')||'pure',cls:es.some(x=>x.name==='main')?'entry':f.size?'effect':'pure',kind,tip:id}});
+  const rest=ids.length-keep.size;
+  if(rest>0)nodes.push({id:'+more',title:'+'+rest+' more',sub:'click to show '+Math.min(S.cap,rest)+' more',cls:'more',kind:'more'});
+  const edges=Object.entries(cnt).map(([k,n])=>{const [a,b]=k.split('\u0000');return {from:a,to:b,label:n>1?String(n):'',n}}).filter(e=>keep.has(e.from)&&keep.has(e.to)).sort((a,b)=>b.n-a.n).slice(0,Math.max(30,nodes.length*2));
+  if(!nodes.length)return empty('Nothing here','No calls between these items.');
+  return graph(nodes,edges,'double-click a node to open it');
+}
+function calls(){
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
+  const depth=+$('depth').value,nodes={},edges=[];let n=0;
+  const add=k=>{if(nodes[k]||n>=60)return;n++;const x=E[k];nodes[k]={id:k,title:x.name,sub:base(x.file),cls:fcls(x),kind:'fn',tip:x.file+':'+x.line}};
+  add(e.key);
+  const edge=(a,b)=>{if(nodes[a]&&nodes[b])edges.push({from:a,to:b})};
+  const up=(k,d,seen)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of (callers[k]||[]).slice(0,12)){add(c);edge(c,k);up(c,d+1,seen)}};
+  const seen=new Set();
+  const down=(k,d)=>{if(d>=depth||seen.has(k))return;seen.add(k);for(const c of E[k].calls.slice(0,16)){add(c);edge(k,c);down(c,d+1)}
+    if($('all').checked)for(const x of E[k].external.slice(0,6)){const id='x:'+x;if(!nodes[id]&&n<60){n++;nodes[id]={id,title:x.split('#').pop(),cls:'ext',kind:'ext'}}edge(k,id)}};
+  if(S.dir!=='down')up(e.key,0,new Set());if(S.dir!=='up')down(e.key,0);
+  return '<div class="tools"><select id="dir"><option value="both">callers + callees</option><option value="up">callers</option><option value="down">callees</option></select></div>'+graph(Object.values(nodes),edges);
+}
+function types(){
+  const nodes={},edges=[];let n=0;const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod)).slice(0,30);
+  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'||x.kind==='alternative'?'type ':'')+x.name,cls:'cls',kind:'type',
+    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?'case '+s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
+    x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:s.name})}}));
+    if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:'returns'})}})};
+  roots.forEach(r=>{if(isFn(r)){nodes[r.key]={code:1,id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
+  const list=Object.values(nodes);if(!list.length)return empty('No types','Nothing to show for this selection.');
+  return graph(list,edges);
+}
+/* sequence: lifelines for functions, messages in execution order */
+function sequence(){
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
+  const depth=+$('depth').value+1,all=$('all').checked,ev=[],parts=[];let cap=0;
+  const part=k=>{if(!parts.includes(k)&&parts.length<14)parts.push(k)};
+  const walk=(k,nodes,d,path)=>{for(const n of nodes){if(cap>160)return;
+    const ref=n.reference&&E[n.reference];
+    if(n.kind==='call'&&ref){cap++;part(n.reference);if(!parts.includes(n.reference))continue;ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')});
+      if(d>0&&!path.includes(n.reference))walk(n.reference,ref.flow,d-1,path.concat(n.reference));
+      if(ev[ev.length-1].t!=='msg')ev.push({t:'ret',from:n.reference,to:k})}
+    else if(n.kind==='native'&&all){cap++;part('stdlib');if(parts.includes('stdlib'))ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^call\s+/,'')})}
+    else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
+    else if(['try','scope','branch','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:(n.kind==='try'?'try ⚠ ':'')+n.label.slice(0,30)})}
+    if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
+  part(e.key);walk(e.key,e.flow,depth-1,[e.key]);
+  const X=170,top=50,row=30,W=140;const px=k=>20+parts.indexOf(k)*X+W/2;const H=top+ev.length*row+40;
+  const sv=['<svg data-w="'+(40+parts.length*X)+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--fg)"/></marker></defs>'];
+  parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';
+    sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(t.slice(0,20))+'</text></g>')});
+  ev.forEach((v,i)=>{const y=top+i*row+14;
+    if(v.t==='note'){const x=px(v.at),w=Math.min(190,v.label.length*6.4+14);sv.push('<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+w+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>');return}
+    const a=px(v.from),b=px(v.to);if(v.from===v.to)return;
+    sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'L'+b+' '+y+'" marker-end="url(#a)"/>');
+    if(v.t==='msg')sv.push('<text x="'+((a+b)/2)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(v.label.slice(0,32))+'</text>')});
+  return stage(sv.join('')+'</svg>','time runs down · dotted = return');
+}
+function flowHTML(nodes,level){
+  return '<ul>'+nodes.map(n=>{const ref=n.reference&&E[n.reference],kids=n.children&&n.children.length;
+    const head='<span class="kind '+esc(n.kind)+'">'+esc(n.kind||'step')+'</span><code>'+hl(n.label)+'</code>'+(ref&&ref._flow.length&&level<6?' <button data-expand="'+esc(n.reference)+'">expand ▸</button>':'');
+    return '<li>'+(kids?'<details open><summary>'+head+'</summary>'+flowHTML(n.children,level)+'</details>':head)+'<span class="callee"></span></li>'}).join('')+'</ul>'}
+const empty=(t,d)=>'<div class="empty"><b>'+t+'</b><span>'+d+'</span></div>';
+function behavior(){
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
+  return '<div class="tools"><button data-flow="collapse">Collapse all</button><button data-flow="expand">Expand all</button></div><div class="flow">'+(e.flow.length?flowHTML(e.flow,0):'<span class="hint">no steps</span>')+'</div>';
+}
+let curCm={},wrap=store.get('wrap',true),srcOpen=store.get('srcOpen',innerWidth>900),curSrc='';
+function srcPanel(){
+  const box=$('src'),e=S.sel&&E[S.sel];
+  const src=e?R.s[e.fi]||'':'';
+  if(!srcOpen||!e||!src||!e.first){box.hidden=true;$('sp2').hidden=true;return}
+  let ls=src.split('\n').slice(e.first-1,e.last);while(ls.length&&!ls[ls.length-1].trim())ls.pop();
+  curSrc=ls.join('\n');
+  curCm={};for(const k of e.calls){const c=E[k];if(c)curCm[c.name]=k}
+  const keep=box.scrollTop;hideTip();
+  box.hidden=false;$('sp2').hidden=false;
+  box.innerHTML='<div class="hd"><span class="t"><b>'+esc(e.name)+'</b>'+esc(e.file)+':'+e.first+'–'+(e.first+ls.length-1)+'</span><button class="ib'+(wrap?' on':'')+'" data-wrap="1" title="'+(wrap?'Wrapping lines (click for horizontal scroll)':'Scrolling sideways (click to wrap lines)')+'">↩</button><button class="ib" data-copy="1" title="Copy source">⧉</button><button class="ib" data-close="1" title="Hide source">✕</button></div><div class="code'+(wrap?' wrap':'')+'">'+
+    ls.map((l,i)=>{const ind=l.replace(/\t/g,'    ').length-l.replace(/\t/g,'    ').trimStart().length;return '<div class="r" data-ln="'+(e.first-1+i)+'"><span class="ln">'+(e.first+i)+'</span><span class="tx" style="--i:'+ind+'">'+(l?hl(l,true):'\u200b')+'</span></div>'}).join('')+'</div>';
+  box.scrollTop=keep}
+function route(){
+  const opt=(sel)=>sel&&E[sel]?'<option value="'+esc(sel)+'" selected>'+esc(E[sel].name)+'</option>':'';
+  let h='<div class="tools"><input id="rf" list="fl" placeholder="from" value="'+(S.from?esc(E[S.from].name):'')+'"> → <input id="rt" list="fl" placeholder="to" value="'+(S.to?esc(E[S.to].name):'')+'"><datalist id="fl"></datalist></div>';
+  if(S.from&&S.to){
+    const prev={[S.from]:null},q=[S.from];while(q.length){const u=q.shift();if(u===S.to)break;for(const v of E[u].calls)if(!(v in prev)){prev[v]=u;q.push(v)}}
+    if(!(S.to in prev))h+=empty('No call path','These two functions are not connected by calls.');
+    else{const p=[];for(let k=S.to;k!==null;k=prev[k])p.unshift(k);
+      h+='<div class="route">'+p.map((k,i)=>(i?'<span class="arrow">→</span>':'')+'<span class="step" data-key="'+esc(k)+'">'+esc(E[k].name)+'</span>').join('')+'</div>'}
+  }else h+=empty('Find a route','Type a function name in each box.');
+  return h;
+}
+const VIEWS={Overview:overview,Calls:calls,Sequence:sequence,Types:types,Behavior:behavior,Route:route};
+const snap=()=>JSON.stringify({t:S.tab,s:S.sel,m:S.mod,c:S.scope,f:S.from,o:S.to});
+const HIST=[];let hi=-1,navigating=false;const VISIT=[];
+function save(){const x=snap();try{history.replaceState(null,'','#'+encodeURIComponent(x))}catch(_){}
+  if(!navigating&&HIST[hi]!==x){HIST.length=hi+1;HIST.push(x);hi=HIST.length-1;if(HIST.length>100){HIST.shift();hi--}}
+  if(S.sel&&VISIT[0]!==S.sel){const i=VISIT.indexOf(S.sel);if(i>=0)VISIT.splice(i,1);VISIT.unshift(S.sel);VISIT.length=Math.min(VISIT.length,12)}
+  $('back').disabled=hi<=0;$('fwd').disabled=hi>=HIST.length-1}
+function go(d){const j=hi+d;if(j<0||j>=HIST.length)return;hi=j;const h=JSON.parse(HIST[j]);S.tab=h.t;S.sel=h.s;S.mod=h.m;S.scope=h.c;S.from=h.f;S.to=h.o;navigating=true;render();navigating=false}
+function pickFn(text){const t=text.trim().toLowerCase();const exact=fns.filter(f=>f.name.toLowerCase()===t);return (exact[0]||fns.find(f=>f.name.toLowerCase().includes(t))||{}).key||null}
+function fitTab(){const ok=tabsFor();if(ok.includes(S.tab))return false;const e=S.sel&&E[S.sel];S.tab=e&&isType(e)?'Types':e&&isFn(e)?'Sequence':'Overview';return true}
+const NMOD=D.modules.length,NFN=fns.length,NTY=D.entities.filter(isType).length,NCK=D.entities.filter(isCheck).length;
+function setStatus(){const e=S.sel&&E[S.sel];
+  $('status').innerHTML='<span>'+plural(NMOD,'module')+' · '+plural(NFN,'function')+' · '+plural(NTY,'type')+(NCK?' · '+plural(NCK,'test')+'/bench':'')+'</span><span class="sp"></span>'+(e?'<span>'+esc(e.file)+':'+e.line+'</span>':S.mod?'<span>'+esc(S.mod)+'</span>':'')+(HAS?'<span>diff: '+plural(Object.keys(CH).length,'change')+'</span>':'')}
+function render(){fitTab();setTabs();setList();setInfo();srcPanel();$('view').innerHTML=VIEWS[S.tab]();
+  const d=$('dir');if(d){d.value=S.dir;d.onchange=()=>{S.dir=d.value;render()}}
+  const rf=$('rf');if(rf){const dl=$('fl');dl.innerHTML=fns.slice(0,2000).map(f=>'<option value="'+esc(f.name)+'">').join('');
+    rf.onchange=()=>{S.from=pickFn(rf.value);render()};$('rt').onchange=()=>{S.to=pickFn($('rt').value);render()}}
+  const box=$('view');if(box.querySelector('svg'))panzoom(box);setStatus();save()}
+/* theme */
+const THEMES=['auto','dark','light'],TICON={auto:'◐',dark:'☾',light:'☀'};let theme=store.get('theme','auto');
+function applyTheme(){const r=document.documentElement;if(theme==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',theme);$('theme').textContent=TICON[theme];$('theme').title='Theme: '+theme+' (click to change)'}
+$('theme').addEventListener('click',()=>{theme=THEMES[(THEMES.indexOf(theme)+1)%3];store.set('theme',theme);applyTheme()});
+applyTheme();
+/* opening things */
+function openKey(k){const e=E[k];if(!e)return;S.sel=k;S.mod=null;S.scope=dirOf(e.file);S.tab=isType(e)?'Types':'Sequence';render();locate()}
+function openMod(f){S.mod=f;S.scope=dirOf(f);S.sel=null;S.tab='Overview';render();locate()}
+/* command palette */
+const pal=$('pal'),palq=$('palq'),palres=$('palres');let palSel=0,palItems=[];
+function fuzzy(q,s){q=q.toLowerCase();s=s.toLowerCase();let i=0,score=0,last=-2;
+  for(let j=0;j<s.length&&i<q.length;j++)if(s[j]===q[i]){score+=(j===last+1?3:1)+(j===0||'/_.-: '.includes(s[j-1])?2:0);last=j;i++}
+  return i===q.length?score-s.length*0.01:-1}
+function palList(){const q=palq.value.trim();let items;
+  if(!q){const keys=[...new Set([...STAR,...VISIT])].filter(k=>E[k]).slice(0,12);items=keys.map(k=>({e:E[k]}))}
+  else{const sc=[];for(const e of D.entities){if(!(isFn(e)||isType(e)))continue;const s=fuzzy(q,e.name);if(s>=0)sc.push([s+(isCheck(e)?-1:0),{e}])}
+    for(const m of D.modules){const s=fuzzy(q,m.file);if(s>=0)sc.push([s-0.5,{m:m.file}])}
+    sc.sort((a,b)=>b[0]-a[0]);items=sc.slice(0,40).map(x=>x[1])}
+  palItems=items;palSel=Math.min(palSel,Math.max(0,items.length-1));
+  palres.innerHTML=items.length?items.map((it,i)=>'<div class="row'+(i===palSel?' on':'')+'" data-pi="'+i+'">'+(it.e?'<span class="k">'+(KI[it.e.kind]||'·')+'</span><code>'+esc(it.e.name)+'</code><span class="f">'+esc(it.e.file)+'</span>':'<span class="k">▤</span><code>'+esc(it.m)+'</code><span class="f">file</span>')+'</div>').join(''):'<div class="empty" style="height:80px">'+(q?'No match':'Type to search every function, type, test and file')+'</div>'}
+function openPal(){pal.classList.add('on');palq.value='';palSel=0;palList();palq.focus()}
+function closePal(){pal.classList.remove('on')}
+function palGo(i){const it=palItems[i];if(!it)return;closePal();if(it.e)openKey(it.e.key);else openMod(it.m)}
+palq.addEventListener('input',()=>{palSel=0;palList()});
+palq.addEventListener('keydown',ev=>{
+  if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ev.preventDefault();palSel=Math.max(0,Math.min(palItems.length-1,palSel+(ev.key==='ArrowDown'?1:-1)));palList();const on=palres.querySelector('.on');if(on)on.scrollIntoView({block:'nearest'})}
+  else if(ev.key==='Enter'){ev.preventDefault();palGo(palSel)}});
+pal.addEventListener('mousedown',ev=>{if(ev.target===pal)closePal()});
+palres.addEventListener('click',ev=>{const r=ev.target.closest('[data-pi]');if(r)palGo(+r.dataset.pi)});
+/* help */
+const help=$('help');
+help.innerHTML='<div class="box"><div style="padding:18px 22px"><h3>Reading the map</h3><table>'+
+ '<tr><td><span class="sw" style="border-color:var(--pures)"></span>Pure</td><td>no data effects</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reads or writes data (a field, a List, Map, Set or builder)</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--acc)"></span>Entry / selected</td><td>main, or what you picked</td></tr>'+
+ '<tr><td><span class="sw" style="border-color:var(--var)"></span>Changed</td><td>differs from the base in a diff</td></tr>'+
+ '<tr><td><span class="var">var</span> / <span class="brw">borrow</span> / <span class="own">owned</span></td><td>exclusive borrow, shared borrow, returned value</td></tr></table>'+
+ '<h3>Icons</h3><p>ƒ function · T type · I interface · ✓ test · » bench · c constant</p>'+
+ '<h3>Keys</h3><table><tr><td><kbd>Ctrl K</kbd></td><td>go to any symbol or file</td></tr><tr><td><kbd>/</kbd></td><td>filter the explorer</td></tr>'+
+ '<tr><td><kbd>Alt ←</kbd> <kbd>Alt →</kbd></td><td>back, forward</td></tr><tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> <kbd>Enter</kbd></td><td>move through the explorer</td></tr>'+
+ '<tr><td><kbd>S</kbd></td><td>star the selection</td></tr><tr><td><kbd>F</kbd></td><td>focus the map</td></tr><tr><td>double-click a node</td><td>drill in</td></tr><tr><td>scroll, drag</td><td>zoom, pan the map</td></tr><tr><td><kbd>Esc</kbd></td><td>close</td></tr></table></div></div>';
+help.className='ov';
+help.addEventListener('mousedown',ev=>{if(ev.target===help)help.classList.remove('on')});
+help.style.display='';
+/* export the current graph as a standalone svg */
+function exportSvg(){const svg=document.querySelector('#view svg');if(!svg)return;
+  const cs=getComputedStyle(document.documentElement),w=svg.dataset.w,h=svg.dataset.h;
+  const rules=[];for(const sh of document.styleSheets)for(const r of sh.cssRules)if(r.cssText.startsWith('svg'))rules.push(r.cssText);
+  const c=svg.cloneNode(true);c.setAttribute('viewBox','0 0 '+w+' '+h);c.setAttribute('width',w);c.setAttribute('height',h);
+  const st=document.createElementNS('http://www.w3.org/2000/svg','style');st.textContent=rules.join('\n');c.insertBefore(st,c.firstChild);
+  const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');bg.setAttribute('width','100%');bg.setAttribute('height','100%');bg.setAttribute('fill',cs.getPropertyValue('--bg').trim());c.insertBefore(bg,st.nextSibling);
+  const text=new XMLSerializer().serializeToString(c).replace(/var\((--[\w-]+)\)/g,(_,v)=>cs.getPropertyValue(v).trim());
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'image/svg+xml'}));a.download=(S.sel&&E[S.sel]?E[S.sel].name:'program-map').replace(/[^\w.-]+/g,'_')+'.svg';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+/* resizable panes */
+function splitter(id,cssVar,sign,min,max,key,target){const el=$(id);
+  const saved=store.get(key,0);if(saved)document.body.style.setProperty(cssVar,saved+'px');
+  el.addEventListener('pointerdown',ev=>{ev.preventDefault();el.setPointerCapture(ev.pointerId);el.classList.add('drag');const x0=ev.clientX,w0=$(target).offsetWidth;let w=w0;
+    const mv=e=>{w=Math.max(min,Math.min(max,w0+sign*(e.clientX-x0)));document.body.style.setProperty(cssVar,w+'px')};
+    const up=()=>{el.classList.remove('drag');el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);store.set(key,w)};
+    el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up)})}
+splitter('sp1','--w1',1,180,520,'w1','side');splitter('sp2','--w2',-1,300,900,'w2','src');
+/* a clicked identifier shows its checked type; the card never blocks clicks on the code under it */
+function hideTip(){const t=$('tip');if(t)t.hidden=true;document.querySelectorAll('#src .id.on').forEach(x=>x.classList.remove('on'))}
+function showTip(el){
+  const e=S.sel&&E[S.sel],row=el.closest('.r');if(!e||!row)return;
+  hideTip();el.classList.add('on');
+  const line=+row.dataset.ln,col=+el.dataset.c,name=el.textContent,hs=(HF[e.fi]||{})[line]||[];
+  const h=hs.find(x=>x[0]===col&&x[1]===name.length);
+  const key=curCm[name]&&el.classList.contains('tk-fn')?curCm[name]:'';
+  const tip=$('tip');
+  tip.innerHTML='<div class="nm">'+esc(name)+'</div>'+(h?'<div class="ty">'+hl(HT[h[2]])+'</div>':'<div class="no">No type information for this name.</div>')+(key?'<a class="go" href="#" data-key="'+esc(key)+'">Go to definition</a>':'');
+  tip.hidden=false;
+  const r=el.getBoundingClientRect(),w=tip.offsetWidth,hgt=tip.offsetHeight;
+  tip.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left))+'px';
+  tip.style.top=(r.bottom+hgt+10<innerHeight?r.bottom+6:Math.max(8,r.top-hgt-6))+'px'}
+/* clicks */
+let timer=null;
+document.addEventListener('click',ev=>{
+  const idEl=ev.target.closest('#src .id');if(idEl){ev.preventDefault();showTip(idEl);return}
+  if(!ev.target.closest('#tip'))hideTip();
+  const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-src],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom],[data-star],[data-link],[data-wrap],[data-export],[data-flow],[data-kf]');if(!t)return;ev.preventDefault();
+  if(t.dataset.tg!==undefined){const k=t.dataset.tg;if(OPEN.has(k))OPEN.delete(k);else OPEN.add(k);setList();return}
+  if(t.dataset.kf){KF[t.dataset.kf]=!KF[t.dataset.kf];setKinds();setList();return}
+  if(t.dataset.close||t.dataset.src){srcOpen=t.dataset.src?!srcOpen:false;store.set('srcOpen',srcOpen);srcPanel();return}
+  if(t.dataset.star){const e=S.sel&&E[S.sel];if(!e)return;if(STAR.has(e.key))STAR.delete(e.key);else STAR.add(e.key);store.set('stars',[...STAR]);setInfo();setList();return}
+  if(t.dataset.link){try{navigator.clipboard.writeText(location.href)}catch(_){}t.textContent='✓';setTimeout(()=>{t.textContent='⧉'},900);return}
+  if(t.dataset.wrap){wrap=!wrap;store.set('wrap',wrap);srcPanel();return}
+  if(t.dataset.export){exportSvg();return}
+  if(t.dataset.flow){document.querySelectorAll('.flow details').forEach(d=>{d.open=t.dataset.flow==='expand'});return}
+  if(t.dataset.copy){try{navigator.clipboard.writeText(curSrc)}catch(_){}t.classList.add('on');setTimeout(()=>t.classList.remove('on'),700);return}
+  if(t.closest('#list'))document.body.classList.remove('nav-open');
+  if(t.dataset.tab)S.tab=t.dataset.tab;
+  else if(t.dataset.expand){const li=t.closest('li');const e=E[t.dataset.expand];const slot=li.querySelector(':scope > .callee');
+    if(slot.innerHTML){slot.innerHTML='';t.textContent='expand ▸'}else{slot.innerHTML=flowHTML(e.flow,1);t.textContent='collapse ▾'}return}
+  else if(t.dataset.routefrom){S.from=S.sel;S.to=null;S.tab='Route'}
+  else if(t.dataset.scope!==undefined){S.scope=t.dataset.scope;S.mod=null;S.sel=null;S.cap=40;S.tab='Overview'}
+  else if(t.dataset.key){S.sel=t.dataset.key;S.mod=null;if(S.tab==='Overview')S.tab='Sequence';if(S.tab==='Route'){if(!S.from)S.from=S.sel;else S.to=S.sel}}
+  else if(t.dataset.mod){S.mod=t.dataset.mod;S.scope=dirOf(S.mod);S.sel=null;S.tab='Overview'}
+  else if(t.dataset.id){const id=t.dataset.id,k=t.dataset.kind;
+    if(k==='more'){S.cap+=40;render();return}
+    if(k==='mod'){S.mod=id;S.sel=null}else if(E[id]){S.sel=id;S.mod=null;if(fitTab()){render();return}}
+    document.querySelectorAll('.node.sel').forEach(n=>n.classList.remove('sel'));t.closest('.node').classList.add('sel');setList();setInfo();srcPanel();setStatus();save();return}
+  render()});
+document.addEventListener('dblclick',ev=>{const n=ev.target.closest('.node');if(!n)return;const id=n.dataset.id,k=n.dataset.kind;
+  if(k==='dir'){S.scope=id;S.mod=null;S.sel=null;S.cap=40;S.tab='Overview'}
+  else if(k==='mod'){S.mod=id;S.scope=dirOf(id);S.sel=null;S.tab='Overview'}
+  else if(E[id]){S.sel=id;S.mod=null;S.tab='Sequence'}else return;render()});
+$('q').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(setList,120)});
+$('q').addEventListener('keydown',ev=>{if(ev.key==='Escape'){$('q').value='';setList();$('q').blur()}else if(ev.key==='ArrowDown'){ev.preventDefault();const r=$('list').querySelector('[tabindex]');if(r)r.focus()}});
+$('all').addEventListener('change',render);$('only').addEventListener('change',render);$('depth').addEventListener('input',render);
+$('back').addEventListener('click',()=>go(-1));$('fwd').addEventListener('click',()=>go(1));
+$('collapse').addEventListener('click',collapseAll);$('expand').addEventListener('click',expandAll);$('locate').addEventListener('click',locate);
+$('palbtn').addEventListener('click',openPal);$('navbtn').addEventListener('click',()=>document.body.classList.toggle('nav-open'));$('scrim').addEventListener('click',()=>document.body.classList.remove('nav-open'));
+$('optbtn').addEventListener('click',ev=>{ev.stopPropagation();$('optpop').hidden=!$('optpop').hidden});
+document.addEventListener('click',ev=>{if(!ev.target.closest('#optpop,#optbtn'))$('optpop').hidden=true});
+$('helpbtn').addEventListener('click',()=>help.classList.toggle('on'));
+const toggleFocus=()=>{document.body.classList.toggle('focus');$('focusbtn').classList.toggle('on')};$('focusbtn').addEventListener('click',toggleFocus);
+/* keyboard */
+$('src').addEventListener('scroll',()=>hideTip());
+$('list').addEventListener('keydown',ev=>{
+  const rows=[...$('list').querySelectorAll('[tabindex]')],el=document.activeElement,i=rows.indexOf(el);
+  if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ev.preventDefault();const n=rows[Math.max(0,Math.min(rows.length-1,(i<0?0:i+(ev.key==='ArrowDown'?1:-1))))];if(n)n.focus()}
+  else if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();if(el&&el.click)el.click()}
+  else if(ev.key==='ArrowRight'||ev.key==='ArrowLeft'){const c=el&&(el.dataset.tg!==undefined?el:el.querySelector('[data-tg]'));if(!c)return;const k=c.dataset.tg,o=OPEN.has(k);
+    if((ev.key==='ArrowRight')!==o){ev.preventDefault();if(o)OPEN.delete(k);else OPEN.add(k);setList()}}});
+addEventListener('keydown',ev=>{
+  const typing=/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName||'');
+  if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ev.preventDefault();openPal();return}
+  if(ev.key==='Escape'){closePal();help.classList.remove('on');hideTip();return}
+  if(ev.altKey&&ev.key==='ArrowLeft'){ev.preventDefault();go(-1);return}
+  if(ev.altKey&&ev.key==='ArrowRight'){ev.preventDefault();go(1);return}
+  if(typing||ev.ctrlKey||ev.metaKey||ev.altKey)return;
+  if(ev.key==='/'){ev.preventDefault();$('q').focus();$('q').select()}
+  else if(ev.key==='?'){help.classList.toggle('on')}
+  else if(ev.key==='f'||ev.key==='F')toggleFocus();
+  else if(ev.key==='s'||ev.key==='S'){const b=document.querySelector('[data-star]');if(b)b.click()}});
+try{const h=JSON.parse(decodeURIComponent(location.hash.slice(1)));if(h&&TABS.includes(h.t)){S.tab=h.t;S.sel=E[h.s]?h.s:null;S.mod=h.m||null;S.scope=h.c||'';S.from=E[h.f]?h.f:null;S.to=E[h.o]?h.o:null}else throw 0}catch(_){const main=D.entities.find(e=>e.name==='main'&&e.kind==='fn');if(main){S.sel=main.key;S.scope=dirOf(main.file);S.tab='Sequence'}}
+setKinds();render();
+</script>
+</body>
+</html>

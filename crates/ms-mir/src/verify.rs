@@ -452,6 +452,14 @@ impl Verifier<'_> {
             if self.opts.require_locs && inst.loc.is_none() {
                 self.err(Some(bi), format!("{name}: missing source location"));
             }
+            // The lowering re-invokes the function from the check on a new stack segment with
+            // the entry block's parameters, so nothing may run before it.
+            if inst.op == Op::DepthEnter && (bi != 0 || ii != 0) {
+                self.err(
+                    Some(bi),
+                    format!("{name}: must be the first instruction of the entry block"),
+                );
+            }
             let mut ok = true;
             for a in &inst.args {
                 ok &= self.use_ok(*a, (bi, ii as i64), def, idom, name);
@@ -847,10 +855,35 @@ impl Verifier<'_> {
                         .unwrap_or(false),
                     "alt.new yields the alternative type",
                 )?;
+                // A borrowing variant lends exactly its borrowed cases: `alt.view` fills one, `alt.new` the others.
+                let borrowed = m.alts[a.index()].borrowed;
+                if borrowed != 0 {
+                    want(
+                        m.alts[a.index()].borrows(c as usize) == (inst.op == Op::AltView),
+                        "a borrowing variant is filled by alt.view in its borrowed cases and alt.new in the others",
+                    )?;
+                }
                 // A boxed alternative holds its payload in a heap block, which a borrow cannot own.
                 want(
                     inst.op == Op::AltNew || !Boxing::default().alt(m, a),
                     "alt.view cannot borrow a boxed alternative",
+                )
+            }
+            Op::AltPlain => {
+                arity(1)?;
+                let (TyKind::Alt(x), Some(r)) = (m.types.kind(t(0)), res) else {
+                    return Err("alt.plain takes a borrowing variant".into());
+                };
+                let TyKind::Alt(y) = m.types.kind(r) else {
+                    return Err("alt.plain yields an alternative".into());
+                };
+                let (dx, dy) = (&m.alts[x.index()], &m.alts[y.index()]);
+                want(
+                    dx.borrowed != 0
+                        && dy.borrowed == 0
+                        && dx.name == dy.name
+                        && dx.cases == dy.cases,
+                    "alt.plain reads a borrowing variant as its ordinary alternative",
                 )
             }
             Op::AltTag => {
@@ -884,6 +917,10 @@ impl Verifier<'_> {
                     .and_then(|x| x.cases.get(c as usize))
                     .ok_or("bad case")?;
                 want(
+                    !m.alts[a.index()].borrows(c as usize),
+                    "alt.release of a borrowed case would free a payload another value owns",
+                )?;
+                want(
                     case.fields.len() <= 32
                         && matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a)
                         && res.is_none(),
@@ -901,6 +938,11 @@ impl Verifier<'_> {
                     .and_then(|x| x.cases.get(c as usize))
                     .ok_or("bad case")?;
                 let fty = case.fields.get(i as usize).ok_or("bad field index")?.1;
+                want(
+                    inst.op != Op::AltTake && inst.op != Op::AltUnbox
+                        || !m.alts[a.index()].borrows(c as usize),
+                    "a borrowed case cannot be taken: its payload belongs to another value",
+                )?;
                 want(
                     matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a) && res == Some(fty),
                     "alt.get yields the payload field type",
@@ -1225,9 +1267,30 @@ impl Verifier<'_> {
             }
             Op::Clone => {
                 arity(1)?;
+                // Copying a borrowing variant into itself would own what it must not drop: use alt.own.
                 want(
-                    res == Some(t(0)) && self.needs_drop(t(0)),
+                    res == Some(t(0))
+                        && self.needs_drop(t(0))
+                        && !matches!(m.types.kind(t(0)), TyKind::Alt(a) if m.alts[a.index()].borrowed != 0),
                     "copy duplicates a droppable value",
+                )
+            }
+            Op::AltOwn => {
+                arity(1)?;
+                let (TyKind::Alt(x), Some(r)) = (m.types.kind(t(0)), res) else {
+                    return Err("alt.own takes a borrowing variant".into());
+                };
+                let TyKind::Alt(y) = m.types.kind(r) else {
+                    return Err("alt.own yields an alternative".into());
+                };
+                let (dx, dy) = (&m.alts[x.index()], &m.alts[y.index()]);
+                want(
+                    dx.borrowed != 0
+                        && dy.borrowed == 0
+                        && dx.name == dy.name
+                        && dx.cases == dy.cases
+                        && self.needs_drop(r),
+                    "alt.own copies a borrowing variant into its ordinary alternative",
                 )
             }
             Op::MoveOut => {

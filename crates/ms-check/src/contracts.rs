@@ -356,7 +356,7 @@ impl Checker {
         let old = std::mem::replace(&mut self.scope, Scope::new(None));
         // Implementations inherit names and bounds from the nominal receiver declaration.
         let mut vars: Vec<Ty> = Vec::new();
-        let receiver_name = n(imp.receiver.name());
+        let receiver_name = n(imp.receiver.name(self.syms));
         if let Some(symbol) = self.sym(receiver_name)
             && symbol.decl.is_some()
             && symbol.kind == SymKind::Type

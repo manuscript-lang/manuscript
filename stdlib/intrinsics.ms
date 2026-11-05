@@ -32,7 +32,7 @@ interface StringOperations:
     // Omits a final extra empty item; empty text returns a fresh empty list.
     fn lines() List[String]
     // Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
-    // Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
+    // Invalid forms or negative budgets return EINVAL; exceeded budgets return EOVERFLOW.
     fn normalize(form: String, max_bytes: Int?) String!
     // Concatenates text without changing either operand.
     fn concat(other: String) String
@@ -42,7 +42,7 @@ interface StringOperations:
     fn ends_with(suffix: String) Bool
     // Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
     fn lower() String
-    // Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
+    // Repeats text count times; negative counts/budgets return EINVAL, exceeded UTF-8 budgets return EOVERFLOW.
     fn repeat(count: Int, max_bytes: Int?) String!
     // Replaces the first occurrence of old; text without a match is unchanged.
     // An empty old matches at the first scalar boundary, so new is inserted at the start.
