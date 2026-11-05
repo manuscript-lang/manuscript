@@ -281,4 +281,4 @@ All of these borrow the receiver while callbacks run; mutating or clearing that 
 
 ## Building data
 
-The [collection reference](../../standard-library/reference/collections.md) lists all methods and constructors. Builders construct with a sealed result. See [generics and bounds](generics.md) and [equality and hashing](equality-and-hashing.md) for key eligibility.
+The [collection reference](../../standard-library/reference/collections/collections.ms.md) lists all methods and constructors. Builders construct with a sealed result. See [generics and bounds](generics.md) and [equality and hashing](equality-and-hashing.md) for key eligibility.

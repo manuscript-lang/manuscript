@@ -15,6 +15,7 @@ fn member(name: &str, kind: &str, signature: &str, doc: &str) -> ApiMember {
         signature: signature.into(),
         doc: doc.into(),
         contract: String::new(),
+        legacy_contract: String::new(),
     }
 }
 
@@ -382,4 +383,65 @@ fn generated_pages_link_to_tracked_sources() {
     }
     assert!(pages > 0, "no generated page names its source");
     assert!(!standard_library_markdown(syms).contains("ms doc"));
+}
+
+#[test]
+fn inherent_methods_keep_public_names_and_real_contracts() {
+    let modules = standard_library(ms_syntax::Names::global());
+    for module in modules {
+        let text = render_module(module);
+        assert!(!text.contains("$methods"), "{}: {text}", module.path);
+        assert!(!text.contains("SourceMethods"), "{}: {text}", module.path);
+        assert!(!to_json(std::slice::from_ref(module)).contains("$methods"));
+    }
+    for (path, name, operation) in [
+        ("@std/os/metrics.ms", "Histogram", "record"),
+        ("@std/concurrency/promise.ms", "Promise", "wait"),
+        ("@std/io/io.ms", "ReadStream", "read"),
+    ] {
+        let module = modules.iter().find(|m| m.path == path).unwrap();
+        let declaration = module.declarations.iter().find(|d| d.name == name).unwrap();
+        assert!(
+            declaration
+                .members
+                .iter()
+                .any(|m| m.name == operation && m.contract.is_empty()),
+            "{declaration:?}"
+        );
+        assert!(render_module(module).contains(&format!("impl {name}")));
+        if name == "Promise" {
+            assert!(
+                render_site_module(module)
+                    .contains("api-legacy-anchor \"Promise.Promise$methods[T].wait\"")
+            );
+            assert!(declaration.implements.iter().any(|c| c == "Closeable"));
+        }
+    }
+}
+
+#[test]
+fn reference_navigation_follows_source_paths_and_preserves_old_routes() {
+    let syms = ms_syntax::Names::global();
+    let files = site_files(syms);
+    for module in standard_library(syms) {
+        let path = module.path.strip_prefix("@std/").unwrap_or(&module.path);
+        let stem = path.strip_suffix(".ms").unwrap_or(path);
+        let page = &files[&format!("documentation/standard-library/reference/{path}.md")];
+        let text = String::from_utf8_lossy(page);
+        let title = path.rsplit('/').next().unwrap();
+        assert!(text.contains(&format!("title = {title:?}")));
+        let old = ms_check::stdlib::module_stem(&module.path).replace('/', "-");
+        if old != stem {
+            assert!(text.contains(&format!(
+                "aliases = [\"/standard-library/reference/{old}/\"]"
+            )));
+        }
+        if let Some((parent, _)) = stem.rsplit_once('/') {
+            let index = String::from_utf8_lossy(
+                &files[&format!("documentation/standard-library/reference/{parent}/_index.md")],
+            );
+            assert!(index.contains(&format!("[{title}]({title}.md)")));
+        }
+    }
+    assert!(!files.contains_key("documentation/standard-library/reference/promise.md"));
 }

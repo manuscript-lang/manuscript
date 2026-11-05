@@ -15,10 +15,10 @@ impl OrderedBox[T] for Box[T]:
     fn precedes(other: T) Bool:
         return self.value.compare(other) < 0
 
-interface IntBox:
+interface IntBoxSourceMethods:
     fn number() Int
 
-impl IntBox for Box[Int]:
+impl IntBoxSourceMethods for Box[Int]:
     // Returns the stored integer.
     fn number() Int:
         return self.value

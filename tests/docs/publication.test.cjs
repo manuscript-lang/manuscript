@@ -72,31 +72,84 @@ test('published API downloads match the current generated reference', () => {
   }
 });
 
-test('published API routes contain exactly the current modules', () => {
-  const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
-  const expected = fs.readdirSync(source)
-    .filter(name => name.endsWith('.md') && name !== '_index.md')
-    .map(name => name.slice(0, -3)).sort();
-  const output = path.join(book, 'standard-library/reference');
-  const actual = fs.readdirSync(output, { withFileTypes: true })
-    .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
-  assert.deepEqual(actual, expected, 'Rebuild with --cleanDestinationDir to remove obsolete module pages');
-  for (const module of expected) {
-    assert.ok(fs.existsSync(path.join(output, module, 'index.html')), `Missing page for ${module}`);
-  }
+function referenceRoute(file, markdown) {
+  const urlPath = file.replaceAll('\\', '/');
+  return markdown.match(/url = "\/standard-library\/reference\/([^"]+)"/)?.[1]
+    || urlPath.replace(/_index\.md$/, '').replace(/(?:\.ms)?\.md$/, '/');
+}
+
+test('reference routes normalize Windows filenames without changing source paths', () => {
+  assert.equal(referenceRoute('concurrency\\promise.ms.md', ''), 'concurrency/promise/');
+  assert.equal(referenceRoute('concurrency/promise.ms.md', ''), 'concurrency/promise/');
+  assert.equal(referenceRoute('concurrency\\_index.md', 'url = "/standard-library/reference/tree/concurrency/"'), 'tree/concurrency/');
+  assert.equal(referenceRoute('crypto.ms.md', ''), 'crypto/');
+  assert.equal(referenceRoute('_index.md', ''), '');
 });
 
-test('rendered API signatures match the generated module pages', () => {
+function referencePages() {
   const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
-  const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
-  for (const file of fs.readdirSync(source).filter(name => name.endsWith('.md') && name !== '_index.md')) {
+  return fs.readdirSync(source, { recursive: true }).filter(file => file.endsWith('.md')).map(file => {
     const markdown = fs.readFileSync(path.join(source, file), 'utf8');
+    const route = referenceRoute(file, markdown);
+    const aliases = [...markdown.matchAll(/aliases = \["([^"\n]+)"\]/g)].map(match => match[1]);
+    return { file, markdown, route, aliases };
+  });
+}
+
+test('published API routes mirror source directories and preserve old routes', () => {
+  const output = path.join(book, 'standard-library/reference');
+  const pages = referencePages();
+  const expected = pages.flatMap(page => [path.join(page.route, 'index.html'), ...page.aliases.map(alias => path.join(alias.replace('/standard-library/reference/', ''), 'index.html'))]).sort();
+  const actual = fs.readdirSync(output, { recursive: true }).filter(file => file.endsWith('index.html')).sort();
+  assert.deepEqual(actual, expected, 'Remove obsolete pages and preserve compatibility redirects');
+  for (const page of pages) {
+    for (const alias of page.aliases) {
+      const html = fs.readFileSync(path.join(book, alias, 'index.html'), 'utf8');
+      assert.ok(html.includes(`/manuscript/standard-library/reference/${page.route}`));
+      let destination;
+      const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
+      assert.ok(script, 'Alias must preserve a method fragment');
+      vm.runInNewContext(script, { location: { search: '?from=old', hash: '#promisepromisemethodstwait', replace: value => { destination = value; } } });
+      const canonicalTag = [...html.matchAll(/<link\b[^>]*>/g)].map(match => match[0]).find(tag => attribute(tag, 'rel') === 'canonical');
+      const canonical = attribute(canonicalTag, 'href');
+      assert.equal(new URL(canonical).pathname, `/manuscript/standard-library/reference/${page.route}`);
+      assert.equal(destination, `${canonical}?from=old#promisepromisemethodstwait`);
+
+    }
+  }
+  const promise = fs.readFileSync(path.join(output, 'concurrency/promise/index.html'), 'utf8');
+  assert.ok(promise.includes('concurrency'));
+  assert.ok(promise.includes('promise.ms'));
+});
+
+test('rendered API signatures match source pages without synthetic contracts', () => {
+  const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
+  for (const { file, markdown, route } of referencePages()) {
     const expected = [...markdown.matchAll(/```manuscript\n([\s\S]*?)```/g)].map(match => match[1].trimEnd());
-    const html = fs.readFileSync(path.join(book, 'standard-library/reference', file.slice(0, -3), 'index.html'), 'utf8');
+    const html = fs.readFileSync(path.join(book, 'standard-library/reference', route, 'index.html'), 'utf8');
     const actual = [...html.matchAll(/<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/g)]
       .map(match => match[1].replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]).trimEnd());
     assert.deepEqual(actual, expected, `Rebuild the website: ${file} has stale API signatures`);
+    assert.ok(!html.includes('$methods') && !html.includes('SourceMethods'));
   }
+});
+
+test('legacy method fragments remain beside the public method headings', () => {
+  const page = fs.readFileSync(path.join(book, 'standard-library/reference/concurrency/promise/index.html'), 'utf8');
+  for (const [legacy, current] of [['promisepromisemethodstwait', 'promisewait'], ['cancelcancelmethodscancel', 'cancelcancel'], ['signalsignalmethodscancelled', 'signalcancelled']]) {
+    assert.ok(new RegExp(`<span id=["']?${legacy}["']?[^>]*></span>\\s*<h3 id=["']?${current}`).test(page), `${legacy} must target ${current}`);
+  }
+});
+
+test('Promise and stream guides teach separate topics', () => {
+  const read = topic => fs.readFileSync(path.join(book, 'core-language/concurrency', topic, 'index.html'), 'utf8');
+  const promises = read('promises');
+  const streams = read('streams');
+  assert.ok(!promises.includes('ReadStream') && !promises.includes('pipe[Update]'));
+  for (const text of ['PromiseOptions', 'wait_all', 'Cancellation']) assert.ok(promises.includes(text));
+  for (const text of ['ReadStream', 'Transform', 'Pipelines', 'Pipes', 'defers the read']) assert.ok(streams.includes(text));
+  assert.ok(promises.includes('/manuscript/core-language/concurrency/streams/'));
+  assert.ok(streams.includes('/manuscript/core-language/concurrency/promises/'));
 });
 
 test('published internal links and anchors resolve under the site prefix', () => {

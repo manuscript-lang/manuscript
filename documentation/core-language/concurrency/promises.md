@@ -26,7 +26,7 @@ export fn main() Int:
     return 0
 ```
 
-`promise(fn: ...)` starts work eagerly. Streams are pulled lazily: `ReadStream.read()` returns a promise that defers its read until a wait. A function may also wait internally and return a value directly, as `collect` does.
+`promise(fn: ...)` starts work eagerly. Each operation defines when its work begins. For incremental I/O and pipelines, see [Streams and pipes](streams.md).
 
 ## Waiting
 
@@ -64,15 +64,7 @@ Cancellation is delivered at the next wait. `cancel()` asks the work to stop the
 
 ## Reading and changing shared values
 
-A promise created with `promise(fn: ...)` reads what it captures, and nothing it captures can be changed from inside it. The exception is a resource (a pipe writer, a file) the promise captures at its last use: the promise owns it from then on, runs once, and may write to it if it is declared `var`, pass it on with `var`, or close it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values:
-
-```manuscript
-var updates = pipe[Update](capacity: 64)
-var input = updates.reader()
-var out = updates.writer()
-let owner = promise(fn: apply_all(var input, state))
-let worker = promise(fn: produce(var out))
-```
+A promise created with `promise(fn: ...)` reads what it captures, and nothing it captures can be changed from inside it. The exception is a resource (a pipe writer, a file) the promise captures at its last use: the promise owns it from then on, runs once, and may write to it if it is declared `var`, pass it on with `var`, or close it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values through a [pipe](streams.md#pipes).
 
 I/O operations copy their small arguments (paths, URLs, headers), so their promises borrow nothing.
 
