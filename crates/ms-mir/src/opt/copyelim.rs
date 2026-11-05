@@ -1198,7 +1198,6 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
 pub fn run_takes(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
-        changed |= take_dead_sources(m, fi);
         while take_record_fields(m, fi) {
             changed = true;
         }
@@ -1307,121 +1306,6 @@ fn take_record_fields(m: &mut Module, fi: usize) -> bool {
     release.op = Op::RecRelease;
     release.imm = Imm::RecMask(rec, mask);
     true
-}
-
-fn take_dead_sources(m: &mut Module, fi: usize) -> bool {
-    let f = &m.funcs[fi];
-    let tainted = view_tainted(m, fi);
-    let mut uses = vec![0u32; f.values.len()];
-    for b in &f.blocks {
-        for i in &b.insts {
-            for a in &i.args {
-                uses[a.index()] += 1;
-            }
-        }
-        b.term.for_each_use(|v| uses[v.index()] += 1);
-    }
-    let nd: Vec<bool> = f.values.iter().map(|v| m.needs_drop(*v)).collect();
-    let f = &mut m.funcs[fi];
-    let mut changed = false;
-    for b in &mut f.blocks {
-        let idx = BlockUses::new(&b.insts);
-        let mut remove: Vec<usize> = Vec::new();
-        let mut rewrites: Vec<(usize, Value, Op, Imm)> = Vec::new();
-        for (di, drop) in b.insts.iter().enumerate() {
-            if drop.op != Op::Drop {
-                continue;
-            }
-            let v = drop.args[0];
-            if tainted[v.index()] {
-                continue;
-            }
-            let mut gets: Vec<usize> = Vec::new();
-            let mut ok = true;
-            let mut shape = None;
-            for k in 0..di {
-                if !b.insts[k].args.contains(&v) {
-                    continue;
-                }
-                let Imm::AltField(a, c, _) = b.insts[k].imm else {
-                    ok = false;
-                    break;
-                };
-                if b.insts[k].op != Op::AltGet || shape.is_some_and(|s| s != (a, c)) {
-                    ok = false;
-                    break;
-                }
-                shape = Some((a, c));
-                gets.push(k);
-            }
-            let (true, Some((a, c)), Some(&first)) = (ok, shape, gets.first()) else {
-                continue;
-            };
-            if m.alts[a.index()].cases[c as usize].fields.len() > 32 {
-                continue;
-            }
-            // `v` is not used again in the block after its drop (it is owned, so not elsewhere).
-            if idx.after(v, di).next().is_some() {
-                continue;
-            }
-            // Between the first load and the drop there is nothing that can fault or unwind.
-            if b.insts[first..di]
-                .iter()
-                .any(|n| !matches!(n.op, Op::AltGet | Op::Clone))
-            {
-                continue;
-            }
-            let mut taken: Vec<(usize, usize, usize, u32)> = Vec::new();
-            for &gi in &gets {
-                let get = &b.insts[gi];
-                let (Some(p), Imm::AltField(_, _, fld)) = (get.res, get.imm) else {
-                    continue;
-                };
-                if uses[p.index()] != 1 || !nd[p.index()] {
-                    continue;
-                }
-                let Some(ci) = idx.first_after(&b.insts, p, gi, Op::Clone) else {
-                    continue;
-                };
-                if ci < di {
-                    taken.push((gi, ci, di, fld));
-                }
-            }
-            // A field taken once must not also be read through another `alt.get`.
-            taken.retain(|t| {
-                gets.iter()
-                    .filter(|&&g| matches!(b.insts[g].imm, Imm::AltField(_, _, x) if x == t.3))
-                    .count()
-                    == 1
-            });
-            if taken.len() < 2 {
-                continue;
-            }
-            let mut mask = 0u32;
-            for &(gi, ci, _, fld) in &taken {
-                mask |= 1 << fld;
-                remove.push(gi);
-                rewrites.push((ci, v, Op::AltTake, Imm::AltField(a, c, fld)));
-            }
-            rewrites.push((di, v, Op::AltRelease, Imm::AltMask(a, c, mask)));
-        }
-        if rewrites.is_empty() {
-            continue;
-        }
-        for (i, v, op, imm) in rewrites {
-            let n = &mut b.insts[i];
-            n.op = op;
-            n.imm = imm;
-            n.args = vec![v];
-        }
-        changed = true;
-        let mut at = 0;
-        b.insts.retain(|_| {
-            at += 1;
-            !remove.contains(&(at - 1))
-        });
-    }
-    changed
 }
 
 fn run_func(m: &mut Module, fi: usize) -> bool {

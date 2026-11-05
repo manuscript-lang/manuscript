@@ -99,7 +99,7 @@ pub fn check_in(
     if program.diagnostics.is_empty() {
         // Value semantics is part of the language: every program that type checks is also
         // checked for ownership and exclusivity.
-        let own = program.hir().ownership(syms);
+        let own = program.hir().ownership();
         program.close_moves = Rc::new(own.close_moves);
         program.resource_moves = Rc::new(own.resource_moves);
         program.moves = Rc::new(own.moves);

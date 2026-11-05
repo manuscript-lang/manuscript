@@ -251,26 +251,12 @@ impl Ownership {
     }
 }
 
-/// Standard-library source modules not yet ownership clean. Every other module, user or
-/// standard library, is checked and lowered under the same rules. Fix a module, then delete
-/// its entry.
-const UNVETTED: &[&str] = &[];
-
-/// Whether the ownership checker vets this module.
-pub fn is_vetted(syms: ms_syntax::Names, file: Name) -> bool {
-    !UNVETTED.contains(&syms.str(file))
-}
-
 impl Hir<'_> {
     /// Checks ownership rules and computes move, borrow and drop facts for
     /// every callable of the user's modules.
-    pub fn ownership(&self, syms: ms_syntax::Names) -> Ownership {
+    pub fn ownership(&self) -> Ownership {
         let classes = Classifier::new(self.program());
-        let modules: HashMap<Name, ModuleHir> = self
-            .modules()
-            .filter(|m| is_vetted(syms, m.data.file))
-            .map(|m| (m.data.file, m))
-            .collect();
+        let modules: HashMap<Name, ModuleHir> = self.modules().map(|m| (m.data.file, m)).collect();
         let callables: Vec<Callable> = self
             .callables()
             .into_iter()

@@ -915,12 +915,6 @@ impl<'a> FnLower<'a> {
 
     // -------------------------------------------------------------- locals
 
-    /// Whether the ownership checker vetted this function, so a lexical borrow cannot outlive a
-    /// change to its source. Standard-library modules not yet vetted are exempt.
-    pub fn ownership_checked(&self) -> bool {
-        ms_check::ownership::is_vetted(self.syms, self.hir.data.file)
-    }
-
     /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
     pub fn bind_borrow_of(&mut self, binding: &BindingRef, v: Value) {
         let ty = self.ty_of(v);
@@ -948,7 +942,6 @@ impl<'a> FnLower<'a> {
         // borrow (the checker rejects changing the container while it lives): no copy, no drop.
         // Standard-library source is not ownership checked, so it always copies.
         let borrowed = ty == MTy::STR
-            && self.ownership_checked()
             && !x.own
             && self.cx.shared(binding.uid)
             && !self.slotted.contains(&binding.uid)
@@ -962,7 +955,6 @@ impl<'a> FnLower<'a> {
         // is: a borrow-returning function can hand it back, and a reader skips the copy.
         let borrowed = borrowed
             || (self.cx.shared(binding.uid)
-                && self.ownership_checked()
                 && !x.own
                 && !binding.mutable
                 && !self.slotted.contains(&binding.uid)
@@ -993,7 +985,6 @@ impl<'a> FnLower<'a> {
         // A `let` of a borrow-returning call's result the checker holds as a borrow of the arguments.
         let borrowed = borrowed
             || (self.cx.shared(binding.uid)
-                && self.ownership_checked()
                 && !x.own
                 && !binding.mutable
                 && !self.slotted.contains(&binding.uid)

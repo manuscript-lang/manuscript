@@ -64,7 +64,7 @@ impl FnLower<'_> {
         }
         let t = self.ty_of(x.v);
         self.hold_declared = self.boundary_reads.contains(&x.v);
-        if !x.own && self.ownership_checked() {
+        if !x.own {
             // A borrowed part: the checker keeps its origin unchanged while payloads borrow it,
             // so it is read in place and a borrow-returning function can hand back those payloads.
             let var = self.b.declare_var(t, Mode::Borrow);

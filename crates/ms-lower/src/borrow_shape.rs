@@ -45,9 +45,6 @@ impl<'a> FnLower<'a> {
     /// ownership checker vetted, with a payload `opt.view` can hold (not a boxed optional).
     /// Emits nothing.
     pub(crate) fn borrowed_shape(&mut self, e: &Expr) -> Result<Option<Shape>, Error> {
-        if !self.ownership_checked() {
-            return Ok(None);
-        }
         let ExprKind::Call { callee, args } = &e.kind else {
             return Ok(None);
         };
