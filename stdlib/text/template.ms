@@ -797,7 +797,9 @@ impl Run:
     var fn emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
         let value = try self.eval(expr, self.strict)
         let text = to_text(value)
-        return self.write(if escape_output: escape(text) else: text)
+        if escape_output: return self.write(escape(text))
+
+        return self.write(text)
 
     var fn branch(
         branches: List[TemplateBranch],

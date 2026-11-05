@@ -1176,6 +1176,7 @@ impl<'a> FnLower<'a> {
             None => ct::fields(&t),
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        let mut held: Vec<Value> = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -1194,7 +1195,16 @@ impl<'a> FnLower<'a> {
             };
             // A later field may return early (`try`): hold this one as a temporary until then.
             let x = if later_try {
-                self.hold_temp(x)
+                if x.own && self.holds(self.ty_of(x.v)) {
+                    // An owned part waits as a temporary until the field takes it.
+                    held.push(x.v);
+                    Val {
+                        v: self.borrow(x),
+                        own: true,
+                    }
+                } else {
+                    self.hold_temp(x)
+                }
             } else {
                 let v = if matches!(self.b.m.types.kind(mt), TyKind::Alt(a)
                     if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result)
@@ -1220,6 +1230,11 @@ impl<'a> FnLower<'a> {
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
+                Some(x) if held.contains(&x.v) => {
+                    // Every `try` of the fields has passed: the field takes the temporary.
+                    self.unhold_temp(x.v);
+                    vals.push(x.v);
+                }
                 Some(x) => {
                     let v = if result_case {
                         self.owned_boundary(x)
