@@ -1,5 +1,5 @@
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 // The test replaces the one-element literal with thousands of runtime elements.
 export fn main() Int:

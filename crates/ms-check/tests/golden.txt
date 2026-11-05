@@ -190,7 +190,8 @@ export fn main() Int:
         return 1
 
     return 0
-import panic from "@std/faults.ms"
+resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	5	32	132	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
 
 test "arithmetic":
     if not (2 + 3 == 5):
@@ -829,7 +830,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 fn forward[T](item: T) T: item
 resolution	3	8	121	module does not export commands; did you mean 'Commands'?
-resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuInfo, CpuUsage, MemoryUsage, NativeSignals, NativeSubprocess, NetworkInterface, ProcessInfo, ResourceUsage, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -5118,7 +5119,7 @@ fn length(values: List[Int]) Int:
 fn os_name() String:
     return system().info().os
 resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
-resolution	2	8	65	unknown standard module @std/system.ms
+resolution	2	8	65	unknown standard module @std/system.ms; did you mean '@std/os/system.ms'?
 resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn label(value: Int) String:
     return "{value}"
 test "methods":
@@ -5669,7 +5670,9 @@ export fn main() Int:
     let _out = stdout().write(data: "out={args[0]}\n")
     let _err = stderr().write(data: "stderr\n")
     return 7
-type	5	31	165	unknown argument data; parameters of write: value
+resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	4	16	123	unknown binding arguments; add: import arguments from "@std/os/env.ms"
+type	5	31	165	unknown argument data; parameters of write: value
 type	5	25	159	missing argument value: String in call to write; add 'value: <String>'
 type	6	31	220	unknown argument data; parameters of write: value
 type	6	25	214	missing argument value: String in call to write; add 'value: <String>')
@@ -5841,7 +5844,9 @@ export fn main() Int:
     if args.length() > 0 and args[0] == "fail":
         return 23
     return 0
-resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, collects, flush, items, sink, write
+resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	5	16	124	unknown binding arguments; add: import arguments from "@std/os/env.ms"
+resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, collects, flush, items, sink, write
 type	9	31	328	unknown argument data; parameters of write: value
 type	9	25	322	missing argument value: String in call to write; add 'value: <String>'
 type	10	31	376	unknown argument data; parameters of write: value
@@ -5875,8 +5880,10 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	6	24	186	unknown argument data; parameters of write: value
+resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+type	6	24	186	unknown argument data; parameters of write: value
 type	6	18	180	missing argument value: String in call to write; add 'value: <String>'
+resolution	10	16	274	unknown binding arguments; add: import arguments from "@std/os/env.ms"
 type	21	50	566	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
 type	28	5	679	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
     return 1

@@ -1,4 +1,4 @@
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import monotonic from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
 import parse, encode_component, decode_component from "@std/net/net.ms"

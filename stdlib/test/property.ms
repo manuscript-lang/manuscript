@@ -8,7 +8,7 @@ import (
     wrapping_multiply,
     max_int
 ) from "@std/math/math.ms"
-import environment from "@std/os/process.ms"
+import environment from "@std/os/env.ms"
 import secure_int from "@std/os/random.ms"
 import expect_fault, fail from "@std/test/test.ms"
 import milliseconds, monotonic from "@std/os/time.ms"

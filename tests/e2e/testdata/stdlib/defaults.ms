@@ -1,7 +1,14 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import parse, stringify, CsvOptions from "@std/data/csv.ms"
 import base64_encode, base64_decode from "@std/data/encoding.ms"
-import (Commands, Subprocess, CommandOutput, run, Stdio) from "@std/os/process.ms"
+import (
+    Commands,
+    Subprocess,
+    CommandOutput,
+    RunOptions,
+    SpawnOptions,
+    run
+) from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
 
 fn forward[T](item: T) T: item
@@ -10,29 +17,15 @@ type Capture:
     tag: Bytes
 
 impl Commands for Capture:
-    fn run(
-        program: String,
-        arguments: List[String],
-        input: Bytes,
-        max_output_bytes: Int?,
-        timeout: Duration?,
-        cwd: String?,
-        env: Map[String, String]
-    ) CommandOutput!:
-        return ok(CommandOutput(0, input.clone(), "".to_bytes(), 0))
+    fn run(program: String, arguments: List[String], options: RunOptions) CommandOutput!:
+        return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
-        stdin: Stdio,
-        stdout: Stdio,
-        stderr: Stdio,
-        cwd: String?,
-        env: Map[String, String]
+        options: SpawnOptions
     ) Subprocess!:
         return error(Error("process: service unavailable", kind: "EAGAIN"))
-
-import Duration from "@std/os/time.ms"
 
 fn generic_run[T: Commands](service: T) Bytes!:
     return ok((try service.run("fake", [])).stdout)
@@ -44,22 +37,14 @@ impl Commands for Override:
     fn run(
         program: String,
         arguments: List[String],
-        input: Bytes = self.input,
-        max_output_bytes: Int?,
-        timeout: Duration?,
-        cwd: String?,
-        env: Map[String, String]
+        options: RunOptions = RunOptions(input: self.input.clone())
     ) CommandOutput!:
-        return ok(CommandOutput(0, input.clone(), "".to_bytes(), 0))
+        return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
-        stdin: Stdio,
-        stdout: Stdio,
-        stderr: Stdio,
-        cwd: String?,
-        env: Map[String, String]
+        options: SpawnOptions
     ) Subprocess!:
         return error(Error("process: service unavailable", kind: "EAGAIN"))
 
@@ -73,7 +58,9 @@ test "concrete implementation defaults and interface defaults stay distinct":
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
 
     let explicit = "explicit".to_bytes()
-    try expect_equal((try viewed("fake", [], explicit)).stdout, explicit)
+    try expect_equal(
+        (try viewed("fake", [], RunOptions(input: explicit.clone()))).stdout, explicit
+    )
 
 test "CSV defaults are fresh and explicit options retain their meaning":
     var first = CsvOptions()
@@ -157,15 +144,13 @@ test "Commands defaults cross concrete bound view and generic boundaries":
     try expect_equal((try generic_run(Capture("x".to_bytes()))).length(), 0)
 
     let input = Bytes([42])
-    let output = (try view.run("fake", [], input)).stdout
+    let output = (try view.run("fake", [], RunOptions(input: input.clone()))).stdout
     try expect_equal(output, input)
 
     let forwarded = forward(view.run)
     try expect_equal(
         (
-            try forwarded(
-                "fake", [], input, none, none, none, Map[String, String]()
-            )
+            try forwarded("fake", [], RunOptions(input: input.clone()))
         ).stdout.get(0),
         42
     )

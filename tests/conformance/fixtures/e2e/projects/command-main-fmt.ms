@@ -3,13 +3,14 @@
 // conform: origin=tests/e2e/testdata/projects/command/main.ms
 import expect_equal from "@std/test/test.ms"
 import stderr from "@std/io/io.ms"
-import run from "@std/os/process.ms"
+import RunOptions, run from "@std/os/process.ms"
 import stdout_bytes from "@std/io/io.ms"
 
 fn exercise() Int!:
     match run(
-        program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
-        max_output_bytes: 64, timeout: 1.seconds()
+        program: "/bin/printf",
+        arguments: ["hello"],
+        RunOptions(input: "".to_bytes(), max_output_bytes: 64, timeout: 1.seconds())
     ).wait():
         error(_):
             return ok(1)

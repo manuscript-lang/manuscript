@@ -13,7 +13,7 @@ Save as `number.ms`. `parse_int()` returns an `Int?`.
 
 <!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
@@ -44,7 +44,7 @@ Save as `json.ms`. `parse[String]` errors on malformed JSON or another type.
 
 <!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1},{"args":["42"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
@@ -77,7 +77,7 @@ Save as `config.ms`. Parse into a type directly and serialize it back. Use stric
 
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import parse, stringify from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 

@@ -1,7 +1,7 @@
 import Deque from "@std/collections/deque.ms"
 import Queue, PriorityQueue from "@std/collections/queue.ms"
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import monotonic from "@std/os/time.ms"
 import keep from "@std/test/bench.ms"
 

@@ -1,5 +1,5 @@
 import TomlValue, stringify from "@std/data/toml.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/os/time.ms"

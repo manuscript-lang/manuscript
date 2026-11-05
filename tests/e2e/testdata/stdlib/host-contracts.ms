@@ -1,6 +1,6 @@
 import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import open, temporary, write_file from "@std/os/fs.ms"
-import monotonic_time, uptime from "@std/os/process.ms"
+import monotonic_time, uptime from "@std/os/system.ms"
 import nanoseconds from "@std/os/time.ms"
 import compress, decompress from "@std/io/archive.ms"
 import pack, unpack, ArchiveEntry from "@std/io/archive.ms"

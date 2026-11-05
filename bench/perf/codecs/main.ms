@@ -2,7 +2,7 @@ import parse from "@std/data/json.ms"
 import base64_encode from "@std/data/encoding.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/os/time.ms"
 
