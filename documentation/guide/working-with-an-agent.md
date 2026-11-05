@@ -41,7 +41,9 @@ ms diagram ms.toml --format html -o code-map.html
 git diff main | ms review ms.toml --diff -
 ```
 
-The code map is one offline file with source, types, calls and ownership side by side. `ms review --diff` compares the checked program before and after the diff and ranks what to look at first: changed contracts, error flow and resource scopes. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map).
+The code map is one offline file with source, types, calls and ownership side by side. `ms review --diff` compares the checked program before and after the diff and ranks what to look at first: changed contracts, error flow and resource scopes. ![The Calls view of the code map, showing run calling run_command, with the three changed declarations listed in the sidebar](/images/code-map-calls.png "The Calls view for a changed program. Start from the outlined declarations and follow callers and callees.")
+
+See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map).
 
 ## Finding and fixing problems on purpose
 

@@ -194,6 +194,36 @@ test('published internal links and anchors resolve under the site prefix', () =>
   assert.deepEqual(failures, []);
 });
 
+test('documentation screenshots resolve, carry alt text, and switch with the theme', () => {
+  const prefix = '/manuscript/';
+  const failures = [];
+  let figures = 0;
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.name.endsWith('.html')) {
+        const text = fs.readFileSync(file, 'utf8');
+        for (const figure of text.matchAll(/<figure\b[^>]*docs-shot[^>]*>([\s\S]*?)<\/figure>/g)) {
+          figures += 1;
+          const images = [...figure[1].matchAll(/<img\b[^>]*>/g)].map(match => match[0]);
+          const where = path.relative(book, file);
+          if (!images.length) failures.push(`${where}: figure has no image`);
+          for (const image of images) {
+            const src = attribute(image, 'src');
+            if (!attribute(image, 'alt')) failures.push(`${where}: ${src} has no alt text`);
+            const target = path.join(book, decodeURIComponent((src || '').replace(prefix, '')));
+            if (!src || !fs.existsSync(target)) failures.push(`${where}: ${src} is missing from the book`);
+          }
+        }
+      }
+    }
+  }
+  visit(book);
+  assert.deepEqual(failures, []);
+  assert.ok(figures > 0, 'Show at least one screenshot');
+});
+
 test('previous and next links follow the rendered sidebar reading order', () => {
   const home = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
   const canonical = [...home.matchAll(/<link\b[^>]*>/g)]

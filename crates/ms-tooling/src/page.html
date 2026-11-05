@@ -181,7 +181,7 @@ if(R.t){const a=R.t[1];for(let i=0;i<a.length;i+=5){const f=HF[a[i]]||(HF[a[i]]=
 const base=f=>f.split('/').pop();
 const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
 const fx=e=>e.effects.filter(x=>x!=='unknown');
-const byFile={};for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
+const byFile=Object.create(null);for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
 function sigOf(e){
   if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='record'?'type':e.kind==='alternative'?'enum':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
   const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': <span class="'+(s.var?'var':'brw')+'">'+esc(s.ty)+'</span>').join(', ');
@@ -212,9 +212,9 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
 const STAR=new Set(store.get('stars',[]).filter(k=>E[k]));
 const KF={fn:true,type:true,check:true};
 const kindOK=e=>isCheck(e)?KF.check:isType(e)?KF.type:isFn(e)?KF.fn:false;
-const TREE={dirs:{},files:[]};
+const TREE={dirs:Object.create(null),files:[]};
 for(const m of D.modules){let n=TREE,p='';const parts=m.file.split('/');
-  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:{},files:[]})}
+  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:Object.create(null),files:[]})}
   n.files.push(m.file)}
 const OPEN=new Set(['#lm']),CAP=150;let revealed=null;
 for(const d of Object.values(TREE.dirs))OPEN.add(d.path);
@@ -351,7 +351,7 @@ const fcls=x=>x.name==='main'?'entry':fx(x).length?'effect':'pure';
 /* overview: the current folder's modules and subfolders, or one module's functions; capped and ranked */
 function overview(){
   normScope();
-  const open=S.mod,scope=S.scope,agg={},cnt={},weight={};
+  const open=S.mod,scope=S.scope,agg=Object.create(null),cnt=Object.create(null),weight=Object.create(null);
   const endpoint=e=>{
     if(open&&e.file===open)return {id:e.key,kind:'fn'};
     if(!e.file.startsWith(scope))return null;
