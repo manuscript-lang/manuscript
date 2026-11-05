@@ -47,19 +47,20 @@ impl Table:
     var fn add(row: List[String]) Unit!:
         let count = self.columns.length()
         if row.length() != count:
-            return error(table_invalid("row has {row.length()} cells, expected {count}"))
+            return error(
+                table_invalid(
+                    "row has {row.length()} cells, expected {count}"
+                )
+            )
 
         var measured = List[Int]()
         for cell in row:
             measured.append(try cell.display_width())
-
         if self.widths.is_empty():
             for _unused in 0..count:
                 self.widths.append(0)
-
         for col in 0..count:
             self.widths[col] = max(self.widths[col], measured[col])
-
         self.cell_widths.append(measured)
         self.rows.append(row)
         return ok(unit)
@@ -78,11 +79,11 @@ impl Table:
             var last = row.length() - 1
             while last >= 0 and row[last].is_empty():
                 last -= 1
-
             if last < 0:
                 continue
 
             out.append(lead)
+
             for col in 0..last + 1:
                 if col > 0:
                     out.append(gap)

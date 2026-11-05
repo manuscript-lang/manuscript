@@ -5,7 +5,6 @@ fn build(columns: List[Align], rows: List[List[String]]) Table!:
     var table = Table(columns: columns)
     for row in rows:
         try table.add(row.clone())
-
     return ok(table)
 
 test "table aligns columns with no added trailing spaces or final LF":
@@ -18,7 +17,9 @@ test "table aligns columns with no added trailing spaces or final LF":
         try tight.add(row.clone())
     try expect_equal(tight.render(), "name   count\ntea    2\ncoffee 30")
 
-    let centered = try build([Align.Center, Align.Center], [["abc", "abcd"], ["x", "y"]])
+    let centered = try build(
+        [Align.Center, Align.Center], [["abc", "abcd"], ["x", "y"]]
+    )
     try expect_equal(centered.render(), "abc  abcd\n x    y")
 
 test "table keeps combining wide and emoji sequences intact":
@@ -38,16 +39,22 @@ test "table indents lines and omits trailing empty cells":
 test "table renders empty tables and zero column rows":
     let empty = Table(columns: [Align.Left])
     try expect_equal(empty.render(), "")
+
     var none = Table(columns: [])
     try none.add([])
     try none.add([])
     try expect_equal(none.render(), "\n")
 
 test "table add rejects wrong cell counts and controls":
-    let malformed: Unit! = error(Error("table: row has 1 cells, expected 2", kind: "EBADMSG"))
+    let malformed: Unit! = error(
+        Error("table: row has 1 cells, expected 2", kind: "EBADMSG")
+    )
     var table = Table(columns: [Align.Left, Align.Right])
     try expect_equal(table.add(["a"]), malformed)
-    for cell in ["tab\there", "line\nbreak", "return\r", "\u{0}", "\u{1b}[31mred", "\u{85}", "\u{2028}", "\u{2029}"]:
+    for cell in [
+        "tab\there", "line\nbreak", "return\r", "\u{0}", "\u{1b}[31mred", "\u{85}",
+        "\u{2028}", "\u{2029}"
+    ]:
         try expect_equal(table.add([cell.clone(), "x"]).is_error(), true)
     try expect_equal(table.render(), "")
 

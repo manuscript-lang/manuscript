@@ -665,12 +665,16 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 
     if not node.children.is_empty():
         var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
-        for child in node.children: help_row(var commands, [child.name.clone(), child.about.clone()])
+        for child in node.children: help_row(
+            var commands, [child.name.clone(), child.about.clone()]
+        )
         out += "\nCommands:\n" + commands.render() + "\n"
 
     if not node.args.is_empty():
         var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
-        for arg in node.args: help_row(var arguments, [arg.name.clone(), arg.help.clone()])
+        for arg in node.args: help_row(
+            var arguments, [arg.name.clone(), arg.help.clone()]
+        )
         out += "\nArguments:\n" + arguments.render() + "\n"
 
     out += flag_section("Flags", node.flags.concat([help_flag()]))
@@ -704,5 +708,4 @@ fn help_row(var table: Table, row: List[String]) Unit:
     var cells: List[String] = []
     for cell in row:
         cells.append(cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
-
     if table.add(cells).is_error(): return

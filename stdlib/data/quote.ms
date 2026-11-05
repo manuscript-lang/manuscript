@@ -10,7 +10,13 @@ export fn quote_text(text: String, escape_c1: Bool) String:
     var clean = true
 
     for code in text.scalar_values():
-        if code < 32 or code == 34 or code == 92 or code == 127 or (escape_c1 and code >= 128 and code <= 159):
+        if (
+            code < 32
+            or code == 34
+            or code == 92
+            or code == 127
+            or (escape_c1 and code >= 128 and code <= 159)
+        ):
             clean = false
             break
 
