@@ -1,5 +1,13 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, WriteStream, Transform, through, stream, Source from "@std/io/io.ms"
+import (
+    ReadStream,
+    WriteStream,
+    Transform,
+    through,
+    stream,
+    source_of,
+    Source
+) from "@std/io/io.ms"
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator.
 
@@ -132,6 +140,52 @@ impl Transform[T, U] for Mapper[T, U]:
 // A stream of `f` applied to each item of `input`; closing it closes `input`.
 export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]:
     return through[T, U](input, Mapper[T, U](f))
+
+type Filterer[T: Clonable]:
+    keep: fn(T) Bool
+
+impl Transform[T, T] for Filterer[T]:
+    var fn step(value: T, var out: WriteStream[T]) Unit!:
+        if self.keep(value):
+            return out.write(value)
+
+        return ok(unit)
+
+    var fn finish(var out: WriteStream[T]) Unit!:
+        return ok(unit)
+
+// A stream of the items of `input` for which `keep` is true, in order; closing it closes `input`. Kept items are cloned, so `T` is `Clonable`.
+export fn filter[T: Clonable](input: ReadStream[T], keep: fn(T) Bool) ReadStream[T]:
+    return through[T, T](input, Filterer[T](keep))
+
+// The first `left` items of another source; it never pulls past them.
+type Taker[T]:
+    up: Source[T]
+    left: Int
+
+impl Source[T] for Taker[T]:
+    var fn next() T?!:
+        if self.left <= 0:
+            return ok(none)
+
+        self.left -= 1
+        return self.up.next()
+
+    var fn close() Unit!:
+        return self.up.close()
+
+// A stream of at most the first `count` items of `input`, then the end: later items are never read, so `take` can
+// end an endless stream. A `count` of 0 or less is an empty stream. Closing it closes `input`.
+export fn take[T](input: ReadStream[T], count: Int) ReadStream[T]:
+    return stream[T](Taker[T](source_of[T](input), count))
+
+// Combines the items of `input` in order into one value: `f` takes the value so far and the next item, starting from `start`.
+export fn fold[T, S](input: ReadStream[T], start: S, f: fn(S, T) S) S!:
+    var source = input
+    var total = start
+    for item in source.wait():
+        total = f(total, try item)
+    return ok(total)
 
 // Every item of `input`, in order; more than `max_items` items is an error.
 export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
