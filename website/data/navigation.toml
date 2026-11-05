@@ -7,6 +7,10 @@ label = "Build with Manuscript"
 paths = ["learn/common-tasks", "developer-tooling"]
 
 [[groups]]
+label = "Coming from another language"
+paths = ["coming-from"]
+
+[[groups]]
 label = "Reference"
 paths = ["core-language", "standard-library/reference", "glossary"]
 
