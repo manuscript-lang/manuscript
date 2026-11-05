@@ -200,7 +200,10 @@ impl Reader:
         var attributes = List[XmlAttribute]()
 
         while true:
+            let before = self.at
             self.skip_space()
+
+            let separated = self.at > before
 
             if self.looking_at("/>"):
                 self.at += 2
@@ -209,6 +212,9 @@ impl Reader:
             if self.looking_at(">"):
                 self.at += 1
                 break
+
+            // Attributes are separated by whitespace, so `a="1"b="2"` is malformed.
+            if not separated: return error(Error("XML: invalid data", kind: "EBADMSG"))
 
             let attribute_name = try self.name()
             self.skip_space()
@@ -312,9 +318,9 @@ fn decode(text: String) String!:
         else if entity == "quot": out.append("\"")
         else if entity == "apos": out.append("'")
         else if entity.starts_with("#x"):
-            out.append(try scalar(parse_int_radix(entity.drop(2), 16)))
+            out.append(try scalar(digits(entity.drop(2), 16)))
         else if entity.starts_with("#"):
-            out.append(try scalar(parse_int_radix(entity.drop(1), 10)))
+            out.append(try scalar(digits(entity.drop(1), 10)))
         else:
             return error(Error("XML: invalid data", kind: "EBADMSG"))
 
@@ -322,8 +328,26 @@ fn decode(text: String) String!:
 
     return ok(out.build())
 
+// The value of a character reference's digits, or none for an empty run, a sign, or any non-digit.
+fn digits(text: String, radix: Int) Int?:
+    if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
+
+    return parse_int_radix(text, radix)
+
+// Whether a code point is in XML 1.0's Char production, which excludes NUL, most controls, and U+FFFE and U+FFFF.
+fn is_xml_char(code: Int) Bool:
+    if code == 9 or code == 10 or code == 13: return true
+
+    return (
+        (code >= 32 and code <= 55295)
+        or (code >= 57344 and code <= 65533)
+        or (code >= 65536 and code <= 1114111)
+    )
+
 fn scalar(value: Int?) String!:
-    if not value.is_some(): return error(Error("XML: invalid data", kind: "EBADMSG"))
+    if not value.is_some() or not is_xml_char(value.get(0)): return error(
+        Error("XML: invalid data", kind: "EBADMSG")
+    )
 
     let text = from_scalars([value.get(0)])
     if text.is_error(): return error(Error("XML: invalid data", kind: "EBADMSG"))

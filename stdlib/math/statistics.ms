@@ -130,7 +130,18 @@ fn percentile_sorted(ordered: List[Float], percent: Float) Float:
     if below + 1 >= ordered.length():
         return ordered[ordered.length() - 1]
 
-    return ordered[below] + (ordered[below + 1] - ordered[below]) * fraction
+    let low = ordered[below]
+    let high = ordered[below + 1]
+
+    // An exact position or equal neighbors return the neighbor; interpolating would turn `inf - inf` or `inf * 0` into NaN.
+    if fraction == 0.0 or low == high:
+        return low
+
+    // A lone infinite neighbor stays the result of the weighted blend.
+    if not low.is_finite() and high != -low:
+        return low
+
+    return low + (high - low) * fraction
 
 /*
 Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.

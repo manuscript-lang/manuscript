@@ -54,6 +54,14 @@ test "percentile and quantiles interpolate":
     try expect_equal(quantiles(data, 4), [2.0, 3.0, 4.0])
     try expect_equal(quantiles(List[Float](), 4), List[Float]())
 
+test "percentile keeps infinite neighbors from becoming NaN":
+    let inf = 1.0 / 0.0
+    try expect_equal(try expect_some(percentile([1.0, inf], 0.0)), 1.0)
+    try expect_equal(try expect_some(percentile([inf, inf], 50.0)), inf)
+    try expect_equal(try expect_some(percentile([1.0, inf, inf], 50.0)), inf)
+    try expect_equal(try expect_some(percentile([-inf, 5.0], 40.0)), -inf)
+    try expect_equal(quantiles([1.0, inf], 2), [inf])
+
 test "bin_counts bins values":
     let h = try expect_some(bin_counts([1.0, 2.0, 2.0, 3.0], 2))
     try expect_equal(h.counts, [1, 3])

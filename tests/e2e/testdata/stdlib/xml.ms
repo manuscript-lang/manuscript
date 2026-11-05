@@ -39,6 +39,16 @@ test "malformed documents are errors":
     ]:
         try expect_true(parse(bad).is_error())
 
+test "invalid character references and unseparated attributes are errors":
+    for bad in [
+        "<a>&#0;</a>", "<a>&#8;</a>", "<a>&#xFFFE;</a>", "<a>&#xFFFF;</a>",
+        "<a>&#+65;</a>", "<a>&#x+41;</a>", "<a b=\"1\"c=\"2\"/>"
+    ]:
+        try expect_true(parse(bad).is_error())
+
+    let ok = parse("<a>&#9;&#xA;&#x10FFFF;</a>").get()
+    try expect_equal(ok.text(), "\t\n\u{10FFFF}")
+
 test "depth limit":
     try expect_true(parse("<a><b><c/></b></a>", max_depth: 2).is_error())
     try expect_true(parse("<a/>", max_depth: 0).is_error())
