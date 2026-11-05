@@ -24,7 +24,7 @@ Output:
 Hello, Manuscript!
 ```
 
-`main` returns the exit status. `print` is in the prelude: it writes any value as text followed by a newline and cannot fail. Use `stdout()` from `@std/io/io.ms` when you need to handle write errors or write bytes.
+`main` returns the exit status. `print` is in the prelude: it writes a value as text followed by a newline and returns `Unit`. Use `stdout()` from `@std/io/io.ms` for text without an added newline, or `stdout_bytes()` for bytes.
 
 Complete examples below use `test` blocks: save as `example.ms` and run `ms test example.ms`. `try expect_equal(actual, expected)` fails the test on a mismatch ([testing](testing.md)).
 

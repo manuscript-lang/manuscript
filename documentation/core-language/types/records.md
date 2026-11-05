@@ -93,28 +93,41 @@ Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files,
 
 ## Moving a field out
 
-A field of an owned record or parameter moves out at the field's last use, so extracting a large field needs no `.clone()`:
+Move a field into a new owner when you no longer need that field in the original record. This avoids cloning a large value just to store it somewhere else.
 
+Save as `batches.ms` and run `ms run batches.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"scores\n[3, 4]\n"} -->
 ```manuscript
 type Report:
     title: String
     rows: List[Int]
 
-fn rows_of(r: Report) List[Int]:
-    return r.rows
-
-fn count_both(r: Report) Int:
-    let n = rows_of_copy(r.rows)
-    return n + r.title.length()
-
-fn rows_of_copy(rows: List[Int]) Int:
-    return rows.length()
+export fn main() Int:
+    let report = Report("scores", [3, 4])
+    let batches = [report.rows]
+    print(report.title)
+    print(batches[0])
+    return 0
 ```
 
-- Each function above takes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
-- It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
-- `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
-- A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).
+```text
+scores
+[3, 4]
+```
+
+- The outer list owns `report.rows` after construction. The sibling field `report.title` remains readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected; use `report.rows.clone()` at construction if both owners need the rows.
+- Field moves apply to owned fields (strings, lists, records, resources) of a `let` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and records that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
+- A parameter whose field is moved into another owner is consumed: its caller gives up the record. Passing `.clone()` keeps an independent caller-owned record.
+
+Reading a field is different from moving it. `let rows = report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
+
+```manuscript
+fn rows_of(report: Report) List[Int]:
+    return report.rows
+```
+
+Calling `rows_of(report)` leaves `report.rows` readable; the record must stay available while the returned borrow is used. See [borrow-returning functions](references.md#borrowing).
 
 A resource field moves without a copy, and the new owner closes it. The record closes only the fields that were not moved, last declared first, on every way out of the function:
 

@@ -452,7 +452,7 @@ impl Sink[T] for JsonLines[T]:
 /*
 Writes values of type `T` to a byte stream as JSON Lines: each value is encoded as `stringify` does, on a
 single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
-`EOVERFLOW`. Writes never wait; wait on the promise from `flush()` to drain `output`. Closing closes `output`.
+`EOVERFLOW`. Writes delegate to `output`'s sink, which may wait. `flush().wait()` uses its completion condition; a pipe may retain up to capacity unread values. Closing closes `output`.
 */
 export fn json_writer[T: Data](
     output: WriteStream[Bytes],

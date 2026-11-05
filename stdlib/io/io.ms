@@ -272,7 +272,7 @@ export interface Sink[T]:
     var fn drain() Promise[Unit]
     // Reports the sink's pending items or bytes.
     fn buffered() Int
-    // Releases what the sink owns; the stream calls it once when closing. The sink defines how buffered work finishes and may wait.
+    // Called when the stream closes to release what the sink owns. The sink defines how buffered work finishes and may wait.
     var fn close() Unit!
 
 // Send values with `write`, then use `flush().wait()` to wait for the destination's flush condition.

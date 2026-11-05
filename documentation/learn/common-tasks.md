@@ -27,7 +27,7 @@ ms run hello.ms
 Hello, Manuscript!
 ```
 
-`print` converts any value to text and returns `Unit`. For recoverable I/O errors, use `stdout().write(...)` and `stdout().flush().wait()` as in the next recipe. `try` propagates those errors; `main` returns 1 on failure. To show an error, use `cause.message` ([the Error record](../core-language/errors/results.md#the-error-record)).
+`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush().wait()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
 ## Read command-line arguments
 
