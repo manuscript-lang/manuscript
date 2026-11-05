@@ -13,7 +13,7 @@ explains the choices in detail.
 
 The examples build on familiar tasks such as preparing a message, totaling an order,
 and publishing a page. Each complete program can replace `example.ms`; run it with
-`ms run example.ms`. Examples marked as fragments illustrate part of a larger file.
+`ms run example.ms`. The modules example uses two files; save each with the name shown.
 Indentation defines blocks, four spaces indent a body, and `//` starts a comment.
 
 ## Print your first line
