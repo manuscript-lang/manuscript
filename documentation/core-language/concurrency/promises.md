@@ -60,12 +60,12 @@ export fn main() Int:
     let pending = read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
-    let contents = pending.wait()
-    if contents.is_error():
-        print(contents.err().message)
-        return 1
-    print(contents.get().length())
-    return 0
+    let outcome = pending.wait()
+    if let contents = outcome:
+        print(contents.length())
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 For a `config.json` containing exactly `{}` (two bytes), the program prints:
@@ -115,14 +115,29 @@ Cancellation is delivered at the next wait. `cancel()` asks the work to stop the
 
 `cancel_switch()` makes a `Cancel` that stops many promises at once. Give each promise `PromiseOptions(cancel: stop.signal())`; `stop.cancel()` then cancels all of them, now or later, and `wait` reports `"ECANCELED"`. A signal is a copy you can hand around, and `signal.cancelled()` tells a loop that never waits to stop. Dropping the `Cancel` cancels nothing. Applying another signal with `.with` replaces the previous one; `cancel: none` leaves it unchanged.
 
-For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
+For several file reads, give each promise the same signal. Save as `cancel-reads.ms` and run `ms run cancel-reads.ms` beside the same two-byte `config.json`:
 
+<!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"}} -->
 ```manuscript
-let stop = cancel_switch()
-let options = PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
-let reads = paths.map(fn path: read_file(path).with(options: options.clone()))
-stop.cancel()
+import cancel_switch, PromiseOptions from "@std/concurrency/promise.ms"
+import read_file from "@std/os/fs.ms"
+
+export fn main() Int:
+    let paths = ["config.json"]
+    let stop = cancel_switch()
+    let options = PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
+    let reads = paths.map(fn path: read_file(path).with(options: options.clone()))
+    stop.cancel()
+    for read in reads:
+        let outcome = read.wait()
+        if let contents = outcome:
+            print("Completed before cancellation: {contents.length()} bytes")
+        else:
+            print(outcome.err().message)
+    return 0
 ```
+
+The output is either `Completed before cancellation: 2 bytes` or an error message such as `promise: cancelled`; the schedule is not deterministic. A read may finish before the switch fires. Inspect its result rather than assuming every operation was cancelled. Waiting observes the outcome and joins the work.
 
 ## Threads
 

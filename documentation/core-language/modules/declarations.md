@@ -27,8 +27,9 @@ Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted 
 
 ## Constants
 
-A module-level `let` names a value usable throughout the module; add `export` to share it.
+A module-level `let` names a value usable throughout the module; add `export` to share it. Save as `limits.ms` and run `ms run limits.ms`; it prints `100`, then `true`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"100\ntrue\n"} -->
 ```manuscript
 export let MAX_ITEMS = 100
 let NAMES: List[String] = ["Ada", "Grace"]
@@ -36,17 +37,28 @@ let LIMIT = MAX_ITEMS * 2
 
 fn is_full(count: Int) Bool:
     return count >= LIMIT
+
+export fn main() Int:
+    print(MAX_ITEMS)
+    print(is_full(200))
+    return 0
 ```
 
 The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant interpolations, operators, list and map literals, payloadless cases (`none`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
 
-Group related constants with `let (`, one `name = value` entry per line, indented four spaces; the closing `)` aligns with `let`. Each entry is an independent constant, and `export let (` exports all of them.
+Group related constants with `let (`, one `name = value` entry per line, indented four spaces; the closing `)` aligns with `let`. Each entry is an independent constant, and `export let (` exports all of them. Save as `bounds.ms` and run `ms run bounds.ms`; it prints `1`, then `10`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"1\n10\n"} -->
 ```manuscript
 let (
     LOW = 1
     HIGH: Int = LOW + 9
 )
+
+export fn main() Int:
+    print(LOW)
+    print(HIGH)
+    return 0
 ```
 
 A constant has no storage or initialization order; each use evaluates the initializer in place, so a list constant is always fresh. Locals and parameters shadow it. Constants cannot be assigned, and `main` must be a function.
@@ -55,23 +67,31 @@ A constant has no storage or initialization order; each use evaluates the initia
 
 `src/domain/customers.ms` exports a nominal identifier type:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type CustomerId:
     value: String
 ```
 
-`src/main.ms` imports it:
+`src/main.ms` imports it and constructs a value. Save both files at the shown paths, then run `ms run src/main.ms`; it prints `C-100`:
 
+<!-- manuscript-example: {"mode":"run","build_files":{"domain/customers.ms":"export type CustomerId:\n    value: String"},"stdout":"C-100\n"} -->
 ```manuscript
 import CustomerId from "./domain/customers.ms"
+
+export fn main() Int:
+    let customer = CustomerId("C-100")
+    print(customer.value)
+    return 0
 ```
 
 Relative imports resolve from the importing file's directory. Paths include `.ms` and name a file exactly; there is no directory or extension lookup.
 
 ## Public signature closure
 
-An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature, transitively. Imported exported types may appear without being re-exported. Generic parameters are not private declarations.
+An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature, transitively. Save the negative example below as `private.ms`; `ms check private.ms` rejects it with `public signature exposes private type PrivateToken`. Imported exported types may appear without being re-exported. Generic parameters are not private declarations.
 
+<!-- manuscript-example: {"mode":"reject","stderr_contains":"public signature exposes private type PrivateToken"} -->
 ```manuscript
 type PrivateToken:
     value: String
@@ -87,6 +107,9 @@ An `impl` in a source type's defining module is available wherever the type is u
 
 ## Standard-library imports
 
+This import declaration selects `Queue`; a module containing only this declaration is valid and can be checked with `ms check imports.ms`:
+
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 ```
@@ -95,14 +118,26 @@ import Queue from "@std/collections/queue.ms"
 
 ## Optional aliases
 
-A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` to `./src/domain/customers.ms`, either import selects the same type:
+A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` to `./src/domain/customers.ms`, either program below selects the same type. Save one version as `main.ms` at the project root and run `ms run main.ms`; both print `C-100`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"C-100\n","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String","ms.toml":"[project]\nname = \"alias-example\"\nsource = \".\"\nentry = \"example.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@customers\" = \"./src/domain/customers.ms\"\n"}} -->
 ```manuscript
 import CustomerId from "@domain/customers.ms"
+
+export fn main() Int:
+    let customer = CustomerId("C-100")
+    print(customer.value)
+    return 0
 ```
 
+<!-- manuscript-example: {"mode":"run","stdout":"C-100\n","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String","ms.toml":"[project]\nname = \"alias-example\"\nsource = \".\"\nentry = \"example.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@customers\" = \"./src/domain/customers.ms\"\n"}} -->
 ```manuscript
 import CustomerId from "@customers"
+
+export fn main() Int:
+    let customer = CustomerId("C-100")
+    print(customer.value)
+    return 0
 ```
 
 Aliases change only how a path is written; module identity follows the resolved file.

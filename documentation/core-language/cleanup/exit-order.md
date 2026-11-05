@@ -44,9 +44,11 @@ fn work() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    if work().is_error():
-        return 1
-    return 0
+    let outcome = work()
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 ```text

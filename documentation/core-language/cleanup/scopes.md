@@ -7,9 +7,9 @@ weight = 1
 
 A `let` or `var` that holds a resource closes it when its scope ends. There is no extra syntax: bind the value and use it.
 
-This function reads a file and closes its handle on every exit:
+This program reads a chunk from a file and closes its handle on every exit. Save as `read-head.ms`, create `notes.txt` with `first` and `second` on separate lines with a final newline, and run `ms run read-head.ms`. It prints `Read 13 bytes`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"first\nsecond\n"},"stdout":"Read 13 bytes\n"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -17,9 +17,22 @@ import Bytes from "@std/bytes.ms"
 fn read_head(path: String) Bytes?!:
     let file = try open(path, flags: "r", mode: 0)
     return file.read(max_bytes: 4096)
+
+export fn main() Int:
+    let outcome = read_head("notes.txt")
+    if let head = outcome:
+        if let bytes = head:
+            print("Read {bytes.length()} bytes")
+        else:
+            print("End of file")
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 `open` returns an owned `FileHandle`; `read` returns bytes or `none` at end of file, with an error on failure. The function returns the data, not the handle. Once the read's return value is ready, the scope closes the file before delivering that value to the caller. If opening fails, `try` returns the error before a file binding exists.
+
+`FileHandle.read` is declared as an ordinary `fn`, so a `let` handle can read even though the host's file position advances. Explicit `close` is a `var fn` and needs a `var` binding. Follow the API's declared signature rather than inferring a mutation requirement from the operation's name.
 
 ## What happens, step by step
 
@@ -41,13 +54,27 @@ A concrete type opts in through an implementation of the standard `Closeable` in
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a moving parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; propagate the close failure with `try`, or inspect the Result if the caller can recover. This fragment belongs in a function returning `T!`, with `path` and `slow_work` supplied by the application:
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; propagate the close failure with `try`, or inspect the Result if the caller can recover. Save this complete program as `read-notes.ms`, create `notes.txt` containing `first` and `second` on separate lines with a final newline, and run `ms run read-notes.ms`:
 
+<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"first\nsecond\n"},"stdout":"Read 13 bytes; file is closed\n"} -->
 ```manuscript
-var file = try open(path, flags: "r", mode: 0)
-let head = try file.read_lines(max_lines: 1)
-try file.close()
-slow_work(head)
+import open from "@std/os/fs.ms"
+
+fn read_notes() Unit!:
+    var file = try open("notes.txt", flags: "r", mode: 0)
+    let contents = try file.read_file(max_bytes: 1048576)
+    try file.close()
+    print("Read {contents.length()} bytes; file is closed")
+    return ok(unit)
+
+export fn main() Int:
+    let outcome = read_notes()
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
+
+The program prints `Read 13 bytes; file is closed`. The explicit close completes before the next operation. `read_file` reads the remaining file up to its byte limit; a limit is a cap that can fail, not a request to silently truncate input.
 
 `close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush().wait()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.

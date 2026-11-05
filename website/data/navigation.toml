@@ -12,7 +12,7 @@ paths = ["learn/common-tasks", "recipes", "developer-tooling"]
 
 [[groups]]
 label = "Reference"
-paths = ["standard-library/reference", "glossary"]
+paths = ["core-language/basics/grammar", "core-language/functions/native-functions", "recipes/template-reference", "standard-library/reference", "glossary"]
 
 [[groups]]
 label = "Contribute"

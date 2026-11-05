@@ -7,11 +7,23 @@ weight = 2
 
 Use an enum (a tagged union) when a value is exactly one of several declared cases, each with its own data.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Payment.Paid(receipt-42)\n"} -->
 ```manuscript
 enum Payment:
     Paid(receipt: String)
     Declined(reason: String)
     Pending(reference: String)
+
+export fn main() Int:
+    let payment: Payment = Paid("receipt-42")
+    print(payment)
+    return 0
+```
+
+```text
+Payment.Paid(receipt-42)
 ```
 
 Enums are tagged and exhaustively matched.
@@ -25,9 +37,26 @@ Migration: replace `type Choice:` with `enum Choice:` when its body declares cas
 
 ## Construction and identity
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Payment.Paid(receipt-42)\nPayment.Declined(Card rejected)\n"} -->
 ```manuscript
-let payment = Payment.Paid("receipt-42")
-let declined: Payment = Declined("Card rejected")
+enum Payment:
+    Paid(receipt: String)
+    Declined(reason: String)
+    Pending(reference: String)
+
+export fn main() Int:
+    let payment = Payment.Paid("receipt-42")
+    let declined: Payment = Declined("Card rejected")
+    print(payment)
+    print(declined)
+    return 0
+```
+
+```text
+Payment.Paid(receipt-42)
+Payment.Declined(Card rejected)
 ```
 
 - `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
@@ -37,6 +66,9 @@ let declined: Payment = Declined("Card rejected")
 
 Ordinary name lookup runs first: a local, declaration, or import with that spelling wins over case shorthand. Otherwise an unqualified case name must match exactly one case among visible enums. If several declare it, qualify it, even with an annotation. An expected enum type can supply generic arguments once the case is unique; a qualified case that contradicts the expected type is rejected, and matching payload shapes never make distinct enums compatible.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["ambiguous alternative case Ready","expected LeftState, found RightState"]} -->
 ```manuscript
 enum LeftState:
     Ready
@@ -44,14 +76,18 @@ enum LeftState:
 enum RightState:
     Ready
 
-let left: LeftState = LeftState.Ready
-// Rejected: two visible Ready cases, even with an annotation.
-let annotated: LeftState = Ready
-// Rejected: two visible Ready cases.
-let ambiguous = Ready
-// Rejected: a different nominal enum.
-let wrong: LeftState = RightState.Ready
+export fn main() Int:
+    let left: LeftState = LeftState.Ready
+    // Rejected: two visible Ready cases, even with an annotation.
+    let annotated: LeftState = Ready
+    // Rejected: two visible Ready cases.
+    let ambiguous = Ready
+    // Rejected: a different nominal enum.
+    let wrong: LeftState = RightState.Ready
+    return 0
 ```
+
+The diagnostic includes `ambiguous alternative case Ready`, `expected LeftState, found RightState`.
 
 After `let Ready = LeftState.Ready`, `Ready` refers to that binding, not case lookup.
 

@@ -1,3 +1,9 @@
 {{ $pages := where .Pages "Params.bookHidden" "ne" true }}
-{{/* Recipes and API lookup pages have their own navigation groups. */}}
-{{ return where $pages "Path" "not in" (slice "/standard-library/reference" "/learn/common-tasks") }}
+{{/* Pages promoted to a navigation group keep their URLs but are read there. */}}
+{{ $roots := slice }}
+{{ range .Site.Data.navigation.groups }}
+  {{ range .paths }}
+    {{ $roots = $roots | append (printf "/%s" .) }}
+  {{ end }}
+{{ end }}
+{{ return where $pages "Path" "not in" $roots }}

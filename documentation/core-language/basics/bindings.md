@@ -27,15 +27,25 @@ export fn main() Int:
 
 `let (` and `var (` declare several bindings of one kind, one per line, indented four spaces, with the closing `)` aligned with the keyword. Each entry is the same as a single binding, including an optional annotation or a destructuring pattern, and later entries see earlier ones.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada: true; 0 of 3 attempts\n"} -->
 ```manuscript
-let (
-    name = "Ada"
-    active: Bool = true
-)
-var (
-    attempts = 0
-    limit = attempts + 3
-)
+export fn main() Int:
+    let (
+        name = "Ada"
+        active: Bool = true
+    )
+    var (
+        attempts = 0
+        limit = attempts + 3
+    )
+    print("{name}: {active}; {attempts} of {limit} attempts")
+    return 0
+```
+
+```text
+Ada: true; 0 of 3 attempts
 ```
 
 A group is only a layout: entries are separate bindings with their own scope rules, and the formatter keeps the group together. Separate entries by lines, not commas, and use `let [a, b] = pair` to destructure. A group cannot sit in an inline body such as `if ready: let (`.
@@ -44,21 +54,56 @@ A group is only a layout: entries are separate bindings with their own scope rul
 
 Parameters and return types are explicit; local annotations are optional. `let count = 3` and `let count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Welcome, Ada!\n2\n"} -->
 ```manuscript
-let customer = Customer(name: "Ada", active: true)
-let greeting = welcome(customer)
-let count: Int = 3
-var remaining = count
-remaining -= 1
+type Customer:
+    name: String
+    active: Bool
+
+fn welcome(customer: Customer) String:
+    return "Welcome, {customer.name}!"
+
+export fn main() Int:
+    let customer = Customer(name: "Ada", active: true)
+    let greeting = welcome(customer)
+    let count: Int = 3
+    var remaining = count
+    remaining -= 1
+    print(greeting)
+    print(remaining)
+    return 0
+```
+
+```text
+Welcome, Ada!
+2
 ```
 
 ## Destructuring
 
 Unpack positions or named fields:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada, Lin: Ada, ada@example.com\n"} -->
 ```manuscript
-let [first_name, second_name] = names
-let {name, email: customer_email} = customer
+type Customer:
+    name: String
+    email: String
+
+export fn main() Int:
+    let names = ["Ada", "Lin"]
+    let customer = Customer("Ada", "ada@example.com")
+    let [first_name, second_name] = names
+    let {name, email: customer_email} = customer
+    print("{first_name}, {second_name}: {name}, {customer_email}")
+    return 0
+```
+
+```text
+Ada, Lin: Ada, ada@example.com
 ```
 
 `[...]` binds positions; `{field: local}` renames a record field. Field shorthand and nesting work; parenthesized positional bindings do not. See [destructuring bindings](../types/destructuring.md).
@@ -72,12 +117,17 @@ let {name, email: customer_email} = customer
 - A `var` keeps the type from its annotation or initializer; later values must fit it.
 - Assignment targets a `var` binding or a field reached through mutable storage. `let` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Unit.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected Int, found Float"]} -->
 ```manuscript
 fn example() Unit:
     var remaining = 3
     remaining = 2
     remaining = 2.0  // Rejected: Float cannot replace Int.
 ```
+
+The diagnostic includes `expected Int, found Float`.
 
 `+=`, `-=`, `*=`, `/=`, and `%=` update a `var` or record field: `remaining -= 1` means `remaining = remaining - 1`. The right side is one operand (`total -= a - b` subtracts the difference), and `+=` also appends text. See the [statement grammar](grammar.md#statements-and-patterns).
 

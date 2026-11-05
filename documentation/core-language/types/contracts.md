@@ -41,13 +41,38 @@ The interface above says what a caller can do, while `Offset` says what data one
 
 For example, another implementation could multiply rather than add. These declarations extend the program above; change its `main` call to `adjusted(10, Scale(2))` to obtain `20`:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"20\n"} -->
 ```manuscript
+interface Transform:
+    fn apply(value: Int) Int
+
+type Offset:
+    delta: Int
+
+impl Transform for Offset:
+    fn apply(value: Int) Int:
+        return value + self.delta
+
+fn adjusted(value: Int, operation: Transform) Int:
+    return operation.apply(value)
+
+
 type Scale:
     factor: Int
 
 impl Transform for Scale:
     fn apply(value: Int) Int:
         return value * self.factor
+
+export fn main() Int:
+    print(adjusted(10, Scale(2)))
+    return 0
+```
+
+```text
+20
 ```
 
 The implementation still uses the parameter name `value`, returns `Int`, and supplies exactly the declared operation. A same-named method on `Scale` alone would not satisfy `Transform`: the `impl Transform for Scale` declaration establishes the relationship.
@@ -66,12 +91,23 @@ In the example above, `impl Transform for Offset` supplies `apply` and reads the
 
 After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; interface implementations preserve argument labels even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in the interface and in every impl, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["implementation operation parameter names do not match contract"]} -->
 ```manuscript
+interface Transform:
+    fn apply(value: Int) Int
+
+type Offset:
+    delta: Int
+
 // Rejected: amount does not match the contract's value label.
 impl Transform for Offset:
     fn apply(amount: Int) Int:
         return amount + self.delta
 ```
+
+The diagnostic includes `implementation operation parameter names do not match contract`.
 
 ## Coherence and visibility
 
@@ -113,6 +149,9 @@ Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `D
 
 An implementation uses its receiver declaration's generic parameters; only those occurring in the receiver application are in scope, and matching the receiver determines every argument. Interface parameter substitution is positional. Undeclared names are rejected: `impl ReadValue[U] for Box[U]` fails when `Box` declares only `T`.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\n"} -->
 ```manuscript
 interface ReadValue[T]:
     fn get() T
@@ -123,31 +162,73 @@ type Box[T: Clonable]:
 impl ReadValue[T] for Box[T]:
     fn get() T:
         return self.value.clone()
+
+export fn main() Int:
+    let box = Box[String]("Ada")
+    print(box.get())
+    return 0
+```
+
+```text
+Ada
 ```
 
 This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and, for interface arguments that are receiver parameters, the interface declaration. The body is checked once under them with `self: Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them; a concretely specialized parameter is substituted into other bounds (`Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`).
 
 Interface parameter bounds can restrict an implementation without restricting the data type:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"true\nfalse\n"} -->
 ```manuscript
+type Box[T: Clonable]:
+    value: T
+
 interface SameValue[T: Equal]:
     fn same(other: T) Bool
 
 impl SameValue[T] for Box[T]:
     fn same(other: T) Bool:
         return self.value == other
+
+export fn main() Int:
+    let box = Box[Int](3)
+    print(box.same(3))
+    print(box.same(4))
+    return 0
+```
+
+```text
+true
+false
 ```
 
 A `Box[T]` without `T: Equal` cannot use this implementation.
 
 Two blocks overlap if their receiver and contract applications can match the same pair, found by structural unification with distinct variables per block; bounds are ignored. Overlap among implementations visible in a module is rejected at declaration, used or not. There is no most-specific selection.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["duplicate or overlapping implementation"]} -->
 ```manuscript
+interface ReadValue[T]:
+    fn get() T
+
+type Box[T: Clonable]:
+    value: T
+
+impl ReadValue[T] for Box[T]:
+    fn get() T:
+        return self.value.clone()
+
+
 // Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
     fn get() Int:
         return self.value
 ```
+
+The diagnostic includes `duplicate or overlapping implementation`.
 
 `ReadValue[Int]` and `ReadValue[String]` on one receiver are distinct pairs but share `get`, so dispatch needs an interface-typed binding. Specialization follows the [finite-application rules](generics.md#finite-recursive-applications).
 
@@ -155,13 +236,30 @@ impl ReadValue[Int] for Box[Int]:
 
 An interface operation, an implementation method and an inherent method may declare type parameters after their name. The implementation repeats the interface operation's parameters in the same order with the same bounds, and its signature must match once they are renamed.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"30\n5\n"} -->
 ```manuscript
 interface Ranked[T]:
     fn best_by[K: Comparable](key: fn(T) K) T?
 
+type Scores:
+    values: List[Int]
+
 impl Ranked[Int] for Scores:
     fn best_by[K: Comparable](key: fn(Int) K) Int?:
-        ...
+        return self.values.max_by(key)
+
+export fn main() Int:
+    let scores = Scores([12, 30, 5])
+    print(scores.best_by(fn score: score).get(0))
+    print(scores.best_by(fn score: 0 - score).get(0))
+    return 0
+```
+
+```text
+30
+5
 ```
 
 A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface. An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known; converting to it is rejected. The standard `List` uses this for `max_by` and `min_by` (`stdlib/collections/collections.ms`).
@@ -172,14 +270,41 @@ A value whose type has a declared implementation of an interface converts implic
 
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n2\n3\n"} -->
 ```manuscript
+interface Transform:
+    fn apply(value: Int) Int
+
+type Offset:
+    delta: Int
+
+impl Transform for Offset:
+    fn apply(value: Int) Int:
+        return value + self.delta
+
+fn adjusted(value: Int, operation: Transform) Int:
+    return operation.apply(value)
+
 fn use_transform(operation: Transform) Int:
     return operation.apply(1)
 
-let offset = Offset(2)
-let result = use_transform(offset)
-let again = offset.delta
-let kept: Transform = offset.clone()
+export fn main() Int:
+    let offset = Offset(2)
+    let result = use_transform(offset)
+    let again = offset.delta
+    let kept: Transform = offset.clone()
+    print(result)
+    print(again)
+    print(kept.apply(1))
+    return 0
+```
+
+```text
+3
+2
+3
 ```
 
 An interface is never constructed: `Transform(value: offset)` is rejected, so annotate the binding (`let view: Transform = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Transform` ([matching](generics.md#inference-from-arguments)).
@@ -190,13 +315,41 @@ A receiver or generic parameter may call an operation directly when exactly one 
 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n3\n"} -->
 ```manuscript
+interface Transform:
+    fn apply(value: Int) Int
+
+type Offset:
+    delta: Int
+
+impl Transform for Offset:
+    fn apply(value: Int) Int:
+        return value + self.delta
+
+fn adjusted(value: Int, operation: Transform) Int:
+    return operation.apply(value)
+
+
 fn invoke[T: Transform](operation: T) Int:
     let view: Transform = operation
     return view.apply(1)
 
-let from_concrete = invoke(offset)
-let from_view = invoke(view)
+export fn main() Int:
+    let offset = Offset(2)
+    let view: Transform = offset.clone()
+    let from_concrete = invoke(offset)
+    let from_view = invoke(view)
+    print(from_concrete)
+    print(from_view)
+    return 0
+```
+
+```text
+3
+3
 ```
 
 Both calls satisfy the bound without implicit conversion.

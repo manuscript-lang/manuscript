@@ -7,10 +7,24 @@ weight = 1
 
 A record groups related data into named fields. Use it when a function should receive one meaningful value, such as a customer or an order. Each declaration creates a distinct type; fields change through a `var` binding.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\ntrue\n"} -->
 ```manuscript
 type Customer:
     name: String
     email: String?
+
+export fn main() Int:
+    let customer = Customer("Ada")
+    print(customer.name)
+    print(customer.email.is_none())
+    return 0
+```
+
+```text
+Ada
+true
 ```
 
 Field types are explicit and names unique. An empty record is `type Marker:`. A field may have a default expression checked against its type.
@@ -19,28 +33,67 @@ Field types are explicit and names unique. An empty record is `type Marker:`. A 
 
 Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors. Supplied expressions evaluate in written order, then omitted defaults in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\n"} -->
 ```manuscript
-let customer = Customer(name: "Ada", email: none)
-let name = customer.name
+type Customer:
+    name: String
+    email: String?
+
+export fn main() Int:
+    let customer = Customer(name: "Ada", email: none)
+    let name = customer.name
+    print(name)
+    return 0
+```
+
+```text
+Ada
 ```
 
 Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":"cannot change `customer.name`: `customer` is declared with let"} -->
 ```manuscript
+type Customer:
+    name: String
+    email: String?
+
 // An omitted optional field is none.
-let without_email = Customer(name: "Ada")
-// Rejected: changing a field requires a var binding.
-customer.name = "Grace"
+
+export fn main() Int:
+    let customer = Customer("Ada")
+    let without_email = Customer(name: "Ada")
+    // Rejected: changing a field requires a var binding.
+    customer.name = "Grace"
+    return 0
 ```
+
+The diagnostic explains that `customer.name` cannot change because `customer` was declared with `let`.
 
 Generic records declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"5\n6\n"} -->
 ```manuscript
 type Options:
     count: Int = 3
     total: Int = count + 1
 
-let options = Options(count: 5)  // total defaults to 6
+export fn main() Int:
+    let options = Options(count: 5)  // total defaults to 6
+    print(options.count)
+    print(options.total)
+    return 0
+```
+
+```text
+5
+6
 ```
 
 An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
@@ -73,6 +126,9 @@ Grace
 
 Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the record are rejected. A method marked `var fn` can update receiver fields in place:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"1\n"} -->
 ```manuscript
 interface Counter:
     var fn increment() Unit
@@ -83,6 +139,16 @@ type Val:
 impl Counter for Val:
     var fn increment() Unit:
         self.val = self.val + 1
+
+export fn main() Int:
+    var value = Val(0)
+    value.increment()
+    print(value.val)
+    return 0
+```
+
+```text
+1
 ```
 
 Field writes keep the declared type; the receiver evaluates once, before the new value. Records follow the move and borrow rules of every container; only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
@@ -117,20 +183,44 @@ scores
 ```
 
 - The outer list owns `report.rows` after construction. The sibling field `report.title` remains readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected; use `report.rows.clone()` at construction if both owners need the rows.
-- Field moves apply to owned fields (strings, lists, records, resources) of a `let` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and records that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
+- Field moves apply to owned fields (strings, lists, records, resources) of a `let` binding or consuming parameter; moving a resource field into a new list has a [current native-compilation limitation](#resource-field-transfers). Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and records that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
 - A parameter whose field is moved into another owner is consumed: its caller gives up the record. Passing `.clone()` keeps an independent caller-owned record.
 
 Reading a field is different from moving it. `let rows = report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"[3, 4]\n[3, 4]\n"} -->
 ```manuscript
+type Report:
+    title: String
+    rows: List[Int]
+
 fn rows_of(report: Report) List[Int]:
     return report.rows
+
+export fn main() Int:
+    let report = Report("scores", [3, 4])
+    let rows = rows_of(report)
+    print(rows)
+    print(report.rows)
+    return 0
+```
+
+```text
+[3, 4]
+[3, 4]
 ```
 
 Calling `rows_of(report)` leaves `report.rows` readable; the record must stay available while the returned borrow is used. See [borrow-returning functions](references.md#borrowing).
 
-A resource field moves without a copy, and the new owner closes it. The record closes only the fields that were not moved, last declared first, on every way out of the function:
+### Resource field transfers
 
+Ownership transfers cleanup responsibility with a resource. Current alpha limitation: a helper that appends a resource field to a new list and returns that list passes `ms check` but fails native compilation. This occurs with a parameter or a locally constructed record as the holder. For this use case, move the whole resource holder instead. The following program transfers a `Room` and both doors into a list:
+
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"returned 1 room\nclose 2\nclose 1\n"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -139,37 +229,75 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
+        print("close {self.id}")
         return ok(unit)
 
 type Room:
     door: Door
     spare: Door
 
-fn open_door(r: Room) List[Door]:
-    var doors: List[Door] = []
-    doors.append(r.door)
-    return doors
+fn carry(room: Room) List[Room]:
+    return [room]
+
+export fn main() Int:
+    let rooms = carry(Room(Door(1), Door(2)))
+    print("returned {rooms.length()} room")
+    return 0
 ```
 
-Here `r.spare` closes when `open_door` returns and `r.door` closes with `doors`' new owner. A place and a part of it (`r.room` and `r.room.door`) cannot both be moved out of one binding.
+```text
+returned 1 room
+close 2
+close 1
+```
+
+The list owns the room after `carry` returns. Both doors remain open until that list leaves scope, then close in reverse field order. Moving the whole holder avoids a partial move without cloning a resource. A place and a part of it (`r.room` and `r.room.door`) cannot both be moved out of one binding.
 
 ## Domain identity
 
 Wrap identifiers in their own records so they cannot be mixed up.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"42\n42\n"} -->
 ```manuscript
 type CustomerId:
     value: String
 
 type OrderId:
     value: String
+
+export fn main() Int:
+    let customer = CustomerId("42")
+    let order = OrderId("42")
+    print(customer.value)
+    print(order.value)
+    return 0
 ```
 
-```manuscript
-let customer_id = CustomerId("42")
-// Rejected: equal field shapes do not make nominal types interchangeable.
-let order_id: OrderId = customer_id
+```text
+42
+42
 ```
+
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected OrderId, found CustomerId"]} -->
+```manuscript
+type CustomerId:
+    value: String
+
+type OrderId:
+    value: String
+
+export fn main() Int:
+    let customer_id = CustomerId("42")
+    // Rejected: equal field shapes do not make nominal types interchangeable.
+    let order_id: OrderId = customer_id
+    return 0
+```
+
+The diagnostic includes `expected OrderId, found CustomerId`.
 
 Identity is module, declaration, and type arguments; alternate import paths to one module do not create new types. Applications are [invariant](compatibility.md).
 
@@ -180,6 +308,8 @@ Exporting a record exports its constructor and every field; there are no per-fie
 ## Recursive data
 
 Records and alternatives may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -200,11 +330,19 @@ test "recursive expression":
         panic("unexpected expression value")
 ```
 
+```text
+RUN example.ms::recursive expression
+PASS example.ms::recursive expression
+1 tests, 0 failed
+```
+
 A linked record ends with an absent successor; a link owns its successor, so a clone copies the whole chain:
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/core.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Node:
     value: Int
@@ -215,8 +353,16 @@ test "recursive links":
     node.next = Node(value: 5, next: none)
     var copy = node.clone()
     copy.next = Node(value: 2, next: none)
-    if node.next.get().value != 5 or copy.next.get().value != 2:
-        panic("clones must be independent")
+    let original_next = try node.next.ok_or(Error("original link is missing"))
+    let copied_next = try copy.next.ok_or(Error("copied link is missing"))
+    try expect_equal(original_next.value, 5)
+    try expect_equal(copied_next.value, 2)
+```
+
+```text
+RUN example.ms::recursive links
+PASS example.ms::recursive links
+1 tests, 0 failed
 ```
 
 Constructors still need every required field, and a binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. `.clone()` copies the whole chain. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).

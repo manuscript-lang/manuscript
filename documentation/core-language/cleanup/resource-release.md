@@ -9,15 +9,27 @@ Usually, let [scope-end cleanup](scopes.md) close a file, socket or stream. Clos
 
 Consider writing a report. There are three different questions: did the writer accept the data, did buffered data drain far enough for the destination's contract, and was the resource released? A successful `write` answers the first. An explicit `flush().wait()` lets you handle the second. Closing answers the third. Do not replace the first two checks with an assumption that scope exit means delivery succeeded.
 
-Flush before closing when you need the destination to catch up or need to handle a flush failure:
+Flush before closing when you need the destination to catch up or need to handle a flush failure. Save as `report.ms` and run `ms run report.ms`; it prints `Report complete`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Report complete\n"} -->
 ```manuscript
-import WriteStream from "@std/io/io.ms"
+import WriteStream, stdout from "@std/io/io.ms"
 
 fn finish(var output: WriteStream[String]) Unit!:
     try output.flush().wait()
     return output.close()
+
+fn send_report() Unit!:
+    var output = stdout()
+    try output.write("Report complete\n")
+    return finish(var output)
+
+export fn main() Int:
+    let outcome = send_report()
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 `flush().wait()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.

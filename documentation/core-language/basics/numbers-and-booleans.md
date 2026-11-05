@@ -7,13 +7,29 @@ weight = 3
 
 Use `Int` for counts and indexes, `Float` for approximate measurements, and `Decimal` for base-ten calculations where rounding must be explicit. Booleans are `true` and `false`. Numeric types stay distinct: choose a type for the calculation and convert at its boundaries.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n0.5\n12.5\ntrue\n"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
-let count = 3
-let ratio = 0.5
-let price = 12.50d
-let active = true
+export fn main() Int:
+    let count = 3
+    let ratio = 0.5
+    let price = 12.50d
+    let active = true
+    print(count)
+    print(ratio)
+    print(price)
+    print(active)
+    return 0
+```
+
+```text
+3
+0.5
+12.5
+true
 ```
 
 Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
@@ -39,33 +55,97 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 - A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`let x: Float32 = 0.1 + 0.2`, `let y: Int8 = 100 + 27`), and each step must fit. A literal never changes kind: `let x: Float32 = 1` is rejected.
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
+Save as `literals.ms` and run `ms run literals.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"-9223372036854775808\n1000\n65280\n165\n1000\n"} -->
 ```manuscript
-fn literals() Unit:
+import Decimal from "@std/math/decimal.ms"
+
+export fn main() Int:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
     let mask: Int = 0xFF_00
     let flags: Int = 0b1010_0101
     let precise: Decimal = 1e3d
-    // Rejected: an Int token does not become Float from context.
+    print(smallest)
+    print(exponent)
+    print(mask)
+    print(flags)
+    print(precise)
+    return 0
+```
+
+```text
+-9223372036854775808
+1000
+65280
+165
+1000
+```
+
+Negative reference: save this separately as `invalid.ms` and run
+`ms check invalid.ms`. It exits nonzero because an integer token does not become a
+floating-point value from context:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected Float, found Int"]} -->
+```manuscript
+export fn main() Int:
     let mismatch: Float = 1
+    print(mismatch)
+    return 0
 ```
 
 ## Sized numbers
 
 `Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, records, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
 
+Save as `sized.ms` and run `ms run sized.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"100\n2000000000\n0.10000000149011612\n"} -->
 ```manuscript
-fn sized() Unit:
-    let a: Int8 = 100
+export fn main() Int:
+    let small: Int8 = 100
     let wide: Int32 = 2000000000
     let ratio: Float32 = 0.1
-    // Faults: 200 does not fit Int8.
-    let b = a + a
-    // Rejected: operand types differ.
-    let c = a + wide
+    print(small)
+    print(wide)
+    print(ratio)
+    return 0
 ```
 
-`Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Typed JSON supports sized integers and `Float32`, preserving their range checks. List indexes and literal `match` subjects still use `Int`; convert a sized integer at those boundaries. See [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/data/json.ms.md).
+```text
+100
+2000000000
+0.10000000149011612
+```
+
+The type check and the runtime range check are separate. This negative reference
+is rejected by `ms check invalid.ms` because the operands have different types:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["operator operands require the same independently known type, found Int8 + Int32"]} -->
+```manuscript
+fn invalid_sum(small: Int8, wide: Int32) Int8:
+    return small + wide
+```
+
+Two `Int8` operands do type-check, but their sum can still overflow. Save this
+complete test as `overflow.ms` and run `ms test overflow.ms`. The test passes by
+observing the fault from adding runtime parameters; constant faults can be
+rejected earlier by the checker:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_fault, expect_true from "@std/test/test.ms"
+
+fn add(left: Int8, right: Int8) Int8:
+    return left + right
+
+test "sized overflow":
+    let message = try expect_fault(fn: print(add(100, 100)))
+    try expect_true(message.contains("overflow"))
+```
+
+`Float32` operations round once to binary32. As the output above shows, the nearest representable value to decimal `0.1` is not exactly one tenth. `Float` uses binary64 and likewise cannot represent every decimal fraction exactly; use `Decimal` when base-ten arithmetic is required. Typed JSON supports sized integers and `Float32`, preserving their range checks. List indexes and literal `match` subjects still use `Int`; convert a sized integer at those boundaries. See [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/data/json.ms.md).
 
 ## Numeric conversion
 
@@ -114,10 +194,22 @@ A Decimal literal must be exactly representable: `1.00d` is fine, but 35 signifi
 
 Every literal needs the `d` suffix to stay `Decimal`:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"85\n"} -->
 ```manuscript
-let price = 100d
-let percent = 15d
-let discounted = price * (1d - percent / 100d)
+import Decimal from "@std/math/decimal.ms"
+
+export fn main() Int:
+    let price = 100d
+    let percent = 15d
+    let discounted = price * (1d - percent / 100d)
+    print(discounted)
+    return 0
+```
+
+```text
+85
 ```
 
 Validate expected bad input with [expected failures](../errors/results.md); see [programming faults](../errors/faults.md) for invariants.
@@ -126,10 +218,20 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 
 `BigInt` (from `@std/math/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"7\n"} -->
 ```manuscript
 import from_int from "@std/math/math.ms"
 
-let big = from_int(2) * from_int(3) + from_int(1)
+export fn main() Int:
+    let big = from_int(2) * from_int(3) + from_int(1)
+    print(big)
+    return 0
+```
+
+```text
+7
 ```
 
 #### Scale rounding and fixed places

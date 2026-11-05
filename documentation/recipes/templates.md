@@ -22,7 +22,7 @@ Create `announcement.txt` with exactly this content, including a newline after t
 
 Save the following complete program as `announce.ms` in the same directory:
 
-<!-- manuscript-example: {"mode":"run","files":{"announcement.txt":"{{ title }}\n{{ for item in changes }}- {{ item }}\n{{ else }}No changes.\n{{ end }}\n"},"stdout":"November release\n- CSV export\n- Faster search\n\n","cases":[{"files":{"announcement.txt":"{{ missing }}"},"stdout":"Could not render announcement\n","exit_code":1},{"files":{"announcement.txt":"{{ if title }}"},"stdout":"Could not render announcement\n","exit_code":1}]} -->
+<!-- manuscript-example: {"mode":"run","files":{"announcement.txt":"{{ title }}\n{{ for item in changes }}- {{ item }}\n{{ else }}No changes.\n{{ end }}\n"},"stdout":"November release\n- CSV export\n- Faster search\n\n","cases":[{"files":{"announcement.txt":"{{ missing }}"},"stdout":"template: no value for missing\n","exit_code":1},{"files":{"announcement.txt":"{{ if title }}"},"stdout":"template: line 1: if needs end\n","exit_code":1}]} -->
 ```manuscript
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
@@ -45,10 +45,11 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    if run().is_error():
-        print("Could not render announcement")
-        return 1
-    return 0
+    let outcome = run()
+    if let _value = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 ```sh
@@ -72,7 +73,13 @@ You can render the same compiled template with different data. Compile once outs
 
 ## Make missing-data policy visible
 
-Printed paths are strict by default. Replacing the template with `{{ missing }}` makes rendering fail because the input has no such member. An unmatched `{{ if title }}` fails earlier, during compilation. Both failures travel through `try` to the application's exit-status decision.
+Printed paths are strict by default. Replacing the template with `{{ missing }}` makes rendering fail because the input has no such member. An unmatched `{{ if title }}` fails earlier, during compilation. Both failures travel through `try` to `main`, which prints the actual cause and exits with status 1. The missing value reports:
+
+```text
+template: no value for missing
+```
+
+The unmatched condition instead reports `template: line 1: if needs end`, identifying a syntax problem rather than a missing data value.
 
 For a field that is genuinely optional, put the choice in the template:
 
@@ -102,9 +109,11 @@ fn run() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+    let outcome = run()
+    if let _value = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 ```sh
@@ -125,4 +134,4 @@ Dotted paths reach fields and list positions, such as `user.name` and `changes.0
 
 For shared sections, compile each partial and supply a `Map[String, Template]` through the `partials` argument to `render`. `{{ include "footer" }}` renders the named partial in the current scope; it does not load a file by itself. A missing partial returns an error. Keep application calculations in Manuscript and pass their results as data, where they can be checked and tested independently of the layout.
 
-The [template API](../standard-library/reference/text/template.ms.md) lists the full syntax, filters, rendering limits, and `render_to` stream operation. For ordinary file and HTTP input, return to [task recipes](../learn/common-tasks.md).
+The [template syntax and filters](template-reference.md) reference defines actions, expressions, scope, escaping, and limits. The [template API](../standard-library/reference/text/template.ms.md) defines the call parameters and `render_to` stream operation. For ordinary file and HTTP input, return to [task recipes](../learn/common-tasks.md).

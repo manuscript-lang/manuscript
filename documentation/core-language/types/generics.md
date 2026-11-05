@@ -7,6 +7,8 @@ weight = 9
 
 Generics let one function or data type work with several concrete types while keeping its inputs and results known to the compiler. Type arguments go in brackets.
 
+Type-spelling reference (these are types, not executable expressions; `Decimal` and `DiscountError` must be imported or declared where used):
+
 ```manuscript
 List[String]
 Map[String, Int]
@@ -61,6 +63,9 @@ Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` 
 
 `Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"true\n"} -->
 ```manuscript
 type Key:
     id: Int
@@ -74,6 +79,14 @@ fn same_key(left: Equal, right: Equal) Bool:
 
 fn use_view() Bool:
     return same_key(Key(1), Key(1))
+
+export fn main() Int:
+    print(use_view())
+    return 0
+```
+
+```text
+true
 ```
 
 ### Make ownership part of a generic operation
@@ -105,6 +118,9 @@ The function borrows `source` and produces two owned copies. Changing the first 
 
 ## Declarations and applications
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"1\n1\n1\ntrue\n"} -->
 ```manuscript
 type Box[T]:
     value: T
@@ -115,9 +131,22 @@ fn identity[T](value: T) T:
 fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
-let box = Box[Int](1)
-let exact = identity[Int](1)
-let inferred = identity(1)
+export fn main() Int:
+    let box = Box[Int](1)
+    let exact = identity[Int](1)
+    let inferred = identity(1)
+    print(box.value)
+    print(exact)
+    print(inferred)
+    print(same(exact, inferred))
+    return 0
+```
+
+```text
+1
+1
+1
+true
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
@@ -130,6 +159,9 @@ let inferred = identity(1)
 
 A parameter may declare `= Type` as a default. Later parameters then need defaults too. A default may name earlier parameters, not itself or later ones, and must satisfy the bounds.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\nx\ntrue\n"} -->
 ```manuscript
 type Pair[A, B = A]:
     first: A
@@ -138,8 +170,19 @@ type Pair[A, B = A]:
 fn parse[T = String](text: String) T?:
     return none
 
-let same: Pair[Int] = Pair[Int](1, 2)    // Pair[Int, Int]
-let mixed = Pair[Int, String](1, "x")
+export fn main() Int:
+    let same: Pair[Int] = Pair[Int](1, 2)    // Pair[Int, Int]
+    let mixed = Pair[Int, String](1, "x")
+    print(same.second)
+    print(mixed.second)
+    print(parse("text").is_none())
+    return 0
+```
+
+```text
+2
+x
+true
 ```
 
 Inference runs first; a parameter it leaves undetermined takes its default, for calls and constructors alike. An undetermined parameter without a default is an error.
@@ -148,36 +191,70 @@ Inference runs first; a parameter it leaves undetermined takes its default, for 
 
 A call may omit type arguments when its arguments and expected result uniquely determine every parameter. Evidence is gathered in order: independently typed arguments, then the expected result, then callbacks with known inputs. Repeated occurrences must agree. Bounds are checked after substitution. No common supertype, union, or numeric widening is inferred.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected Int, found Float"]} -->
 ```manuscript
 fn choose[T](first: T, second: T) T:
     return first
 
-let value = choose(1, 2)  // T = Int
-// Rejected: conflicting evidence for T.
-let mixed = choose(1, 2.0)
+export fn main() Int:
+    let value = choose(1, 2)  // T = Int
+    // Rejected: conflicting evidence for T.
+    let mixed = choose(1, 2.0)
+    return 0
 ```
+
+The diagnostic includes `expected Int, found Float`.
 
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
-```manuscript
-fn fail[T](message: String) Result[T, Error]: error(Error(message))
+Save this complete example as `example.ms` and run `ms run example.ms`:
 
-fn first() Result[Int, Error]: fail("empty")  // T = Int
-let failed: Result[Int, Error] = fail("empty")
+<!-- manuscript-example: {"mode":"run","stdout":"empty\nempty\n"} -->
+```manuscript
+fn fail[T](message: String) T!: error(Error(message))
+
+fn first() Int!: fail("empty")  // T = Int
+
+export fn main() Int:
+    let failed: Int! = fail("empty")
+    if let value = failed:
+        print(value)
+    else:
+        print(failed.err().message)
+    let another = first()
+    if let value = another:
+        print(value)
+    else:
+        print(another.err().message)
+    return 0
+```
+
+```text
+empty
+empty
 ```
 
 Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. Error types, success types, and Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
 
 Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `T?` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot infer type argument T for count","cannot infer list element type"]} -->
 ```manuscript
 fn count[T](values: List[T]) Int:
     return 0
 
-let known = count[Int]([])
-// Rejected: the empty list does not determine T.
-let unknown = count([])
+export fn main() Int:
+    let known = count[Int]([])
+    // Rejected: the empty list does not determine T.
+    let unknown = count([])
+    return 0
 ```
+
+The diagnostic includes `cannot infer type argument T for count`, `cannot infer list element type`.
 
 Generic constructors infer from fields or payloads, or from an expected application: `let box: Box[Int] = Box(value: 1)`. The result must be one complete application.
 
@@ -185,6 +262,9 @@ Generic constructors infer from fields or payloads, or from an expected applicat
 
 A generic body is checked once against its declared bounds, which expose only their declared properties. An unconstrained `T` cannot use `==`, be a map key, or call contract operations.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["equality requires Equal operands"]} -->
 ```manuscript
 // Rejected at declaration: missing Equal bound.
 fn unchecked_same[T](left: T, right: T) Bool:
@@ -193,6 +273,8 @@ fn unchecked_same[T](left: T, right: T) Bool:
 type Keys[T: Hashable]:
     values: Set[T]
 ```
+
+The diagnostic includes `equality requires Equal operands`.
 
 Every nested application must satisfy its bounds under the enclosing assumptions; omitting them from `Keys` is rejected even if every use supplies `Int`.
 
@@ -204,6 +286,9 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["recursive generic applications must preserve their parameters"]} -->
 ```manuscript
 fn repeat[T](value: T) Never:
     return repeat[T](value)  // Regular specialization; allowed.
@@ -211,6 +296,8 @@ fn repeat[T](value: T) Never:
 fn grow[T](value: T) Never:
     return grow[List[T]]([value])  // Rejected: expanding specialization.
 ```
+
+The diagnostic includes `recursive generic applications must preserve their parameters`.
 
 The check also covers mutual recursion, function values such as `grow[List[T]]`, and generic implementation method calls.
 

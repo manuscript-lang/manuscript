@@ -5,7 +5,7 @@ weight = 3
 
 # Implementing Closeable
 
-Implement `Closeable` when your type owns a resource that must be released at scope end. Import it from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
+Implement `Closeable` when your type owns a resource that must be released at scope end. Import it from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify. The declaration below shows its API shape; import the standard interface rather than redeclaring it:
 
 ```manuscript
 interface Closeable:
@@ -49,8 +49,9 @@ A similarly named method without `impl Closeable` does not opt a concrete type i
 
 ## A close returns a Result
 
-`close()` returns `Unit!`, which is `Result[Unit, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`.
+`close()` returns `Unit!`, which is `Result[Unit, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`. Save this program as `gate.ms` and run `ms run gate.ms`; it prints `released`, then `gate stuck`.
 
+<!-- manuscript-example: {"mode":"run","stdout":"released\ngate stuck\n"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -67,6 +68,18 @@ impl Closeable for Gate:
 fn use_gate(fails: Bool) Unit!:
     let _gate = Gate(fails)
     return ok(unit)
+
+fn show_release(fails: Bool) Unit:
+    let outcome = use_gate(fails)
+    if let _released = outcome:
+        print("released")
+        return
+    print(outcome.err().message)
+
+export fn main() Int:
+    show_release(false)
+    show_release(true)
+    return 0
 ```
 
 This example reports the release failure once; a later close succeeds without repeating the release attempt.
@@ -74,7 +87,7 @@ This example reports the release failure once; a later close succeeds without re
 The scope-end close behaves like `try gate.close()`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
 
 - If the scope is already returning an error, that error is kept and a close error after it is dropped.
-- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `try`, `if let` or `let _ =`.
+- Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, handle the call with `try` or an explicit success/error branch. The language permits a deliberate discard, but that does not handle a release failure.
 - A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Result[_, Error]`, a part of a holder, a replaced or temporary value.
 - A fault or cancellation runs each close and discards its result; the failure being reported takes precedence.
 

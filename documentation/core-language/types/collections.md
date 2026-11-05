@@ -19,11 +19,27 @@ Choose a `List` for an ordered sequence, a `Map` for lookup by key, and a `Set` 
 
 Brackets construct mutable lists of values:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"[1, 2, 3]\n0\n0\n0\n"} -->
 ```manuscript
-let values = [1, 2, 3]
-let empty: List[Int] = []
-let also_empty = List[Int]()
-let sized = List[Int](reserve: 1000)
+export fn main() Int:
+    let values = [1, 2, 3]
+    let empty: List[Int] = []
+    let also_empty = List[Int]()
+    let sized = List[Int](reserve: 1000)
+    print(values)
+    print(empty.length())
+    print(also_empty.length())
+    print(sized.length())
+    return 0
+```
+
+```text
+[1, 2, 3]
+0
+0
+0
 ```
 
 `reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list stays empty; a negative or `none` reserve preallocates nothing.
@@ -34,9 +50,21 @@ The first literal infers `List[Int]`; an empty literal needs an annotation or ex
 
 Braces construct mutable maps:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n0\n"} -->
 ```manuscript
-let scores = {"Ada": 3, "Lin": 5}
-let empty: Map[String, Int] = {}
+export fn main() Int:
+    let scores = {"Ada": 3, "Lin": 5}
+    let empty: Map[String, Int] = {}
+    print(scores.get_or("Ada", 0))
+    print(empty.length())
+    return 0
+```
+
+```text
+3
+0
 ```
 
 Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct records.
@@ -52,13 +80,20 @@ Lists and map values accept functions, interface values, builders and resources.
 
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected Int, found Float","cannot infer list element type"]} -->
 ```manuscript
-let nested: List[List[Int]] = [[], [1, 2]]
-// Rejected: incompatible Int and Float elements.
-let mixed = [1, 2.0]
-// Rejected: no element type can be inferred.
-let unknown = []
+export fn main() Int:
+    let nested: List[List[Int]] = [[], [1, 2]]
+    // Rejected: incompatible Int and Float elements.
+    let mixed = [1, 2.0]
+    // Rejected: no element type can be inferred.
+    let unknown = []
+    return 0
 ```
+
+The diagnostic includes `expected Int, found Float`, `cannot infer list element type`.
 
 An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `let values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
 
@@ -109,11 +144,23 @@ List details:
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
 - Invalid bounds fault; nothing is clamped.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"[1, 2, 3]\n[1, 2]\n"} -->
 ```manuscript
-var values = [1, 2]
-let copy = values.clone()
-values.append(3)
-// values now contains [1, 2, 3]; copy still contains [1, 2].
+export fn main() Int:
+    var values = [1, 2]
+    let copy = values.clone()
+    values.append(3)
+    // values now contains [1, 2, 3]; copy still contains [1, 2].
+    print(values)
+    print(copy)
+    return 0
+```
+
+```text
+[1, 2, 3]
+[1, 2]
 ```
 
 Clones copy nested values too. `map`, `filter`, `slice`, `concat`, `sorted`, `reversed`, and set algebra return independent owned results (Bytes `reversed()` too).
@@ -215,6 +262,8 @@ Enumeration returns owned results. Callbacks borrow the receiver for the travers
 
 List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: fn a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
 
+Save this test as `example.ms` and run `ms test example.ms`:
+
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
@@ -230,8 +279,17 @@ test "sorting and aggregates":
         return panic("check failed")
 ```
 
+```text
+RUN example.ms::sorting and aggregates
+PASS example.ms::sorting and aggregates
+1 tests, 0 failed
+```
+
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
+Save this complete test as `example.ms` and run `ms test example.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -259,15 +317,32 @@ test "dynamic mutable data and explicit copies":
         return panic("check failed")
 ```
 
+```text
+RUN example.ms::dynamic mutable data and explicit copies
+PASS example.ms::dynamic mutable data and explicit copies
+1 tests, 0 failed
+```
+
 Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filter` return fresh storage in insertion order, copying retained values; predicates borrow the receiver. Set `map` also borrows its receiver and returns a fresh set whose output type must be `Hashable`; equal results keep the first payload and position. Callbacks run sequentially in the caller's context; faults and cancellation stop the traversal.
 
 ## Transforming Map keys and values
 
 `map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, borrow the receiver, and return an owned Map. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"4\n"} -->
 ```manuscript
 fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
     return scores.map(fn name, score: score + 1)
+
+export fn main() Int:
+    print(increment_scores({"Ada": 3}).get_or("Ada", 0))
+    return 0
+```
+
+```text
+4
 ```
 
 ## Reducing and querying

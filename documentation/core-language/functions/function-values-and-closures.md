@@ -32,15 +32,40 @@ Function types name no parameters; `fn(var List[Int]) Unit` marks one the functi
 
 Parameter types in order, their `var` markers, and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
+Save as `adapter.ms` and run `ms run adapter.ms`. The first value preserves the
+function's type; the second uses an explicit conversion to adapt its result:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n2\n"} -->
 ```manuscript
 fn subtract_one(amount: Int) Int:
     return amount - 1
 
-fn adapt() Unit:
-    let ok: fn(Int) Int = subtract_one
-    // Rejected: the result type differs.
+export fn main() Int:
+    let numeric: fn(Int) Int = subtract_one
+    let textual: fn(Int) String = fn value: subtract_one(value).to_string()
+    print(numeric(3))
+    print(textual(3))
+    return 0
+```
+
+```text
+2
+2
+```
+
+Negative reference: save this independently as `invalid.ms` and run
+`ms check invalid.ms`. It exits nonzero because the assigned function returns
+`Int`, while the annotation requires `String`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected fn(Int) String, found fn(Int) Int"]} -->
+```manuscript
+fn subtract_one(amount: Int) Int:
+    return amount - 1
+
+export fn main() Int:
     let invalid: fn(Int) String = subtract_one
-    let result = apply(value: 3, transform: ok)
+    print(invalid(3))
+    return 0
 ```
 
 An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `let increment: fn(Int) Int = fn item: item + 1` is called as `increment(3)`.
@@ -55,6 +80,9 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Unit` has type `fn(var List[Int]) Unit`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Unit` and `fn(var List[Int]) Unit` are different types.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"[1, 2]\n"} -->
 ```manuscript
 fn push_one(var values: List[Int]) Unit:
     values.append(1)
@@ -67,6 +95,14 @@ fn changed() List[Int]:
     apply(push_one, var values)
     apply(fn(var xs: List[Int]): xs.append(2), var values)
     return values
+
+export fn main() Int:
+    print(changed())
+    return 0
+```
+
+```text
+[1, 2]
 ```
 
 The value travels by address, so a value with one owner (a list, a record holding one) is changed where it lives and never copied. A function with both a `var` parameter and a parameter default cannot be a function value; call it from a closure that supplies the default.
@@ -79,8 +115,10 @@ Captures follow ownership rules. A non-escaping closure borrows its captures; an
 
 A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
-```manuscript
+Save this complete example as `example.ms` and run `ms run example.ms`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
+```manuscript
 fn tag_count() Int:
     var tags = ["docs"]
     tags.append("release")
@@ -88,10 +126,21 @@ fn tag_count() Int:
         return tags.length()
     return count()
 // tag_count() returns 2.
+
+export fn main() Int:
+    print(tag_count())
+    return 0
+```
+
+```text
+2
 ```
 
 A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"6\n"} -->
 ```manuscript
 fn total(values: List[Int]) Int:
     var sum = 0
@@ -99,10 +148,21 @@ fn total(values: List[Int]) Int:
         sum += value
     )
     return sum
+
+export fn main() Int:
+    print(total([1, 2, 3]))
+    return 0
+```
+
+```text
+6
 ```
 
 A function value has one owner and no `.clone()`, and a record or list that holds one is not `Clonable`: pass it where it is only read, move it at its last use, or make it again from a named `fn`. A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `let` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is moved by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `let` copy first (`let base = offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"4\n"} -->
 ```manuscript
 type Counter:
     read: fn() Int
@@ -114,12 +174,23 @@ fn total() Int:
     let values = [1, 2]
     let c = counter(values.clone())
     return c.read() + values.length()
+
+export fn main() Int:
+    print(total())
+    return 0
+```
+
+```text
+4
 ```
 
 ## Resource captures
 
 Open a resource inside the callback that uses it:
 
+Save this complete example as `example.ms` and run `ms run example.ms` after creating `notes.txt` with the text `Notes`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"5\n","files":{"notes.txt":"Notes"}} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -128,6 +199,20 @@ fn notes_reader(path: String) fn() Bytes!:
     return fn:
         let file = try open(path: path, flags: "r", mode: 0)
         return file.read_file(max_bytes: 1048576)
+
+export fn main() Int:
+    let read = notes_reader("notes.txt")
+    let outcome = read()
+    if let bytes = outcome:
+        print(bytes.length())
+        return 0
+    print(outcome.err().message)
+    return 1
+
+```
+
+```text
+5
 ```
 
 `notes_reader("notes.txt")` returns a callback; each call opens, reads, and closes its own file.
@@ -136,10 +221,20 @@ A non-escaping callback can borrow an already-open file while its owner stays in
 
 ## Contextual callback inference
 
-```manuscript
+Save this complete example as `example.ms` and run `ms run example.ms`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"[1, 2]\n"} -->
+```manuscript
 fn names() List[String]:
     return [1, 2].map(fn value: value.to_string())
+
+export fn main() Int:
+    print(names())
+    return 0
+```
+
+```text
+[1, 2]
 ```
 
 The list supplies `Int` for `value`, and the expected `List[String]` supplies the callback result. Other arguments may establish callback inputs in any written order; callbacks are revisited as context appears, and runtime order is unchanged. An unambiguous expected result may establish generic arguments first ([inference](../types/generics.md#inference-from-arguments)). A Result context supplies the error type while the body gives the success type. Otherwise add a specialization or annotation.

@@ -425,7 +425,7 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 
 `fn(Int) Int` names a function that takes an `Int` and returns an `Int`. Use `fn` to create a callback:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::a callback borrows a prepared value\nPASS example.ms::a callback borrows a prepared value\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -463,7 +463,7 @@ for returned callbacks and resource ownership.
 
 `|` passes a value to the next step, so a sequence of calls reads top to bottom. `try` inside a flow unwraps a `Result` and returns early on error:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::pipe flow\nPASS example.ms::pipe flow\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -509,7 +509,7 @@ A record describes data. Methods describe operations on that data and live in an
 types can implement. Here, `Increment` requires a mutating operation, and `Counter`
 provides it; `self` names the receiver inside that operation:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::counter behavior\nPASS example.ms::counter behavior\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -544,7 +544,7 @@ PASS example.ms::counter behavior
 
 A type's own methods go in `impl Counter:`, without an interface:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::own methods\nPASS example.ms::own methods\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -607,23 +607,38 @@ explains inference, bounds, generic records, defaults, and specialization.
 ## Files and cleanup
 
 A file is a resource that must be closed. Put acquisition and use in the same
-function so its scope expresses the resource's lifetime. This function fragment
-copies at most one MiB from an existing `notes.txt` to `backup.txt`:
+function so its scope expresses the resource's lifetime. Save this complete program
+as `copy.ms`. Create `notes.txt` containing `Remember the milk` followed by a newline,
+then run `ms run copy.ms` to copy at most one MiB into `backup.txt`:
 
+<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"Remember the milk\n"},"want_files":{"backup.txt":"Remember the milk\n"},"stdout":"Copied notes.txt to backup.txt\n"} -->
 ```manuscript
 import open, write_file_bytes from "@std/os/fs.ms"
 
 fn copy_notes() Unit!:
-    var source = try open("notes.txt", flags: "r", mode: 0)
+    let source = try open("notes.txt", flags: "r", mode: 0)
     let contents = try source.read_file(max_bytes: 1048576)
     try write_file_bytes(path: "backup.txt", data: contents, replace: true).wait()
     return ok(unit)
+
+export fn main() Int:
+    let outcome = copy_notes()
+    if let _copied = outcome:
+        print("Copied notes.txt to backup.txt")
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
-`try open` acquires the file or returns an error before any read happens. `var`
-permits operations that change the file's position. `read_file` reads through that
-handle, and `write_file_bytes` returns a promise; `.wait()` takes the write result,
-which `try` checks before reporting success.
+```text
+Copied notes.txt to backup.txt
+```
+
+`backup.txt` contains the same text as `notes.txt`. `try open` acquires the file or
+returns an error before any read happens. The handle can use a `let` binding:
+`read_file` is a non-mutating method in its Manuscript signature, even though reading
+advances the underlying file position. `write_file_bytes` returns a promise;
+`.wait()` takes the write result, which `try` checks before reporting success.
 
 The file closes at the end of its scope, even on early return. `close()` returns a
 `Result`: a function returning `T!` can report a failed close as its error; a
@@ -650,10 +665,11 @@ fn calculate() Int!:
     return ok(total)
 
 export fn main() Int:
-    if let total = calculate():
+    let outcome = calculate()
+    if let total = outcome:
         print("Total: {total}")
         return 0
-    print("Calculation failed")
+    print(outcome.err().message)
     return 1
 ```
 
@@ -676,16 +692,41 @@ captures, timeouts, and cooperative cancellation before you depend on them.
 
 ## A few compiler errors to recognize
 
-These are intentionally rejected:
+Save this complete but deliberately invalid program as `invalid.ms`. Each mistake
+illustrates a rule introduced above:
 
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot assign immutable binding count","expected Int, found String (in entry 2 of the literal, whose entries share one type)","missing argument quantity: Int in call to line_total"]} -->
 ```manuscript
-let count = 2
-count = 3                 // Use var for reassignment.
-let mixed = [1, "two"]    // List elements need a common type.
-line_total(12)            // Supply the required quantity.
+fn line_total(price: Int, quantity: Int) Int:
+    return price * quantity
+
+export fn main() Int:
+    let count = 2
+    count = 3
+    let mixed = [1, "two"]
+    print(mixed)
+    line_total(12)
+    return count
 ```
 
-Use `ms check example.ms` to catch these problems before running the program.
+Check it without running:
+
+```sh
+ms check invalid.ms
+```
+
+The command exits with status 1 and reports three errors. The diagnostic causes
+are shown here without file positions, source excerpts, or suggested fixes:
+
+```text
+cannot assign immutable binding count
+expected Int, found String (in entry 2 of the literal, whose entries share one type)
+missing argument quantity: Int in call to line_total
+```
+
+Use `var` when `count` must change, keep the list's element types consistent, and
+supply the required `quantity` argument.
+
 Read the cause and suggested fix, correct one issue, and check again. The
 [diagnostics guide](../developer-tooling/source/diagnostics.md) explains structured
 output and mechanical fixes.

@@ -49,12 +49,27 @@ Matching a `Result` with only `ok` and `error` arms is flagged the same way as a
 
 A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `true`, and `false`. Arms are tested in order; each value may appear once. A final `_` is required unless `true` and `false` are both covered. Arms bind nothing.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"none\none\nmany\n"} -->
 ```manuscript
 fn name(count: Int) String:
     match count:
         0: return "none"
         1: return "one"
         _: return "many"
+
+export fn main() Int:
+    print(name(0))
+    print(name(1))
+    print(name(4))
+    return 0
+```
+
+```text
+none
+one
+many
 ```
 
 Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `else if`.
@@ -63,18 +78,38 @@ Computed values, interpolated text, ranges, and `Float` scrutinees are not liter
 
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"42\nInvalid amount\n"} -->
 ```manuscript
 enum Cents:
     Valid(amount: Int)
     Invalid
 
-fn total(cents: Cents) Result[Int, Error]:
+fn total(cents: Cents) Int!:
     let amount = match cents:
         Valid(value):
             value
         Invalid:
             return error(Error("Invalid amount"))
     return ok(amount)
+
+fn show_total(cents: Cents) Unit:
+    let outcome = total(cents)
+    if let value = outcome:
+        print(value)
+        return
+    print(outcome.err().message)
+
+export fn main() Int:
+    show_total(Valid(42))
+    show_total(Invalid)
+    return 0
+```
+
+```text
+42
+Invalid amount
 ```
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
@@ -87,6 +122,9 @@ Payloads bind by position in field order: exactly one identifier or `_` per fiel
 
 Lowercase variant names, including `case`, follow the same rule. A lone lowercase arm binds a payload only when matching an `Optional`; on another enum it names a payloadless variant.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n0\n"} -->
 ```manuscript
 enum Position:
     Point(x: Int, y: Int)
@@ -98,6 +136,16 @@ fn horizontal(position: Position) Int:
             return horizontal_value
         Position.Unknown:
             return 0
+
+export fn main() Int:
+    print(horizontal(Position.Point(3, 4)))
+    print(horizontal(Position.Unknown))
+    return 0
+```
+
+```text
+3
+0
 ```
 
 - `Point(x: local, y: other):` is a parse error; `Point(x):` is an arity error. Repeated names are rejected; `_` may repeat.
@@ -111,13 +159,31 @@ fn horizontal(position: Position) Int:
 
 Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"true\nfalse\n"} -->
 ```manuscript
+enum Payment:
+    Paid(receipt: String)
+    Declined(reason: String)
+    Pending(reference: String)
+
 fn paid(payment: Payment) Bool:
     match payment:
         Paid(_):
             return true
         _:
             return false
+
+export fn main() Int:
+    print(paid(Paid("receipt-42")))
+    print(paid(Pending("order-3")))
+    return 0
+```
+
+```text
+true
+false
 ```
 
 Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return completeness follows the [function return rules](../functions/declarations-and-calls.md#unit-and-never).
@@ -129,6 +195,8 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 ## Contract type patterns
 
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
+
+Save this declaration example as `example.ms` and run `ms check example.ms`:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -146,6 +214,10 @@ fn describe(shape: Shape) String:
         Square(square): return "square {square.side}"
         _:
             return "area {shape.area()}"
+```
+
+```text
+Checked example.ms
 ```
 
 - The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.

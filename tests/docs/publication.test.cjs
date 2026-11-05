@@ -52,8 +52,8 @@ test('the published browser bundle highlights the landing example and current sy
   }
   assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"changes.txt"'),
     'The input filename must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Helper and entrypoint returns retain keyword styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 3,
+    'Helper return and both entrypoint outcomes retain keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -214,6 +214,13 @@ test('previous and next links follow the rendered sidebar reading order', () => 
     ['developer-tooling/', 'developer-tooling/how-it-works/', 'developer-tooling/implementation/'].map(route => prefix + route),
     'Teach building and sharing before the tooling command reference');
   assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
+  for (const [from, to] of [
+    ['core-language/basics/expressions/', 'core-language/functions/'],
+    ['core-language/functions/function-values-and-closures/', 'core-language/types/'],
+  ]) {
+    assert.equal(routes[routes.indexOf(prefix + from) + 1], prefix + to,
+      'The first reading path should continue into the next lesson before exact reference material');
+  }
   const retired = fs.readFileSync(path.join(book, 'learn/best-practices/index.html'), 'utf8');
   assert.ok(retired.includes(prefix + 'learn/common-tasks/'), 'Retired advice page redirects to runnable recipes');
 
@@ -294,5 +301,12 @@ test('the book separates learning, language chapters, practical work, and refere
   const reference = groups.find(group => /<[^>]*>Reference<\//.test(group));
   assert.ok(reference.includes('/standard-library/reference/'));
   assert.ok(reference.includes('/glossary/'));
-  assert.ok(!reference.includes('/core-language/'), 'The language guide has its own reading path');
+  assert.ok(reference.includes('/recipes/template-reference/'), 'Keep exact template syntax reachable in Reference');
+  assert.ok(!build.includes('/recipes/template-reference/'), 'Keep exact template syntax outside the recipe reading path');
+  for (const route of ['/core-language/basics/grammar/', '/core-language/functions/native-functions/']) {
+    assert.ok(reference.includes(route), `Keep exact language reference reachable at ${route}`);
+    assert.ok(!language.includes(route), `Move ${route} out of the first-reading path`);
+  }
+  const referenceLinks = [...reference.matchAll(/<a\b[^>]*>/g)].map(match => attribute(match[0], 'href'));
+  assert.ok(!referenceLinks.some(href => href.endsWith('/core-language/')), 'The language guide has its own reading path');
 });

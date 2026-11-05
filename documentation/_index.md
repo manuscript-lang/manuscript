@@ -24,6 +24,10 @@ fn render() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    return if render().is_ok(): 0 else: 1
+    let outcome = render()
+    if let _done = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 {{< /docs-home >}}

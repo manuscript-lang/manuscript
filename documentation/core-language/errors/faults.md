@@ -11,8 +11,9 @@ Choose the failure model from the caller's perspective. A missing configuration 
 
 ## Invariant checks
 
-Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails.
+Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails. Save as `validated-discount.ms` and run `ms run validated-discount.ms`; it prints `18`. Change the price to zero to exercise the invariant fault:
 
+<!-- manuscript-example: {"mode":"run","stdout":"18\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 import Decimal from "@std/math/decimal.ms"
@@ -23,6 +24,10 @@ fn discount_validated(price: Decimal, percent: Decimal) Decimal:
     if percent <= 0d or percent >= 100d:
         return panic("Percent must be positive and below 100")
     return price * (1d - percent / 100d)
+
+export fn main() Int:
+    print(discount_validated(20d, 10d))
+    return 0
 ```
 
 The example treats nonpositive prices and percentages outside (0, 100) as faults. For runtime input, use the validating `discount` in [expected failures](results.md).
@@ -31,11 +36,16 @@ The example treats nonpositive prices and percentages outside (0, 100) as faults
 
 `panic(message: message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a non-`Unit` function. See [Unit and Never](../functions/declarations-and-calls.md#unit-and-never).
 
+<!-- manuscript-example: {"mode":"run","stdout":"","exit_code":67} -->
 ```manuscript
-panic("Required invariant was violated.")
+import panic from "@std/core.ms"
+
+export fn main() Int:
+    panic("Required invariant was violated.")
+    return 0
 ```
 
-A fault aborts the current operation after cleanup.
+Save the program as `fault.ms` and run `ms run fault.ms`. It exits with status 67 and reports `Required invariant was violated.` followed by the source location on standard error. A fault aborts the current operation after cleanup.
 
 ## Faults the checker rejects
 

@@ -3,6 +3,8 @@
 //! `test` examples run under `ms test`. `run` examples are type-checked, and
 //! executed with their arguments, input, file fixtures, local HTTP responses,
 //! expected output and exit status. Every case gets an isolated working directory.
+//! `reject` checks intentionally invalid full programs against diagnostic causes;
+//! reference-only declarations use `check`. `filename` controls displayed test names.
 
 use std::fs;
 use std::io::{Read, Write};
@@ -114,7 +116,21 @@ fn write_files(dir: &Path, spec: &Json, key: &str) {
     }
 }
 
-fn run_case(executable: &Path, dir: &Path, spec: &Json) -> Result<(), String> {
+fn check_output(spec: &Json, output: &std::process::Output) -> Result<(), String> {
+    for (key, actual) in [("stdout", &output.stdout), ("stderr", &output.stderr)] {
+        if let Some(want) = text(spec, key)
+            && actual != want.as_bytes()
+        {
+            return Err(format!(
+                "expected {key} {want:?}, got {:?}",
+                String::from_utf8_lossy(actual)
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn run_case(source: &Path, dir: &Path, spec: &Json) -> Result<(), String> {
     fs::create_dir_all(dir).unwrap();
     write_files(dir, spec, "files");
     let mut url = String::new();
@@ -169,7 +185,12 @@ fn run_case(executable: &Path, dir: &Path, spec: &Json) -> Result<(), String> {
         })
         .collect();
     let output = run(
-        Command::new(executable).current_dir(dir).args(args),
+        Command::new(env!("CARGO_BIN_EXE_ms"))
+            .current_dir(dir)
+            .arg("run")
+            .arg(source)
+            .arg("--")
+            .args(args),
         text(spec, "stdin").unwrap_or(""),
     );
     if let Some(server) = server {
@@ -183,16 +204,7 @@ fn run_case(executable: &Path, dir: &Path, spec: &Json) -> Result<(), String> {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-    for (key, actual) in [("stdout", &output.stdout), ("stderr", &output.stderr)] {
-        if let Some(want) = text(spec, key)
-            && actual != want.as_bytes()
-        {
-            return Err(format!(
-                "expected {key} {want:?}, got {:?}",
-                String::from_utf8_lossy(actual)
-            ));
-        }
-    }
+    check_output(spec, &output)?;
     if let Some(Json::Obj(files)) = spec.get("want_files") {
         for (name, want) in files {
             let actual = fs::read_to_string(fixture_path(dir, name))
@@ -215,34 +227,74 @@ fn marked_tutorial_examples_compile_and_pass() {
     for (n, example) in all.iter().enumerate() {
         let example_dir = dir.join(format!("example{n}"));
         fs::create_dir_all(&example_dir).unwrap();
-        let path = example_dir.join("example.ms");
+        let path = fixture_path(
+            &example_dir,
+            text(&example.spec, "filename").unwrap_or("example.ms"),
+        );
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(&path, &example.source).unwrap();
         write_files(&example_dir, &example.spec, "build_files");
         let path = path.to_str().unwrap();
         let name = format!("{}:{}", example.file.display(), example.line);
         let mode = text(&example.spec, "mode").expect("example needs a mode");
-        let executable = example_dir.join(if cfg!(windows) {
-            "example.exe"
-        } else {
-            "example"
-        });
         let args = match mode {
             "test" => vec!["test", path],
             "bench" => vec!["bench", path, "--time", "5ms", "--samples", "2"],
-            "check" => vec!["check", path],
-            "run" => vec!["build", path, "-o", executable.to_str().unwrap()],
+            "check" | "reject" => vec!["check", path],
+            "run" => vec!["check", path],
             other => panic!("{name}: unknown example mode {other}"),
         };
         let output = ms(&example_dir, &args);
-        if !output.status.success() {
+        if mode == "reject" {
+            let expected = match example.spec.get("stderr_contains") {
+                Some(Json::Str(cause)) => vec![cause.as_str()],
+                Some(Json::Arr(causes)) => causes
+                    .iter()
+                    .map(|cause| cause.as_str().expect("diagnostic cause must be a string"))
+                    .collect(),
+                _ => panic!("{name}: reject examples need stderr_contains diagnostic causes"),
+            };
+            assert!(
+                !expected.is_empty() && expected.iter().all(|cause| !cause.is_empty()),
+                "{name}: rejection needs a nonempty diagnostic cause"
+            );
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if output.status.success() || expected.iter().any(|cause| !stderr.contains(cause)) {
+                failures.push(format!(
+                    "{name}: expected rejection containing {expected:?}, got {}\n{stderr}",
+                    output.status
+                ));
+            }
+            continue;
+        }
+        let expected_exit = if mode == "run" {
+            0
+        } else {
+            example
+                .spec
+                .get("exit_code")
+                .and_then(Json::as_i64)
+                .unwrap_or(0) as i32
+        };
+        assert!(
+            expected_exit == 0
+                || text(&example.spec, "stdout").is_some()
+                || text(&example.spec, "stderr").is_some(),
+            "{name}: an expected failing command needs exact stdout or stderr"
+        );
+        if output.status.code() != Some(expected_exit) {
             failures.push(format!(
-                "{name}: ms {mode} failed\n{}\n{}",
+                "{name}: ms {mode} expected exit {expected_exit}, got {}\n{}\n{}",
+                output.status,
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             ));
             continue;
         }
         if mode != "run" {
+            if let Err(error) = check_output(&example.spec, &output) {
+                failures.push(format!("{name}: {error}"));
+            }
             continue;
         }
         let mut cases = vec![&example.spec];
@@ -254,9 +306,11 @@ fn marked_tutorial_examples_compile_and_pass() {
                 .unwrap_or(&[]),
         );
         for (case, spec) in cases.into_iter().enumerate() {
-            if let Err(error) =
-                run_case(&executable, &example_dir.join(format!("case{case}")), spec)
-            {
+            if let Err(error) = run_case(
+                Path::new(path),
+                &example_dir.join(format!("case{case}")),
+                spec,
+            ) {
                 failures.push(format!("{name} case {case}: {error}"));
             }
         }
@@ -280,6 +334,8 @@ fn getting_started_commands_produce_the_documented_program_and_code_map() {
             assert_eq!(String::from_utf8_lossy(&output.stdout), want, "{args:?}");
         }
     };
+    check(&dir, &["--version"], None);
+    check(&dir, &["--help"], None);
     check(&dir, &["init", "my-app"], None);
     let project = dir.join("my-app");
     check(
@@ -288,7 +344,17 @@ fn getting_started_commands_produce_the_documented_program_and_code_map() {
         Some("Arguments: 2\n"),
     );
     let main = project.join("src/main.ms");
-    let source = fs::read_to_string(&main).unwrap();
+    let source = examples()
+        .into_iter()
+        .find(|example| example.file.ends_with("learn/getting-started.md"))
+        .expect("getting-started must include its replacement main")
+        .source;
+    fs::write(&main, &source).unwrap();
+    check(
+        &project,
+        &["run", "ms.toml", "--", "first", "second"],
+        Some("Arguments: 2\n"),
+    );
     assert!(source.contains("Arguments: {arguments().length()}"));
     fs::write(
         main,
@@ -314,6 +380,7 @@ fn getting_started_commands_produce_the_documented_program_and_code_map() {
         &["test", "ms.toml"],
         Some("RUN test.ms::arithmetic\nPASS test.ms::arithmetic\n1 tests, 0 failed\n"),
     );
+    check(&project, &["verify", "ms.toml"], None);
     let executable = project.join(if cfg!(windows) { "hello.exe" } else { "hello" });
     check(
         &project,

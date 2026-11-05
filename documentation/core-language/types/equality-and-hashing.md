@@ -12,6 +12,8 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected. The
 
 `Comparable` (also in `@std/core.ms`) orders values for `math.max`, `math.min`, `List.sorted`, `List.min`, and `List.max`. It does not imply `Equal`: Float orders NaN above every value yet NaN != NaN. Make `compare` return zero exactly when `equals` is true.
 
+These are reference signatures of the standard interfaces. They describe the built-in contracts; do not redeclare their reserved names in an application:
+
 ```manuscript
 interface Equal:
     fn equals(other: Self) Bool
@@ -51,6 +53,9 @@ Equality reads both collections. The ownership rules prevent mutating a collecti
 
 An explicit implementation can select identity instead of every field:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"true\n1\n"} -->
 ```manuscript
 type CustomerKey:
     id: Int
@@ -62,6 +67,19 @@ impl Equal for CustomerKey:
 
 impl Hashable for CustomerKey:
     fn hash() Int: self.id
+
+export fn main() Int:
+    let first = CustomerKey(1, "Ada")
+    let renamed = CustomerKey(1, "Ada Lovelace")
+    print(first == renamed)
+    let values = Set([first, renamed])
+    print(values.length())
+    return 0
+```
+
+```text
+true
+1
 ```
 
 These apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).

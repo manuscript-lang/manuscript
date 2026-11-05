@@ -19,7 +19,7 @@ Create `config.json` in your working directory:
 
 Save the following complete program as `config.ms` beside it:
 
-<!-- manuscript-example: {"mode":"run","files":{"config.json":"{\"name\":\"Newsletter\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":true}\n","cases":[{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}\n"},{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabeld\":false}"},"stdout":"Could not load config.json\n","exit_code":1},{"files":{"config.json":"{\"name\":42}"},"stdout":"Could not load config.json\n","exit_code":1},{"files":{"config.json":"{}"},"stdout":"Could not load config.json\n","exit_code":1}]} -->
+<!-- manuscript-example: {"mode":"run","files":{"config.json":"{\"name\":\"Newsletter\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":true}\n","cases":[{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}\n"},{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabeld\":false}"},"stdout":"JSON: invalid data: at $: unknown field\n","exit_code":1},{"files":{"config.json":"{\"name\":42}"},"stdout":"JSON: invalid data: at $.name: expected string, found number\n","exit_code":1},{"files":{"config.json":"{}"},"stdout":"JSON: invalid data: at $: missing field \"name\"\n","exit_code":1}]} -->
 ```manuscript
 import parse, stringify, JsonLimits from "@std/data/json.ms"
 import read_file from "@std/os/fs.ms"
@@ -42,10 +42,11 @@ fn run() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    if run().is_error():
-        print("Could not load config.json")
-        return 1
-    return 0
+    let outcome = run()
+    if let _value = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 Run from that directory:
@@ -72,7 +73,13 @@ Unknown fields are normally ignored by `parse`. This program sets `ignore_unknow
 
 `strict: true` on `stringify` answers a different question: can every value be represented as JSON? It rejects values without a JSON form, such as `Unit`, instead of omitting them or writing `null` in a list. It does not make absent optional record fields appear. Functions and resources cannot satisfy the encoder's `Data` bound in the first place.
 
-The example deliberately gives one short failure message at the application boundary. A larger application can retain the returned `Error` and report or translate it there; see [expected errors](../core-language/errors/results.md). Do not replace parsing failures with an empty configuration unless that is an explicit application policy.
+The `if let` in `main` handles success; the following statements handle failure: success exits with status 0, while failure prints the actual cause and exits with status 1. For example, setting `name` to `42` reports:
+
+```text
+JSON: invalid data: at $.name: expected string, found number
+```
+
+The path identifies the field that needs correcting. A larger application can translate the error at this boundary while retaining useful context; see [expected errors](../core-language/errors/results.md). Do not replace parsing failures with an empty configuration unless that is an explicit application policy.
 
 ## Inspect a document with an unknown shape
 
@@ -95,9 +102,11 @@ fn run() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+    let outcome = run()
+    if let _value = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 ```sh

@@ -23,14 +23,21 @@ A generic bound grants properties, not subtyping. Type positions use [ordinary n
 
 `Equal` and `Hashable` are [standard interfaces](equality-and-hashing.md) usable as bounds and as parameter types. Only generic bounds can be conjoined; value types have no intersection or refinement syntax.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected fn(Int) String, found fn(Int) Int"]} -->
 ```manuscript
 fn identity(value: Int) Int:
     return value
 
-let exact: fn(Int) Int = identity
-// Rejected: the result type differs.
-let wrong: fn(Int) String = identity
+export fn main() Int:
+    let exact: fn(Int) Int = identity
+    // Rejected: the result type differs.
+    let wrong: fn(Int) String = identity
+    return 0
 ```
+
+The diagnostic includes `expected fn(Int) String, found fn(Int) Int`.
 
 An expected `T?` accepts a plain `T`, wrapped as the present case, in arguments, constructor fields, enum payloads, annotated bindings, assignments, returns, defaults, and collection elements ([optional values](optionals.md#passing-optional-arguments)). It wraps one layer and never changes a numeric type.
 
@@ -40,17 +47,24 @@ There are no implicit numeric conversions, optional unwrapping, result wrapping,
 
 An expected type comes from an annotation, assignment target, return declaration, substituted parameter, record field, or enum payload. It guides parenthesized expressions, list elements, constructor fields, and case payloads, and supplies missing type arguments for a uniquely identified `none`, `ok`, or `error`. It never resolves an ambiguous case name or overrides a type an expression already determines.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot infer constructor type argument E"]} -->
 ```manuscript
 type Input:
     names: List[String?]
 
-let input = Input([none, "Ada"])
-let nested: List[List[Int]] = [[], [1]]
-let success: Result[Int, Error] = ok(1)
-let failure: Result[Int, Error] = error(Error("unavailable"))
-// Rejected: the result error type cannot be inferred from ok's payload.
-let incomplete = ok(1)
+export fn main() Int:
+    let input = Input([none, "Ada"])
+    let nested: List[List[Int]] = [[], [1]]
+    let success: Result[Int, Error] = ok(1)
+    let failure: Result[Int, Error] = error(Error("unavailable"))
+    // Rejected: the result error type cannot be inferred from ok's payload.
+    let incomplete = ok(1)
+    return 0
 ```
+
+The diagnostic includes `cannot infer constructor type argument E`.
 
 Expressions whose type cannot be determined are rejected.
 
@@ -65,6 +79,9 @@ A list whose independently typed elements disagree is rejected.
 
 Operators and `try` do not pass an expected type back into their operands, which must determine their own types first.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot infer constructor type argument E"]} -->
 ```manuscript
 fn known() Result[Int, Error]:
     let number: Int = try Result[Int, Error].ok(1)
@@ -75,6 +92,8 @@ fn unknown() Result[Int, Error]:
     let number: Int = try ok(1)
     return ok(number)
 ```
+
+The diagnostic includes `cannot infer constructor type argument E`.
 
 So `[] == []` is ill typed even where `Bool` is expected; qualify or annotate incomplete operands. `Never` operands follow the [operator candidate rules](../basics/expressions.md#never-operands).
 

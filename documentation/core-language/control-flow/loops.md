@@ -9,6 +9,9 @@ weight = 2
 
 ## Traversing a list
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"6\n0\n"} -->
 ```manuscript
 fn sum(values: List[Int]) Int:
     var total = 0
@@ -16,11 +19,23 @@ fn sum(values: List[Int]) Int:
         total += value
 
     return total
+
+export fn main() Int:
+    print(sum([1, 2, 3]))
+    print(sum([]))
+    return 0
+```
+
+```text
+6
+0
 ```
 
 ## Counting loops
 
 `start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. The bounds are `Int` values. Arithmetic binds first, so `0..n + 1` means `0..(n + 1)`; ranges cannot be chained. A `for` over `start..end` counts directly without allocating a list.
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -34,9 +49,17 @@ test "sum indexes":
         return panic("Expected 10, got {total}")
 ```
 
+```text
+RUN example.ms::sum indexes
+PASS example.ms::sum indexes
+1 tests, 0 failed
+```
+
 `end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
 
 Use `while` with a counter for other steps or computed exits:
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -52,11 +75,19 @@ test "five iterations":
         return panic("Expected five iterations and total 10")
 ```
 
+```text
+RUN example.ms::five iterations
+PASS example.ms::five iterations
+1 tests, 0 failed
+```
+
 Increment the counter before any `continue` that would skip its update.
 
 ## Stepped ranges
 
 `range_by(start, end, step, max_items)` returns `List[Int]!`. Negative steps count down: `range_by(start: 5, end: 0, step: -2)` is `[5, 3, 1]`. Equal endpoints or a step away from the end give an empty list. `step: 0` is `"EINVAL"`; exceeding `max_items` is `"EOVERFLOW"`. Unwrap the Result before looping:
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -69,6 +100,12 @@ test "sum even indexes":
     for index in indexes:
         total += index
     try expect_equal(total, 6)
+```
+
+```text
+RUN example.ms::sum even indexes
+PASS example.ms::sum even indexes
+1 tests, 0 failed
 ```
 
 `try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections/collections.ms.md#range_by).
@@ -87,6 +124,9 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"8\n"} -->
 ```manuscript
 fn total(values: Map[String, Int]) Int:
     var sum = 0
@@ -94,6 +134,14 @@ fn total(values: Map[String, Int]) Int:
         let {key: _key, value} = entry
         sum += value
     return sum
+
+export fn main() Int:
+    print(total({"Ada": 3, "Lin": 5}))
+    return 0
+```
+
+```text
+8
 ```
 
 `for [key, value] in values:` is a parse error. Numbers, text, optionals, functions, and types that merely have a `next` method without `impl Iterator` are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
@@ -101,6 +149,8 @@ fn total(values: Map[String, Int]) Int:
 ## Iterators
 
 A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+
+Save this program as `example.ms` and run `ms run example.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
@@ -117,11 +167,17 @@ impl Iterator[Int] for Countdown:
         self.left -= 1
         return self.left + 1
 
-export fn main() Int:
+fn run() Unit!:
     for n in Countdown(3):
-        if stdout().write("{n}\n").is_error():
-            return 1
-    return 0
+        try stdout().write("{n}\n")
+    return ok(unit)
+
+export fn main() Int:
+    let outcome = run()
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 Output:
@@ -137,19 +193,27 @@ Output:
 A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
 
 
+Save this program as `example.ms` and run `ms run example.ms`:
+
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript
 import Deque from "@std/collections/deque.ms"
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn run() Unit!:
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)
     for step in steps:
-        if stdout().write("{step}\n").is_error():
-            return 1
-    return 0
+        try stdout().write("{step}\n")
+    return ok(unit)
+
+export fn main() Int:
+    let outcome = run()
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 Output:
@@ -161,6 +225,9 @@ Output:
 
 ## Repeating while a condition holds
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"0\n"} -->
 ```manuscript
 fn count_down(start: Int) Int:
     var remaining = start
@@ -168,6 +235,14 @@ fn count_down(start: Int) Int:
         remaining -= 1
 
     return remaining
+
+export fn main() Int:
+    print(count_down(3))
+    return 0
+```
+
+```text
+0
 ```
 
 `while` re-tests its condition before every iteration, including after `continue`. An empty iterable or initially false condition runs no body.

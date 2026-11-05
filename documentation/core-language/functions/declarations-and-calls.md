@@ -7,11 +7,21 @@ weight = 1
 
 A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body returns its expression implicitly: `fn double(value: Int) Int: value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
 fn decrement(value: Int) Int:
     return value - 1
 
-let remaining = decrement(3)
+export fn main() Int:
+    let remaining = decrement(3)
+    print(remaining)
+    return 0
+```
+
+```text
+2
 ```
 
 Parameters and return types are explicit; local annotations are optional.
@@ -58,19 +68,35 @@ A returned value is separate from output: `line_total` computes an integer and `
 
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"7\n7\n7\n7\n"} -->
 ```manuscript
 fn reduce(amount: Int, deduction: Int) Int:
     return amount - deduction
 
-let remaining = reduce(10, 3)
-let explicit_remaining = reduce(amount: 10, deduction: 3)
-let mixed = reduce(deduction: 3, 10)
-let amount = 10
-let deduction = 3
-let swapped = reduce(deduction: deduction, amount: amount)
+export fn main() Int:
+    let remaining = reduce(10, 3)
+    let explicit_remaining = reduce(amount: 10, deduction: 3)
+    let mixed = reduce(deduction: 3, 10)
+    let amount = 10
+    let deduction = 3
+    let swapped = reduce(deduction: deduction, amount: amount)
+    print(remaining)
+    print(explicit_remaining)
+    print(mixed)
+    print(swapped)
+    return 0
 ```
 
-All five results are `7`. Arguments resolve left to right and labels do not reserve parameters for later arguments:
+```text
+7
+7
+7
+7
+```
+
+All four printed results are `7`. Arguments resolve left to right and labels do not reserve parameters for later arguments:
 
 - `reduce(10, amount: 3)` supplies `amount` twice and fails.
 - `reduce(amount: 10, 3)` supplies `deduction` positionally.
@@ -88,6 +114,9 @@ A parameter with a default may be omitted; others are required, except `T?`, whi
 
 Write `= expression` after a parameter's type to supply a default:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"7\n"} -->
 ```manuscript
 fn subtract(amount: Int, deduction: Int = 1) Int:
     return amount - deduction
@@ -96,6 +125,14 @@ fn example() Int:
     let usual = subtract(5)
     let explicit = subtract(5, 2)
     return usual + explicit
+
+export fn main() Int:
+    print(example())
+    return 0
+```
+
+```text
+7
 ```
 
 `usual` is `4` and `explicit` is `3`. A function whose sole parameter has a default also accepts `function()`.
@@ -113,6 +150,9 @@ fn example() Int:
 
 To accept a variable number of values, declare an ordinary list parameter:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"6\n0\n"} -->
 ```manuscript
 fn sum(values: List[Int]) Int:
     var total = 0
@@ -121,8 +161,17 @@ fn sum(values: List[Int]) Int:
 
     return total
 
-let total = sum([1, 2, 3])
-let empty = sum([])
+export fn main() Int:
+    let total = sum([1, 2, 3])
+    let empty = sum([])
+    print(total)
+    print(empty)
+    return 0
+```
+
+```text
+6
+0
 ```
 
 The argument is one list reference: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.
@@ -143,8 +192,13 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 `unit` is the single value of `Unit`. A `Unit` function may `return`, `return unit`, or fall off the end. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
+Save this complete file as `returns.ms` and run `ms test returns.ms`. The first
+call completes with `Unit`; the test then observes both nonreturning paths:
+
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 
 fn check_positive(value: Int) Unit:
     if not (value > 0):
@@ -152,6 +206,13 @@ fn check_positive(value: Int) Unit:
 
 fn missing_value() Int:
     return panic(message: "Required value is missing")
+
+test "Unit completion and Never faults":
+    check_positive(1)
+    let failed_check = try expect_fault(fn: check_positive(0))
+    let missing = try expect_fault(fn: print(missing_value()))
+    try expect_equal(failed_check, "check failed")
+    try expect_equal(missing, "Required value is missing")
 ```
 
 `panic` has type `fn(String) Never`. A `Never` expression cannot complete normally and is accepted where any value type is expected. `List[Never]` is not compatible with `List[Int]`.
@@ -172,6 +233,11 @@ An expression has no normal successor when a necessarily evaluated subexpression
 
 Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../basics/expressions.md#never-operands)) but cannot complete, so the next statement is unreachable.
 
+Negative reference: save this declaration as `invalid.ms` and run
+`ms check invalid.ms`. The command exits nonzero because the false path has no
+`Int` to return:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["reachable fallthrough in function returning Int"]} -->
 ```manuscript
 fn incomplete(active: Bool) Int:
     if active:

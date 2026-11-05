@@ -33,13 +33,20 @@ A parameter or record field of type `T?` with no default is `none` when omitted,
 
 `T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
 
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot infer constructor type argument T"]} -->
 ```manuscript
-let explicit: String? = none
-// Rejected: no type determines the absent payload.
-let unknown = none
-// Wrapped: an annotated binding expects an Optional.
-let wrapped: String? = "Ada"
+export fn main() Int:
+    let explicit: String? = none
+    // Rejected: no type determines the absent payload.
+    let unknown = none
+    // Wrapped: an annotated binding expects an Optional.
+    let wrapped: String? = "Ada"
+    return 0
 ```
+
+The diagnostic includes `cannot infer constructor type argument T`.
 
 There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Result[T, E]` likewise needs both arguments determined, possibly from the expected type. See [compatibility and expected types](compatibility.md).
 
@@ -47,12 +54,27 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 
 An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"true\nfalse\ntrue\ntrue\n"} -->
 ```manuscript
 import Queue from "@std/collections/queue.ms"
 
-fn main() Unit:
-    var _bounded = Queue[Int](capacity: 4)
-    var _unbounded = Queue[Int]()
+export fn main() Int:
+    var bounded = Queue[Int](capacity: 1)
+    var unbounded = Queue[Int]()
+    print(bounded.enqueue(3))
+    print(bounded.enqueue(4))
+    print(unbounded.enqueue(3))
+    print(unbounded.enqueue(4))
+    return 0
+```
+
+```text
+true
+false
+true
+true
 ```
 
 - Applies to functions, methods, function values, constructor fields, and enum payloads.
@@ -80,43 +102,106 @@ Receiver methods:
 
 Fallback for routine absence:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\nAnonymous\n"} -->
 ```manuscript
 fn display_name(name: String?) String:
     return name.get("Anonymous")
+
+export fn main() Int:
+    print(display_name("Ada"))
+    print(display_name())
+    return 0
+```
+
+```text
+Ada
+Anonymous
 ```
 
 `get(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Anonymous\n"} -->
 ```manuscript
 fn display_name(name: String?, create: fn() String) String:
     return name.get_or_else(create)
+
+export fn main() Int:
+    print(display_name(none, fn: "Anonymous"))
+    return 0
+```
+
+```text
+Anonymous
 ```
 
 Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if let`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada\nHello!\n"} -->
 ```manuscript
 fn greet(name: String?) String:
     if let value = name:
         return "Hello, " + value
     return "Hello!"
+
+export fn main() Int:
+    print(greet("Ada"))
+    print(greet())
+    return 0
+```
+
+```text
+Hello, Ada
+Hello!
 ```
 
 Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"42\ntrue\n"} -->
 ```manuscript
 fn first_number(text: String?) Int?:
     return text.map(fn value: value.trim().clone()).and_then(fn value: value.parse_int())
+
+export fn main() Int:
+    print(first_number(" 42 ").get(0))
+    print(first_number("no number").is_none())
+    return 0
+```
+
+```text
+42
+true
 ```
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
 
 [`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\nAnonymous\n"} -->
 ```manuscript
 fn display_name(name: String?) String:
     if let value = name:
         return value.clone()
     return "Anonymous"
+
+export fn main() Int:
+    print(display_name("Ada"))
+    print(display_name())
+    return 0
+```
+
+```text
+Ada
+Anonymous
 ```
 
 A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
@@ -156,6 +241,9 @@ Passing `cleared` wraps its `String?` in one present outer layer; it does not di
 
 `a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"5\ntrue\n"} -->
 ```manuscript
 type Address:
     city: String?
@@ -165,12 +253,25 @@ type User:
 
 fn city_length(user: User?) Int?:
     return user?.address?.city?.length()
+
+export fn main() Int:
+    print(city_length(User(Address("Paris"))).get(0))
+    print(city_length(User()).is_none())
+    return 0
+```
+
+```text
+5
+true
 ```
 
 A chain cannot move a field out of the optional it reads, so end an owned `String` or record field with `.clone()`.
 
 A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"1\ntrue\n"} -->
 ```manuscript
 type Counter:
     n: Int
@@ -182,6 +283,18 @@ impl Counter:
 
 fn tick(var counter: Counter?) Int?:
     return counter?.bump()
+
+export fn main() Int:
+    var counter: Counter? = Counter(0)
+    print(tick(var counter).get(0))
+    var missing: Counter? = none
+    print(tick(var missing).is_none())
+    return 0
+```
+
+```text
+1
+true
 ```
 
 Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected like any other change to that binding.
@@ -193,10 +306,26 @@ Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected 
 
 Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `try` it:
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
 ```manuscript
 fn port_number(text: String) Int!:
     let port = try text.parse_int().ok_or()
     return ok(port)
+
+export fn main() Int:
+    let outcome = port_number("8080")
+    if let port = outcome:
+        print(port)
+        return 0
+    print(outcome.err().message)
+    return 1
+
+```
+
+```text
+8080
 ```
 
 When fixing another error type, such as `Result[Int, ParseFailure]`, supply a cause explicitly.

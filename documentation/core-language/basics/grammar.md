@@ -13,9 +13,9 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 - Bidirectional text controls (U+202A to U+202E and U+2066 to U+2069) are rejected in comments and text, since they can make source display differently from how it is read; write `\u{202E}` in text when the character is needed.
 - Identifiers are `[A-Za-z_][A-Za-z0-9_]*` and case-sensitive. A lone `_` is a pattern placeholder. Unicode is allowed in text and comments only.
 
-The language uses these keywords:
+The following token inventory is grammar reference, not a program:
 
-```manuscript
+```text
 and break continue else enum export extern false fixture fn for if
 impl import in interface let match not or return self test true try type
 unit var while
@@ -69,7 +69,13 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
+Save this complete example as `example.ms` and run `ms run example.ms`; it prints `2`.
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
+fn apply(value: Int, transform: fn(Int) Int) Int:
+    return transform(value)
+
 fn example() Int:
     return apply(
         value: 3,
@@ -78,22 +84,42 @@ fn example() Int:
                 return value - 1
         ),
     )
+
+export fn main() Int:
+    print(example())
+    return 0
 ```
 
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
+Save this complete example as `example.ms` and run `ms run example.ms`; it prints `2`.
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
+fn apply(value: Int, transform: fn(Int) Int) Int:
+    return transform(value)
+
 fn example() Int:
     return apply(
         value: 3,
         transform: fn(value: Int) Int:
             return value - 1
     )
+
+export fn main() Int:
+    print(example())
+    return 0
 ```
 
 Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value (it can be a conditional expression: `fn value: if value > 0: value else: 0`), while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
+Save this complete example as `example.ms` and run `ms run example.ms`; it prints `2`.
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
+fn apply(value: Int, transform: fn(Int) Int) Int:
+    return transform(value)
+
 fn example() Int:
     return apply(
         transform: fn(value: Int) Int:
@@ -101,6 +127,10 @@ fn example() Int:
         ,
         value: 3,
     )
+
+export fn main() Int:
+    print(example())
+    return 0
 ```
 
 A comma after `return value - 1` stays in the body and is rejected. Grouping the function also allows `),` before another argument.
@@ -217,11 +247,20 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
+Save as `inline.ms` and run `ms run inline.ms`; the program prints `6` then `true`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"6\ntrue\n"} -->
 ```manuscript
 fn double(value: Int) Int: value * 2
+
 fn positive(value: Int) Bool:
     if value > 0: return true
     else: return false
+
+export fn main() Int:
+    print(double(3))
+    print(positive(3))
+    return 0
 ```
 
 - `else if` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
@@ -233,15 +272,32 @@ fn positive(value: Int) Bool:
 
 ## Rejected forms
 
+These are independent negative references. Save each block separately as
+`invalid.ms` and run `ms check invalid.ms`. Each command exits nonzero; none is a
+runnable program. Module constants use `let`, but module variables are forbidden:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["module level holds only 'let' constants"]} -->
 ```manuscript
-let count = 3                       // Not a complete module item.
-fn wrong() Int:
-  return 1                          // A suite requires four spaces.
-fn wrong() Int:
-    let (first, second) = pair       // Parentheses are not a binding pattern.
+var count = 3
 ```
 
-Each example is an independent rejected form.
+A function suite must indent by four spaces, not two:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["indentation must be a multiple of four spaces, found 2"]} -->
+```manuscript
+fn wrong() Int:
+  return 1
+```
+
+A destructuring pattern uses brackets or braces, not parentheses:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["a binding group starts its entries on the next line"]} -->
+```manuscript
+fn wrong() Int:
+    let pair = [1, 2]
+    let (first, second) = pair
+    return first + second
+```
 
 ## Nesting limits
 

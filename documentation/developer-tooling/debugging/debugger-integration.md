@@ -11,7 +11,7 @@ Use `ms profile` to find where a program spends CPU time. Build an unoptimized e
 
 Save this as `words.ms`. It splits a short line repeatedly and prints the number of words processed. The argument controls how much work to do:
 
-<!-- manuscript-example: {"mode":"run","args":["2"],"stdout":"12\n"} -->
+<!-- manuscript-example: {"mode":"run","args":["2"],"stdout":"12\n","cases":[{"args":["invalid"],"stdout":"Repeat count must be a non-negative integer\n","exit_code":1},{"args":["-1"],"stdout":"Repeat count must be a non-negative integer\n","exit_code":1},{"args":["0"],"stdout":"0\n"}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 
@@ -19,12 +19,16 @@ fn count_words(text: String) Int:
     return text.split(" ").length()
 
 export fn main() Int:
-    let repeats = arguments().get(0, default: "1000000").parse_int().get(1000000)
-    var total = 0
-    for index in 0..repeats:
-        total += count_words("small programs can process many words")
-    print(total)
-    return 0
+    let text = arguments().get(0, default: "1000000")
+    if let repeats = text.parse_int():
+        if repeats >= 0:
+            var total = 0
+            for index in 0..repeats:
+                total += count_words("small programs can process many words")
+            print(total)
+            return 0
+    print("Repeat count must be a non-negative integer")
+    return 1
 ```
 
 ```sh
@@ -34,6 +38,8 @@ ms run words.ms -- 2
 ```text
 12
 ```
+
+Omitting the argument selects one million repetitions. Invalid text or a negative count prints `Repeat count must be a non-negative integer` and exits 1, so a typo cannot silently select a different workload. Zero repetitions prints `0`.
 
 For your own application, use its real entry point and representative data. `ms profile` runs `main`, not test or benchmark blocks.
 

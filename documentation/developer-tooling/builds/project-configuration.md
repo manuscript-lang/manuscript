@@ -54,6 +54,7 @@ export fn total(price: Int, quantity: Int) Int:
 
 Replace `src/main.ms` with:
 
+<!-- manuscript-example: {"mode":"run","build_files":{"pricing.ms":"export fn total(price: Int, quantity: Int) Int:\n    return price * quantity\n"},"stdout":"36\n"} -->
 ```manuscript
 import total from "./pricing.ms"
 
@@ -156,7 +157,7 @@ Keep the copy under version control and record the upstream URL, exact revision,
 
 ## Resolving an import
 
-Imports name an exported symbol and a path:
+Imports name an exported symbol and a path. These are reference declarations illustrating path resolution, not a standalone program; they assume the two modules and exported types exist:
 
 ```manuscript
 import CustomerId from "./domain/customers.ms"

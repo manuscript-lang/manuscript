@@ -13,11 +13,13 @@ A stream is useful when input arrives incrementally or is too large to keep at o
 
 ## Reading
 
-<!-- manuscript-example: {"mode":"check"} -->
+Save as `count-errors.ms` and run `ms run count-errors.ms`. It prints `2`, the number of lines containing `ERROR`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import lines from "@std/io/streams.ms"
+import lines, from_bytes from "@std/io/streams.ms"
 
 fn count_errors(input: ReadStream[Bytes]) Int!:
     var errors = 0
@@ -25,6 +27,14 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
         if (try line).contains("ERROR"):
             errors += 1
     return ok(errors)
+
+export fn main() Int:
+    let outcome = count_errors(from_bytes("INFO ready\nERROR first\nERROR second\n".to_bytes()))
+    if let value = outcome:
+        print(value)
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 - `read()` returns a `Promise[T?]` for one step and defers the read until a wait; `none` marks the end. See [Promises](promises.md) for waiting, timeouts and cancellation.
@@ -39,9 +49,11 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
 - `buffered()` reports the items or bytes not yet drained.
 - The runtime drains buffered descriptor writes before the process ends. To handle a drain failure, call `flush().wait()` before closing. A pipe flush is not an acknowledgement that the reader has consumed every value; close the writers and let the reader reach the end when you need that guarantee.
 
-<!-- manuscript-example: {"mode":"check"} -->
+Save as `write-rows.ms` and run `ms run write-rows.ms`; it prints `first` and `second` on separate lines. The helper flushes before reporting success:
+
+<!-- manuscript-example: {"mode":"run","stdout":"first\nsecond\n"} -->
 ```manuscript
-import WriteStream from "@std/io/io.ms"
+import WriteStream, stdout from "@std/io/io.ms"
 
 fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
     for row in rows:
@@ -50,6 +62,14 @@ fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
             try out.flush().wait()
     try out.flush().wait()
     return ok(unit)
+
+export fn main() Int:
+    var output = stdout()
+    let outcome = dump(["first", "second"], var output)
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 ## Pipelines

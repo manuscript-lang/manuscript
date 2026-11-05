@@ -26,6 +26,8 @@ Find declarations in the generated [standard-library API reference](../standard-
 
 When a call is surprising, start with [argument binding and defaults](functions/declarations-and-calls.md), then [type compatibility](types/compatibility.md). When data cannot be changed or kept, follow [ownership and borrowing](types/references.md) and [resource cleanup](cleanup/_index.md). These explain the rules in the language itself; reading compiler source is not a prerequisite.
 
+The first-reading path leaves exact grammar and native interoperation in the **Reference** navigation group, so you can learn functions and application data before those details. Their pages and rules remain available whenever you need them.
+
 Use the [source grammar](basics/grammar.md) for exact syntax, [operator rules](basics/expressions.md) for precedence and evaluation, and [module boundaries](modules/boundaries.md) for exported contracts. The [glossary](../glossary.md) connects terminology to these chapters.
 
 ## Put the pieces to work

@@ -7,6 +7,8 @@ weight = 3
 
 `extern fn` declares a function whose body is native code linked into the program. The Manuscript name is the symbol name, so `extern fn llabs(value: Int) Int` calls the native symbol `llabs`. To use another Manuscript name, wrap the extern in an ordinary function.
 
+Save this test as `example.ms` and run `ms test example.ms`:
+
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
@@ -18,6 +20,12 @@ fn magnitude(value: Int) Int:
 
 test "an extern calls the native symbol":
     try expect_equal(magnitude(-7), 7)
+```
+
+```text
+RUN example.ms::an extern calls the native symbol
+PASS example.ms::an extern calls the native symbol
+1 tests, 0 failed
 ```
 
 An extern has no body and no trailing `:`. It may be exported. It cannot be generic, take defaults or `var` parameters, or be a method.
@@ -49,6 +57,8 @@ Every output arrives holding an empty value (0, `""`, an empty list, NULL), and 
 
 A `Result[T, E]` return names its error type `E`, an enum whose cases carry nothing, `code: Int`, `message: String`, or both. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order; reordering the cases changes the numbers. When any case has a `code` field, a trailing `int64_t *code_out` follows `out`; when any has a `message`, a trailing `ms_str *message_out` follows. The program reads the fields of the case the status names. A status that names no case faults.
 
+Save this declaration example as `example.ms` and run `ms check example.ms`:
+
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // A failed call, with the library's code and description.
@@ -57,6 +67,10 @@ enum LibraryError:
     Busy
 
 extern fn lib_count(path: String) Int!LibraryError
+```
+
+```text
+Checked example.ms
 ```
 
 ```c
@@ -83,6 +97,8 @@ uint8_t lib_count(const ms_str *path, int64_t *out, int64_t *code_out, ms_str *m
 
 `extern type Name` declares an opaque handle that a native makes with `ms_object_new(size, drop)`: `size` zeroed payload bytes at a stable address (`ms_payload`), and a `drop` (or NULL) that runs once when its owner drops it. A handle has one owner and cannot be copied (`.clone()` is rejected and `ms_object_clone` of one faults); a native that made a handle and does not return it drops it with `ms_object_drop`. An extern type has no fields and cannot be generic. Pair it with private externs and an `impl` block so the public API is plain Manuscript.
 
+Save this declaration example as `example.ms` and run `ms check example.ms`:
+
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
@@ -99,16 +115,26 @@ impl Closeable for Connection:
         return ok(unit)
 ```
 
+```text
+Checked example.ms
+```
+
 ## Calling back into Manuscript
 
 A function argument reaches the native as an `ms_fn *`, which `ms_call(f, args, count, result)` calls on the same thread with an array of `ms_value`s. Each argument must have the kind and range of its parameter (`MS_INT` for a signed type, `MS_UINT` for an unsigned one), or `ms_call` faults before the call. `result`, which may be NULL, receives the value as `ms_list_get` gives it. A fault in the function ends the program like any fault; `ms_call` does not return from it. A function takes at most six parameters.
 
 A native that keeps a function past the call, for a library that calls back later, takes its own copy with `ms_fn_clone` and drops it with `ms_fn_drop`. It calls the function only on the thread that called the native. Because a native may keep it, a closure passed to an extern owns what it captures.
 
+Save this declaration example as `example.ms` and run `ms check example.ms`:
+
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // Calls `visit` once for each entry the library finds.
 extern fn lib_walk(root: String, visit: fn(String, Int) Unit) Unit
+```
+
+```text
+Checked example.ms
 ```
 
 ```c

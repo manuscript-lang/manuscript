@@ -9,7 +9,7 @@ A `test "name":` block runs under `ms test` and passes when it finishes normally
 
 Save this complete file as `test.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::addition\nPASS test.ms::addition\nRUN test.ms::zero is unchanged\nPASS test.ms::zero is unchanged\n2 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -54,6 +54,8 @@ PASS test.ms::addition
 
 ## Run tests in a project
 
+For a project created with `ms init` in [getting started](getting-started.md), save the opening two-test example as `test.ms` beside `ms.toml`. Run these commands from that project directory:
+
 ```sh
 ms test ms.toml
 ms test ms.toml --filter addition --timeout 10s
@@ -70,7 +72,7 @@ ms test ms.toml --json
 
 For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `try expect_ok` checks success and keeps the payload:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::typed JSON and Optional payloads\nPASS test.ms::typed JSON and Optional payloads\n1 tests, 0 failed\n"} -->
 ```manuscript
 import parse from "@std/data/json.ms"
 import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
@@ -124,7 +126,7 @@ ms test test.ms --repeat 10 --shuffle 42
 
 A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/test/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::reversing twice restores a list\nPASS test.ms::reversing twice restores a list\n1 tests, 0 failed\n"} -->
 ```manuscript
 import check, ints, lists from "@std/test/property.ms"
 import expect_equal from "@std/test/test.ms"
@@ -141,13 +143,32 @@ PASS test.ms::reversing twice restores a list
 1 tests, 0 failed
 ```
 
-When a case fails, `check` shrinks the input to a small counterexample and fails the test with it and the case seed:
+When a case fails, `check` shrinks the input to a small counterexample and reports the case seed. Replace `test.ms` with this deliberately false property and run `ms test test.ms`. It claims that every generated list sums to less than 50; the fixed seed makes this failure reproducible:
+
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","exit_code":1,"stdout":"RUN test.ms::small sums\nFAIL test.ms::small sums: property 'small sums' failed after 1 cases (case seed 11; rerun with --seed 11)\ncounterexample: [50]\nexpected true, got false\n  at test.ms:7:16\n1 tests, 1 failed\n"} -->
+```manuscript
+import check, ints, lists from "@std/test/property.ms"
+import expect_true from "@std/test/test.ms"
+
+test "small sums":
+    try check(
+        "small sums", lists(ints(0, 1000)),
+        fn xs: expect_true(xs.sum() < 50), seed: 11
+    )
+```
+
+The command exits with status 1 and prints:
 
 ```text
-FAIL test.ms::small sums: property 'small sums' failed after 3 cases (case seed 2039066943738375196; rerun with --seed 2039066943738375196)
+RUN test.ms::small sums
+FAIL test.ms::small sums: property 'small sums' failed after 1 cases (case seed 11; rerun with --seed 11)
 counterexample: [50]
 expected true, got false
+  at test.ms:7:16
+1 tests, 1 failed
 ```
+
+The one-item list `[50]` is enough to disprove the claim. Correct the property or the implementation under test before keeping it in a passing suite. To replay a reported command-line seed, remove the explicit `seed:` argument first; an explicit argument takes precedence.
 
 - Generators: `ints(low, high)`, `bools()`, `floats(low, high)`, `strings(alphabet, max_length)`, `lists(gen, min_length, max_length)`, `optionals(gen)`, `pairs(a, b)`, `element_of(values)`, `one_of(gens)`, and `constant(value)`.
 - Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(fn n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
@@ -155,11 +176,11 @@ expected true, got false
 - A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
 - A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs under `expect_fault`.
 
-`ms test` controls property runs from the command line:
+To exercise command-line controls in that project, replace its `test.ms` with the passing “reversing twice restores a list” example above:
 
 ```sh
 ms test ms.toml --runs 1000          # cases per property
-ms test ms.toml --seed 2039066943738375196   # replay a reported failure
+ms test ms.toml --seed 11          # use a reported case seed
 ms test ms.toml --fuzz 30s           # keep generating fresh cases for 30s per property
 ```
 
@@ -182,7 +203,7 @@ All assertions return `Result`, so use `try`:
 
 A `bench "name":` block works like a `test` block, but `ms bench` times it instead of checking it. The body is one iteration; `ms bench` repeats it until a sample takes about 100ms (that calibration is also the warmup), takes ten samples, and reports the time per iteration. `ms test` skips bench blocks. Save this complete file as `bench.ms`:
 
-<!-- manuscript-example: {"mode":"bench"} -->
+<!-- manuscript-example: {"mode":"bench","filename":"bench.ms"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -199,6 +220,11 @@ bench "sum to one hundred":
 ```sh
 ms bench bench.ms
 ms bench bench.ms --time 500ms --samples 20
+```
+
+To select benchmarks from a project, put the same `bench.ms` beside its `ms.toml` and run:
+
+```sh
 ms bench ms.toml --filter "sum" --json
 ```
 
@@ -224,7 +250,7 @@ This runs the application entry point, not its test blocks. Put the workload you
 
 Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/test/test.ms`; tests then read it as `fixture`.
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::increments\nPASS test.ms::increments\nRUN test.ms::starts fresh\nPASS test.ms::starts fresh\n2 tests, 0 failed\n"} -->
 ```manuscript
 import TestHooks, expect_equal from "@std/test/test.ms"
 
@@ -266,23 +292,25 @@ PASS test.ms::starts fresh
 
 There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/os/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
 
-To skip a single test, call `skip` in its body:
+To skip a single test, call `skip` in its body. Save this complete file as `test.ms`; it checks the host line-ending API on Unix:
 
+<!-- manuscript-example: {"mode":"test","filename":"test.ms"} -->
 ```manuscript
-import skip from "@std/test/test.ms"
-import os_type from "@std/os/process.ms"
+import skip, expect_equal from "@std/test/test.ms"
+import os_type, end_of_line from "@std/os/process.ms"
 
-test "unix permission bits":
+test "unix line ending":
     if os_type() == "Windows_NT":
         skip("Unix only")
-    // Unix-only assertions follow.
+    try expect_equal(end_of_line(), "\n")
 ```
 
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
+<!-- manuscript-example: {"mode":"test","filename":"test.ms"} -->
 ```manuscript
-import TestHooks, skip from "@std/test/test.ms"
-import os_type from "@std/os/process.ms"
+import TestHooks, skip, expect_equal from "@std/test/test.ms"
+import os_type, end_of_line from "@std/os/process.ms"
 
 type WindowsOnly:
     ok: Bool
@@ -294,6 +322,17 @@ impl TestHooks for WindowsOnly:
     var fn before_all() Unit:
         if not self.ok:
             skip("Windows only")
+
+test "windows line ending":
+    try expect_equal(end_of_line(), "\r\n")
 ```
 
-Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.
+Replace `test.ms` with this second complete file and run `ms test test.ms`. On Linux, the fixture skips the test before its Windows assertion runs:
+
+```text
+RUN test.ms::windows line ending
+SKIP test.ms::windows line ending: Windows only
+1 tests, 0 failed, 1 skipped
+```
+
+On Windows, the test instead checks the host’s CRLF line ending. Skipped tests are counted in the summary, so a platform that runs nothing stays visible. These examples demonstrate runtime selection; they do not establish that the Windows or macOS assertions have run on another host.

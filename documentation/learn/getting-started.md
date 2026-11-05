@@ -38,7 +38,7 @@ Values after `--` are the program's arguments. `init` creates `ms.toml`, `src/ma
 
 ## 2. Read the code {#read-the-program}
 
-Open `src/main.ms`:
+Open `src/main.ms` and replace it with this version, which also prints a failure message:
 
 <!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
 ```manuscript {filename="src/main.ms"}
@@ -47,9 +47,11 @@ import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(message).is_error():
-        return 1
-    return 0
+    let outcome = stdout().write(message)
+    if let _written = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
 Read the program from its entry point, `main`. `arguments()` supplies the values
@@ -58,8 +60,9 @@ and `{arguments().length()}` inserts the count into that text. The compiler infe
 that `message` has type `String` from the value assigned to it.
 
 The imports select the operations this module uses. `stdout().write(message)`
-writes the text; its stream API returns a `Result`, and `is_error()` selects the
-failure branch. Returning `1` reports failure to the shell; returning `0` reports
+writes the text; its stream API returns a `Result`. `if let` takes the success
+branch, while the remaining path prints the error. Returning `1` reports failure
+to the shell; returning `0` reports
 success. The returned integer is an exit status, not text to print. Four spaces
 indent a block, and statements need no terminator.
 

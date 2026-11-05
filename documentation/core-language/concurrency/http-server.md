@@ -34,14 +34,28 @@ PASS server_test.ms::serve a greeting
 
 ## Keep an application server running
 
-In a function returning `Unit!`, keep the server alive with `wait()`:
+Save this complete program as `server.ms`. Run `ms run server.ms` to listen on port 8080 until shutdown; the command stays running without printing a startup message:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-let server = try serve("127.0.0.1:8080", handler)
-try server.wait()
+import serve from "@std/net/net.ms"
+import buffered, text from "@std/net/http.ms"
+
+fn run_server() Unit!:
+    let handler = buffered(fn request: text(200, "Hello, Manuscript!"))
+    let server = try serve("127.0.0.1:8080", handler)
+    try server.wait()
+    return ok(unit)
+
+export fn main() Int:
+    let outcome = run_server()
+    if let _completed = outcome:
+        return 0
+    print(outcome.err().message)
+    return 1
 ```
 
-Here `handler` is built as in the test. The wait lasts until shutdown or a server error; SIGINT and SIGTERM initiate shutdown.
+In another terminal, `curl http://127.0.0.1:8080/` returns `Hello, Manuscript!` with no added newline. Stop the server with Ctrl-C (SIGINT; exit status 130 on Linux). The wait lasts until shutdown or a server error; SIGINT and SIGTERM initiate shutdown. Use the loopback test above for an automated check that starts and stops its own server.
 
 `serve(address, handler, options)` returns an `HttpServer`. `options.cores` limits the runtime to that many threads; none means every core, and `cores: 1` runs the same code on one thread.
 

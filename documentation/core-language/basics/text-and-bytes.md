@@ -48,11 +48,28 @@ A literal is delimited by `"` and fits on one source line, interpolations includ
 
 Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"She said \"hello\".\nLiteral braces: {name}\nfirst\nsecond\n\ud83d\ude42\n"} -->
 ```manuscript
-let quote = "She said \"hello\"."
-let template = "Literal braces: \{name\}"
-let lines = "first\nsecond"
-let symbol = "\u{1F642}"
+export fn main() Int:
+    let quote = "She said \"hello\"."
+    let template = "Literal braces: \{name\}"
+    let lines = "first\nsecond"
+    let symbol = "\u{1F642}"
+    print(quote)
+    print(template)
+    print(lines)
+    print(symbol)
+    return 0
+```
+
+```text
+She said "hello".
+Literal braces: {name}
+first
+second
+🙂
 ```
 
 ## Multi-line and raw literals
@@ -61,15 +78,28 @@ let symbol = "\u{1F642}"
 
 `r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\n  Indented line, \"quoted\".\n{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"pattern\": \"\\d+\"}\n"} -->
 ```manuscript
-let name = "Ada"
-let greeting = """
-    Hello, {name}!
-      Indented line, "quoted".
-    """
-let config = r"""
-    {"name": "ada", "tags": ["a", "b"], "pattern": "\d+"}
-    """
+export fn main() Int:
+    let name = "Ada"
+    let greeting = """
+        Hello, {name}!
+          Indented line, "quoted".
+        """
+    let config = r"""
+        {"name": "ada", "tags": ["a", "b"], "pattern": "\d+"}
+        """
+    print(greeting)
+    print(config)
+    return 0
+```
+
+```text
+Hello, Ada!
+  Indented line, "quoted".
+{"name": "ada", "tags": ["a", "b"], "pattern": "\d+"}
 ```
 
 `greeting` is `Hello, Ada!` and `  Indented line, "quoted".` on two lines; `config` holds the JSON exactly as written. Import paths, `test` names and `bench` names must be one-line `"..."` text. The formatter keeps the literal's lines and moves them with the line where the literal starts.
@@ -80,11 +110,23 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Welcome, Ada!\nNext: 4\n"} -->
 ```manuscript
-let name = "Ada"
-let count = 3
-let greeting = "Welcome, {name}!"
-let calculated = "Next: {count + 1}"
+export fn main() Int:
+    let name = "Ada"
+    let count = 3
+    let greeting = "Welcome, {name}!"
+    let calculated = "Next: {count + 1}"
+    print(greeting)
+    print(calculated)
+    return 0
+```
+
+```text
+Welcome, Ada!
+Next: 4
 ```
 
 Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `to_string()`; interpolation adds no implicit conversions elsewhere.
@@ -93,16 +135,28 @@ Embedded expressions evaluate once, left to right, each formatted before the nex
 
 Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
 
+Save this complete test as `example.ms` and run `ms test example.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
+import expect_equal from "@std/test/test.ms"
+
 fn text[T](value: T) String:
     return value.to_string()
 
 test "string conversion":
     let count = 3
     let convert: fn() String = count.to_string
-    let _direct = count.to_string()
-    let _bound = convert()
-    let _embedded = "{count}"
+    try expect_equal(count.to_string(), "3")
+    try expect_equal(convert(), "3")
+    try expect_equal("{count}", "3")
+    try expect_equal(text(4), "4")
+```
+
+```text
+RUN example.ms::string conversion
+PASS example.ms::string conversion
+1 tests, 0 failed
 ```
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
@@ -161,6 +215,9 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 
 `trim`, `trim_start` and `trim_end` remove the Unicode `White_Space` scalars: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Zero-width spaces (U+200B), U+180E and U+FEFF are not whitespace.
 
+Save this complete test as `example.ms` and run `ms test example.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -178,9 +235,17 @@ test "explicit byte conversion":
         return panic("check failed")
 ```
 
+```text
+RUN example.ms::explicit byte conversion
+PASS example.ms::explicit byte conversion
+1 tests, 0 failed
+```
+
 ## Padding and fixed digits
 
 `pad_start(target_length, padding)` and `pad_end` return a `String`. The text grows to `target_length` scalars by repeating `padding` (the last copy is cut to fit); a shorter or negative target or empty padding returns the text unchanged. An output beyond the string limit faults, as `concat` does, so a table row needs no unwrapping. `Float.to_fixed(digits)`, `to_precision(precision)` and `to_exponential(digits)` also return a `String`; a count outside their range (0 to 100, or 1 to 100 for `to_precision`) is a programming fault.
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -193,9 +258,17 @@ test "padding and fixed digits":
     try expect_equal(row("total", 3.14159), "total       3.14")
 ```
 
+```text
+RUN example.ms::padding and fixed digits
+PASS example.ms::padding and fixed digits
+1 tests, 0 failed
+```
+
 ## Binary data
 
 `Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
+
+Save this test as `example.ms` and run `ms test example.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -209,6 +282,12 @@ test "binary codecs":
     let data = out.build()
     try expect_equal(try data.uint16_be(0), 258)
     try expect_equal(try data.float64_le(2), 1.5)
+```
+
+```text
+RUN example.ms::binary codecs
+PASS example.ms::binary codecs
+1 tests, 0 failed
 ```
 
 ## Deterministic formatting

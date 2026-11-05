@@ -184,6 +184,9 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ## Examples
 
+Save this complete example as `example.ms` and run `ms run example.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"7\n2\n"} -->
 ```manuscript
 fn calculated(value: Int, active: Bool) Int:
     let product = 1 + 2 * 3             // 7
@@ -191,12 +194,37 @@ fn calculated(value: Int, active: Bool) Int:
     if active and same:
         return product
     return value
+
+export fn main() Int:
+    print(calculated(2, true))
+    print(calculated(2, false))
+    return 0
 ```
 
+```text
+7
+2
+```
+
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["operator operands require the same independently known type"]} -->
+```manuscript
+fn invalid(value: Int, ratio: Float) Float:
+    return value + ratio
+```
+
+The diagnostic includes `operator operands require the same independently known type`.
+
+This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["comparison operators cannot chain"]} -->
 ```manuscript
 fn invalid(value: Int, ratio: Float) Bool:
     let mixed = value + ratio           // Type error: exact numeric types differ.
     return 0 < value < 10               // Syntax error: comparison chain.
 ```
+
+The diagnostic includes `comparison operators cannot chain`.
 
 Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `if condition: a else: b`; see [conditionals](../control-flow/conditionals.md#if-as-an-expression).
