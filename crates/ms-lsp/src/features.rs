@@ -96,7 +96,7 @@ pub fn inlay_hints(
         return Json::Arr(Vec::new());
     };
     let mut hints = Hints {
-        syms: ms_syntax::Names::global(),
+        syms,
         module: module.clone(),
         positions: SourcePositions::new(&d.text),
         requested,
