@@ -75,6 +75,8 @@ pub enum BindingFact {
     MovedPayload = 1 << 4,
     /// A moved binding some path keeps to the end of its scope.
     ConditionalMove = 1 << 5,
+    /// Every lifetime transfers or has its close result handled; cleanup still runs.
+    CloseHandled = 1 << 6,
 }
 
 /// Binding fact flags keyed by stable session binding identities. Only bindings with facts

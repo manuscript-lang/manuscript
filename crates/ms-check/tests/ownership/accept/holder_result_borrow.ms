@@ -12,7 +12,8 @@ type Holder:
     gate: Gate
 
 fn relay[T](source: T!) T!:
-    let _holder = Holder(Gate(1))
+    let gate = Gate(1)
+    let _holder = Holder(gate)
     return source
 
 export fn main() Int:

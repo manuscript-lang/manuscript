@@ -104,6 +104,8 @@ struct Meta {
     /// For a part of a parameter matched or iterated at its last use: the scrutinee that takes
     /// ownership of the parameter if this part is moved out.
     deferred: Option<NodeId>,
+    /// This binding belongs to a nested lambda, whose closes do not return from the callable.
+    in_lambda: bool,
 }
 
 /// The module that declares `Promise`.
@@ -175,6 +177,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         chain_places: HashMap::new(),
         keep_scrutinee: false,
         closed: HashSet::new(),
+        close_completions: HashSet::new(),
         borrow_receiver: false,
         borrow_params: Vec::new(),
         borrow_path: None,
@@ -299,6 +302,8 @@ struct Walker<'a> {
     keep_scrutinee: bool,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
+    /// Completed explicit closes or whole-binding replacements, by expression and binding.
+    close_completions: HashSet<(NodeId, usize)>,
     /// Sources of the returned references so far: the receiver, parameters by label, and the
     /// one field chain every path returns (`Some(None)` once two paths differ).
     borrow_receiver: bool,
@@ -841,11 +846,7 @@ impl Walker<'_> {
     /// A scope close can return a fresh Error even when every written return borrows.
     /// An error type variable can instantiate Error; incompatible concrete errors fault.
     fn implicit_close_return(&mut self) {
-        if !self.facts.implicit_closes.iter().any(|uid| {
-            self.meta
-                .get(uid)
-                .is_some_and(|m| self.close_returns_error(&m.binding.ty))
-        }) {
+        if self.facts.implicit_closes.is_empty() {
             return;
         }
         let result = match (self.cx.c.func.method(), self.cx.c.func.func()) {
@@ -853,15 +854,44 @@ impl Walker<'_> {
             (None, Some(f)) => f.result.id,
             (None, None) => return,
         };
-        if self.cx.m.type_ref(result).is_some_and(|t| {
+        if !self.cx.m.type_ref(result).is_some_and(|t| {
             t.is(Builtin::Result)
                 && t.args
                     .get(1)
                     .is_some_and(|e| e.is(Builtin::Error) || e.kind == Kind::Variable)
         }) {
-            self.owned_cases |= BORROWED_ERROR;
-            self.close_error_return = true;
+            return;
         }
+        let mut handled = self.close_completions.clone();
+        handled.extend(
+            self.facts
+                .uses
+                .values()
+                .filter(|u| u.access == Access::Move)
+                .map(|u| (u.node, u.binding)),
+        );
+        // `implicit_closes` includes moved bindings for paths that retain them. Use the
+        // existing lifetime proof to exclude only transfers or handled closes on every path.
+        let retained = super::moved::conditional(self.cx.m, self.cx.c, &handled);
+        let handled_bindings: HashSet<_> = handled.iter().map(|(_, uid)| *uid).collect();
+        self.facts
+            .handled_scope_closes
+            .extend(self.facts.implicit_closes.iter().copied().filter(|uid| {
+                handled_bindings.contains(uid)
+                    && !retained.contains(uid)
+                    && self.meta.get(uid).is_some_and(|m| !m.in_lambda)
+            }));
+        if !self.facts.implicit_closes.iter().any(|uid| {
+            !self.facts.handled_scope_closes.contains(uid)
+                && self
+                    .meta
+                    .get(uid)
+                    .is_some_and(|m| !m.in_lambda && self.close_returns_error(&m.binding.ty))
+        }) {
+            return;
+        }
+        self.owned_cases |= BORROWED_ERROR;
+        self.close_error_return = true;
     }
 
     /// Direct closes can return Error. A generated holder close returns Unit and faults on
@@ -1508,6 +1538,7 @@ impl Walker<'_> {
                 is_receiver,
                 parent: None,
                 deferred: None,
+                in_lambda: !self.captured.is_empty(),
             },
         );
         self.declared.push(b.uid);
@@ -2624,6 +2655,9 @@ impl Walker<'_> {
                 self.mark_mutated(b.uid);
                 self.record(s.id, &b, Access::Write);
                 self.facts.drops_old.insert(s.id);
+                // Replacing an old resource closes it under the fault policy. Only a
+                // source exit while evaluating the RHS can still propagate its scope close.
+                self.close_completions.insert((value.id, b.uid));
             }
             AssignTarget::Member(t) => {
                 if let Some((info, _)) = self.place(t) {
@@ -3913,6 +3947,7 @@ impl Walker<'_> {
             && let Resolution::Local(b) = cx.m.resolution(r)
         {
             self.closed.insert(b.uid);
+            self.close_completions.insert((e.id, b.uid));
         }
         // Argument markers: `var` exactly where the callee changes the argument.
         let param_names: Vec<Name> =

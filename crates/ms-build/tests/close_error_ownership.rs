@@ -57,7 +57,15 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
             }
         }
     }
-    for name in ["holder_result", "own_holder_result"] {
+    for name in [
+        "holder_result",
+        "own_holder_result",
+        "moved_holder_result",
+        "handled_result",
+        "nested_closure_result",
+        "replaced_handled_result",
+        "captured_result",
+    ] {
         let f = module.funcs.iter().find(|f| f.name == name).expect(name);
         assert!(
             f.ret_borrowed,

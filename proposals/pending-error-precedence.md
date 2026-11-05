@@ -30,6 +30,10 @@
 - Preserve the exact existing owned error value and every message/kind/details field; do not reconstruct an Error from text.
 - Finalize local and consumed-parameter implicit cleanup facts before computing mixed return ownership.
 - Only a compatible propagating close contributes an owned Result.error outcome, using canonical identities.
+- Infer outcomes only from resources owned by this callable, excluding nested lambda locals.
+- Reuse the existing backwards move proof for transfers and completed explicit-close calls; keep lowering move facts unchanged.
+- Record close/replacement completion after operand evaluation, so an exiting operand leaves the old scope close possible.
+- Communicate the positive all-lifetimes-handled proof to lowering; keep cleanup but omit impossible owned-return branches.
 - Derive capability from the direct closer and held resources: generated holder/part closes return Unit and fault, so they add no owned error path.
 - A generic error type that can instantiate Error must conservatively include that outcome; concrete incompatible error types do not.
 - Determine owned-path presence from actual owned-case facts as well as explicit return positions; positions remain diagnostic metadata.

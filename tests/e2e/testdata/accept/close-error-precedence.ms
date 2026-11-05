@@ -381,3 +381,113 @@ test "a generic resource error stays owned and closes exactly once":
     let log = "{dir.path()}/events"
     try expect_equal(resource_domain_error(log), true)
     try expect_equal(events(log), "close 1\nclose 2\n")
+
+fn moved_holder_result[T](log: String, source: T!) T!:
+    let resource = Failing(log.clone(), 1, fail: false)
+    let _holder = Holder(resource)
+    return source
+
+fn handled_result[T](log: String, source: T!) T!:
+    var resource = Failing(log.clone(), 1)
+    let _ = resource.close()
+    return source
+
+fn nested_closure_result[T](log: String, source: T!) T!:
+    let _unused = fn:
+        let _resource = Failing(log.clone(), 1)
+        return unit
+
+    return source
+
+test "a moved resource no longer contributes an outer close error":
+    let dir = temporary("close-result-scope-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("source", kind: "ESOURCE"))
+    let returned = moved_holder_result(log, original) | try expect_error
+    try expect_equal(returned.kind, "ESOURCE")
+    let source = original | try expect_error
+    try expect_equal(source.kind, "ESOURCE")
+    try expect_equal(events(log), "close 1\n")
+
+test "a handled close does not withdraw a whole Result borrow":
+    let dir = temporary("close-result-scope-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("source", kind: "ESOURCE"))
+    let returned = handled_result(log, original) | try expect_error
+    try expect_equal(returned.kind, "ESOURCE")
+    let source = original | try expect_error
+    try expect_equal(source.kind, "ESOURCE")
+    try expect_equal(events(log), "close 1\n")
+
+test "an uncalled closure cannot contribute an outer close error":
+    let dir = temporary("close-result-scope-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("source", kind: "ESOURCE"))
+    let returned = nested_closure_result(log, original) | try expect_error
+    try expect_equal(returned.kind, "ESOURCE")
+    let source = original | try expect_error
+    try expect_equal(source.kind, "ESOURCE")
+    try expect_equal(events(log), "")
+
+fn replaced_handled_result[T](log: String, source: T!) T!:
+    var resource = Failing(log.clone(), 1, fail: false)
+    resource = Failing(log.clone(), 2)
+    let _ = resource.close()
+    return source
+
+fn replaced_unhandled_result(log: String, source: Int!) Int!:
+    var resource = Failing(log.clone(), 1, fail: false)
+    let _ = resource.close()
+    resource = Failing(log.clone(), 2)
+    return source
+
+fn failing_replacement() Failing!:
+    return error(Error("replacement", kind: "EREPLACE"))
+
+fn replacement_exit(log: String) Int!:
+    var resource = Failing(log.clone(), 1)
+    resource = try failing_replacement()
+    let _ = resource.close()
+    return ok(7)
+
+fn captured_result[T](log: String, source: T!) T!:
+    let resource = Failing(log.clone(), 1, fail: false)
+    let _callbacks: List[fn() Int] = [fn: resource.id]
+    return source
+
+test "handled replacement lifetimes preserve whole Result borrowing":
+    let dir = temporary("close-result-lifetime-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("source", kind: "ESOURCE"))
+    let returned = replaced_handled_result(log, original) | try expect_error
+    try expect_equal(returned.kind, "ESOURCE")
+    let source = original | try expect_error
+    try expect_equal(source.kind, "ESOURCE")
+    try expect_equal(events(log), "close 1\nclose 2\n")
+
+test "a captured resource contributes no outer close error":
+    let dir = temporary("close-result-lifetime-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("source", kind: "ESOURCE"))
+    let returned = captured_result(log, original) | try expect_error
+    try expect_equal(returned.kind, "ESOURCE")
+    let source = original | try expect_error
+    try expect_equal(source.kind, "ESOURCE")
+    try expect_equal(events(log), "close 1\n")
+
+test "an unhandled final replacement still propagates its close error":
+    let dir = temporary("close-result-unhandled-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: Int! = ok(7)
+    let cause = replaced_unhandled_result(log, original) | try expect_error
+    try expect_equal(cause.kind, "ECLOSE")
+    try expect_equal(try original, 7)
+    try expect_equal(events(log), "close 1\nclose 2\n")
+
+test "a try exit before replacement still closes the old resource":
+    let dir = temporary("close-result-replacement-exit-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let cause = replacement_exit(log) | try expect_error
+    try expect_equal(cause.kind, "EREPLACE")
+    try expect_equal(cause.message, "replacement")
+    try expect_equal(events(log), "close 1\n")

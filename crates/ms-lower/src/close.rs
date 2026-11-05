@@ -1305,6 +1305,18 @@ impl FnLower<'_> {
     /// The close at scope end: its failure is returned like `try`, unless the program already
     /// called `close()` on this path and handled the result, which is not returned a second time.
     fn scope_close(&mut self, uid: usize, closer: &Closer) {
+        if self
+            .cx
+            .binding_facts
+            .has(uid, ms_check::ownership::BindingFact::CloseHandled)
+        {
+            // The checker proved every lifetime transferred or explicitly handled its
+            // result. Keep cleanup, but do not generate an impossible owned error return.
+            if let Some(r) = self.emit_close(uid, closer) {
+                self.drop_value(r);
+            }
+            return;
+        }
         let Some(explicit) = closer.explicit else {
             if let Some(r) = self.emit_close(uid, closer) {
                 self.propagate_close_error(uid, r);
