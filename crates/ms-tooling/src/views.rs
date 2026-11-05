@@ -2,7 +2,7 @@
 
 use crate::facts::{Fact, Facts, Slot};
 use crate::tree::Node;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 /// Names the diagram views, in help order.
@@ -253,24 +253,53 @@ fn mark_reachable<'a>(facts: &'a Facts, view: &str, key: &'a str, seen: &mut Has
 }
 
 /// Resolves a name, `file::name`, or full key to exactly one entity.
+/// An exact key takes precedence over display names and qualified names.
 pub fn find_entity<'a>(facts: &'a Facts, name: &str) -> Result<&'a Fact, String> {
+    if let Some(fact) = facts.entities.get(name) {
+        return Ok(fact);
+    }
     let matches: Vec<&Fact> = facts
         .entities
         .values()
-        .filter(|f| f.name == name || f.key == name || format!("{}::{}", f.file, f.name) == name)
+        .filter(|f| f.name == name || format!("{}::{}", f.file, f.name) == name)
         .collect();
     match matches.len() {
         1 => Ok(matches[0]),
         0 => Err(format!(
-            "no entity named {name}; use a declaration name or file::name (ms review lists the public surface)"
+            "no entity named {name}; use a declaration name, file::name, or full entity ID file#kind#name (ms review lists the public surface)"
         )),
         _ => {
-            let keys: Vec<String> = matches
+            let mut keys: Vec<String> = matches
                 .iter()
                 .map(|f| format!("{}::{}", f.file, f.name))
                 .collect();
+            // A type and its impl share file::name. Test display names can
+            // also equal another entity's qualified name or full key. Count
+            // all name matches before offering qualified-name remedies.
+            let mut counts: HashMap<&str, usize> =
+                keys.iter().map(|key| (key.as_str(), 0)).collect();
+            for f in facts.entities.values() {
+                if let Some(count) = counts.get_mut(f.name.as_str()) {
+                    *count += 1;
+                }
+                let qualified = format!("{}::{}", f.file, f.name);
+                if qualified != f.name
+                    && let Some(count) = counts.get_mut(qualified.as_str())
+                {
+                    *count += 1;
+                }
+            }
+            let usable = keys.iter().zip(&matches).all(|(key, f)| {
+                facts
+                    .entities
+                    .get(key)
+                    .map_or(counts[key.as_str()] == 1, |exact| exact.key == f.key)
+            });
+            if !usable {
+                keys = matches.iter().map(|f| f.key.clone()).collect();
+            }
             Err(format!(
-                "{name} is ambiguous: {}; qualify it as file::name",
+                "{name} is ambiguous; use one of: {}",
                 keys.join(", ")
             ))
         }
