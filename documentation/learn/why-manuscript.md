@@ -96,7 +96,7 @@ A **bug bash** points an agent at one area. It writes probe programs against new
 
 An agent runs the compiler dozens of times per task, so compile speed is part of the design. `ms check` parses and type-checks without building, debug builds use Cranelift for a quick edit-check-run loop, and release builds use LLVM to optimize what you ship.
 
-On a generated 122,000-line project (40 packages, cold build, 4 vCPUs), a debug build takes 5.4 seconds against 9.0 seconds for `go build`. A release build with LLVM takes 43.6 seconds, 4.8 times Go's cold build, down from 293 seconds five days earlier, and shortening it further is open work.
+On a generated 122,000-line project (40 packages, cold build, 4 vCPUs), a debug build takes 5.4 seconds against 9.0 seconds for `go build`. Release builds spend extra time optimizing the executable you ship, so the comparison that matters for the edit-check-run loop is the debug build.
 
 At run time, compiled Manuscript beats the equivalent Go program on all seven kernels (sieve, n-body, life, matmul, trees, collatz and map counting), at 0.08 to 0.82 times Go's time, and on all ten core data-structure operations (list, map, set, sort, strings, bytes and priority queue), at 0.04 to 0.70 times. Against Rust the results are mixed: ahead on some, behind on others. Agent-style workloads that parse and transform text are mostly slower than Go today, and the results page says so.
 
