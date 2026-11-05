@@ -13,6 +13,7 @@ Run a program, learn the language, then build something useful. The same `ms` co
 
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
+   Prefer a longer walk-through? The [guide](../guide/_index.md) builds one small shop program chapter by chapter.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 

@@ -3,6 +3,10 @@ label = "Learn Manuscript"
 paths = ["learn"]
 
 [[groups]]
+label = "Guide"
+paths = ["guide"]
+
+[[groups]]
 label = "Build with Manuscript"
 paths = ["learn/common-tasks", "developer-tooling"]
 
