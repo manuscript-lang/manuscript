@@ -5,7 +5,7 @@ weight = 7
 
 # Organizing code
 
-A shop sells books and subscriptions, and the cart should add up either without caring which is which. An `interface` names the behavior you need, and a type opts in with an `impl`.
+Orders can hold books and subscriptions, and the total should add up either without caring which is which. An `interface` names the behavior you need, and a type opts in with an `impl`.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Cart: 6140 cents\nLargest: 9\n"} -->
 ```manuscript {filename="catalog.ms"}
