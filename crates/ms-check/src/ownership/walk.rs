@@ -1697,9 +1697,12 @@ impl Walker<'_> {
     fn is_place(&self, e: &Expr) -> bool {
         match &e.kind {
             ExprKind::Name(_) => matches!(self.cx.m.resolution(e), Resolution::Local(_)),
-            // A bound method (`value.method` as a function value) is a new closure, not a part.
+            // A bound method (`value.method` as a function value) is a new closure, not a part;
+            // a function-valued field is one.
             ExprKind::Member { left, .. } => {
-                self.cx.m.ty(e).kind != Kind::Function && self.is_place(left)
+                (self.cx.m.ty(e).kind != Kind::Function
+                    || !matches!(self.cx.m.resolution(e), Resolution::Method(_)))
+                    && self.is_place(left)
             }
             ExprKind::Index { left, .. } => self.is_place(left),
             ExprKind::Apply {
