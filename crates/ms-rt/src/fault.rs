@@ -298,7 +298,8 @@ crate::isolate_static! {
 }
 crate::isolate_static! {
     /// Set while a cancellation or a fault unwinds a guarded task: its frames are abandoned,
-    /// so drop cleanups registered by generated code release what the frames own.
+    /// so drop cleanups registered by generated code release what the frames own. Per task: another
+    /// task that ends while this one's cleanup parks must not clear it.
     static UNWIND_DROPS: bool = false;
 }
 crate::isolate_static! {
@@ -351,6 +352,7 @@ pub(crate) struct Ctx {
     eq_pairs: Vec<(usize, usize)>,
     primary: Option<Vec<u8>>,
     faulting: bool,
+    unwind_drops: bool,
     /// The task's block (null until set: the root block).
     hdr: *mut Hdr,
     cancel: u8,
@@ -369,6 +371,7 @@ impl Ctx {
             eq_pairs: Vec::new(),
             primary: None,
             faulting: false,
+            unwind_drops: false,
             hdr: core::ptr::null_mut(),
             cancel: 0,
             stack_lo,
@@ -449,6 +452,7 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         crate::desc::swap_eq_pairs(&mut c.eq_pairs);
         core::ptr::swap(PRIMARY.ptr(), &mut c.primary);
         core::ptr::swap(FAULTING.ptr(), &mut c.faulting);
+        core::ptr::swap(UNWIND_DROPS.ptr(), &mut c.unwind_drops);
         core::ptr::swap(CUR_HDR.ptr(), &mut c.hdr);
         core::ptr::swap(TASK_CANCEL.ptr(), &mut c.cancel);
         core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
