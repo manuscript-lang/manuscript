@@ -752,6 +752,9 @@ pub unsafe extern "C-unwind" fn msrt_task_grow(
     unsafe {
         let cur = ensure_init();
         let k = (*cur).seg + 1;
+        // A cancellation or fault inside the shim leaves by a jump that skips the caller's free of
+        // `block`, so a cleanup releases it; the normal return discards the cleanup.
+        let release = fault::msrt_cleanup_push(crate::obj::msrt_free, block);
         // A main task already has a whole region, the cap; the thread's own flow has no slot.
         if (*cur).stack.is_null() || (*cur).stack_len == REGION || k > MAX_SEGMENTS {
             fault::msrt_fault_depth();
@@ -776,9 +779,6 @@ pub unsafe extern "C-unwind" fn msrt_task_grow(
         (*cur).seg = k;
         (*cur).left.push(0);
         let save: *mut usize = (*cur).left.last_mut().expect("pushed");
-        // A cancellation or fault inside the shim leaves by a jump that skips the caller's free of
-        // `block`, so a cleanup releases it; the normal return discards the cleanup.
-        let release = fault::msrt_cleanup_push(crate::obj::msrt_free, block);
         #[cfg(windows)]
         {
             // The segment's thread environment block fields, then this stack's own for the
