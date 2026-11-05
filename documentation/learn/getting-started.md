@@ -8,8 +8,6 @@ aliases = ["/getting-started/"]
 
 Create a project, run it, change it, and build a native executable. `ms` includes the compiler, standard library, formatter, and test runner.
 
-Manuscript is in alpha. These guides follow the source on `main`. A published release can lag behind it; consult the documentation in your release's source tag, or [build current source](../contributing/rust-toolchain.md#build-and-run) to try the latest features.
-
 ## 1. Get the compiler and run
 
 For the latest implementation, [build from source](../contributing/rust-toolchain.md#build-and-run) with `make build`. Alternatively, extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) for your operating system and architecture.
@@ -20,8 +18,6 @@ Add the directory containing the compiler to your `PATH`: the checkout's `target
 ms --version
 ```
 
-Keep an Internet connection for the first build: `ms` downloads a pinned linker into its cache, and Release builds also fetch LLVM tools. Subsequent builds reuse them. For local tool overrides and platform requirements, see [the toolchain guide](../contributing/rust-toolchain.md#differences-users-can-see).
-
 From the directory where you want to keep your project, run:
 
 ```sh
@@ -30,7 +26,7 @@ cd my-app
 ms run ms.toml -- first second
 ```
 
-The first run prepares the build tools, compiles `src/main.ms`, then prints:
+`ms run` compiles `src/main.ms` and prints:
 
 ```text
 Arguments: 2
@@ -60,7 +56,7 @@ export fn main() Int:
 - `write` takes text and returns a `Result`; `is_error()` tests for failure.
 - Four spaces open a block; statements need no terminator.
 
-For simple output, `print("Hello, Manuscript!")` is also available without an import. It returns `Unit` and buffers output until exit. The generated project uses `stdout().write` to handle its write failure explicitly. See [print a line](common-tasks.md#print-a-line).
+For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](common-tasks.md#print-a-line) for output and error handling.
 
 ## 3. Make it yours
 
@@ -102,6 +98,18 @@ ms test ms.toml
 ```
 
 `check` finds errors without running, `fmt` formats, and `test` runs the generated test block. `ms verify ms.toml` checks source, checks formatting without rewriting files, lints, and runs tests; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
+
+## 6. Explore your program
+
+```sh
+ms diagram ms.toml --format html -o code-map.html
+```
+
+Open `code-map.html` in a browser to follow calls, read the source and inspect checked types. The interactive file works offline and grows with your project. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map) for navigation and change overlays.
+
+## Compiler versions and setup
+
+Manuscript is in alpha. These guides follow `main`; for a published release, use the documentation in its source tag. [Build current source](../contributing/rust-toolchain.md#build-and-run) to try the latest features. For a preconfigured or disconnected build environment, see [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
 
 ## Keep going
 

@@ -2,7 +2,7 @@
 
 **The language for the agentic era.**
 
-Manuscript helps agents write programs that people can understand, check and run. Static types catch mistakes before execution, actionable diagnostics guide repairs, and native executables turn straightforward code into deployable programs. Explicit errors, ownership and resource scopes keep the important decisions visible in review.
+Manuscript helps agents write programs that people can understand, check and run. A small type system with generics keeps data and operations visible to the compiler; actionable diagnostics guide repairs, and native executables turn straightforward code into deployable programs. Explicit errors, ownership and resource scopes keep the important decisions visible in review.
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [Performance](bench/perf/README.md)
 
@@ -26,15 +26,23 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## Review agent-written changes
 
-`ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and resource scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. [Review report](documentation/developer-tooling/implementation.md#review-report)
+Open an interactive map of the code an agent produced:
+
+```sh
+ms diagram ms.toml --format html -o code-map.html
+```
+
+The single offline HTML file puts source, checked types, calls, control flow and ownership annotations together. Follow a call into its source or add `--diff change.patch` to highlight changed declarations. These are views of the checked program; use tests and profiling to examine its execution. [Interactive code map](documentation/developer-tooling/implementation.md#interactive-code-map)
+
+`ms review --diff` ranks changes to contracts, error flow and resource scopes so a reader can focus their review. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
 ## What Manuscript offers
 
-- **A small, regular language:** indentation blocks, one way to do most things, and a few forms that compose. Habits from other languages get a pointed diagnostic, not a new feature. [Tour](documentation/learn/tour.md)  
+- **A small, regular language:** indentation blocks, one way to do most things, and a few forms that compose. [Tour](documentation/learn/tour.md)\
   **Plain types:** records with defaults, alternatives (`case Draft`, `case Published(url)`) that `match` must cover, nominal types, and methods in `impl` blocks that satisfy an `interface`. [Types](documentation/learn/tour.md#types-for-application-data)  
   **Plain functions:** typed parameters and returns, labeled arguments and defaults, functions as values, and `|` pipes that read top to bottom. [Functions](documentation/learn/tour.md#functions)
 - **Deterministic memory:** one owner per value, moves at last use, and deterministic drops, with borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
-- **Static types, native code:** checked ahead of time and compiled to a native executable, with a fast debug loop and optimized release builds.
+- **Types the compiler can see:** a small type system with generics, no `any` escape hatch and no runtime reflection API. Interfaces express behavior through checked signatures, so reusable code stays available to compiler analysis. [Types and generics](documentation/core-language/types/generics.md)
 - **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, with Manuscript APIs and native primitives. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 - **Explicit resource lifetimes:** bind a file or connection locally to close it when its owning scope exits, including early returns, faults and cancellation. Flush fallible writes explicitly to observe errors. [Cleanup](documentation/core-language/cleanup/scopes.md)
 - **Explicit error handling:** `Result` and `Optional` instead of null and exceptions. `try` propagates an error, `if let` and `match` handle one, and a dropped `Result` is a compile error. [Errors](documentation/core-language/errors/propagation.md)
@@ -48,7 +56,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## Fast code from the straightforward loop
 
-Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM when available, including vectorization where applicable, and otherwise fall back to Cranelift. Set `MS_BACKEND=cranelift` to keep builds on Cranelift. The [performance suites](bench/perf/README.md) record revision-specific results, tradeoffs and reproduction commands for kernels, JSON, HTTP and other workloads.
+Debug builds support a quick edit-check-run loop; release builds optimize the executable for deployment. See [build levels](documentation/developer-tooling/builds/build-levels.md) for optimization choices. The [performance suites](bench/perf/README.md) record revision-specific results, tradeoffs and reproduction commands for kernels, JSON, HTTP and other workloads.
 
 Typed JSON reads a known shape directly into a record: field defaults handle omitted settings, and a wrong type returns an error. Native typed decoding avoids constructing a public `JsonValue` tree first. Use `JsonValue` when the shape is unknown. [JSON recipes](documentation/learn/common-tasks.md)
 

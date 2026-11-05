@@ -5,7 +5,7 @@ weight = 2
 
 # Start here
 
-Run a program, learn the language, then build something useful. Start with the compiler setup and an Internet connection for its first build.
+Run a program, learn the language, then build something useful. The same `ms` command helps you write, test, understand and ship your code.
 
 ## New to Manuscript?
 
@@ -17,7 +17,7 @@ Run a program, learn the language, then build something useful. Start with the c
 4. **[Write idiomatic Manuscript](best-practices.md).** Control flow, errors, ownership, resources.
 5. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
-Read in order with **Next**. Local statements in examples belong inside a function or test.
+Read in order with **Next**.
 
 ## Ready to build?
 
