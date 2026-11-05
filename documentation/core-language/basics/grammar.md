@@ -249,7 +249,7 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 
 Save as `inline.ms` and run `ms run inline.ms`; the program prints `6` then `true`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"6\ntrue\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"6\ntrue\n","filename":"inline.ms"} -->
 ```manuscript
 fn double(value: Int) Int: value * 2
 
@@ -276,7 +276,7 @@ These are independent negative references. Save each block separately as
 `invalid.ms` and run `ms check invalid.ms`. Each command exits nonzero; none is a
 runnable program. Module constants use `let`, but module variables are forbidden:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["module level holds only 'let' constants"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["module level holds only 'let' constants"],"filename":"invalid.ms"} -->
 ```manuscript
 var count = 3
 ```

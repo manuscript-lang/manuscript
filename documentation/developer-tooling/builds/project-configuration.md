@@ -47,6 +47,7 @@ entry = "./src/main.ms"
 
 A manifest chooses the project boundary; imports describe dependencies inside it. To move pricing logic out of `main`, create `src/pricing.ms` with this complete module:
 
+<!-- manuscript-artifact: {"kind":"support","filename":"pricing.ms"} -->
 ```manuscript
 export fn total(price: Int, quantity: Int) Int:
     return price * quantity
@@ -159,6 +160,7 @@ Keep the copy under version control and record the upstream URL, exact revision,
 
 Imports name an exported symbol and a path. These are reference declarations illustrating path resolution, not a standalone program; they assume the two modules and exported types exist:
 
+<!-- manuscript-artifact: {"kind":"import"} -->
 ```manuscript
 import CustomerId from "./domain/customers.ms"
 import Order from "@domain/orders.ms"

@@ -47,10 +47,9 @@ import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"
-    let outcome = stdout().write(message)
+    let outcome = stdout().write(message).map_error(fn cause: print(cause.message))
     if let _written = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -60,8 +59,9 @@ and `{arguments().length()}` inserts the count into that text. The compiler infe
 that `message` has type `String` from the value assigned to it.
 
 The imports select the operations this module uses. `stdout().write(message)`
-writes the text; its stream API returns a `Result`. `if let` takes the success
-branch, while the remaining path prints the error. Returning `1` reports failure
+writes the text; its stream API returns a `Result`. `map_error` calls the supplied
+function only on failure, printing its message. `if let` takes the success branch;
+the remaining path returns the failure status. Returning `1` reports failure
 to the shell; returning `0` reports
 success. The returned integer is an exit status, not text to print. Four spaces
 indent a block, and statements need no terminator.
@@ -72,6 +72,7 @@ For simple output, use `print("Hello, Manuscript!")` without an import. See [pri
 
 Replace the `let message` line with:
 
+<!-- manuscript-artifact: {"kind":"edit"} -->
 ```manuscript
     let message = "Hello! You passed {arguments().length()} arguments.\n"
 ```

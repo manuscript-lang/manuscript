@@ -9,7 +9,7 @@ Use `serve` to run an HTTP handler, then test it with the same client APIs your 
 
 Save as `server_test.ms` and run `ms test server_test.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"server_test.ms","stdout":"RUN server_test.ms::serve a greeting\nPASS server_test.ms::serve a greeting\n1 tests, 0 failed\n"} -->
 ```manuscript
 import serve from "@std/net/net.ms"
 import buffered, text from "@std/net/http.ms"
@@ -36,7 +36,7 @@ PASS server_test.ms::serve a greeting
 
 Save this complete program as `server.ms`. Run `ms run server.ms` to listen on port 8080 until shutdown; the command stays running without printing a startup message:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"server.ms","stdout":"Checked server.ms\n"} -->
 ```manuscript
 import serve from "@std/net/net.ms"
 import buffered, text from "@std/net/http.ms"
@@ -48,11 +48,16 @@ fn run_server() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = run_server()
+    let outcome = run_server().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
+```
+
+Running `ms check server.ms` checks this module without starting it:
+
+```text
+Checked server.ms
 ```
 
 In another terminal, `curl http://127.0.0.1:8080/` returns `Hello, Manuscript!` with no added newline. Stop the server with Ctrl-C (SIGINT; exit status 130 on Linux). The wait lasts until shutdown or a server error; SIGINT and SIGTERM initiate shutdown. Use the loopback test above for an automated check that starts and stops its own server.

@@ -11,7 +11,7 @@ Let `ms fmt` handle spacing and line wrapping so you can focus on the program. U
 
 Save this valid but unevenly spaced program as `format.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"5\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"5\n","filename":"format.ms"} -->
 ```manuscript
 export fn main() Int:
     let total=2+3

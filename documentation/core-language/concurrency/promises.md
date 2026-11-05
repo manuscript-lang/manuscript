@@ -13,7 +13,7 @@ Start with a normal function call when one step depends on the previous step. Us
 
 Save as `totals.ms` and run `ms run totals.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Total: 42\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Total: 42\n","filename":"totals.ms"} -->
 ```manuscript
 import promise from "@std/concurrency/promise.ms"
 
@@ -31,11 +31,10 @@ fn combined_total() Int!:
     return ok(left + right)
 
 export fn main() Int:
-    let outcome = combined_total()
+    let outcome = combined_total().map_error(fn cause: print(cause.message))
     if let value = outcome:
         print("Total: {value}")
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -51,7 +50,7 @@ The callback passed to `promise` returns `Int!`, so each handle is a `Promise[In
 
 Save this complete program as `read-config.ms` and run `ms run read-config.ms` in a directory containing `config.json`:
 
-<!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"},"stdout":"2\n"} -->
+<!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"},"stdout":"2\n","filename":"read-config.ms"} -->
 ```manuscript
 import read_file from "@std/os/fs.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
@@ -60,11 +59,10 @@ export fn main() Int:
     let pending = read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
-    let outcome = pending.wait()
+    let outcome = pending.wait().map_error(fn cause: print(cause.message))
     if let contents = outcome:
         print(contents.length())
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -117,7 +115,7 @@ Cancellation is delivered at the next wait. `cancel()` asks the work to stop the
 
 For several file reads, give each promise the same signal. Save as `cancel-reads.ms` and run `ms run cancel-reads.ms` beside the same two-byte `config.json`:
 
-<!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"}} -->
+<!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"},"filename":"cancel-reads.ms"} -->
 ```manuscript
 import cancel_switch, PromiseOptions from "@std/concurrency/promise.ms"
 import read_file from "@std/os/fs.ms"
@@ -129,11 +127,10 @@ export fn main() Int:
     let reads = paths.map(fn path: read_file(path).with(options: options.clone()))
     stop.cancel()
     for read in reads:
-        let outcome = read.wait()
+        let outcome = read.wait().map_error(fn cause: print(cause.message))
         if let contents = outcome:
             print("Completed before cancellation: {contents.length()} bytes")
-        else:
-            print(outcome.err().message)
+
     return 0
 ```
 

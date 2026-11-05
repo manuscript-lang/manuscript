@@ -11,7 +11,7 @@ Suppose a contact list contains the same address twice. Comparing addresses tell
 
 Save this complete program as `recipients.ms` and run `ms run recipients.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"2 recipients\n2 deliveries\n0 deliveries\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"2 recipients\n2 deliveries\n0 deliveries\n","filename":"recipients.ms"} -->
 ```manuscript
 export fn main() Int:
     let addresses = ["ada@example.com", "lin@example.com", "ada@example.com"]
@@ -43,6 +43,7 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected. The
 
 These are reference signatures of the standard interfaces. They describe the built-in contracts; do not redeclare their reserved names in an application:
 
+<!-- manuscript-artifact: {"kind":"schema"} -->
 ```manuscript
 interface Equal:
     fn equals(other: Self) Bool

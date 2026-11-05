@@ -9,7 +9,7 @@ weight = 3
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::an extern calls the native symbol\nPASS example.ms::an extern calls the native symbol\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -59,7 +59,7 @@ A `Result[T, E]` return names its error type `E`, an enum whose cases carry noth
 
 Save this declaration example as `example.ms` and run `ms check example.ms`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"example.ms","stdout":"Checked example.ms\n"} -->
 ```manuscript
 // A failed call, with the library's code and description.
 enum LibraryError:
@@ -99,7 +99,7 @@ uint8_t lib_count(const ms_str *path, int64_t *out, int64_t *code_out, ms_str *m
 
 Save this declaration example as `example.ms` and run `ms check example.ms`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"example.ms","stdout":"Checked example.ms\n"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -127,7 +127,7 @@ A native that keeps a function past the call, for a library that calls back late
 
 Save this declaration example as `example.ms` and run `ms check example.ms`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"example.ms","stdout":"Checked example.ms\n"} -->
 ```manuscript
 // Calls `visit` once for each entry the library finds.
 extern fn lib_walk(root: String, visit: fn(String, Int) Unit) Unit

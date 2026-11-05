@@ -6,7 +6,7 @@ description = "Write, understand, test, and ship native programs with a small ty
 +++
 
 {{< docs-home >}}
-<!-- manuscript-example: {"mode":"run","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
+<!-- manuscript-example: {"mode":"run","filename":"generate_release_notes.ms","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
 ```manuscript {filename="generate_release_notes.ms"}
 import open, read_file from "@std/os/fs.ms"
 import lines, collect from "@std/io/streams.ms"
@@ -24,10 +24,8 @@ fn render() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = render()
-    if let _done = outcome:
+    if let _done = render().map_error(fn cause: print(cause.message)):
         return 0
-    print(outcome.err().message)
     return 1
 ```
 {{< /docs-home >}}

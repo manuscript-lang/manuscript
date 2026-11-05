@@ -13,7 +13,7 @@ For a basket containing three items costing 12 each, `3 * 12 + 5` calculates the
 
 Save as `totals.ms` and run `ms run totals.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"41\n51\ntrue\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"41\n51\ntrue\n","filename":"totals.ms"} -->
 ```manuscript
 export fn main() Int:
     let quantity = 3
@@ -105,7 +105,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 
 Save as `port.ms` and run `ms run port.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"8080\n","filename":"port.ms"} -->
 ```manuscript
 fn port_number(text: String) Int!:
     let port = text.trim()

@@ -9,6 +9,7 @@ Generics let one function or data type work with several concrete types while ke
 
 Type-spelling reference (these are types, not executable expressions; `Decimal` and `DiscountError` must be imported or declared where used):
 
+<!-- manuscript-artifact: {"kind":"type-forms"} -->
 ```manuscript
 List[String]
 Map[String, Int]
@@ -22,7 +23,7 @@ A function that compares two integer values can declare `Int` parameters. If the
 
 Save as `same.ms` and run `ms run same.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"true\nfalse\ntrue\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"true\nfalse\ntrue\n","filename":"same.ms"} -->
 ```manuscript
 fn same[T: Equal](left: T, right: T) Bool:
     return left == right
@@ -95,7 +96,7 @@ A bound also explains how a helper may keep data. To make two independent copies
 
 Save as `copies.ms` and run `ms run copies.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"[[1, 2], [1]]\n[1]\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"[[1, 2], [1]]\n[1]\n","filename":"copies.ms"} -->
 ```manuscript
 fn two_copies[T: Clonable](value: T) List[T]:
     return [value.clone(), value.clone()]
@@ -217,17 +218,17 @@ fn fail[T](message: String) T!: error(Error(message))
 
 fn first() Int!: fail("empty")  // T = Int
 
+fn report(cause: Error) Error:
+    print(cause.message)
+    return cause.clone()
+
 export fn main() Int:
     let failed: Int! = fail("empty")
-    if let value = failed:
+    if let value = failed.map_error(report):
         print(value)
-    else:
-        print(failed.err().message)
     let another = first()
-    if let value = another:
+    if let value = another.map_error(report):
         print(value)
-    else:
-        print(another.err().message)
     return 0
 ```
 

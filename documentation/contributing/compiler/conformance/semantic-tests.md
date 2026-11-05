@@ -11,7 +11,7 @@ Start with a small accepted program or a single rejected use. Place successful c
 
 For example, save this as `decrement.ms`. Tests use `test "name":` blocks and assertions from `@std/test/test.ms`. Propagate their `Result` with `try` so a failed assertion fails the test.
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"decrement.ms","stdout":"RUN decrement.ms::checked decrement\nPASS decrement.ms::checked decrement\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 

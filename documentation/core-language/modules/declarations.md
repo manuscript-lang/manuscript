@@ -13,17 +13,23 @@ Suppose several parts of a program need to identify a customer. Give the identif
 
 Create a `src/domain` directory. Save this complete supporting module as `src/domain/customers.ms`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"src/domain/customers.ms","stdout":"Checked src/domain/customers.ms\n"} -->
 ```manuscript
 export type CustomerId:
     value: String
+```
+
+Running `ms check src/domain/customers.ms` checks this module without starting it:
+
+```text
+Checked src/domain/customers.ms
 ```
 
 `export` makes `CustomerId` available to other modules. This file defines data; it does not need a `main` function because it is not the program's entry point.
 
 Save the caller as `src/main.ms`. Its import names both the declaration it needs and the file that owns it:
 
-<!-- manuscript-example: {"mode":"run","build_files":{"domain/customers.ms":"export type CustomerId:\n    value: String"},"stdout":"C-100\n"} -->
+<!-- manuscript-example: {"mode":"run","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String"},"stdout":"C-100\n","filename":"src/main.ms"} -->
 ```manuscript
 import CustomerId from "./domain/customers.ms"
 
@@ -73,7 +79,7 @@ Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted 
 
 A module-level `let` names a value usable throughout the module; add `export` to share it. Save as `limits.ms` and run `ms run limits.ms`; it prints `100`, then `true`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"100\ntrue\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"100\ntrue\n","filename":"limits.ms"} -->
 ```manuscript
 export let MAX_ITEMS = 100
 let NAMES: List[String] = ["Ada", "Grace"]
@@ -92,7 +98,7 @@ The type comes from the annotation or initializer. The initializer is a constant
 
 Group related constants with `let (`, one `name = value` entry per line, indented four spaces; the closing `)` aligns with `let`. Each entry is an independent constant, and `export let (` exports all of them. Save as `bounds.ms` and run `ms run bounds.ms`; it prints `1`, then `10`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"1\n10\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"1\n10\n","filename":"bounds.ms"} -->
 ```manuscript
 let (
     LOW = 1
@@ -111,7 +117,7 @@ A constant has no storage or initialization order; each use evaluates the initia
 
 An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature, transitively. Save the negative example below as `private.ms`; `ms check private.ms` rejects it with `public signature exposes private type PrivateToken`. Imported exported types may appear without being re-exported. Generic parameters are not private declarations.
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":"public signature exposes private type PrivateToken"} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":"public signature exposes private type PrivateToken","filename":"private.ms"} -->
 ```manuscript
 type PrivateToken:
     value: String
@@ -129,18 +135,37 @@ An `impl` in a source type's defining module is available wherever the type is u
 
 This import declaration selects `Queue`; a module containing only this declaration is valid and can be checked with `ms check imports.ms`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"imports.ms","stdout":"Checked imports.ms\n"} -->
 ```manuscript
 import Queue from "@std/collections/queue.ms"
+```
+
+Running `ms check imports.ms` checks this module without starting it:
+
+```text
+Checked imports.ms
 ```
 
 `@std` is always available, needs no `[aliases]` entry, and cannot be overridden. Importing one export does not import the other type names in its signature: importing `Queue` does not bring other names from the module into scope (`Result` is in the prelude). Host accessors are imported separately and return services when called.
 
 ## Optional aliases
 
-A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` to `./src/domain/customers.ms`, either program below selects the same type. Save one version as `main.ms` at the project root and run `ms run main.ms`; both print `C-100`:
+A project-root `ms.toml` can define file and directory aliases. Keep `src/domain/customers.ms` from the first example, and save this manifest as `ms.toml` beside the new `main.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"C-100\n","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String","ms.toml":"[project]\nname = \"alias-example\"\nsource = \".\"\nentry = \"example.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@customers\" = \"./src/domain/customers.ms\"\n"}} -->
+```toml
+[project]
+name = "alias-example"
+source = "."
+entry = "main.ms"
+
+[aliases]
+"@domain" = "./src/domain"
+"@customers" = "./src/domain/customers.ms"
+```
+
+With `@domain` mapped to a directory and `@customers` to a file, either program below selects the same type. Save one version as `main.ms` at the project root and run `ms run main.ms`; both print `C-100`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"C-100\n","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String","ms.toml":"[project]\nname = \"alias-example\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@customers\" = \"./src/domain/customers.ms\"\n"},"filename":"main.ms"} -->
 ```manuscript
 import CustomerId from "@domain/customers.ms"
 
@@ -150,7 +175,7 @@ export fn main() Int:
     return 0
 ```
 
-<!-- manuscript-example: {"mode":"run","stdout":"C-100\n","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String","ms.toml":"[project]\nname = \"alias-example\"\nsource = \".\"\nentry = \"example.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@customers\" = \"./src/domain/customers.ms\"\n"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"C-100\n","build_files":{"src/domain/customers.ms":"export type CustomerId:\n    value: String","ms.toml":"[project]\nname = \"alias-example\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@domain\" = \"./src/domain\"\n\"@customers\" = \"./src/domain/customers.ms\"\n"},"filename":"main.ms"} -->
 ```manuscript
 import CustomerId from "@customers"
 

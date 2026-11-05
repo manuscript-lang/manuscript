@@ -25,7 +25,7 @@ Start by asking whether you want to work on existing data or keep a separate ver
 
 Save as `lists.ms` and run `ms run lists.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"[1, 2, 3]\n[1, 2]\n[1, 2, 3, 4]\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"[1, 2, 3]\n[1, 2]\n[1, 2, 3, 4]\n","filename":"lists.ms"} -->
 ```manuscript
 fn append_next(var values: List[Int]) Unit:
     values.append(3)

@@ -9,7 +9,7 @@ weight = 2
 
 Save this entrypoint as `main.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":""} -->
+<!-- manuscript-example: {"mode":"run","stdout":"","filename":"main.ms"} -->
 ```manuscript
 export fn main() Int:
     return 0

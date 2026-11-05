@@ -32,7 +32,7 @@ Suppose a checkout needs to calculate a line total. Put the calculation in a fun
 
 Save as `pricing.ms` and run `ms run pricing.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"36\n12\n24\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"36\n12\n24\n","filename":"pricing.ms"} -->
 ```manuscript
 fn line_total(price: Int, quantity: Int = 1) Int:
     return price * quantity
@@ -195,7 +195,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 Save this complete file as `returns.ms` and run `ms test returns.ms`. The first
 call completes with `Unit`; the test then observes both nonreturning paths:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"returns.ms","stdout":"RUN returns.ms::Unit completion and Never faults\nPASS returns.ms::Unit completion and Never faults\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 import expect_equal, expect_fault from "@std/test/test.ms"
@@ -213,6 +213,12 @@ test "Unit completion and Never faults":
     let missing = try expect_fault(fn: print(missing_value()))
     try expect_equal(failed_check, "check failed")
     try expect_equal(missing, "Required value is missing")
+```
+
+```text
+RUN returns.ms::Unit completion and Never faults
+PASS returns.ms::Unit completion and Never faults
+1 tests, 0 failed
 ```
 
 `panic` has type `fn(String) Never`. A `Never` expression cannot complete normally and is accepted where any value type is expected. `List[Never]` is not compatible with `List[Int]`.
@@ -237,7 +243,7 @@ Negative reference: save this declaration as `invalid.ms` and run
 `ms check invalid.ms`. The command exits nonzero because the false path has no
 `Int` to return:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["reachable fallthrough in function returning Int"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["reachable fallthrough in function returning Int"],"filename":"invalid.ms"} -->
 ```manuscript
 fn incomplete(active: Bool) Int:
     if active:

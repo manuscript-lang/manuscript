@@ -19,7 +19,7 @@ Create `config.json` in your working directory:
 
 Save the following complete program as `config.ms` beside it:
 
-<!-- manuscript-example: {"mode":"run","files":{"config.json":"{\"name\":\"Newsletter\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":true}\n","cases":[{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}\n"},{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabeld\":false}"},"stdout":"JSON: invalid data: at $: unknown field\n","exit_code":1},{"files":{"config.json":"{\"name\":42}"},"stdout":"JSON: invalid data: at $.name: expected string, found number\n","exit_code":1},{"files":{"config.json":"{}"},"stdout":"JSON: invalid data: at $: missing field \"name\"\n","exit_code":1}]} -->
+<!-- manuscript-example: {"mode":"run","files":{"config.json":"{\"name\":\"Newsletter\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":true}\n","cases":[{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}"},"stdout":"{\"name\":\"Newsletter\",\"enabled\":false,\"reply_to\":\"editor@example.com\"}\n"},{"files":{"config.json":"{\"name\":\"Newsletter\",\"enabeld\":false}"},"stdout":"JSON: invalid data: at $: unknown field\n","exit_code":1},{"files":{"config.json":"{\"name\":42}"},"stdout":"JSON: invalid data: at $.name: expected string, found number\n","exit_code":1},{"files":{"config.json":"{}"},"stdout":"JSON: invalid data: at $: missing field \"name\"\n","exit_code":1}],"filename":"config.ms"} -->
 ```manuscript
 import parse, stringify, JsonLimits from "@std/data/json.ms"
 import read_file from "@std/os/fs.ms"
@@ -42,10 +42,9 @@ fn run() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _value = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -73,7 +72,7 @@ Unknown fields are normally ignored by `parse`. This program sets `ignore_unknow
 
 `strict: true` on `stringify` answers a different question: can every value be represented as JSON? It rejects values without a JSON form, such as `Unit`, instead of omitting them or writing `null` in a list. It does not make absent optional record fields appear. Functions and resources cannot satisfy the encoder's `Data` bound in the first place.
 
-The `if let` in `main` handles success; the following statements handle failure: success exits with status 0, while failure prints the actual cause and exits with status 1. For example, setting `name` to `42` reports:
+In `main`, `map_error` prints the cause only on failure and preserves the failed outcome. The `if let` handles success with status 0; the remaining path returns status 1. For example, setting `name` to `42` reports:
 
 ```text
 JSON: invalid data: at $.name: expected string, found number
@@ -87,7 +86,7 @@ Some inputs contain data whose structure is decided elsewhere. Without a type ar
 
 Save this complete program as `inspect.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Ada\n9007199254740993\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\n9007199254740993\n","filename":"inspect.ms"} -->
 ```manuscript
 import parse, stringify from "@std/data/json.ms"
 
@@ -102,10 +101,9 @@ fn run() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _value = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 

@@ -9,7 +9,7 @@ weight = 1
 
 Save this as `status.ms` and run `ms run status.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Active\nInactive\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Active\nInactive\n","filename":"status.ms"} -->
 ```manuscript
 fn status(active: Bool) String:
     if active:
@@ -141,18 +141,18 @@ Save this complete example as `example.ms` and run `ms run example.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"8080\nport must be between 1 and 65535\nconfiguration missing\n"} -->
 ```manuscript
 fn port(lookup: Int!) Int!:
-    if let value = lookup:
-        if value > 0 and value <= 65535:
-            return ok(value)
-        return error(Error("port must be between 1 and 65535"))
-    return error(lookup.err())
+    let value = try lookup
+    if value > 0 and value <= 65535:
+        return ok(value)
+    return error(Error("port must be between 1 and 65535"))
+
+fn report(cause: Error) Error:
+    print(cause.message)
+    return cause.clone()
 
 fn show_port(lookup: Int!) Unit:
-    let outcome = port(lookup)
-    if let value = outcome:
+    if let value = port(lookup).map_error(report):
         print(value)
-        return
-    print(outcome.err().message)
 
 export fn main() Int:
     show_port(ok(8080))
@@ -167,7 +167,7 @@ port must be between 1 and 65535
 configuration missing
 ```
 
-The success branch validates the port. If the lookup failed, the final return preserves its cause instead of silently replacing it with a default port. `err()` is reached only after the success branch has returned. Use `try` when you simply want to propagate failure before continuing a longer calculation.
+`try` preserves a failed lookup before validation runs. For a successful lookup, the function checks the port range. At the reporting boundary, `map_error(report)` prints a failure and returns its cause; `if let` handles the success value. The callback runs only for errors, so each call prints exactly one outcome.
 
 `if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = map.get(key):` also borrows the map entry in place. For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary Optional. To change an independent copy, use `if let` and explicitly clone the payload into a `var`.
 
@@ -175,7 +175,7 @@ This complete test updates an existing map entry:
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::increment a visit count\nPASS example.ms::increment a visit count\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 

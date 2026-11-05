@@ -9,7 +9,7 @@ Store a function in a binding or pass it as an argument. Anonymous functions use
 
 Save as `callback.ms` and run `ms run callback.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"2\n","filename":"callback.ms"} -->
 ```manuscript
 fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
@@ -35,7 +35,7 @@ Parameter types in order, their `var` markers, and the result type are function-
 Save as `adapter.ms` and run `ms run adapter.ms`. The first value preserves the
 function's type; the second uses an explicit conversion to adapt its result:
 
-<!-- manuscript-example: {"mode":"run","stdout":"2\n2\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"2\n2\n","filename":"adapter.ms"} -->
 ```manuscript
 fn subtract_one(amount: Int) Int:
     return amount - 1
@@ -57,7 +57,7 @@ Negative reference: save this independently as `invalid.ms` and run
 `ms check invalid.ms`. It exits nonzero because the assigned function returns
 `Int`, while the annotation requires `String`:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected fn(Int) String, found fn(Int) Int"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected fn(Int) String, found fn(Int) Int"],"filename":"invalid.ms"} -->
 ```manuscript
 fn subtract_one(amount: Int) Int:
     return amount - 1
@@ -112,7 +112,7 @@ read-only reborrow, not a move or a snapshot. Read through that borrow before
 changing the original; once the borrow's last use has passed, mutation can resume.
 Save as `reborrow.ms` and run `ms run reborrow.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Before: 2\n[1, 2, 3]\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Before: 2\n[1, 2, 3]\n","filename":"reborrow.ms"} -->
 ```manuscript
 fn append_after_reading(var values: List[Int]) Unit:
     let old = values
@@ -136,7 +136,7 @@ it, so this negative example tries to take the caller's list. Save as `invalid.m
 and run `ms check invalid.ms`; the checker reports that the caller keeps ownership
 of a `var` parameter:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot move `values` out of the function: the caller keeps ownership of a var parameter"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot move `values` out of the function: the caller keeps ownership of a var parameter"],"filename":"invalid.ms"} -->
 ```manuscript
 type Snapshot:
     values: List[Int]
@@ -272,7 +272,7 @@ Open a resource inside the callback that uses it:
 
 Save this complete example as `example.ms` and run `ms run example.ms` after creating `notes.txt` with the text `Notes`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"5\n","files":{"notes.txt":"Notes"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"5\n","files":{"notes.txt":"Notes"},"cases":[{"exit_code":1,"stdout":"filesystem: file or directory not found: notes.txt\n"}]} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -284,11 +284,10 @@ fn notes_reader(path: String) fn() Bytes!:
 
 export fn main() Int:
     let read = notes_reader("notes.txt")
-    let outcome = read()
+    let outcome = read().map_error(fn cause: print(cause.message))
     if let bytes = outcome:
         print(bytes.length())
         return 0
-    print(outcome.err().message)
     return 1
 
 ```

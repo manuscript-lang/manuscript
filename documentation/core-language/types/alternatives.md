@@ -32,7 +32,7 @@ Constructing `Paid("receipt-42")` selects the `Paid` case and stores its receipt
 
 Save this complete program as `payment.ms` and run `ms run payment.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\nDeclined: Card rejected\nPending: order-3\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\nDeclined: Card rejected\nPending: order-3\n","filename":"payment.ms"} -->
 ```manuscript
 enum Payment:
     Paid(receipt: String)

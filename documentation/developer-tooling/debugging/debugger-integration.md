@@ -11,7 +11,7 @@ Use `ms profile` to find where a program spends CPU time. Build an unoptimized e
 
 Save this as `words.ms`. It splits a short line repeatedly and prints the number of words processed. The argument controls how much work to do:
 
-<!-- manuscript-example: {"mode":"run","args":["2"],"stdout":"12\n","cases":[{"args":["invalid"],"stdout":"Repeat count must be a non-negative integer\n","exit_code":1},{"args":["-1"],"stdout":"Repeat count must be a non-negative integer\n","exit_code":1},{"args":["0"],"stdout":"0\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["2"],"stdout":"12\n","cases":[{"args":["invalid"],"stdout":"Repeat count must be a non-negative integer\n","exit_code":1},{"args":["-1"],"stdout":"Repeat count must be a non-negative integer\n","exit_code":1},{"args":["0"],"stdout":"0\n"}],"filename":"words.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 

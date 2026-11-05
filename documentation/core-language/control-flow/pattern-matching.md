@@ -9,7 +9,7 @@ weight = 3
 
 `match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. Save this complete example as `payment.ms` and run `ms run payment.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\n","filename":"payment.ms"} -->
 ```manuscript
 enum Payment:
     Paid(receipt: String)
@@ -94,12 +94,13 @@ fn total(cents: Cents) Int!:
             return error(Error("Invalid amount"))
     return ok(amount)
 
+fn report(cause: Error) Error:
+    print(cause.message)
+    return cause.clone()
+
 fn show_total(cents: Cents) Unit:
-    let outcome = total(cents)
-    if let value = outcome:
+    if let value = total(cents).map_error(report):
         print(value)
-        return
-    print(outcome.err().message)
 
 export fn main() Int:
     show_total(Valid(42))
@@ -198,7 +199,7 @@ A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers i
 
 Save this declaration example as `example.ms` and run `ms check example.ms`:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"example.ms","stdout":"Checked example.ms\n"} -->
 ```manuscript
 interface Shape:
     fn area() Int

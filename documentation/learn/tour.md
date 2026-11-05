@@ -20,7 +20,7 @@ Indentation defines blocks, four spaces indent a body, and `//` starts a comment
 
 Save this complete program as `hello.ms` and run `ms run hello.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n","filename":"hello.ms"} -->
 ```manuscript
 export fn main() Int:
     print("Hello, Manuscript!")
@@ -397,6 +397,7 @@ to other modules; declarations without it stay private to the module.
 
 `pricing.ms`:
 
+<!-- manuscript-artifact: {"kind":"support","filename":"pricing.ms"} -->
 ```manuscript
 export let UNIT_PRICE = 12
 
@@ -425,7 +426,7 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 
 `fn(Int) Int` names a function that takes an `Int` and returns an `Int`. Use `fn` to create a callback:
 
-<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::a callback borrows a prepared value\nPASS example.ms::a callback borrows a prepared value\n1 tests, 0 failed\n"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::a callback borrows a prepared value\nPASS example.ms::a callback borrows a prepared value\n1 tests, 0 failed\n","filename":"example.ms"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -463,7 +464,7 @@ for returned callbacks and resource ownership.
 
 `|` passes a value to the next step, so a sequence of calls reads top to bottom. `try` inside a flow unwraps a `Result` and returns early on error:
 
-<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::pipe flow\nPASS example.ms::pipe flow\n1 tests, 0 failed\n"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::pipe flow\nPASS example.ms::pipe flow\n1 tests, 0 failed\n","filename":"example.ms"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -509,7 +510,7 @@ A record describes data. Methods describe operations on that data and live in an
 types can implement. Here, `Increment` requires a mutating operation, and `Counter`
 provides it; `self` names the receiver inside that operation:
 
-<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::counter behavior\nPASS example.ms::counter behavior\n1 tests, 0 failed\n"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::counter behavior\nPASS example.ms::counter behavior\n1 tests, 0 failed\n","filename":"example.ms"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -544,7 +545,7 @@ PASS example.ms::counter behavior
 
 A type's own methods go in `impl Counter:`, without an interface:
 
-<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::own methods\nPASS example.ms::own methods\n1 tests, 0 failed\n"} -->
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::own methods\nPASS example.ms::own methods\n1 tests, 0 failed\n","filename":"example.ms"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -611,7 +612,7 @@ function so its scope expresses the resource's lifetime. Save this complete prog
 as `copy.ms`. Create `notes.txt` containing `Remember the milk` followed by a newline,
 then run `ms run copy.ms` to copy at most one MiB into `backup.txt`:
 
-<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"Remember the milk\n"},"want_files":{"backup.txt":"Remember the milk\n"},"stdout":"Copied notes.txt to backup.txt\n"} -->
+<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"Remember the milk\n"},"want_files":{"backup.txt":"Remember the milk\n"},"stdout":"Copied notes.txt to backup.txt\n","cases":[{"exit_code":1,"stdout":"filesystem: file or directory not found: notes.txt\n"}],"filename":"copy.ms"} -->
 ```manuscript
 import open, write_file_bytes from "@std/os/fs.ms"
 
@@ -622,11 +623,10 @@ fn copy_notes() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = copy_notes()
+    let outcome = copy_notes().map_error(fn cause: print(cause.message))
     if let _copied = outcome:
         print("Copied notes.txt to backup.txt")
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -639,6 +639,9 @@ returns an error before any read happens. The handle can use a `let` binding:
 `read_file` is a non-mutating method in its Manuscript signature, even though reading
 advances the underlying file position. `write_file_bytes` returns a promise;
 `.wait()` takes the write result, which `try` checks before reporting success.
+`map_error` in `main` prints the cause only on failure; the following `if let`
+checks the returned result. Try running without `notes.txt`: the program reports
+the missing file and returns exit status 1.
 
 The file closes at the end of its scope, even on early return. `close()` returns a
 `Result`: a function returning `T!` can report a failed close as its error; a
@@ -665,11 +668,10 @@ fn calculate() Int!:
     return ok(total)
 
 export fn main() Int:
-    let outcome = calculate()
+    let outcome = calculate().map_error(fn cause: print(cause.message))
     if let total = outcome:
         print("Total: {total}")
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -695,7 +697,7 @@ captures, timeouts, and cooperative cancellation before you depend on them.
 Save this complete but deliberately invalid program as `invalid.ms`. Each mistake
 illustrates a rule introduced above:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot assign immutable binding count","expected Int, found String (in entry 2 of the literal, whose entries share one type)","missing argument quantity: Int in call to line_total"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot assign immutable binding count","expected Int, found String (in entry 2 of the literal, whose entries share one type)","missing argument quantity: Int in call to line_total"],"filename":"invalid.ms"} -->
 ```manuscript
 fn line_total(price: Int, quantity: Int) Int:
     return price * quantity

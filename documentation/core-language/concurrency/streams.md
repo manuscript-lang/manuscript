@@ -15,7 +15,7 @@ A stream is useful when input arrives incrementally or is too large to keep at o
 
 Save as `count-errors.ms` and run `ms run count-errors.ms`. It prints `2`, the number of lines containing `ERROR`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"2\n","filename":"count-errors.ms"} -->
 ```manuscript
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
@@ -29,11 +29,10 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
     return ok(errors)
 
 export fn main() Int:
-    let outcome = count_errors(from_bytes("INFO ready\nERROR first\nERROR second\n".to_bytes()))
+    let outcome = count_errors(from_bytes("INFO ready\nERROR first\nERROR second\n".to_bytes())).map_error(fn cause: print(cause.message))
     if let value = outcome:
         print(value)
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -51,7 +50,7 @@ export fn main() Int:
 
 Save as `write-rows.ms` and run `ms run write-rows.ms`; it prints `first` and `second` on separate lines. The helper flushes before reporting success:
 
-<!-- manuscript-example: {"mode":"run","stdout":"first\nsecond\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"first\nsecond\n","filename":"write-rows.ms"} -->
 ```manuscript
 import WriteStream, stdout from "@std/io/io.ms"
 
@@ -65,10 +64,9 @@ fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
 
 export fn main() Int:
     var output = stdout()
-    let outcome = dump(["first", "second"], var output)
+    let outcome = dump(["first", "second"], var output).map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -76,7 +74,9 @@ export fn main() Int:
 
 Each step in `@std/io/streams.ms` takes its input first and by move, so a pipeline is the `|` operator and a reusable pipeline is an ordinary function:
 
-<!-- manuscript-example: {"mode":"test"} -->
+Save this complete test as `example.ms` and run `ms test example.ms`:
+
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::measure lines\nPASS example.ms::measure lines\n1 tests, 0 failed\n"} -->
 ```manuscript
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
@@ -90,6 +90,12 @@ test "measure lines":
     let input = from_bytes("first\nok\n".to_bytes())
     let lengths = try collect(line_lengths(input), max_items: 10)
     try expect_equal(lengths, [5, 2])
+```
+
+```text
+RUN example.ms::measure lines
+PASS example.ms::measure lines
+1 tests, 0 failed
 ```
 
 | Step | Result |
@@ -112,7 +118,7 @@ A `Pipe[T]` is an in-memory stream between promises: any number of writers, one 
 
 Save as `pipe_test.ms` and run `ms test pipe_test.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"pipe_test.ms","stdout":"RUN pipe_test.ms::sum values from a producer\nPASS pipe_test.ms::sum values from a producer\n1 tests, 0 failed\n"} -->
 ```manuscript
 import pipe, WriteStream from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"

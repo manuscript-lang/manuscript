@@ -9,7 +9,7 @@ weight = 2
 
 Save as `stock.ms` and run `ms run stock.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n","filename":"stock.ms"} -->
 ```manuscript
 export fn main() Int:
     let count = 3

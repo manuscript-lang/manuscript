@@ -57,7 +57,7 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 
 Save as `literals.ms` and run `ms run literals.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"-9223372036854775808\n1000\n65280\n165\n1000\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"-9223372036854775808\n1000\n65280\n165\n1000\n","filename":"literals.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
@@ -87,7 +87,7 @@ Negative reference: save this separately as `invalid.ms` and run
 `ms check invalid.ms`. It exits nonzero because an integer token does not become a
 floating-point value from context:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected Float, found Int"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["expected Float, found Int"],"filename":"invalid.ms"} -->
 ```manuscript
 export fn main() Int:
     let mismatch: Float = 1
@@ -101,7 +101,7 @@ export fn main() Int:
 
 Save as `sized.ms` and run `ms run sized.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"100\n2000000000\n0.10000000149011612\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"100\n2000000000\n0.10000000149011612\n","filename":"sized.ms"} -->
 ```manuscript
 export fn main() Int:
     let small: Int8 = 100
@@ -122,7 +122,7 @@ export fn main() Int:
 The type check and the runtime range check are separate. This negative reference
 is rejected by `ms check invalid.ms` because the operands have different types:
 
-<!-- manuscript-example: {"mode":"reject","stderr_contains":["operator operands require the same independently known type, found Int8 + Int32"]} -->
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["operator operands require the same independently known type, found Int8 + Int32"],"filename":"invalid.ms"} -->
 ```manuscript
 fn invalid_sum(small: Int8, wide: Int32) Int8:
     return small + wide
@@ -133,7 +133,7 @@ complete test as `overflow.ms` and run `ms test overflow.ms`. The test passes by
 observing the fault from adding runtime parameters; constant faults can be
 rejected earlier by the checker:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"overflow.ms","stdout":"RUN overflow.ms::sized overflow\nPASS overflow.ms::sized overflow\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_fault, expect_true from "@std/test/test.ms"
 
@@ -143,6 +143,12 @@ fn add(left: Int8, right: Int8) Int8:
 test "sized overflow":
     let message = try expect_fault(fn: print(add(100, 100)))
     try expect_true(message.contains("overflow"))
+```
+
+```text
+RUN overflow.ms::sized overflow
+PASS overflow.ms::sized overflow
+1 tests, 0 failed
 ```
 
 `Float32` operations round once to binary32. As the output above shows, the nearest representable value to decimal `0.1` is not exactly one tenth. `Float` uses binary64 and likewise cannot represent every decimal fraction exactly; use `Decimal` when base-ten arithmetic is required. Typed JSON supports sized integers and `Float32`, preserving their range checks. List indexes and literal `match` subjects still use `Int`; convert a sized integer at those boundaries. See [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/data/json.ms.md).
@@ -253,7 +259,7 @@ The default `mode` is `RoundingMode.HalfEven`; import `RoundingMode` from `@std/
 
 Decimal imposes no currency policy; scaled Int cents also work. This example rounds tax before adding it. Run it with `ms test cents.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"cents.ms","stdout":"RUN cents.ms::decimal amounts\nPASS cents.ms::decimal amounts\n1 tests, 0 failed\n"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 import expect_equal from "@std/test/test.ms"
@@ -268,6 +274,12 @@ fn amount_text() String!:
 
 test "decimal amounts":
     try amount_text() | try expect_equal("tax 4.95 total 64.92 padded 25.50")
+```
+
+```text
+RUN cents.ms::decimal amounts
+PASS cents.ms::decimal amounts
+1 tests, 0 failed
 ```
 
 ## Booleans

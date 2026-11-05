@@ -13,7 +13,7 @@ Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both ar
 
 Save this as `quantity.ms` and run `ms run quantity.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Quantity: 3\nQuantity must be positive\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Quantity: 3\nQuantity must be positive\n","filename":"quantity.ms"} -->
 ```manuscript
 fn quantity(value: Int) Int!:
     if value <= 0:
@@ -21,11 +21,10 @@ fn quantity(value: Int) Int!:
     return ok(value)
 
 fn show(value: Int) Unit:
-    let outcome = quantity(value)
+    let outcome = quantity(value).map_error(fn cause: print(cause.message))
     if let quantity = outcome:
         print("Quantity: {quantity}")
         return
-    print(outcome.err().message)
 
 export fn main() Int:
     show(3)
@@ -40,24 +39,23 @@ Quantity must be positive
 
 Both calls return normally. The second returns an error value, and `show` chooses how to present it. A quantity of zero is ordinary input the application can reject; it does not mean the program has broken an invariant. The return type makes that possibility visible before the caller runs the function.
 
-The success branch binds the quantity and returns after printing it. Only the error path reaches `err()`, so the cause remains available for presentation. `err()` faults on a success; keep it on a path where failure is established. Use [`try`](propagation.md) when the caller should pass the cause on instead of presenting it here.
+The callback passed to `map_error` runs only on failure and prints the original message. It returns `Unit`, so `outcome` is an `Int!Unit`; `if let` consumes its success path without extracting an error payload. Use [`try`](propagation.md) when the caller should pass the cause on instead of presenting it here.
 
 ## Shorthand: `T!` and `T!E`
 
 `T!` is `Result[T, Error]` and `T!E` (with no space before `E`) is `Result[T, E]`, mirroring `T?` for optionals. Use `T!E` for a failure that is not an `Error`. `Result[T, E]` stays valid. Save this program as `port.ms` and run `ms run port.ms`; it prints `8080`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"8080\n","filename":"port.ms"} -->
 ```manuscript
 fn parse_port(text: String) Int!:
     let port = try text.parse_int().ok_or()
     return ok(port)
 
 export fn main() Int:
-    let outcome = parse_port("8080")
+    let outcome = parse_port("8080").map_error(fn cause: print(cause))
     if let value = outcome:
         print(value)
         return 0
-    print(outcome.err())
     return 1
 ```
 
@@ -67,6 +65,7 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 
 `Error` is a plain record with the following declaration shape. This is API reference, not a type to redeclare in your program:
 
+<!-- manuscript-artifact: {"kind":"schema"} -->
 ```manuscript
 export type Error:
     message: String
@@ -80,25 +79,27 @@ export type Error:
 
 Build one with the record call. There is no separate constructor and no namespace. Save the following as `users.ms` and run `ms run users.ms`; it prints `negative id`, then `missing 7: no such user`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"negative id\nmissing 7: no such user\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"negative id\nmissing 7: no such user\n","filename":"users.ms"} -->
 ```manuscript
 fn find_user(id: Int) String!:
     if id < 0:
         return error(Error("negative id", kind: "EINVAL"))
     return error(Error("no such user", kind: "ENOENT", details: {"id": id.to_string()}))
 
-fn describe(id: Int) String:
-    let outcome = find_user(id)
-    if let name = outcome:
-        return name.clone()
-    let cause = outcome.err()
+fn user_error(cause: Error) String:
     if cause.kind == "ENOENT":
-        return "missing {cause.details["id"]}: {cause.message}"
+        if let id = cause.details.get("id"):
+            return "missing {id}: {cause.message}"
     return cause.message.clone()
 
+fn show_user(id: Int) Unit:
+    let outcome = find_user(id).map_error(fn cause: print(user_error(cause)))
+    if let name = outcome:
+        print(name)
+
 export fn main() Int:
-    print(describe(-1))
-    print(describe(7))
+    show_user(-1)
+    show_user(7)
     return 0
 ```
 
@@ -108,7 +109,7 @@ Standard-library failures are `Error` values too: branch on `kind`, read `detail
 
 An `Error` fits most code. Use your own type as `E` when callers need typed payloads or exhaustive cases. Save this module as `discount.ms`; the complete programs below import it from the same directory. `ms check discount.ms` prints `Checked discount.ms`.
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"discount.ms","stdout":"Checked discount.ms\n"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
@@ -133,29 +134,31 @@ Zero and a 100 percent discount are accepted here. Validation rules belong to th
 
 Save as `discount-message.ms` beside `discount.ms` and run `ms run discount-message.ms`. It prints a price, then the two validation messages:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Discounted price: 18\nPrice must not be negative.\nPercent must be between 0 and 100.\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Discounted price: 18\nPrice must not be negative.\nPercent must be between 0 and 100.\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"},"filename":"discount-message.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 import DiscountError, discount from "./discount.ms"
 
-fn discount_message(price: Decimal, percent: Decimal) String:
-    let outcome = discount(price, percent)
-    if let value = outcome:
-        return "Discounted price: {value}"
-    match outcome.err():
+fn discount_message(cause: DiscountError) String:
+    match cause:
         InvalidPrice:
             return "Price must not be negative."
         InvalidPercent:
             return "Percent must be between 0 and 100."
 
+fn show_discount(price: Decimal, percent: Decimal) Unit:
+    let outcome = discount(price, percent).map_error(fn cause: print(discount_message(cause)))
+    if let value = outcome:
+        print("Discounted price: {value}")
+
 export fn main() Int:
-    print(discount_message(20d, 10d))
-    print(discount_message(-1d, 10d))
-    print(discount_message(20d, 110d))
+    show_discount(20d, 10d)
+    show_discount(-1d, 10d)
+    show_discount(20d, 110d)
     return 0
 ```
 
-The success branch binds the price. The remaining path handles each domain error explicitly, so a caller can tell which input needs correcting. If this layer cannot recover or present the error, [propagate it with try](propagation.md).
+The success branch binds the price. On failure, `map_error` passes the domain value to the callback, which uses an exhaustive match to choose the message. The caller can tell which input needs correcting. If this layer cannot recover or present the error, [propagate it with try](propagation.md).
 
 ## Checking, extracting, and composing
 
@@ -174,7 +177,7 @@ The success branch binds the price. The remaining path handles each domain error
 
 Save as `discount-text.ms` beside `discount.ms` and run `ms run discount-text.ms`; it prints `18`. The mapping changes the successful value to text while retaining the error type and cause:
 
-<!-- manuscript-example: {"mode":"run","stdout":"18\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"18\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"},"filename":"discount-text.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 import DiscountError, discount from "./discount.ms"
@@ -183,11 +186,10 @@ fn discounted_text() String!DiscountError:
     return discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 
 export fn main() Int:
-    let outcome = discounted_text()
+    let outcome = discounted_text().map_error(fn cause: print(cause))
     if let value = outcome:
         print(value)
         return 0
-    print(outcome.err())
     return 1
 ```
 
@@ -197,7 +199,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 `to_optional() T?` returns the original payload as a present optional, or `none` on error. It deliberately loses the error cause; use it only when that distinction is not needed. It does not flatten the payload or turn faults or cancellation into absence. Save as `optional-price.ms` and run `ms run optional-price.ms`; it prints `true`, then `20`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"true\n20\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"true\n20\n","filename":"optional-price.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
@@ -225,7 +227,7 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 `try` forwards the error type unchanged and never converts one. Translate a domain error with an ordinary function or `map_error`. Save as `discount-error.ms` beside `discount.ms` and run `ms run discount-error.ms`; it reports `percent must be between 0 and 100` and exits with status 1:
 
-<!-- manuscript-example: {"mode":"run","stdout":"percent must be between 0 and 100\n","exit_code":1,"build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"percent must be between 0 and 100\n","exit_code":1,"build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"},"filename":"discount-error.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 import DiscountError, discount from "./discount.ms"
@@ -241,11 +243,10 @@ fn discount_checked(price: Decimal, percent: Decimal) Decimal!:
     return discount(price, percent).map_error(discount_error)
 
 export fn main() Int:
-    let outcome = discount_checked(20d, 110d)
+    let outcome = discount_checked(20d, 110d).map_error(fn cause: print(cause.message))
     if let value = outcome:
         print(value)
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -257,7 +258,7 @@ Suppose an order form supplies its quantity as text. Parsing can fail before the
 
 Save as `order.ms` and run `ms run order.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Total: 36\nQuantity must be positive\nEnter a whole number\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Total: 36\nQuantity must be positive\nEnter a whole number\n","filename":"order.ms"} -->
 ```manuscript
 fn quantity(text: String) Int!:
     let value = try text.parse_int().ok_or(Error("Enter a whole number"))
@@ -270,11 +271,10 @@ fn order_total(text: String) Int!:
     return ok(count * 12)
 
 fn show_order(text: String) Unit:
-    let outcome = order_total(text)
+    let outcome = order_total(text).map_error(fn cause: print(cause.message))
     if let value = outcome:
         print("Total: {value}")
         return
-    print(outcome.err().message)
 
 export fn main() Int:
     show_order("3")

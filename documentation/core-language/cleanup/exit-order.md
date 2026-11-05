@@ -19,7 +19,7 @@ Returning an owned resource transfers its cleanup duty to the caller: the exitin
 
 Save as `cleanup.ms` and run `ms run cleanup.ms`. The small resource below prints when it closes:
 
-<!-- manuscript-example: {"mode":"run","stdout":"work\nclose second\nclose first\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"work\nclose second\nclose first\n","filename":"cleanup.ms"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -44,10 +44,9 @@ fn work() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = work()
+    let outcome = work().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 

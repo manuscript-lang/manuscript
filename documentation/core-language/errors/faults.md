@@ -13,7 +13,7 @@ Choose the failure model from the caller's perspective. A missing configuration 
 
 Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails. Save as `validated-discount.ms` and run `ms run validated-discount.ms`; it prints `18`. Change the price to zero to exercise the invariant fault:
 
-<!-- manuscript-example: {"mode":"run","stdout":"18\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"18\n","filename":"validated-discount.ms"} -->
 ```manuscript
 import panic from "@std/core.ms"
 import Decimal from "@std/math/decimal.ms"

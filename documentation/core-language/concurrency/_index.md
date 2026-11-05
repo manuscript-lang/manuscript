@@ -7,7 +7,9 @@ weight = 8
 
 `promise(fn: ...)` starts concurrent work on a thread the runtime picks and returns a `Promise[T]`; `wait()` takes its result. Any function can wait, including functions that return a value directly, so there is no `async` or `await`. Streams are pulled lazily: a promise returned by `ReadStream.read()` defers its read until it is waited on. Values that arrive over time travel on [streams](streams.md), and an in-memory `pipe` connects promises.
 
-<!-- manuscript-example: {"mode":"test"} -->
+Save this complete test as `example.ms` and run `ms test example.ms`:
+
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::run work at once and collect it\nPASS example.ms::run work at once and collect it\n1 tests, 0 failed\n"} -->
 ```manuscript
 import promise, wait_all from "@std/concurrency/promise.ms"
 import expect_equal from "@std/test/test.ms"
@@ -20,6 +22,12 @@ test "run work at once and collect it":
     let second = promise(fn: ok(square(4)))
     let results = try wait_all([first, second])
     try expect_equal(results, [9, 16])
+```
+
+```text
+RUN example.ms::run work at once and collect it
+PASS example.ms::run work at once and collect it
+1 tests, 0 failed
 ```
 
 The test passes with the results in input order: `[9, 16]`. The two operations may finish in either order.

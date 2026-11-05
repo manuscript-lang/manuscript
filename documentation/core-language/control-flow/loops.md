@@ -37,7 +37,7 @@ export fn main() Int:
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::sum indexes\nPASS example.ms::sum indexes\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -61,7 +61,7 @@ Use `while` with a counter for other steps or computed exits:
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::five iterations\nPASS example.ms::five iterations\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -89,7 +89,7 @@ Increment the counter before any `continue` that would skip its update.
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::sum even indexes\nPASS example.ms::sum even indexes\n1 tests, 0 failed\n"} -->
 ```manuscript
 import range_by from "@std/collections/collections.ms"
 import expect_equal from "@std/test/test.ms"
@@ -176,7 +176,7 @@ export fn main() Int:
     let outcome = run()
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
+    print("Could not write the countdown")
     return 1
 ```
 
@@ -212,7 +212,7 @@ export fn main() Int:
     let outcome = run()
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
+    print("Could not write the steps")
     return 1
 ```
 

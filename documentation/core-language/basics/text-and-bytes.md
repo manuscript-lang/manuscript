@@ -13,7 +13,7 @@ Text often arrives with surrounding whitespace, then needs to be included in a m
 
 Save as `message.ms` and run `ms run message.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\n3 scalars, 4 bytes\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\n3 scalars, 4 bytes\n","filename":"message.ms"} -->
 ```manuscript
 export fn main() Int:
     let entered = "  Ada  "
@@ -137,7 +137,7 @@ Every value has a built-in `to_string() String`, needing no import or bound. A b
 
 Save this complete test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::string conversion\nPASS example.ms::string conversion\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -217,7 +217,7 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 
 Save this complete test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::explicit byte conversion\nPASS example.ms::explicit byte conversion\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -247,7 +247,7 @@ PASS example.ms::explicit byte conversion
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::padding and fixed digits\nPASS example.ms::padding and fixed digits\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -270,7 +270,7 @@ PASS example.ms::padding and fixed digits
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::binary codecs\nPASS example.ms::binary codecs\n1 tests, 0 failed\n"} -->
 ```manuscript
 import BytesBuilder from "@std/bytes.ms"
 import expect_equal from "@std/test/test.ms"

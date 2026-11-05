@@ -11,7 +11,7 @@ Use `ms check` while editing to find mistakes before running the program. A diag
 
 Save this program as `count.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"3\n","filename":"count.ms"} -->
 ```manuscript
 export fn main() Int:
     var count = 2

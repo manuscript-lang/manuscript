@@ -107,7 +107,7 @@ Maps and sets iterate in insertion order, with a [for loop](../control-flow/loop
 
 Save as `pairs.ms` and run `ms run pairs.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n","filename":"pairs.ms"} -->
 ```manuscript
 export fn main() Int:
     let names = ["ann", "bo", "cy"]
@@ -264,7 +264,7 @@ List `sorted()` returns a new list in ascending natural order and `sort()` order
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::sorting and aggregates\nPASS example.ms::sorting and aggregates\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -289,7 +289,7 @@ Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in
 
 Save this complete test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::dynamic mutable data and explicit copies\nPASS example.ms::dynamic mutable data and explicit copies\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 

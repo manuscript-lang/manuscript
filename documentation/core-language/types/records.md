@@ -104,7 +104,7 @@ A clone gives a value its own nested data. Changing the clone leaves the origina
 
 Save as `customers.ms` and run `ms run customers.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Ada\nGrace\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\nGrace\n","filename":"customers.ms"} -->
 ```manuscript
 type Customer:
     name: String
@@ -165,7 +165,7 @@ Move a field into a new owner when you no longer need that field in the original
 
 Save as `batches.ms` and run `ms run batches.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"scores\n[3, 4]\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"scores\n[3, 4]\n","filename":"batches.ms"} -->
 ```manuscript
 type Report:
     title: String
@@ -313,7 +313,7 @@ Records and alternatives may refer to themselves or each other directly, with no
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::recursive expression\nPASS example.ms::recursive expression\n1 tests, 0 failed\n"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -342,7 +342,7 @@ A linked record ends with an absent successor; a link owns its successor, so a c
 
 Save this test as `example.ms` and run `ms test example.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::recursive links\nPASS example.ms::recursive links\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 

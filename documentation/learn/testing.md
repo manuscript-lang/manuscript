@@ -9,7 +9,7 @@ A `test "name":` block runs under `ms test` and passes when it finishes normally
 
 Save this complete file as `test.ms`:
 
-<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::addition\nPASS test.ms::addition\nRUN test.ms::zero is unchanged\nPASS test.ms::zero is unchanged\n2 tests, 0 failed\n"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::addition\nPASS test.ms::addition\nRUN test.ms::zero is unchanged\nPASS test.ms::zero is unchanged\n2 tests, 0 failed\n","cases":[{"args":["--filter","addition"],"stdout":"RUN test.ms::addition\nPASS test.ms::addition\n1 tests, 0 failed\n"},{"args":["--list"],"stdout":"test.ms::addition\ntest.ms::zero is unchanged\n"}]} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -294,7 +294,7 @@ There is no platform attribute on `test` blocks. Skip at run time instead, compa
 
 To skip a single test, call `skip` in its body. Save this complete file as `test.ms`; it checks the host line-ending API on Unix:
 
-<!-- manuscript-example: {"mode":"test","filename":"test.ms"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout_by_os":{"default":"RUN test.ms::unix line ending\nPASS test.ms::unix line ending\n1 tests, 0 failed\n","windows":"RUN test.ms::unix line ending\nSKIP test.ms::unix line ending: Unix only\n1 tests, 0 failed, 1 skipped\n"}} -->
 ```manuscript
 import skip, expect_equal from "@std/test/test.ms"
 import os_type, end_of_line from "@std/os/process.ms"
@@ -305,9 +305,17 @@ test "unix line ending":
     try expect_equal(end_of_line(), "\n")
 ```
 
+Run `ms test test.ms`. On Linux and macOS, it prints:
+
+```text
+RUN test.ms::unix line ending
+PASS test.ms::unix line ending
+1 tests, 0 failed
+```
+
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
-<!-- manuscript-example: {"mode":"test","filename":"test.ms"} -->
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout_by_os":{"default":"RUN test.ms::windows line ending\nSKIP test.ms::windows line ending: Windows only\n1 tests, 0 failed, 1 skipped\n","windows":"RUN test.ms::windows line ending\nPASS test.ms::windows line ending\n1 tests, 0 failed\n"}} -->
 ```manuscript
 import TestHooks, skip, expect_equal from "@std/test/test.ms"
 import os_type, end_of_line from "@std/os/process.ms"

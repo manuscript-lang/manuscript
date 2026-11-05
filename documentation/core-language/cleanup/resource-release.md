@@ -11,7 +11,7 @@ Consider writing a report. There are three different questions: did the writer a
 
 Flush before closing when you need the destination to catch up or need to handle a flush failure. Save as `report.ms` and run `ms run report.ms`; it prints `Report complete`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Report complete\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Report complete\n","filename":"report.ms"} -->
 ```manuscript
 import WriteStream, stdout from "@std/io/io.ms"
 
@@ -25,10 +25,9 @@ fn send_report() Unit!:
     return finish(var output)
 
 export fn main() Int:
-    let outcome = send_report()
+    let outcome = send_report().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 

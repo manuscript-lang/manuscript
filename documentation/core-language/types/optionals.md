@@ -9,7 +9,7 @@ Use `T?` when a value may be absent: an optional name, a failed lookup, or text 
 
 Save as `greeting.ms` and run `ms run greeting.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n","filename":"greeting.ms"} -->
 ```manuscript
 fn greeting(name: String?) String:
     return "Hello, {name.get("guest")}!"
@@ -212,7 +212,7 @@ Nested optionals are useful when absence has two meanings. A lookup can fail to 
 
 Save as `setting.ms` and run `ms run setting.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"missing\ncleared\nAda\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"missing\ncleared\nAda\n","filename":"setting.ms"} -->
 ```manuscript
 fn describe(setting: String??) String:
     if let value = setting:
@@ -319,7 +319,7 @@ export fn main() Int:
     if let port = outcome:
         print(port)
         return 0
-    print(outcome.err().message)
+    print("Expected a port number")
     return 1
 
 ```

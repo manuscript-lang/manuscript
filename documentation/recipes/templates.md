@@ -22,7 +22,7 @@ Create `announcement.txt` with exactly this content, including a newline after t
 
 Save the following complete program as `announce.ms` in the same directory:
 
-<!-- manuscript-example: {"mode":"run","files":{"announcement.txt":"{{ title }}\n{{ for item in changes }}- {{ item }}\n{{ else }}No changes.\n{{ end }}\n"},"stdout":"November release\n- CSV export\n- Faster search\n\n","cases":[{"files":{"announcement.txt":"{{ missing }}"},"stdout":"template: no value for missing\n","exit_code":1},{"files":{"announcement.txt":"{{ if title }}"},"stdout":"template: line 1: if needs end\n","exit_code":1}]} -->
+<!-- manuscript-example: {"mode":"run","files":{"announcement.txt":"{{ title }}\n{{ for item in changes }}- {{ item }}\n{{ else }}No changes.\n{{ end }}\n"},"stdout":"November release\n- CSV export\n- Faster search\n\n","cases":[{"files":{"announcement.txt":"{{ missing }}"},"stdout":"template: no value for missing\n","exit_code":1},{"files":{"announcement.txt":"{{ if title }}"},"stdout":"template: line 1: if needs end\n","exit_code":1}],"filename":"announce.ms"} -->
 ```manuscript
 import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
@@ -45,10 +45,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _value = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -95,7 +94,7 @@ Setting `strict: false` on `render` makes missing printed paths render empty tex
 
 Text templates copy values as text. For HTML text and quoted attribute values, compile with `html: true`. Save this complete example as `html.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"<h1>Research &amp; development</h1>\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"<h1>Research &amp; development</h1>\n","filename":"html.ms"} -->
 ```manuscript
 import compile, to_data from "@std/text/template.ms"
 
@@ -109,10 +108,9 @@ fn run() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _value = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 

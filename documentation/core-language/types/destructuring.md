@@ -11,7 +11,7 @@ Destructuring names parts of a value in one declaration: `[...]` for positions, 
 
 Save as `names.ms` and run `ms run names.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Ada and Grace\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Ada and Grace\n","filename":"names.ms"} -->
 ```manuscript
 export fn main() Int:
     let names = ["Ada", "Grace"]

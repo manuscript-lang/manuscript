@@ -9,7 +9,7 @@ An interface is an operation contract: implementations must supply the declared 
 
 Save as `adjust.ms` and run `ms run adjust.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"12\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"12\n","filename":"adjust.ms"} -->
 ```manuscript
 interface Transform:
     fn apply(value: Int) Int

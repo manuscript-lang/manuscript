@@ -9,7 +9,7 @@ A `let` or `var` that holds a resource closes it when its scope ends. There is n
 
 This program reads a chunk from a file and closes its handle on every exit. Save as `read-head.ms`, create `notes.txt` with `first` and `second` on separate lines with a final newline, and run `ms run read-head.ms`. It prints `Read 13 bytes`:
 
-<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"first\nsecond\n"},"stdout":"Read 13 bytes\n"} -->
+<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"first\nsecond\n"},"stdout":"Read 13 bytes\n","filename":"read-head.ms"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
@@ -19,14 +19,13 @@ fn read_head(path: String) Bytes?!:
     return file.read(max_bytes: 4096)
 
 export fn main() Int:
-    let outcome = read_head("notes.txt")
+    let outcome = read_head("notes.txt").map_error(fn cause: print(cause.message))
     if let head = outcome:
         if let bytes = head:
             print("Read {bytes.length()} bytes")
         else:
             print("End of file")
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -56,7 +55,7 @@ A binding is closed unless something takes the resource from it. Returning it, p
 
 To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; propagate the close failure with `try`, or inspect the Result if the caller can recover. Save this complete program as `read-notes.ms`, create `notes.txt` containing `first` and `second` on separate lines with a final newline, and run `ms run read-notes.ms`:
 
-<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"first\nsecond\n"},"stdout":"Read 13 bytes; file is closed\n"} -->
+<!-- manuscript-example: {"mode":"run","files":{"notes.txt":"first\nsecond\n"},"stdout":"Read 13 bytes; file is closed\n","filename":"read-notes.ms"} -->
 ```manuscript
 import open from "@std/os/fs.ms"
 
@@ -68,10 +67,9 @@ fn read_notes() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let outcome = read_notes()
+    let outcome = read_notes().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 

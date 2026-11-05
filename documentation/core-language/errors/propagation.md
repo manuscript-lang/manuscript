@@ -9,7 +9,7 @@ weight = 2
 
 Save the `discount.ms` module from [expected failures](results.md#returning-a-domain-error), then save this program beside it as `discount-label.ms`. Run `ms run discount-label.ms`; it prints `Discounted price: 18`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Discounted price: 18\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Discounted price: 18\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"},"filename":"discount-label.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 import DiscountError, discount from "./discount.ms"
@@ -19,11 +19,10 @@ fn discounted_label(price: Decimal, percent: Decimal) String!DiscountError:
     return ok("Discounted price: {value}")
 
 export fn main() Int:
-    let outcome = discounted_label(20d, 10d)
+    let outcome = discounted_label(20d, 10d).map_error(fn cause: print(cause))
     if let value = outcome:
         print(value)
         return 0
-    print(outcome.err())
     return 1
 ```
 
@@ -35,7 +34,7 @@ On `ok`, `value` holds the `Decimal`. On `error`, the function returns that erro
 
 `Result[Unit, E]` can be propagated as a statement. Save this complete test as `ready_test.ms` and run `ms test ready_test.ms`:
 
-<!-- manuscript-example: {"mode":"test"} -->
+<!-- manuscript-example: {"mode":"test","filename":"ready_test.ms","stdout":"RUN ready_test.ms::prepare before returning a label\nPASS ready_test.ms::prepare before returning a label\n1 tests, 0 failed\n"} -->
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
@@ -63,7 +62,7 @@ Omitting `try` discards the Result, which the checker rejects. Return it, propag
 
 `| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. This complete version uses a formatting function after the discount. Save as `discount-pipe.ms` beside `discount.ms` and run `ms run discount-pipe.ms`; it also prints `Discounted price: 18`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Discounted price: 18\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"}} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Discounted price: 18\n","build_files":{"discount.ms":"import Decimal from \"@std/math/decimal.ms\"\n\nexport enum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nexport fn discount(price: Decimal, percent: Decimal) Decimal!DiscountError:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))"},"filename":"discount-pipe.ms"} -->
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 import DiscountError, discount from "./discount.ms"
@@ -75,11 +74,10 @@ fn discounted_label(price: Decimal, percent: Decimal) String!DiscountError:
     return ok(try discount(price, percent) | label)
 
 export fn main() Int:
-    let outcome = discounted_label(20d, 10d)
+    let outcome = discounted_label(20d, 10d).map_error(fn cause: print(cause))
     if let value = outcome:
         print(value)
         return 0
-    print(outcome.err())
     return 1
 ```
 

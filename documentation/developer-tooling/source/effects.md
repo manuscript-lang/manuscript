@@ -9,7 +9,7 @@ Use an effects view when reviewing how code reads or changes data and reaches ex
 
 Save this as `hello.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n","filename":"hello.ms"} -->
 ```manuscript
 export fn main() Int:
     print("Hello, Manuscript!")

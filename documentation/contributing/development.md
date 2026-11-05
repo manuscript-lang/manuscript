@@ -60,7 +60,13 @@ Write source assertions with `@std/test/test.ms` and propagate their Results: `o
 
 `make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib` (`BENCHREPEATS`, `BENCHFILTER`); add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (`measure(ops, work)` times the work after untimed setup); `BENCHREPEATS` is the sample count. It is a profiling guide, not a gate. `make agent-bench-check` runs the agent benchmark oracle.
 
-Complete tutorial fences carry a `manuscript-example` JSON comment giving `test` or `run`, arguments, and expected stdout (more fields in [common tasks](../learn/common-tasks.md)).
+Every authored Manuscript fence has an immediately preceding `manuscript-example` or `manuscript-artifact` JSON comment. The [documentation example test](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/tests/doc_examples.rs) checks this classification and executes examples directly from their fences.
+
+For examples, `mode` is `run`, `test`, `check`, `bench`, or `reject`. `filename` names the saved source (default `example.ms`); `args` supplies program arguments for `run` or command flags for other modes. `stdout` and `stderr` assert exact output, including trailing newlines; `exit_code` defaults to zero. An expected failing command needs output evidence, and `reject` requires nonempty `stderr_contains` diagnostic causes. `cases` supplies additional invocations of the same program, such as a missing-file error or a test filter. Visible test/check transcripts must match declared output, including command variants; they cannot silently omit assertions.
+
+`build_files` supplies imports, manifests and embedded assets before checking. `files` supplies isolated runtime inputs, and `want_files` asserts written contents. The local HTTP recipe uses an ephemeral server from its `http` response fixture. For genuinely platform-dependent test output, `stdout_by_os` provides `default` and, where needed, `windows` expectations; the current host checks its branch. Label the displayed platform and report unexecuted native platforms separately.
+
+Artifacts use `kind`: `schema` for API declarations, `type-forms` for type spellings, `support` with `filename` for a module that exactly matches a consumer's `build_files`, `import` for path-resolution import declarations, or `edit` for a one-line replacement exercised by the quickstart command test. An artifact marker cannot exempt a `main`, `test`, or `bench` program from execution.
 
 `make dist` builds a single-binary archive in `dist/` with `tools/package.ms`.
 

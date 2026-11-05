@@ -7,6 +7,7 @@ weight = 3
 
 Implement `Closeable` when your type owns a resource that must be released at scope end. Import it from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify. The declaration below shows its API shape; import the standard interface rather than redeclaring it:
 
+<!-- manuscript-artifact: {"kind":"schema"} -->
 ```manuscript
 interface Closeable:
     var fn close() Unit!
@@ -51,7 +52,7 @@ A similarly named method without `impl Closeable` does not opt a concrete type i
 
 `close()` returns `Unit!`, which is `Result[Unit, Error]`: releasing a resource can fail, and the failure is a value. A type whose release cannot fail returns `ok(unit)`. Save this program as `gate.ms` and run `ms run gate.ms`; it prints `released`, then `gate stuck`.
 
-<!-- manuscript-example: {"mode":"run","stdout":"released\ngate stuck\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"released\ngate stuck\n","filename":"gate.ms"} -->
 ```manuscript
 import Closeable from "@std/core.ms"
 
@@ -70,11 +71,10 @@ fn use_gate(fails: Bool) Unit!:
     return ok(unit)
 
 fn show_release(fails: Bool) Unit:
-    let outcome = use_gate(fails)
+    let outcome = use_gate(fails).map_error(fn cause: print(cause.message))
     if let _released = outcome:
         print("released")
         return
-    print(outcome.err().message)
 
 export fn main() Int:
     show_release(false)

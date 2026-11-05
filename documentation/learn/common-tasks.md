@@ -12,7 +12,7 @@ Each program is a complete `.ms` file: save it under the shown name and run the 
 
 Save as `hello.ms`. `print` is available without an import and adds a newline.
 
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n","filename":"hello.ms"} -->
 ```manuscript
 export fn main() Int:
     print("Hello, Manuscript!")
@@ -29,11 +29,16 @@ Hello, Manuscript!
 
 `print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush().wait()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
+In fallible recipes, `map_error(fn cause: print(cause.message))` prints the error
+message only when an operation fails. It returns another `Result`; `if let`
+checks success, and the remaining path returns exit status 1. This handles the
+outcome without forcing either payload out of it.
+
 ## Read command-line arguments
 
 Save as `args.ms`. `arguments()` excludes the executable; values after `--` reach your program.
 
-<!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}]} -->
+<!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}],"filename":"args.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
@@ -44,10 +49,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -64,7 +68,7 @@ Hello, Ada!
 
 Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and positional arguments, writes `--help`, and hands your handler a record you define: each field is filled from the flag or argument with the same name (`dry-run` fills `dry_run`). Usage errors print a message and exit with status 2.
 
-<!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n"} -->
+<!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n","filename":"tool.ms"} -->
 ```manuscript
 import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
 import stdout from "@std/io/io.ms"
@@ -106,7 +110,7 @@ Run `ms run tool.ms -- hello --help` to see the command’s arguments and flags.
 
 Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 
-<!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1,"stdout":"filesystem: file or directory not found: missing.txt\n"},{"exit_code":1,"stdout":"missing path\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1,"stdout":"filesystem: file or directory not found: missing.txt\n"},{"exit_code":1,"stdout":"missing path\n"}],"filename":"read.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import read_file from "@std/os/fs.ms"
@@ -121,10 +125,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -143,7 +146,7 @@ hello from a file
 
 Save as `write.ms`. `replace: false` fails if the file exists.
 
-<!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1,"stdout":"filesystem: already exists: saved.txt\n"},{"exit_code":1,"stdout":"missing path\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1,"stdout":"filesystem: already exists: saved.txt\n"},{"exit_code":1,"stdout":"missing path\n"}],"filename":"write.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import write_file from "@std/os/fs.ms"
@@ -153,10 +156,9 @@ fn run() Unit!:
     return write_file(path, "saved notes\n", replace: false).wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -175,7 +177,7 @@ The program succeeds silently; `cat` shows the saved content. On failure it prin
 
 Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `read().wait()` returns the next line, or `none` at end of input.
 
-<!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
+<!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}],"filename":"lines.ms"} -->
 ```manuscript
 import stdin, stdout from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
@@ -191,10 +193,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -214,7 +215,7 @@ An empty line is `""`, and the loop ends at end of input. Line endings (`\n` or 
 
 Save as `number.ms`. `parse_int()` returns an `Int?`.
 
-<!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1,"stdout":"Enter a whole number\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["42"],"stdout":"42\n","cases":[{"args":["oops"],"exit_code":1,"stdout":"Enter a whole number\n"}],"filename":"number.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
@@ -226,10 +227,9 @@ fn show(text: String) Unit!:
     return error(Error("Enter a whole number"))
 
 export fn main() Int:
-    let outcome = show(arguments().get(0, default: "42"))
+    let outcome = show(arguments().get(0, default: "42")).map_error(fn cause: print(cause.message))
     if let _written = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -247,7 +247,7 @@ Use `get(default)` for a default, or `if let` with a failure path ([Optional val
 
 Save as `json.ms`. `parse[String]` errors on malformed JSON or another type.
 
-<!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1,"stdout":"JSON: invalid data: line 1, column 2: unexpected end of input\n"},{"args":["42"],"exit_code":1,"stdout":"JSON: invalid data: at $: expected string, found number\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["\"hello\""],"stdout":"hello\n","cases":[{"args":["{"],"exit_code":1,"stdout":"JSON: invalid data: line 1, column 2: unexpected end of input\n"},{"args":["42"],"exit_code":1,"stdout":"JSON: invalid data: at $: expected string, found number\n"}],"filename":"json.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import parse from "@std/data/json.ms"
@@ -259,10 +259,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -282,7 +281,7 @@ Without a type, `parse` returns a `JsonValue` tree for unknown shapes.
 
 Save as `config.ms`. Parse a record directly and serialize it back. Use strict encoding so a value with no JSON representation fails instead of being silently omitted.
 
-<!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1,"stdout":"JSON: invalid data: at $: missing field \"name\"\n"},{"args":["{\"name\":42}"],"exit_code":1,"stdout":"JSON: invalid data: at $.name: expected string, found number\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1,"stdout":"JSON: invalid data: at $: missing field \"name\"\n"},{"args":["{\"name\":42}"],"exit_code":1,"stdout":"JSON: invalid data: at $.name: expected string, found number\n"}],"filename":"config.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import parse, stringify from "@std/data/json.ms"
@@ -300,10 +299,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 
@@ -324,7 +322,7 @@ ms run config.ms -- '{"name":"Sam"}'
 
 Save as `get.ms`. `fetch` buffers the body, `check_status()` rejects statuses outside 200–299, and `text()` decodes UTF-8.
 
-<!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1,"stdout":"fetch: unexpected status 404\n"},{"args":["invalid URL"],"exit_code":1,"stdout":"HTTP: invalid input\n"},{"exit_code":1,"stdout":"missing URL\n"}]} -->
+<!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1,"stdout":"fetch: unexpected status 404\n"},{"args":["invalid URL"],"exit_code":1,"stdout":"HTTP: invalid input\n"},{"exit_code":1,"stdout":"missing URL\n"}],"filename":"get.ms"} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
 import fetch, FetchOptions from "@std/net/fetch.ms"
@@ -339,10 +337,9 @@ fn run() Unit!:
     return stdout().flush().wait()
 
 export fn main() Int:
-    let outcome = run()
+    let outcome = run().map_error(fn cause: print(cause.message))
     if let _completed = outcome:
         return 0
-    print(outcome.err().message)
     return 1
 ```
 

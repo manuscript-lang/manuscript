@@ -9,7 +9,7 @@ Exports define what other files can use. Export the types that public functions 
 
 Save this module as `pricing.ms`. It exports a record and the operation callers need:
 
-<!-- manuscript-example: {"mode":"check"} -->
+<!-- manuscript-example: {"mode":"check","filename":"pricing.ms","stdout":"Checked pricing.ms\n"} -->
 ```manuscript
 export type Item:
     price: Int
@@ -22,9 +22,15 @@ export fn total(items: List[Item]) Int:
     return result
 ```
 
+Running `ms check pricing.ms` checks this module without starting it:
+
+```text
+Checked pricing.ms
+```
+
 Save the caller as `main.ms` in the same directory:
 
-<!-- manuscript-example: {"mode":"run","build_files":{"pricing.ms":"export type Item:\n    price: Int\n    quantity: Int\n\nexport fn total(items: List[Item]) Int:\n    var result = 0\n    for item in items:\n        result += item.price * item.quantity\n    return result\n"},"stdout":"46\n"} -->
+<!-- manuscript-example: {"mode":"run","build_files":{"pricing.ms":"export type Item:\n    price: Int\n    quantity: Int\n\nexport fn total(items: List[Item]) Int:\n    var result = 0\n    for item in items:\n        result += item.price * item.quantity\n    return result\n"},"stdout":"46\n","filename":"main.ms"} -->
 ```manuscript
 import Item, total from "./pricing.ms"
 
