@@ -2,7 +2,7 @@
 
 use crate::facts::{Fact, Facts, Slot};
 use crate::tree::Node;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 /// Names the diagram views, in help order.
@@ -727,9 +727,37 @@ fn class_set<'a>(facts: &'a Facts, entity: &str, depth: i64) -> Option<Vec<&'a F
 
 fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
     let chosen = class_set(facts, entity, depth)?;
+    let chosen = &chosen[..chosen.len().min(NODE_CAP)];
+    // Names are labels, not declaration identities. Reserve every existing name before
+    // allocating IDs so a generated ID cannot collide with a later declaration's name.
+    let mut reserved: HashSet<String> = chosen.iter().map(|f| class_id(f)).collect();
+    let mut assigned = HashSet::new();
+    let mut ids = HashMap::new();
+    let mut next_id = 0;
+    for f in chosen {
+        let name = class_id(f);
+        let id = if assigned.insert(name.clone()) {
+            name
+        } else {
+            loop {
+                let id = format!("__ms_type_{next_id}");
+                next_id += 1;
+                if reserved.insert(id.clone()) {
+                    break id;
+                }
+            }
+        };
+        ids.insert(f.key.as_str(), id);
+    }
     let mut out = String::from("classDiagram\n");
-    for f in chosen.iter().take(NODE_CAP) {
-        let _ = writeln!(out, "    class {} {{", class_id(f));
+    for f in chosen {
+        let id = &ids[f.key.as_str()];
+        let name = class_id(f);
+        if *id == name {
+            let _ = writeln!(out, "    class {id} {{");
+        } else {
+            let _ = writeln!(out, "    class {id}[\"{name}\"] {{");
+        }
         if f.kind != "record" {
             let _ = writeln!(out, "        <<{}>>", f.kind);
         }
@@ -742,14 +770,11 @@ fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
         }
         out.push_str("    }\n");
     }
-    for f in chosen.iter().take(NODE_CAP) {
+    for f in chosen {
         for s in &f.slots {
             for key in &s.refs {
-                let Some(t) = facts.entities.get(key) else {
-                    continue;
-                };
-                if chosen.iter().take(NODE_CAP).any(|c| c.key == t.key) {
-                    let _ = writeln!(out, "    {} *-- {} : {}", class_id(f), class_id(t), s.name);
+                if let Some(target) = ids.get(key.as_str()) {
+                    let _ = writeln!(out, "    {} *-- {target} : {}", ids[f.key.as_str()], s.name);
                 }
             }
         }
