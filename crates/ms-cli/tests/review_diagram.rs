@@ -352,6 +352,28 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
 }
 
 #[test]
+fn standard_methods_are_named_not_numbered() {
+    let dir = scratch("std-methods");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_std_methods/main.ms"),
+    )
+    .unwrap();
+    let outputs = [
+        vec!["diagram", "main.ms"],
+        vec!["diagram", "main.ms", "--format", "mermaid"],
+        vec!["diagram", "main.ms", "--view", "calls"],
+    ];
+    for args in outputs {
+        let output = ms(&dir, &args);
+        let text = String::from_utf8_lossy(&output.stdout);
+        assert!(text.contains("WriteStream.write"), "{args:?}: {text}");
+        assert!(!text.contains("#method#"), "{args:?}: {text}");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn project_review_counts_discovered_test_files() {
     let dir = scratch("tests");
     std::fs::create_dir_all(dir.join("src")).unwrap();

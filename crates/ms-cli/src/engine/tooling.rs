@@ -546,7 +546,19 @@ pub fn diagram(syms: ms_syntax::Names, request: &DiagramRequest, io: &mut Io) ->
     }
     let program = checked.program.as_ref().expect("accepted program");
     let mut inspection = inspect(syms, program);
-    // Keep application structure readable; standard calls remain boundary leaves.
+    // Keep application structure readable; standard calls remain boundary leaves,
+    // and a standard method is named by receiver and method, not its source offset.
+    let std_methods: std::collections::HashMap<String, String> = inspection
+        .entities
+        .iter()
+        .filter(|e| e.span.file.starts_with("@std/") && e.kind == "method")
+        .map(|e| (e.id.clone(), e.name.clone()))
+        .collect();
+    for call in &mut inspection.calls {
+        if let Some(name) = std_methods.get(&call.target) {
+            call.target.clone_from(name);
+        }
+    }
     inspection
         .entities
         .retain(|e| !e.span.file.starts_with("@std/"));
