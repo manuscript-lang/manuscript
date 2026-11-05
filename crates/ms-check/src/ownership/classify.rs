@@ -4,6 +4,10 @@ use crate::checker::Program;
 use crate::types::*;
 use std::collections::HashSet;
 use std::rc::Rc;
+#[cfg(test)]
+thread_local! {
+    static CLASS_QUERIES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 
 /// Active nominal instances, borrowed for the duration of one classification.
 struct Visiting<'a> {
@@ -37,7 +41,7 @@ pub enum Class {
     Resource,
 }
 
-/// Computes classes, caching nothing: types are small and shared.
+/// Computes value classes from declarations and contained values, reusing exact siblings locally.
 pub struct Classifier {
     closeable: HashSet<Name>,
     /// Natives declaring `impl Copy`: plain words, so a copy is a bit copy.
@@ -50,32 +54,30 @@ pub struct Classifier {
 impl Classifier {
     /// A classifier for the types of one checked program.
     pub fn new(p: &Program) -> Classifier {
-        let closeable = p
-            .methods
-            .iter()
-            .filter(|m| {
-                m.contract
-                    .as_ref()
-                    .is_some_and(|c| c.is(Builtin::Closeable))
-            })
-            .map(|m| m.receiver.id)
-            .collect();
-        let copyable = p
-            .methods
-            .iter()
-            .filter(|m| m.contract.as_ref().is_some_and(|c| c.is(Builtin::Copy)))
-            .map(|m| m.receiver.id)
-            .collect();
-        let clonable = p
-            .methods
-            .iter()
-            .filter(|m| {
-                m.receiver.kind == Kind::Native
-                    && m.name() == Some(n("clone"))
-                    && m.ty.result_ty().id == m.receiver.id
-            })
-            .map(|m| m.receiver.id)
-            .collect();
+        let mut closeable = HashSet::new();
+        let mut copyable = HashSet::new();
+        let mut clonable = HashSet::new();
+        let mut clone_name = None;
+        for method in &p.methods {
+            if let Some(contract) = &method.contract {
+                if contract.is(Builtin::Closeable) {
+                    closeable.insert(method.receiver.id);
+                } else if contract.is(Builtin::Copy) {
+                    copyable.insert(method.receiver.id);
+                }
+            }
+            if method.receiver.kind != Kind::Native {
+                continue;
+            }
+            let Some(name) = method.name() else {
+                continue;
+            };
+            if name == *clone_name.get_or_insert_with(|| n("clone"))
+                && method.ty.result_ty().id == method.receiver.id
+            {
+                clonable.insert(method.receiver.id);
+            }
+        }
         Classifier {
             closeable,
             copyable,
@@ -96,7 +98,7 @@ impl Classifier {
             return false;
         }
         match t.kind {
-            Kind::Variable => t.bounds().iter().any(implies_clonable),
+            Kind::Variable => t.bounds.borrow().iter().any(implies_clonable),
             // An interface value's payload has a type the interface does not name; one over a
             // native without a `clone` (an `HttpExchange`) faults when copied, a guard the
             // runtime keeps until wrappers can borrow (middleware `Tap`s copy their exchange).
@@ -116,13 +118,19 @@ impl Classifier {
                     return true;
                 }
                 seen.push(t.id);
-                let s = substitution(t);
                 let fields_ok = fields(t)
                     .iter()
                     .all(|f| self.clonable_in(syms, &f.ty, seen));
                 let cases_ok = t.def.as_ref().is_none_or(|def| {
-                    def.cases.borrow().iter().all(|c| {
-                        c.fields
+                    let cases = def.cases.borrow();
+                    let mut remaining = cases.iter();
+                    if remaining.find(|case| !case.fields.is_empty()).is_none() {
+                        return true;
+                    }
+                    let first = cases.len() - remaining.len() - 1;
+                    let s = substitution(t);
+                    cases[first..].iter().all(|case| {
+                        case.fields
                             .iter()
                             .all(|f| self.clonable_in(syms, &sub(&f.ty, &s), seen))
                     })
@@ -144,12 +152,15 @@ impl Classifier {
         self.class_in(syms, t, None)
     }
 
+    #[inline(always)]
     fn class_in(&self, syms: ms_syntax::Names, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
+        #[cfg(test)]
+        CLASS_QUERIES.with(|queries| queries.set(queries.get() + 1));
         match t.kind {
             Kind::Primitive if syms.str(t.id) == "String" => Class::Move,
             Kind::Primitive | Kind::Invalid | Kind::Inferred => Class::Copy,
             Kind::Variable => {
-                if t.bounds().iter().any(|b| b.is(Builtin::Closeable)) {
+                if t.bounds.borrow().iter().any(|b| b.is(Builtin::Closeable)) {
                     Class::Resource
                 } else {
                     Class::Move
@@ -165,37 +176,60 @@ impl Classifier {
     }
 
     fn native(&self, syms: ms_syntax::Names, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
-        if self.closeable.contains(&t.id) {
-            Class::Resource
-        } else if self.copyable.contains(&t.id) {
-            // A declared `Copy` native is plain words.
-            Class::Copy
-        } else if t.is(Builtin::List) {
-            // An owning collection of resources is itself a resource, closed with its elements.
-            // A `Set` stays `Move`: a resource is not `Hashable`, so it is never an element.
-            self.holds(syms, t.args.first(), visiting)
-        } else if t.is(Builtin::Map) {
-            self.holds(syms, t.args.get(1), visiting)
-        } else {
-            // A native owns its storage; `.clone()` is its explicit duplicate.
-            Class::Move
+        let mut current = t;
+        let mut held = false;
+        loop {
+            if self.closeable.contains(&current.id) {
+                return Class::Resource;
+            }
+            if self.copyable.contains(&current.id) {
+                return if held { Class::Move } else { Class::Copy };
+            }
+            let element = if current.is(Builtin::List) {
+                current.args.first()
+            } else if current.is(Builtin::Map) {
+                current.args.get(1)
+            } else {
+                return Class::Move;
+            };
+            let Some(element) = element else {
+                return Class::Move;
+            };
+            if element.kind != Kind::Native {
+                return match self.class_in(syms, element, visiting) {
+                    Class::Resource => Class::Resource,
+                    _ => Class::Move,
+                };
+            }
+            // Each owning collection maps Copy and Move to Move. Repeating
+            // that map needs no Rust call frame or extra nominal ancestry.
+            #[cfg(test)]
+            CLASS_QUERIES.with(|queries| queries.set(queries.get() + 1));
+            current = element;
+            held = true;
         }
     }
 
-    /// The class of a collection holding `element`: `Resource` when its elements are, else
-    /// `Move`, so a collection of plain values stays as cheap as before.
-    fn holds(
-        &self,
-        syms: ms_syntax::Names,
-        element: Option<&Ty>,
-        visiting: Option<&Visiting<'_>>,
-    ) -> Class {
-        match element.map(|e| self.class_in(syms, e, visiting)) {
-            Some(Class::Resource) => Class::Resource,
-            _ => Class::Move,
+    // Keep the compound sibling path out of ordinary unary/scalar classifications.
+    #[inline(never)]
+    fn shared_fields(&self, syms: ms_syntax::Names, fs: &[Param], current: &Visiting<'_>) -> Class {
+        let first = &fs[0].ty;
+        let completed = self.class_in(syms, first, Some(current));
+        let mut class = completed;
+        for f in &fs[1..] {
+            let next = if Rc::ptr_eq(first, &f.ty) {
+                #[cfg(test)]
+                CLASS_QUERIES.with(|queries| queries.set(queries.get() + 1));
+                completed
+            } else {
+                self.class_in(syms, &f.ty, Some(current))
+            };
+            class = class.max(next);
         }
+        class
     }
 
+    #[inline(never)]
     fn nominal(&self, syms: ms_syntax::Names, t: &Ty, visiting: Option<&Visiting<'_>>) -> Class {
         if self.closeable.contains(&t.id) {
             return Class::Resource;
@@ -228,14 +262,30 @@ impl Classifier {
         } else {
             Class::Copy
         };
-        for f in fields(t) {
-            class = class.max(self.class_in(syms, &f.ty, Some(&current)));
+        {
+            let fs = fields(t);
+            if fs.len() > 1 && matches!(fs[0].ty.kind, Kind::Record | Kind::Alternative) {
+                // These fields have already been substituted independently. Within
+                // this one frame, an identical child has the same ancestry and depth.
+                class = class.max(self.shared_fields(syms, &fs, &current));
+            } else {
+                for f in &fs {
+                    class = class.max(self.class_in(syms, &f.ty, Some(&current)));
+                }
+            }
         }
         if let Some(def) = &t.def {
-            let s = substitution(t);
-            for case in def.cases.borrow().iter() {
-                for f in &case.fields {
-                    class = class.max(self.class_in(syms, &sub(&f.ty, &s), Some(&current)));
+            let cases = def.cases.borrow();
+            let mut remaining = cases.iter();
+            // Consume empty cases once. Actual payloads share one binding map,
+            // while each occurrence still gets its own substitution and query.
+            if remaining.find(|case| !case.fields.is_empty()).is_some() {
+                let first = cases.len() - remaining.len() - 1;
+                let s = substitution(t);
+                for case in &cases[first..] {
+                    for f in &case.fields {
+                        class = class.max(self.class_in(syms, &sub(&f.ty, &s), Some(&current)));
+                    }
                 }
             }
         }
@@ -253,4 +303,112 @@ pub(crate) fn declares_close(syms: ms_syntax::Names, t: &Ty) -> bool {
             .iter()
             .any(|o| syms.str(o.name) == "close")
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    fn pair(syms: ms_syntax::Names) -> (SymRef, Ty) {
+        let a = Rc::new(Type::new(syms, n("A"), n("test/Pair/A"), Kind::Variable));
+        let b = Rc::new(Type::new(syms, n("B"), n("test/Pair/B"), Kind::Variable));
+        let sym = Rc::new(Sym {
+            name: n("Pair"),
+            id: n("test/Pair"),
+            kind: SymKind::Type,
+            module: n("test.ms"),
+            native: n(""),
+            export: true,
+            ty: RefCell::new(None),
+            variables: RefCell::new(vec![]),
+            decl: None,
+        });
+        let def = Definition::new(&sym, Kind::Record);
+        *def.variables.borrow_mut() = vec![a.clone(), b.clone()];
+        *def.fields.borrow_mut() = vec![Param::new(n("left"), a), Param::new(n("right"), b)];
+        let mut ty = Type::new(syms, sym.name, sym.id, Kind::Record);
+        ty.def = Some(def);
+        (sym, Rc::new(ty))
+    }
+
+    fn instance(template: &Ty, left: Ty, right: Ty) -> Ty {
+        let mut ty = (**template).clone();
+        ty.args = vec![left, right];
+        Rc::new(ty)
+    }
+
+    #[test]
+    fn shared_pair_graph_needs_bounded_classification_work() {
+        let syms = ms_syntax::Names::global();
+        let (_sym, template) = pair(syms);
+        let mut ty = int();
+        for _ in 0..16 {
+            ty = instance(&template, ty.clone(), ty);
+        }
+        let classifier = Classifier::new(&Program::default());
+        CLASS_QUERIES.with(|queries| queries.set(0));
+        assert_eq!(classifier.class(syms, &ty), Class::Move);
+        let queries = CLASS_QUERIES.with(|queries| queries.get());
+        assert!(
+            queries <= 64,
+            "shared pair graph required {queries} classifications"
+        );
+    }
+
+    #[test]
+    fn first_sibling_results_do_not_cross_instances_or_queries() {
+        let syms = ms_syntax::Names::global();
+        let (_sym, template) = pair(syms);
+        let variable = Rc::new(Type::new(syms, n("T"), n("test/T"), Kind::Variable));
+        let independent = Rc::new((*variable).clone());
+        let plain = instance(&template, variable.clone(), int());
+        let other = instance(&template, independent.clone(), int());
+        let root = instance(&template, plain.clone(), other);
+        let classifier = Classifier::new(&Program::default());
+        assert_eq!(classifier.class(syms, &root), Class::Move);
+        let closeable = Rc::new(Type::new(
+            syms,
+            n("Closeable"),
+            n("@std/Closeable"),
+            Kind::Contract,
+        ));
+        independent.bounds.borrow_mut().push(closeable);
+        assert_eq!(classifier.class(syms, &root), Class::Resource);
+        assert_eq!(classifier.class(syms, &plain), Class::Move);
+        let shared = instance(&template, plain.clone(), plain);
+        assert_eq!(classifier.class(syms, &shared), Class::Move);
+        variable.bounds.borrow_mut().push(Rc::new(Type::new(
+            syms,
+            n("Closeable"),
+            n("@std/Closeable"),
+            Kind::Contract,
+        )));
+        assert_eq!(classifier.class(syms, &shared), Class::Resource);
+    }
+
+    #[test]
+    fn deep_native_collections_visit_every_selected_node() {
+        let syms = ms_syntax::Names::global();
+        let resource = Rc::new(Type::new(
+            syms,
+            n("Closeable"),
+            n("@std/Closeable"),
+            Kind::Contract,
+        ));
+        let mut nodes = vec![resource];
+        for _ in 0..2048 {
+            let mut ty = Type::new(syms, n("List"), n("@std/List"), Kind::Native);
+            ty.args.push(nodes.last().unwrap().clone());
+            nodes.push(Rc::new(ty));
+        }
+        let classifier = Classifier::new(&Program::default());
+        CLASS_QUERIES.with(|queries| queries.set(0));
+        assert_eq!(
+            classifier.class(syms, nodes.last().unwrap()),
+            Class::Resource
+        );
+        assert_eq!(CLASS_QUERIES.with(|queries| queries.get()), nodes.len());
+        while nodes.pop().is_some() {}
+    }
 }

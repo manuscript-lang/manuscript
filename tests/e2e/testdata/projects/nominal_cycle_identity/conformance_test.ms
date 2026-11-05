@@ -1,5 +1,6 @@
 import exercise from "./outer.ms"
-import read_file, remove, temporary_root from "@std/os/fs.ms"
+import exercise_shared from "./shared.ms"
+import read_file, remove, temporary_directory, temporary_root from "@std/os/fs.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "same display names keep nested resource cleanup":
@@ -10,3 +11,22 @@ test "same display names keep nested resource cleanup":
     let seen = try read_file(path.clone(), none).wait()
     let _cleaned = remove(path, false)
     seen.length() | try expect_equal(1)
+
+fn expect_closed(path: String) Unit!:
+    let seen = try read_file(path.clone(), none).wait()
+    let _cleaned = remove(path, false)
+    try expect_equal(seen.length(), 1)
+    return ok(unit)
+
+test "shared generic field types keep cleanup for each value":
+    let root = try temporary_directory("ms-shared-classification")
+    let first = "{root}/ms-shared-first.txt"
+    let second = "{root}/ms-shared-second.txt"
+    let third = "{root}/ms-shared-third.txt"
+    let fourth = "{root}/ms-shared-fourth.txt"
+    exercise_shared(first.clone(), second.clone(), third.clone(), fourth.clone())
+    try expect_closed(first)
+    try expect_closed(second)
+    try expect_closed(third)
+    try expect_closed(fourth)
+    try remove(root, false)
