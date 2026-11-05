@@ -72,6 +72,14 @@ pub fn collect_facts(
         );
         id_to_key.insert(e.id.clone(), key);
     }
+    // A standard-library method has no fact, and its id embeds a source offset;
+    // name it by receiver and method so external edges stay readable.
+    let std_methods: HashMap<&str, &str> = inspection
+        .entities
+        .iter()
+        .filter(|e| e.file.starts_with("@std/") && e.kind == "method")
+        .map(|e| (e.id.as_str(), e.name.as_str()))
+        .collect();
     // Borrow identities for membership; allocate an owned target only once per
     // distinct edge, including when many sites call the same target.
     let mut edges = HashSet::new();
@@ -80,15 +88,20 @@ pub fn collect_facts(
             continue;
         };
         let target_key = id_to_key.get(&call.target);
-        let target = target_key.unwrap_or(&call.target);
+        let target = target_key.map(String::as_str).unwrap_or_else(|| {
+            std_methods
+                .get(call.target.as_str())
+                .copied()
+                .unwrap_or(&call.target)
+        });
         if !edges.insert((owner_key, target, target_key.is_some())) {
             continue;
         }
         let owner = facts.entities.get_mut(owner_key).expect("indexed owner");
         if target_key.is_some() {
-            owner.calls.push(target.clone());
+            owner.calls.push(target.to_string());
         } else {
-            owner.external.push(target.clone());
+            owner.external.push(target.to_string());
         }
     }
     let sites: HashMap<String, Site> = inspection
