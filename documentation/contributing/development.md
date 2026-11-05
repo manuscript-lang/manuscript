@@ -13,7 +13,7 @@ make verify
 ```
 
 - `make doctor` first builds `ms`, then reports available and missing prerequisites. The doctor program itself does not download tools; its prerequisite build can fetch Cargo dependencies. If you already have a built compiler, run `target/release/ms run tools/doctor.ms` to inspect the environment directly.
-- `make verify` runs `make check` (ABI-symbol validation, Rust formatting and clippy), `make repo-check`, `make bench-check` (benchmark sources and tool tests), `make unit` (workspace tests and doc tests), `make docs-check`, and `make licenses-check`.
+- `make verify` runs `make check` (ABI-symbol validation, Rust formatting and clippy), `make repo-check`, `make bench-check` (benchmark sources and tool tests), `make unit` (workspace tests, doc tests and program-map tests), `make docs-check`, and `make licenses-check`.
 - `make runtime` (`cargo xtask runtime`) builds the native runtime into `target/ms-native/`. `ms-cli`'s build script only embeds that archive, so run it first (and after runtime changes; it also writes `ms_rt_hot.ll`, the pure runtime helpers that release builds inline, see [DESIGN.md](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#pure-and-stateful-runtime-code)) before any cargo command that compiles `ms-cli`, such as clippy, nextest, or `cargo build`; `make check`, `make unit`, and `make build` do it for you. In CI it runs once per Rust job, ahead of sccache-wrapped cargo calls, so the runtime's compiler outputs are cached like any other crate.
 - `make build` produces `target/release/ms`; the Rust build details are in [Rust toolchain](rust-toolchain.md).
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
@@ -22,6 +22,8 @@ make verify
 
 - Allowance: a deliberate regression puts `// manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture.
 - Each allowance covers one match; implementation and documentation cannot opt out.
+
+The program-map tests run actual CLI data through the page's pure JavaScript functions; they do not boot a browser or DOM. After building the debug CLI, run `node --test tests/diagram/*.test.cjs` for this check alone. It uses `CARGO_TARGET_DIR` when set, or an explicit `MS_BIN` executable path.
 
 For a focused edit, first run the test that exercises the changed behavior. Use the full gate before merging compiler or runtime changes:
 

@@ -212,9 +212,9 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
 const STAR=new Set(store.get('stars',[]).filter(k=>E[k]));
 const KF={fn:true,type:true,check:true};
 const kindOK=e=>isCheck(e)?KF.check:isType(e)?KF.type:isFn(e)?KF.fn:false;
-const TREE={dirs:{},files:[]};
+const TREE={dirs:Object.create(null),files:[]};
 for(const m of D.modules){let n=TREE,p='';const parts=m.file.split('/');
-  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:{},files:[]})}
+  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:Object.create(null),files:[]})}
   n.files.push(m.file)}
 const OPEN=new Set(['#lm']),CAP=150;let revealed=null;
 for(const d of Object.values(TREE.dirs))OPEN.add(d.path);

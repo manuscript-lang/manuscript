@@ -106,6 +106,10 @@ runs:
       if: env.UNIT == 'true' && runner.os == 'Windows'
       shell: bash
       run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+    - name: Program map data and pure rendering
+      if: env.UNIT == 'true'
+      shell: bash
+      run: node --test tests/diagram/*.test.cjs
     - name: Release builds use the bundled LLVM tools
       if: env.GATES == 'true'
       shell: bash
