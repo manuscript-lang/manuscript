@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/recursive_types_test.go:34 TestRecursiveTypesPreserveInitializationAndHashing
 enum Expr:
-    case Num(value: Int)
-    case Add(left: Expr, right: Expr)
+    Num(value: Int)
+    Add(left: Expr, right: Expr)
 
 fn value(expr: Expr) Int:
     match expr:

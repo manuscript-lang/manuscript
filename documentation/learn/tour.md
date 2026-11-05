@@ -18,7 +18,13 @@ export fn main() Int:
     return 0
 ```
 
-`main` returns the exit status. `print` is in the prelude: it writes any value as text followed by a newline and cannot fail. Use `stdout()` from `@std/io/io.ms` when you need to handle write errors or write bytes.
+Output:
+
+```text
+Hello, Manuscript!
+```
+
+`main` returns the exit status. `print` is in the prelude: it writes a value as text followed by a newline and returns `Unit`. Use `stdout()` from `@std/io/io.ms` for text without an added newline, or `stdout_bytes()` for bytes.
 
 Complete examples below use `test` blocks: save as `example.ms` and run `ms test example.ms`. `try expect_equal(actual, expected)` fails the test on a mismatch ([testing](testing.md)).
 
@@ -36,6 +42,14 @@ test "unread message count":
     let enabled: Bool = true
     try expect_equal(enabled, true)
     try expect_equal(message, "Sam, you have 3 unread messages.")
+```
+
+Test output:
+
+```text
+RUN example.ms::unread message count
+PASS example.ms::unread message count
+1 tests, 0 failed
 ```
 
 - `let` fixes the binding; `var` allows reassignment. Types are inferred unless annotated.
@@ -67,6 +81,14 @@ test "collections and lookup":
     try expect_equal(subscribers.length(), 1)
 ```
 
+Test output:
+
+```text
+RUN example.ms::collections and lookup
+PASS example.ms::collections and lookup
+1 tests, 0 failed
+```
+
 - List, Map, and Set need no import. Updates mutate in place.
 - Collections have one owner; `.clone()` makes a deep copy. Use `var` to mutate a collection.
 - Map lookup returns an `Optional` (a value or `none`); `get(0)` supplies a fallback when the key is absent. `if let` binds a present value when you want a branch; see [Optional values](../core-language/types/optionals.md).
@@ -89,6 +111,14 @@ test "free shipping for orders of at least 40":
     try expect_equal(total + shipping, 45)
 ```
 
+Test output:
+
+```text
+RUN example.ms::free shipping for orders of at least 40
+PASS example.ms::free shipping for orders of at least 40
+1 tests, 0 failed
+```
+
 `if` branches; `for` visits items; `while` repeats on a condition; `break` and `continue` control loops.
 
 Count with an exclusive range:
@@ -102,6 +132,14 @@ test "count five iterations":
     for index in 0..5:
         total += index
     try expect_equal(total, 10)
+```
+
+Test output:
+
+```text
+RUN example.ms::count five iterations
+PASS example.ms::count five iterations
+1 tests, 0 failed
 ```
 
 `0..5` visits 0 through 4 and needs no import. For other steps see [counting loops](../core-language/control-flow/loops.md#counting-loops).
@@ -143,8 +181,8 @@ type Todo:
     completed: Bool = false
 
 enum Status:
-    case Draft
-    case Published(url: String)
+    Draft
+    Published(url: String)
 
 fn status_label(status: Status) String:
     match status:
@@ -164,6 +202,14 @@ test "publish a help page":
     try expect_equal(label, "Published at /help")
 ```
 
+Test output:
+
+```text
+RUN example.ms::publish a help page
+PASS example.ms::publish a help page
+1 tests, 0 failed
+```
+
 - Records group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
 - Enums list cases; `match` must handle every case.
 - Types are nominal: identical fields do not make two types equal.
@@ -172,7 +218,7 @@ test "publish a help page":
 
 ```manuscript
 enum QuantityError:
-    case MustBePositive
+    MustBePositive
 
 fn quantity(value: Int) Result[Int, QuantityError]:
     if value <= 0:
@@ -230,6 +276,14 @@ test "a callback borrows a prepared value":
     try expect_equal(apply(10, adjust), 12)
 ```
 
+Test output:
+
+```text
+RUN example.ms::a callback borrows a prepared value
+PASS example.ms::a callback borrows a prepared value
+1 tests, 0 failed
+```
+
 Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#closure-captures).
 
 ## Pipe flows
@@ -256,6 +310,14 @@ fn fahrenheit(text: String) Result[Int, Error]:
 
 test "pipe flow":
     try expect_equal(try fahrenheit(" 100 "), 212)
+```
+
+Test output:
+
+```text
+RUN example.ms::pipe flow
+PASS example.ms::pipe flow
+1 tests, 0 failed
 ```
 
 `x | f` is `f(x)`; `x | .m()` is `x.m()`. See [pipe flows](../core-language/basics/expressions.md#pipe-flows).
@@ -289,6 +351,14 @@ test "counter behavior":
     try expect_equal(counter.value, 0)
 ```
 
+Test output:
+
+```text
+RUN example.ms::counter behavior
+PASS example.ms::counter behavior
+1 tests, 0 failed
+```
+
 A type's own methods go in `impl Counter:`, without an interface:
 
 <!-- manuscript-example: {"mode":"test"} -->
@@ -306,6 +376,14 @@ test "own methods":
     var counter = Counter(0)
     counter.increment()
     try expect_equal(counter.value, 1)
+```
+
+Test output:
+
+```text
+RUN example.ms::own methods
+PASS example.ms::own methods
+1 tests, 0 failed
 ```
 
 `Self` names the receiver's type in these signatures, so a method that builds a new value writes `fn with_value(value: Int) Self` instead of repeating the type.

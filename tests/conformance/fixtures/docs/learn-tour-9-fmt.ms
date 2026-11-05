@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/learn/tour.md:172
 enum QuantityError:
-    case MustBePositive
+    MustBePositive
 
 fn quantity(value: Int) Result[Int, QuantityError]:
     if value <= 0:

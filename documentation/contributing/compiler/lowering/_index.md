@@ -18,7 +18,7 @@ Every Manuscript type has one word-level representation: `Int` is `i64`, `Float`
 ## Source locations and fault frames
 
 - Generated code keeps frame pointers and DWARF line tables, so a fault reports source frames without per-call bookkeeping.
-- The recursion limit is a stack-pointer comparison on entry, elided for non-recursive call graphs.
+- Recursive functions compare the stack pointer with the current task segment limit on entry. Crossing it transfers the call through a grow shim to a new segment; exhausting the task stack budget faults. Non-recursive call graphs omit this entry check.
 
 ## Defaults belong to the callee
 

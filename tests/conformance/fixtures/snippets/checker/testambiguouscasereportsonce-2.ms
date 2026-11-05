@@ -2,10 +2,10 @@
 // conform: phase=check
 // conform: origin=pkg/checker/ambiguous_case_test.go:17 TestAmbiguousCaseReportsOnce
 enum A:
-    case X(n: Int)
+    X(n: Int)
 
 enum B:
-    case X(n: Int)
+    X(n: Int)
 
 fn f() Int:
     let a = X(n: 1)

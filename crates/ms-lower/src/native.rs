@@ -1038,7 +1038,8 @@ impl<'a> FnLower<'a> {
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
                     .expect("load");
                 if recv.own {
-                    let o = self.owned(Val { v, own: false });
+                    // The view of a temporary cannot outlive it: the result is the copy.
+                    let o = self.clone_value(v);
                     return Ok(Val { v: o, own: true });
                 }
                 Ok(Val { v, own: false })
@@ -1390,7 +1391,7 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::collection_mutation(self.syms, m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
-            let old = self.owned(Val { v: b, own: false });
+            let old = self.owned_boundary(Val { v: b, own: false });
             let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
             if result == MTy::UNIT {
                 self.drop_value(new);
@@ -2177,6 +2178,7 @@ impl<'a> FnLower<'a> {
                 self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
                 self.b.switch_to(good);
                 let p = self.b.opt_get(r);
+                self.boundary_reads.insert(p);
                 self.borrow(recv);
                 Ok(Val { v: p, own: false })
             }
@@ -2191,7 +2193,7 @@ impl<'a> FnLower<'a> {
                             s.b.opt_unbox(r)
                         } else {
                             let p = s.b.opt_get(r);
-                            s.owned(Val { v: p, own: false })
+                            s.owned_boundary(Val { v: p, own: false })
                         };
                         if let Some(d) = default {
                             // The default goes unused: an owned resource there closes now.
@@ -2206,7 +2208,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| match default {
                         Some(d) => {
                             let v = if d.wrapped {
-                                s.owned(d.val)
+                                s.owned_boundary(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
                                 s.finish(d.val);
@@ -2404,6 +2406,7 @@ impl<'a> FnLower<'a> {
             self.runtime_fault("msrt_fault_result_get");
             self.b.switch_to(good);
             let p = self.b.alt_get(alt, ok, 0, r);
+            self.boundary_reads.insert(p);
             return Ok(Val { v: p, own: false });
         }
         let f = args.first().copied();
@@ -2437,7 +2440,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| match default {
                         Some(d) => {
                             let v = if d.wrapped {
-                                s.owned(d.val)
+                                s.owned_boundary(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
                                 s.finish(d.val);
@@ -2453,8 +2456,12 @@ impl<'a> FnLower<'a> {
                     },
                 )
             }
-            "err" if !recv.own && self.needs_drop(out) => {
-                // A borrowed result lends its error; a consumer that keeps it must clone it.
+            "err"
+                if (!recv.own || self.b.m.alts[alt.index()].borrows(err as usize))
+                    && self.needs_drop(out) =>
+            {
+                // A borrowed result borrows its error, and so does a borrowing temporary whose
+                // error case lives in its source; a consumer that keeps it must clone it.
                 let (bad, good) = (self.b.new_block(), self.b.new_block());
                 self.b.br_if(is_ok, bad, &[], good, &[]);
                 self.b.seal_block(good);
@@ -2463,6 +2470,11 @@ impl<'a> FnLower<'a> {
                 self.runtime_fault("msrt_fault_result_err");
                 self.b.switch_to(good);
                 let p = self.b.alt_get(alt, err, 0, r);
+                self.boundary_reads.insert(p);
+                if recv.own {
+                    // The temporary's borrowed case owns nothing: dropping it leaves the error.
+                    self.finish(recv);
+                }
                 Ok(Val { v: p, own: false })
             }
             "err" => self.two_ways(
@@ -2514,7 +2526,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned(Val { v: p, own: false });
+                        let po = s.owned_boundary(Val { v: p, own: false });
                         let v = s.b.alt_new(oa, out_ok, &[po]);
                         s.finish(recv);
                         s.finish(f.val);
@@ -2583,7 +2595,7 @@ impl<'a> FnLower<'a> {
                         Ok(Some(v))
                     },
                     &mut |s| {
-                        let po = s.take_alt_field(alt, err, 0, recv);
+                        let po = s.take_alt_field_through(alt, err, 0, recv);
                         let v = s.b.alt_new(oa, out_err, &[po]);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2599,7 +2611,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned(Val { v: p, own: false });
+                        let po = s.owned_boundary(Val { v: p, own: false });
                         let v = s.b.opt_some(po);
                         s.finish(recv);
                         Ok(Some(v))
@@ -2964,7 +2976,7 @@ impl<'a> FnLower<'a> {
                     s.b.seal_block(keep);
                     s.b.seal_block(skip);
                     s.b.switch_to(keep);
-                    let xo = s.owned(Val { v: x, own: false });
+                    let xo = s.owned_boundary(Val { v: x, own: false });
                     let cur = s.b.use_var(acc);
                     let next = s.b.list_push(cur, xo);
                     s.b.def_var(acc, next);
@@ -2997,7 +3009,7 @@ impl<'a> FnLower<'a> {
                     s.b.seal_block(miss);
                     for (blk, acc) in [(hit, yes), (miss, no)] {
                         s.b.switch_to(blk);
-                        let xo = s.owned(Val { v: x, own: false });
+                        let xo = s.owned_boundary(Val { v: x, own: false });
                         let cur = s.b.use_var(acc);
                         let next = s.b.list_push(cur, xo);
                         s.b.def_var(acc, next);
@@ -3085,7 +3097,7 @@ impl<'a> FnLower<'a> {
                             out,
                             &mut |s| {
                                 let empty = s.b.list_lit(group_elem, &[]);
-                                let xo = s.owned(Val { v: x, own: false });
+                                let xo = s.owned_boundary(Val { v: x, own: false });
                                 let grown = s.b.list_push(empty, xo);
                                 let next = s.map_insert(cur, k, grown)?;
                                 Ok(Some(next))
@@ -3099,7 +3111,7 @@ impl<'a> FnLower<'a> {
                                         Some(group_ty),
                                     )
                                     .expect("take");
-                                let xo = s.owned(Val { v: x, own: false });
+                                let xo = s.owned_boundary(Val { v: x, own: false });
                                 let grown = s.b.list_push(taken, xo);
                                 s.b.emit(
                                     ms_mir::ir::Op::Put,
@@ -3199,7 +3211,7 @@ impl<'a> FnLower<'a> {
                     let payload = if by_index {
                         i
                     } else {
-                        s.owned(Val { v: x, own: false })
+                        s.owned_boundary(Val { v: x, own: false })
                     };
                     let some = s.b.opt_some(payload);
                     let old = s.b.use_var(acc);
@@ -3422,7 +3434,7 @@ impl<'a> FnLower<'a> {
         self.b.br(join, &[]);
         self.b.switch_to(miss);
         if default.wrapped {
-            let d = self.owned(default.val);
+            let d = self.owned_boundary(default.val);
             self.b.def_var(out, d);
             self.b.br(join, &[]);
         } else {
@@ -3434,7 +3446,7 @@ impl<'a> FnLower<'a> {
             self.b.seal_block(fault);
             self.b.switch_to(give);
             let inner = self.b.opt_get(default.val.v);
-            let d = self.owned(Val {
+            let d = self.owned_boundary(Val {
                 v: inner,
                 own: false,
             });
@@ -3443,7 +3455,7 @@ impl<'a> FnLower<'a> {
             self.b.br(join, &[]);
             self.b.switch_to(fault);
             let x = self.b.list_get(l, idx);
-            let xo = self.owned(Val { v: x, own: false });
+            let xo = self.owned_boundary(Val { v: x, own: false });
             self.finish(default.val);
             self.b.def_var(out, xo);
             self.b.br(join, &[]);

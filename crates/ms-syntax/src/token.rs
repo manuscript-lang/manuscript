@@ -21,7 +21,7 @@ tokens! {
     Comment => "#comment",
     Newline => "NEWLINE", Indent => "INDENT", Dedent => "DEDENT", Eof => "EOF",
     Name => "NAME", Number => "NUMBER", String => "STRING",
-    And => "and", Break => "break", Case => "case", Continue => "continue", Else => "else", Enum => "enum",
+    And => "and", Break => "break", Continue => "continue", Else => "else", Enum => "enum",
     Export => "export", Extern => "extern", False => "false", Fixture => "fixture", Fn => "fn",
     For => "for", If => "if", Impl => "impl", Import => "import", In => "in",
     Interface => "interface", Let => "let", Match => "match", Not => "not",
@@ -39,7 +39,6 @@ impl Tok {
         match word {
             "and" => Tok::And,
             "break" => Tok::Break,
-            "case" => Tok::Case,
             "continue" => Tok::Continue,
             "else" => Tok::Else,
             "enum" => Tok::Enum,
@@ -84,7 +83,6 @@ impl Tok {
 pub const KEYWORDS: &[&str] = &[
     "and",
     "break",
-    "case",
     "continue",
     "else",
     "enum",

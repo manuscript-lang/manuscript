@@ -4,8 +4,8 @@
 import stdout from "@std/io/io.ms"
 
 enum Shape:
-    case Circle(r: Int)
-    case Dot
+    Circle(r: Int)
+    Dot
 
 type Pair[A, B]:
     a: A

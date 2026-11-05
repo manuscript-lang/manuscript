@@ -36,24 +36,24 @@ call functions or run code, and `max_output` bounds the result.
 // A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
 export opaque enum TemplateExpr:
     // A literal string, number, boolean or null written in the template.
-    case Literal(
+    Literal(
         // The literal as a JSON value.
         value: JsonValue
     )
     // A dotted path whose first name is a loop variable or a root member.
-    case Path(
+    Path(
         // The names between the dots, in order.
         parts: List[String]
     )
     // A filter applied to its first argument; later arguments are the filter's own.
-    case Call(
+    Call(
         // The filter name, one of the documented filters.
         name: String,
         // The filtered value followed by the filter arguments.
         args: List[TemplateExpr]
     )
     // A comparison or logical operator over one or two operands.
-    case Op(
+    Op(
         // One of `and or not == != < <= > >=`.
         op: String,
         // The operands, in source order.
@@ -70,26 +70,26 @@ export opaque type TemplateBranch:
 // A parsed template node: text, a printed value, a conditional, a loop or an include. Internal to the engine.
 export opaque enum TemplateNode:
     // Literal text copied to the output.
-    case Text(
+    Text(
         // The text between actions, after trim markers.
         text: String
     )
     // A value printed to the output.
-    case Emit(
+    Emit(
         // The expression whose value is printed.
         expr: TemplateExpr,
         // True when the printed text is HTML-escaped.
         escape: Bool
     )
     // A conditional with its arms and optional final branch.
-    case If(
+    If(
         // Arms tried in order; the first true condition renders.
         branches: List[TemplateBranch],
         // Nodes rendered when no arm holds.
         otherwise: List[TemplateNode]
     )
     // A loop over a list or object.
-    case Each(
+    Each(
         // First loop name: the item, or the position or key when `second` is set.
         first: String,
         // Second loop name, or empty text for a single-name loop.
@@ -102,7 +102,7 @@ export opaque enum TemplateNode:
         otherwise: List[TemplateNode]
     )
     // Renders a named partial in the current scope.
-    case Include(
+    Include(
         // Expression that yields the partial's name.
         name: TemplateExpr
     )
@@ -797,7 +797,9 @@ impl Run:
     var fn emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
         let value = try self.eval(expr, self.strict)
         let text = to_text(value)
-        return self.write(if escape_output: escape(text) else: text)
+        if escape_output: return self.write(escape(text))
+
+        return self.write(text)
 
     var fn branch(
         branches: List[TemplateBranch],

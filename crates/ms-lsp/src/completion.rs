@@ -721,7 +721,7 @@ fn keyword_template(word: &str) -> Option<&'static str> {
         "interface" => "interface ${1:Name}:\n    ${0:fn operation() Unit}",
         "fn" => "fn ${1:name}(${2}) ${3:Unit}:\n    ${0:return unit}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
-        "enum" => "enum ${1:Name}:\n    case ${0:Ready}",
+        "enum" => "enum ${1:Name}:\n    ${0:Ready}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
         "test" => "test \"${1:name}\":\n    ${0:return unit}",

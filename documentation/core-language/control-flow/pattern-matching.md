@@ -5,11 +5,17 @@ weight = 3
 
 # Pattern matching
 
-`match` handles each case of an enum type and names the case's data. Use it for your own enums and contract views. Avoid it on `Optional` and `Result` (see [below](#optional-and-result-values)). Guards, ranges, nested case patterns, and combined patterns are rejected. Literal arms are described in [matching literals](#matching-literals).
+`match` handles each case of an enum type and names the case's data. Use it for your own enums and contract views. For an Optional payload or Result success, use `if let` or `try` as described [below](#optional-and-result-values).
 
-`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [enums](../types/alternatives.md):
+`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. Save this complete example as `payment.ms` and run `ms run payment.ms`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\n"} -->
 ```manuscript
+enum Payment:
+    Paid(receipt: String)
+    Declined(reason: String)
+    Pending(reference: String)
+
 fn describe(payment: Payment) String:
     match payment:
         Paid(receipt):
@@ -18,7 +24,17 @@ fn describe(payment: Payment) String:
             return "Declined: {reason}"
         Pending(reference):
             return "Pending: {reference}"
+
+export fn main() Int:
+    print(describe(Payment.Paid("receipt-42")))
+    return 0
 ```
+
+```text
+Paid: receipt-42
+```
+
+Each arm handles one case and gives its payload a local name. A newly added case needs an arm unless the match has a wildcard. Guards, ranges, nested case patterns and combined patterns are rejected; use another statement after binding the payload. Literal arms are described in [matching literals](#matching-literals).
 
 ## Keep match flow flat
 
@@ -49,8 +65,8 @@ An arm may hold statements then a final expression, which is its value; ending i
 
 ```manuscript
 enum Cents:
-    case Valid(amount: Int)
-    case Invalid
+    Valid(amount: Int)
+    Invalid
 
 fn total(cents: Cents) Result[Int, Error]:
     let amount = match cents:
@@ -69,10 +85,12 @@ Short arms put the value after the colon (`none: 0`). End an effect-only arm wit
 
 Payloads bind by position in field order: exactly one identifier or `_` per field, even though constructors use named fields. Nullary cases are a bare name without `()`.
 
+Lowercase variant names, including `case`, follow the same rule. A lone lowercase arm binds a payload only when matching an `Optional`; on another enum it names a payloadless variant.
+
 ```manuscript
 enum Position:
-    case Point(x: Int, y: Int)
-    case Unknown
+    Point(x: Int, y: Int)
+    Unknown
 
 fn horizontal(position: Position) Int:
     match position:
@@ -84,7 +102,7 @@ fn horizontal(position: Position) Int:
 
 - `Point(x: local, y: other):` is a parse error; `Point(x):` is an arity error. Repeated names are rejected; `_` may repeat.
 - Payload bindings and the arm body share a nested scope.
-- An unqualified case resolves within the scrutinee's type; a qualified case must belong to that exact type (`Other.Point(...)` never matches `Position`). Constructors resolve per [enum construction](../types/alternatives.md).
+- An unqualified case resolves within the scrutinee's type; a qualified case must belong to that exact type (`Other.Point(...)` never matches `Position`). Constructors resolve per [alternative construction](../types/alternatives.md).
 - Payload names always bind fresh. `error(NotFound)` matches every error and does not test for `NotFound`; bind `error(cause)` and pass `cause` to a helper that matches the cases.
 
 `ms lint` reports **MSL106** (a lint error; `ms check` accepts it) when a capitalized payload name coincides with a known case or type name. Use a name like `cause` or `_cause`.
@@ -106,13 +124,14 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 
 ## Optional and result values
 
-[Optional](../types/optionals.md) and [Result](../errors/results.md) are enums, but do not match them. Use `if let value = expression:` for a value or success, `get(default)` for a default, `try` to propagate an error, and `is_error()` with `err()` to read a cause.
+[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if let value = expression:` for a value or success, `get(default)` for a default, `try` to propagate an error, and `is_error()` with `err()` to read a cause.
 
 ## Contract type patterns
 
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
-```text
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
 interface Shape:
     fn area() Int
 
@@ -120,7 +139,7 @@ type Square:
     side: Int
 
 impl Shape for Square:
-    fn area() Int: self.side * self.side
+    fn area() Int: return self.side * self.side
 
 fn describe(shape: Shape) String:
     match shape:
@@ -129,9 +148,9 @@ fn describe(shape: Shape) String:
             return "area {shape.area()}"
 ```
 
-- The type is a local or imported nominal record or enum with an explicit implementation of the scrutinee's exact contract.
-- Give exactly one receiver name or `_`, even for a payloadless enum. The binding has the concrete type. Native opaque receivers fall to the wildcard.
-- Generic patterns name the full application: `Boxed[Int](value)` differs from `Boxed[String]`; an in-scope parameter may be an argument (`Boxed[T](value)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single enum case.
+- The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.
+- Give exactly one receiver name or `_`, even for a payloadless alternative. The binding has the concrete type. Native opaque receivers fall to the wildcard.
+- Generic patterns name the full application: `Boxed[Int](value)` differs from `Boxed[String]`; an in-scope parameter may be an argument (`Boxed[T](value)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single alternative case.
 - A final wildcard is required because contracts are open. It binds nothing; use the original value for generic handling.
 - The receiver is not copied, and matching adds no cleanup and catches no faults or cancellation. See [contract views](../types/contracts.md#interface-conversion).
 

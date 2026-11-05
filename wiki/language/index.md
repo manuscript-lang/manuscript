@@ -6,7 +6,7 @@ Syntax, types, imports, removals, language decisions.
 
 Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](../compiler/index.md) and [ownership notes](../../crates/ms-check/OWNERSHIP.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
 
-- [Enums declare tagged unions](enums-declare-tagged-unions.md): use `enum` for payloadless and payload cases; records keep `type`, and legacy case declarations receive a keyword fix.
+- [Enums declare tagged unions](enums-declare-tagged-unions.md): use `enum` with bare variants; records keep `type`, and legacy syntax receives clear diagnostics.
 - [An unsaved overlay cannot replace a dangling source symlink](an-unsaved-overlay-cannot-replace-a-dangling-source-symlink.md): editor overlays may create a file beneath an existing confined directory, but a dangling symlink remains a filesystem entry whose target ide…
 - [`Clonable` replaces ad hoc copying in generic code](clonable-replaces-ad-hoc-copying-in-generic-code.md): `Clonable` is a prelude interface whose `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows.
 - [Compound assignment, counting ranges, and redundant labels](compound-assignment-counting-ranges-and-redundant-labels.md): the user asked to add `+= -= *= /= %=`, a step-1 `range(start, end)`, and removal of redundant argument labels (October 2026 proposal `struc…

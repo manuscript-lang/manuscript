@@ -7,8 +7,8 @@ type Envelope[T]:
     defaulted: Payload = Payload(1)
 
 enum Choice[T]:
-    case Data(value: T, nested: Payload)
-    case Empty
+    Data(value: T, nested: Payload)
+    Empty
 
 fn receive[T](
 data: T,

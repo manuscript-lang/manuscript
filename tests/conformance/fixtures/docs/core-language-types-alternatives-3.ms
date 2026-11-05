@@ -2,10 +2,10 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/types/alternatives.md:38
 enum LeftState:
-    case Ready
+    Ready
 
 enum RightState:
-    case Ready
+    Ready
 
 let left: LeftState = LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.

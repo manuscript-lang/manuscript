@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/documentation_test.go:89 TestDocumentationUsesManuscriptDeclarations
 enum Optional[T]:
-    case T
-    case none
+    T
+    none
 
 impl T?:
     fn is_some() Bool: ...

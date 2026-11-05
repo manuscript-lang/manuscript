@@ -5,11 +5,25 @@ weight = 1
 
 # Project configuration
 
-A project has an `ms.toml` at its root that locates source and the entry file, defines import aliases, and names directories to embed in the program. Each `.ms` file is one module; there is no `module` declaration.
+Use a project when your program grows beyond one file, needs tests beside its source, or bundles assets. The `ms.toml` at its root tells `ms` where to find those inputs. Each `.ms` file is one module.
 
 ## A project manifest
 
-`ms init [directory]` creates a manifest, an entry module, a `test.ms`, and a `.gitignore` excluding `.ms-cache/`. Do not commit `.ms-cache/`.
+Create a project, then check its generated source and test:
+
+```sh
+ms init store
+cd store
+ms check ms.toml
+```
+
+The check prints:
+
+```text
+Checked ms.toml (2 modules)
+```
+
+`init` creates `ms.toml`, `src/main.ms`, `test.ms` and a `.gitignore` excluding the local build cache. Run the following examples from `store`. You can add aliases to the generated manifest as the project grows:
 
 ```toml
 [project]
@@ -25,9 +39,9 @@ entry = "./src/main.ms"
 - `name` names the project; `source` is its source directory.
 - `entry` is the executable entry file. Omit it for a library; an empty or invalid entry is an error. There is no default.
 - All manifest paths resolve relative to the directory containing `ms.toml` (the entry is not relative to `source`).
-- Only `[project]`, `[aliases]` and `[embed]` exist. Unknown or duplicate tables and keys are rejected, as are `[adapters]` tables. Values are double-quoted strings; `#` starts a comment.
+- Only `[project]`, `[aliases]` and `[embed]` exist. Unknown or duplicate tables and keys are rejected. Values are double-quoted strings; `#` starts a comment.
 - Application modules are found by following imports from the entry, not listed in the manifest.
-- The compiler supplies the prelude and `@std` modules. Third-party Manuscript packages are unsupported; native dependencies are pinned inside `ms` ([how it works](../how-it-works.md)).
+- The compiler supplies the prelude and version-matched `@std` modules. To reuse other Manuscript source today, use [copied dependencies](#library-projects-and-copied-dependencies); `ms` does not fetch third-party packages.
 
 ## Embedded files
 
@@ -38,19 +52,30 @@ entry = "./src/main.ms"
 "@assets" = "./assets"
 ```
 
-```ms
-import files from "@assets"
+Create `assets/message.txt` containing `hello from assets` followed by a newline. Add `import files from "@assets"` above the generated `main`, then replace its body with this fragment:
 
-export fn main() Int:
+```manuscript
     let tree = files()
-    return tree.read("index.html", none).get().length()
+    let text = tree.read("message.txt", none).get().decode_utf8().get()
+    print(text.trim())
+    return 0
 ```
+
+```sh
+ms run ms.toml
+```
+
+```text
+hello from assets
+```
+
+This example uses `get()` because the file and its UTF-8 contents are known at build time. For variable paths or data, handle missing files and decode failures explicitly.
 
 - `import files from "@assets"` imports a module that `ms` generates from the directory when the project loads. Write the name alone: `"@assets/x.ms"` is an error.
 - `files()` returns an `EmbeddedTree` from `@std/os/tree.ms`, so `read`, `children` and `walk` work as they do on a `host_tree`. Making it costs one map entry per file; `read` copies only the file it returns.
 - Paths in the tree are relative to the directory and use `/` on every platform. Entries are listed in byte order. Hidden files are included.
 - Symbolic links, names that are not valid UTF-8, and names that differ only by letter case are errors. A file may be at most 16 MiB and a directory 64 MiB in total.
-- The files are stored in the program as raw bytes in read-only data, so the program is no larger than the files plus the code. An edited, added or removed file rebuilds the program.
+- The files are stored in the program as raw bytes in read-only data, alongside the program code and lookup metadata. An edited, added or removed file rebuilds the program.
 - A name cannot also be an alias.
 
 ## Commands and module discovery
@@ -125,4 +150,4 @@ Paths are normalized and symlinks resolved to one canonical file identity per bu
 - `@std/...` resolves only inside the pinned standard library, which cannot import application modules.
 - Changes to source roots, entry, aliases, or the standard-library distribution change the module graph and build cache identity.
 
-See [module exports and imports](../../core-language/modules/declarations.md), [the compilation pipeline](../../contributing/compiler/frontend/pipeline.md), and [incremental compilation](incremental-compilation.md).
+See [module exports and imports](../../core-language/modules/declarations.md), [the compilation pipeline](../../contributing/compiler/frontend/pipeline.md), and [build caches](incremental-compilation.md).

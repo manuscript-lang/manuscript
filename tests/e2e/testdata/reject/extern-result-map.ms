@@ -1,5 +1,5 @@
 enum ReadError:
-    case Missing
+    Missing
 
 extern fn read_values() Map[String, Int]!ReadError
 

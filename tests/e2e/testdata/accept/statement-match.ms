@@ -1,9 +1,9 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Shape:
-    case Circle(r: Int)
-    case Rect(w: Int, h: Int)
-    case Dot
+    Circle(r: Int)
+    Rect(w: Int, h: Int)
+    Dot
 
 fn area(shape: Shape) Int:
     match shape:

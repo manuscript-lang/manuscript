@@ -5,17 +5,25 @@ weight = 4
 
 # Rust toolchain
 
-`ms` is implemented in Rust. Debug builds use Cranelift; optimized builds use pinned LLVM tools when available. The first native link downloads `lld`, and the first optimized build downloads `opt`, `llc` and `llvm-link`; later builds reuse the cache. See [linking and tool overrides](#differences-users-can-see). Release tags publish it (`release.yml` calls the [Rust distributions workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml) and uploads its six archives).
+Build the compiler, run its tests, and package native releases. `ms` is implemented in Rust; its native backends are Cranelift and LLVM. For application builds with an installed compiler, see [build levels](../developer-tooling/builds/build-levels.md) and [local tool setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup). Release tags publish six platform archives through [`rust-dist.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml).
 
 ## Build and run
 
-`rust-toolchain.toml` pins Rust 1.99.1 with `rustfmt` and `clippy`; install [rustup](https://rustup.rs) and cargo selects it. `rust-toolchain.toml` also installs the musl targets that `ms build --static` programs link against; Windows builds also need the `x86_64-pc-windows-gnullvm` or `aarch64-pc-windows-gnullvm` target (`rustup target add`). Building `ms` needs a C compiler (`ring` compiles C sources), the platform prerequisites below, and network access for dependencies. The native runtime (`ms-native`) is an explicit step: `make runtime` (`cargo xtask runtime`) builds it into `target/ms-native/libms_native.a`, and `ms-cli`'s build script only embeds that archive (or the one `MS_NATIVE_LIB` names), failing with this command when it is missing. Rerun it after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
+`rust-toolchain.toml` pins Rust 1.99.1 with `rustfmt` and `clippy`; install [rustup](https://rustup.rs) and cargo selects it. `rust-toolchain.toml` also installs the musl targets that `ms build --static` programs link against; Windows builds also need the `x86_64-pc-windows-gnullvm` or `aarch64-pc-windows-gnullvm` target (`rustup target add`). Building `ms` needs a C compiler (`ring` compiles C sources), the platform prerequisites below, and the pinned dependencies, downloaded during setup or supplied through the Cargo cache. The native runtime (`ms-native`) is an explicit step: `make runtime` (`cargo xtask runtime`) builds it into `target/ms-native/libms_native.a`, and `ms-cli`'s build script only embeds that archive (or the one `MS_NATIVE_LIB` names), failing with this command when it is missing. Rerun it after changing `ms-rt`, `ms-rt-abi`, `ms-rt-hot`, or any `ms-std-*` crate.
 
 ```sh
 cargo xtask runtime
 cargo build --release --locked -p ms-cli
 target/release/ms run examples/hello/ms.toml -- first second
 ```
+
+The last command prints:
+
+```text
+Arguments: 2
+```
+
+Use this built binary when reproducing a compiler issue, so the result reflects your checkout.
 
 `ms run tools/package.ms [-- OS ARCH]` builds the same binary with debug sections stripped and writes `dist/manuscript-rust-<os>-<arch>` as a `.tar.gz` (`.zip` on Windows) with a `.sha256` file. The workflow builds the six release targets natively, and every leg gates the check.
 
@@ -62,22 +70,42 @@ Under Miri the allocator takes its reservation from the heap in place of `mmap` 
 
 The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) records the pipeline, value layout, and runtime ABI rules. `unsafe` is confined as described in [development](development.md#rust-unsafe-boundary).
 
-## Differences users can see
+## Native builds and platform support {#differences-users-can-see}
 
-Behavior to know about:
+The following details describe the compiler's generated artifacts and platform integration. Language semantics are defined in the [language reference](../core-language/_index.md).
 
-- **Value semantics.** Values have one owner and move at their last use; `var` marks mutation at the declaration and the call (`f(var xs)`), and `.clone()` explicitly copies ordinary nested data; handle types can define cloning as sharing their underlying resource. Programs that relied on shared lists, records, or interface payloads, or on shallow `clone()`, behave differently. Cyclic structures cannot be built. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
-- **Source attribution.** Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms debug` and the debugger adapter are not part of the Rust `ms`; `ms profile` provides folded stacks, pprof, and a top report.
-- **`ms emit` prints MIR.** Use `ms emit main.ms` or `ms emit ms.toml -o main.mir` to inspect lowered intermediate code. Native builds compile MIR to object code through Cranelift, or LLVM for release builds.
-- **`ms build` reuses unchanged builds.** `ms build` keys an entry on the build profile, input and output paths, working directory, the build settings (`BuildOptions`, parsed once from the `MS_*` variables in `ms-cli`) and the size and modification time of the `ms` executable, the runtime override and `--link` files. The entry lists every source file (and `ms.toml`) with its size and modification time. While all still match, the next `ms build` copies the stored executable (and macOS `.dSYM`) to the output without loading, checking or compiling anything. Entries live in `<dir of the input>/.ms-cache/build`; the eight newest stay. Nothing is hashed, so a new file that would shadow an imported one is not noticed until a listed file changes. `ms run` and `ms test` do not use it. `MS_CACHE=off` disables it and `MS_CACHE=verify` rebuilds and fails when the result differs from the cached executable; `MS_TIMINGS=1` prints phase times on stderr. See `proposals/incremental-builds.md`.
-- **Release builds use cached LLVM tools when available.** `ms-clif` translates each Cranelift function to LLVM IR (`llvm_ir.rs`) and the pinned `opt` and `llc` (`default<O3>` and `-O3`, `Os` and `-O2` for MinSizeRel) optimize it, then the pinned `lld` links the objects side by side (no `clang` or `cc`); Cranelift still emits data, descriptors and `main`, and Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`llvm_tables.rs`). A function with a loop over list elements, no calls in it and a single way out (no early `return` or `break`, which LLVM cannot vectorize) is also built for x86-64-v3 (AVX2, FMA) on x86-64, and a small dispatcher picks the copy by `msrt_cpu_level`; `MS_CPU_LEVEL=baseline` forces the baseline copy. `llc` aligns loops to 32 bytes on x86-64, so a small loop does not straddle a cache line depending on where the linker places the function. `MS_VECTORIZE=off` disables the loop and SLP vectorizers and the AVX2 copies. `MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. `ms` does not embed `opt`, `llc` and `llvm-link`, and Debug builds (Cranelift) never need them: the first Release build downloads the release pinned in `toolchain/lld.lock` with `ms`'s own HTTPS client (`link/fetch.rs`, honoring `HTTPS_PROXY`; about 70 MB, SHA-256 checked, no `curl` or `tar` needed) into `<cache>/ms/llvm/` and later builds reuse it. When the download fails (offline), that build prints one line and uses Cranelift; CI restores the directory from a cache keyed on `toolchain/lld.lock`. On Windows the IR targets the mingw-w64 triple.
-- **Linking.** `ms` does not embed `lld`: the first link downloads the static `lld` pinned in `toolchain/lld.lock` (released by manuscript-lang/llvm-bundle, SHA-256 checked) into `<cache>/ms/lld/`; `MS_LLD` names a local one instead and skips the download. Building `ms` needs neither. Linux links dynamic executables that run on glibc 2.28 or newer: the runtime is built for `<arch>-unknown-linux-gnu` and defines `_start` itself (`crates/ms-native`), and lld links it, with the bundled static `libunwind.a`, against stub glibc libraries generated from `toolchain/glibc/<arch>.symbols` (`toolchain/glibc/generate.sh` regenerates them from glibc 2.28's ABI lists), so the host's glibc, `libc6-dev` and a C compiler are never used. `--static` instead links a static musl executable over the startup files and libc copied from the Rust toolchain by `crates/ms-clif/build.rs`, with a second runtime built for the musl target (`libms_native_musl.a`); `ms` embeds both. macOS links against `.tbd` stubs generated from the imported symbols; it needs no SDK, and `dsymutil` (if present) writes `<output>.dSYM` beside the executable, which should stay with it for source lookup. Windows links with the same lld over llvm-mingw's startup object, CRT and import libraries (`sh toolchain/fetch-mingw.sh` fetches the pinned release into `target/llvm-bundle/mingw`; set `MS_MINGW` to use another copy), the runtime is built for `<arch>-pc-windows-gnullvm` with its clang (`rustup target add` it first), and DWARF stays in the image. No MSVC SDK is needed to link programs; building `ms` itself still uses the MSVC toolchain.
-- **Build metadata.** `ms build -o app` writes `app.ms-build.json` beside the executable.
-- **Concurrency.** [Promises](../core-language/concurrency/_index.md) run work started by a call or by `promise(fn: ...)`; cancellation, faults and cleanup follow the contract there.
-- **Exit codes.** A fault exits 67, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
-- **Math.** `@std/math` calls the host libm; results can differ between hosts in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
-- **`ms test --shuffle`** uses its own random generator, so orders differ from other shuffles; fixtures run once per test, not once per module.
-- **Standard library.** Matching Rust std output is acceptable where Rust std covers the concept, so error texts and edge-case output can differ where the corpus does not pin them.
-- **Windows.** The standard crates use Windows-specific behavior (synthetic errnos, emulated `pread`/`pwrite`, subset of `FileConstants`, `SendSignal` terminating the child); Windows and macOS run in the full scheduled/manual matrix; pull requests run Linux. See [continuous integration](development.md#continuous-integration).
+### Optimization
 
-Do not add code solely to reproduce older output where Rust std covers the concept.
+`ms-clif` translates each Cranelift function to LLVM IR (`llvm_ir.rs`) and the pinned `opt` and `llc` (`default<O3>` and `-O3`, `Os` and `-O2` for MinSizeRel) optimize it, then the pinned `lld` links the objects side by side (no `clang` or `cc`); Cranelift still emits data, descriptors and `main`, and Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`llvm_tables.rs`). A function with a loop over list elements, no calls in it and a single way out (no early `return` or `break`, which LLVM cannot vectorize) is also built for x86-64-v3 (AVX2, FMA) on x86-64, and a small dispatcher picks the copy by `msrt_cpu_level`; `MS_CPU_LEVEL=baseline` forces the baseline copy. `llc` aligns loops to 32 bytes on x86-64, so a small loop does not straddle a cache line depending on where the linker places the function. `MS_VECTORIZE=off` disables the loop and SLP vectorizers and the AVX2 copies.
+
+`MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
+
+### Platform linking
+
+Use a compatible local `lld` through `MS_LLD`, or let `ms` cache the SHA-256-verified version pinned in `toolchain/lld.lock`. Building `ms` itself does not require this linker; linking Manuscript programs does.
+
+**Linux.** Linux links dynamic executables that run on glibc 2.28 or newer: the runtime is built for `<arch>-unknown-linux-gnu` and defines `_start` itself (`crates/ms-native`), and lld links it, with the bundled static `libunwind.a`, against stub glibc libraries generated from `toolchain/glibc/<arch>.symbols` (`toolchain/glibc/generate.sh` regenerates them from glibc 2.28's ABI lists), so the host's glibc, `libc6-dev` and a C compiler are never used. `--static` instead links a static musl executable over the startup files and libc copied from the Rust toolchain by `crates/ms-clif/build.rs`, with a second runtime built for the musl target (`libms_native_musl.a`); `ms` embeds both.
+
+**macOS.** macOS links against `.tbd` stubs generated from the imported symbols; it needs no SDK, and `dsymutil` (if present) writes `<output>.dSYM` beside the executable, which should stay with it for source lookup.
+
+**Windows.** Windows links with the same lld over llvm-mingw's startup object, CRT and import libraries (`sh toolchain/fetch-mingw.sh` fetches the pinned release into `target/llvm-bundle/mingw`; set `MS_MINGW` to use another copy), the runtime is built for `<arch>-pc-windows-gnullvm` with its clang (`rustup target add` it first), and DWARF stays in the image. No MSVC SDK is needed to link programs; building `ms` itself still uses the MSVC toolchain.
+
+### Source attribution and inspection
+
+Native builds emit DWARF line tables for file/line lookup, including optimized code. They do not describe variables, types, or inline call frames. `ms profile` provides folded stacks, pprof, and a top report; see [native debugging](../developer-tooling/debugging/debugger-integration.md).
+
+Use `ms emit main.ms` or `ms emit ms.toml -o main.mir` to inspect lowered MIR. For checked source relationships, use [the interactive HTML code map](../developer-tooling/implementation.md#interactive-code-map).
+
+### Build cache and metadata
+
+`ms build` keys an entry on the build profile, input and output paths, working directory, the build settings (`BuildOptions`, parsed once from the `MS_*` variables in `ms-cli`) and the size and modification time of the `ms` executable, the runtime override and `--link` files. The entry lists every source file (and `ms.toml`) with its size and modification time. While all still match, the next `ms build` copies the stored executable (and macOS `.dSYM`) to the output without loading, checking or compiling anything. Entries live in `<dir of the input>/.ms-cache/build`; the eight newest stay. Nothing is hashed, so a new file that would shadow an imported one is not noticed until a listed file changes. `ms run` and `ms test` do not use it. `MS_CACHE=off` disables it and `MS_CACHE=verify` rebuilds and fails when the result differs from the cached executable; `MS_TIMINGS=1` prints phase times on stderr. See `proposals/incremental-builds.md`.
+
+`ms build -o app` also writes `app.ms-build.json` beside the executable.
+
+### Runtime and platform behavior
+
+- Values follow the [ownership rules](../core-language/types/references.md); concurrency follows the [promise and stream contracts](../core-language/concurrency/_index.md).
+- A fault exits 67, SIGINT 130, SIGTERM 143; `ms run` and `ms test` return 128 plus the signal for a signalled child.
+- `@std/math` calls the host libm; results can differ between hosts in the last bit (for example `sin(2.0)`). `round` (ties toward positive infinity), `sign`, and `is_integer` are defined by the language.
+- `ms test --shuffle` uses a seeded generator for repeatable ordering. Each selected test and repetition runs with its own fixture; see [testing](../learn/testing.md#shared-setup-and-teardown).
+- Windows standard modules use synthetic errnos, emulated `pread`/`pwrite`, a subset of `FileConstants`, and `SendSignal` terminating the child. Windows and macOS run in the full scheduled/manual matrix; pull requests run Linux. See [continuous integration](development.md#continuous-integration).

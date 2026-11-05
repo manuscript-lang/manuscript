@@ -5,8 +5,8 @@ import parse, stringify from "@std/data/json.ms"
 import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net/net.ms"
 
 enum Color:
-    case Red
-    case Green
+    Red
+    Green
 
 type Swatch:
     color: Color

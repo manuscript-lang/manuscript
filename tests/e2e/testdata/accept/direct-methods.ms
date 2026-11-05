@@ -4,8 +4,8 @@ type Counter:
     n: Int
 
 enum Shape:
-    case Circle(r: Int)
-    case Square(side: Int)
+    Circle(r: Int)
+    Square(side: Int)
 
 interface Bumper:
     fn bump(by: Int) Int

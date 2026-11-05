@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/conversions_queries_test.go:21 TestConversionsAndQueriesRejectInvalidContracts
 enum Optional[T]:
-    case T
-    case none
+    T
+    none
 
 fn wrong(value: Int?) Int!String: value.ok_or("missing")

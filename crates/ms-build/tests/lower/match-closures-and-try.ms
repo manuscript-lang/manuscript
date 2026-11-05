@@ -3,8 +3,8 @@
 // expect-mir: "closure.new"
 
 enum Shape:
-    case Circle(radius: Int)
-    case Dot
+    Circle(radius: Int)
+    Dot
 
 fn area(s: Shape) Int:
     return match s:

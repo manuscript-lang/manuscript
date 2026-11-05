@@ -7,12 +7,25 @@ weight = 1
 
 `if` runs a block when a `Bool` condition is true; `else` runs otherwise.
 
+Save this as `status.ms` and run `ms run status.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Active\nInactive\n"} -->
 ```manuscript
 fn status(active: Bool) String:
     if active:
         return "Active"
     else:
         return "Inactive"
+
+export fn main() Int:
+    print(status(true))
+    print(status(false))
+    return 0
+```
+
+```text
+Active
+Inactive
 ```
 
 A short branch can be one simple statement on the same line:

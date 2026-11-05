@@ -10,8 +10,8 @@ export type Box[T: Equal & Hashable = Int]:
     value: T
 
 enum State:
-    case Ready
-    case Data(value: Int)
+    Ready
+    Data(value: Int)
 
 interface Reader:
     fn text() String

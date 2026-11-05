@@ -4,8 +4,8 @@
 import Decimal from "@std/math/decimal.ms"
 
 enum DiscountError:
-    case InvalidPrice
-    case InvalidPercent
+    InvalidPrice
+    InvalidPercent
 
 fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:

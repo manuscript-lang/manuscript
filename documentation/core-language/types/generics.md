@@ -5,7 +5,7 @@ weight = 9
 
 # Generics and bounds
 
-Generic types take type arguments in brackets.
+Generics let one function or data type work with several concrete types while keeping its inputs and results known to the compiler. Type arguments go in brackets.
 
 ```manuscript
 List[String]
@@ -37,13 +37,13 @@ type Key:
 
 impl Equal for Key:
     fn equals(other: Key) Bool:
-        return true
+        return self.id == other.id
 
-fn accepts(value: Equal) Unit:
-    return
+fn same_key(left: Equal, right: Equal) Bool:
+    return left.equals(right)
 
-fn use_view() Unit:
-    accepts(Equal(Key(1)))
+fn use_view() Bool:
+    return same_key(Key(1), Key(1))
 ```
 
 ## Declarations and applications

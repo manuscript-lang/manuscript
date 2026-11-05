@@ -13,20 +13,19 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 - Bidirectional text controls (U+202A to U+202E and U+2066 to U+2069) are rejected in comments and text, since they can make source display differently from how it is read; write `\u{202E}` in text when the character is needed.
 - Identifiers are `[A-Za-z_][A-Za-z0-9_]*` and case-sensitive. A lone `_` is a pattern placeholder. Unicode is allowed in text and comments only.
 
-The reserved words are:
+The language uses these keywords:
 
 ```manuscript
-and break case continue else enum export extern false fixture fn for if
-impl import in interface let match not or ref return self test true try type
+and break continue else enum export extern false fixture fn for if
+impl import in interface let match not or return self test true try type
 unit var while
 ```
 
-- `ref` is reserved but has no meaning: a program that writes it is rejected with a hint to drop it, because a function that returns a part of a parameter returns a borrow of it without a marker.
-- `opaque` is contextual too: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
+- `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
-- Built-in type names and enum constructors are not keywords.
+- Built-in type names and alternative constructors are not keywords.
 - `//` starts a comment through the end of the line. `/* ... */` is a block comment: it starts its own line (after indentation), ends at the first `*/`, and only blanks or a `//` comment may follow the `*/`. Block comments do not nest (a `/*` inside one is an error), an unterminated block is an error at its opening `/*`, and the block counts as comment-only lines for layout, so its contents are free-form. `#` is not syntax.
 - Tabs in code are rejected (allowed in comments). Control characters in text are rejected; use [text escapes](text-and-bytes.md#string-literals). Semicolons and backslash continuation are rejected.
 
@@ -126,8 +125,8 @@ EnumDeclaration = [ "opaque" ], "enum", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, AlternativeBody, DEDENT ;
 RecordBody    = { Field } ;
 Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
-AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
-CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
+AlternativeBody = VariantDeclaration, { VariantDeclaration } ;
+VariantDeclaration = Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":",
                        ("...", NEWLINE | NEWLINE, INDENT, ContractBody, DEDENT) ;
 ContractBody  = OperationSignature, { OperationSignature } ;
@@ -165,7 +164,7 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 ```
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
-- A `type` declares record fields; an `enum` declares one or more enum cases. Their methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
+- A `type` declares record fields; an `enum` declares one or more variants. Their methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.

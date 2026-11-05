@@ -1,2 +1,2 @@
 union State:
-    case Ready
+    Ready

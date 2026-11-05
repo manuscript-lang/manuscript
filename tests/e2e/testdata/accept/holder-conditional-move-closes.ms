@@ -86,8 +86,8 @@ fn block_wrap(log: String) Unit:
         return
 
 enum Shape:
-    case Circle(door: Door)
-    case Empty
+    Circle(door: Door)
+    Empty
 
 fn shape(log: String) Shape:
     return Shape.Circle(Door(5, log.clone()))

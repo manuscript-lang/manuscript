@@ -1,8 +1,8 @@
 import stdout from "@std/io/io.ms"
 
 enum DivideError:
-    case DivideByZero
-    case Overflow
+    DivideByZero
+    Overflow
 
 fn text(cause: DivideError) String:
     match cause:

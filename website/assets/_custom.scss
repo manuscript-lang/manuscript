@@ -166,7 +166,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .docs-home-layout { max-width: 90rem; margin-inline: auto; }
 .docs-home-layout .book-page { width: 100%; padding: 0 3rem 1rem; }
 .docs-home-layout .book-article, .docs-home-layout .book-footer { max-width: 76rem; }
-.home-hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 4rem; align-items: center; padding: 6rem 0; border-bottom: 1px solid var(--gray-200); }
+.home-hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 4rem; align-items: start; padding: 2rem 0 6rem; border-bottom: 1px solid var(--gray-200); }
 .home-pitch, .home-example { min-width: 0; }
 .markdown .home-eyebrow { display: flex; align-items: center; gap: .75rem; color: var(--docs-muted); font: .72rem var(--docs-mono); text-transform: uppercase; letter-spacing: .12em; margin: 0 0 2rem; }
 .home-eyebrow > span { width: 9px; height: 9px; background: var(--docs-button-bg); border: 1px solid var(--docs-heading); }
@@ -213,7 +213,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .topbar-links a { align-items: center; }
 .markdown h1, .markdown h2 { font-family: var(--docs-mono); }
 @media screen and (max-width: 62rem) {
-  .home-hero { grid-template-columns: 1fr; gap: 3rem; padding: 3rem 0; }
+  .home-hero { grid-template-columns: 1fr; gap: 3rem; padding: 2rem 0 3rem; }
   .markdown .home-hero h1 { font-size: clamp(2.4rem, 6.8vw, 4rem); }
   .home-example { max-width: 42rem; }
   .markdown .home-benefit-grid { grid-template-columns: repeat(2, 1fr); }

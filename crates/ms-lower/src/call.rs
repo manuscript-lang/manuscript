@@ -166,7 +166,7 @@ impl<'a> FnLower<'a> {
                 .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(opt) => {
-                    let o = self.owned(x);
+                    let o = self.owned_boundary(x);
                     let _ = opt;
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
@@ -356,7 +356,8 @@ impl<'a> FnLower<'a> {
             let binding = callee.parameters[j].clone();
             if vars.contains(&(j + offset)) {
                 let ty = self.ty_of(v.v);
-                let o = self.owned(v);
+                // An earlier `var` argument is the call's copy-in, as in `var_argument`.
+                let o = self.owned_boundary(v);
                 let var = self.b.declare_var(ty, Mode::Move);
                 self.b.def_var(var, o);
                 self.locals.insert(
@@ -422,7 +423,13 @@ impl<'a> FnLower<'a> {
             if !vars.contains(&i) {
                 // A consumed parameter takes the value itself: a copy only when `a` is a borrow.
                 if owned_mask.as_ref().is_some_and(|mask| mask[i]) {
-                    vals.push(self.owned(a));
+                    // An `Optional` is passed on under the type's boundary rule.
+                    let v = if matches!(self.b.m.types.kind(self.ty_of(a.v)), TyKind::Opt(_)) {
+                        self.owned_boundary(a)
+                    } else {
+                        self.owned(a)
+                    };
+                    vals.push(v);
                 } else {
                     vals.push(self.borrow(a));
                 }
@@ -597,6 +604,12 @@ impl<'a> FnLower<'a> {
                 let l = self.locals[&uid];
                 self.local_take(&l)
             }
+            // A field or element place the callee changes: the value is copied into the slot and the
+            // original is dropped when the result is written back, so this copy is the call's
+            // copy-in, not a stored duplicate (interim: take the place's value out instead).
+            // A variable another argument of the same call reads is copied in the same way:
+            // taking it would leave that read an empty slot.
+            None if !a.own && place.is_some_and(|p| self.is_place(p)) => self.clone_value(a.v),
             None => self.owned(a),
         };
         let slot = self
@@ -1148,7 +1161,11 @@ impl<'a> FnLower<'a> {
                     own: variant != a,
                 });
             }
-            let o = self.owned(x);
+            let o = if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result {
+                self.owned_boundary(x)
+            } else {
+                self.owned(x)
+            };
             let v = self.b.alt_new(a, idx as u32, &[o]);
             return Ok(Val { v, own: true });
         }
@@ -1160,6 +1177,7 @@ impl<'a> FnLower<'a> {
             None => ct::fields(&t),
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
+        let mut held: Vec<Value> = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -1178,9 +1196,24 @@ impl<'a> FnLower<'a> {
             };
             // A later field may return early (`try`): hold this one as a temporary until then.
             let x = if later_try {
-                self.hold_temp(x)
+                if x.own && self.holds(self.ty_of(x.v)) {
+                    // An owned part waits as a temporary until the field takes it.
+                    held.push(x.v);
+                    Val {
+                        v: self.borrow(x),
+                        own: true,
+                    }
+                } else {
+                    self.hold_temp(x)
+                }
             } else {
-                let v = self.owned(x);
+                let v = if matches!(self.b.m.types.kind(mt), TyKind::Alt(a)
+                    if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result)
+                {
+                    self.owned_boundary(x)
+                } else {
+                    self.owned(x)
+                };
                 Val {
                     v,
                     own: self.holds(self.ty_of(v)),
@@ -1192,11 +1225,23 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new(format!("no field {}", self.syms.str(a.slot.name))))?;
             slots[idx] = Some(x);
         }
+        // `ok(x)` / `error(x)` of a borrow is the `Result` boundary copy the type declares.
+        let result_case = matches!(self.b.m.types.kind(mt), TyKind::Alt(a)
+            if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result);
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
+                Some(x) if held.contains(&x.v) => {
+                    // Every `try` of the fields has passed: the field takes the temporary.
+                    self.unhold_temp(x.v);
+                    vals.push(x.v);
+                }
                 Some(x) => {
-                    let v = self.owned(x);
+                    let v = if result_case {
+                        self.owned_boundary(x)
+                    } else {
+                        self.owned(x)
+                    };
                     vals.push(v);
                 }
                 None => {
@@ -1296,7 +1341,8 @@ impl<'a> FnLower<'a> {
         self.variant = saved_variant;
         self.file = saved_file;
         let x = r?;
-        Ok(self.owned(x))
+        // The default's value is the argument's own: a borrowed one is the declared copy.
+        Ok(self.owned_boundary(x))
     }
 
     /// A default written as a literal, `none`, an empty list or map, or a constructor call of literals in a

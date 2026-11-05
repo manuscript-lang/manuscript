@@ -4,13 +4,13 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Tree:
-    case Leaf
-    case Gap
-    case Node(left: Tree, right: Tree)
+    Leaf
+    Gap
+    Node(left: Tree, right: Tree)
 
 enum Chain:
-    case End
-    case Link(value: Int, rest: Chain)
+    End
+    Link(value: Int, rest: Chain)
 
 fn build(depth: Int) Tree:
     if depth == 0:

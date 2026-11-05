@@ -11,11 +11,11 @@ export type Counter:
 
 export enum Outcome:
     // A completed count.
-    case Ready(value: Int)
+    Ready(value: Int)
     // Work is pending.
-    case Pending
+    Pending
     // Work failed with source context.
-    case Failed(
+    Failed(
         // Original failure diagnostic.
         message: String
     )

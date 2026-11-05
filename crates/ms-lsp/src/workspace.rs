@@ -387,13 +387,7 @@ fn may_contain_symbol(
                 use ms_syntax::token::Tok;
                 matches!(
                     before.kind,
-                    Tok::Fn
-                        | Tok::Type
-                        | Tok::Enum
-                        | Tok::Interface
-                        | Tok::Let
-                        | Tok::Var
-                        | Tok::Case
+                    Tok::Fn | Tok::Type | Tok::Enum | Tok::Interface | Tok::Let | Tok::Var
                 )
             });
         if !declares {

@@ -4,8 +4,8 @@
 let initial = Mode.Idle
 
 enum Mode:
-    case Idle
-    case Busy
+    Idle
+    Busy
 
 export fn main() Int:
     match initial:

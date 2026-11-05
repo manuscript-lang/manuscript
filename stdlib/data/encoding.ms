@@ -239,7 +239,7 @@ export fn hex_encode(data: Bytes) String:
 
     return out.build()
 
-// Encodes text as UTF-16 code units, little-endian unless `little_endian` is false (Node `utf16le`).
+// Encodes text as UTF-16 code units, little-endian unless `little_endian` is false.
 // No byte order mark is written.
 export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
     var out = BytesBuilder()

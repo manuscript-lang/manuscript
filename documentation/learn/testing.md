@@ -25,8 +25,29 @@ test "zero is unchanged":
 
 ```sh
 ms test test.ms
+```
+
+```text
+RUN test.ms::addition
+PASS test.ms::addition
+RUN test.ms::zero is unchanged
+PASS test.ms::zero is unchanged
+2 tests, 0 failed
+```
+
+Select one test or set a per-test deadline:
+
+```sh
 ms test test.ms --filter addition
 ms test test.ms --timeout 10s
+```
+
+With `--filter addition`, only the selected test runs:
+
+```text
+RUN test.ms::addition
+PASS test.ms::addition
+1 tests, 0 failed
 ```
 
 `expect_equal` works with numbers, text, collections, and `Equal` types; `assert_equal` is the TDD spelling. Change `3` to `4` to see `FAIL test.ms::addition: expected 4, got 3` and a nonzero exit. A tests file needs no `main`.
@@ -47,7 +68,7 @@ ms test ms.toml --json
 - A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `try expect_equal(...)`, or `let _ = try ...` to drop a returned value.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
 
-`try expect_ok` checks success and keeps the payload:
+For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `try expect_ok` checks success and keeps the payload:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -62,15 +83,35 @@ test "typed JSON and Optional payloads":
     try expect_some([number].first()) | try expect_equal(3)
 ```
 
+Test output:
+
+```text
+RUN test.ms::typed JSON and Optional payloads
+PASS test.ms::typed JSON and Optional payloads
+1 tests, 0 failed
+```
+
 Tests can also propagate an `Error` with `try`. See [Results](../core-language/errors/results.md).
 
 ## Select and repeat
 
+With the opening `addition` and `zero is unchanged` tests saved in `test.ms`, list their exact names:
+
 ```sh
-ms test ms.toml --list
-ms test ms.toml --test 'tests/math_test.ms::addition' --json
-ms test ms.toml --match 'addition|zero' --exclude 'slow' --fail-fast
-ms test ms.toml --repeat 10 --shuffle 42
+ms test test.ms --list
+```
+
+```text
+test.ms::addition
+test.ms::zero is unchanged
+```
+
+Run one named test, select names with a pattern, or repeat the suite in a seeded order:
+
+```sh
+ms test test.ms --test 'test.ms::addition' --json
+ms test test.ms --match 'addition|zero' --exclude 'slow' --fail-fast
+ms test test.ms --repeat 10 --shuffle 42
 ```
 
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
@@ -90,6 +131,14 @@ import expect_equal from "@std/test/test.ms"
 
 test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))
+```
+
+Test output:
+
+```text
+RUN test.ms::reversing twice restores a list
+PASS test.ms::reversing twice restores a list
+1 tests, 0 failed
 ```
 
 When a case fails, `check` shrinks the input to a small counterexample and fails the test with it and the case seed:
@@ -195,6 +244,16 @@ test "increments":
 
 test "starts fresh":
     try expect_equal(fixture.count, 0)
+```
+
+Test output:
+
+```text
+RUN test.ms::increments
+PASS test.ms::increments
+RUN test.ms::starts fresh
+PASS test.ms::starts fresh
+2 tests, 0 failed
 ```
 
 `ms test` starts a separate process for each selected test. Each process creates its own fixture and runs its hooks, so the second test starts from a fresh `Counter`. The same isolation applies to repetitions.

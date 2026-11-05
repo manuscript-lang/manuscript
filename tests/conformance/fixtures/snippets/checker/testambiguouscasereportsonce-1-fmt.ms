@@ -2,10 +2,10 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/ambiguous_case_test.go:16 TestAmbiguousCaseReportsOnce
 enum A:
-    case X
+    X
 
 enum B:
-    case X
+    X
 
 fn f() Int:
     let a = X

@@ -9,8 +9,8 @@ type Point:
     x: Int
 
 enum Mode:
-    case Off
-    case On
+    Off
+    On
 
 test "same-named records and alternatives stay distinct":
     try expect_equal(Point(1).x, 1)

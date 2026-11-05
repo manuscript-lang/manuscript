@@ -8,19 +8,19 @@ import now from "@std/os/time.ms"
 // Severity levels accepted by a logger, ordered from Trace through Fatal.
 export enum LogLevel:
     // Most detailed records, encoded with numeric level 10.
-    case Trace
+    Trace
     // Development diagnostics, encoded with numeric level 20.
-    case Debug
+    Debug
     // Ordinary operational records, encoded with numeric level 30; the default threshold.
-    case Info
+    Info
     // Warning records, encoded with numeric level 40.
-    case Warn
+    Warn
     // Failure records, encoded with numeric level 50.
-    case Error
+    Error
     // Critical records at numeric level 60; logging does not terminate the process.
-    case Fatal
+    Fatal
     // Filtering threshold that disables records; passing it to log returns EINVAL.
-    case Silent
+    Silent
 
 // A destination that accepts encoded log records and can be flushed and closed.
 export interface Transport:

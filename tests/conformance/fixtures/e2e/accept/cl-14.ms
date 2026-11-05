@@ -4,10 +4,10 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Problem:
-    case Missing(reason: String)
+    Missing(reason: String)
 
 enum OtherProblem:
-    case Invalid(reason: String)
+    Invalid(reason: String)
 
 fn checked(value: Int) Int!Problem:
     if value < 0:

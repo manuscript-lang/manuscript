@@ -3,17 +3,19 @@ import Duration, parse_duration from "@std/os/time.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 enum InputFailure:
-    case Binary(cause: Error)
-    case Time(cause: Error)
-    case MissingPrefix
-    case MissingKey(value: Int)
+    Binary(cause: Error)
+    Time(cause: Error)
+    MissingPrefix
+    MissingKey(value: Int)
 
 fn read_number(data: Bytes) UInt64!InputFailure:
-    let decoded = try data.uvarint(0).map_error(fn cause: InputFailure.Binary(cause))
+    let decoded = try data.uvarint(0).map_error(
+        fn cause: InputFailure.Binary(cause.clone())
+    )
     return ok(decoded.value)
 
 fn read_duration(text: String) Duration!InputFailure:
-    return parse_duration(text).map_error(fn cause: InputFailure.Time(cause))
+    return parse_duration(text).map_error(fn cause: InputFailure.Time(cause.clone()))
 
 fn read_prefixed(text: String) String!InputFailure:
     return text.cut_prefix("name=").ok_or(InputFailure.MissingPrefix)

@@ -156,7 +156,7 @@ fn member_descriptions_reach_markdown_and_compatible_json() {
                 "value: Int",
                 "The **stored** count.\n\nMeasured in items.",
             ),
-            member("Ready", "case", "case Ready(value: Int)", "Completed work."),
+            member("Ready", "case", "Ready(value: Int)", "Completed work."),
             member(
                 "read",
                 "operation",

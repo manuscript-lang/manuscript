@@ -113,9 +113,9 @@ type Request:
     tags: List[String]
 
 enum Shape:
-    case Circle(radius: Int)
-    case Rect(width: Int, height: Int)
-    case Dot
+    Circle(radius: Int)
+    Rect(width: Int, height: Int)
+    Dot
 
 type Scene:
     shape: Shape
@@ -207,8 +207,8 @@ type Stamped:
     link: Url
 
 enum Tagged:
-    case Named(name: String, alias: String?)
-    case Plain
+    Named(name: String, alias: String?)
+    Plain
 
 test "JSON stringify omits none fields and keeps nested optionals":
     var handler = Handler("h", none, none)
@@ -279,8 +279,8 @@ test "JSON stringify omits a Unit field and rejects a Unit root":
     )
 
 enum Event:
-    case Created(id: Int)
-    case Deleted(id: Int)
+    Created(id: Int)
+    Deleted(id: Int)
 
 impl JsonEncode for Event:
     fn to_json() JsonValue:
@@ -309,8 +309,8 @@ test "JSON stringify lets JsonEncode override the structural encoding of an alte
     try expect_equal((try encoded(feed)), expected)
 
 enum Change:
-    case Added(id: Int)
-    case Removed(id: Int)
+    Added(id: Int)
+    Removed(id: Int)
 
 test "JSON stringify keeps cases with identical labels distinct by default":
     try expect_equal((try encoded(Change.Added(1))), "\{\"Added\":\{\"id\":1\}\}")
@@ -504,9 +504,9 @@ type Pair[A, B]:
     right: B
 
 enum Op:
-    case Add(left: Int, right: Int)
-    case Neg(v: Int?)
-    case Nop
+    Add(left: Int, right: Int)
+    Neg(v: Int?)
+    Nop
 
 type Wrap:
     ops: List[Op]

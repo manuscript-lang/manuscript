@@ -5,9 +5,9 @@ import arguments from "@std/os/process.ms"
 extern type Counter
 
 enum ParseError:
-    case Failed(code: Int, message: String)
-    case Empty
-    case Unknown(code: Int)
+    Failed(code: Int, message: String)
+    Empty
+    Unknown(code: Int)
 
 fn text(cause: ParseError) String:
     match cause:

@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/core_parity_test.go:24 TestCoreParityRejectsInvalidContracts
 enum T!E:
-    case ok(value: T)
-    case error(cause: E)
+    ok(value: T)
+    error(cause: E)
 
 fn wrong(value: Int!String) Int: value.get()

@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/pattern_lint_test.go:42 TestPatternBindingAdvisory
 enum Failure:
-    case NotFound
+    NotFound
 
 fn use() Int:
     let NotFound = 1

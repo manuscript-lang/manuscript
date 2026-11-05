@@ -9,19 +9,19 @@ Use an enum (a tagged union) when a value is exactly one of several declared cas
 
 ```manuscript
 enum Payment:
-    case Paid(receipt: String)
-    case Declined(reason: String)
-    case Pending(reference: String)
+    Paid(receipt: String)
+    Declined(reason: String)
+    Pending(reference: String)
 ```
 
 Enums are tagged and exhaustively matched.
 
 - At least one case; case names are unique, and payload field names are unique within a case.
-- A case may have no payload: `case Missing`.
+- A case may have no payload: `Missing`.
 - Payload types are explicit; fields have no defaults.
-- `enum` bodies contain only cases; record fields belong in a `type` and methods in an `impl` block.
+- `enum` bodies contain only bare variant names with optional payload parameters; record fields belong in a `type` and methods in an `impl` block.
 
-Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. The old spelling is rejected with a keyword fix. Records keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling.
+Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. Then remove `case` before each variant. Both legacy spellings are rejected with diagnostics explaining the new spelling. Records keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling. `case` is no longer reserved: `case`, `case(value: Int)`, and record field `case: Int` are ordinary names in their respective contexts.
 
 ## Construction and identity
 
@@ -39,10 +39,10 @@ Ordinary name lookup runs first: a local, declaration, or import with that spell
 
 ```manuscript
 enum LeftState:
-    case Ready
+    Ready
 
 enum RightState:
-    case Ready
+    Ready
 
 let left: LeftState = LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.

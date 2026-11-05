@@ -12,8 +12,8 @@ export fn vault() Vault[Int]:
     return Vault[Int](7)
 
 export opaque enum Choice:
-    case Payload(value: Int)
-    case Empty
+    Payload(value: Int)
+    Empty
 
 export fn choice() Choice:
     return Choice.Payload(7)

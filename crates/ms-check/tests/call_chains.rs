@@ -44,7 +44,7 @@ fn a_match_over_many_cases_checks_in_linear_time() {
     let cases = 8_000;
     let mut source = String::from("enum E:\n");
     for i in 0..cases {
-        source.push_str(&format!("    case C{i}(x: Int)\n"));
+        source.push_str(&format!("    C{i}(x: Int)\n"));
     }
     source.push_str("\nfn g(e: E) Int:\n    match e:\n");
     for i in 0..cases {

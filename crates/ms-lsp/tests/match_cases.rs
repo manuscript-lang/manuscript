@@ -154,3 +154,62 @@ fn synthesized_paths_and_type_suffixes_do_not_become_written_occurrences() {
         assert!(entry.key.starts_with(kind));
     }
 }
+
+#[test]
+fn lowercase_variant_identity_is_distinct_from_optional_binding() {
+    let syms = ms_syntax::Names::global();
+    let fixture = include_str!("match_cases/keyword.ms");
+    for newline in ["\n", "\r\n"] {
+        let ws = Workspace::new("keyword-case-navigation");
+        let source = fixture.replace('\n', newline);
+        let d = Document::new(ws.uri("keyword.ms"), &source);
+        let docs = Documents::from([(d.uri.clone(), d.clone())]);
+        let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+        assert!(checked.success(), "{:?}", checked.diagnostics);
+        let offsets: Vec<_> = source.match_indices("case").map(|(at, _)| at).collect();
+        assert_eq!(offsets.len(), 5);
+        let entries: Vec<_> = offsets
+            .iter()
+            .map(|&offset| {
+                nav::occurrence_at(
+                    syms,
+                    &checked,
+                    &d,
+                    text::position(&source, offset),
+                    checked.occurrence_index(syms),
+                )
+                .unwrap()
+            })
+            .collect();
+        assert!(entries[0].key.starts_with("case:"));
+        assert!(entries[..3].iter().all(|entry| entry.key == entries[0].key));
+        assert!(entries[3].key.starts_with("binding:"));
+        assert_eq!(entries[3].key, entries[4].key);
+        let renamed = ms_lsp::rename::rename(
+            syms,
+            &checked,
+            checked.occurrence_index(syms),
+            &d,
+            text::position(&source, offsets[1]),
+            "ready",
+            None,
+            Some(&docs),
+        )
+        .unwrap();
+        let changes = renamed.get("documentChanges").unwrap().as_array().unwrap();
+        let edits = changes[0].get("edits").unwrap().as_array().unwrap();
+        assert_eq!(edits.len(), 3);
+        let mut updated = source.clone();
+        for edit in edits {
+            let range = text::Range::from_json(edit.get("range").unwrap()).unwrap();
+            let start = text::offset(&source, range.start).unwrap();
+            let end = text::offset(&source, range.end).unwrap();
+            updated.replace_range(
+                start..end,
+                edit.get("newText").and_then(Json::as_str).unwrap(),
+            );
+        }
+        let d = Document::new(d.uri, updated);
+        assert!(analyze(syms, &ms_check::Session::new(), &d, &Documents::new()).success());
+    }
+}

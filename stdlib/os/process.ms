@@ -120,9 +120,9 @@ export type CommandOutput:
 // `spawn("make", [], stdout: Stdio.Inherit, stderr: Stdio.Inherit)` lets the child's output reach the parent's terminal while stdin stays piped.
 export enum Stdio:
     // An OS pipe to the parent, read or written through the Subprocess's stream.
-    case Pipe
-    case Inherit  // The parent's own stream, so the child reads or writes it directly.
-    case Null  // The null device: input is at end of file, output is discarded.
+    Pipe
+    Inherit  // The parent's own stream, so the child reads or writes it directly.
+    Null  // The null device: input is at end of file, output is discarded.
 
 // The shape of `run` and `spawn`, for code that takes child-process operations as a parameter so a test can pass a fake. Programs call the module functions `run` and `spawn` directly.
 export interface Commands:
@@ -457,7 +457,7 @@ Observes native signal numbers 1..64, excluding SIGKILL/SIGSTOP; the list must b
 Capacity must be 1..1048576; omission/none uses 128 buffered signals.
 Numeric validation does not guarantee OS support. Observing does not suppress host cancellation.
 Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
-Code after a read has no shutdown guarantee; use registered with/Closeable cleanup.
+Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation may prevent code after a read from running.
 */
 export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
     let native = try msstd_process_watch_signals(signals, capacity)
@@ -533,7 +533,7 @@ export fn uptime() Duration!:
 /*
 Finds the executable that running `name` would start, or none.
 A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
-Example: `which("git")` is `/usr/bin/git`.
+Example: `if let path = which("git"): print(path)` prints the executable found on this host.
 */
 export fn which(name: String) String?:
     if name == "": return none

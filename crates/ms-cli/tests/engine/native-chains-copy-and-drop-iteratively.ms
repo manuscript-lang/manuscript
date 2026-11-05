@@ -1,7 +1,7 @@
 enum Link:
-    case End
-    case More(next: Link)
-    case Tag(n: Int, rest: Link)
+    End
+    More(next: Link)
+    Tag(n: Int, rest: Link)
 
 fn build(n: Int) Link:
     if n == 0:

@@ -9,6 +9,7 @@ weight = 2
 
 Save this entrypoint as `main.ms`:
 
+<!-- manuscript-example: {"mode":"run","stdout":""} -->
 ```manuscript
 export fn main() Int:
     return 0
@@ -22,9 +23,11 @@ ms build main.ms --build-type MinSizeRel -o small-program
 ms run main.ms --build-type Debug
 ```
 
+The two builds report `Built program` and `Built small-program`. The debug run exits successfully without printing anything, because this entrypoint only returns an exit status.
+
 Use `Debug` for unoptimized code and source attribution, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
 
-On Linux, programs link glibc dynamically and run on glibc 2.28 or newer, whatever glibc the build machine has. Pass `--static` to `build`, `run`, `test`, or `bench` to link a fully static musl executable instead, for example to ship to a machine without a matching glibc. musl is never linked unless you ask: its resolver, for one, differs from glibc's, so names in `/etc/hosts` and other NSS sources resolve only through glibc.
+On Linux, the default executable runs on glibc 2.28 or newer. Use `--static` with `build`, `run`, `test`, or `bench` to produce a self-contained musl executable for deployment without a glibc dependency. See [platform linking](../../contributing/rust-toolchain.md#platform-linking) for target details.
 
 ## Levels
 

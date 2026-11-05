@@ -849,6 +849,10 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.success_payload(o.v)?
                 };
+                if self.boundary_reads.contains(&o.v) {
+                    // A part of a payload an `Optional`/`Result` read borrows is the same declared read.
+                    self.boundary_reads.insert(payload);
+                }
                 let closing = self
                     .cx
                     .binding_facts
@@ -1150,7 +1154,15 @@ impl<'a> FnLower<'a> {
             && matches!(
                 self.hir.resolution(root),
                 ms_check::hir::Resolution::Local(b)
-                    if !b.mutable || !crate::mutation::block_mentions(&self.hir, body, b.uid)
+                    if !b.mutable
+                        || !crate::mutation::mutated_locals(
+                            self.syms,
+                            &self.hir,
+                            ms_check::hir::Body::Block(body),
+                            &self.cx.callables,
+                            &self.cx.mutated,
+                        )
+                        .contains(&b.uid)
             )
     }
 
@@ -1325,7 +1337,21 @@ impl<'a> FnLower<'a> {
         });
         self.push_scope();
         let ch = self.b.use_var(cur);
-        self.bind_local(loop_var, Val { v: ch, own: false });
+        // The piece stays in `cur` (the slow path's is held by `keep` until the next one): a
+        // variable the body only reads borrows it; one it moves or changes owns a copy.
+        if !scalars
+            && !loop_var.mutable
+            && !self.slotted.contains(&loop_var.uid)
+            && !self.cx.moves.contains_key(&loop_var.uid)
+        {
+            self.bind_borrow_of(loop_var, ch);
+        } else if scalars {
+            self.bind_local(loop_var, Val { v: ch, own: false });
+        } else {
+            // A piece the body keeps or changes is the loop variable's own copy.
+            let own = self.clone_value(ch);
+            self.bind_local(loop_var, Val { v: own, own: true });
+        }
         self.stmts(body)?;
         self.pop_scope();
         self.loops.pop();

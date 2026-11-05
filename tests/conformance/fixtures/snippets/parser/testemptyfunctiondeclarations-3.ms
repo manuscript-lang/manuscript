@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=pkg/parser/empty_declarations_test.go:13 TestEmptyFunctionDeclarations
 enum Optional[T]:
-    case none
-    case T
+    none
+    T
 
 impl T?:
     fn get() T: ...

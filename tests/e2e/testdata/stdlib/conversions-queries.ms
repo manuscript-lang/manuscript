@@ -22,11 +22,15 @@ fn success_only[T, E](value: T!E) T?:
 
     return none
 
-fn reduce_map[K: Hashable, V, A](values: Map[K, V], initial: A, step: fn(A, K, V) A) A:
-    return values.fold[A](initial, step)
+fn reduce_map[K: Hashable, V, A: Clonable](
+    values: Map[K, V],
+    initial: A,
+    step: fn(A, K, V) A
+) A:
+    return values.fold[A](initial.clone(), step)
 
-fn reduce_set[T: Hashable, A](values: Set[T], initial: A, step: fn(A, T) A) A:
-    return values.fold(initial, step)
+fn reduce_set[T: Hashable, A: Clonable](values: Set[T], initial: A, step: fn(A, T) A) A:
+    return values.fold(initial.clone(), step)
 
 fn locate[K: Hashable, V: Clonable](
     values: Map[K, V],
@@ -122,7 +126,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
         fn acc,
         k,
         v:
-            var next = acc
+            var next = acc.clone()
             next.append(k + v.calls.to_string())
             return next
     )
@@ -140,7 +144,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
             k,
             v:
                 empty_calls.append(1)
-                return acc
+                return acc.clone()
         ),
         initial: initial.clone()
     )
@@ -215,7 +219,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
                 any_of(
                     fn k,
                     v:
-                        seen.append(k)
+                        seen.append(k.clone())
                         values.remove("a")
                         values.add("c", 99)
                         values.add("new", 4)
@@ -237,7 +241,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
             every(
                 predicate: fn k,
                 v:
-                    seen.append(k)
+                    seen.append(k.clone())
                     values.remove("a")
                     values.add("c", 99)
                     values.add("new", 4)
@@ -300,7 +304,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
         initial.clone(),
         fn acc,
         v:
-            var next = acc
+            var next = acc.clone()
             next.append(v.label.clone())
             return next
     )
@@ -317,7 +321,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
             fn acc,
             v:
                 empty_calls.append(1)
-                return acc
+                return acc.clone()
         )
     )
 
@@ -430,7 +434,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             map.any(
                 fn k,
                 v:
-                    map_visits.append(k)
+                    map_visits.append(k.clone())
                     return false
             )
             or map_visits != ["b", "a", "c"]
@@ -443,7 +447,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
                 map.all(
                     fn k,
                     v:
-                        map_visits.append(k)
+                        map_visits.append(k.clone())
                         return true
                 )
             )
@@ -458,7 +462,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
                 .find(
                     fn k,
                     v:
-                        map_visits.append(k)
+                        map_visits.append(k.clone())
                         return false
                 )
                 .is_none()

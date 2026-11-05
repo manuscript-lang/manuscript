@@ -1,5 +1,5 @@
 enum ReadError:
-    case Failed(reason: String)
+    Failed(reason: String)
 
 extern fn read_value() Int!ReadError
 

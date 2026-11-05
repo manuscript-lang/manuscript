@@ -1,7 +1,7 @@
 import Iterator, panic from "@std/core.ms"
 import Iterable from "@std/collections/iterable.ms"
 
-// A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
+// A mutable first-in, first-out queue. Assigning it transfers ownership; `.clone()` makes an independent queue when its elements are Clonable.
 // Omitted or none capacity grows as needed and adds no fixed queue limit.
 export type Queue[T]:
     // Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
@@ -76,7 +76,7 @@ fn order[T: Comparable](left: T, right: T) Int:
     return left.compare(right)
 
 // Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
-// A priority queue is an owned value: a copy is an independent queue.
+// Assigning a priority queue transfers ownership; `.clone()` makes an independent queue when its elements are Clonable.
 export type PriorityQueue[T: Comparable]:
     // Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Int?

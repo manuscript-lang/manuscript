@@ -7,7 +7,7 @@ weight = 5
 
 ## How memory works
 
-Every value has exactly one owner: a variable, a field, or a slot in a collection. When the owner goes out of scope, the value is freed, right there and on time. There is no garbage collector and no reference counting, and the compiler never copies a value behind your back. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) are the exception: they own nothing, so they copy freely.
+Strings, records and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
 
 Everything else, including strings, records, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
@@ -15,7 +15,7 @@ Everything else, including strings, records, lists and maps, is handed around by
 - Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
 - `.clone()` is the only copy. Write it when you want a value of your own that outlives or diverges from the original.
 
-The compiler checks that references stay in bounds. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot be stored, returned, or captured by a closure that outlives it. If you want that, clone. Nothing dangles at runtime because the checker refuses the program first.
+The compiler checks that borrows do not outlive their owners. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot escape the owner’s lifetime. Clone when a new owner needs to keep the data independently.
 
 Functions can return a borrow of an argument without a marker. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `try`, preserves that borrow. The caller keeps the owner available while it uses the result. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for the compiler contract.
 

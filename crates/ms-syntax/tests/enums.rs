@@ -30,27 +30,25 @@ fn enum_declarations_preserve_forms_and_formatting() {
 }
 
 #[test]
-fn legacy_cases_have_an_exact_keyword_fix() {
+fn legacy_type_and_enum_syntax_is_rejected_without_automatic_fixes() {
     let file = Arc::from("legacy.ms");
-    let source = include_str!("data/enums/legacy.ms");
-    let diagnostic = ms_syntax::parser::parse(&file, source).unwrap_err();
-    assert!(
-        diagnostic
-            .message
-            .starts_with("a record declared with 'type' cannot contain cases;")
-    );
-    let fix = diagnostic.fix.unwrap();
-    assert_eq!(
-        &source[fix.pos.offset as usize..fix.end.offset as usize],
-        "type"
-    );
-    assert_eq!(fix.replacement, "enum");
-    let mut repaired = source.to_string();
-    repaired.replace_range(
-        fix.pos.offset as usize..fix.end.offset as usize,
-        &fix.replacement,
-    );
-    assert!(ms_syntax::parser::parse(&file, &repaired).is_ok());
+    for (source, cause) in [
+        (
+            include_str!("data/enums/legacy.ms"),
+            "a record declared with 'type' cannot contain enum variants;",
+        ),
+        (
+            include_str!("data/enums/legacy-enum.ms"),
+            "enum variants do not use 'case';",
+        ),
+    ] {
+        for ending in ["\n", "\r\n"] {
+            let diagnostic =
+                ms_syntax::parser::parse(&file, &source.replace('\n', ending)).unwrap_err();
+            assert!(diagnostic.message.starts_with(cause), "{diagnostic:?}");
+            assert!(diagnostic.fix.is_none());
+        }
+    }
 }
 
 #[test]
@@ -59,19 +57,31 @@ fn enum_members_require_cases() {
     for (source, cause) in [
         (
             include_str!("data/enums/fields.ms"),
-            "an enum contains only cases;",
+            "enum variants have no field or method bodies;",
         ),
         (
             include_str!("data/enums/method.ms"),
-            "an enum contains only cases;",
+            "an enum contains only variants;",
         ),
         (
             include_str!("data/enums/ellipsis.ms"),
-            "an enum must declare at least one case;",
+            "an enum must declare at least one variant;",
         ),
         (
             include_str!("data/enums/empty.ms"),
-            "an enum must declare at least one case;",
+            "an enum must declare at least one variant;",
+        ),
+        (
+            include_str!("data/enums/default.ms"),
+            "enum variants cannot have defaults;",
+        ),
+        (
+            include_str!("data/enums/payload-default.ms"),
+            "function types and case payloads cannot have defaults;",
+        ),
+        (
+            include_str!("data/enums/method-body.ms"),
+            "enum variants have no field or method bodies;",
         ),
     ] {
         let diagnostic = ms_syntax::parser::parse(&file, source).unwrap_err();
@@ -111,5 +121,22 @@ fn misplaced_opaque_enum_keeps_enum_in_the_remedy() {
     assert_eq!(
         diagnostic.message,
         "misplaced 'opaque'; write 'export opaque enum Name:', with export first"
+    );
+}
+
+#[test]
+fn case_is_not_a_reserved_word() {
+    assert_eq!(
+        ms_syntax::token::Tok::from_word("case"),
+        ms_syntax::token::Tok::Name
+    );
+    assert!(!ms_syntax::token::KEYWORDS.contains(&"case"));
+    let file = Arc::from("identifiers.ms");
+    assert!(
+        ms_syntax::parser::parse(
+            &file,
+            include_str!("../../../tests/e2e/testdata/accept/case-identifier.ms")
+        )
+        .is_ok()
     );
 }

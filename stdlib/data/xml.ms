@@ -24,7 +24,7 @@ export type XmlAttribute:
 // A node of a parsed XML tree.
 export enum XmlNode:
     // An element with its attributes in source order and its child nodes.
-    case XmlElement(
+    XmlElement(
         // Tag name as written, including any prefix.
         name: String,
         // Attributes in source order.
@@ -33,12 +33,12 @@ export enum XmlNode:
         children: List[XmlNode]
     )
     // Character data with references decoded; CDATA sections become text.
-    case XmlText(
+    XmlText(
         // Text with entity and character references decoded.
         text: String
     )
     // A comment, without the delimiters.
-    case XmlComment(
+    XmlComment(
         // Comment contents exactly as written between the delimiters.
         text: String
     )

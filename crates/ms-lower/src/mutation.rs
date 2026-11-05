@@ -78,23 +78,35 @@ pub(crate) fn place_root(syms: ms_syntax::Names, hir: &ModuleHir, e: &Expr) -> O
     }
 }
 
-/// Whether evaluating `e` can return early through `try`.
+/// Whether evaluating `e` can return early through `try`. A `try` inside a lambda returns from
+/// the lambda, not from `e`.
 pub(crate) fn has_try(e: &Expr) -> bool {
-    struct Tries(bool);
+    struct Tries {
+        found: bool,
+        lambdas: usize,
+    }
     impl Visitor for Tries {
         fn expr(&mut self, e: &Expr) {
-            self.0 |= matches!(
-                &e.kind,
+            match &e.kind {
+                ExprKind::Lambda(_) => self.lambdas += 1,
                 ExprKind::Unary {
-                    op: UnaryOp::Try,
-                    ..
-                }
-            );
+                    op: UnaryOp::Try, ..
+                } if self.lambdas == 0 => self.found = true,
+                _ => {}
+            }
+        }
+        fn leave_expr(&mut self, e: &Expr) {
+            if matches!(e.kind, ExprKind::Lambda(_)) {
+                self.lambdas -= 1;
+            }
         }
     }
-    let mut v = Tries(false);
+    let mut v = Tries {
+        found: false,
+        lambdas: 0,
+    };
     ms_syntax::visit::walk_expr(&mut v, e);
-    v.0
+    v.found
 }
 
 /// Whether evaluating `e` runs a call, so evaluating it again would repeat a side effect.

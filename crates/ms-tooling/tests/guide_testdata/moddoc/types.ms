@@ -1,10 +1,10 @@
 // A shape with two cases.
 export enum Shape:
     // A circle.
-    case Circle(radius: Float)
+    Circle(radius: Float)
     // A square.
-    case Square(side: Float)
-    case Empty
+    Square(side: Float)
+    Empty
 
 // Anything that can be measured.
 export interface Measured:

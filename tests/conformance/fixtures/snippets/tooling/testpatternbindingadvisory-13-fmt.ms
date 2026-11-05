@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:44 TestPatternBindingAdvisory
 enum Failure:
-    case NotFound
-    case Denied(reason: String)
+    NotFound
+    Denied(reason: String)
 
 fn failure_code(cause: Failure) Int:
     match cause:

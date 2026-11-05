@@ -32,7 +32,7 @@ type Record[T]:
     second: T = first
 
 enum Choice[T]:
-    case Pair(first: T, second: T)
+    Pair(first: T, second: T)
 
 interface Subtract:
     fn subtract(amount: Int, deduction: Int) Int

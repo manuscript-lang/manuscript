@@ -14,9 +14,9 @@ impl Counter for Acc:
         return self.total
 
 enum Shape:
-    case Circle(r: Int)
-    case Square(s: Int)
-    case Tri(b: Int)
+    Circle(r: Int)
+    Square(s: Int)
+    Tri(b: Int)
 
 fn got_line(input: ReadStream) Bool:
     if let line = read_line(input):

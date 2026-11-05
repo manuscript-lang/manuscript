@@ -422,8 +422,8 @@ impl Sink[List[String]] for CsvRowsSink:
 
 /*
 Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the
-options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes never wait; `flush`
-waits for `output` to drain. Closing the result closes `output`.
+options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes delegate to `output`'s sink, which may wait.
+`flush().wait()` uses that sink's completion condition; a pipe may retain up to capacity unread values. Closing the result closes `output`.
 */
 export fn csv_writer(
     output: WriteStream[Bytes],

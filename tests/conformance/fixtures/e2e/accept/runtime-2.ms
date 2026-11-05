@@ -7,7 +7,7 @@ type Items:
     count: Int
 
 enum Outcome:
-    case Value(value: Int)
+    Value(value: Int)
 
 fn compute(value: Int) Int:
     return value

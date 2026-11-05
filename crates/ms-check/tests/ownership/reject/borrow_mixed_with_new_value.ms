@@ -1,6 +1,6 @@
 enum Tree:
-    case Leaf
-    case Node(left: Tree, value: Int)
+    Leaf
+    Node(left: Tree, value: Int)
 
 fn f(var t: Tree) Tree:
     match t:

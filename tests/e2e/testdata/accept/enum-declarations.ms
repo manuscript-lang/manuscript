@@ -4,8 +4,8 @@ type Label:
     text: String
 
 enum Outcome[T = Int]:
-    case Success(value: T)
-    case Failure
+    Success(value: T)
+    Failure
 
 impl Outcome[T]:
     fn succeeded() Bool:

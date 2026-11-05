@@ -33,7 +33,7 @@ type DefaultBox:
     value: Int?
 
 enum Choice[T]:
-    case chosen(value: T?)
+    chosen(value: T?)
 
 interface Read:
     fn read(value: Int?) Int

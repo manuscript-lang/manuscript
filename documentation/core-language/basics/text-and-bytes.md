@@ -116,13 +116,7 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 
 `String.replace(old:, new:)` replaces every nonoverlapping literal occurrence, scanning left to right; inserted text is not searched again, so `"aaa".replace("aa", "b")` is `"ba"`. `String.replace_first(old:, new:)` replaces only the first occurrence. Both return a new String and leave the receiver unchanged. An empty `old` matches at each Unicode scalar boundary: `"ab".replace("", "-")` is `"-a-b-"` and `"ab".replace_first("", "-")` is `"-ab"`. Output beyond the string size limit is a programming fault, as for `concat`. Use `Regex.replace_all` for pattern matches or a bounded result.
 
-The removed spellings migrate as follows.
-
-| Removed | Use |
-| --- | --- |
-| `replace_all(old, new)` returning `Result` | `replace(old, new)` returning `String` |
-| `replace(old, new)` meaning first occurrence | `replace_first(old, new)` |
-| `replace_n(old, new, count)`, `max_replacements:`, `max_bytes:` | `replace_first` for one, otherwise a loop over `index_of` |
+For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`, while `replace_first` produces `"ready draft"`.
 
 ## Encoding and parsing
 
@@ -163,39 +157,38 @@ test "explicit byte conversion":
 
 `pad_start(target_length, padding)` and `pad_end` return a `String`. The text grows to `target_length` scalars by repeating `padding` (the last copy is cut to fit); a shorter or negative target or empty padding returns the text unchanged. An output beyond the string limit faults, as `concat` does, so a table row needs no unwrapping. `Float.to_fixed(digits)`, `to_precision(precision)` and `to_exponential(digits)` also return a `String`; a count outside their range (0 to 100, or 1 to 100 for `to_precision`) is a programming fault.
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import panic from "@std/core.ms"
+import expect_equal from "@std/test/test.ms"
 
 fn row(name: String, amount: Float) String:
     return name.pad_end(8, " ") + amount.to_fixed(2).pad_start(8, " ")
 
 test "padding and fixed digits":
-    if row("total", 3.14159) != "total        3.14":
-        panic("unexpected row")
+    try expect_equal(row("total", 3.14159), "total       3.14")
 ```
 
 ## Binary data
 
 `Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `T!` (`Result[T, Error]`); bytes that are not all there give an `Error` of kind `"ERANGE"`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import BytesBuilder from "@std/bytes.ms"
-import panic from "@std/core.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "binary codecs":
     var out = BytesBuilder()
     out.append_uint16_be(258)
     out.append_float64_le(1.5)
     let data = out.build()
-    if data.uint16_be(0) != ok(258):
-        panic("unexpected integer")
-    if data.float64_le(2) != ok(1.5):
-        panic("unexpected float")
+    try expect_equal(try data.uint16_be(0), 258)
+    try expect_equal(try data.float64_le(2), 1.5)
 ```
 
 ## Deterministic formatting
 
-Formatting never depends on locale or host settings.
+Interpolation and direct `to_string()` conversion use the forms below, independent of locale or host settings. To retain a type-specific representation with `print`, pass the converted text: `print("{value}")`. Generic `print(value)` can render records structurally.
 
 | Type | Formatting |
 | --- | --- |
@@ -215,8 +208,8 @@ Formatting never depends on locale or host settings.
 | Bytes | `Bytes(byte, ...)`, with each byte in base ten; no UTF-8 decoding |
 | Interface view | Conversion of its underlying receiver |
 | Function | `[function]`, including bound methods; the function is not called |
-| Duration | Signed nanoseconds followed by `ns`, such as `2000000ns` |
-| Instant | `Instant(tick)`, with its nanosecond tick in base ten |
+| Duration | Human-readable units, such as `2s`, `250ms`, or `0s` |
+| Instant | A record displaying its clock `domain` and nanosecond `tick` |
 | BigInt | Base-ten integer digits |
 | Timestamp | UTC RFC 3339 text with fractional seconds as needed |
 | Regex | Pattern text |

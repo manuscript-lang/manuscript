@@ -53,8 +53,8 @@ A `Result[T, E]` return names its error type `E`, an enum whose cases carry noth
 ```manuscript
 // A failed call, with the library's code and description.
 enum LibraryError:
-    case Failed(code: Int, message: String)
-    case Busy
+    Failed(code: Int, message: String)
+    Busy
 
 extern fn lib_count(path: String) Int!LibraryError
 ```

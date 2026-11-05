@@ -4,8 +4,8 @@
 import panic from "@std/core.ms"
 
 enum Expr:
-    case Num(value: Int)
-    case Add(left: Expr, right: Expr)
+    Num(value: Int)
+    Add(left: Expr, right: Expr)
 
 fn evaluate(expr: Expr) Int:
     match expr:

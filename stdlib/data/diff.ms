@@ -2,7 +2,7 @@ import panic from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
 
 /*
-Text comparison: how far apart two strings are, how alike, which candidate is closest, and a line diff in unified format (Python `difflib`).
+Compare text by edit distance, similarity, closest candidate, or a unified line diff.
 Strings are compared by Unicode scalar, lines by exact equality.
 `diff.edit_distance("kitten", "sitting")` is `3`.
 */
@@ -54,7 +54,7 @@ fn common_length(a: List[String], b: List[String]) Int:
 
 /*
 Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twice the length of their longest common subsequence of scalars, divided by the total length.
-Two empty strings give 1.0. This measures the same idea as Python's `SequenceMatcher.ratio` with a different matching rule, so the values can differ.
+Two empty strings give 1.0. Use `close_matches` to rank a list of candidates by this score.
 Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 */
 export fn similarity_ratio(left: String, right: String) Float:

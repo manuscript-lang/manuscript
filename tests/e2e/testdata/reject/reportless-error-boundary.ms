@@ -1,8 +1,8 @@
 enum DomainError:
-    case Invalid
+    Invalid
 
 enum OtherError:
-    case Rejected
+    Rejected
 
 fn domain_failure() Int!DomainError:
     return error(DomainError.Invalid)

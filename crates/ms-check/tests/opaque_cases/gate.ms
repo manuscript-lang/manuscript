@@ -1,6 +1,6 @@
 export opaque enum Token:
-    case Minted
-    case Labeled(text: String)
+    Minted
+    Labeled(text: String)
 
 export fn mint() Token:
     return Minted

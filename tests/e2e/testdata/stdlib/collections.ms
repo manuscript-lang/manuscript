@@ -50,7 +50,7 @@ test "group_by keeps first-seen key order and element order across few and many 
 
     try expect_equal(total, 599 * 600 / 2)
 
-    let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w)
+    let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w.clone())
     try expect_equal(words.keys(), ["b", "a", "c"])
     try expect_equal(words.get("b"), ["b", "b", "b"])
     try expect_equal(words.get("c"), ["c"])

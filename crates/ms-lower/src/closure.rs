@@ -128,7 +128,8 @@ impl FnLower<'_> {
                 closers.push((cap_vals.len() as u32, close));
             }
             cap_tys.push(cap_ty);
-            cap_vals.push(self.owned(x));
+            // A closure holds its own copy of a borrowed value it captures: declared here.
+            cap_vals.push(self.owned_boundary(x));
             self.moved_closer(b.uid, e);
         }
         let mut ps = vec![Param {
@@ -1016,7 +1017,7 @@ impl FnLower<'_> {
         if self.ty_of(x.v) != inner {
             return x;
         }
-        let o = self.owned(x);
+        let o = self.owned_boundary(x);
         let v = self.b.opt_some(o);
         Val { v, own: true }
     }
@@ -1041,7 +1042,7 @@ impl FnLower<'_> {
             },
             &mut |s| {
                 let d = default(s)?;
-                Ok(Some(s.owned(d)))
+                Ok(Some(s.owned_boundary(d)))
             },
         )
     }
@@ -1071,7 +1072,7 @@ impl FnLower<'_> {
             },
             &mut |s| {
                 let d = default(s)?;
-                let d = s.owned(d);
+                let d = s.owned_boundary(d);
                 let some = s.b.opt_some(d);
                 s.b.def_var(holder, some);
                 Ok(Some(s.b.opt_get(some)))
@@ -1120,7 +1121,7 @@ impl FnLower<'_> {
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned(x);
+                    let o = self.owned_boundary(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1975,7 +1976,8 @@ impl FnLower<'_> {
             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
             slot
         } else {
-            self.owned(x)
+            // The adapter holds the function value it adapts: a declared copy of a borrowed one.
+            self.owned_boundary(x)
         };
         let v = self
             .b

@@ -15,6 +15,27 @@ export type Error:
     // Extra facts about the failure, such as the path or operation, keyed by name.
     details: Map[String, String] = Map[String, String]()
 
+// The runtime reports a failed native as a status number; lowering builds the `Error` from these rows (`// ms: status <number> <kind> <words>`, built by crates/ms-lower/build.rs).
+// The message is `<domain>: <words>`, and `-` words mean the native's own text is the whole message.
+// A module that words a status differently declares `// ms: words <number> <words>` at the top of its file, covering the externs that file declares.
+// ms: status 1 EINVAL invalid input
+// ms: status 2 ERANGE value out of range
+// ms: status 3 EOVERFLOW limit exceeded
+// ms: status 4 EBADMSG invalid data
+// ms: status 5 ENOENT not found
+// ms: status 6 EEXIST already exists
+// ms: status 7 ENOTEMPTY directory not empty
+// ms: status 8 EACCES permission denied
+// ms: status 9 ENOTSUP operation not supported
+// ms: status 10 EBADF resource is closed
+// ms: status 11 EIO -
+// ms: status 12 EAGAIN service unavailable
+// ms: status 13 ETIMEDOUT operation timed out
+// ms: status 14 EOVERFLOW output limit exceeded
+// ms: status 15 ENOTTY not a terminal
+// ms: status 17 EBUSY terminal is busy
+// ms: status 18 EAUTH authentication failed
+
 // Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 
@@ -22,8 +43,8 @@ export fn panic(message: String) Never: ...
 extern fn msrt_io_write_stdout(text: String) Unit
 
 /*
-Writes `value` as text, then a newline, to standard output, in the same representation as `{value}` interpolation. It never fails: output is buffered and
-flushed at exit. Use `@std/io/io.ms` `stdout()` when you need write errors, bytes, or no trailing newline.
+Writes `value` as text and a newline to standard output. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
+It returns `Unit`; output is buffered and flushed at exit. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
 
 ```manuscript
 print("total: {total}")
@@ -65,12 +86,12 @@ export interface Iterator[T]:
 // Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export enum Optional[T]:
     // A present payload, retained by reference when T is mutable.
-    case some(
+    some(
         // The contained value; unwrap and matching return this original payload.
         value: T
     )
     // An absent value with no payload; no T needs to be constructed.
-    case none
+    none
 
 impl T?:
     // Returns True when a value is present, and False for none.
@@ -105,12 +126,12 @@ impl T?:
 // Holds either a successful value (`ok`) or an expected failure (`error`).
 export enum Result[T, E]:
     // A successful result, retaining its payload without a deep copy.
-    case ok(
+    ok(
         // The successful value returned by unwrap, matching, or propagation.
         value: T
     )
     // An expected failure value; it is distinct from faults and cancellation.
-    case error(
+    error(
         // The original domain error, retained through compatible Result propagation.
         cause: E
     )

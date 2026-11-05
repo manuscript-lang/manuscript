@@ -5,7 +5,7 @@ weight = 6
 
 # Contributing
 
-Start with the [repository architecture](architecture.md), then use the [development workflow](development.md) to build, test, and publish documentation.
+Build a local compiler with the [Rust toolchain guide](rust-toolchain.md#build-and-run), run the hello example, then choose the part you want to change. The [repository architecture](architecture.md#make-a-change-where-its-behavior-lives) maps each change to its implementation and tests; the [development workflow](development.md) explains the checks and book preview.
 
 - [Compiler internals](compiler/_index.md) explain parsing, checking, and lowering.
 - [Typed runtime conventions](runtime-conventions.md) describe the native runtime contract and how native operations are written.

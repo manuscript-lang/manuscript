@@ -335,6 +335,17 @@ fn enum_reference_declarations_keep_methods_in_impl_blocks() {
             let parsed = ms_syntax::parser::parse(&Arc::from("reference.ms"), schema);
             assert!(parsed.is_ok(), "{schema}: {parsed:?}");
             assert!(!schema.contains("    fn ") && !schema.contains("    var fn "));
+            for member in declaration
+                .members
+                .iter()
+                .filter(|member| member.kind == "case")
+            {
+                assert!(
+                    !member.signature.starts_with("case "),
+                    "{}",
+                    member.signature
+                );
+            }
             if !declaration.members.is_empty() && declaration.declaration.contains("    fn ") {
                 assert!(
                     declaration.declaration.contains("\nimpl "),

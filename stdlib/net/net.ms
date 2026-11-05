@@ -273,14 +273,14 @@ fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
 export enum DnsKind:
-    case A  // IPv4 address records for the queried name.
-    case AAAA  // IPv6 address records for the queried name.
-    case CNAME  // Canonical name alias records for the queried name.
-    case MX  // Mail exchange records with priority values.
-    case NS  // Name server records for the queried zone.
-    case TXT  // Text records returned as string values.
-    case PTR  // Reverse address pointer records for an IP.
-    case SRV  // Service location records with priority, weight and port.
+    A  // IPv4 address records for the queried name.
+    AAAA  // IPv6 address records for the queried name.
+    CNAME  // Canonical name alias records for the queried name.
+    MX  // Mail exchange records with priority values.
+    NS  // Name server records for the queried zone.
+    TXT  // Text records returned as string values.
+    PTR  // Reverse address pointer records for an IP.
+    SRV  // Service location records with priority, weight and port.
 
 impl DnsKind:
     // Returns the uppercase wire category.
@@ -297,8 +297,8 @@ impl DnsKind:
 
 // Numeric address families reported by IP values and host interfaces.
 export enum IpFamily:
-    case IPv4  // A four-byte numeric address.
-    case IPv6  // A sixteen-byte numeric address.
+    IPv4  // A four-byte numeric address.
+    IPv6  // A sixteen-byte numeric address.
 
 impl IpFamily:
     // Returns IPv4 or IPv6.
@@ -672,9 +672,9 @@ export type RawWebSocket:
 
 // The kind of a WebSocket message.
 export enum WebSocketKind:
-    case Text  // A text frame: the payload is valid UTF-8.
-    case Binary  // A binary frame: the payload is arbitrary bytes.
-    case Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
+    Text  // A text frame: the payload is valid UTF-8.
+    Binary  // A binary frame: the payload is arbitrary bytes.
+    Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
 
 // One WebSocket message.
 export type WebSocketMessage:
@@ -937,7 +937,7 @@ export fn restrict(
 // A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns EIO.
 // Returns EINVAL for invalid options (`cores` below 1 included). Close the server, or drop it, to stop it.
 // `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
-// A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
+// A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its resource cleanup runs. A client that half-closes its end after sending the request counts as disconnected.
 // A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
 export fn serve(
     address: String,

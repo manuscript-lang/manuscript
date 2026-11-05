@@ -5,8 +5,8 @@ interface Describe:
     fn describe() String
 
 enum State:
-    case Ready
-    case Waiting
+    Ready
+    Waiting
 
 impl Describe for State:
     fn describe() String: "state"

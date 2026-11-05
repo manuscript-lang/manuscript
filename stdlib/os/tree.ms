@@ -17,7 +17,7 @@ fn names(tree: FileTree) List[String]:
 ```
 */
 
-// A directory tree whose files can be read and whose directories can be listed.
+// Read files and list directories through one interface: use `host_tree(root)` for disk files or `memory_tree()` to supply test data without temporary files.
 export interface FileTree:
     // Reads a whole file; more than `max_bytes` bytes returns `EOVERFLOW`. A missing path is `ENOENT`.
     fn read(path: String, max_bytes: Int?) Bytes!

@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/collection_prelude_imports_test.go:187 TestMissingValuePreludeDefaultsAndShadowing
 enum Other:
-    case Missing(value: Int)
+    Missing(value: Int)
 
 fn other() Other: Other.Missing(1)
 

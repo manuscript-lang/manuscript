@@ -6,8 +6,8 @@ type Table:
     rows: List[Row]
 
 enum Shape:
-    case Circle(label: String)
-    case Rect(label: String, w: Int)
+    Circle(label: String)
+    Rect(label: String, w: Int)
 
 impl Table:
     fn head() Row:

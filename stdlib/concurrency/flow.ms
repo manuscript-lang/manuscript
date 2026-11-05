@@ -139,9 +139,9 @@ impl RateLimiter:
 // Why a circuit breaker call produced no result.
 export enum CircuitError[E]:
     // The circuit is open: the call was not made.
-    case Open
+    Open
     // The call ran and failed with this error.
-    case Failed(
+    Failed(
         // The error the call returned.
         error: E
     )
@@ -191,10 +191,10 @@ impl CircuitBreaker:
         return error(CircuitError.Failed(result.err().clone()))
 
 // Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
-// The items are split into `limit` stripes, one promise each; the results are merged by index. The first error cancels the rest.
+// A failed worker promise cancels the others. If `work` returns a Result, that Result is an item in the returned list; inspect each outcome.
 //
 // ```manuscript
-// let pages = try map_concurrent(urls, 4, fn url: fetch(url).wait())
+// let doubled = try map_concurrent([1, 2, 3], 2, fn n: n * 2)  // [2, 4, 6]
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
     if limit < 1:

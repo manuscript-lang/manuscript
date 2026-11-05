@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/prelude_test.go:16 TestPreludeRetainsCaseInferenceAndLookupRules
 enum Other:
-    case Int
+    Int
 
 fn f() Int?:
     return 1

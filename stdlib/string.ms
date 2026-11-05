@@ -29,13 +29,13 @@ impl StringAffixCuts for String:
 // The four Unicode normalization forms, selected without runtime string spelling errors.
 export enum NormalizationForm:
     // Canonical decomposition followed by canonical recomposition where Unicode permits it.
-    case Nfc
+    Nfc
     // Canonical decomposition with combining marks placed in canonical order.
-    case Nfd
+    Nfd
     // Compatibility decomposition followed by canonical recomposition where Unicode permits it.
-    case Nfkc
+    Nfkc
     // Compatibility decomposition with combining marks placed in canonical order.
-    case Nfkd
+    Nfkd
 
 impl NormalizationForm:
     // Normalizes text with the existing String.normalize budgets and error kinds.

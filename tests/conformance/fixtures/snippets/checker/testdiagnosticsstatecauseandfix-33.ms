@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:52 TestDiagnosticsStateCauseAndFix
 enum Choice[T]:
-    case Found(value: T)
-    case Missing
+    Found(value: T)
+    Missing
 
 fn f(c: Choice[Int]) Int:
     match c:

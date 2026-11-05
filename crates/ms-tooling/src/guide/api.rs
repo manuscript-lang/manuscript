@@ -308,7 +308,7 @@ fn document_declaration(
         b.push('\n');
     }
     for c in decl.cases() {
-        b += &format!("    case {}", syms.str(c.name));
+        b += &format!("    {}", syms.str(c.name));
         if !c.fields.is_empty() {
             b += &render::parameters(syms, &c.fields, source);
         }
@@ -383,7 +383,7 @@ fn document_members(
         });
     }
     for c in decl.cases() {
-        let mut signature = format!("case {}", syms.str(c.name));
+        let mut signature = syms.str(c.name).to_string();
         if !c.fields.is_empty() {
             signature += &render::parameters(syms, &c.fields, None);
         }

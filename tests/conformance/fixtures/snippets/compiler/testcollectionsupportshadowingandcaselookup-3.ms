@@ -2,6 +2,6 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/collection_prelude_imports_test.go:108 TestCollectionSupportShadowingAndCaseLookup
 enum Other:
-    case OutOfRange
+    OutOfRange
 
 fn get() Other: OutOfRange

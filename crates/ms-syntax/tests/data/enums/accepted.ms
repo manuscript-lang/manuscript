@@ -3,11 +3,11 @@ type Record:
 
 enum Outcome[T = Int]:
     // Cases with and without data use the same declaration.
-    case Success(value: T)
-    case Failure
+    Success(value: T)
+    Failure
 
 export opaque enum Hidden:
-    case Secret(value: String)
+    Secret(value: String)
 
 opaque enum Private:
-    case Internal
+    Internal

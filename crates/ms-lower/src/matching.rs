@@ -63,6 +63,7 @@ impl FnLower<'_> {
             return Ok(None);
         }
         let t = self.ty_of(x.v);
+        self.hold_declared = self.boundary_reads.contains(&x.v);
         if !x.own && self.ownership_checked() {
             // A borrowed part: the checker keeps its origin unchanged while payloads borrow it,
             // so it is read in place and a borrow-returning function can hand back those payloads.
@@ -86,6 +87,7 @@ impl FnLower<'_> {
             self.pop_scope();
             return Ok(self.dummy(MTy::UNIT));
         };
+        let scrut_declared = std::mem::take(&mut self.hold_declared);
         let sty = self.b.var_ty(sv);
         let kind = self.b.m.types.kind(sty).clone();
         // An owned scrutinee (`match make():`, or a local the match moving_params) is the match's
@@ -164,7 +166,12 @@ impl FnLower<'_> {
                 blocks.push(blk);
                 continue;
             }
-            let case = match arm_case(self.syms, &arm.path) {
+            let name = if arm.bare && matches!(kind, TyKind::Opt(_)) {
+                Some("some".to_string())
+            } else {
+                arm_case(self.syms, &arm.path)
+            };
+            let case = match name {
                 _ if by_type => {
                     // A concrete type pattern on a contract value; `_` is the fallback.
                     match self.hir.arm(arm).contract {
@@ -291,6 +298,15 @@ impl FnLower<'_> {
                     (TyKind::Opt(_), Some(_)) => self.b.opt_get(cur),
                     _ => return Err(Error::new("payload binding on a wildcard arm")),
                 };
+                if scrut_declared {
+                    // A part of a payload an `Optional`/`Result` read borrows is the same declared read.
+                    self.boundary_reads.insert(payload);
+                }
+                if by_type && owned_uid.is_some() {
+                    // The checker moves the payload out of the last-use scrutinee; the box is
+                    // dropped whole at scope end, so the move is realized as a declared copy.
+                    self.boundary_reads.insert(payload);
+                }
                 self.scrutinee_lives = owned_uid.is_none();
                 self.bind_local(
                     b,
@@ -311,6 +327,8 @@ impl FnLower<'_> {
                 if !self.dead {
                     let v = match x {
                         Some(x) if borrowed => x.v,
+                        // An optional chain wraps the part it reaches in an `Optional`.
+                        Some(x) if arm.chain => self.owned_boundary(x),
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
@@ -576,7 +594,7 @@ impl FnLower<'_> {
             self.emit_return(Some(Val { v: out, own: true }));
             self.closed_on_path = before;
         } else {
-            let po = self.owned(x);
+            let po = self.owned_boundary(x);
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);
             if hidden {
                 self.drop_value(cur);

@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:35 TestDiagnosticsStateCauseAndFix
 enum S:
-    case A
-    case B
-    case C
+    A
+    B
+    C
 
 fn f(s: S) Int:
     match s:

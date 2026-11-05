@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/hints_test.go:108 TestWrongImportListsOnlyDeclaredExports
 export enum MoneyError:
-    case Invalid
+    Invalid
 
 export fn parse_cents() Int: 0
 

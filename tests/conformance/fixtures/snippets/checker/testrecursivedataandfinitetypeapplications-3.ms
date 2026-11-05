@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=pkg/checker/layout_diagnostics_test.go:20 TestRecursiveDataAndFiniteTypeApplications
 enum A:
-    case End
-    case Next(value: B)
+    End
+    Next(value: B)
 
 type B:
     a: A

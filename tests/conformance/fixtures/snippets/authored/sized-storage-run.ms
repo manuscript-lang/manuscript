@@ -11,9 +11,9 @@ type Cell:
     e: Int16
 
 enum Tok:
-    case Num(v: Int16, s: Float32)
-    case Word(t: String, k: Int8)
-    case End
+    Num(v: Int16, s: Float32)
+    Word(t: String, k: Int8)
+    End
 
 fn kind(t: Tok) Int:
     match t:

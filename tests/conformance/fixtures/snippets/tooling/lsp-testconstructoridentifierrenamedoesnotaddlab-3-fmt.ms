@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/lsp/positional_arguments_test.go:57 TestConstructorIdentifierRenameDoesNotAddLabels
 enum Pair:
-    case Values(first: Int, second: Int)
+    Values(first: Int, second: Int)

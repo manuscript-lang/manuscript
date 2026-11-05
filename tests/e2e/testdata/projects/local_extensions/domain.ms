@@ -21,8 +21,8 @@ impl Read[Int] for Holder[T]:
         return self.value.get()
 
 export enum Choice:
-    case Some(value: Int)
-    case Empty
+    Some(value: Int)
+    Empty
 
 export type Resource:
     events: String

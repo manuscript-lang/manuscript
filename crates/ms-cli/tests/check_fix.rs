@@ -63,8 +63,8 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let source = "enum Color:\n\
-        \x20   case Red\n\
-        \x20   case Green\n\
+        \x20   Red\n\
+        \x20   Green\n\
         \n\
         fn pick() Color:\n\
         \x20   return Red()\n\
@@ -299,18 +299,4 @@ fn lint_fix_removes_unused_imports() {
     let list = std::fs::read_to_string(dir.join("b.ms")).unwrap();
     assert!(list.starts_with("import (\n    used,\n) from"), "{list}");
     let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn fix_migrates_legacy_alternatives_to_enum() {
-    let dir = std::env::temp_dir().join(format!("ms-cli-fix-enum-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    let source = include_str!("../../ms-syntax/tests/data/enums/legacy.ms");
-    std::fs::write(dir.join("legacy.ms"), source).unwrap();
-    let (status, text) = ms(&["check", "legacy.ms", "--fix"], &dir);
-    assert_eq!(status, Some(0), "{text}");
-    assert!(text.contains("applied 1 fix"), "{text}");
-    let fixed = std::fs::read_to_string(dir.join("legacy.ms")).unwrap();
-    assert_eq!(fixed, source.replacen("type", "enum", 1));
-    std::fs::remove_dir_all(dir).unwrap();
 }

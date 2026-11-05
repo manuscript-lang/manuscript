@@ -13,8 +13,8 @@ type Box[T]:
     item: T
 
 enum Shape:
-    case Circle(r: Int)
-    case Square(s: Int)
+    Circle(r: Int)
+    Square(s: Int)
 
 impl Counter:
     fn double() Int:

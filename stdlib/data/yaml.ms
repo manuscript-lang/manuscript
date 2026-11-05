@@ -6,29 +6,29 @@ import from_scalars, StringBuilder from "@std/string.ms"
 // A YAML value represented as null, boolean, number text, string, array, or object.
 export enum YamlValue:
     // YAML null, including an empty document or a plain null spelling.
-    case Null
+    Null
     // A core-schema true or false value; yes and no remain strings.
-    case BoolValue(
+    BoolValue(
         // The decoded boolean selected from YAML core-schema spellings.
         value: Bool
     )
     // Numeric token text retained exactly instead of being coerced into Float.
-    case NumberValue(
+    NumberValue(
         // Original numeric spelling, including supported base prefixes and nonfinite spellings.
         text: String
     )
     // Text decoded from a quoted, plain or block scalar.
-    case StringValue(
+    StringValue(
         // Resulting Unicode text after escape decoding, folding and chomping.
         value: String
     )
     // An ordered YAML sequence with ordinary mutable list storage.
-    case ArrayValue(
+    ArrayValue(
         // Sequence entries in document order, retaining nested references.
         values: List[YamlValue]
     )
     // A textual-key mapping, with insertion order and duplicate-key checks.
-    case ObjectValue(
+    ObjectValue(
         // Decoded string keys and their values; aliases may share nested payloads.
         values: Map[String, YamlValue]
     )

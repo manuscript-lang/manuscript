@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/pattern_lint_test.go:114 TestImportedPatternNamesAndAliases
 export enum Failure:
-    case NotFound
-    case Denied(reason: String)
+    NotFound
+    Denied(reason: String)
 
 export type Item:
     value: Int

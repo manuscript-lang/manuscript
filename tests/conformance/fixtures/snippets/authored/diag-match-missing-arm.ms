@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 enum S:
-    case A
-    case B(x: Int)
+    A
+    B(x: Int)
 
 fn f(s: S) Int:
     match s:

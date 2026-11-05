@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:59
 enum Position:
-    case Point(x: Int, y: Int)
-    case Unknown
+    Point(x: Int, y: Int)
+    Unknown
 
 fn horizontal(position: Position) Int:
     match position:

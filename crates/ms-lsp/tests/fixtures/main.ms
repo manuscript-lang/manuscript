@@ -8,9 +8,9 @@ type Point:
     y: Int = 0
 
 enum Shape:
-    case Circle(radius: Int)
-    case Square(side: Int)
-    case Empty
+    Circle(radius: Int)
+    Square(side: Int)
+    Empty
 
 interface Named:
     fn label() String

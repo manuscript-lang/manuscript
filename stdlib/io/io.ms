@@ -65,15 +65,15 @@ import (
     msstd_terminal_raw_terminal_erase
 ) from "@std/internal/io.ms"
 
-// A new stream: next may wait.
+// Supplies the items of a stream; `next` may wait for an item to become available.
 export interface Source[T]:
-    // Waits for the next item; none at the end of the stream, an error when the source fails.
+    // Returns the next item, waiting when needed; none at the end of the stream, an error when the source fails.
     var fn next() T?!
     // Releases what the source owns; the stream calls it once, when it closes.
     var fn close() Unit!
 
-// A stream of values over time. It owns its source, parked in a runtime cell so that a pending read carries only the
-// cell's id; dropping the stream drops the source and whatever it owns.
+// Read values one at a time with `read().wait()`, or loop over `wait()` and apply `try` to each item.
+// The stream owns its source; closing or dropping it releases that source and the resources it owns.
 export opaque type ReadStream[T]:
     // The runtime cell that holds the source.
     cell: Int
@@ -101,7 +101,7 @@ fn step[T](id: Int, cell: Int) Unit:
             )
 
 impl ReadStream[T]:
-    // One step, started now and run where it is waited; none at the end.
+    // Returns a promise for the next item. The source runs when waited; `none` marks the end.
     var fn read() Promise[T?]:
         let cell = self.cell
 
@@ -264,19 +264,19 @@ export fn descriptor_writer(id: Int) WriteStream[Bytes]:
 export fn stdin() ReadStream[Bytes]:
     return stream[Bytes](DescriptorSource(msrt_streams_open(0, 1)))
 
-// A place values are written to. `put` never waits.
+// Receives written values and defines their buffering, flush condition, and cleanup.
 export interface Sink[T]:
-    // Moves `value` into the sink's buffer without waiting; an error once the sink is closed.
+    // Accepts `value` and returns any write failure. A custom sink may wait while accepting it.
     var fn put(value: T) Unit!
-    // A promise that finishes once everything put so far has drained.
+    // A promise for the sink's flush condition: descriptor sinks drain pending bytes; a pipe waits until its queue is at most capacity or its reader closes.
     var fn drain() Promise[Unit]
-    // Items or bytes put and not yet drained.
+    // Reports the sink's pending items or bytes.
     fn buffered() Int
-    // Drains what is buffered and releases what the sink owns; the stream calls it once, when it closes.
+    // Called when the stream closes to release what the sink owns. The sink defines how buffered work finishes and may wait.
     var fn close() Unit!
 
-// A stream that accepts values over time. `write` moves the value into a buffer and never waits; `flush` is the
-// backpressure point.
+// Send values with `write`, then use `flush().wait()` to wait for the destination's flush condition.
+// The stream owns its sink and closes it when its scope ends.
 export opaque type WriteStream[T]:
     // The destination the stream's writes go to.
     sink: Sink[T]
@@ -286,7 +286,7 @@ export opaque type WriteStream[T]:
     collects: Bool
 
 impl WriteStream[T]:
-    // Moves `value` into the stream's buffer. `EBADF` once the reader is gone.
+    // Sends `value` to the sink, which may wait; returns sink errors, including `EBADF` for a closed pipe reader.
     var fn write(value: T) Unit!:
         if self.collects:
             self.items.append(value)
@@ -294,11 +294,11 @@ impl WriteStream[T]:
 
         return self.sink.put(value)
 
-    // A promise that finishes when the buffer has drained.
+    // Returns the sink's flush promise; a pipe may still hold up to its capacity of unread values when this completes.
     var fn flush() Promise[Unit]:
         return self.sink.drain()
 
-    // Items or bytes not yet drained.
+    // Reports pending items or bytes using the sink's accounting.
     fn buffered() Int:
         if self.collects:
             return self.items.length()
@@ -306,7 +306,7 @@ impl WriteStream[T]:
         return self.sink.buffered()
 
 impl Closeable for WriteStream[T]:
-    // Hands what is buffered to the runtime and releases the sink.
+    // Calls the sink's close operation to release its resources; a custom sink may wait while closing.
     var fn close() Unit!:
         return self.sink.close()
 
@@ -508,7 +508,7 @@ export fn stdout() WriteStream[String]:
 export fn stderr() WriteStream[String]:
     return writer[String](StderrSink(false))
 
-// A changed stream: never waits; writes zero or more items per input, and what it held back at the end.
+// Transforms each input into zero or more output items, then emits anything held back at the end; custom steps may wait.
 export interface Transform[A, B]:
     // Takes one input item and writes the output items it completes, possibly none, to `out`.
     var fn step(value: A, var out: WriteStream[B]) Unit!
@@ -558,9 +558,9 @@ export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadSt
 
 // One of this process's three standard streams.
 export enum StdStream:
-    case Input  // Standard input; once redirected it reads as end of file.
-    case Output  // Standard output; once redirected its writes are discarded.
-    case Error  // Standard error; once redirected its writes are discarded.
+    Input  // Standard input; once redirected it reads as end of file.
+    Output  // Standard output; once redirected its writes are discarded.
+    Error  // Standard error; once redirected its writes are discarded.
 
 // Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
 // This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
@@ -609,12 +609,12 @@ together. `Key` names a non-printing or modified key: `enter`, `tab`,
 */
 export enum TerminalEvent:
     // Printable characters typed together.
-    case Text(
+    Text(
         // The typed characters in order, as valid UTF-8 text.
         text: String
     )
     // A named or modified key press.
-    case Key(
+    Key(
         // The key name, such as `enter`, `up`, or a lowercase letter.
         name: String,
         // True when Control was held.
@@ -625,7 +625,7 @@ export enum TerminalEvent:
         shift: Bool
     )
     // The terminal window changed size.
-    case Resize(
+    Resize(
         // The new width in columns.
         columns: Int,
         // The new height in rows.
@@ -634,10 +634,10 @@ export enum TerminalEvent:
 
 // The part of the screen cleared by `RawTerminal.erase`.
 export enum EraseRegion:
-    case Screen  // Every cell of the screen; the cursor does not move.
-    case Line  // The whole cursor line.
-    case LineEnd  // From the cursor to the end of the line.
-    case LineStart  // From the start of the line to the cursor.
+    Screen  // Every cell of the screen; the cursor does not move.
+    Line  // The whole cursor line.
+    LineEnd  // From the cursor to the end of the line.
+    LineStart  // From the start of the line to the cursor.
 
 // Reads decoded events from a raw terminal's native handle.
 type TerminalEvents:

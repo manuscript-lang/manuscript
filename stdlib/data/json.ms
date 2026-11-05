@@ -32,29 +32,29 @@ if let user = doc.get("user"):
 */
 export enum JsonValue:
     // JSON null, represented without a payload value.
-    case Null
+    Null
     // A JSON true or false value.
-    case BoolValue(
+    BoolValue(
         // The decoded boolean, without a textual representation requirement.
         value: Bool
     )
     // An exact JSON number token; parsing does not coerce it into Float.
-    case NumberValue(
+    NumberValue(
         // Original numeric token text; stringify validates its JSON number syntax.
         text: String
     )
     // A decoded JSON string, with escapes resolved into Unicode text.
-    case StringValue(
+    StringValue(
         // Decoded UTF-8 text, preserving scalar contents without normalization.
         value: String
     )
     // An ordered JSON array whose mutable list can be updated before serialization.
-    case ArrayValue(
+    ArrayValue(
         // Element values in source order; the array owns its elements.
         values: List[JsonValue]
     )
     // A JSON object retaining insertion order and rejecting duplicate keys during parsing.
-    case ObjectValue(
+    ObjectValue(
         // String-keyed members in insertion order; stringify reads their current values.
         values: Map[String, JsonValue]
     )
@@ -180,8 +180,8 @@ protocol shape:
 
 ```manuscript
 enum Event:
-    case Created(id: Int)
-    case Deleted(id: Int)
+    Created(id: Int)
+    Deleted(id: Int)
 
 impl JsonEncode for Event:
     fn to_json() JsonValue:
@@ -452,7 +452,7 @@ impl Sink[T] for JsonLines[T]:
 /*
 Writes values of type `T` to a byte stream as JSON Lines: each value is encoded as `stringify` does, on a
 single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
-`EOVERFLOW`. Writes never wait; wait on the promise from `flush()` to drain `output`. Closing closes `output`.
+`EOVERFLOW`. Writes delegate to `output`'s sink, which may wait. `flush().wait()` uses its completion condition; a pipe may retain up to capacity unread values. Closing closes `output`.
 */
 export fn json_writer[T: Data](
     output: WriteStream[Bytes],

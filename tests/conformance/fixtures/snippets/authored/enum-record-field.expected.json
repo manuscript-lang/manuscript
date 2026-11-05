@@ -9,25 +9,25 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "an enum contains only cases; write 'case Name' or 'case Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block",
+        "message": "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block",
         "position": {
-          "file": "enum-record-field.ms",
-          "line": 4,
-          "column": 5,
-          "offset": 99
-        },
-        "end": {
           "file": "enum-record-field.ms",
           "line": 4,
           "column": 10,
           "offset": 104
+        },
+        "end": {
+          "file": "enum-record-field.ms",
+          "line": 4,
+          "column": 11,
+          "offset": 105
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-record-field.ms:4:5: parse: an enum contains only cases; write 'case Name' or 'case Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block\n   |\n 4 |     value: Int\n   |     ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-record-field.ms:4:10: parse: enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block\n   |\n 4 |     value: Int\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

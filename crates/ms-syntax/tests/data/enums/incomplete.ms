@@ -1,2 +1,2 @@
 export opaque enum Broken[T]:
-    case
+    Ready(value:

@@ -8,8 +8,8 @@ type Todo:
     completed: Bool = false
 
 enum Status:
-    case Draft
-    case Published(url: String)
+    Draft
+    Published(url: String)
 
 fn status_label(status: Status) String:
     match status:

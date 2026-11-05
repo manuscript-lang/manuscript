@@ -5,7 +5,7 @@ weight = 0
 
 # Pipeline and passes
 
-The checker builds typed HIR once and later stages read its facts, so lowering and tooling need no side tables.
+Use this map to locate the stage responsible for a compiler bug. A rejected valid program starts in parsing or checking; a wrong result after successful checking needs its MIR and native execution compared. The checker exposes typed HIR as a query view over syntax and per-module facts, shared by lowering and tooling.
 
 ## Passes
 

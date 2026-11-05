@@ -5,8 +5,8 @@ export opaque type Approved:
     nonce: String
 
 export opaque enum Mode:
-    case Safe
-    case Wild(level: Int)
+    Safe
+    Wild(level: Int)
 
 export fn approve(entity: String) Approved:
     return Approved(entity: entity, nonce: "n1")

@@ -1,6 +1,7 @@
 export enum Status:
-    case Ready
-    case Busy(value: Int)
+    Ready
+    Busy(value: Int)
+    bare_variant
 
 opaque enum private:
-    case Hidden
+    Hidden

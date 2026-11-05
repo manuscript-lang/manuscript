@@ -4,10 +4,10 @@
 extern type Handle
 
 enum Wrong:
-    case Detail(reason: String)
+    Detail(reason: String)
 
 enum Fine:
-    case Failed(code: Int, message: String)
+    Failed(code: Int, message: String)
 
 extern fn takes_map(values: Map[String, Int]) Unit
 extern fn returns_optional() Int?

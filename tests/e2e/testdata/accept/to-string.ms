@@ -8,8 +8,8 @@ type Person:
     age: Int
 
 enum Outcome:
-    case Ready(value: Person)
-    case Waiting
+    Ready(value: Person)
+    Waiting
 
 interface Named:
     fn name() String

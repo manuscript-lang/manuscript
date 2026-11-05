@@ -8,8 +8,8 @@ impl Closeable for Res:
         return ok(unit)
 
 enum Holder:
-    case Has(r: Res)
-    case Empty
+    Has(r: Res)
+    Empty
 
 fn dup[T: Clonable](x: T) T:
     return x.clone()

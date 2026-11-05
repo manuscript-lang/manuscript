@@ -1043,7 +1043,12 @@ impl Visitor for UseWalker<'_> {
         self.expression(syms, e);
         if let ExprKind::Match { scrutinee, arms } = &e.kind {
             for arm in arms {
-                if !arm.bare && !arm.chain && !arm.from_if {
+                let optional_binding = arm.bare
+                    && self
+                        .info_of(scrutinee)
+                        .and_then(|info| info.ty)
+                        .is_some_and(|ty| ty.is(ms_check::types::Builtin::Optional));
+                if !optional_binding && !arm.chain && !arm.from_if {
                     self.match_case(syms, scrutinee, &arm.path);
                 }
                 visit_arm_path(syms, self, &arm.path);

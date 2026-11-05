@@ -46,7 +46,7 @@ fn negative_and_positive_values_stay_distinct() {
     );
 }
 
-const CHOICE: &str = "enum Choice[T, V]:\n    case Value(value: T)\n    case Missing\n";
+const CHOICE: &str = "enum Choice[T, V]:\n    Value(value: T)\n    Missing\n";
 
 #[test]
 fn explicit_qualifier_must_be_the_matched_application() {

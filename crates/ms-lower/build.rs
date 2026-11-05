@@ -29,7 +29,86 @@ fn split_params(list: &str) -> Vec<&str> {
     parts
 }
 
+/// Every `.ms` file under `dir`, in a stable order.
+fn ms_files(dir: &std::path::Path, out: &mut Vec<PathBuf>) {
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
+        .expect("read stdlib dir")
+        .map(|e| e.expect("dir entry").path())
+        .collect();
+    entries.sort();
+    for path in entries {
+        if path.is_dir() {
+            ms_files(&path, out);
+        } else if path.extension().is_some_and(|e| e == "ms") {
+            out.push(path);
+        }
+    }
+}
+
+/// Writes `status_rows.rs`: the error kind and words of each runtime status, declared in the
+/// standard library as `// ms: status <number> <kind> <words>` beside `Error.kind`
+/// (`stdlib/core.ms`), and the per-module wording `// ms: words <number> <words>` that applies to
+/// every extern the declaring file holds or lists as `// ms: native <symbol>..`. A `-` in the words means the native's own text.
+fn status_rows(manifest: &std::path::Path) {
+    let root = manifest.join("../../stdlib");
+    println!("cargo:rerun-if-changed={}", root.display());
+    let mut files = Vec::new();
+    ms_files(&root, &mut files);
+    let mut rows: Vec<(i64, String, String)> = Vec::new();
+    let mut words: Vec<(String, i64, String)> = Vec::new();
+    for path in files {
+        println!("cargo:rerun-if-changed={}", path.display());
+        let text = std::fs::read_to_string(&path).expect("read stdlib file");
+        let mut local: Vec<(i64, String)> = Vec::new();
+        let mut externs: Vec<String> = Vec::new();
+        for line in text.lines() {
+            if let Some(rest) = line.strip_prefix("// ms: status ") {
+                let mut it = rest.splitn(3, ' ');
+                let n = it.next().and_then(|n| n.parse().ok());
+                let (Some(n), Some(kind), Some(w)) = (n, it.next(), it.next()) else {
+                    panic!("{}: malformed status row: {line}", path.display());
+                };
+                rows.push((n, kind.to_string(), w.to_string()));
+            } else if let Some(rest) = line.strip_prefix("// ms: words ") {
+                let Some((n, w)) = rest.split_once(' ') else {
+                    panic!("{}: malformed words row: {line}", path.display());
+                };
+                let n = n.parse().expect("status number");
+                local.push((n, w.to_string()));
+            } else if let Some(rest) = line.strip_prefix("// ms: native ") {
+                // Natives lowering binds to host-interface methods, with no `extern fn` of their own.
+                externs.extend(rest.split(' ').map(str::to_string));
+            } else if let Some(rest) = line.strip_prefix("export extern fn ") {
+                externs.extend(rest.split('(').next().map(str::to_string));
+            } else if let Some(rest) = line.strip_prefix("extern fn ") {
+                externs.extend(rest.split('(').next().map(str::to_string));
+            }
+        }
+        for sym in &externs {
+            for (n, w) in &local {
+                words.push((sym.clone(), *n, w.clone()));
+            }
+        }
+    }
+    rows.sort();
+    words.sort();
+    let mut out = String::from("static STATUS_ROWS: &[(i64, &str, &str)] = &[\n");
+    for (n, k, w) in &rows {
+        writeln!(out, "    ({n}, {k:?}, {w:?}),").unwrap();
+    }
+    out.push_str("];\nstatic STATUS_WORDS: &[(&str, i64, &str)] = &[\n");
+    for (sym, n, w) in &words {
+        writeln!(out, "    ({sym:?}, {n}, {w:?}),").unwrap();
+    }
+    out.push_str("];\n");
+    let dest = PathBuf::from(std::env::var("OUT_DIR").expect("out dir")).join("status_rows.rs");
+    std::fs::write(dest, out).expect("write status rows");
+}
+
 fn main() {
+    status_rows(&PathBuf::from(
+        std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"),
+    ));
     let table_path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
         .join("rt_symbols.txt");
     println!("cargo:rerun-if-changed={}", table_path.display());

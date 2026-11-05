@@ -20,7 +20,7 @@ type Box:
     value: Int
 
 enum Choice:
-    case Payload(value: Int)
+    Payload(value: Int)
 
 interface Read:
     fn get() Int

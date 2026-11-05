@@ -5,13 +5,43 @@ weight = 3
 
 # HTTP server
 
-`serve` listens on an address and runs your handler on every core.
+Use `serve` to run an HTTP handler, then test it with the same client APIs your application uses. This complete test starts a server on a free local port, makes one request and checks its response. The server closes when the test ends.
+
+Save as `server_test.ms` and run `ms test server_test.ms`:
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import serve from "@std/net/net.ms"
+import buffered, text from "@std/net/http.ms"
+import fetch from "@std/net/fetch.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "serve a greeting":
+    let handler = buffered(fn request: text(200, "Hello, Manuscript!"))
+    let server = try serve("127.0.0.1:0", handler)
+    let response = try fetch("http://{server.address()}/").wait()
+    try expect_equal(response.head.status, 200)
+    try expect_equal(try response.text(), "Hello, Manuscript!")
+```
+
+```text
+RUN server_test.ms::serve a greeting
+PASS server_test.ms::serve a greeting
+1 tests, 0 failed
+```
+
+`buffered` adapts a function returning a complete `HttpResponse` into the streaming handler that `serve` accepts. `text` builds a text response. Use `HttpExchange` directly when you need to read or send a body incrementally.
+
+## Keep an application server running
+
+In a function returning `Unit!`, keep the server alive with `wait()`:
 
 ```manuscript
-let router = build_router(config)
-var server = try serve(":8080", router.handler())
+let server = try serve("127.0.0.1:8080", handler)
 try server.wait()
 ```
+
+Here `handler` is built as in the test. The wait lasts until shutdown or a server error; SIGINT and SIGTERM initiate shutdown.
 
 `serve(address, handler, options)` returns an `HttpServer`. `options.cores` limits the runtime to that many threads; none means every core, and `cores: 1` runs the same code on one thread.
 
@@ -27,13 +57,6 @@ The handler, the router and everything they capture are built once and only read
 
 A fault in a handler ends only that request, and the connection answers 500. Request-scoped writes through `HttpExchange` (`send`, `send_headers`, `read`, `close`) are `var fn`, since an exchange belongs to one handler.
 
-## Testing
+## Testing routes without a socket
 
-Start the server and call it in one process:
-
-```manuscript
-let server = try serve(":0", handler)
-let response = try fetch("http://{server.address()}/").wait()
-```
-
-`Router.call` runs a handler directly without a socket.
+Use `Router.call` to test routing and response behavior directly. Keep a loopback test like the one above for the network boundary. See the [router API](../../standard-library/reference/net/router.ms.md).

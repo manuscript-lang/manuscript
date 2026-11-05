@@ -1,8 +1,8 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 enum Failure[T]:
-    case NotFound
-    case Denied(reason: T)
+    NotFound
+    Denied(reason: T)
 
     impl Error for Failure[T]:
     fn message() String: "Failure"

@@ -1,6 +1,7 @@
 +++
 title = "Task recipes"
-weight = 5
+weight = 4
+aliases = ["/learn/best-practices/"]
 +++
 
 # Task recipes
@@ -22,7 +23,11 @@ export fn main() Int:
 ms run hello.ms
 ```
 
-`print` converts any value to text and returns `Unit`. For recoverable I/O errors, use `stdout().write(...)` and `stdout().flush().wait()` as in the next recipe. `try` propagates those errors; `main` returns 1 on failure. To show an error, use `cause.message` ([the Error record](../core-language/errors/results.md#the-error-record)).
+```text
+Hello, Manuscript!
+```
+
+`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush().wait()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
 ## Read command-line arguments
 
@@ -46,6 +51,11 @@ export fn main() Int:
 
 ```sh
 ms run args.ms -- Sam Ada
+```
+
+```text
+Hello, Sam!
+Hello, Ada!
 ```
 
 ## Parse subcommands and flags
@@ -81,8 +91,14 @@ export fn main() Int:
 
 ```sh
 ms run tool.ms -- hello Ada -n 2
-ms run tool.ms -- hello --help
 ```
+
+```text
+Hello, Ada!
+Hello, Ada!
+```
+
+Run `ms run tool.ms -- hello --help` to see the command’s arguments and flags.
 
 ## Read a UTF-8 text file
 
@@ -91,7 +107,7 @@ Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import read_file, write_file from "@std/os/fs.ms"
+import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
@@ -113,7 +129,11 @@ printf 'hello from a file\n' > notes.txt
 ms run read.ms -- notes.txt
 ```
 
-`max_bytes` bounds the read; any failure exits nonzero. There is no `read_text`.
+```text
+hello from a file
+```
+
+`max_bytes` bounds the read; any failure exits nonzero.
 
 ## Write a text file
 
@@ -122,7 +142,7 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import read_file, write_file from "@std/os/fs.ms"
+import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
@@ -139,7 +159,11 @@ ms run write.ms -- saved.txt
 cat saved.txt
 ```
 
-Use `replace: true` to overwrite. Relative paths use the working directory.
+```text
+saved notes
+```
+
+The program succeeds silently; `cat` shows the saved content. Use `replace: true` to overwrite. Relative paths use the working directory.
 
 ## Read standard input line by line
 
@@ -170,6 +194,12 @@ export fn main() Int:
 printf 'line one\n\nlast line' | ms run lines.ms
 ```
 
+```text
+line one
+
+last line
+```
+
 An empty line is `""`, and the loop ends at end of input. Line endings (`\n` or `\r\n`) are stripped, and a read failure is returned by `wait()`.
 
 ## Parse an integer
@@ -195,6 +225,10 @@ export fn main() Int:
 
 ```sh
 ms run number.ms -- 42
+```
+
+```text
+42
 ```
 
 Use `get(default)` for a default, or `if let` with a failure path ([Optional values](../core-language/types/optionals.md)).
@@ -224,7 +258,13 @@ export fn main() Int:
 ms run json.ms -- '"hello"'
 ```
 
+```text
+hello
+```
+
 Without a type, `parse` returns a `JsonValue` tree for unknown shapes.
+
+<span id="let-types-describe-your-data"></span>
 
 ## Read and write typed JSON
 
@@ -255,6 +295,10 @@ export fn main() Int:
 
 ```sh
 ms run config.ms -- '{"name":"Sam"}'
+```
+
+```text
+{"name":"Sam","enabled":true}
 ```
 
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
@@ -292,6 +336,12 @@ python3 -m http.server 8000 --bind 127.0.0.1
 
 # In your program's terminal:
 ms run get.ms -- http://127.0.0.1:8000/notes.txt
+```
+
+The program prints the contents served from `notes.txt`:
+
+```text
+hello from a file
 ```
 
 The server needs Python 3 and a `notes.txt` (from the file-reading recipe). Transport failures, non-success statuses and invalid UTF-8 exit 1; the body is capped at one mebibyte (1,048,576 bytes). Other `FetchOptions` fields keep their defaults, including the 30-second deadline.

@@ -42,8 +42,8 @@ export fn main() Int:
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:`, called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
 - Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()`, `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.
-- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; `enum Choice:` cases `case A`, `case B(x: Int)`. Methods in `impl T:` (`var fn` mutates `self`); `interface I:` contracts, `impl I for T:` conversions.
-- `T?` (Optional): plain values convert (no `some`); `none` is absent; unwrap with `if let x = v:` or `.get(d)`; `a?.b`.
+- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; `enum Choice:` variants `A`, `B(x: Int)`; no `case` keyword. Methods in `impl T:` (`var fn` mutates `self`); `interface I:` contracts, `impl I for T:` conversions.
+- `T?` (Optional): values convert (no `some`); `none` is absent; unwrap with `if let x = v:` or `.get(d)`; `a?.b`.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
 - Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `try r` gives the value or returns a compatible error; `if let x = r:` handles success.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.

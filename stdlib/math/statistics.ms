@@ -153,7 +153,7 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 /*
 Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
 Values equal to the greatest value fall in the last bin; when every value is equal they all fall in the first bin. A `bins` below 1 faults.
-Example: `bin_counts([1.0, 2.0, 2.0, 3.0], 2).counts` is `[1, 3]`.
+Example: `if let bins = bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` prints `[1, 3]`.
 */
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     if bins < 1:

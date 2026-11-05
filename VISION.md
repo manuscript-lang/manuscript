@@ -28,13 +28,13 @@ Token efficiency must preserve meaning. We want code that is economical to gener
 
 Manuscript is in alpha. The capabilities below describe current source; published archives may lag behind. The longer-term vision remains the direction:
 
-- **A small, regular language.** Statically typed, with `let`/`var`, nominal records (`type`) and tagged unions (`enum`), exhaustive `match`, `Optional`, `Result` with `try`, generics, `impl` blocks, and sized numerics (`Int8` to `Int64`, `Float32`). The surface is deliberately its own rather than Python's: indented suites and `[T]` generics, but `fn` for every function and closure, `true`/`false`, `else if`, `unit`, and `import A, B from "p"`, so an agent cannot mistake it for Python (`fn add(a: Int, b: Int) Int:`).
-- **Ownership without a collector.** Values have one owner, move at their last use and are dropped deterministically; `var` marks mutation, `.clone()` marks copies, borrows are lexical, and a scope closes the resources bound in it. `Shared[T]` is the explicit, reference-counted exception.
-- **Structured concurrency, no async.** A call that can wait returns a running `Promise[T]`, `promise(fn: ...)` starts your own work on a thread the runtime picks, and `wait()` gives the result. A promise only reads what it captures; changes travel to the owner over a `pipe`. Adversarial reviews probe the runtime for leaks, hangs and unsound sharing. See [concurrency](documentation/core-language/concurrency/_index.md) for the cleanup, fault and isolation limits.
+- **A small, regular language.** A simple type system with generics, no `any` escape hatch and no runtime reflection API keeps types visible to compiler analysis. It includes `let`/`var`, nominal records (`type`) and tagged unions (`enum`), exhaustive `match`, `Optional`, `Result` with `try`, generics, `impl` blocks, and sized numerics (`Int8` to `Int64`, `Float32`). Indented blocks, `fn` declarations and explicit imports give programs a consistent shape (`fn add(a: Int, b: Int) Int:`).
+- **Ownership without a collector.** Values have one owner, move at their last use and are dropped deterministically; `var` marks mutation, `.clone()` marks copies, borrows are lexical, and a scope closes the resources bound in it.
+- **Structured concurrency, no async.** `promise(fn: ...)` starts concurrent work on a thread the runtime picks, and `wait()` takes its result; streams are pulled lazily. A promise only reads what it captures; changes travel to the owner over a `pipe`. See [concurrency](documentation/core-language/concurrency/_index.md) for coordinating work, cancellation and cleanup.
 - **Native code with reproducible measurements.** The Rust compiler emits native code through Cranelift or LLVM; the runtime and standard library are embedded in `ms`. [`bench/perf`](bench/perf/README.md) records kernel, JSON, HTTP and worker results, each tied to a revision, machine and reproduction command. They show where Manuscript performs well and where work remains.
-- **One command for the development loop.** `ms` checks, formats, lints, tests, builds and profiles. Linking and optimization tools download on first use and are cached; see the [toolchain requirements](documentation/contributing/rust-toolchain.md#build-and-run).
+- **One command for the development loop.** `ms` checks, formats, lints, tests, builds and profiles. Builds reuse cached or locally configured linking tools; see [build setup](documentation/developer-tooling/how-it-works.md#build-tools-and-local-setup).
 - **Feedback agents can act on.** Diagnostics read `cause; fix`, name the Manuscript spelling for habits from other languages, and carry machine-applicable repairs that `ms check --fix` applies. `--json` output from `check`, `lint`, `test`, `run`, `build` and `inspect` reports results and faults as data; `ms search_symbol`, `ms guide`, `ms verify`, `ms review` and `ms diagram` give deterministic views of a program and of a change.
-- **Editor and profiling support.** A language server, a VS Code extension, and native sampling profiles with source attribution. Native builds emit DWARF line tables; there is no embedded debugger or debug adapter.
+- **Editor and profiling support.** A language server, a VS Code extension, and native sampling profiles with source attribution. Native builds emit DWARF line tables for source lookup.
 - **A measured loop.** The [agent benchmark](bench/agent/README.md) runs the same challenges in Manuscript, Go, TypeScript and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges in Manuscript, with one trial per challenge; first-build success and source size relative to TypeScript remain targets for improvement.
 
 Still ahead: a broader library ecosystem, external adapters, incremental frontend compilation, and the deployment story beyond a single binary.
@@ -57,21 +57,21 @@ The language should make common software tasks expressible with a small set of p
 
 ### A language people can inspect
 
-As agents write more code, people need practical ways to understand behavior and structure without reading every line. Manuscript’s simplicity makes it possible to derive accurate views directly from code, and `ms diagram` and `ms review` already do so for call graphs and the semantic effect of a diff. These representations should come from deterministic analysis wherever possible, rather than asking a generative model to summarize the output of another generative process.
+As agents write more code, people need practical ways to understand behavior and structure without reading every line. Manuscript’s simplicity makes it possible to derive accurate views directly from code, and `ms diagram` and `ms review` already do so for call graphs and the semantic effect of a diff. `ms diagram ms.toml --format html` packages source, checked type hints and connected views into one offline file. Readers can follow calls, inspect ownership and navigate a diff overlay directly from the code map.
 
-Diagrams are not a substitute for source code, tests, or human judgment. They are another way to make important structure visible and reviewable.
+The map describes checked source relationships; tests and profiling complement it with evidence from execution.
 
 ### A trustworthy development loop
 
 When agents produce code, the system that helps people evaluate it should provide evidence independent of the code-generating step. Manuscript aims to make that possible through a small language, structured compiler output, and deterministic tools such as `ms verify`, `ms inspect`, and `ms review`.
 
-This does not mean that a compiler or diagram can prove every program correct. Tests, domain knowledge, and human review remain essential. The aim is to make the code easier to check and the available evidence clearer, so people can make better-informed decisions about software produced with agents.
+Tests, domain knowledge and human review build on those compiler checks and diagrams. Clear source and inspectable evidence help people make informed decisions about software produced with agents.
 
 ### A coherent path from code to deployment
 
 The Manuscript experience brings the essential development tools together: compiling, building, testing, and profiling ship in one `ms` binary, and `ms build` produces a standalone native executable. The work ahead is making deployment as seamless as the development loop, so these pieces feel like one workflow rather than a collection of unrelated tools.
 
-Keeping the language core small matters. Manuscript has no special asynchronous syntax, so programs use functions and receive values. Scoped tasks, worker threads, and child processes build on those ordinary calls instead of adding a separate asynchronous syntax.
+Keeping the language core small matters. Manuscript has no special asynchronous syntax, so programs use functions and receive values. Promises, streams, pipes and child processes build on those ordinary calls.
 
 ### An ecosystem agents can help expand
 

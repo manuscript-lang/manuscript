@@ -64,7 +64,7 @@ fn enum_keyword_snippet_inserts_a_checked_declaration() {
         .unwrap()
         .replace("${1:Name}", "Status")
         .replace("${0:Ready}", "Ready");
-    assert_eq!(source, "enum Status:\n    case Ready");
+    assert_eq!(source, "enum Status:\n    Ready");
     document.text = source;
     let checked = analyze(syms, &session, &document, &Documents::new());
     assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);

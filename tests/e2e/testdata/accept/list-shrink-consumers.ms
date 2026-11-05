@@ -36,7 +36,7 @@ fn observe[T: Clonable](
             .clone()
             .for_each(
                 fn(value: T): step(
-                    var seen, var visits, var values, value, mode, fill.clone()
+                    var seen, var visits, var values, value.clone(), mode, fill.clone()
                 )
             )
         )
@@ -141,8 +141,8 @@ test "record consumers keep independent copies after shrink":
             (not (seen.last().get().value == 3 and clone.last().get().value == 3)) | try expect_false
 
 enum Choice:
-    case number(value: Int)
-    case label(value: String)
+    number(value: Int)
+    label(value: String)
 
 fn score(value: Choice) Int:
     match value:

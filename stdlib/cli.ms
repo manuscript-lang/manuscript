@@ -57,15 +57,15 @@ fn cli_invalid_schema(reason: String) Error:
 // What a flag accepts. Each case fills the record field of the same language type.
 export enum FlagKind:
     // `Bool` field. Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
-    case Bool
+    Bool
     // `String` field. Any text, including text that begins with a dash when given as `--name=value`.
-    case String
-    // `Int` field. A whole number that fits in Int; other text is an InvalidValue error.
-    case Int
-    // `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, is an InvalidValue error.
-    case Float
+    String
+    // `Int` field. A whole number that fits in Int; other text returns an Error with kind `"EINVAL"`.
+    Int
+    // `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, returns an Error with kind `"EINVAL"`.
+    Float
     // `List[String]` field. The flag may repeat; every occurrence is kept in order.
-    case List
+    List
 
 // A named option such as `--port 8080` or `-p 8080`.
 export type Flag:
@@ -153,7 +153,7 @@ impl Matches:
 /*
 A command or command group: its schema, subcommands and handler.
 
-A group is a Command with `children`. Build a leaf with `command[T]`, or set `exec` directly to read `Matches` yourself.
+A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../learn/common-tasks.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
 */
 export type Command:
     // The word that selects this node; the program name for the root.
@@ -172,12 +172,12 @@ export type Command:
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:
     // `-h`, `--help`, `help` or a group without a handler.
-    case Help(
+    Help(
         // The rendered help ending in a newline, ready to write to stdout.
         text: String
     )
     // A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
-    case Run(
+    Run(
         // The values to pass the handler; `path` names the command reached from the root.
         matches: Matches
     )

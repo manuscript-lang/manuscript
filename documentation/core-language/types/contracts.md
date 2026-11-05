@@ -7,17 +7,9 @@ weight = 7
 
 An interface is an operation contract: implementations must supply the declared operations and signatures. Use it when callers should depend on behavior, not a data type. Signatures follow the ordinary [function rules](../functions/declarations-and-calls.md).
 
-```manuscript
-interface Payments:
-    fn charge(amount: Money) Result[Receipt, PaymentError]
-```
+Save as `adjust.ms` and run `ms run adjust.ms`:
 
-## Explicit implementations
-
-Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
-
-`impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
-
+<!-- manuscript-example: {"mode":"run","stdout":"12\n"} -->
 ```manuscript
 interface Increment:
     fn apply(value: Int) Int
@@ -28,11 +20,32 @@ type Offset:
 impl Increment for Offset:
     fn apply(value: Int) Int:
         return value + self.delta
+
+fn adjusted(value: Int, operation: Increment) Int:
+    return operation.apply(value)
+
+export fn main() Int:
+    print(adjusted(10, Offset(2)))
+    return 0
 ```
+
+```text
+12
+```
+
+`adjusted` knows the operation it can call. `Offset` supplies that operation through its explicit implementation; another type can supply a different one without changing `adjusted`.
+
+## Explicit implementations
+
+Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
+
+`impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
+
+In the example above, `impl Increment for Offset` supplies `apply` and reads the offset's `delta` through `self`.
 
 `self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
 
-After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in the interface and in every impl, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
+After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; interface implementations preserve argument labels even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in the interface and in every impl, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
 
 ```manuscript
 // Rejected: amount does not match the contract's value label.

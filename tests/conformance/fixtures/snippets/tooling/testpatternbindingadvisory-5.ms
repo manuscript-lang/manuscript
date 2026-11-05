@@ -2,10 +2,10 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/pattern_lint_test.go:27 TestPatternBindingAdvisory
 enum First:
-    case Ready
+    Ready
 
 enum Second:
-    case Ready
+    Ready
 
 fn use(value: Int?) Int:
     match value:

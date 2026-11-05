@@ -33,8 +33,8 @@ type Holder:
     tag: Int
 
 enum Slot:
-    case Full(inner: Latch)
-    case Empty
+    Full(inner: Latch)
+    Empty
 
 fn explicit_then_scope(log: String) Int!:
     var one = latch(log, 1)

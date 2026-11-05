@@ -5,15 +5,15 @@ weight = 2
 
 # Development workflow
 
-Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Setup needs Make and Internet access; the repository tools in `tools/` are Manuscript programs run by the `ms` that `make build` produces. Building `ms` needs a C compiler (`cc`); the first native link downloads the pinned `lld` into the cache (`MS_LLD` names a local one), and the first optimized build also fetches the LLVM tools. Linking with the packaged compiler needs no separate C compiler; see the [platform build requirements](rust-toolchain.md). Book work needs Hugo Extended 0.146.7 or newer.
+Run commands from the repository root. `rust-toolchain.toml` pins Rust and `.node-version` pins Node. Use Make and a C compiler (`cc`) to build `ms`; repository tools in `tools/` then run with that compiler. Install the [source-build prerequisites](rust-toolchain.md#build-and-run) before running checks. Book work needs Hugo Extended 0.146.7 or newer. Application builds use [cached or locally configured linking tools](../developer-tooling/how-it-works.md#build-tools-and-local-setup).
 
 ```sh
 make doctor
 make verify
 ```
 
-- `make doctor` reports missing prerequisites without downloading.
-- `make verify` runs `make check` (`cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`), `make repo-check`, `make unit` (`cargo nextest run --workspace` and doc tests), `make docs-check`, and `make licenses-check`.
+- `make doctor` first builds `ms`, then reports available and missing prerequisites. The doctor program itself does not download tools; its prerequisite build can fetch Cargo dependencies. If you already have a built compiler, run `target/release/ms run tools/doctor.ms` to inspect the environment directly.
+- `make verify` runs `make check` (ABI-symbol validation, Rust formatting and clippy), `make repo-check`, `make bench-check` (benchmark sources and tool tests), `make unit` (workspace tests and doc tests), `make docs-check`, and `make licenses-check`.
 - `make runtime` (`cargo xtask runtime`) builds the native runtime into `target/ms-native/`. `ms-cli`'s build script only embeds that archive, so run it first (and after runtime changes; it also writes `ms_rt_hot.ll`, the pure runtime helpers that release builds inline, see [DESIGN.md](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#pure-and-stateful-runtime-code)) before any cargo command that compiles `ms-cli`, such as clippy, nextest, or `cargo build`; `make check`, `make unit`, and `make build` do it for you. In CI it runs once per Rust job, ahead of sccache-wrapped cargo calls, so the runtime's compiler outputs are cached like any other crate.
 - `make build` produces `target/release/ms`; the Rust build details are in [Rust toolchain](rust-toolchain.md).
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
@@ -23,7 +23,7 @@ make verify
 - Allowance: a deliberate regression puts `// manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture.
 - Each allowance covers one match; implementation and documentation cannot opt out.
 
-Complete validation:
+For a focused edit, first run the test that exercises the changed behavior. Use the full gate before merging compiler or runtime changes:
 
 ```sh
 make verify-full
@@ -72,12 +72,12 @@ The book uses vendored Hugo Book v13; put styling in `website/assets/_custom.scs
 
 ## Continuous integration
 
-[`cicd.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs the checks. Pull requests squash auto-merge when their checks pass; there is no merge queue, which built every stacked ref with the full matrix and restarted on each outside merge.
+[`cicd.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/cicd.yml) runs the checks. Pull requests use the Linux matrix and the required `Platform checks` result. Scheduled and manual runs cover the full platform matrix.
 
-- **Pull request: the Linux legs.** linux-amd64 and linux-arm64 each run `tests` and `conformance` (`linux-amd64 · tests`), the same jobs `main` runs: four jobs, with the language checks and the book inside linux-arm64 conformance. linux-amd64 runs the Cranelift corpus in `conformance` and leaves the gates to linux-arm64, so each job stays under ten minutes. A newer commit cancels the earlier run. A documentation-only change (documentation, skills, proposals, extensions, Markdown) skips the Rust steps.
+- **Pull request: the Linux legs.** linux-amd64 and linux-arm64 each run `tests` and `conformance` (`linux-amd64 · tests`), the same jobs `main` runs: four jobs, with the language checks and the book inside linux-arm64 conformance. linux-amd64 runs the Cranelift corpus in `conformance` and leaves the gates to linux-arm64, to split the work between the jobs. A newer commit cancels the earlier run. A documentation-only change (documentation, skills, proposals, extensions, Markdown) skips the Rust steps.
 - **`main` every 30 minutes and manual runs: all six platforms** (linux, darwin and windows on amd64 and arm64), each split into a tests job and a conformance job like a pull request's, so main holds twelve runner slots and finishes in the time of its slowest half. A push to `main` starts nothing: a cron run every 30 minutes checks the newest commit and does nothing when an earlier scheduled or manual run already checked it (the `Main changed` job), so a burst of merges costs one run and twelve runner slots, not one per merge. A failure on `main` is fixed or reverted there. A manual run takes an `os` input (`all`, `linux`, `darwin`, `windows`) to run one platform's legs, for example to check a platform-sensitive branch. Runs on `main` deploy Pages from the book linux-arm64 builds.
 - **Ruleset:** require `Platform checks`, the sum of the platform legs.
-- Only scheduled and manual runs on `main` save the sccache caches, each as a new entry that cache-maintenance's prune keeps instead of the previous one. Each job restores one sccache directory per platform, keyed on `Cargo.lock` and the toolchain (2 GB cap); it caches compiler outputs, so `target/` is not saved.
+- Only scheduled and manual runs on `main` save the sccache caches, each as a new entry that cache-maintenance's prune keeps instead of the previous one. Each job restores one sccache directory per platform, keyed on `Cargo.lock` and the toolchain (1500 MB cap); it caches compiler outputs, so `target/` is not saved.
 
 [`rust-checks`](https://github.com/manuscript-lang/manuscript/blob/main/.github/actions/rust-checks/action.yml) holds the Rust steps both workflows share. Part `a` (`tests`) builds the workspace once and runs cargo-nextest, doc tests and debug-attribution tests (linux-amd64 also fmt and clippy), then the Cranelift corpus and fixtures where the platform runs them (linux-amd64, darwin-arm64, windows-amd64). Part `b` (`conformance`) runs the frozen corpus and e2e fixtures and, with part `a` on platforms without Cranelift, the gates: bundled-LLVM release build, source conformance, cancellation and ownership checks, the packaged `ms` on a hello project. nextest, the corpus runner and the e2e runner (`E2E_JOBS` overrides the worker count) use every core. Checkouts use the event's `github.sha`. The [language checks](https://github.com/manuscript-lang/manuscript/blob/main/.github/actions/language-checks/action.yml) (repository rules, license check, the VS Code extension package) and the book run inside the linux-arm64 job.
 

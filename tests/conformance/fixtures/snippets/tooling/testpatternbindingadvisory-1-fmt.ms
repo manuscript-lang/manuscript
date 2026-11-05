@@ -2,11 +2,11 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:22 TestPatternBindingAdvisory
 enum Failure:
-    case NotFound
-    case Denied
+    NotFound
+    Denied
 
 enum Envelope:
-    case Pair(left: Failure, right: Failure)
+    Pair(left: Failure, right: Failure)
 
 fn use(value: Envelope) Int:
     match value:

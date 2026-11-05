@@ -4,8 +4,8 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 enum Failure[T]:
-    case NotFound
-    case Denied(reason: T)
+    NotFound
+    Denied(reason: T)
 
 // An advisory preserves the semantics of this fresh, capitalized binding.
 fn captured[T](result: Result[Int, Failure[T]]) Int:

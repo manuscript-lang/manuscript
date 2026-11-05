@@ -5,7 +5,7 @@ weight = 2
 
 # Start here
 
-Run a program, learn the language, then build something useful. Start with the compiler setup and an Internet connection for its first build.
+Run a program, learn the language, then build something useful. The same `ms` command helps you write, test, understand and ship your code.
 
 ## New to Manuscript?
 
@@ -14,10 +14,9 @@ Run a program, learn the language, then build something useful. Start with the c
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
-4. **[Write idiomatic Manuscript](best-practices.md).** Control flow, errors, ownership, resources.
-5. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+4. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
-Read in order with **Next**. Local statements in examples belong inside a function or test.
+Read in order with **Next**.
 
 ## Ready to build?
 
@@ -39,7 +38,14 @@ ms search_symbol json
 ms search_symbol PromiseOptions
 ```
 
-Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
+The `PromiseOptions` search starts with:
+
+```text
+promise.PromiseOptions  record  std:@std/concurrency/promise.ms
+  type PromiseOptions: timeout: Duration? = none cancel: Signal? = none
+```
+
+It also lists matching fields and related functions. Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
 
 ## Working with a coding agent?
 

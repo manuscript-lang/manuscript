@@ -4,8 +4,8 @@
 import expect_equal from "@std/test/test.ms"
 
 enum State:
-    case Ready
-    case Waiting
+    Ready
+    Waiting
 
 fn loop(state: State) Int:
     var count = 0

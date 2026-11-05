@@ -104,25 +104,25 @@ impl ClientResponse:
 // Known HTTP methods, plus extension tokens validated by outgoing operations.
 export enum HttpMethod:
     // Requests the selected representation.
-    case Get
+    Get
     // Requests response metadata without a body.
-    case Head
+    Head
     // Submits a representation for processing.
-    case Post
+    Post
     // Replaces the selected representation.
-    case Put
+    Put
     // Applies a partial modification.
-    case Patch
+    Patch
     // Removes the selected representation.
-    case Delete
+    Delete
     // Establishes a tunnel to the request target.
-    case Connect
+    Connect
     // Asks which communication options the target supports, without transferring a body.
-    case Options
+    Options
     // Requests a diagnostic loopback.
-    case Trace
+    Trace
     // Carries an extension token; requests reject empty or malformed tokens.
-    case Custom(
+    Custom(
         // The method token; it must be a non-empty HTTP token such as PURGE.
         value: String
     )
@@ -357,7 +357,7 @@ export type HttpServerOptions:
     max_response_bytes: Int?
     // Largest accepted request header block and largest response header block, in bytes. Must be positive; none uses the default of 1 MiB.
     max_header_bytes: Int?
-    // Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. A handler still running at the deadline is cancelled (`tasks.cancelled()` turns true and its waits end) and the request is answered 504; a WebSocket it opened is not limited. Must be positive; none sets no deadline.
+    // Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. A handler still running at the deadline is cancelled (its waits end and resource cleanup runs) and the request is answered 504; a WebSocket it opened is not limited. Must be positive; none sets no deadline.
     timeout: Duration?
     // How long `close` waits for in-flight requests to finish before cancelling them. none waits without limit and 0 cancels immediately.
     grace: Duration?
@@ -484,7 +484,7 @@ export fn text(status: Int, body: String) HttpResponse:
 // A value `stringify` cannot encode returns EIO with its diagnostic.
 export fn json[T: Data](status: Int, value: T) HttpResponse!:
     let body = stringify(value)
-    if body.is_error(): return error(Error(body.err().message, kind: "EIO"))
+    if body.is_error(): return error(Error(body.err().message.clone(), kind: "EIO"))
 
     var sent = headers()
     try sent.append("Content-Type", "application/json")

@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "an enum must declare at least one case; replace '...' with 'case Name' or 'case Name(field: Type)'",
+        "message": "an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'",
         "position": {
           "file": "enum-empty.ms",
           "line": 3,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/enum-empty.ms:3:13: parse: an enum must declare at least one case; replace '...' with 'case Name' or 'case Name(field: Type)'\n   |\n 3 | enum Wrong: ...\n   |             ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/enum-empty.ms:3:13: parse: an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'\n   |\n 3 | enum Wrong: ...\n   |             ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

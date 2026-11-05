@@ -91,17 +91,17 @@ impl RouteParams:
 // One segment of a route pattern.
 export enum Segment:
     // Matches exactly this text.
-    case Literal(
+    Literal(
         // The exact text a request path segment must equal, case-sensitively.
         text: String
     )
     // Matches one nonempty segment and captures it.
-    case Param(
+    Param(
         // The name `RouteParams.get` finds the captured segment under.
         name: String
     )
     // Matches the rest of the path, possibly nothing, and captures it joined by `/`.
-    case Rest(
+    Rest(
         // The name `RouteParams.get` finds the remaining path under.
         name: String
     )
@@ -796,7 +796,7 @@ fn usable_id(id: String) Bool:
 
 fn new_id() String!:
     let made = uuid_v4()
-    if made.is_error(): return error(Error(made.err().message, kind: "EIO"))
+    if made.is_error(): return error(Error(made.err().message.clone(), kind: "EIO"))
 
     return ok(made.get().clone())
 

@@ -30,9 +30,9 @@ type Nested:
     all: List[Tracked]
 
 enum Slot:
-    case Empty
-    case Full(item: Tracked)
-    case Both(left: Tracked, right: Tracked)
+    Empty
+    Full(item: Tracked)
+    Both(left: Tracked, right: Tracked)
 
 // Closes itself, then the field it owns.
 type Wrapper:

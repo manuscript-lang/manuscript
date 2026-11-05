@@ -1,6 +1,6 @@
 enum Shape:
-    case Circle(radius: Int)
-    case Square
+    Circle(radius: Int)
+    Square
 
 fn size(shape: Shape) Int:
     if let Circle(radius) = shape: return radius

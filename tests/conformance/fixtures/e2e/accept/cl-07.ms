@@ -4,8 +4,8 @@
 import expect_equal from "@std/test/test.ms"
 
 enum Outcome:
-    case Ready(value: Int)
-    case Failed(reason: String)
+    Ready(value: Int)
+    Failed(reason: String)
 
 fn score(outcome: Outcome) Int:
     match outcome:

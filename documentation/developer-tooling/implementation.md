@@ -1,26 +1,26 @@
 +++
 title = "Commands and editor setup"
-weight = 1
+weight = 2
 +++
 
 # Commands and editor setup
 
-Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or build the Rust `ms` in a source checkout (see the [Rust toolchain guide](../contributing/rust-toolchain.md)). Formatting, lint and LSP run directly from `ms`. Native builds and profiling need the pinned linking tools, downloaded and cached on first use; see [how it works](how-it-works.md). There is no `ms debug` or `ms dap`; see [profiling and native debugging](debugging/debugger-integration.md).
+Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](../contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
-```sh
-ms lint source.ms --json
-ms lint ms.toml --json
-ms fmt source.ms --check
-ms fmt ms.toml --check
-ms fmt source.ms --drop-labels
-ms check source.ms --fix
-ms verify ms.toml --json
-ms lsp
-ms search_symbol read file lines
-ms search_symbol parse_config
-ms search_symbol json
-ms profile ms.toml --out-dir capture --top 10 -- arg1
-```
+## Choose the next command
+
+Run project commands from the directory containing `ms.toml`. For a single-file tool, replace `ms.toml` with its `.ms` filename.
+
+| Your task | Command | Result |
+| --- | --- | --- |
+| Check a change before running it | `ms check ms.toml` | Diagnostics, or a successful check summary |
+| Apply consistent layout | `ms fmt ms.toml` | Formatted files; silent on success |
+| Check formatting in CI | `ms fmt ms.toml --check` | Names files needing changes; leaves source untouched |
+| Check code, formatting, lint and tests together | `ms verify ms.toml` | A status for each step; nonzero if a step fails |
+| Find an API | `ms search_symbol json` | A bounded page of matching declarations |
+| Understand a program visually | `ms diagram ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
+
+Start with the [first-program workflow](../learn/getting-started.md) for a complete example and its output. The sections below explain command options and structured results for automation.
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
 - Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
@@ -43,6 +43,25 @@ ms test test.ms --watch
 
 Project lint covers every reachable local module. [Library projects](builds/project-configuration.md#library-projects-and-copied-dependencies) include all source modules and discovered tests.
 
+## Interactive code map
+
+Create a map of your project and open the resulting file in a browser:
+
+```sh
+ms diagram ms.toml --format html -o code-map.html
+```
+
+The command succeeds silently and writes `code-map.html`. The single HTML file includes the source and works offline. Start at a module or function, follow callers and callees, and click source identifiers to see their checked types. Switch between overview, calls, sequence, behavior, types and route views. Function signatures show parameter borrow modes and returned values, connecting ownership to the code you are reading.
+
+For a review, add a unified diff to highlight changed declarations and filter the map to changed code:
+
+```sh
+git diff --no-renames > change.patch
+ms diagram ms.toml --format html --diff change.patch -o review.html
+```
+
+These commands write `change.patch` and `review.html` without terminal output. Run this against the working tree represented by the diff's after state. The map shows relationships and control flow from the checked source; sequence and behavior views are static views, not runtime execution traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
+
 ## Source inspection
 
 ```sh
@@ -53,7 +72,7 @@ ms diagram ms.toml
 ms diagram ms.toml --format mermaid -o calls.mmd
 ```
 
-These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` renders the static call graph (not an execution trace): `--format ascii` (default) or `--format mermaid`. Review and diagram describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
+These need no linker. `emit` checks and lowers the program, then prints MIR; it does not emit an executable. `inspect` keeps symbols, local names, call sites, source hashes, statement spans, and conservative effects. `diagram` presents checked program relationships as ASCII (default), Mermaid, or an [interactive HTML code map](#interactive-code-map). Review and diagram describe project declarations; standard-library calls remain boundary leaves and imports remain visible dependencies.
 
 ```sh
 ms diagram ms.toml --view effects --entity save
@@ -83,8 +102,8 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 
 - `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope`, `tasks` and `ownership`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
-- `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. It needs `--view` or `--entity`.
-- `--format html` writes one self-contained interactive page (no network, no libraries) holding the whole program: a folder, module and function overview, a call graph around any function, a sequence view, a type map, a step-by-step behavior view, and a shortest-call-path finder. Clicking an identifier in the source panel shows its checked type, the same one language-server hover shows; the page embeds up to 200,000 identifier types and drops the rest. Views are capped (about 40 overview nodes plus "+N more", 60 call nodes, 14 sequence lifelines) so a program with thousands of modules stays responsive; the data is compact and flows decode on first use. `--diff <file|->` marks the entities the diff changed (red outline, a Changed list, a changed-only filter). It takes no `--view` or `--entity`. Open it in any browser.
+- `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. ASCII and Mermaid overlays need `--view` or `--entity`; HTML includes the whole map.
+- `--format html` includes all views in one page and accepts `--diff`; omit `--view` and `--entity`. Type hints are capped at 200,000 identifiers. Individual views bound their display (about 40 overview nodes, 60 call nodes and 14 sequence lifelines); the map shows omitted counts and lets you navigate to a different part of the program.
 - `--json` emits a versioned document with `view`, `entity`, and `tree` (defaults to the `calls` view). Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted`, and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap. `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`; `var` may change the argument, the result is owned) (not the generic tree) unless `--diff` is given. Use `--format mermaid` to render a view for people (`types` becomes a class diagram with composition arrows; `ownership` a flow colored by borrow mode, unless `--diff` is given); `--json` and `--format` cannot be combined.
 
 ## Review report
@@ -220,6 +239,10 @@ Test results:
 
 ## Editor features
 
+Install the [Manuscript VS Code extension](https://github.com/manuscript-lang/manuscript/tree/main/extensions/vscode#readme), then open your project folder. Put `ms` on `PATH` or set `manuscript.serverPath` to your compiler executable. After changing that setting, run **Manuscript: Restart language server**. The extension starts `ms lsp` for you; it is a protocol server, not an interactive terminal command. Other LSP clients can launch the same command over standard input/output.
+
+Open a `.ms` file, hover over a name to see its type, use **Go to Definition** to follow it, and apply a diagnostic's quick fix when offered. Formatting uses the same rules as `ms fmt`, keeping editor and command-line edits consistent.
+
 The language server provides incremental sync with validated UTF-16 ranges, diagnostics and lint codes, document and workspace symbols, semantic tokens, folding, inferred-local type hints, hover, definition and type-definition navigation, highlights, references, signature help, formatting, import organization, code actions, and rename.
 
 - Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, record fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
@@ -245,7 +268,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
-| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
+| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `try x.flush()`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
@@ -279,7 +302,7 @@ Expression layout uses a soft limit of 88 columns:
 
 ## Debugging and profiling
 
-The Rust `ms` has no debugger. Native builds keep frame pointers and DWARF line tables, so faults report source frames and external tools such as `perf` can attribute samples; see [profiling and native debugging](debugging/debugger-integration.md).
+Native builds keep frame pointers and DWARF line tables, so faults report source frames and external tools such as `perf` can attribute samples; see [profiling and native debugging](debugging/debugger-integration.md).
 
 `ms profile module-or-project --out-dir new-directory` builds the application, runs it with the sampling profiler, and writes `program`, `profile.folded`, `profile.pb` (pprof), `top.txt`, and `manifest.json`. Existing directories are rejected. Profiling adds overhead, so measure an unprofiled executable when comparing speed.
 

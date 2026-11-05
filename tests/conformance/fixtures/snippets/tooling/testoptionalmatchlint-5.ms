@@ -2,8 +2,8 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/optional_match_lint_test.go:18 TestOptionalMatchLint
 enum Shape:
-    case Dot
-    case Line
+    Dot
+    Line
 
 fn use(value: Shape) Int:
     return match value:

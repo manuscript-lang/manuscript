@@ -7,15 +7,23 @@ weight = 2
 
 Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(T) U`. A closure borrows or owns the bindings it captures.
 
+Save as `callback.ms` and run `ms run callback.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2\n"} -->
 ```manuscript
 fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
 
-let offset = 1
-let decrement = fn(value: Int) Int:
-    return value - offset
+export fn main() Int:
+    let offset = 1
+    let decrement = fn(value: Int) Int:
+        return value - offset
+    print(apply(3, decrement))
+    return 0
+```
 
-let result = apply(value: 3, transform: decrement)
+```text
+2
 ```
 
 Function types name no parameters; `fn(var List[Int]) Unit` marks one the function changes in place ([changing parameters](#changing-parameters)). Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.

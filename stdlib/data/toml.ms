@@ -7,37 +7,37 @@ import log, sqrt from "@std/math/math.ms"
 // A TOML value. Date and time values retain their original TOML text.
 export enum TomlValue:
     // Text decoded from TOML basic or literal string syntax.
-    case StringValue(
+    StringValue(
         // Unicode contents after the applicable escapes and multiline rules.
         value: String
     )
     // A parsed whole number; out-of-range input is rejected rather than truncated.
-    case IntValue(
+    IntValue(
         // Exact signed integer value of the accepted TOML numeric token.
         value: Int
     )
     // A parsed floating-point number, including TOML infinity and NaN spellings.
-    case FloatValue(
+    FloatValue(
         // Numeric value of the accepted floating token, preserving signed zero.
         value: Float
     )
     // A TOML true or false value; other capitalizations are invalid.
-    case BoolValue(
+    BoolValue(
         // The decoded boolean from the lowercase TOML token.
         value: Bool
     )
     // A validated local/offset date or time token, retained as text.
-    case DateTimeValue(
+    DateTimeValue(
         // Original accepted TOML date/time spelling, without a timezone conversion.
         text: String
     )
     // An ordered array; elements can have different TOML value kinds.
-    case ArrayValue(
+    ArrayValue(
         // Element values in document order, with ordinary mutable list storage.
         values: List[TomlValue]
     )
     // An insertion-ordered table; parse returns this case even for an empty document.
-    case TableValue(
+    TableValue(
         // String-keyed entries produced by assignments, dotted keys and table headers.
         values: Map[String, TomlValue]
     )
@@ -71,10 +71,10 @@ type Table:
 // Tables are stored in the reader and referenced by index, so a parent can name a child that
 // later keys keep extending without two copies of the same table.
 enum Node:
-    case Leaf(value: TomlValue)
-    case TableNode(id: Int)
-    case ArrayNode(values: List[Node])
-    case TableArray(ids: List[Int])
+    Leaf(value: TomlValue)
+    TableNode(id: Int)
+    ArrayNode(values: List[Node])
+    TableArray(ids: List[Int])
 
 fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
     reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))

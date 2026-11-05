@@ -3,8 +3,8 @@
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
 
 enum Cents:
-    case Valid(amount: Int)
-    case Invalid
+    Valid(amount: Int)
+    Invalid
 
 fn total(cents: Cents) Result[Int, Error]:
     let amount = match cents:

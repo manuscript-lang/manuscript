@@ -214,7 +214,7 @@ impl FnLower<'_> {
                 let init = callback("initial").ok_or_else(|| Error::new("fold without initial"))?;
                 let acc_ty = out;
                 let acc = self.fresh_var(acc_ty);
-                let init = self.owned(init.val);
+                let init = self.owned_arg(init.val);
                 self.b.def_var(acc, init);
                 self.each_item(items, name == "fold_right", &mut |s, xs| {
                     let f = s.b.use_var(fvar);
@@ -279,7 +279,7 @@ impl FnLower<'_> {
                     s.b.switch_to(keep);
                     let owned: Vec<Value> = xs
                         .iter()
-                        .map(|x| s.owned(Val { v: *x, own: false }))
+                        .map(|x| s.owned_boundary(Val { v: *x, own: false }))
                         .collect();
                     let item = match s.b.m.types.kind(inner).clone() {
                         TyKind::Rec(rid) if xs.len() == 2 => s.b.rec_new(rid, &owned),
@@ -333,7 +333,10 @@ impl FnLower<'_> {
                         s.b.def_var(acc, next);
                         Ok::<(), Error>(())
                     };
-                    let own = |s: &mut FnLower<'_>, x: Value| s.owned(Val { v: x, own: false });
+                    // The result is a new independent collection: the keys and values it keeps are the
+                    // copies the method's contract declares.
+                    let own =
+                        |s: &mut FnLower<'_>, x: Value| s.owned_boundary(Val { v: x, own: false });
                     if name == "filter" {
                         let (keep, skip) = (s.b.new_block(), s.b.new_block());
                         s.b.br_if(r, keep, &[], skip, &[]);

@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=foreign-syntax diagnostics
 enum E:
-    case A
+    A
 
 fn f(e: E) Int:
     match e:

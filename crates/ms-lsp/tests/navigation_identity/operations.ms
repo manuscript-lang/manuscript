@@ -13,8 +13,8 @@ impl Named for Sample:
         return "sample"
 
 export enum Shape:
-    case Number(value: Int)
-    case Empty
+    Number(value: Int)
+    Empty
 
 export fn calls() String:
     let sample = Sample(number: 1)

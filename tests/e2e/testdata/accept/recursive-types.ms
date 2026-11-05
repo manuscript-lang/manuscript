@@ -1,9 +1,9 @@
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
 enum Expr:
-    case Num(value: Int)
-    case Add(left: Expr, right: Expr)
-    case Neg(inner: Expr)
+    Num(value: Int)
+    Add(left: Expr, right: Expr)
+    Neg(inner: Expr)
 
 fn evaluate(expr: Expr) Int:
     match expr:
@@ -12,12 +12,12 @@ fn evaluate(expr: Expr) Int:
         Neg(inner): return -evaluate(inner)
 
 enum Tree[T]:
-    case Leaf(value: T)
-    case Branch(left: Tree[T], right: Tree[T])
+    Leaf(value: T)
+    Branch(left: Tree[T], right: Tree[T])
 
 enum Forest:
-    case Empty
-    case More(tree: MutualTree)
+    Empty
+    More(tree: MutualTree)
 
 type MutualTree:
     value: Int
@@ -129,7 +129,7 @@ type Person:
     primary: Entry?
 
 enum NestedOptional:
-    case Value(value: Int??)
+    Value(value: Int??)
 
 type NestedResult:
     value: Int!Error!Error

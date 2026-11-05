@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/conversions_queries_test.go:25 TestConversionsAndQueriesRejectInvalidContracts
 enum T!E:
-    case ok(value: T)
-    case error(cause: E)
+    ok(value: T)
+    error(cause: E)
 
 fn wrong(value: Int!String) Int?: value.to_optional()

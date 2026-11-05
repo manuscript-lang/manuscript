@@ -2,6 +2,6 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/layout_diagnostics_test.go:18 TestRecursiveDataAndFiniteTypeApplications
 enum Expr:
-    case Num(value: Int)
-    case Add(left: Expr, right: Expr)
-    case Neg(inner: Expr?)
+    Num(value: Int)
+    Add(left: Expr, right: Expr)
+    Neg(inner: Expr?)
