@@ -1,11 +1,11 @@
 // conform: tags=alternatives,formatter,match,optional,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:27 TestPatternBindingAdvisory
-type First:
-    case Ready
+enum First:
+    Ready
 
-type Second:
-    case Ready
+enum Second:
+    Ready
 
 fn use(value: Int?) Int:
     match value:

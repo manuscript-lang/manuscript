@@ -55,17 +55,17 @@ fn cli_invalid_schema(reason: String) Error:
     return Error("cli: invalid command schema: {reason}", kind: "EINVAL")
 
 // What a flag accepts. Each case fills the record field of the same language type.
-export type FlagKind:
+export enum FlagKind:
     // `Bool` field. Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
-    case Bool
+    Bool
     // `String` field. Any text, including text that begins with a dash when given as `--name=value`.
-    case String
+    String
     // `Int` field. A whole number that fits in Int; other text returns an Error with kind `"EINVAL"`.
-    case Int
+    Int
     // `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, returns an Error with kind `"EINVAL"`.
-    case Float
+    Float
     // `List[String]` field. The flag may repeat; every occurrence is kept in order.
-    case List
+    List
 
 // A named option such as `--port 8080` or `-p 8080`.
 export type Flag:
@@ -170,14 +170,14 @@ export type Command:
     exec: fn(Matches) Int! = fn m: ok(0)
 
 // The outcome of parsing: help text to show, or a node ready to run.
-export type Parsed:
+export enum Parsed:
     // `-h`, `--help`, `help` or a group without a handler.
-    case Help(
+    Help(
         // The rendered help ending in a newline, ready to write to stdout.
         text: String
     )
     // A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
-    case Run(
+    Run(
         // The values to pass the handler; `path` names the command reached from the root.
         matches: Matches
     )

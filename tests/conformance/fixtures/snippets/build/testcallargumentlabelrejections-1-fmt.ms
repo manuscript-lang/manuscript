@@ -19,8 +19,8 @@ fn apply(transform: fn(Int) Int) Int:
 type Box:
     value: Int
 
-type Choice:
-    case Payload(value: Int)
+enum Choice:
+    Payload(value: Int)
 
 interface Read:
     fn get() Int

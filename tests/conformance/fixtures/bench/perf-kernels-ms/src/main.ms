@@ -15,9 +15,9 @@ type Grid:
     height: Int
     cells: List[Int]
 
-type Tree:
-    case Leaf
-    case Node(left: Tree, right: Tree)
+enum Tree:
+    Leaf
+    Node(left: Tree, right: Tree)
 
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)

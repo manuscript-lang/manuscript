@@ -62,9 +62,9 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-habits-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "type Color:\n\
-        \x20   case Red\n\
-        \x20   case Green\n\
+    let source = "enum Color:\n\
+        \x20   Red\n\
+        \x20   Green\n\
         \n\
         fn pick() Color:\n\
         \x20   return Red()\n\

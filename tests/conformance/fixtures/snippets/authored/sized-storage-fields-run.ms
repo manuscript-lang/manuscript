@@ -11,10 +11,10 @@ type Pix:
     f: Float32
     n: Int32
 
-type Shape:
-    case Dot(x: Int8)
-    case Box(w: Int16, h: Float32, c: Int32)
-    case Big(v: Int)
+enum Shape:
+    Dot(x: Int8)
+    Box(w: Int16, h: Float32, c: Int32)
+    Big(v: Int)
 
 fn area(s: Shape) Int:
     match s:

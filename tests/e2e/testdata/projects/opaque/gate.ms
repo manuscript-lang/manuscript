@@ -5,9 +5,9 @@ export opaque type Approved:
 export opaque type Counter:
     count: Int
 
-export opaque type Mode:
-    case Safe
-    case Wild(level: Int)
+export opaque enum Mode:
+    Safe
+    Wild(level: Int)
 
 impl Approved:
     fn label() String:

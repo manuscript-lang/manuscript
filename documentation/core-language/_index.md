@@ -9,7 +9,7 @@ These chapters define how Manuscript programs behave. New readers should start w
 
 1. [Basics](basics/_index.md): source files, variables, numbers, text, and expressions.
 2. [Functions](functions/_index.md): parameters, calls, and closures.
-3. [Types](types/_index.md): records, alternatives, collections, and interfaces.
+3. [Types](types/_index.md): records, enums, collections, and interfaces.
 4. [Control flow](control-flow/_index.md): conditions, loops, and matching.
 5. [Error handling](errors/_index.md): results, propagation, and faults.
 6. [Modules](modules/_index.md): imports, exports, and public boundaries.

@@ -92,9 +92,9 @@ test('all compiler keywords have scopes; contextual and retired words stay ident
   for (const word of keywords) {
     assertScopes(word, [[word, ['true', 'false', 'unit'].includes(word) ? 'kc' : 'k']]);
   }
-  assertScopes('from as async await null def lambda elif', [
+  assertScopes('from as async await null def lambda elif case', [
     ['from', ''], ['as', ''], ['async', ''], ['await', ''], ['null', ''],
-    ['def', ''], ['lambda', ''], ['elif', ''],
+    ['def', ''], ['lambda', ''], ['elif', ''], ['case', ''],
   ]);
   assertScopes('let from = 1\nlet as = 2\nimport Name, value from "x.ms"\n', [
     ['let', 'k'], ['"x.ms"', 's'], ['import', 'k'], ['Name', 'nc'],
@@ -145,7 +145,7 @@ test('parser fixture covers declarations, implicit borrows, lambdas and patterns
     ['extern', 'k'], ['type', 'k'], ['Box', 'nc'], ['interface', 'k'], ['Reader', 'nc'],
     ['impl', 'k'], ['identity', 'nf'], ['self', 'k'], ['replace', 'nf'],
     ['var', 'k'], ['let', 'k'], ['fn', 'k'],
-    ['match', 'k'], ['case', 'k'], ['Ready', 'nc'],
+    ['match', 'k'], ['Ready', 'nc'],
     ['borrowed', ''], ['exclusive', ''], ['specialized', ''], ['...', 'o'],
   ]);
   assertScopes('fn Uppercase() Int: 1\ntype lowercase: ...\ninterface readable:\n    fn get() String\n', [
@@ -165,4 +165,25 @@ test('every authored Manuscript fence preserves its exact source text', () => {
     }
   }
   assert.ok(fences > 100, 'Discover the current authored examples');
+});
+
+// Lowercase enum names and opaque headers exercise declaration rules independently of capitalization.
+test('enum declarations and opaque enum headers are highlighted', () => {
+  assertScopes('export opaque enum outcome[T]:\n    ready\n    Value(value: T)\n', [
+    ['export', 'k'], ['opaque', 'k'], ['enum', 'k'], ['outcome', 'nc'], ['ready', 'nc'], ['Value', 'nc'],
+  ]);
+});
+
+test('bare enum variants have declaration scopes and case stays an identifier', () => {
+  assertScopes('enum response[T]:\n    pending\n    found(value: T)\n\nfn case(value: Int) Int: value\n', [
+    ['enum', 'k'], ['response', 'nc'], ['pending', 'nc'], ['found', 'nc'], ['case', 'nf'],
+  ]);
+  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Unit:\n    let case = 1\n');
+  assert.ok(!tokens.some(token => token.kind === 'k' && token.text.includes('case')));
+});
+
+test('unindented comments do not end an enum declaration scope', () => {
+  assertScopes('enum E:\n    ready\n// comment\n    pending\n/* comment */\n    finished\n\nfn work() Unit: unit\n', [
+    ['enum', 'k'], ['E', 'nc'], ['ready', 'nc'], ['pending', 'nc'], ['finished', 'nc'], ['work', 'nf'],
+  ]);
 });

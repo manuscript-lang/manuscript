@@ -908,7 +908,17 @@ impl Checker {
         let (mut wildcard, mut unknown_case) = (false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
-            let name = path_text(&arm.path);
+            let optional_binding = arm.bare && t.is(Builtin::Optional);
+            let name = if optional_binding {
+                n("some")
+            } else {
+                path_text(&arm.path)
+            };
+            let bindings = if arm.bare && !optional_binding {
+                &[][..]
+            } else {
+                &arm.bindings[..]
+            };
             let mut arm_fields: Vec<Param> = Vec::new();
             let mut unknown_arm = false;
             if self.syms.str(name) == "_" {
@@ -992,21 +1002,23 @@ impl Checker {
                     );
                 }
                 seen.insert(name);
-                if found && arm_fields.len() != arm.bindings.len() {
+                if found && arm_fields.len() != bindings.len() {
                     self.type_error(
                         arm.pos,
                         format!(
                             "case payload arity mismatch; {name_t} has {} payload fields, found {} bindings (use _ to ignore one)",
                             arm_fields.len(),
-                            arm.bindings.len()
+                            bindings.len()
                         , name_t = self.syms.str(name)),
                     );
                 }
             }
-            self.match_binding_names(arm, &arm_fields);
+            if !arm.bare || optional_binding {
+                self.match_binding_names(arm, &arm_fields);
+            }
             let old = self.scope.clone();
             self.scope = Scope::new(Some(old.clone()));
-            for (i, binding) in arm.bindings.iter().enumerate() {
+            for (i, binding) in bindings.iter().enumerate() {
                 let mut b: Option<BindingRef> = None;
                 if self.syms.str(binding.name) != "_" && i < arm_fields.len() {
                     b = Some(self.bind(binding.name, &arm_fields[i].ty, false, arm.pos));
@@ -1107,6 +1119,7 @@ impl Checker {
         let (mut wildcard, mut fall, mut breaks) = (false, false, false);
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
+            let bindings = if arm.bare { &[][..] } else { &arm.bindings[..] };
             let mut target: Option<Ty> = None;
             if self.syms.str(path_text(&arm.path)) == "_" {
                 if wildcard || index != arms.len() - 1 {
@@ -1174,7 +1187,7 @@ impl Checker {
                         target = None;
                     }
                 }
-                if arm.bindings.len() != 1 {
+                if bindings.len() != 1 {
                     self.type_error(
                         arm.pos,
                         "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'",
@@ -1182,10 +1195,12 @@ impl Checker {
                 }
             }
             let placeholder = Param::new(n(""), target.clone().unwrap_or_else(invalid));
-            self.match_binding_names(arm, &[placeholder]);
+            if !arm.bare {
+                self.match_binding_names(arm, &[placeholder]);
+            }
             let old = self.scope.clone();
             self.scope = Scope::new(Some(old.clone()));
-            for binding in &arm.bindings {
+            for binding in bindings {
                 let mut b: Option<BindingRef> = None;
                 if self.syms.str(binding.name) != "_"
                     && let Some(t) = &target

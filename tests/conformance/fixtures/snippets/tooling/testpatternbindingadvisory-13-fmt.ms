@@ -1,9 +1,9 @@
 // conform: tags=alternatives,control-flow,formatter,interfaces,match,parser,records,strings,tier-core,try-result
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:44 TestPatternBindingAdvisory
-type Failure:
-    case NotFound
-    case Denied(reason: String)
+enum Failure:
+    NotFound
+    Denied(reason: String)
 
 fn failure_code(cause: Failure) Int:
     match cause:

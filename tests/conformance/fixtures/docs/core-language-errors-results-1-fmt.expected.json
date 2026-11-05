@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Decimal from \"@std/math/decimal.ms\"\n\ntype DiscountError:\n    case InvalidPrice\n    case InvalidPercent\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))\n"
+    "fmt": "import Decimal from \"@std/math/decimal.ms\"\n\nenum DiscountError:\n    InvalidPrice\n    InvalidPercent\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))\n"
   }
 }

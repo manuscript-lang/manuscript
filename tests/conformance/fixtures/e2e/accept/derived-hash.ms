@@ -8,9 +8,9 @@ type P:
     x: Int
     name: String
 
-type Shape:
-    case Dot(x: Int)
-    case Line(a: Int, b: Int?)
+enum Shape:
+    Dot(x: Int)
+    Line(a: Int, b: Int?)
 
 fn code[T: Hashable](value: T) Int:
     return value.hash()

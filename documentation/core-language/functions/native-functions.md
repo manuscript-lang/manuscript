@@ -39,7 +39,7 @@ An extern follows `crates/ms-rt-abi/include/ms_abi.h`, which a C shim includes.
 | `Unit` | not allowed | `void` |
 | `Result[T, E]` | not allowed | `uint8_t` status, `T` through `out`, then `code_out`, `message_out` |
 
-Any other type is rejected by `ms check`. A record, alternative, map or optional is converted in an ordinary Manuscript function around the extern.
+Any other type is rejected by `ms check`. A record, enum, map or optional is converted in an ordinary Manuscript function around the extern.
 
 Arguments are borrowed: a native reads them and does not keep a pointer after returning. It builds results with `ms_string_new`, `ms_bytes_new` and `ms_list_push`, never with its own allocator, so the program can free them. A list knows its element type: `ms_list_get` widens an element into an `ms_value`, and `ms_list_push` faults on a value of another kind or out of the element's range. Strings and bytes from `ms_list_get` are `malloc` copies that `ms_value_free` releases. A native that blocks, such as an event loop, returns when a stop is requested only if it registers a stop hook (see [Calling back into Manuscript](#calling-back-into-manuscript)), since a native call is not a cancellation point.
 
@@ -47,14 +47,14 @@ Every output arrives holding an empty value (0, `""`, an empty list, NULL), and 
 
 ## Errors
 
-A `Result[T, E]` return names its error type `E`, an alternative whose cases carry nothing, `code: Int`, `message: String`, or both. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order; reordering the cases changes the numbers. When any case has a `code` field, a trailing `int64_t *code_out` follows `out`; when any has a `message`, a trailing `ms_str *message_out` follows. The program reads the fields of the case the status names. A status that names no case faults.
+A `Result[T, E]` return names its error type `E`, an enum whose cases carry nothing, `code: Int`, `message: String`, or both. The native returns `0` for success, and `1`, `2`, ... for the first, second, ... case of `E` in declaration order; reordering the cases changes the numbers. When any case has a `code` field, a trailing `int64_t *code_out` follows `out`; when any has a `message`, a trailing `ms_str *message_out` follows. The program reads the fields of the case the status names. A status that names no case faults.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // A failed call, with the library's code and description.
-type LibraryError:
-    case Failed(code: Int, message: String)
-    case Busy
+enum LibraryError:
+    Failed(code: Int, message: String)
+    Busy
 
 extern fn lib_count(path: String) Int!LibraryError
 ```

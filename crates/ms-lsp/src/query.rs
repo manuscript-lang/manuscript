@@ -12,7 +12,7 @@ use crate::workspace::{workspace_references, workspace_symbols_matching};
 #[derive(Clone, Debug)]
 pub struct SymbolMatch {
     pub name: String,
-    /// `fn`, `type` or `const`.
+    /// `fn`, `type`, `enum` or `const`.
     pub kind: &'static str,
     /// `file:line:column`.
     pub definition: String,
@@ -62,6 +62,7 @@ pub fn search_symbols(
         }
         let kind = match symbol.get("kind").and_then(Json::as_i64) {
             Some(5) => "type",
+            Some(10) => "enum",
             Some(14) => "const",
             _ => "fn",
         };

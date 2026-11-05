@@ -1,1 +1,1 @@
-error parse 9:10:382 "nullary cases omit parentheses; write 'case error' instead of 'case error()'"
+error parse 9:5:372 "payloadless variants omit parentheses; write 'error' instead of 'error()'"

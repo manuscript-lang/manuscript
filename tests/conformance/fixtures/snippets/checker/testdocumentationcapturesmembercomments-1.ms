@@ -9,13 +9,13 @@ export type Counter:
     // Detached description.
     undocumented: Int = 1
 
-export type Outcome:
+export enum Outcome:
     // A completed count.
-    case Ready(value: Int)
+    Ready(value: Int)
     // Work is pending.
-    case Pending
+    Pending
     // Work failed with source context.
-    case Failed(
+    Failed(
         // Original failure diagnostic.
         message: String
     )

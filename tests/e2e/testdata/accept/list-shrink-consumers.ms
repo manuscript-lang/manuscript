@@ -140,9 +140,9 @@ test "record consumers keep independent copies after shrink":
             last.value = 11
             (not (seen.last().get().value == 3 and clone.last().get().value == 3)) | try expect_false
 
-type Choice:
-    case number(value: Int)
-    case label(value: String)
+enum Choice:
+    number(value: Int)
+    label(value: String)
 
 fn score(value: Choice) Int:
     match value:

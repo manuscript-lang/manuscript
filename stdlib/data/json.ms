@@ -30,31 +30,31 @@ if let user = doc.get("user"):
 
 `get_in` reads a chain of object members in one call and lends the result: `doc.get_in(["user", "name"])`.
 */
-export type JsonValue:
+export enum JsonValue:
     // JSON null, represented without a payload value.
-    case Null
+    Null
     // A JSON true or false value.
-    case BoolValue(
+    BoolValue(
         // The decoded boolean, without a textual representation requirement.
         value: Bool
     )
     // An exact JSON number token; parsing does not coerce it into Float.
-    case NumberValue(
+    NumberValue(
         // Original numeric token text; stringify validates its JSON number syntax.
         text: String
     )
     // A decoded JSON string, with escapes resolved into Unicode text.
-    case StringValue(
+    StringValue(
         // Decoded UTF-8 text, preserving scalar contents without normalization.
         value: String
     )
     // An ordered JSON array whose mutable list can be updated before serialization.
-    case ArrayValue(
+    ArrayValue(
         // Element values in source order; the array owns its elements.
         values: List[JsonValue]
     )
     // A JSON object retaining insertion order and rejecting duplicate keys during parsing.
-    case ObjectValue(
+    ObjectValue(
         // String-keyed members in insertion order; stringify reads their current values.
         values: Map[String, JsonValue]
     )
@@ -179,9 +179,9 @@ encoding round-trips. This implementation writes an internal `type` discriminato
 protocol shape:
 
 ```manuscript
-type Event:
-    case Created(id: Int)
-    case Deleted(id: Int)
+enum Event:
+    Created(id: Int)
+    Deleted(id: Int)
 
 impl JsonEncode for Event:
     fn to_json() JsonValue:

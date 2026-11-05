@@ -1,12 +1,12 @@
 // Holds either a successful value (`ok`) or an expected failure (`error`).
-export type Result[T, E: Error]:
+export enum Result[T, E: Error]:
     // A successful result, retaining its payload without a deep copy.
-    case ok(
+    ok(
         // The successful value returned by unwrap, matching, or propagation.
         value: T
     )
     // An expected failure value; it is distinct from faults and cancellation.
-    case error(
+    error(
         // The original domain error, retained through compatible Result propagation.
     )
 

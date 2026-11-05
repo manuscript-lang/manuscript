@@ -1,9 +1,9 @@
 export type Point:
     x: Int
 
-export type Mode:
-    case Off
-    case On
+export enum Mode:
+    Off
+    On
     
 export fn shifted() Int:
     return Point(10).x + 1

@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Envelope; declare it with 'type Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it",
+        "message": "unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it",
         "position": {
           "file": "testmatchpayloadpositionssurviverecovery-1.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmatchpayloadpositionssurviverecovery-1.ms:5:15: resolution: unknown type Envelope; declare it with 'type Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it\n   |\n 5 | fn use(value: Envelope) Int:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmatchpayloadpositionssurviverecovery-1.ms:5:15: resolution: unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import it\n   |\n 5 | fn use(value: Envelope) Int:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

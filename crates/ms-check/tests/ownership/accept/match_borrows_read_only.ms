@@ -1,6 +1,6 @@
-type Tree:
-    case Leaf
-    case Node(left: Tree, value: Int)
+enum Tree:
+    Leaf
+    Node(left: Tree, value: Int)
 
 fn sum(t: Tree) Int:
     match t:

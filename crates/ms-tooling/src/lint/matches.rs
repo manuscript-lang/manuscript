@@ -67,7 +67,16 @@ impl Scan<'_> {
         } else {
             return;
         };
-        let texts: Vec<String> = arms.iter().map(|a| path_text(syms, &a.path)).collect();
+        let texts: Vec<String> = arms
+            .iter()
+            .map(|a| {
+                if a.bare && ty.is(Builtin::Optional) {
+                    "some".to_string()
+                } else {
+                    path_text(syms, &a.path)
+                }
+            })
+            .collect();
         if texts.iter().any(|t| t == first) && texts.iter().any(|t| t == second) {
             self.findings.push(finding(code, message, self.file, e.pos));
         }

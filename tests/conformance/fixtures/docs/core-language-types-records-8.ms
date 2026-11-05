@@ -3,9 +3,9 @@
 // conform: origin=documentation/core-language/types/records.md:99
 import panic from "@std/core.ms"
 
-type Expr:
-    case Num(value: Int)
-    case Add(left: Expr, right: Expr)
+enum Expr:
+    Num(value: Int)
+    Add(left: Expr, right: Expr)
 
 fn evaluate(expr: Expr) Int:
     match expr:

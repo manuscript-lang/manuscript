@@ -33,14 +33,14 @@ export type HtmlAttribute:
     value: String
 
 // A parsed HTML document tree with document, element, text, comment, and doctype nodes.
-export type HtmlNode:
+export enum HtmlNode:
     // Root document node, including any elements implied by HTML tree normalization.
-    case Document(
+    Document(
         // Direct child nodes in normalized document order.
         children: List[HtmlNode]
     )
     // An element with normalized attributes and its ordered child nodes.
-    case Element(
+    Element(
         // Local element tag name produced by the HTML parser.
         tag: String,
         // Element namespace, such as svg/math, or empty text for ordinary HTML.
@@ -51,17 +51,17 @@ export type HtmlNode:
         children: List[HtmlNode]
     )
     // Text node contents after HTML entity decoding and tree normalization.
-    case Text(
+    Text(
         // Unicode text belonging to this node, without surrounding markup.
         text: String
     )
     // An HTML comment retained as a node rather than element text.
-    case Comment(
+    Comment(
         // Comment contents without the opening and closing comment delimiters.
         text: String
     )
     // A document-type declaration retained from the parsed HTML.
-    case Doctype(
+    Doctype(
         // Doctype name supplied by the native HTML parser.
         name: String,
         // Public identifier, or empty text when no public identifier is present.

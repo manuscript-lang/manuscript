@@ -29,10 +29,10 @@ type Nested:
     pair: Pair
     all: List[Tracked]
 
-type Slot:
-    case Empty
-    case Full(item: Tracked)
-    case Both(left: Tracked, right: Tracked)
+enum Slot:
+    Empty
+    Full(item: Tracked)
+    Both(left: Tracked, right: Tracked)
 
 // Closes itself, then the field it owns.
 type Wrapper:

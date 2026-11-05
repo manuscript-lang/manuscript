@@ -180,9 +180,9 @@ type Todo:
     title: String
     completed: Bool = false
 
-type Status:
-    case Draft
-    case Published(url: String)
+enum Status:
+    Draft
+    Published(url: String)
 
 fn status_label(status: Status) String:
     match status:
@@ -211,14 +211,14 @@ PASS example.ms::publish a help page
 ```
 
 - Records group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
-- Alternatives list cases; `match` must handle every case.
+- Enums list cases; `match` must handle every case.
 - Types are nominal: identical fields do not make two types equal.
 
 ## Expected errors
 
 ```manuscript
-type QuantityError:
-    case MustBePositive
+enum QuantityError:
+    MustBePositive
 
 fn quantity(value: Int) Result[Int, QuantityError]:
     if value <= 0:

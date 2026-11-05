@@ -1,8 +1,8 @@
 import Token from "./gate.ms"
 
-export type Visible:
-    case Minted
-    case Labeled(value: Int)
+export enum Visible:
+    Minted
+    Labeled(value: Int)
 
 export fn mint() Visible:
     return Minted

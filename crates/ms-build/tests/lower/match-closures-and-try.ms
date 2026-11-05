@@ -2,9 +2,9 @@
 // expect-mir: "switch"
 // expect-mir: "closure.new"
 
-type Shape:
-    case Circle(radius: Int)
-    case Dot
+enum Shape:
+    Circle(radius: Int)
+    Dot
 
 fn area(s: Shape) Int:
     return match s:

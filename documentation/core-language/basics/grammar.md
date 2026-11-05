@@ -16,7 +16,7 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 The language uses these keywords:
 
 ```manuscript
-and break case continue else export extern false fixture fn for if
+and break continue else enum export extern false fixture fn for if
 impl import in interface let match not or return self test true try type
 unit var while
 ```
@@ -113,18 +113,20 @@ In the EBNF, braces repeat, brackets are optional, and quoted brackets are sourc
 Module        = { Import | Declaration } ;
 Import        = "import", ( ImportNames | "(", ImportNames, [ "," ], ")" ), "from", PlainStringLiteral, NEWLINE ;
 ImportNames   = Name, { ",", Name } ;
-Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
+Declaration   = [ "export" ], (TypeDeclaration | EnumDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
 ConstantDeclaration = "let", ( ConstantBinding | "(", NEWLINE, INDENT, ConstantBinding, { ConstantBinding }, DEDENT, ")", NEWLINE ) ;
 ConstantBinding = Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
 TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
-                  ("...", NEWLINE | NEWLINE, INDENT, (RecordBody | AlternativeBody), DEDENT) ;
+                  ("...", NEWLINE | NEWLINE, INDENT, RecordBody, DEDENT) ;
+EnumDeclaration = [ "opaque" ], "enum", Name, [ TypeParameters ], ":", NEWLINE,
+                  INDENT, AlternativeBody, DEDENT ;
 RecordBody    = { Field } ;
 Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;
-AlternativeBody = CaseDeclaration, { CaseDeclaration } ;
-CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
+AlternativeBody = VariantDeclaration, { VariantDeclaration } ;
+VariantDeclaration = Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":",
                        ("...", NEWLINE | NEWLINE, INDENT, ContractBody, DEDENT) ;
 ContractBody  = OperationSignature, { OperationSignature } ;
@@ -162,13 +164,13 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 ```
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
-- A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
+- A `type` declares record fields; an `enum` declares one or more variants. Their methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
-- Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
+- Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
 - A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. In the standard library, a property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
-- `export` applies to types, interfaces, named functions, constants and extern declarations, not tests, benches, or `impl` blocks.
+- `export` applies to records, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or `impl` blocks.
 - `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Receiver parameters must occur in the receiver application. Operations and source methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Overlap follows [contracts](../types/contracts.md#generic-implementations).
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `let` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).

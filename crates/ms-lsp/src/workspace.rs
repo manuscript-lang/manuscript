@@ -314,7 +314,13 @@ pub(crate) fn workspace_symbols_matching(
                 continue;
             }
             let kind = match &info.symbol {
-                Some(s) if s.kind == ms_check::types::SymKind::Type => 5,
+                Some(s) if s.kind == ms_check::types::SymKind::Type => {
+                    if s.ty(syms).kind == ms_check::types::Kind::Alternative {
+                        10
+                    } else {
+                        5
+                    }
+                }
                 Some(s) if s.is_constant() => 14,
                 _ => 12,
             };
@@ -381,7 +387,7 @@ fn may_contain_symbol(
                 use ms_syntax::token::Tok;
                 matches!(
                     before.kind,
-                    Tok::Fn | Tok::Type | Tok::Interface | Tok::Let | Tok::Var | Tok::Case
+                    Tok::Fn | Tok::Type | Tok::Enum | Tok::Interface | Tok::Let | Tok::Var
                 )
             });
         if !declares {

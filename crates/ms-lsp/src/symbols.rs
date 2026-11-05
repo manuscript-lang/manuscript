@@ -9,6 +9,7 @@ use ms_syntax::ast::*;
 const FUNCTION: i64 = 12;
 const CONSTANT: i64 = 14;
 const CLASS: i64 = 5;
+const ENUM: i64 = 10;
 const INTERFACE: i64 = 11;
 const METHOD: i64 = 6;
 const FIELD: i64 = 8;
@@ -62,7 +63,8 @@ impl Outline<'_> {
         }
         let mut selection_name = name.clone();
         match &decl.kind {
-            DeclKind::Record(_) | DeclKind::Alternative(_) => kind = CLASS,
+            DeclKind::Record(_) => kind = CLASS,
+            DeclKind::Alternative(_) => kind = ENUM,
             DeclKind::Interface(_) => kind = INTERFACE,
             DeclKind::Impl(i) => {
                 kind = CLASS;

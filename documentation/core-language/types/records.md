@@ -185,9 +185,9 @@ Records and alternatives may refer to themselves or each other directly, with no
 ```manuscript
 import panic from "@std/core.ms"
 
-type Expr:
-    case Num(value: Int)
-    case Add(left: Expr, right: Expr)
+enum Expr:
+    Num(value: Int)
+    Add(left: Expr, right: Expr)
 
 fn evaluate(expr: Expr) Int:
     match expr:
@@ -225,7 +225,7 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 
 ## Opaque types
 
-`export opaque type Approved:` hides the fields of a record, or the cases of an alternative, outside the file that declares it. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
+`export opaque type Approved:` hides record fields outside the declaring file; `export opaque enum Choice:` hides enum cases in the same way. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
 
 ```text
 # gate.ms
@@ -249,4 +249,4 @@ Opaque controls visibility: an opaque value can still be cloned when its fields 
 
 A record owns the resources moved into its fields and closes the fields it still owns when its scope ends. Moving a field out transfers that cleanup duty to the new owner. Such a record is not clonable. See [aggregate cleanup](../cleanup/closeable.md#records-and-collections-close-what-they-hold).
 
-Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).
+Use [enums](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).

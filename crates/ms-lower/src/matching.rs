@@ -166,7 +166,12 @@ impl FnLower<'_> {
                 blocks.push(blk);
                 continue;
             }
-            let case = match arm_case(self.syms, &arm.path) {
+            let name = if arm.bare && matches!(kind, TyKind::Opt(_)) {
+                Some("some".to_string())
+            } else {
+                arm_case(self.syms, &arm.path)
+            };
+            let case = match name {
                 _ if by_type => {
                     // A concrete type pattern on a contract value; `_` is the fallback.
                     match self.hir.arm(arm).contract {

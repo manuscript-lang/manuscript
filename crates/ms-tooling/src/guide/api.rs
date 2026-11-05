@@ -308,13 +308,13 @@ fn document_declaration(
         b.push('\n');
     }
     for c in decl.cases() {
-        b += &format!("    case {}", syms.str(c.name));
+        b += &format!("    {}", syms.str(c.name));
         if !c.fields.is_empty() {
             b += &render::parameters(syms, &c.fields, source);
         }
         b.push('\n');
     }
-    if keyword == "type" && !decl.methods().is_empty() {
+    if matches!(keyword, "type" | "enum") && !decl.methods().is_empty() {
         // A type's own methods are written in an `impl Type:` block.
         b += &format!(
             "\nimpl {name}{}:\n",
@@ -383,7 +383,7 @@ fn document_members(
         });
     }
     for c in decl.cases() {
-        let mut signature = format!("case {}", syms.str(c.name));
+        let mut signature = syms.str(c.name).to_string();
         if !c.fields.is_empty() {
             signature += &render::parameters(syms, &c.fields, None);
         }
@@ -467,6 +467,7 @@ fn document_symbol(
     let intrinsic = session.intrinsic_operations(ty.id);
     if let Some(decl) = &symbol.decl {
         let keyword = match source {
+            _ if !decl.cases().is_empty() => "enum",
             Some(s)
                 if s.text()
                     .get(decl.pos().offset as usize..)

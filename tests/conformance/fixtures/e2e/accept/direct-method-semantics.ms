@@ -13,9 +13,9 @@ type Rect:
     w: Int
     h: Int
 
-type Sign:
-    case Plus(n: Int)
-    case Minus(n: Int)
+enum Sign:
+    Plus(n: Int)
+    Minus(n: Int)
 
 impl Shape for Rect:
     fn area() Int:

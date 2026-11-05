@@ -42,17 +42,17 @@ export fn main() Int:
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:`, called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
 - Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()`, `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.
-- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var fn` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.
-- `T?` (Optional): plain values convert (no `some`); `none` is absent; unwrap with `if let x = v:` or `.get(d)`; `a?.b`.
+- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; `enum Choice:` variants `A`, `B(x: Int)`; no `case` keyword. Methods in `impl T:` (`var fn` mutates `self`); `interface I:` contracts, `impl I for T:` conversions.
+- `T?` (Optional): values convert (no `some`); `none` is absent; unwrap with `if let x = v:` or `.get(d)`; `a?.b`.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
 - Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `try r` gives the value or returns a compatible error; `if let x = r:` handles success.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
-- Ownership: every `String`, list, map, record and alternative has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `let` is immutable including contents: `let xs = [1]; xs.append(2)` fails, write `var xs`.
+- Ownership: every `String`, list, map, record and enum has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `let` is immutable including contents: `let xs = [1]; xs.append(2)` fails, write `var xs`.
 - Borrow: `let b = a`, `let x = a.b`, `xs[i]`, arguments, loop variables and match payloads read the owner's value in place; while `b` is used, `a` cannot change. `var x = a.b` changes `a.b` through `x`.
 - Move: storing a value (`xs.append(s)`, a field, a list) gives it a new owner and kills the old name, so `xs.append(s.clone())` unless it is the last use. A borrowed part cannot be stored: `names.append(u.name.clone())`.
 - A fn returning part of a parameter or receiver returns a borrow, no `.clone()`: `fn name(u: User) String: return u.name`; the caller reads it in place, `.clone()` to keep it. A sibling path returning a new value needs `.clone()` on the borrowed path.
-- `export opaque type T:` hides fields and cases outside its file.
+- `export opaque type T:` hides fields; `export opaque enum T:` hides cases outside the file.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.

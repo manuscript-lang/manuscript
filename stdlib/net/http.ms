@@ -102,27 +102,27 @@ impl ClientResponse:
         return self.head.clone()
 
 // Known HTTP methods, plus extension tokens validated by outgoing operations.
-export type HttpMethod:
+export enum HttpMethod:
     // Requests the selected representation.
-    case Get
+    Get
     // Requests response metadata without a body.
-    case Head
+    Head
     // Submits a representation for processing.
-    case Post
+    Post
     // Replaces the selected representation.
-    case Put
+    Put
     // Applies a partial modification.
-    case Patch
+    Patch
     // Removes the selected representation.
-    case Delete
+    Delete
     // Establishes a tunnel to the request target.
-    case Connect
+    Connect
     // Asks which communication options the target supports, without transferring a body.
-    case Options
+    Options
     // Requests a diagnostic loopback.
-    case Trace
+    Trace
     // Carries an extension token; requests reject empty or malformed tokens.
-    case Custom(
+    Custom(
         // The method token; it must be a non-empty HTTP token such as PURGE.
         value: String
     )

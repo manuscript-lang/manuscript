@@ -191,7 +191,7 @@ const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by
 
 fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
-        ":" => "; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body".into(),
+        ":" => "; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body".into(),
         ")" => "; close the parenthesis, separating items with commas".into(),
         "]" if found == Tok::For => {
             "; there are no comprehensions: build the list with map and filter, e.g. items.filter(fn x: x > 0).map(fn x: x * 2)".into()
@@ -216,8 +216,6 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         "NAME" => {
             if found == Tok::SelfKw {
                 "; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the body".into()
-            } else if found == Tok::Case {
-                "; match arms are written without 'case', e.g. Paid(receipt): or Missing:, and 'case' only declares the cases of a type".into()
             } else if found == Tok::LParen {
                 "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
             } else if found_text == "_" {
@@ -254,9 +252,9 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
             Some("type"),
             "declare a record with 'type Name:' and 'field: Type' lines, then add methods in 'impl Name:'",
         ),
-        "enum" | "union" | "variant" | "sealed" => (
-            Some("type"),
-            "declare alternatives with 'type Name:' and one 'case Variant' or 'case Variant(field: Type)' line each",
+        "union" | "variant" | "sealed" => (
+            Some("enum"),
+            "declare an enum with 'enum Name:' and one 'Variant' or 'Variant(field: Type)' line each",
         ),
         "trait" | "protocol" | "abstract" => (
             Some("interface"),
@@ -276,7 +274,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
         "static" | "private" | "internal" | "async" | "extern" | "package" | "namespace"
         | "module" => (
             None,
-            "there is no such modifier; top level holds only import, let, fn, type, interface, impl, and test, optionally prefixed by export",
+            "there is no such modifier; top level holds only import, let, fn, type, enum, interface, impl, and test, optionally prefixed by export",
         ),
         _ => return None,
     };
@@ -441,6 +439,23 @@ impl<'a> Parser<'a> {
         }
         Err(Box::new(d))
     }
+    /// A legacy prefix, including the spaces before a following name on the
+    /// same line. `case`, `case(...)`, and `case:` remain ordinary names.
+    fn legacy_case_prefix(&self) -> Option<Token> {
+        let mut prefix = self.peek();
+        let next = self.ahead(1);
+        if prefix.kind != Tok::Name
+            || self.text(prefix) != "case"
+            || next.kind != Tok::Name
+            || prefix.pos.line != next.pos.line
+        {
+            return None;
+        }
+        prefix.end = next.pos;
+        prefix.hi = next.lo;
+        Some(prefix)
+    }
+
     /// Fails on `t` with a machine-applicable replacement of exactly its range.
     fn fail_fix<T>(&self, t: Token, message: impl Into<String>, replacement: &str) -> PResult<T> {
         self.fail_fix_range(t, t, message, replacement)
@@ -1286,8 +1301,11 @@ impl<'a> Parser<'a> {
                     methods,
                 })
             }
-            Tok::Type | Tok::Interface => return self.type_declaration(token),
-            Tok::Name if self.text(token) == "opaque" && self.ahead(1).kind == Tok::Type => {
+            Tok::Type | Tok::Enum | Tok::Interface => return self.type_declaration(token),
+            Tok::Name
+                if self.text(token) == "opaque"
+                    && matches!(self.ahead(1).kind, Tok::Type | Tok::Enum) =>
+            {
                 self.at += 1;
                 let next = self.peek();
                 let mut decl = self.type_declaration(next)?;
@@ -1315,14 +1333,19 @@ impl<'a> Parser<'a> {
                 }
                 if token.kind == Tok::Name && self.text(token) == "opaque" {
                     let advice = if self.ahead(1).kind == Tok::Export {
-                        "write 'export opaque type Name:', with export first"
+                        let keyword = if self.ahead(2).kind == Tok::Enum {
+                            "enum"
+                        } else {
+                            "type"
+                        };
+                        format!("write 'export opaque {keyword} Name:', with export first")
                     } else {
-                        "'opaque' applies only to a record or alternative type: write 'opaque type Name:' or 'export opaque type Name:'"
+                        "'opaque' applies only to a record or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'".into()
                     };
                     return self.fail(token, format!("misplaced 'opaque'; {advice}"));
                 }
                 let msg = format!(
-                    "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+                    "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
                     describe(self.src, token)
                 );
                 return self.fail(token, msg);
@@ -1377,20 +1400,14 @@ impl<'a> Parser<'a> {
                 }),
             });
         }
-        self.need(Tok::Newline)?;
-        self.need(Tok::Indent)?;
-        #[derive(PartialEq, Clone, Copy)]
-        enum Form {
-            None,
-            Record,
-            Alternative,
-            Interface,
+        if token.kind == Tok::Enum && self.kind() == Tok::Ellipsis {
+            return self.fail(self.peek(), "an enum must declare at least one variant; replace '...' with 'Name' or 'Name(field: Type)'");
         }
-        let mut form = if token.kind == Tok::Interface {
-            Form::Interface
-        } else {
-            Form::None
-        };
+        self.need(Tok::Newline)?;
+        if token.kind == Tok::Enum && self.kind() != Tok::Indent {
+            return self.fail(self.peek(), "an enum must declare at least one variant; indent 'Name' or 'Name(field: Type)' under the header");
+        }
+        self.need(Tok::Indent)?;
         let mut fields: Vec<Param> = Vec::new();
         let mut cases: Vec<Case> = Vec::new();
         let mut methods: Vec<Method> = Vec::new();
@@ -1399,24 +1416,29 @@ impl<'a> Parser<'a> {
             if self.kind() == Tok::Dedent {
                 break;
             }
-            let next = match self.kind() {
-                Tok::Case => Form::Alternative,
-                Tok::Fn => Form::Interface,
-                Tok::Var if self.ahead(1).kind == Tok::Fn => Form::Interface,
-                _ => Form::Record,
-            };
-            if token.kind == Tok::Interface && next != Form::Interface {
-                let t = self.peek();
-                return self.fail(t, "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block");
+            if token.kind == Tok::Type
+                && (self.legacy_case_prefix().is_some()
+                    || (self.kind() == Tok::Name
+                        && matches!(
+                            self.ahead(1).kind,
+                            Tok::LParen | Tok::Newline | Tok::Dedent | Tok::Eof
+                        )))
+            {
+                return self.fail(token, "a record declared with 'type' cannot contain enum variants; replace 'type' with 'enum' and remove any legacy 'case' prefixes");
             }
-            if next != Form::Interface {
-                if form != Form::None && form != next {
-                    let t = self.peek();
-                    return self.fail(t, "a type cannot mix fields and cases; use either fields (a record) or 'case' lines (an alternative), and wrap shared data in a case payload");
+            if token.kind == Tok::Enum {
+                if let Some(prefix) = self.legacy_case_prefix() {
+                    return self.fail(prefix, "enum variants do not use 'case'; remove the prefix and write 'Name' or 'Name(field: Type)'");
                 }
-                form = next;
+                if self.kind() != Tok::Name {
+                    return self.fail(self.peek(), "an enum contains only variants; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block");
+                }
             }
-            if self.take(Tok::Case) {
+            if token.kind == Tok::Interface && !matches!(self.kind(), Tok::Fn | Tok::Var) {
+                let t = self.peek();
+                return self.fail(t, "an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' block");
+            }
+            if token.kind == Tok::Enum {
                 let name = self.need(Tok::Name)?;
                 let mut payload = Vec::new();
                 if self.kind() == Tok::LParen {
@@ -1427,8 +1449,14 @@ impl<'a> Parser<'a> {
                     }
                     if payload.is_empty() {
                         let n = self.text(name);
-                        return self.fail(name, format!("nullary cases omit parentheses; write 'case {n}' instead of 'case {n}()'"));
+                        return self.fail(name, format!("payloadless variants omit parentheses; write '{n}' instead of '{n}()'"));
                     }
+                }
+                if self.kind() == Tok::Colon {
+                    return self.fail(self.peek(), "enum variants have no field or method bodies; write 'Name' or 'Name(field: Type)', use 'type' for record fields, and put methods in an 'impl' block");
+                }
+                if self.kind() == Tok::Assign {
+                    return self.fail(self.peek(), "enum variants cannot have defaults; write 'Name' or 'Name(field: Type)' and supply payload values when constructing a variant");
                 }
                 let id = self.id();
                 cases.push(Case {
@@ -1446,7 +1474,7 @@ impl<'a> Parser<'a> {
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(self.names, &type_params);
-                    return self.fail(t, format!("a type declares only fields or cases; write its methods in an 'impl {name_t}{names}:' block, or implement an interface with 'impl <Interface> for {name_t}{names}:'", name_t = self.names.str(name)));
+                    return self.fail(t, format!("a type declares only record fields; write its methods in an 'impl {name_t}{names}:' block, or implement an interface with 'impl <Interface> for {name_t}{names}:'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
                 let m = self.method_signature(mname, true, false, mutating)?;
@@ -1478,19 +1506,25 @@ impl<'a> Parser<'a> {
         if token.kind == Tok::Interface && methods.is_empty() {
             return self.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation");
         }
-        let kind = match form {
-            Form::Interface => DeclKind::Interface(InterfaceDecl {
+        if token.kind == Tok::Enum && cases.is_empty() {
+            return self.fail(
+                token,
+                "an enum must declare at least one variant; add 'Name' or 'Name(field: Type)'",
+            );
+        }
+        let kind = match token.kind {
+            Tok::Interface => DeclKind::Interface(InterfaceDecl {
                 name,
                 type_params,
                 methods,
             }),
-            Form::Alternative => DeclKind::Alternative(AlternativeDecl {
+            Tok::Enum => DeclKind::Alternative(AlternativeDecl {
                 name,
                 type_params,
                 cases,
                 opaque: false,
             }),
-            Form::Record | Form::None => DeclKind::Record(RecordDecl {
+            _ => DeclKind::Record(RecordDecl {
                 name,
                 type_params,
                 fields,
@@ -2931,13 +2965,8 @@ impl<'a> Parser<'a> {
                 }
                 break;
             }
-            if self.kind() == Tok::Case {
-                let t = self.peek();
-                return self.fail_fix(
-                    t,
-                    "match arms are written without 'case', e.g. Paid(receipt): or Missing:; 'case' only declares the cases of a type",
-                    "",
-                );
+            if let Some(prefix) = self.legacy_case_prefix() {
+                return self.fail_fix(prefix, "match arms use bare variant names, e.g. Paid(receipt): or Missing:; remove the legacy 'case' prefix", "");
             }
             let start = self.peek();
             let k = start.kind;
@@ -2951,7 +2980,7 @@ impl<'a> Parser<'a> {
             } else if self.take(Tok::Underscore) {
                 path = self.mk(start.pos, ExprKind::Name(self.names.intern("_")));
             } else {
-                let mut written = self.case_path()?;
+                let written = self.case_path()?;
                 if let ExprKind::Name(n) = &written.kind
                     && self.names.str(*n) == "some"
                     && self.kind() == Tok::LParen
@@ -2968,12 +2997,12 @@ impl<'a> Parser<'a> {
                         .str(*n)
                         .starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
                 {
-                    // A lone lowercase name binds an Optional's payload.
+                    // The checker distinguishes an Optional payload binding from
+                    // a lowercase variant using the scrutinee's type.
                     bindings.push(ArmBinding {
                         name: *n,
                         pos: start.pos,
                     });
-                    written = self.mk(start.pos, ExprKind::Name(self.names.intern("some")));
                     bare = true;
                 }
                 path = written;

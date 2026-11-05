@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it",
+        "message": "unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it",
         "position": {
           "file": "testfilesystemimplementationdefaultsoverrideonlyco-3.ms",
           "line": 9,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testfilesystemimplementationdefaultsoverrideonlyco-3.ms:9:6: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 9 | impl FileSystem for Override:\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testfilesystemimplementationdefaultsoverrideonlyco-3.ms:9:6: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 9 | impl FileSystem for Override:\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -121,10 +121,10 @@ pub fn missing_arms(syms: ms_syntax::Names, cases: &[Case], seen: &HashSet<Name>
         .filter(|c| !seen.contains(&c.name))
         .map(|c| {
             if c.fields.is_empty() {
-                format!("'case {}:'", syms.str(c.name))
+                format!("'{}:'", syms.str(c.name))
             } else {
                 format!(
-                    "'case {}({}):'",
+                    "'{}({}):'",
                     syms.str(c.name),
                     names_of(syms, &c.fields).join(", ")
                 )
@@ -838,7 +838,7 @@ impl Checker {
             return format!("{message}{hint}");
         }
         format!(
-            "{message}; declare it with 'type {name_t}:' / 'interface {name_t}:', declare it as a type parameter, or import it",
+            "{message}; declare it with 'type {name_t}:' / 'enum {name_t}:' / 'interface {name_t}:', declare it as a type parameter, or import it",
             name_t = self.syms.str(name)
         )
     }

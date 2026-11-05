@@ -7,10 +7,10 @@ type Point:
     x: Int
     y: Int = 0
 
-type Shape:
-    case Circle(radius: Int)
-    case Square(side: Int)
-    case Empty
+enum Shape:
+    Circle(radius: Int)
+    Square(side: Int)
+    Empty
 
 interface Named:
     fn label() String

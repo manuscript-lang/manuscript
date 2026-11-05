@@ -557,10 +557,10 @@ export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadSt
     return stream[B](Through[A, B](source_of[A](input), transform, out, false))
 
 // One of this process's three standard streams.
-export type StdStream:
-    case Input  // Standard input; once redirected it reads as end of file.
-    case Output  // Standard output; once redirected its writes are discarded.
-    case Error  // Standard error; once redirected its writes are discarded.
+export enum StdStream:
+    Input  // Standard input; once redirected it reads as end of file.
+    Output  // Standard output; once redirected its writes are discarded.
+    Error  // Standard error; once redirected its writes are discarded.
 
 // Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
 // This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
@@ -607,14 +607,14 @@ together. `Key` names a non-printing or modified key: `enter`, `tab`,
 `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
 `ctrl` or `alt` set. `Resize` carries the new size.
 */
-export type TerminalEvent:
+export enum TerminalEvent:
     // Printable characters typed together.
-    case Text(
+    Text(
         // The typed characters in order, as valid UTF-8 text.
         text: String
     )
     // A named or modified key press.
-    case Key(
+    Key(
         // The key name, such as `enter`, `up`, or a lowercase letter.
         name: String,
         // True when Control was held.
@@ -625,7 +625,7 @@ export type TerminalEvent:
         shift: Bool
     )
     // The terminal window changed size.
-    case Resize(
+    Resize(
         // The new width in columns.
         columns: Int,
         // The new height in rows.
@@ -633,11 +633,11 @@ export type TerminalEvent:
     )
 
 // The part of the screen cleared by `RawTerminal.erase`.
-export type EraseRegion:
-    case Screen  // Every cell of the screen; the cursor does not move.
-    case Line  // The whole cursor line.
-    case LineEnd  // From the cursor to the end of the line.
-    case LineStart  // From the start of the line to the cursor.
+export enum EraseRegion:
+    Screen  // Every cell of the screen; the cursor does not move.
+    Line  // The whole cursor line.
+    LineEnd  // From the cursor to the end of the line.
+    LineStart  // From the start of the line to the cursor.
 
 // Reads decoded events from a raw terminal's native handle.
 type TerminalEvents:

@@ -21,7 +21,7 @@ Explicit imports of any prelude declaration, including `Equal` and `Hashable`, a
 
 Other standard declarations (`Decimal`, `Bytes`, builders, `Closeable`, runtime and host APIs) are imported from `@std`; see the [API reference](../../standard-library/reference/_index.md).
 
-Unqualified case shorthand applies only when lexical lookup finds no binding of that name. Candidates are cases of visible alternative types (prelude, declared, or imported by name); exactly one must match, and an expected type cannot choose. `Type.Case` selects explicitly. Match patterns use the scrutinee type ([pattern matching](../control-flow/pattern-matching.md)).
+Unqualified case shorthand applies only when lexical lookup finds no binding of that name. Candidates are cases of visible enum types (prelude, declared, or imported by name); exactly one must match, and an expected type cannot choose. `Type.Case` selects explicitly. Match patterns use the scrutinee type ([pattern matching](../control-flow/pattern-matching.md)).
 
 Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted type path is not a namespace; import each type by name. Module-level statements and `var` are rejected. A module-level `let` declares a [constant](#constants).
 
@@ -81,7 +81,7 @@ export fn issue() PrivateToken:
     return PrivateToken("token")
 ```
 
-Exporting a record exposes every field and its constructor; an alternative, every case and payload; an `interface`, every operation. `export opaque type` hides the fields or cases outside the declaring file; selective per-field visibility is unsupported ([public data surfaces](../types/records.md#public-data-surfaces)).
+Exporting a record exposes every field and its constructor; an enum, every case and payload; an `interface`, every operation. `export opaque type` hides record fields and `export opaque enum` hides enum cases outside the declaring file; selective per-field visibility is unsupported ([public data surfaces](../types/records.md#public-data-surfaces)).
 
 An `impl` in a source type's defining module is available wherever the type is used. An `impl` for an imported type stays local to the declaring module. Both follow the [coherence and visibility rules](../types/contracts.md#coherence-and-visibility).
 

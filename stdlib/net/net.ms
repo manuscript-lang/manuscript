@@ -272,15 +272,15 @@ fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
     )
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
-export type DnsKind:
-    case A  // IPv4 address records for the queried name.
-    case AAAA  // IPv6 address records for the queried name.
-    case CNAME  // Canonical name alias records for the queried name.
-    case MX  // Mail exchange records with priority values.
-    case NS  // Name server records for the queried zone.
-    case TXT  // Text records returned as string values.
-    case PTR  // Reverse address pointer records for an IP.
-    case SRV  // Service location records with priority, weight and port.
+export enum DnsKind:
+    A  // IPv4 address records for the queried name.
+    AAAA  // IPv6 address records for the queried name.
+    CNAME  // Canonical name alias records for the queried name.
+    MX  // Mail exchange records with priority values.
+    NS  // Name server records for the queried zone.
+    TXT  // Text records returned as string values.
+    PTR  // Reverse address pointer records for an IP.
+    SRV  // Service location records with priority, weight and port.
 
 impl DnsKind:
     // Returns the uppercase wire category.
@@ -296,9 +296,9 @@ impl DnsKind:
             SRV: return "SRV"
 
 // Numeric address families reported by IP values and host interfaces.
-export type IpFamily:
-    case IPv4  // A four-byte numeric address.
-    case IPv6  // A sixteen-byte numeric address.
+export enum IpFamily:
+    IPv4  // A four-byte numeric address.
+    IPv6  // A sixteen-byte numeric address.
 
 impl IpFamily:
     // Returns IPv4 or IPv6.
@@ -671,10 +671,10 @@ export type RawWebSocket:
     native: NativeWebSocket
 
 // The kind of a WebSocket message.
-export type WebSocketKind:
-    case Text  // A text frame: the payload is valid UTF-8.
-    case Binary  // A binary frame: the payload is arbitrary bytes.
-    case Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
+export enum WebSocketKind:
+    Text  // A text frame: the payload is valid UTF-8.
+    Binary  // A binary frame: the payload is arbitrary bytes.
+    Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
 
 // One WebSocket message.
 export type WebSocketMessage:

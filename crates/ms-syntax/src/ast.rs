@@ -108,7 +108,7 @@ pub enum DeclKind {
     Const(ConstDecl),
     /// `type Name:` with `field: Type [= default]` lines.
     Record(RecordDecl),
-    /// `type Name:` with `case` lines.
+    /// `enum Name:` with bare variant declarations.
     Alternative(AlternativeDecl),
     /// `interface Name:` with `fn` signatures.
     Interface(InterfaceDecl),
@@ -172,7 +172,7 @@ pub struct RecordDecl {
     pub opaque: bool,
 }
 
-/// `type Name[T]:` with `case` lines.
+/// `enum Name[T]:` with bare variant declarations.
 #[derive(Debug, Clone)]
 pub struct AlternativeDecl {
     /// Type name.
@@ -181,7 +181,7 @@ pub struct AlternativeDecl {
     pub type_params: Vec<TypeParam>,
     /// Cases in declaration order.
     pub cases: Vec<Case>,
-    /// `opaque type`: cases are visible only in the declaring file.
+    /// `opaque enum`: cases are visible only in the declaring file.
     pub opaque: bool,
 }
 
@@ -243,7 +243,7 @@ pub struct Method {
     pub mutating: bool,
 }
 
-/// One `case Name[(fields)]` of an alternative type.
+/// One `Name[(fields)]` of an alternative type.
 #[derive(Debug, Clone)]
 pub struct Case {
     /// Node id.
@@ -604,8 +604,8 @@ pub struct Arm {
     /// result is the present arm's type made optional (not wrapped again when
     /// it already is), and the `none` arm yields `none`.
     pub chain: bool,
-    /// The arm was written as a lone lowercase name, which binds an Optional's
-    /// payload; the parser spells it as the `some` case with that binding.
+    /// The arm was written as a lone lowercase name: an Optional payload binding
+    /// or a payloadless variant, determined from the checked scrutinee.
     pub bare: bool,
 }
 

@@ -1,11 +1,11 @@
 // conform: tags=alternatives,diagnostics,records,tier-core,scope-cleanup
 // conform: phase=check
 // conform: origin=documentation/core-language/types/alternatives.md:38
-type LeftState:
-    case Ready
+enum LeftState:
+    Ready
 
-type RightState:
-    case Ready
+enum RightState:
+    Ready
 
 let left: LeftState = LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.

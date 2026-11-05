@@ -1,9 +1,9 @@
 // conform: tags=alternatives,closures,diagnostics,generics,interfaces,optional,records,tier-core,try-result
 // conform: phase=check
 // conform: origin=pkg/checker/documentation_test.go:89 TestDocumentationUsesManuscriptDeclarations
-type Optional[T]:
-    case T
-    case none
+enum Optional[T]:
+    T
+    none
 
 impl T?:
     fn is_some() Bool: ...

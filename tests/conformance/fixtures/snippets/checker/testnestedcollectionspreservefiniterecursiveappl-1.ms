@@ -7,6 +7,6 @@ type Value:
 type Wrapper:
     entries: Map[String, Node]
 
-type Node:
-    case Leaf(value: Value)
-    case Children(values: List[Wrapper])
+enum Node:
+    Leaf(value: Value)
+    Children(values: List[Wrapper])

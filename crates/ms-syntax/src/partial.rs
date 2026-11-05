@@ -237,6 +237,7 @@ fn partial_root_start(source: &str) -> bool {
         "export",
         "extern",
         "type",
+        "enum",
         "interface",
         "impl",
         "test",
@@ -260,8 +261,11 @@ fn partial_root_start(source: &str) -> bool {
         // its name. Inferred callbacks can continue their header on later lines.
         name_start && rest[name_end..].trim_start().starts_with(['(', '['])
     }) || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
-        || after_keyword(source, "opaque")
-            .is_some_and(|rest| after_keyword(rest.trim_start(), "type").is_some())
+        || after_keyword(source, "opaque").is_some_and(|rest| {
+            ["type", "enum"]
+                .iter()
+                .any(|keyword| after_keyword(rest.trim_start(), keyword).is_some())
+        })
 }
 
 fn after_keyword<'a>(source: &'a str, keyword: &str) -> Option<&'a str> {
@@ -432,8 +436,9 @@ fn declared_name(chunk: &str) -> Option<String> {
             continue;
         }
         let rest = trimmed.strip_prefix("export ").unwrap_or(trimmed);
+        let rest = rest.strip_prefix("opaque ").unwrap_or(rest);
         let fields: Vec<&str> = rest.split_whitespace().collect();
-        if fields.len() < 2 || !matches!(fields[0], "fn" | "type" | "interface") {
+        if fields.len() < 2 || !matches!(fields[0], "fn" | "type" | "enum" | "interface") {
             return None;
         }
         return fields[1]

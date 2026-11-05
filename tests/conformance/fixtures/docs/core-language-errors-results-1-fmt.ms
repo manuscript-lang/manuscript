@@ -3,9 +3,9 @@
 // conform: origin=documentation/core-language/errors/results.md:14
 import Decimal from "@std/math/decimal.ms"
 
-type DiscountError:
-    case InvalidPrice
-    case InvalidPercent
+enum DiscountError:
+    InvalidPrice
+    InvalidPercent
 
 fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:

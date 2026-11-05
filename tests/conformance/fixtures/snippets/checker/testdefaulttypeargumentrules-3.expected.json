@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type B; declare it with 'type B:' / 'interface B:', declare it as a type parameter, or import it",
+        "message": "unknown type B; declare it with 'type B:' / 'enum B:' / 'interface B:', declare it as a type parameter, or import it",
         "position": {
           "file": "testdefaulttypeargumentrules-3.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdefaulttypeargumentrules-3.ms:4:10: resolution: unknown type B; declare it with 'type B:' / 'interface B:', declare it as a type parameter, or import it\n   |\n 4 | fn f[A = B, B = Int](value: B) B: value\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdefaulttypeargumentrules-3.ms:4:10: resolution: unknown type B; declare it with 'type B:' / 'enum B:' / 'interface B:', declare it as a type parameter, or import it\n   |\n 4 | fn f[A = B, B = Int](value: B) B: value\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

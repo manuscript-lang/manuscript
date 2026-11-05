@@ -15,19 +15,19 @@ import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
 
 // Selects how a token is signed. A verifier names the one it accepts; it never trusts the algorithm a token claims.
-export type JwtAlgorithm:
+export enum JwtAlgorithm:
     // HMAC with SHA-256 and a shared secret of any length (use at least 32 random bytes).
-    case Hs256
+    Hs256
     // HMAC with SHA-384 and a shared secret.
-    case Hs384
+    Hs384
     // HMAC with SHA-512 and a shared secret.
-    case Hs512
+    Hs512
     // RSASSA-PKCS1-v1_5 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
-    case Rs256
+    Rs256
     // ECDSA over P-256 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
-    case Es256
+    Es256
     // Ed25519. Signing takes the 32-byte private seed; verifying takes the 32-byte public key.
-    case EdDsa
+    EdDsa
 
 // What `verify_token` requires of a token beyond its signature.
 export type JwtCheck:

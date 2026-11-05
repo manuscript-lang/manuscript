@@ -3,9 +3,9 @@
 // conform: origin=pkg/compiler/constant_before_type_test.go:8 TestConstantMayNameCaseOfLaterType
 let initial = Mode.Idle
 
-type Mode:
-    case Idle
-    case Busy
+enum Mode:
+    Idle
+    Busy
 
 export fn main() Int:
     match initial:

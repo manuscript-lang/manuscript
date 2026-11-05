@@ -3,9 +3,9 @@
 // conform: origin=thread/type-checker-bug-bash
 import stdout from "@std/io/io.ms"
 
-type Shape:
-    case Circle(r: Int)
-    case Dot
+enum Shape:
+    Circle(r: Int)
+    Dot
 
 type Pair[A, B]:
     a: A

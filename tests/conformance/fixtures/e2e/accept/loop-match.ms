@@ -3,9 +3,9 @@
 // conform: origin=tests/e2e/testdata/accept/loop-match.ms
 import expect_equal from "@std/test/test.ms"
 
-type State:
-    case Ready
-    case Waiting
+enum State:
+    Ready
+    Waiting
 
 fn loop(state: State) Int:
     var count = 0

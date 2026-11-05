@@ -9,12 +9,12 @@ import (
 ) from "@std/internal/decimal.ms"
 
 // How a Decimal rounds to a multiple of the requested power of ten.
-export type RoundingMode:
-    case HalfEven  // Nearest value; an exact tie chooses the even coefficient.
-    case HalfAwayFromZero  // Nearest value; an exact tie rounds away from zero.
-    case TowardZero  // Discards the fractional coefficient toward zero.
-    case Floor  // Rounds toward negative infinity.
-    case Ceil  // Rounds toward positive infinity.
+export enum RoundingMode:
+    HalfEven  // Nearest value; an exact tie chooses the even coefficient.
+    HalfAwayFromZero  // Nearest value; an exact tie rounds away from zero.
+    TowardZero  // Discards the fractional coefficient toward zero.
+    Floor  // Rounds toward negative infinity.
+    Ceil  // Rounds toward positive infinity.
 
 // An exact decimal value. Conversions are explicit because binary floats may round.
 export extern type Decimal

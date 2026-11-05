@@ -39,7 +39,7 @@ The single offline HTML file puts source, checked types, calls, control flow and
 ## What Manuscript offers
 
 - **A small, regular language:** indentation blocks, one way to do most things, and a few forms that compose. [Tour](documentation/learn/tour.md)\
-  **Plain types:** records with defaults, alternatives (`case Draft`, `case Published(url)`) that `match` must cover, nominal types, and methods in `impl` blocks that satisfy an `interface`. [Types](documentation/learn/tour.md#types-for-application-data)  
+  **Plain types:** records with defaults, enums (`Draft`, `Published(url)`) that `match` must cover, nominal types, and methods in `impl` blocks that satisfy an `interface`. [Types](documentation/learn/tour.md#types-for-application-data)\
   **Plain functions:** typed parameters and returns, labeled arguments and defaults, functions as values, and `|` pipes that read top to bottom. [Functions](documentation/learn/tour.md#functions)
 - **Deterministic memory:** one owner per value, moves at last use, and deterministic drops, with borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
 - **Types the compiler can see:** a small type system with generics, no `any` escape hatch and no runtime reflection API. Interfaces express behavior through checked signatures, so reusable code stays available to compiler analysis. [Types and generics](documentation/core-language/types/generics.md)

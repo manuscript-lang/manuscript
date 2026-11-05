@@ -7,9 +7,9 @@ impl Closeable for Res:
     var fn close() Unit!:
         return ok(unit)
 
-type Holder:
-    case Has(r: Res)
-    case Empty
+enum Holder:
+    Has(r: Res)
+    Empty
 
 fn dup[T: Clonable](x: T) T:
     return x.clone()

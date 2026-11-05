@@ -7,9 +7,9 @@ type Person:
     name: String
     age: Int
 
-type Outcome:
-    case Ready(value: Person)
-    case Waiting
+enum Outcome:
+    Ready(value: Person)
+    Waiting
 
 interface Named:
     fn name() String

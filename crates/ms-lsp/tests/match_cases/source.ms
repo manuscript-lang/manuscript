@@ -1,10 +1,10 @@
-export type Choice[T]:
-    case Value(value: T)
-    case Empty
+export enum Choice[T]:
+    Value(value: T)
+    Empty
 
-type Other:
-    case Value(value: Int)
-    case Empty
+enum Other:
+    Value(value: Int)
+    Empty
 
 fn bare(input: Choice[Int]) Int:
     match input:

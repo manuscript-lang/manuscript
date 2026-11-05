@@ -4,9 +4,9 @@
 interface Describe:
     fn describe() String
 
-type State:
-    case Ready
-    case Waiting
+enum State:
+    Ready
+    Waiting
 
 impl Describe for State:
     fn describe() String: "state"

@@ -24,11 +24,11 @@ export type Utf8Scalar:
 
 // Distinguishes text that needs more bytes from text that cannot form a valid scalar.
 // Example: `decode_first(Bytes([194]))` returns `Utf8Error.Incomplete`.
-export type Utf8Error:
+export enum Utf8Error:
     // The requested sequence is malformed, overlong, a surrogate or outside Unicode.
-    case InvalidData
+    InvalidData
     // No bytes are available, or the selected bytes are a proper prefix of one scalar.
-    case Incomplete
+    Incomplete
 
 // Internal result codes: a scalar is nonnegative, so these cannot collide with one.
 let INCOMPLETE = -1

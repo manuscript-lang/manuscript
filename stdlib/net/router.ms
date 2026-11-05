@@ -89,19 +89,19 @@ impl RouteParams:
         return self.get(name).get(fallback)
 
 // One segment of a route pattern.
-export type Segment:
+export enum Segment:
     // Matches exactly this text.
-    case Literal(
+    Literal(
         // The exact text a request path segment must equal, case-sensitively.
         text: String
     )
     // Matches one nonempty segment and captures it.
-    case Param(
+    Param(
         // The name `RouteParams.get` finds the captured segment under.
         name: String
     )
     // Matches the rest of the path, possibly nothing, and captures it joined by `/`.
-    case Rest(
+    Rest(
         // The name `RouteParams.get` finds the remaining path under.
         name: String
     )

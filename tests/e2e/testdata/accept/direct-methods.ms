@@ -3,9 +3,9 @@ import expect_equal from "@std/test/test.ms"
 type Counter:
     n: Int
 
-type Shape:
-    case Circle(r: Int)
-    case Square(side: Int)
+enum Shape:
+    Circle(r: Int)
+    Square(side: Int)
 
 interface Bumper:
     fn bump(by: Int) Int

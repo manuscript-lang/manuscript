@@ -24,9 +24,9 @@ impl Read[Int] for Holder[T]:
     fn get() Int:
         return self.value.get()
 
-export type Choice:
-    case Some(value: Int)
-    case Empty
+export enum Choice:
+    Some(value: Int)
+    Empty
 
 export type Resource:
     events: Shared[List[Int]]

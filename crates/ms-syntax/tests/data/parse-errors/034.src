@@ -26,9 +26,9 @@ test "a local binding shadows a constant":
     let LIMIT = 3
     try expect_equal(LIMIT, 3)
 
-type Phase:
-    case Idle
-    case Active(count: Int)
+enum Phase:
+    Idle
+    Active(count: Int)
 
 let START = Phase.Idle
 let NEXT: Phase = Idle

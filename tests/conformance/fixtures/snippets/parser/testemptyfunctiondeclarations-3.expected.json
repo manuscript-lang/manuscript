@@ -25,14 +25,14 @@
           "file": "testemptyfunctiondeclarations-3.ms",
           "line": 8,
           "column": 1,
-          "offset": 247
+          "offset": 237
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testemptyfunctiondeclarations-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n   |\n 4 | type Optional[T]:\n   | ^\n<DIR>/testemptyfunctiondeclarations-3.ms:8:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 8 | impl T?:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testemptyfunctiondeclarations-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n   |\n 4 | enum Optional[T]:\n   | ^\n<DIR>/testemptyfunctiondeclarations-3.ms:8:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 8 | impl T?:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

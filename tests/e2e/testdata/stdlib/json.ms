@@ -112,10 +112,10 @@ type Request:
     temperature: Float
     tags: List[String]
 
-type Shape:
-    case Circle(radius: Int)
-    case Rect(width: Int, height: Int)
-    case Dot
+enum Shape:
+    Circle(radius: Int)
+    Rect(width: Int, height: Int)
+    Dot
 
 type Scene:
     shape: Shape
@@ -206,9 +206,9 @@ type Stamped:
     data: Bytes
     link: Url
 
-type Tagged:
-    case Named(name: String, alias: String?)
-    case Plain
+enum Tagged:
+    Named(name: String, alias: String?)
+    Plain
 
 test "JSON stringify omits none fields and keeps nested optionals":
     var handler = Handler("h", none, none)
@@ -278,9 +278,9 @@ test "JSON stringify omits a Unit field and rejects a Unit root":
         "\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}"
     )
 
-type Event:
-    case Created(id: Int)
-    case Deleted(id: Int)
+enum Event:
+    Created(id: Int)
+    Deleted(id: Int)
 
 impl JsonEncode for Event:
     fn to_json() JsonValue:
@@ -308,9 +308,9 @@ test "JSON stringify lets JsonEncode override the structural encoding of an alte
     let expected = "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
     try expect_equal((try encoded(feed)), expected)
 
-type Change:
-    case Added(id: Int)
-    case Removed(id: Int)
+enum Change:
+    Added(id: Int)
+    Removed(id: Int)
 
 test "JSON stringify keeps cases with identical labels distinct by default":
     try expect_equal((try encoded(Change.Added(1))), "\{\"Added\":\{\"id\":1\}\}")
@@ -503,10 +503,10 @@ type Pair[A, B]:
     left: A
     right: B
 
-type Op:
-    case Add(left: Int, right: Int)
-    case Neg(v: Int?)
-    case Nop
+enum Op:
+    Add(left: Int, right: Int)
+    Neg(v: Int?)
+    Nop
 
 type Wrap:
     ops: List[Op]

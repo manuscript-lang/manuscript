@@ -7,31 +7,31 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "match arms are written without 'case', e.g. Paid(receipt): or Missing:; 'case' only declares the cases of a type",
+        "message": "match arms use bare variant names, e.g. Paid(receipt): or Missing:; remove the legacy 'case' prefix",
         "position": {
           "file": "foreign-case-arm.ms",
           "line": 9,
           "column": 9,
-          "offset": 173
+          "offset": 168
         },
         "end": {
           "file": "foreign-case-arm.ms",
           "line": 9,
-          "column": 13,
-          "offset": 177
+          "column": 14,
+          "offset": 173
         },
         "fix": {
           "position": {
             "file": "foreign-case-arm.ms",
             "line": 9,
             "column": 9,
-            "offset": 173
+            "offset": 168
           },
           "end": {
             "file": "foreign-case-arm.ms",
             "line": 9,
-            "column": 13,
-            "offset": 177
+            "column": 14,
+            "offset": 173
           },
           "replacement": ""
         }

@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it",
+        "message": "unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it",
         "position": {
           "file": "testunknowntypedoesnotcascade-1.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testunknowntypedoesnotcascade-1.ms:4:11: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | fn peek() Missing:\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testunknowntypedoesnotcascade-1.ms:4:11: resolution: unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | fn peek() Missing:\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

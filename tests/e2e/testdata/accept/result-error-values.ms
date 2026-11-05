@@ -2,8 +2,8 @@ import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import assert_error, assert_ok from "@std/test/test.ms"
 import expect_contains, expect_true from "@std/test/test.ms"
 
-type ValidationError:
-    case BelowMinimum(actual: Int, minimum: Int)
+enum ValidationError:
+    BelowMinimum(actual: Int, minimum: Int)
 
 fn checked(value: Int) Int!ValidationError:
     if value < 10: return error(BelowMinimum(value, 10))

@@ -186,7 +186,7 @@ fn completion_in_unfinished_code() {
         ("string", "fn main() String:\n    return \"abc"),
         ("comment", "fn main() Int:\n    // note"),
     ];
-    let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Empty\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\n";
+    let prelude = "type Point:\n    x: Int\n    y: Int = 0\n\nenum Shape:\n    Circle(radius: Int)\n    Empty\n\nfn add(a: Int, b: Int) Int:\n    return a + b\n\n";
     for (index, (name, tail)) in cases.iter().enumerate() {
         let uri = ws.uri(&format!("case{index}.ms"));
         let text = if name.starts_with("import") {

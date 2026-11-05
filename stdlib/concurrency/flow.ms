@@ -137,11 +137,11 @@ impl RateLimiter:
             )
 
 // Why a circuit breaker call produced no result.
-export type CircuitError[E]:
+export enum CircuitError[E]:
     // The circuit is open: the call was not made.
-    case Open
+    Open
     // The call ran and failed with this error.
-    case Failed(
+    Failed(
         // The error the call returned.
         error: E
     )

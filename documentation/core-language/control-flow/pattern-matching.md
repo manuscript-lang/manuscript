@@ -5,16 +5,16 @@ weight = 3
 
 # Pattern matching
 
-`match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. For an Optional payload or Result success, use `if let` or `try` as described [below](#optional-and-result-values).
+`match` handles each case of an enum type and names the case's data. Use it for your own enums and contract views. For an Optional payload or Result success, use `if let` or `try` as described [below](#optional-and-result-values).
 
 `match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. Save this complete example as `payment.ms` and run `ms run payment.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\n"} -->
 ```manuscript
-type Payment:
-    case Paid(receipt: String)
-    case Declined(reason: String)
-    case Pending(reference: String)
+enum Payment:
+    Paid(receipt: String)
+    Declined(reason: String)
+    Pending(reference: String)
 
 fn describe(payment: Payment) String:
     match payment:
@@ -64,9 +64,9 @@ Computed values, interpolated text, ranges, and `Float` scrutinees are not liter
 An arm may hold statements then a final expression, which is its value; ending in a statement gives `Unit`. Value-producing arms must share a compatible type, taken from the annotation or expected type, or else from the arms themselves. Arms that exit via `return`, `break`, `continue`, or `Never` contribute no value.
 
 ```manuscript
-type Cents:
-    case Valid(amount: Int)
-    case Invalid
+enum Cents:
+    Valid(amount: Int)
+    Invalid
 
 fn total(cents: Cents) Result[Int, Error]:
     let amount = match cents:
@@ -85,10 +85,12 @@ Short arms put the value after the colon (`none: 0`). End an effect-only arm wit
 
 Payloads bind by position in field order: exactly one identifier or `_` per field, even though constructors use named fields. Nullary cases are a bare name without `()`.
 
+Lowercase variant names, including `case`, follow the same rule. A lone lowercase arm binds a payload only when matching an `Optional`; on another enum it names a payloadless variant.
+
 ```manuscript
-type Position:
-    case Point(x: Int, y: Int)
-    case Unknown
+enum Position:
+    Point(x: Int, y: Int)
+    Unknown
 
 fn horizontal(position: Position) Int:
     match position:

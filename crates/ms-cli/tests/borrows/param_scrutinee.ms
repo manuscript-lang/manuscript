@@ -1,6 +1,6 @@
-type Shape:
-    case Circle(r: Int)
-    case Name(s: String)
+enum Shape:
+    Circle(r: Int)
+    Name(s: String)
 
 fn total(xs: List[Int]) Int:
     var n = 0

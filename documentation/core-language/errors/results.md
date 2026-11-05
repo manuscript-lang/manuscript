@@ -91,9 +91,9 @@ An `Error` fits most code. Use your own type as `E` when callers need typed payl
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
-type DiscountError:
-    case InvalidPrice
-    case InvalidPercent
+enum DiscountError:
+    InvalidPrice
+    InvalidPercent
 
 fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:

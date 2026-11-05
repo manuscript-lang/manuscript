@@ -5,9 +5,9 @@ type Row:
 type Table:
     rows: List[Row]
 
-type Shape:
-    case Circle(label: String)
-    case Rect(label: String, w: Int)
+enum Shape:
+    Circle(label: String)
+    Rect(label: String, w: Int)
 
 impl Table:
     fn head() Row:

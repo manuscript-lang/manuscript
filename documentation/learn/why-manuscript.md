@@ -9,7 +9,7 @@ Manuscript is designed for agents to write and people to understand. Its small l
 
 ## Read the code, ship the executable {#familiar-to-read-native-to-run}
 
-Manuscript chooses a small type system with generics, no `any` escape hatch and no runtime reflection API. Every expression has a compiler-checked type, including values used through interface contracts. This keeps data shapes and operation signatures available to analysis while catching mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every alternative, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
+Manuscript chooses a small type system with generics, no `any` escape hatch and no runtime reflection API. Every expression has a compiler-checked type, including values used through interface contracts. This keeps data shapes and operation signatures available to analysis while catching mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every enum, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
 
 The same `ms` command checks, formats, tests and builds your project. Use debug builds while iterating and optimized release builds when sharing your program. The executable runs without Manuscript installed. See [build levels](../developer-tooling/builds/build-levels.md) for deployment choices.
 

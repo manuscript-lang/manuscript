@@ -179,9 +179,9 @@ test "map and set clear affect their owner while copies retain contents":
     values.clear()
     try expect_false(not (values.length() == 0 and set_copy.length() == 1))
 
-type Choice:
-    case Present(value: Val)
-    case Missing
+enum Choice:
+    Present(value: Val)
+    Missing
 
 test "alternative clones retain tags and payloads":
     let child = Val(1)

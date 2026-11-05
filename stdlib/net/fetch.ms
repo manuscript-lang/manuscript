@@ -22,21 +22,21 @@ import (
 import Promise, owned_promise from "@std/concurrency/promise.ms"
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
-export type FetchBody:
+export enum FetchBody:
     // Sends no body and no default `Content-Type`.
-    case Empty
+    Empty
     // UTF-8 text, sent as `text/plain; charset=utf-8` unless a `Content-Type` is given.
-    case Text(
+    Text(
         // The text, sent as UTF-8 bytes.
         value: String
     )
     // Raw bytes, sent as `application/octet-stream` unless a `Content-Type` is given.
-    case Raw(
+    Raw(
         // The bytes, sent unchanged; the value is cloned per request.
         value: Bytes
     )
     // JSON text produced by `json_body`.
-    case JsonText(
+    JsonText(
         // The encoded JSON text, sent as UTF-8 bytes.
         value: String
     )

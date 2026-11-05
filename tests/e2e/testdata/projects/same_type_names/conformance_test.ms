@@ -5,9 +5,9 @@ import flip, shifted from "./other.ms"
 type Point:
     x: Int
 
-type Mode:
-    case Off
-    case On
+enum Mode:
+    Off
+    On
 
 test "same-named records and alternatives stay distinct":
     try expect_equal(Point(1).x, 1)

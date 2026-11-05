@@ -12,9 +12,9 @@ impl Named for Sample:
     fn label() String:
         return "sample"
 
-export type Shape:
-    case Number(value: Int)
-    case Empty
+export enum Shape:
+    Number(value: Int)
+    Empty
 
 export fn calls() String:
     let sample = Sample(number: 1)

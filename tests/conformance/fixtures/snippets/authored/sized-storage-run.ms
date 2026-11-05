@@ -10,10 +10,10 @@ type Cell:
     d: Bool
     e: Int16
 
-type Tok:
-    case Num(v: Int16, s: Float32)
-    case Word(t: String, k: Int8)
-    case End
+enum Tok:
+    Num(v: Int16, s: Float32)
+    Word(t: String, k: Int8)
+    End
 
 fn kind(t: Tok) Int:
     match t:

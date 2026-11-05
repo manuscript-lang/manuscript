@@ -7,9 +7,9 @@ type Todo:
     title: String
     completed: Bool = false
 
-type Status:
-    case Draft
-    case Published(url: String)
+enum Status:
+    Draft
+    Published(url: String)
 
 fn status_label(status: Status) String:
     match status:
