@@ -71,7 +71,7 @@ test "sum even indexes":
     try expect_equal(total, 6)
 ```
 
-`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections.md#range_by).
+`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections/collections.ms.md#range_by).
 
 ## Iterable types and binding
 

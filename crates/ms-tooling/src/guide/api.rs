@@ -580,11 +580,20 @@ fn document_implementations(
         if method.receiver.id != ty.id {
             continue;
         }
+        let inherent = method.decl.as_ref().is_some_and(|decl| {
+            (decl.decl.decl().synthetic && matches!(decl.decl.decl().kind, DeclKind::Impl(_)))
+                || sources
+                    .of(method.module)
+                    .is_some_and(|source| source.is_inherent_impl(decl.decl.pos().offset))
+        });
         let contract = method
             .contract
             .as_ref()
             .map_or_else(|| "<unknown>".to_string(), |c| c.display(syms).to_string());
-        contracts.insert(contract.clone());
+        let contract = if inherent { String::new() } else { contract };
+        if !contract.is_empty() {
+            contracts.insert(contract.clone());
+        }
         let Some(decl) = &method.decl else { continue };
         let Some(f) = decl.func() else { continue };
         // Imported source modules can expose the same checked implementation
@@ -594,8 +603,13 @@ fn document_implementations(
         }
         let name = syms.str(f.name);
         let context = receiver_context(syms, method, &ty);
+        let implementation = if inherent {
+            "impl".to_string()
+        } else {
+            format!("impl {contract} for")
+        };
         d.implementation_declarations.push(format!(
-            "{context}impl {contract} for {}:\n    {}",
+            "{context}{implementation} {}:\n    {}",
             method.receiver.display(syms),
             fn_declaration(
                 syms,

@@ -90,27 +90,66 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
     let modules = standard_library(syms);
     let mut files = BTreeMap::new();
     let mut index = String::from(
-        "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nLook up types, functions, and import paths in the bundled standard library. These declarations are generated from source and omit implementation bodies.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
+        "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nLook up types, functions, and import paths in the bundled standard library. Browse the source file tree below; prelude collects names available without an import. These declarations are generated from public source modules and omit implementation bodies. For usage, see the [Promises](../../core-language/concurrency/promises.md) and [Streams and pipes](../../core-language/concurrency/streams.md) topic guides.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
     );
     let full = standard_library_markdown(syms);
+    let mut directories: BTreeMap<String, String> = BTreeMap::new();
     for module in modules {
-        let name = module.path.strip_prefix("@std/").unwrap_or(&module.path);
-        let name = name.strip_suffix(".ms").unwrap_or(name);
-        // The page is generated; its edit link targets the declaration source.
-        // The prelude aggregates declarations from several modules; `core.ms` owns most of it.
-        let source = format!(
-            "stdlib/{}.ms",
-            if name == "prelude" { "core" } else { name }
-        );
-        // The page is named by the module stem (`http`), not its package, so links stay stable; a
-        // module in the `test` package (`test/property`) gets one flat page (`test-property`).
-        let name = stdlib::module_stem(&module.path).replace('/', "-");
-        let body = render(module, true);
+        let source_path = module.path.strip_prefix("@std/").unwrap_or(&module.path);
+        let path = source_path.strip_suffix(".ms").unwrap_or(source_path);
+        let title = source_path.rsplit('/').next().unwrap_or(source_path);
+        let source = if path == "prelude" {
+            "stdlib/core.ms".to_string()
+        } else {
+            format!("stdlib/{source_path}")
+        };
+        let old = stdlib::module_stem(&module.path).replace('/', "-");
+        let aliases = if old != path {
+            format!("aliases = [\"/standard-library/reference/{old}/\"]\n")
+        } else {
+            String::new()
+        };
         files.insert(
-            format!("documentation/standard-library/reference/{name}.md"),
-            format!("+++\ntitle = {name:?}\nedit_source = {source:?}\n+++\n\n{body}").into_bytes(),
+            format!("documentation/standard-library/reference/{source_path}.md"),
+            format!(
+                "+++\ntitle = {title:?}\nslug = {:?}\nedit_source = {source:?}\n{aliases}+++\n\n{}",
+                path.rsplit('/').next().unwrap(),
+                render(module, true)
+            )
+            .into_bytes(),
         );
-        index += &format!("- [{}]({name}.md)\n", module.path);
+        let mut parent = "";
+        let parts: Vec<_> = path.split('/').collect();
+        for part in &parts[..parts.len() - 1] {
+            let directory = if parent.is_empty() {
+                part.to_string()
+            } else {
+                format!("{parent}/{part}")
+            };
+            if !directories.contains_key(&directory) {
+                let link = format!("- [{part}/]({part}/_index.md)\n");
+                if parent.is_empty() {
+                    index += &link;
+                } else {
+                    *directories.get_mut(parent).unwrap() += &link;
+                }
+                directories.insert(directory.clone(), format!("+++\ntitle = {part:?}\nurl = \"/standard-library/reference/tree/{directory}/\"\n+++\n\n# {directory}/\n\n"));
+            }
+            // Directory URLs avoid colliding with legacy module URLs (for example io/).
+            parent = path.get(..directory.len()).unwrap();
+        }
+        let link = format!("- [{title}]({title}.md)\n");
+        if parent.is_empty() {
+            index += &link;
+        } else {
+            *directories.get_mut(parent).unwrap() += &link;
+        }
+    }
+    for (path, body) in directories {
+        files.insert(
+            format!("documentation/standard-library/reference/{path}/_index.md"),
+            body.into_bytes(),
+        );
     }
     files.insert(
         "documentation/standard-library/reference/_index.md".to_string(),

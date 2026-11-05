@@ -72,31 +72,54 @@ test('published API downloads match the current generated reference', () => {
   }
 });
 
-test('published API routes contain exactly the current modules', () => {
+function referencePages() {
   const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
-  const expected = fs.readdirSync(source)
-    .filter(name => name.endsWith('.md') && name !== '_index.md')
-    .map(name => name.slice(0, -3)).sort();
+  return fs.readdirSync(source, { recursive: true }).filter(file => file.endsWith('.md')).map(file => {
+    const markdown = fs.readFileSync(path.join(source, file), 'utf8');
+    const route = markdown.match(/url = "\/standard-library\/reference\/([^"]+)"/)?.[1] || file.replace(/_index\.md$/, '').replace(/(?:\.ms)?\.md$/, '/');
+    const aliases = [...markdown.matchAll(/aliases = \["([^"\n]+)"\]/g)].map(match => match[1]);
+    return { file, markdown, route, aliases };
+  });
+}
+
+test('published API routes mirror source directories and preserve old routes', () => {
   const output = path.join(book, 'standard-library/reference');
-  const actual = fs.readdirSync(output, { withFileTypes: true })
-    .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
-  assert.deepEqual(actual, expected, 'Rebuild with --cleanDestinationDir to remove obsolete module pages');
-  for (const module of expected) {
-    assert.ok(fs.existsSync(path.join(output, module, 'index.html')), `Missing page for ${module}`);
+  const pages = referencePages();
+  const expected = pages.flatMap(page => [path.join(page.route, 'index.html'), ...page.aliases.map(alias => path.join(alias.replace('/standard-library/reference/', ''), 'index.html'))]).sort();
+  const actual = fs.readdirSync(output, { recursive: true }).filter(file => file.endsWith('index.html')).sort();
+  assert.deepEqual(actual, expected, 'Remove obsolete pages and preserve compatibility redirects');
+  for (const page of pages) {
+    for (const alias of page.aliases) {
+      const html = fs.readFileSync(path.join(book, alias, 'index.html'), 'utf8');
+      assert.ok(html.includes(`/manuscript/standard-library/reference/${page.route}`));
+    }
   }
+  const promise = fs.readFileSync(path.join(output, 'concurrency/promise/index.html'), 'utf8');
+  assert.ok(promise.includes('concurrency'));
+  assert.ok(promise.includes('promise.ms'));
 });
 
-test('rendered API signatures match the generated module pages', () => {
-  const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
+test('rendered API signatures match source pages without synthetic contracts', () => {
   const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
-  for (const file of fs.readdirSync(source).filter(name => name.endsWith('.md') && name !== '_index.md')) {
-    const markdown = fs.readFileSync(path.join(source, file), 'utf8');
+  for (const { file, markdown, route } of referencePages()) {
     const expected = [...markdown.matchAll(/```manuscript\n([\s\S]*?)```/g)].map(match => match[1].trimEnd());
-    const html = fs.readFileSync(path.join(book, 'standard-library/reference', file.slice(0, -3), 'index.html'), 'utf8');
+    const html = fs.readFileSync(path.join(book, 'standard-library/reference', route, 'index.html'), 'utf8');
     const actual = [...html.matchAll(/<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/g)]
       .map(match => match[1].replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]).trimEnd());
     assert.deepEqual(actual, expected, `Rebuild the website: ${file} has stale API signatures`);
+    assert.ok(!html.includes('$methods') && !html.includes('SourceMethods'));
   }
+});
+
+test('Promise and stream guides teach separate topics', () => {
+  const read = topic => fs.readFileSync(path.join(book, 'core-language/concurrency', topic, 'index.html'), 'utf8');
+  const promises = read('promises');
+  const streams = read('streams');
+  assert.ok(!promises.includes('ReadStream') && !promises.includes('pipe[Update]'));
+  for (const text of ['PromiseOptions', 'wait_all', 'Cancellation']) assert.ok(promises.includes(text));
+  for (const text of ['ReadStream', 'Transform', 'Pipelines', 'Pipes', 'defers the read']) assert.ok(streams.includes(text));
+  assert.ok(promises.includes('/manuscript/core-language/concurrency/streams/'));
+  assert.ok(streams.includes('/manuscript/core-language/concurrency/promises/'));
 });
 
 test('published internal links and anchors resolve under the site prefix', () => {

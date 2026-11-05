@@ -172,6 +172,15 @@ fn receiver_constraints_and_nominal_identity_survive_repeated_method_records() {
         .map(|member| member.name.as_str())
         .collect();
     assert_eq!(names, ["accepts", "number", "precedes"]);
+    assert_eq!(first.implements, ["IntBoxSourceMethods", "OrderedBox[T]"]);
+    assert!(
+        first
+            .members
+            .iter()
+            .any(|m| m.name == "accepts" && m.contract.is_empty())
+    );
+    assert!(!render_module(&documented[0]).contains("$methods"));
+
     let signatures: Vec<_> = first
         .members
         .iter()

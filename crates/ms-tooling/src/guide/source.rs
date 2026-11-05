@@ -9,6 +9,7 @@ use std::sync::Arc;
 pub struct Source {
     text: Arc<str>,
     tokens: OnceCell<Option<Vec<(Tok, usize)>>>,
+    inherent_impls: OnceCell<Vec<u32>>,
 }
 
 impl Source {
@@ -17,12 +18,26 @@ impl Source {
         Source {
             text,
             tokens: OnceCell::new(),
+            inherent_impls: OnceCell::new(),
         }
     }
 
     /// The text.
     pub fn text(&self) -> &str {
         &self.text
+    }
+
+    /// Original inherent impl positions, before the checker synthesizes contracts.
+    pub fn is_inherent_impl(&self, offset: u32) -> bool {
+        self.inherent_impls.get_or_init(|| {
+            let file = Arc::from("documentation.ms");
+            ms_syntax::parser::parse(&file, &self.text)
+                .map(|module| module.decls.iter().filter_map(|decl| {
+                    matches!(&decl.kind, ms_syntax::DeclKind::Impl(implementation) if implementation.contract.is_none())
+                        .then_some(decl.pos.offset)
+                }).collect())
+                .unwrap_or_default()
+        }).contains(&offset)
     }
 
     /// Token kinds with original start offsets; `None` when the source does not lex.
