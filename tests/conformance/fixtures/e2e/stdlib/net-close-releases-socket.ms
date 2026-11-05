@@ -17,7 +17,7 @@ fn accept_one(address: String) Int:
     return 0
 
 fn read_one(address: String) Int:
-    var client = connect(address, nanoseconds(2000000000)).wait().get()
+    var client = connect(address, timeout: nanoseconds(2000000000)).wait().get()
     let got = client.input.read().wait()
     return got.get(none).map(fn b: b.length()).get(-1)
 

@@ -11,7 +11,7 @@ import (
     HttpClientOptions,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import http_client, request, serve from "@std/net/net.ms"
+import RequestOptions, http_client, request, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn repeated_headers() HttpHeaders!:
@@ -48,7 +48,7 @@ test "one header type preserves repeated values through buffered requests":
     ) | try expect_ok
     let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
-        headers: (try repeated_headers()), body: ""
+        options: RequestOptions(headers: (try repeated_headers()))
     ) | try expect_ok
     var metadata = response.metadata().clone()
     metadata.status | try expect_equal(200)
@@ -86,7 +86,7 @@ test "streaming proxy uses the same byte-valued header type":
     ) | try expect_ok
     let response = request(
         method: HttpMethod.Get, url: "http://{server.address()}/",
-        headers: (try repeated_headers()), body: ""
+        options: RequestOptions(headers: (try repeated_headers()))
     ) | try expect_ok
     try expect_false(
         ((response.metadata().headers.values("x-DUP")) != ["first", "second"])

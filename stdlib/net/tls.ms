@@ -1,6 +1,9 @@
 import Bytes from "@std/bytes.ms"
 import Timestamp from "@std/os/time.ms"
-import msstd_tls_parse_certificates, msstd_tls_verify_certificates from "@std/internal/net.ms"
+import (
+    msstd_tls_parse_certificates,
+    msstd_tls_verify_certificates
+) from "@std/internal/net.ms"
 
 // Parsed certificate identity, validity range, and original DER bytes.
 export type CertificateInfo:
@@ -34,17 +37,17 @@ export type TlsInfo:
 export type TlsOptions:
     // Host name a TLS client sends for server name indication and matches against the server certificate; it must be non-empty for `connect_tls_config`.
     // HTTP and WebSocket clients take the name from the URL host and ignore this field, and servers do not use it.
-    server_name: String
+    server_name: String = ""
     // PEM certificates to trust. Clients use them instead of the system roots; servers use them to verify client certificates. An empty string selects the system roots; invalid PEM is rejected.
-    roots_pem: String
+    roots_pem: String = ""
     // PEM certificate chain this side presents, paired with `private_key_pem`. Servers must supply it; clients supply it only for mutual TLS.
-    certificate_pem: String
+    certificate_pem: String = ""
     // PEM private key matching `certificate_pem`. Both must be set together and match, or setup fails.
-    private_key_pem: String
+    private_key_pem: String = ""
     // Application-layer protocols to offer or accept, in preference order, such as `h2` or `http/1.1`. Each must be 1 through 255 bytes; empty disables negotiation.
-    alpn: List[String]
+    alpn: List[String] = []
     // Servers only: when True, a client must present a certificate that verifies against `roots_pem`. Setting it on a client configuration is rejected.
-    require_client_certificate: Bool
+    require_client_certificate: Bool = false
 
 // Parses PEM certificates and optionally limits the number returned.
 export fn parse_certificates(pem: String, max_certificates: Int?) List[CertificateInfo]!:

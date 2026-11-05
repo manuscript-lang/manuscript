@@ -71,11 +71,10 @@ fn exercise() Unit!:
     try client.close()
 
     let websocket_options = WebSocketOptions(
-        max_message_bytes: 1024, timeout: 2.seconds(), tls: tls, compression: false
+        headers: headers(), subprotocols: ["echo"], max_message_bytes: 1024, timeout: 2.seconds(), tls: tls, compression: false
     )
     var socket = try web_socket(
-        url: "ws://{server.address()}/ws", headers: headers(), subprotocols: ["echo"],
-        options: websocket_options
+        url: "ws://{server.address()}/ws", options: websocket_options
     )
     socket.subprotocol | try expect_equal("echo")
     try socket.output.write(

@@ -336,32 +336,10 @@ native! {
         Ok(())
     }
 
-    /// `Listener.accept_raw(timeout)`: the accepted socket's handle, for `HttpServer.adopt`.
-    fn msstd_net_listener_accept_raw(
-        l: ObjRef<ListenerH>,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<i64>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        out.write(report(l.accept_raw(opt(*has_timeout, timeout)), &err)?);
-        Ok(())
-    }
-
     /// Another handle on the same listener, for a promise that accepts on it. Dropping the handle
     /// leaves the listener open; `Listener.close()` stops it.
     fn msstd_net_listener_share(l: ObjRef<ListenerH>) -> Object<ListenerH> {
         Object(ListenerH(l.0.0.clone()))
-    }
-
-    /// `Listener.raw_owner()`: the identity under which this listener's raw handles are tracked.
-    fn msstd_net_listener_raw_owner(l: ObjRef<ListenerH>) -> i64 {
-        l.owner_key() as i64
-    }
-
-    /// `release_unadopted(owner)`: closes the raw handles of `owner` that no server adopted.
-    fn msstd_net_release_unadopted(owner: i64) -> () {
-        crate::conn::release_unadopted(owner as usize);
     }
 
     /// `Listener.address()`.

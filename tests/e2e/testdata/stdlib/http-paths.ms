@@ -10,7 +10,7 @@ import (
     HttpClientOptions,
     HttpHeaders
 ) from "@std/net/http.ms"
-import http_client, request, serve from "@std/net/net.ms"
+import RequestOptions, http_client, request, serve from "@std/net/net.ms"
 import TlsOptions from "@std/net/tls.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -43,9 +43,11 @@ fn stream_route(var exchange: HttpExchange) Unit!:
 
 fn check_route(url: String, expected: String) Unit!:
     let response = request(
-        method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "",
-        timeout: 2.seconds()
+        method: HttpMethod.Get,
+        url: url,
+        options: RequestOptions(
+            headers: (try text_headers(Map[String, String]())), timeout: 2.seconds()
+        )
     ) | try expect_ok
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
         Error("path or raw query changed")
@@ -58,9 +60,11 @@ fn check_route(url: String, expected: String) Unit!:
 
 fn check_rejected(url: String) Unit!:
     let response = request(
-        method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "",
-        timeout: 2.seconds()
+        method: HttpMethod.Get,
+        url: url,
+        options: RequestOptions(
+            headers: (try text_headers(Map[String, String]())), timeout: 2.seconds()
+        )
     ) | try expect_ok
     if response.metadata().status != 400: return error(
         Error("unsafe or invalid path was dispatched")
@@ -103,8 +107,8 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
     let body = ""
     request(
-        method: HttpMethod.Get, url: "http://127.0.0.1:99999/", headers: headers,
-        body: body
+        method: HttpMethod.Get, url: "http://127.0.0.1:99999/", body: body,
+        options: RequestOptions(headers: headers.clone())
     ) | try expect_http_error
 
     let tls = TlsOptions(

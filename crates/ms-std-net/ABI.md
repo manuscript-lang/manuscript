@@ -111,7 +111,6 @@ Behavior notes (same as Go unless stated):
 ## tls
 
 ```text
-msstd_net_network_connect_tls(net, address, server_name, has_timeout, timeout, out, err) -> u8
 msstd_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
 msstd_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
 msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TLS status group

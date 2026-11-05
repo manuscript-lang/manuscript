@@ -1226,7 +1226,7 @@ resolution	6	89	352	unknown type NetworkError; declare it with 'type NetworkErro
     priority: Int
     weight: Int
     port: Int
-resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net/net.ms"enum Optional[T]:
+resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net/ip.ms"enum Optional[T]:
     T
     none
 

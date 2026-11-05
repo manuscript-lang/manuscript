@@ -3,6 +3,7 @@ import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 import Promise, deferred, complete from "@std/concurrency/promise.ms"
+import HttpHeaders, headers from "@std/net/http.ms"
 import TlsOptions from "@std/net/tls.ms"
 import (
     msstd_websocket_close,
@@ -15,13 +16,8 @@ import (
     msstd_websocket_subprotocol
 ) from "@std/internal/net.ms"
 
-// The runtime handle behind a `RawWebSocket`.
+// The runtime handle behind a `WebSocket`.
 export extern type NativeWebSocket
-
-// The native WebSocket a handshake returns; it is wrapped into a `WebSocket`.
-export type RawWebSocket:
-    // The runtime handle; it is released when the last end closes.
-    native: NativeWebSocket
 
 // The kind of a WebSocket message.
 export enum WebSocketKind:
@@ -44,13 +40,13 @@ export type RawWebSocketMessage:
     text: Bool
 
 type WebSocketSource:
-    raw: RawWebSocket
+    native: NativeWebSocket
 
 impl Source[WebSocketMessage] for WebSocketSource:
     // Waits for the next complete message; none once the peer closes normally.
     // A larger message is `EOVERFLOW` and a malformed text message `EBADMSG`; after any failure the connection is closed.
     var fn next() WebSocketMessage?!:
-        let raw = try msstd_websocket_receive(self.raw.native)
+        let raw = try msstd_websocket_receive(self.native)
 
         if let message = raw:
             var kind = WebSocketKind.Binary
@@ -61,21 +57,19 @@ impl Source[WebSocketMessage] for WebSocketSource:
         return ok(none)
 
     var fn close() Unit!:
-        msstd_websocket_close_if_last(self.raw.native)
+        msstd_websocket_close_if_last(self.native)
         return ok(unit)
 
 type WebSocketSink:
-    raw: RawWebSocket
+    native: NativeWebSocket
 
 impl Sink[WebSocketMessage] for WebSocketSink:
     // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a payload over `max_message_bytes` returns EOVERFLOW.
     var fn put(value: WebSocketMessage) Unit!:
         match value.kind:
-            Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
-            Binary: return msstd_websocket_send_bytes(
-                self.raw.native, value.data, false
-            )
-            Ping: return msstd_websocket_ping_bytes(self.raw.native, value.data)
+            Text: return msstd_websocket_send_bytes(self.native, value.data, true)
+            Binary: return msstd_websocket_send_bytes(self.native, value.data, false)
+            Ping: return msstd_websocket_ping_bytes(self.native, value.data)
 
     var fn drain() Promise[Unit]:
         return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
@@ -84,7 +78,7 @@ impl Sink[WebSocketMessage] for WebSocketSink:
         return 0
 
     var fn close() Unit!:
-        msstd_websocket_close_if_last(self.raw.native)
+        msstd_websocket_close_if_last(self.native)
         return ok(unit)
 
 /*
@@ -107,21 +101,36 @@ impl Closeable for WebSocket:
         return self.output.close()
 
 // Wraps a native WebSocket into a `WebSocket`.
-export fn web_socket_from(raw: RawWebSocket) WebSocket:
-    let subprotocol = msstd_websocket_subprotocol(raw.native)
-    let other = RawWebSocket(msstd_websocket_share(raw.native))
+export fn web_socket_from(native: NativeWebSocket) WebSocket:
+    let subprotocol = msstd_websocket_subprotocol(native)
+    let other = msstd_websocket_share(native)
     return WebSocket(
-        input: stream[WebSocketMessage](WebSocketSource(raw)),
+        input: stream[WebSocketMessage](WebSocketSource(native)),
         output: writer[WebSocketMessage](WebSocketSink(other)), subprotocol: subprotocol
     )
 
-// WebSocket message, timeout, TLS, and per-message compression settings.
+// What a WebSocket client connection is opened with: headers, subprotocols, message bound, time budget, TLS settings and compression.
 export type WebSocketOptions:
+    // Extra handshake headers. `Upgrade`, `Connection`, `Host` and `Sec-WebSocket-*` cannot be set.
+    headers: HttpHeaders = headers()
+    // Subprotocols to offer, in preference order.
+    subprotocols: List[String] = []
     // Largest message accepted or sent, in bytes. Must be positive; none sets no limit.
-    max_message_bytes: Int?
+    max_message_bytes: Int? = none
     // Time budget for connecting and completing the opening handshake. none waits indefinitely and a negative duration is rejected.
-    timeout: Duration?
+    timeout: Duration? = none
     // TLS settings for `wss` URLs: trusted roots, client identity, and protocols.
-    tls: TlsOptions
+    tls: TlsOptions = TlsOptions()
     // When True, offers per-message compression during the handshake; it applies only if the peer agrees.
+    compression: Bool = false
+
+// The part of `WebSocketOptions` the native handshake reads, in the native layout.
+export type WebSocketWire:
+    // The `max_message_bytes` of the options.
+    max_message_bytes: Int?
+    // The `timeout` of the options.
+    timeout: Duration?
+    // The `tls` of the options.
+    tls: TlsOptions
+    // The `compression` of the options.
     compression: Bool

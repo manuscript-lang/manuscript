@@ -10,7 +10,7 @@ import (
     headers,
     buffered
 ) from "@std/net/http.ms"
-import request, serve from "@std/net/net.ms"
+import RequestOptions, request, serve from "@std/net/net.ms"
 
 type ApiFixture:
     server: HttpServer
@@ -31,7 +31,7 @@ test "first request":
     let response = try expect_ok(
         request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
-            headers: headers(), body: ""
+            options: RequestOptions(headers: headers())
         )
     )
     try expect_equal(response.metadata().status, 200)
@@ -40,7 +40,7 @@ test "second request uses same server":
     let response = try expect_ok(
         request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
-            headers: headers(), body: ""
+            options: RequestOptions(headers: headers())
         )
     )
     try expect_equal(response.body, "shared".to_bytes())

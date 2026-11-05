@@ -4,7 +4,14 @@ import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
 import headers, HttpMethod, upgrade from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
+import (
+    RequestOptions,
+    connect,
+    http_client,
+    request,
+    serve,
+    web_socket
+) from "@std/net/net.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
 import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
 import TlsOptions from "@std/net/tls.ms"
@@ -53,9 +60,11 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let url = "http://{server.address()}/"
     let response = request(
-        method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "",
-        timeout: 2.seconds()
+        method: HttpMethod.Get,
+        url: url,
+        options: RequestOptions(
+            headers: (try text_headers(Map[String, String]())), timeout: 2.seconds()
+        )
     ) | try expect_ok
     try expect_false(
         (
@@ -84,9 +93,12 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     let _limited: Unit! = error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
     match request(
-        method: HttpMethod.Get, url: url,
-        headers: (try text_headers(Map[String, String]())), body: "",
-        max_response_bytes: 4, timeout: 2.seconds()
+        method: HttpMethod.Get,
+        url: url,
+        options: RequestOptions(
+            headers: (try text_headers(Map[String, String]())), max_bytes: 4,
+            timeout: 2.seconds()
+        )
     ):
         ok(_): return fail("HTTP output budget ignored")
         error(cause):
@@ -96,14 +108,11 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let options = HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
     let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
     let client_options = WebSocketOptions(
+        headers: (try text_headers(Map[String, String]())), subprotocols: ["echo"],
         max_message_bytes: 1024, timeout: 2.seconds(), tls: tls_options(),
         compression: false
     )
-    var socket = web_socket(
-        url: "ws://{server.address()}/ws",
-        headers: (try text_headers(Map[String, String]())), subprotocols: ["echo"],
-        options: client_options
-    ) | try expect_ok
+    var socket = web_socket(url: "ws://{server.address()}/ws", options: client_options) | try expect_ok
     socket.subprotocol | try expect_equal("echo")
 
     let _sent = socket.output.write(
@@ -113,7 +122,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
-    var client = try connect(address, 2.seconds()).wait()
+    var client = try connect(address, timeout: 2.seconds()).wait()
     let key = "dGhlIHNhbXBsZSBub25jZQ=="
     let request = (
         "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
@@ -153,17 +162,21 @@ test "HTTP streaming handlers see the Host request header":
     )
     let server = serve(address: "127.0.0.1:0", handler: report_host, options: options) | try expect_ok
     let response = request(
-        method: HttpMethod.Get, url: "http://{server.address()}/",
-        headers: (try text_headers(Map[String, String]())), body: "",
-        timeout: 2.seconds()
+        method: HttpMethod.Get,
+        url: "http://{server.address()}/",
+        options: RequestOptions(
+            headers: (try text_headers(Map[String, String]())), timeout: 2.seconds()
+        )
     ) | try expect_ok
     response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":
     match request(
-        method: HttpMethod.Custom(value: ""), url: "http://127.0.0.1:1/",
-        headers: (try text_headers(Map[String, String]())), body: "",
-        timeout: 1.seconds()
+        method: HttpMethod.Custom(value: ""),
+        url: "http://127.0.0.1:1/",
+        options: RequestOptions(
+            headers: (try text_headers(Map[String, String]())), timeout: 1.seconds()
+        )
     ):
         ok(_): return fail("empty method accepted")
         error(cause):
