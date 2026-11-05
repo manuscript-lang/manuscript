@@ -776,6 +776,9 @@ pub unsafe extern "C-unwind" fn msrt_task_grow(
         (*cur).seg = k;
         (*cur).left.push(0);
         let save: *mut usize = (*cur).left.last_mut().expect("pushed");
+        // A cancellation or fault inside the shim leaves by a jump that skips the caller's free of
+        // `block`, so a cleanup releases it; the normal return discards the cleanup.
+        let release = fault::msrt_cleanup_push(crate::obj::msrt_free, block);
         #[cfg(windows)]
         {
             // The segment's thread environment block fields, then this stack's own for the
@@ -795,6 +798,7 @@ pub unsafe extern "C-unwind" fn msrt_task_grow(
         }
         #[cfg(not(windows))]
         stack::msrt_call_on_stack(top, shim, block, save);
+        fault::msrt_cleanup_discard(release);
         (*cur).seg = k - 1;
         (*cur).left.pop();
         (*cur).hdr.limit = limit;
