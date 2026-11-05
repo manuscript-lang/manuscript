@@ -148,7 +148,6 @@ impl Iterator[T!] for Waiting[T]:
         if let maybe = result:
             if let item = maybe:
                 return ok(item)
-
         self.ended = true
         return none
 
