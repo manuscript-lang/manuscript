@@ -27,11 +27,13 @@ fn live_blocks(text: String) List[Int]:
 fn leaking_tests(text: String) List[String]:
     var leaks = List[String]()
     var current = ""
+
     for line in text.split("\n"):
         if line.starts_with("RUN "): current = line.slice(4, line.length()).get("")
         else if line.starts_with("ms-rt live blocks at exit: "):
             let n = line.slice(27, line.length()).get("").trim().parse_int().get(0)
             if n != 0: leaks.append("{current}: {n}")
+
     return leaks
 
 fn has_tests(source: String) Bool:
@@ -75,12 +77,16 @@ export fn main() Int:
         let source = read_file(absolute.clone()).wait().get().decode_utf8().get("")
 
         if has_tests(source):
-            if let out = run(ms.clone(), ["test", absolute.clone()], timeout: seconds(600)).wait():
+            if let out = run(
+                ms.clone(), ["test", absolute.clone()], timeout: seconds(600)
+            ).wait():
                 let found = leaking_tests(out.stderr.decode_utf8().get(""))
                 swept += 1
+
                 if found.length() > 0:
                     leaks += 1
                     stdout().write("leak: {absolute}\n  {found.join("\n  ")}\n").get()
+
             continue
 
         if let out = run(ms.clone(), ["run", absolute.clone()], timeout: seconds(60)).wait():
