@@ -21,3 +21,4 @@ Stdlib API shape, failure modes, naming, construction.
 - [Pick the failure mode by cause, then the shape](pick-the-failure-mode-by-cause-then-the-shape.md): absence is `Optional`, invalid external data is `Result`, a violated documented precondition faults.
 - [Text formats and templates are pure Manuscript over JsonValue](text-formats-are-pure-manuscript-data-in-data-out.md): templates, XML, PEM, MIME and mail live in `.ms`; no Rust parser or crate, data is `JsonValue`.
 - [Text in, bytes by explicit sibling](text-in-bytes-by-explicit-sibling.md): write-like operations accept `String`; the raw form is a `_bytes` sibling (`write_bytes`, `send_bytes`, `request_bytes`).
+- [Path text is Manuscript; only the glob matcher stays native](path-text-is-manuscript-and-only-the-glob-matcher-stays-native.md): `os/path.ms` holds the lexical path rules; a recorded 9.7k-case corpus replays them as a `.ms` test.

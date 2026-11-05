@@ -17,8 +17,8 @@ import now from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
 import secure_int from "@std/os/random.ms"
 import parse_timestamp from "@std/os/time.ms"
-import posix from "@std/os/fs.ms"
-import win32 from "@std/os/fs.ms"
+import posix from "@std/os/path.ms"
+import win32 from "@std/os/path.ms"
 
 fn common_result[T](result: T!) T!: result
 

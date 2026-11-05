@@ -1,4 +1,4 @@
-//! `@std/io/table.ms` display widths. Unicode widths come from `unicode-width`, with ambiguous
+//! `String.display_width` (`@std/string.ms`). Unicode widths come from `unicode-width`, with ambiguous
 //! characters narrow; the table layout itself is Manuscript.
 
 use ms_rt::ffi::{Fail, native};
@@ -15,7 +15,7 @@ fn width(text: &str) -> Result<i64, Fail> {
 }
 
 native! {
-    fn msstd_table_cell_width(text: &str) -> Result<i64, Fail> {
+    fn msstd_unicode_display_width(text: &str) -> Result<i64, Fail> {
         width(text)
     }
 }

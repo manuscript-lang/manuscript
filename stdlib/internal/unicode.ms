@@ -15,3 +15,6 @@ export extern fn msstd_unicode_is_control(value: Int) Bool
 export extern fn msstd_unicode_is_ascii(value: Int) Bool
 
 export extern fn msstd_unicode_fields(text: String) List[String]
+
+// Display width of text (ambiguous characters narrow); controls, U+2028 and U+2029 are EBADMSG.
+export extern fn msstd_unicode_display_width(text: String) Int!

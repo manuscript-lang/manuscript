@@ -1,5 +1,6 @@
 // Small helpers shared by the benchmark tools: environment, files, shell commands.
-import read_file, write_file, create_directory, dirname from "@std/os/fs.ms"
+import create_directory, read_file, write_file from "@std/os/fs.ms"
+import dirname from "@std/os/path.ms"
 import compile from "@std/string.ms"
 import seconds from "@std/os/time.ms"
 import environment, monotonic_time, run from "@std/os/process.ms"

@@ -11,15 +11,8 @@ import (
     spawn,
     system_info
 ) from "@std/os/process.ms"
-import (
-    read_file,
-    write_file,
-    create_directory,
-    is_absolute,
-    join,
-    remove,
-    access
-) from "@std/os/fs.ms"
+import access, create_directory, read_file, remove, write_file from "@std/os/fs.ms"
+import is_absolute, join from "@std/os/path.ms"
 import stderr, stdin, stdout from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 import JsonValue, stringify from "@std/data/json.ms"

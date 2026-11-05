@@ -68,7 +68,7 @@ pub fn members(
     };
     collect(receiver, &mut candidates);
     candidates.extend(program.methods.iter().filter_map(|m| m.name()));
-    if let Some(intrinsic) = program.session.intrinsic_operations(receiver.id) {
+    for intrinsic in program.session.intrinsic_operations(receiver.id) {
         collect(&intrinsic, &mut candidates);
     }
     let mut result: Vec<Member> = Vec::new();

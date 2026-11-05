@@ -174,8 +174,8 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
             (
                 "win32",
                 3,
-                "fn() PathOperations — @std/os/fs.ms",
-                Some("@std/os/fs.ms"),
+                "fn() PathOperations — @std/os/path.ms",
+                Some("@std/os/path.ms"),
                 Some(""),
             ),
             (

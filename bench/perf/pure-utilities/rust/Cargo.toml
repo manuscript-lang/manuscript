@@ -7,7 +7,6 @@ publish = false
 [workspace]
 
 [dependencies]
-ms-std-path = { path = "../../../../crates/ms-std-path" }
 ms-std-url = { path = "../../../../crates/ms-std-url" }
 ms-rt = { path = "../../../../crates/ms-rt" }
 

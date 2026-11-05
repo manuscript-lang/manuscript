@@ -1,5 +1,5 @@
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
-import msstd_unicode_fields from "@std/internal/unicode.ms"
+import msstd_unicode_display_width, msstd_unicode_fields from "@std/internal/unicode.ms"
 import msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms"
 import (
     msstd_regex_find_all_spans,
@@ -112,6 +112,12 @@ impl String:
     // Exact field text is preserved without normalization; the byte-order mark and zero-width space are not separators.
     fn fields() List[String]:
         return msstd_unicode_fields(self)
+
+    // Terminal columns the text occupies, measured by Unicode sequence width with ambiguous characters narrow:
+    // combining marks add nothing, wide characters and supported emoji sequences count two.
+    // An estimate, not a promise for every font or terminal. Controls (tabs, CR/LF, ESC, C1), U+2028 and U+2029 return EBADMSG.
+    fn display_width() Int!:
+        return msstd_unicode_display_width(self)
 
 interface StringTextOperations:
     fn fields_by(is_separator: fn(String) Bool) List[String]
