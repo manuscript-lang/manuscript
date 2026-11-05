@@ -1,0 +1,6 @@
+[project]
+name = "path_oracle"
+source = "."
+
+[embed]
+"@oracle" = "./data"

@@ -688,21 +688,7 @@ msstd_net_network_with_resolver(handle net: *const ObjCell<NetH>, address: *cons
 msstd_net_parse_cidr(text: *const StrVal, out: *mut *mut ObjCell<Cidr>, err: ErrSlot) -> u8
 msstd_net_parse_ip(text: *const StrVal, out: *mut *mut ObjCell<IpH>, err: ErrSlot) -> u8
 msstd_net_release_unadopted(owner: i64)
-msstd_path_basename(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
-msstd_path_basename_without(windows: u8, path: *const StrVal, suffix: *const StrVal, out: *mut StrVal) @leaf
-msstd_path_delimiter(windows: u8, out: *mut StrVal) @leaf
-msstd_path_dirname(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
-msstd_path_extension(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
-msstd_path_format(windows: u8, parts: *const [StrVal; 5], out: *mut StrVal) @leaf
-msstd_path_is_absolute(windows: u8, path: *const StrVal) -> u8 @leaf
-msstd_path_join(windows: u8, parts: *const VecVal, out: *mut StrVal) @leaf
 msstd_path_matches_glob(windows: u8, value: *const StrVal, pattern: *const StrVal, out: *mut u8) -> u8 @leaf
-msstd_path_normalize(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
-msstd_path_parse(windows: u8, path: *const StrVal, out: *mut [StrVal; 5]) @leaf
-msstd_path_relative(windows: u8, base: *const StrVal, target: *const StrVal, out: *mut StrVal) -> u8 @leaf
-msstd_path_resolve(windows: u8, base: *const StrVal, parts: *const VecVal, out: *mut StrVal) -> u8 @leaf
-msstd_path_separator(windows: u8, out: *mut StrVal) @leaf
-msstd_path_to_namespaced_path(windows: u8, path: *const StrVal, out: *mut StrVal) @leaf
 msstd_process_available_memory(out: *mut i64, err: ErrSlot) -> u8
 msstd_process_change_directory(path: *const StrVal, err: ErrSlot) -> u8
 msstd_process_command_run(program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout_ns: i64, has_cwd: HasRaw, cwd: *const StrVal, env_names: *const VecVal, env_values: *const VecVal, out: *mut CommandOut, err: ErrSlot) -> u8

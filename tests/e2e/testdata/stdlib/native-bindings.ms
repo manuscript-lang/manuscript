@@ -12,14 +12,14 @@ import (
 ) from "@std/os/process.ms"
 import (
     FileEvent,
-    join,
+    WatchOptions,
     create_directory,
     stat_filesystem,
     temporary,
     watch,
-    WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
+import join from "@std/os/path.ms"
 import milliseconds from "@std/os/time.ms"
 import ReadStream from "@std/io/io.ms"
 

@@ -14,47 +14,11 @@ import (
     NativeFile,
     NativeTemporary,
     NativeWatcher,
-    PathOperations,
-    PathParts,
     TemporaryDirectory
 ) from "@std/os/fs.ms"
 import Duration, Timestamp from "@std/os/time.ms"
 
-export extern fn msstd_path_basename(path: String) String
-
-export extern fn msstd_path_dirname(path: String) String
-
-export extern fn msstd_path_extension(path: String) String
-
-export extern fn msstd_path_is_absolute(path: String) Bool
-
-export extern fn msstd_path_join(parts: List[String]) String
-
-export extern fn msstd_path_normalize(path: String) String
-
-export extern fn msstd_path_basename_without(path: String, suffix: String) String
-
-export extern fn msstd_path_separator() String
-
-export extern fn msstd_path_delimiter() String
-
-export extern fn msstd_path_to_namespaced_path(path: String) String
-
 export extern fn msstd_fs_filesystem() FileSystem
-
-export extern fn msstd_path_relative(base: String, target: String) String!
-
-export extern fn msstd_fs_posix() PathOperations
-
-export extern fn msstd_fs_win32() PathOperations
-
-export extern fn msstd_path_resolve(base: String, parts: List[String]) String!
-
-export extern fn msstd_path_parse(path: String) PathParts
-
-export extern fn msstd_path_format(parts: PathParts) String
-
-export extern fn msstd_path_matches_glob(path: String, pattern: String) Bool!
 
 export extern fn msstd_io_close(file: NativeFile) Unit
 

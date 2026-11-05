@@ -1,5 +1,6 @@
 import Closeable from "@std/core.ms"
-import chmod, create_directory, join, temporary, write_file from "@std/os/fs.ms"
+import chmod, create_directory, temporary, write_file from "@std/os/fs.ms"
+import join from "@std/os/path.ms"
 import (
     change_directory,
     environment,

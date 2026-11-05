@@ -1,3 +1,5 @@
+mod path_rules;
+
 use ms_rt::ffi::Fail;
 use std::{hint::black_box, time::Instant};
 
@@ -122,7 +124,7 @@ fn run<const PATH: bool, const NATIVE: bool>(
 ) -> bool {
     if PATH {
         if NATIVE {
-            let rules = ms_std_path::POSIX;
+            let rules = path_rules::POSIX;
             match op {
                 "extension" => fields[0] = rules.extension(input),
                 "normalize" => fields[0] = rules.normalize(input),
