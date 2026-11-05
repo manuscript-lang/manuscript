@@ -416,35 +416,7 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(bad);
         self.b.seal_block(good);
         self.b.switch_to(bad);
-        let head = "map key not found";
-        let msg = if self.ty_of(kv) == MTy::INT {
-            let head = self.b.str_lit(&format!("{head}: "));
-            let text = self.call_runtime("msrt_int_to_string", &[kv], MTy::STR)?;
-            self.call_runtime("msrt_string_concat", &[head, text], MTy::STR)?
-        } else if self.ty_of(kv) == MTy::STR {
-            let open = self.b.str_lit(&format!("{head}: \""));
-            let close = self.b.str_lit("\"");
-            let text = self.call_runtime("msrt_string_concat", &[open, kv], MTy::STR)?;
-            self.call_runtime("msrt_string_concat", &[text, close], MTy::STR)?
-        } else {
-            self.b.str_lit(head)
-        };
-        let fault = self.b.m.add_extern(ms_mir::ir::ExternDef {
-            name: "msrt_fault_string".to_string(),
-            params: vec![ms_mir::ir::Param {
-                ty: MTy::STR,
-                mode: ms_mir::ir::Mode::Borrow,
-            }],
-            ret: MTy::UNIT,
-            noreturn: true,
-            pure_: false,
-            fresh: false,
-            role: ms_mir::ir::ExternRole::None,
-            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
-            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
-        });
-        self.b.call_rt(fault, &[msg]);
-        self.b.unreachable();
+        self.fault_key_not_found(kv)?;
         self.b.switch_to(good);
         let v = self
             .b
@@ -630,6 +602,40 @@ impl<'a> FnLower<'a> {
 
     /// A stack slot giving a borrow of `x` to a runtime call that only reads it: nothing is
     /// copied and nothing is taken back or dropped afterwards.
+    /// Faults with the missing key named; ends the current block.
+    pub(crate) fn fault_key_not_found(&mut self, kv: Value) -> Result<(), Error> {
+        let head = "map key not found";
+        let msg = if self.ty_of(kv) == MTy::INT {
+            let head = self.b.str_lit(&format!("{head}: "));
+            let text = self.call_runtime("msrt_int_to_string", &[kv], MTy::STR)?;
+            self.call_runtime("msrt_string_concat", &[head, text], MTy::STR)?
+        } else if self.ty_of(kv) == MTy::STR {
+            let open = self.b.str_lit(&format!("{head}: \""));
+            let close = self.b.str_lit("\"");
+            let text = self.call_runtime("msrt_string_concat", &[open, kv], MTy::STR)?;
+            self.call_runtime("msrt_string_concat", &[text, close], MTy::STR)?
+        } else {
+            self.b.str_lit(head)
+        };
+        let fault = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: "msrt_fault_string".to_string(),
+            params: vec![ms_mir::ir::Param {
+                ty: MTy::STR,
+                mode: ms_mir::ir::Mode::Borrow,
+            }],
+            ret: MTy::UNIT,
+            noreturn: true,
+            pure_: false,
+            fresh: false,
+            role: ms_mir::ir::ExternRole::None,
+            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
+        });
+        self.b.call_rt(fault, &[msg]);
+        self.b.unreachable();
+        Ok(())
+    }
+
     pub(crate) fn borrow_slot(&mut self, x: Value) -> Value {
         let t = self.ty_of(x);
         let slot = self
