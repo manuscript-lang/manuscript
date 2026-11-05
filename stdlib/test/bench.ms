@@ -57,11 +57,8 @@ fn next_count(count: Int, elapsed: Int, target: Int) Int:
 
 /*
 Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
-A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
-  bench "sorts":
-      let data = [3, 1, 2]
-      try measure(1, fn: keep(data.sorted().length()))
-Everything the body does before `measure` runs once, untimed.
+Build setup data before calling `measure`; that setup runs once, outside the timed region.
+Use `ms bench <file> --iterations 1 --samples 1` for a short measurement run; timings vary by machine.
 */
 export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let body = work

@@ -46,9 +46,20 @@ extern fn msrt_io_write_stdout(text: String) Unit
 Writes `value` as text and a newline to standard output. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
 It returns `Unit`; output is buffered and flushed at exit. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
 
-```manuscript
-print("total: {total}")
-print(order)
+<!-- manuscript-example: {"mode":"run","filename":"print-line.ms","stdout":"total: 3\n"} -->
+```manuscript {filename="print-line.ms"}
+export fn main() Int:
+    let total = 3
+    print("total: {total}")
+    return 0
+```
+
+```sh
+ms run print-line.ms
+```
+
+```text
+total: 3
 ```
 */
 export fn print[T](value: T) Unit:

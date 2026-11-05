@@ -1,19 +1,6 @@
 import StringBuilder, from_scalars from "@std/string.ms"
 import parse_int_radix from "@std/text.ms"
 
-/*
-XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
-`parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
-the five predefined and numeric references are rejected). Names keep their prefix as written
-(`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
-
-    import parse from "@std/data/xml.ms"
-    let doc = try parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")
-    let item = doc.find("item").get()
-    print(item.attribute("id").get("")) // "1"
-    print(item.text())                  // "Hi & bye"
-*/
-
 // An XML attribute with its decoded value.
 export type XmlAttribute:
     // Attribute name as written, including any prefix.
@@ -21,7 +8,34 @@ export type XmlAttribute:
     // Attribute value with references decoded.
     value: String
 
-// A node of a parsed XML tree.
+/*
+Inspect parsed XML with explicit missing-element handling.
+
+<!-- manuscript-example: {"mode":"test","filename":"xml-elements.ms","stdout":"RUN xml-elements.ms::xml-elements\nPASS xml-elements.ms::xml-elements\n1 tests, 0 failed\n"} -->
+```manuscript {filename="xml-elements.ms"}
+import parse from "@std/data/xml.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "xml-elements":
+    let doc = try parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")
+    let item = try doc.find("item").ok_or(Error("missing item"))
+    try expect_equal(item.attribute("id"), "1")
+    try expect_equal(item.text(), "Hi & bye")
+```
+
+```sh
+ms test xml-elements.ms
+```
+
+```text
+RUN xml-elements.ms::xml-elements
+PASS xml-elements.ms::xml-elements
+1 tests, 0 failed
+```
+
+- XML 1.0 names retain prefixes; namespaces and DTDs are not resolved.
+- DOCTYPE is skipped; only predefined and numeric entity references are accepted.
+*/
 export enum XmlNode:
     // An element with its attributes in source order and its child nodes.
     XmlElement(

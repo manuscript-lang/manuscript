@@ -5,73 +5,43 @@ weight = 2
 
 # Error propagation with try
 
-`try expression` unwraps `ok`; on `error` it returns that error from the enclosing function, which must return a compatible `Result`.
+Build on a fallible operation with `try`, forwarding its error unchanged. Manuscript is in alpha; syntax and APIs evolve.
 
-The following continues the `discount` and `DiscountError` declarations in [expected failures](results.md):
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::forward the original error\nPASS example.ms::forward the original error\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal, expect_error from "@std/test/test.ms"
 
-```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
-    let value = try discount(price, percent)
-    return ok("Discounted price: {value}")
+fn quantity(value: Int) Int!:
+    if value <= 0:
+        return error(Error("Quantity must be positive", kind: "EINVAL"))
+    return ok(value)
+
+fn label(value: Int) String!:
+    let count = try quantity(value)
+    return ok("Quantity: {count}")
+
+test "forward the original error":
+    try expect_equal(try label(3), "Quantity: 3")
+    let cause = try expect_error(label(0))
+    try expect_equal(cause.kind, "EINVAL")
 ```
 
-## Success and failure paths
-
-On `ok`, `value` holds the `Decimal`. On `error`, the function returns that error immediately. Success types may differ (decimal versus text); the error type is forwarded unchanged.
-
-`Result[Unit, E]` can be propagated as a statement. Save this complete test as `ready_test.ms` and run `ms test ready_test.ms`:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import expect_equal from "@std/test/test.ms"
-
-fn prepare() Unit!: ok(unit)
-
-fn ready_label() String!:
-    try prepare()
-    return ok("ready")
-
-test "prepare before returning a label":
-    try expect_equal(try ready_label(), "ready")
+```sh
+ms test example.ms
 ```
 
 ```text
-RUN ready_test.ms::prepare before returning a label
-PASS ready_test.ms::prepare before returning a label
+RUN example.ms::forward the original error
+PASS example.ms::forward the original error
 1 tests, 0 failed
 ```
 
-Standalone `try call()` requires a `Unit` success. Otherwise bind it (`let name = try call()`) or `return try call()`.
+<a id="success-and-failure-paths"></a>
+<a id="try-in-a-pipe-flow"></a>
+<a id="error-compatibility"></a>
+<a id="cleanup-and-cancellation"></a>
 
-Omitting `try` discards the Result, which the checker rejects. To ignore it deliberately, use [`let _ =`](results.md#discarding-a-result).
+- `try` forwards the cause from its function or closure; the caller must accept the same error type.
+- It preserves payload borrows and cleans up early exits; it cannot catch faults or cancellation.
 
-## Try in a pipe flow
-
-`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `let value = try discount(...)` then `label(value)`:
-
-```manuscript
-fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
-    return ok(try discount(price, percent) | label)
-```
-
-## Error compatibility
-
-`try` requires the operand's error type to be the enclosing function's error type.
-
-- `Result[T, E]` can become `Result[U, E]` for the same `E`. `Error` has no special conversion: it is an ordinary record.
-- The original error and its fields pass through unchanged.
-- Different error types need an explicit translation, for example [`map_error`](results.md#converting-a-domain-error-to-error) or [pattern matching](../control-flow/pattern-matching.md).
-- The expression after `try` is evaluated once. `try operation() + 1` means `(try operation()) + 1`.
-- Inside an anonymous function, `try` returns from that function.
-
-The compiler rejects `try` when:
-
-- its expression is not a Result;
-- its error type differs from the function's;
-- the enclosing function or test returns Unit.
-
-See [type compatibility](../types/compatibility.md).
-
-## Cleanup and cancellation
-
-`try` does not catch faults or parent cancellation. A propagated error is a return path and performs [lexical cleanup](../cleanup/_index.md) for scopes it leaves.
+Next: [Result operations](../../standard-library/reference/core.ms.md#result), [borrowing](../types/references.md) and [cleanup](../cleanup/_index.md).

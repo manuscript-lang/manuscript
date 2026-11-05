@@ -5,9 +5,18 @@ weight = 1
 
 # Parsing and checking
 
-Before native code generation, `ms-check` checks names, types, scopes, captures, cleanup, and ownership, and records the facts in typed HIR. `ms-lower` lowers that HIR to MIR for optimization, verification, and Cranelift code generation.
+Check the example with the built compiler (repository root).
 
-- [Compilation pipeline](pipeline.md): from project loading to native executable.
-- [Type checking and source contracts](type-checker.md)
-- [Scope and capture checking](scope-checker.md)
-- [Typed intermediate representation](typed-ir.md)
+```sh
+target/release/ms check examples/hello/ms.toml
+```
+
+```text
+Checked examples/hello/ms.toml (2 modules)
+```
+
+- Checking resolves source rules without linking or execution.
+- Alpha: retain acceptance and rejection regressions.
+
+
+Next: [pipeline](pipeline.md), [types](type-checker.md), [captures](scope-checker.md), and [HIR](typed-ir.md).

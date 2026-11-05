@@ -5,8 +5,20 @@ weight = 3
 
 # Compiler conformance
 
-Conformance tests check language rules through accepted and rejected source and observable runtime behavior.
+Run the example’s behavioral assertions (repository root).
 
-- [Semantic tests](semantic-tests.md), including cancellation and cleanup
+```sh
+target/release/ms test examples/hello/ms.toml
+```
 
-Keep the smallest program that demonstrates a rule. Accepted and rejected modules live under `tests/e2e/testdata/` (`accept/cl-*.ms` and neighbors); the frozen corpus in `tests/conformance/` also records expected command output. Run the focused example first, then the broader checks in the [development workflow](../../development.md). If prose and a fixture disagree, check the canonical language rule and implementation before changing either.
+```text
+RUN test.ms::getting started
+PASS test.ms::getting started
+1 tests, 0 failed
+```
+
+- Use executable assertions for runtime behavior and rejection fixtures for invalid source.
+- Alpha: reconcile regressions with current rules.
+
+
+Next: [semantic tests](semantic-tests.md) and [check targets](../../development.md).

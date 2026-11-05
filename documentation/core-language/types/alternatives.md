@@ -5,66 +5,41 @@ weight = 2
 
 # Enums
 
-Use an enum (a tagged union) when a value is exactly one of several declared cases, each with its own data.
+A declared set of outcomes lets reviewers check that every variant is handled; Manuscript is in alpha and syntax/APIs may change.
 
-```manuscript
-enum Payment:
-    Paid(receipt: String)
-    Declined(reason: String)
-    Pending(reference: String)
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::publication status\nPASS example.ms::publication status\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal from "@std/test/test.ms"
+
+enum Status:
+    Draft
+    Published(path: String)
+
+fn label(status: Status) String:
+    match status:
+        Draft:
+            return "Not published"
+        Published(path):
+            return "Published at {path}"
+
+test "publication status":
+    try expect_equal(label(Status.Draft), "Not published")
+    try expect_equal(label(Status.Published("/help")), "Published at /help")
 ```
 
-Enums are tagged and exhaustively matched.
-
-- At least one case; case names are unique, and payload field names are unique within a case.
-- A case may have no payload: `Missing`.
-- Payload types are explicit; fields have no defaults.
-- `enum` bodies contain only bare variant names with optional payload parameters; record fields belong in a `type` and methods in an `impl` block.
-
-Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. Then remove `case` before each variant. Both legacy spellings are rejected with diagnostics explaining the new spelling. Records keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling. `case` is no longer reserved: `case`, `case(value: Int)`, and record field `case: Int` are ordinary names in their respective contexts.
-
-## Construction and identity
-
-```manuscript
-let payment = Payment.Paid("receipt-42")
-let declined: Payment = Declined("Card rejected")
+```sh
+ms test example.ms
 ```
 
-- `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
-- A single-payload case may omit its label, such as `ok(3)`.
-- Multi-payload constructors follow the ordinary [call rules](../functions/declarations-and-calls.md#argument-names); every payload field appears exactly once.
-- Payloadless cases are values (`State.Ready`), without `()`. Tags do not convert to integers.
-
-Ordinary name lookup runs first: a local, declaration, or import with that spelling wins over case shorthand. Otherwise an unqualified case name must match exactly one case among visible enums. If several declare it, qualify it, even with an annotation. An expected enum type can supply generic arguments once the case is unique; a qualified case that contradicts the expected type is rejected, and matching payload shapes never make distinct enums compatible.
-
-```manuscript
-enum LeftState:
-    Ready
-
-enum RightState:
-    Ready
-
-let left: LeftState = LeftState.Ready
-// Rejected: two visible Ready cases, even with an annotation.
-let annotated: LeftState = Ready
-// Rejected: two visible Ready cases.
-let ambiguous = Ready
-// Rejected: a different nominal enum.
-let wrong: LeftState = RightState.Ready
+```text
+RUN example.ms::publication status
+PASS example.ms::publication status
+1 tests, 0 failed
 ```
 
-After `let Ready = LeftState.Ready`, `Ready` refers to that binding, not case lookup.
+- An `enum` declares one or more bare variants; payloads have explicit types and no defaults.
+- Matches cover every variant. This alpha syntax may change; constructors and patterns use the same declared enum.
 
-Type arguments attach to the enum, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. This also holds for standard Optional/Result cases.
+<span id="construction-and-identity"></span><span id="handling-a-case"></span><span id="resource-payloads"></span><span id="alternatives"></span>
 
-Exporting an enum exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
-
-## Handling a case
-
-A [match](../control-flow/pattern-matching.md) selects the case and binds its payload; it must cover every case. Patterns resolve against the scrutinee's enum type.
-
-There are no implicit unions or nullable references. Declare an enum, or use [Optional](optionals.md) for absence.
-
-## Resource payloads
-
-A payload borrowed by a match keeps its owner available while it is used. A match on an owned value at its last use can move a payload to a new owner, transferring its cleanup duty. See [references inside other values](references.md).
+Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [pattern matching](../control-flow/pattern-matching.md).

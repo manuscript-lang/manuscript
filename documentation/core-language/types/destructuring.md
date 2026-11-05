@@ -5,43 +5,39 @@ weight = 6
 
 # Destructuring bindings
 
-Destructuring names parts of a value in one declaration: `[...]` for positions, `{...}` for record fields. Each name takes the type of the part it selects.
+Destructuring shows exactly which parts an operation reads; Manuscript is in alpha and syntax/APIs may change.
 
-## Positional bindings
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::name the needed parts\nPASS example.ms::name the needed parts\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal from "@std/test/test.ms"
 
-Save as `names.ms` and run `ms run names.ms`:
+type Customer:
+    name: String
+    city: String
 
-<!-- manuscript-example: {"mode":"run","stdout":"Ada and Grace\n"} -->
-```manuscript
-export fn main() Int:
+test "name the needed parts":
+    let customer = Customer("Ada", "London")
+    let {name, city: destination} = customer
     let names = ["Ada", "Grace"]
-    let [first_name, second_name] = names
-    print("{first_name} and {second_name}")
-    return 0
+    let [first, second] = names
+    try expect_equal(name, first)
+    try expect_equal(destination, "London")
+    try expect_equal(second, "Grace")
+```
+
+```sh
+ms test example.ms
 ```
 
 ```text
-Ada and Grace
+RUN example.ms::name the needed parts
+PASS example.ms::name the needed parts
+1 tests, 0 failed
 ```
 
-Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `let (a, b) = value` are not binding patterns.
+- Patterns name parts of a value; `_` ignores a part. Only simple bindings take type annotations.
+- Borrowed parts keep their owner available; storing a part independently moves it or requires a clone.
 
-## Record bindings
+<span id="positional-bindings"></span><span id="record-bindings"></span><span id="nested-patterns"></span>
 
-```manuscript
-let {name, email} = customer
-let {name: customer_name, email: customer_email} = customer
-```
-
-Shorthand binds a field to a same-named local; `field: local` renames it. A pattern may select a subset of fields, which must exist on the statically known record type. A `Map` is not a record and takes no field patterns.
-
-## Nested patterns
-
-```manuscript
-let {customer: {name}, shipping: {city: destination}} = order
-let [{name: first_name}, {name: second_name}] = customers
-```
-
-Patterns nest freely. The initializer is evaluated once and extraction follows pattern order. Duplicate binding names are rejected.
-
-`let` makes every introduced local immutable and `var` makes them reassignable. Elisions, rest patterns, defaults, destructuring assignment, and parameter patterns are rejected.
+Next: [type and ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md); [records](records.md).

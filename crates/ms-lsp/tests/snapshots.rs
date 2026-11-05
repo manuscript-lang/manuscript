@@ -703,3 +703,32 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         assert_eq!(actual, expected);
     }
 }
+
+#[test]
+fn small_completion_snapshots_retain_full_documentation() {
+    use ms_json::Json;
+    let item = ms_json::obj([
+        ("label", Json::from("read")),
+        ("kind", Json::from(3_i64)),
+        ("textEdit", ms_json::obj([("newText", Json::from("read"))])),
+        (
+            "documentation",
+            Json::from("Complete usage documentation. ".repeat(40)),
+        ),
+    ]);
+    let message = ms_json::obj([("result", Json::Arr(vec![item.clone(); 7]))]);
+    let recorded = support::snapshot_line(&message);
+    assert!(recorded.len() > 4096);
+    let parsed = ms_json::parse(&recorded).unwrap();
+    let items = parsed.get("result").unwrap().as_array().unwrap();
+    assert_eq!(items.len(), 7);
+    for got in items {
+        for key in ["label", "kind", "textEdit", "documentation"] {
+            assert_eq!(got.get(key), item.get(key));
+        }
+    }
+    let global = ms_json::obj([("result", Json::Arr(vec![item; 30]))]);
+    assert_eq!(support::snapshot_line(&global), "#large");
+    let other = ms_json::obj([("result", Json::from("x".repeat(5000)))]);
+    assert_eq!(support::snapshot_line(&other), "#large");
+}

@@ -5,35 +5,32 @@ weight = 89
 
 # Type checking and source contracts
 
-The type checker decides whether source obeys Manuscript's rules before code is generated. Being representable in the backend does not make a use legal.
+Assert named-argument mapping; save as `types.ms`.
 
-## Required checks
+<!-- manuscript-example: {"mode":"test","filename":"types.ms","stdout":"RUN types.ms::named arguments retain their meaning\nPASS types.ms::named arguments retain their meaning\n1 tests, 0 failed\n"} -->
+```manuscript
+import expect_equal from "@std/test/test.ms"
 
-Accept source per the [normative grammar](../../../core-language/basics/grammar.md), then resolve names and check [compatibility](../../../core-language/types/compatibility.md). Each rejection must name the violated source rule; backend acceptance is no substitute.
+fn total(price: Int, quantity: Int) Int:
+    return price * quantity
 
-| Source rule | Checker responsibility |
-| --- | --- |
-| Explicit function signatures | Check parameters and results against calls and returns |
-| Names and scopes | Collect module signatures, reject duplicates, resolve locals in order, fix mutable binding types |
-| Operators | Closed precedence and operand table; Bool conditions, short-circuiting, no implicit numeric conversion |
-| Function values | Keep parameter order, mutability and exact types; require explicit generic specialization and contextual anonymous types |
-| Return completeness | Allow Unit fallthrough and bare returns; reject reachable non-Unit fallthrough; track Never and loop/return boundaries |
-| Argument labels | Bind labels and positional arguments left to right to unfilled parameters, never by spelling; same rule for constructors, methods, function values; reject unknown labels, duplicates, excess positional, missing required |
-| List literals | Canonical prelude List; homogeneous elements; annotations or expected type for empty lists |
-| Destructuring bindings | Check arity, fields, renaming, nesting, duplicates; infer each local; see [destructuring bindings](../../../core-language/types/destructuring.md) |
-| Nominal records and tagged alternatives | Preserve identity; check declared fields and cases |
-| Expected types | Propagate context through literals, fields, parentheses, generic calls; reject ambiguous or conflicting inference |
-| Exhaustive match | Check scrutinee, payload arity and bindings, qualified cases, missing and duplicate arms, final non-redundant wildcard |
-| Generic bounds | Check arity, invariant arguments, inference, nested application bounds, and generic bodies under declared assumptions |
-| Recursive types and specialization | Permit direct and mutual recursive data; reject expanding specialization of types, functions, and function values |
-| Equality and hashing | Derive only specified properties; reject Float or collection keys and ineligible components |
-| Explicit implementations | Match substituted names, labels, order, types exactly; check generic bodies; reject overlap ignoring bounds; enforce module-local extension visibility; require explicit contract views |
-| Standard bindings | Resolve the intrinsic prelude and `@std` imports by canonical identity; check signatures and contract views. Passing values needs no sharing bound |
-| Public signatures | Reject internal nominal types leaking through exports |
-| Iteration | Lists, sets, maps and values implementing Iterator; iterable evaluated once; loop control only inside the current function's loops |
-| Result propagation | Recognize the canonical `Result`; `try` needs the same exact error type as the current function; never infer missing operand arguments backward |
-| String literals | Validate escapes and scalars, allow universal conversion, keep left-to-right evaluation |
+test "named arguments retain their meaning":
+    try expect_equal(total(quantity: 3, price: 12), 36)
+```
 
-Rules derive from the [core language guide](../../../core-language/_index.md); fixtures are `tests/e2e/testdata/accept/cl-*.ms`. They fix observable inference and compatibility, not checker internals. A module-level `test` body follows `Result[Unit, Error]` return rules, with normal completion succeeding; discovery and running are separate tooling contracts.
+```sh
+ms test types.ms
+```
 
-Type information feeds [typed IR](typed-ir.md) and [generated representations](../lowering/value-representations.md).
+```text
+RUN types.ms::named arguments retain their meaning
+PASS types.ms::named arguments retain their meaning
+1 tests, 0 failed
+```
+
+- Labels determine parameter mapping, not evaluation order.
+- Alpha: syntax and APIs may change.
+
+<span id="required-checks"></span>
+
+Next: [compatibility rules](../../../core-language/types/compatibility.md) and [typed HIR](typed-ir.md).

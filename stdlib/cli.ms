@@ -1,34 +1,3 @@
-/*
-Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
-
-A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `command[T]` builds a leaf whose handler
-receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
-and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
-and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
-`process.arguments()` from `main`.
-
-```manuscript
-import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-import arguments from "@std/os/process.ms"
-
-type Greeting:
-    name: String
-    shout: Bool
-
-fn greet(options: Greeting) Int!:
-    return ok(0)
-
-export fn main() Int:
-    let greeting = command[Greeting](
-        name: "greet",
-        about: "Print a greeting",
-        flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
-        args: [Arg("name", help: "Who to greet")],
-        run: fn options: greet(options)
-    )
-    return Command(name: "tool", children: [greeting]).execute(arguments())
-```
-*/
 import Data from "@std/core.ms"
 import stderr, stdout from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
@@ -151,9 +120,38 @@ impl Matches:
         return none
 
 /*
-A command or command group: its schema, subcommands and handler.
+Review subcommands and typed arguments together with their handlers.
 
-A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../learn/common-tasks.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
+<!-- manuscript-example: {"mode":"run","filename":"greet.ms","stdout":"Hello, Ada!\n","args":["greet","Ada"]} -->
+```manuscript {filename="greet.ms"}
+import Arg, Command, command from "@std/cli.ms"
+import arguments from "@std/os/process.ms"
+
+type Greeting:
+    name: String
+
+fn greet(options: Greeting) Int!:
+    print("Hello, {options.name}!")
+    return ok(0)
+
+export fn main() Int:
+    let greeting = command[Greeting](
+        name: "greet", args: [Arg("name")], run: fn options: greet(options)
+    )
+    return Command(name: "tool", children: [greeting]).execute(arguments())
+```
+
+```sh
+ms run greet.ms -- greet Ada
+```
+
+```text
+Hello, Ada!
+```
+
+- `command[T]` decodes named flags and arguments into fields of `T`; dashes become underscores.
+- Each field needs a matching flag or argument; parsed flags or arguments without a matching record field are ignored during decoding. See the [CLI recipe](../../learn/common-tasks.md#parse-subcommands-and-flags).
+
 */
 export type Command:
     // The word that selects this node; the program name for the root.

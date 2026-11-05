@@ -5,33 +5,31 @@ weight = 2
 
 # Language tour
 
-Short examples in order, after [your first program](getting-started.md). Indentation defines blocks; `//` starts a comment. Examples without imports or test blocks are fragments; put their local statements inside a function or test.
+Review an agent’s data flow through complete examples; save each separately as `example.ms`. Manuscript is in alpha, and syntax and APIs may change.
 
 ## Print your first line
 
-Save this complete program as `hello.ms` and run `ms run hello.ms`:
-
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"run","filename":"example.ms","stdout":"Hello, Manuscript!\n"} -->
+```manuscript {filename="example.ms"}
 export fn main() Int:
     print("Hello, Manuscript!")
     return 0
 ```
 
-Output:
+```sh
+ms run example.ms
+```
 
 ```text
 Hello, Manuscript!
 ```
 
-`main` returns the exit status. `print` is in the prelude: it writes a value as text followed by a newline and returns `Unit`. Use `stdout()` from `@std/io/io.ms` for text without an added newline, or `stdout_bytes()` for bytes.
-
-Complete examples below use `test` blocks: save as `example.ms` and run `ms test example.ms`. `try expect_equal(actual, expected)` fails the test on a mismatch ([testing](testing.md)).
+- `print` is available without an import; `main` returns the exit status.
 
 ## Variables and text
 
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::unread message count\nPASS example.ms::unread message count\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 test "unread message count":
@@ -44,7 +42,9 @@ test "unread message count":
     try expect_equal(message, "Sam, you have 3 unread messages.")
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::unread message count
@@ -52,14 +52,12 @@ PASS example.ms::unread message count
 1 tests, 0 failed
 ```
 
-- `let` fixes the binding; `var` allows reassignment. Types are inferred unless annotated.
-- Basic types: `Int`, `Float`, `Bool`, `String`. `{expression}` interpolates into strings.
-- `Int` is `Int64` and `Float` is `Float64`. Choose `Int8`, `Int16`, `Int32`, or `Float32` explicitly when you need another width. Numeric conversions are explicit; narrowing integer conversions return an `Optional`.
+- Types are inferred; use `var` when a binding must change.
 
 ## Lists, maps, and sets
 
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::collections and lookup\nPASS example.ms::collections and lookup\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 test "collections and lookup":
@@ -81,7 +79,9 @@ test "collections and lookup":
     try expect_equal(subscribers.length(), 1)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::collections and lookup
@@ -89,14 +89,13 @@ PASS example.ms::collections and lookup
 1 tests, 0 failed
 ```
 
-- List, Map, and Set need no import. Updates mutate in place.
-- Collections have one owner; `.clone()` makes a deep copy. Use `var` to mutate a collection.
-- Map lookup returns an `Optional` (a value or `none`); `get(0)` supplies a fallback when the key is absent. `if let` binds a present value when you want a branch; see [Optional values](../core-language/types/optionals.md).
+- Collections have one owner; `.clone()` makes a separate copy.
+- A missing map key returns `T?`; use a default or handle absence.
 
 ## Conditions and loops
 
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::free shipping for orders of at least 40\nPASS example.ms::free shipping for orders of at least 40\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 test "free shipping for orders of at least 40":
@@ -111,7 +110,9 @@ test "free shipping for orders of at least 40":
     try expect_equal(total + shipping, 45)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::free shipping for orders of at least 40
@@ -119,12 +120,12 @@ PASS example.ms::free shipping for orders of at least 40
 1 tests, 0 failed
 ```
 
-`if` branches; `for` visits items; `while` repeats on a condition; `break` and `continue` control loops.
+- `break` stops a loop; `continue` starts its next iteration.
 
-Count with an exclusive range:
+## Count iterations
 
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::count five iterations\nPASS example.ms::count five iterations\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 test "count five iterations":
@@ -134,7 +135,9 @@ test "count five iterations":
     try expect_equal(total, 10)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::count five iterations
@@ -142,38 +145,38 @@ PASS example.ms::count five iterations
 1 tests, 0 failed
 ```
 
-`0..5` visits 0 through 4 and needs no import. For other steps see [counting loops](../core-language/control-flow/loops.md#counting-loops).
+- `0..5` includes 0 and excludes 5.
 
 ## Functions
 
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::greet by name\nPASS example.ms::greet by name\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal from "@std/test/test.ms"
+
 fn greeting(name: String = "world") String:
     return "Hello, {name}!"
 
-fn line_total(price: Int, quantity: Int) Int:
-    return price * quantity
-
-let welcome = greeting("Sam")
-let default_welcome = greeting()  // "Hello, world!"
-let subtotal = line_total(12, 3)
+test "greet by name":
+    try expect_equal(greeting("Sam"), "Hello, Sam!")
+    try expect_equal(greeting(), "Hello, world!")
 ```
 
-Parameters and returns are typed. Pass arguments by position or label; defaults can be omitted. `Unit` means no result.
-
-Functions are values:
-
-```manuscript
-
-let prices = [12, 8, 25]
-let discounted = prices.map(fn value: value - 2)
-let affordable = discounted.filter(fn value: value <= 10)
-// affordable contains [10, 6]; prices is unchanged.
+```sh
+ms test example.ms
 ```
+
+```text
+RUN example.ms::greet by name
+PASS example.ms::greet by name
+1 tests, 0 failed
+```
+
+- Parameters and results are typed; defaults can be omitted.
 
 ## Types for application data
 
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::publish a help page\nPASS example.ms::publish a help page\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 type Todo:
@@ -202,7 +205,9 @@ test "publish a help page":
     try expect_equal(label, "Published at /help")
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::publish a help page
@@ -210,59 +215,41 @@ PASS example.ms::publish a help page
 1 tests, 0 failed
 ```
 
-- Records group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
-- Enums list cases; `match` must handle every case.
-- Types are nominal: identical fields do not make two types equal.
+- Records group fields; enums name variants checked by exhaustive `match`.
 
 ## Expected errors
 
-```manuscript
-enum QuantityError:
-    MustBePositive
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::validate quantity\nPASS example.ms::validate quantity\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal, expect_error from "@std/test/test.ms"
 
-fn quantity(value: Int) Result[Int, QuantityError]:
+fn quantity(value: Int) Int!:
     if value <= 0:
-        return error(QuantityError.MustBePositive)
+        return error(Error("quantity must be positive"))
     return ok(value)
 
-fn order_total(count: Int) Result[Int, QuantityError]:
-    let valid_count = try quantity(count)
-    return ok(valid_count * 12)
+test "validate quantity":
+    try expect_equal(try quantity(3), 3)
+    let cause = try expect_error(quantity(0))
+    try expect_equal(cause.message, "quantity must be positive")
 ```
 
-- `Result` is `ok(value)` or `error(cause)`; `try` unwraps success or returns the error.
-- Use `Error` for most failures, or one domain error type. Otherwise handle outcomes with `if let`, `get(default)`, or `is_error()` and `err()`; see [error compatibility](../core-language/errors/propagation.md#error-compatibility).
-
-## Modules
-
-Each `.ms` file is a module; `export` what others need.
-
-`pricing.ms`:
-
-```manuscript
-export let UNIT_PRICE = 12
-
-export fn line_total(quantity: Int) Int:
-    return UNIT_PRICE * quantity
+```sh
+ms test example.ms
 ```
 
-In another file in the same directory:
-
-```manuscript
-import line_total from "./pricing.ms"
-
-export fn checkout_total() Int:
-    return line_total(quantity: 3)
+```text
+RUN example.ms::validate quantity
+PASS example.ms::validate quantity
+1 tests, 0 failed
 ```
 
-Module-level `let` is a constant used without `()`. Import standard APIs from `@std/…` and local code by relative path ([module rules](../core-language/modules/declarations.md)).
+- `T!` returns a value or an expected error; `try` forwards the error.
 
 ## Function types and captures {#closures-and-shared-data}
 
-`fn(Int) Int` names a function that takes an `Int` and returns an `Int`. Use `fn` to create a callback:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::a callback borrows a prepared value\nPASS example.ms::a callback borrows a prepared value\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 fn apply(value: Int, transform: fn(Int) Int) Int:
@@ -276,7 +263,9 @@ test "a callback borrows a prepared value":
     try expect_equal(apply(10, adjust), 12)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::a callback borrows a prepared value
@@ -284,27 +273,25 @@ PASS example.ms::a callback borrows a prepared value
 1 tests, 0 failed
 ```
 
-Prepare a value before a borrowing closure uses it. Non-escaping closures borrow their captures; escaping closures own them. Borrowed captures cannot be changed elsewhere while the closure still uses them. See [closure captures](../core-language/functions/function-values-and-closures.md#closure-captures).
+- A borrowed capture keeps its owner available and unchanged while used.
 
 ## Pipe flows
 
-`|` passes a value to the next step, so a sequence of calls reads top to bottom. `try` inside a flow unwraps a `Result` and returns early on error:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::pipe flow\nPASS example.ms::pipe flow\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 type Reading:
     celsius: Int
 
-fn parse_reading(text: String) Result[Reading, Error]:
+fn parse_reading(text: String) Reading!:
     let celsius = try text.trim().parse_int().ok_or()
     return ok(Reading(celsius))
 
 fn to_fahrenheit(reading: Reading) Int:
     return reading.celsius * 9 / 5 + 32
 
-fn fahrenheit(text: String) Result[Int, Error]:
+fn fahrenheit(text: String) Int!:
     let value = try parse_reading(text) | to_fahrenheit
     return ok(value)
 
@@ -312,7 +299,9 @@ test "pipe flow":
     try expect_equal(try fahrenheit(" 100 "), 212)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::pipe flow
@@ -320,14 +309,12 @@ PASS example.ms::pipe flow
 1 tests, 0 failed
 ```
 
-`x | f` is `f(x)`; `x | .m()` is `x.m()`. See [pipe flows](../core-language/basics/expressions.md#pipe-flows).
+- `|` passes a value to the next call; `try` propagates an error.
 
 ## Behavior on types
 
-Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, then `impl Interface for Type:`; `self` is the receiver:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::counter behavior\nPASS example.ms::counter behavior\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 interface Increment:
@@ -351,7 +338,9 @@ test "counter behavior":
     try expect_equal(counter.value, 0)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::counter behavior
@@ -359,10 +348,12 @@ PASS example.ms::counter behavior
 1 tests, 0 failed
 ```
 
-A type's own methods go in `impl Counter:`, without an interface:
+- `var` appears at the parameter and call when a function mutates its argument.
 
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+## Own methods
+
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::own methods\nPASS example.ms::own methods\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
 
 type Counter:
@@ -378,7 +369,9 @@ test "own methods":
     try expect_equal(counter.value, 1)
 ```
 
-Test output:
+```sh
+ms test example.ms
+```
 
 ```text
 RUN example.ms::own methods
@@ -386,33 +379,59 @@ PASS example.ms::own methods
 1 tests, 0 failed
 ```
 
-`Self` names the receiver's type in these signatures, so a method that builds a new value writes `fn with_value(value: Int) Self` instead of repeating the type.
+- Use an interface when callers need a shared operation contract.
 
-Use an interface when callers should depend on behavior rather than on the type. Free functions that mutate an argument are called as `reset(var counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
+## Modules
+
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::import a parser\nPASS example.ms::import a parser\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import parse from "@std/data/json.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "import a parser":
+    let count = try parse[Int]("3")
+    try expect_equal(count, 3)
+```
+
+```sh
+ms test example.ms
+```
+
+```text
+RUN example.ms::import a parser
+PASS example.ms::import a parser
+1 tests, 0 failed
+```
+
+- Import standard APIs from `@std/…`; local modules use [relative paths](../core-language/modules/declarations.md).
 
 ## Files and cleanup
 
-```manuscript
-import open, write_file_bytes from "@std/os/fs.ms"
+Create `notes.txt` containing exactly `hello` (five bytes), then save this as `example.ms`.
 
-fn copy_notes() Unit!:
-    var source = try open("notes.txt", flags: "r", mode: 0)
-    let contents = try source.read_file(max_bytes: 1048576)
-    try write_file_bytes(path: "backup.txt", data: contents, replace: true).wait()
-    return ok(unit)
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","files":{"notes.txt":"hello"},"stdout":"RUN example.ms::read a file in its owning scope\nPASS example.ms::read a file in its owning scope\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import open from "@std/os/fs.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "read a file in its owning scope":
+    let file = try open("notes.txt", flags: "r", mode: 0)
+    let contents = try file.read_file(max_bytes: 1048576)
+    try expect_equal(contents.length(), 5)
 ```
 
-The file closes at the end of its scope, even on early return. `close()` returns a `Result`: a function that returns `Result[_, Error]` gets a failed close as its error, and any other function faults on one. Moving the file into an escaping closure transfers its cleanup duty to that closure; a borrowed capture must stay within the owner’s lifetime. See [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
-
-## A few compiler errors to recognize
-
-These are intentionally rejected:
-
-```manuscript
-let count = 2
-count = 3                 // Use var for reassignment.
-let mixed = [1, "two"]    // List elements need a common type.
-line_total(12)            // Supply the required quantity.
+```sh
+ms test example.ms
 ```
 
-Next: [testing](testing.md), [task recipes](common-tasks.md), the [language reference](../core-language/_index.md), and the [API reference](../standard-library/reference/_index.md).
+```text
+RUN example.ms::read a file in its owning scope
+PASS example.ms::read a file in its owning scope
+1 tests, 0 failed
+```
+
+- Scope-end drop closes the file, including on early return; handle delivery with explicit flush when writing.
+
+<span id="a-few-compiler-errors-to-recognize"></span>
+
+Next: [testing](testing.md), [task recipes](common-tasks.md), [diagnostics](../developer-tooling/source/diagnostics.md), [language reference](../core-language/_index.md).

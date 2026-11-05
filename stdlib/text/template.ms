@@ -4,35 +4,6 @@ import WriteStream from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import escape from "@std/data/html.ms"
 
-/*
-Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
-
-    import compile, to_data from "@std/text/template.ms"
-    let page = try compile("Hello \{\{ name | title \}\}!")
-    let rendered = try page.render(try to_data(user))
-
-Actions sit between `{{` and `}}`:
-
-- `{{ user.name }}` prints a value; a path walks object members and list positions (`items.0`).
-  Names resolve to loop variables first, then to members of the root object. A missing path is an
-  error unless `strict: false`, or the value goes through `default`.
-- `{{ name | upper | default("anonymous") }}` pipes a value through filters. Filters bind tighter than
-  operators: `{{ if name | length > 3 }}`. Filters: `upper lower trim title length join(sep) json
-  default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
-- `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
-  parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
-  in a condition is false.
-- `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
-  `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
-  an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
-- `{{ include "name" }}` renders a partial from the `partials` map passed to `render`, in the current scope.
-- `{{# comment }}` prints nothing. `{{-` and `-}}` trim adjacent white space. `{{ "{{" }}` prints braces.
-
-`compile(source, html: true)` escapes every printed value for HTML text and quoted attributes; end an
-action with `| raw` to print trusted markup unchanged. Values come from data only: templates cannot
-call functions or run code, and `max_output` bounds the result.
-*/
-
 // A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
 export opaque enum TemplateExpr:
     // A literal string, number, boolean or null written in the template.
@@ -107,7 +78,37 @@ export opaque enum TemplateNode:
         name: TemplateExpr
     )
 
-// A compiled template; render it any number of times.
+/*
+Review a template alongside its typed input and rendered result.
+
+<!-- manuscript-example: {"mode":"test","filename":"render-template.ms","stdout":"RUN render-template.ms::render-template\nPASS render-template.ms::render-template\n1 tests, 0 failed\n"} -->
+```manuscript {filename="render-template.ms"}
+import compile, to_data from "@std/text/template.ms"
+
+type User:
+    name: String
+import expect_equal from "@std/test/test.ms"
+
+test "render-template":
+    let page = try compile("Hello \{\{ name | title \}\}!")
+    let data = try to_data(User(name: "ada"))
+    try expect_equal(try page.render(data), "Hello Ada!")
+```
+
+```sh
+ms test render-template.ms
+```
+
+```text
+RUN render-template.ms::render-template
+PASS render-template.ms::render-template
+1 tests, 0 failed
+```
+
+- Actions use `{{ ... }}` for paths, filters, conditions, loops and includes; missing output paths fail unless a default or `strict: false` handles them; missing conditions are false.
+- Use [compile](#compile) with `html: true` for escaping; only trusted markup should use `raw`. [render](#templaterender) bounds output with `max_output`.
+
+*/
 export opaque type Template:
     // The parsed nodes in source order.
     nodes: List[TemplateNode]

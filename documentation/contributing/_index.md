@@ -5,12 +5,21 @@ weight = 6
 
 # Contributing
 
-Build a local compiler with the [Rust toolchain guide](rust-toolchain.md#build-and-run), run the hello example, then choose the part you want to change. The [repository architecture](architecture.md#make-a-change-where-its-behavior-lives) maps each change to its implementation and tests; the [development workflow](development.md) explains the checks and book preview.
+Build and run the checkout before changing it (repository root).
 
-- [Compiler internals](compiler/_index.md) explain parsing, checking, and lowering.
-- [Typed runtime conventions](runtime-conventions.md) describe the native runtime contract and how native operations are written.
-- [Compiler conformance](compiler/conformance/_index.md) explains the semantic test plan.
-- [Rust toolchain](rust-toolchain.md) covers building the Rust `ms`, its checks and crates, and its platform behavior.
-- [Maintenance and compatibility](maintenance.md) cover pins, licenses, releases, and public contract changes.
+```sh
+make build
+target/release/ms run examples/hello/ms.toml -- first second
+```
 
-Read the repository's [AGENTS.md](https://github.com/manuscript-lang/manuscript/blob/main/AGENTS.md) before changing language semantics or tooling. It routes to current rules and remembered failure modes.
+The program prints:
+
+```text
+Arguments: 2
+```
+
+- Alpha: syntax and APIs may change.
+- Keep a regression for each changed behavior.
+
+
+Next: [architecture](architecture.md) and [contribution rules](https://github.com/manuscript-lang/manuscript/blob/main/AGENTS.md).

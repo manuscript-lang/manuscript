@@ -5,48 +5,45 @@ weight = 2
 
 # Start here
 
-Run a program, learn the language, then build something useful. The same `ms` command helps you write, test, understand and ship your code.
+Review an agent’s code by running a small example; Manuscript is in alpha, and syntax and APIs may change.
 
-## New to Manuscript?
+<!-- manuscript-example: {"mode":"run","filename":"hello.ms","stdout":"Ready to review\n"} -->
+```manuscript {filename="hello.ms"}
+export fn main() Int:
+    print("Ready to review")
+    return 0
+```
 
-[Why Manuscript](why-manuscript.md) is a one-page summary of what makes it worth trying.
+```sh
+ms run hello.ms
+```
 
-1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
-2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
-3. **[Test your code](testing.md).** Write tests and run the cases you want.
-4. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+```text
+Ready to review
+```
 
-Read in order with **Next**.
-
-## Ready to build?
-
-[Task recipes](common-tasks.md) are complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
-
-## Need an exact answer?
-
-- [Language reference](../core-language/_index.md): syntax and semantics
-- [API reference](../standard-library/reference/_index.md): signatures and behavior
-- [Glossary](../glossary.md): unfamiliar terms
+- [Install `ms` and build your first program](getting-started.md), then [take the tour](tour.md).
+- Continue with [tests](testing.md), [task recipes](common-tasks.md) and [Why Manuscript](why-manuscript.md).
 
 ## Find an API without leaving the terminal
 
-Run these from your project directory:
+In a POSIX terminal:
 
 ```sh
-ms search_symbol read file
-ms search_symbol json
-ms search_symbol PromiseOptions
+ms search_symbol PromiseOptions | head -n 2
 ```
-
-The `PromiseOptions` search starts with:
 
 ```text
 promise.PromiseOptions  record  std:@std/concurrency/promise.ms
   type PromiseOptions: timeout: Duration? = none cancel: Signal? = none
 ```
 
-It also lists matching fields and related functions. Search includes project symbols and the bundled standard library. A module query such as `json` shows its API page; a specific name narrows the output. Use the [API reference](../standard-library/reference/_index.md) for browsing, and the [language reference](../core-language/_index.md) for rules such as borrowing and cleanup.
+- Search includes project symbols and the bundled standard library.
+- Give an agent `ms guide`; use `ms verify` for type, formatting, lint and test checks.
 
-## Working with a coding agent?
+<span id="new-to-manuscript"></span>
+<span id="ready-to-build"></span>
+<span id="need-an-exact-answer"></span>
+<span id="working-with-a-coding-agent"></span>
 
-Point it at `ms guide` and `ms search_symbol <name or words>`. Use `ms verify` for type checking, formatting checks, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Next: [language reference](../core-language/_index.md), [API reference](../standard-library/reference/_index.md), [developer tools](../developer-tooling/_index.md).

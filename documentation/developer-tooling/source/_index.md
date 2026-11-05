@@ -5,8 +5,26 @@ weight = 4
 
 # Source tools
 
-Keep a change readable, repair a compiler error, then inspect data access and external calls. These tools operate on source without running your application.
+Check a proposed change before executing it; save this as `review.ms`.
 
-1. [Formatting](formatting.md)
-2. [Diagnostics](diagnostics.md)
-3. [Understanding effects](effects.md)
+<!-- manuscript-example: {"mode":"run","stdout":"Ready to review\n","filename":"review.ms"} -->
+```manuscript {filename="review.ms"}
+export fn main() Int:
+    print("Ready to review")
+    return 0
+```
+
+```sh
+ms check review.ms
+ms run review.ms
+```
+
+```text
+Checked review.ms
+Ready to review
+```
+
+- Checking does not execute the program; running builds and starts it.
+- Manuscript is in alpha; syntax and APIs may change.
+
+Next: [formatting](formatting.md), [diagnostics](diagnostics.md) and [effects](effects.md).

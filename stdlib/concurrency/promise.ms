@@ -21,25 +21,33 @@ import (
     msrt_promise_drop
 ) from "@std/internal/promises.ms"
 
-// Promises: operations whose results are taken once with `wait()`.
-//
-// `promise(fn: ...)` starts work eagerly on a thread the runtime picks; `wait()` takes its result. Stream reads may
-// defer work until the wait. Any function can wait internally, even if it returns a value directly.
-// Dropping a promise that has not finished cancels it and waits for it to end, so work you start never outlives
-// the values it uses. A promise only reads what it captures: concurrent code never changes a shared value (to change
-// shared state, give it one owner and send it values over a `pipe`).
-//
-// ```manuscript
-// let config = read_file("config.json")  // Promise[Bytes], already running
-// let words = promise(
-//     fn: count_words(text), options: PromiseOptions(timeout: 5.seconds())
-// )  // may run on another thread, ends with ETIMEDOUT after 5 s
-// let bytes = try config.wait()
-// let total = try words.wait()
-// ```
+/*
+Take a result once with `wait()`; dropping unfinished work cancels it and waits for cleanup.
 
-// An operation with one result. `wait` takes it once; a stream read may defer work until the wait.
-// Dropping an unfinished promise cancels it and waits for it to end; an unused promise is a warning.
+<!-- manuscript-example: {"mode":"test","filename":"promise-result.ms","stdout":"RUN promise-result.ms::promise-result\nPASS promise-result.ms::promise-result\n1 tests, 0 failed\n"} -->
+```manuscript {filename="promise-result.ms"}
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
+import seconds from "@std/os/time.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "promise-result":
+    let result = promise(fn: ok(6 * 7), options: PromiseOptions(timeout: seconds(5)))
+    try expect_equal(try result.wait(), 42)
+```
+
+```sh
+ms test promise-result.ms
+```
+
+```text
+RUN promise-result.ms::promise-result
+PASS promise-result.ms::promise-result
+1 tests, 0 failed
+```
+
+- `promise` starts eagerly; stream reads may defer work until `wait`.
+- Captured values are read-only; send changes through a pipe to a single owner.
+*/
 export opaque type Promise[T]:
     // The runtime slot of this promise: a generation and an index, never reused while this id is live.
     id: Int

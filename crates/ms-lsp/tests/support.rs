@@ -243,9 +243,8 @@ pub fn canonical(value: &Json) -> String {
 }
 
 /// One snapshot line: the canonical message with the per-run temporary
-/// directory masked. Messages over 4 KiB are standard-library listings (global
-/// completion); they change whenever the standard library does, so only their
-/// presence is recorded.
+/// directory masked. Large global listings record presence only; small completion
+/// responses retain every field even when full usage documentation exceeds 4 KiB.
 /// Replaces the `-{pid}-{serial}/` that ends a workspace directory name with `-PID/`.
 fn mask_workspace_ids(text: &str) -> String {
     let marker = format!("-{}-", std::process::id());
@@ -338,7 +337,7 @@ fn mask_stdlib_ranges(value: &Json) -> Json {
     }
 }
 
-fn snapshot_line(message: &Json) -> String {
+pub(crate) fn snapshot_line(message: &Json) -> String {
     let message = &mask_stdlib_ranges(message);
     // Snapshots hold the URI spelling: forward slashes and a leading slash before a drive letter.
     let mut temp = std::env::temp_dir()
@@ -354,7 +353,19 @@ fn snapshot_line(message: &Json) -> String {
     if cfg!(windows) {
         text = text.replace(&temp[1..], "$TMP");
     }
-    if text.len() > 4096 {
+    let small_completion = message
+        .get("result")
+        .and_then(Json::as_array)
+        .is_some_and(|items| {
+            !items.is_empty()
+                && items.len() <= 8
+                && items.iter().all(|item| {
+                    item.get("label").and_then(Json::as_str).is_some()
+                        && item.get("kind").and_then(Json::as_i64).is_some()
+                        && item.get("textEdit").is_some()
+                })
+        });
+    if text.len() > 4096 && !small_completion {
         return "#large".to_string();
     }
     text

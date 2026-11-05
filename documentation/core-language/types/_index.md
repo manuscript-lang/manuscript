@@ -5,17 +5,31 @@ weight = 3
 
 # Types
 
-Use a record for named fields, an enum for a fixed set of cases, an interface for operations a caller needs, and generics to reuse a model across element types.
+Data types make the shape of a change visible before execution; Manuscript is in alpha and syntax/APIs may change.
 
-| Concept | What you will learn |
-| --- | --- |
-| [Records and nominal types](records.md) | Declare mutable fields and distinguish domain identifiers. |
-| [Enums](alternatives.md) | Represent a fixed set of possibilities with tagged cases. |
-| [Collections](collections.md) | Use mutable lists, maps, and sets with explicit deep copies. |
-| [Optional values](optionals.md) | Represent absence explicitly with T? and none. |
-| [Mutation and references](references.md) | Understand moves, borrows, reassignment, and deep copies. |
-| [Destructuring bindings](destructuring.md) | Unpack list positions and record fields. |
-| [Interfaces and implementations](contracts.md) | Implement interfaces with concrete or generic blocks and pass concrete values where an interface is expected. |
-| [Equality and hashing](equality-and-hashing.md) | Understand value comparison and key eligibility. |
-| [Generics and bounds](generics.md) | Apply parameterized types and express required properties. |
-| [Type compatibility and expected types](compatibility.md) | Check exact types, contextual constructors, and inference boundaries. |
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::review an order\nPASS example.ms::review an order\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal from "@std/test/test.ms"
+
+type Order:
+    quantity: Int
+    note: String?
+
+test "review an order":
+    let order = Order(3)
+    try expect_equal(order.quantity, 3)
+    try expect_equal(order.note.is_none(), true)
+```
+
+```sh
+ms test example.ms
+```
+
+```text
+RUN example.ms::review an order
+PASS example.ms::review an order
+1 tests, 0 failed
+```
+
+
+Next: [Records](records.md) · [Enums](alternatives.md) · [Collections](collections.md) · [Optional values](optionals.md) · [Mutation and references](references.md) · [Destructuring](destructuring.md) · [Interfaces](contracts.md) · [Equality and hashing](equality-and-hashing.md) · [Generics](generics.md) · [Type compatibility](compatibility.md).

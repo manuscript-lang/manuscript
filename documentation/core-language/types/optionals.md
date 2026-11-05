@@ -5,173 +5,96 @@ weight = 4
 
 # Optional values
 
-Use `T?` when a value may be absent: an optional name, a failed lookup, or text that might not contain a number. It holds a `T` or `none`; a plain `T` becomes present wherever a `T?` is expected. `none` needs no import.
+An optional makes missing input visible without hiding the fallback; Manuscript is in alpha and syntax/APIs may change.
 
-Save as `greeting.ms` and run `ms run greeting.ms`:
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::optional greeting\nPASS example.ms::optional greeting\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal from "@std/test/test.ms"
 
-<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n"} -->
-```manuscript
 fn greeting(name: String?) String:
-    return "Hello, {name.get("guest")}!"
+    if let value = name:
+        return "Hello, {value}!"
+    return "Hello, guest!"
 
-export fn main() Int:
-    print(greeting("Ada"))
-    print(greeting())
-    return 0
+test "optional greeting":
+    try expect_equal(greeting("Ada"), "Hello, Ada!")
+    try expect_equal(greeting(), "Hello, guest!")
+```
+
+```sh
+ms test example.ms
 ```
 
 ```text
-Hello, Ada!
-Hello, guest!
+RUN example.ms::optional greeting
+PASS example.ms::optional greeting
+1 tests, 0 failed
 ```
 
-`get("guest")` supplies a fallback only when the value is absent. An empty string is still present. There is no `some(...)` constructor.
-
-`T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
-
-A parameter or record field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
-
-`T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
-
-```manuscript
-let explicit: String? = none
-// Rejected: no type determines the absent payload.
-let unknown = none
-// Wrapped: an annotated binding expects an Optional.
-let wrapped: String? = "Ada"
-```
-
-There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Result[T, E]` likewise needs both arguments determined, possibly from the expected type. See [compatibility and expected types](compatibility.md).
-
-## Passing optional arguments
-
-An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
-
-```manuscript
-import Queue from "@std/collections/queue.ms"
-
-fn main() Unit:
-    var _bounded = Queue[Int](capacity: 4)
-    var _unbounded = Queue[Int]()
-```
-
-- Applies to functions, methods, function values, constructor fields, and enum payloads.
-- Wraps exactly one layer: an `Int?` fits `Int??`, a bare `Int` does not.
-- The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
-- Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
-- A `T?` parameter or field with no default is `none` when omitted.
-- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Int? = 3`). A user-defined `Optional` gets no wrapping.
-
-See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
-
-## Checking and extracting values
-
-Receiver methods:
-
-| Method | Behavior |
-| --- | --- |
-| `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
-| `is_none() Bool` | Whether the optional is absent |
-| `get(default: T?) T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
-| `map[U](transform: fn(T) U) U?` | Transform a present payload once; preserve absence |
-| `and_then[U](transform: fn(T) U?) U?` | Return the callback's Optional when present; preserve absence |
-| `get_or_else(create: fn() T) T` | Return the contained value, or call `create` once when absent |
-| `or_else(create: fn() T?) T?` | Keep a present Optional or call `create` once when absent |
-
-Fallback for routine absence:
-
-```manuscript
-fn display_name(name: String?) String:
-    return name.get("Anonymous")
-```
-
-`get(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
-
-```manuscript
-fn display_name(name: String?, create: fn() String) String:
-    return name.get_or_else(create)
-```
-
-Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if let`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
-
-```manuscript
-fn greet(name: String?) String:
-    if let value = name:
-        return "Hello, " + value
-    return "Hello!"
-```
-
-Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
-
-```manuscript
-fn first_number(text: String?) Int?:
-    return text.map(fn value: value.trim().clone()).and_then(fn value: value.parse_int())
-```
-
-`map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
-
-[`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
-
-```manuscript
-fn display_name(name: String?) String:
-    if let value = name:
-        return value.clone()
-    return "Anonymous"
-```
-
-A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
+- `T?` holds a value or `none`; `if let` handles the present value without an unwrap.
+- Optional record fields default to `none`; chaining preserves absence instead of inventing a value.
 
 ## Optional chaining
 
-`a?.b` reads `b` when `a` is present and is `none` otherwise. The result is optional (`B?`), and stays `B?` rather than `B??` when `b` is already optional. The rest of the chain runs only when `a` is present, so `a?.f(args)` evaluates `args` only then, and `a?.b?.c` stops at the first `none`. Write `?.` with no space on either side; the receiver must be optional, since `.` already reads a member of a value that is always present.
+<!-- manuscript-example: {"mode":"test","stdout":"RUN city.ms::optional city\nPASS city.ms::optional city\n1 tests, 0 failed\n"} -->
+```manuscript {filename="city.ms"}
+import expect_equal from "@std/test/test.ms"
 
-```manuscript
 type Address:
     city: String?
 
-type User:
+type Customer:
     address: Address?
 
-fn city_length(user: User?) Int?:
-    return user?.address?.city?.length()
+test "optional city":
+    let customer = Customer(Address("Paris"))
+    if let size = customer.address?.city?.length():
+        try expect_equal(size, 5)
+    else:
+        return error(Error("expected a city"))
 ```
 
-A chain cannot move a field out of the optional it reads, so end an owned `String` or record field with `.clone()`.
-
-A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
-
-```manuscript
-type Counter:
-    n: Int
-
-impl Counter:
-    var fn bump() Int:
-        self.n += 1
-        return self.n
-
-fn tick(var counter: Counter?) Int?:
-    return counter?.bump()
+```sh
+ms test city.ms
 ```
 
-Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected like any other change to that binding.
+```text
+RUN city.ms::optional city
+PASS city.ms::optional city
+1 tests, 0 failed
+```
 
-## Converting absence to a Result
+- `?.` skips the rest of the chain on absence and flattens an already-optional member.
+- Mutating through a chain requires a mutable owner; clone an owned field before moving it out.
 
-- `ok_or[E = Error](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
-- `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
+## Handling errors
 
-Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `try` it:
+<!-- manuscript-example: {"mode":"test","stdout":"RUN port.ms::parse a port\nPASS port.ms::parse a port\n1 tests, 0 failed\n"} -->
+```manuscript {filename="port.ms"}
+import expect_equal, expect_error from "@std/test/test.ms"
 
-```manuscript
 fn port_number(text: String) Int!:
-    let port = try text.parse_int().ok_or()
-    return ok(port)
+    return ok(try text.parse_int().ok_or(Error("expected digits", kind: "EINVAL")))
+
+test "parse a port":
+    try expect_equal(try port_number("8080"), 8080)
+    let cause = try expect_error(port_number("oops"))
+    try expect_equal(cause.kind, "EINVAL")
 ```
 
-When fixing another error type, such as `Result[Int, ParseFailure]`, supply a cause explicitly.
+```sh
+ms test port.ms
+```
 
-[Result.to_optional](../errors/results.md#converting-success-to-an-optional) to keep success while discarding an error.
+```text
+RUN port.ms::parse a port
+PASS port.ms::parse a port
+1 tests, 0 failed
+```
 
-## Data modeling
+- `ok_or(cause)` evaluates its cause eagerly; `ok_or_else` creates it only on absence.
+- Bare `ok_or()` supplies `Error` with kind `"ENOENT"` and the call’s source position.
 
-A [record](records.md) can have optional fields such as `email: String?`. Manuscript has no nullable references; absence always lives in the declared type.
+<span id="passing-optional-arguments"></span><span id="checking-and-extracting-values"></span><span id="converting-absence-to-a-result"></span><span id="data-modeling"></span>
+
+Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [expected errors](../errors/results.md).

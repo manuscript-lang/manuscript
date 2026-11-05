@@ -5,15 +5,42 @@ weight = 4
 
 # Build caches
 
-`ms build` can reuse an unchanged executable. `run`, `test`, and `profile` always check and compile the program again. Both paths reuse cached build tools and the embedded runtime archive, so you can keep working without manually cleaning caches.
+Rebuild changed source without hiding stale inputs from review; save this as `cached.ms`.
 
-The runtime and native standard library are already compiled into a static archive embedded in `ms`. The first link extracts `libms_native.a` into a cache keyed by the embedded runtime identity; later links reuse that archive. It is not rebuilt for each build level.
+<!-- manuscript-example: {"mode":"run","stdout":"Ready to review\n","filename":"cached.ms"} -->
+```manuscript {filename="cached.ms"}
+export fn main() Int:
+    print("Ready to review")
+    return 0
+```
 
-- The runtime cache is under `$XDG_CACHE_HOME/ms/native/`, falling back to `$HOME/.cache/ms/native/` or the OS temporary directory when neither variable is set.
-- Downloaded linking tools are cached under `<cache>/ms/lld/` and optimization tools under `<cache>/ms/llvm/`. Complete caches are reused; explicitly configured local tools take precedence. These tool caches use `%LOCALAPPDATA%` on Windows, otherwise `$XDG_CACHE_HOME`, `$HOME/.cache`, or the OS temporary directory. `MS_LLD` and `MS_LLVM_TOOLS` select local tools; see [build tools and local setup](../how-it-works.md#build-tools-and-local-setup).
-- `build` writes the output you name and an adjacent `.ms-build.json` metadata file. `run`, `test`, and `profile` build in temporary directories; `profile` copies the executable into its capture directory.
-- `run --watch` and `test --watch` keep the watcher alive and build fresh after changes.
-- `ms build` stores finished executables in `.ms-cache/build` beside the input file (the eight newest stay). The key includes the currently resolved entry file and enclosing `ms.toml` selection. An entry is valid while the size and modification time of every source file and that manifest match, so a hit skips loading, checking, and linking. Retargeting the entry symlink or creating a new or nearer manifest invalidates the selection. A new file that would shadow an existing import is not noticed until a listed file changes. `MS_CACHE=off` disables the cache and `MS_CACHE=verify` rebuilds and fails if the result differs from the cached executable. `.ms-cache` can be deleted at any time.
-- `MANUSCRIPT_CACHE_DIR` does not override the native runtime cache or temporary build directories.
+```sh
+ms build cached.ms -o cached
+./cached
+```
 
-See [project configuration](project-configuration.md), [build levels](build-levels.md), and [build and share a program](../how-it-works.md).
+```text
+Built cached
+Ready to review
+```
+
+- Repeat `build` to reuse unchanged output; `run`, `test` and `profile` rebuild instead.
+- Manuscript is in alpha; syntax, APIs and cache behavior may change.
+
+## Force a fresh build
+
+```sh
+MS_CACHE=off ms build cached.ms -o cached
+```
+
+```text
+Built cached
+```
+
+- POSIX shell syntax; use this when investigating newly shadowed imports.
+- Cache validation uses listed inputs; a new shadowing file alone may not invalidate it.
+
+<span id="what-a-build-reuses"></span>
+<span id="cache-locations"></span>
+
+Next: [cache identity and invalidation](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-build/src/cache.rs) and [local tool setup](../how-it-works.md#build-tools-and-local-setup).

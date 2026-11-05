@@ -3,17 +3,29 @@ import StringBuilder from "@std/string.ms"
 import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
 
 /*
-MIME building blocks: media types, header blocks, and multipart bodies.
-`parse_media_type` splits `text/html; charset=utf-8`; `parse_headers` reads an RFC 5322 style
-header block (folded lines joined, names kept as written, lookup case-insensitive);
-`parse_multipart` and `encode_multipart` read and write `multipart/form-data` and `multipart/mixed` bodies.
+Inspect a media type and its decoded parameters.
 
-    import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
-    print(media_type_for_extension(".json").get("")) // "application/json"
-    let charset = (try parse_media_type("text/html; charset=utf-8")).params.get("charset")
+<!-- manuscript-example: {"mode":"test","filename":"media-type.ms","stdout":"RUN media-type.ms::media-type\nPASS media-type.ms::media-type\n1 tests, 0 failed\n"} -->
+```manuscript {filename="media-type.ms"}
+import parse_media_type from "@std/net/mime.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "media-type":
+    let media = try parse_media_type("text/html; charset=utf-8")
+    try expect_equal(media.essence, "text/html")
+    try expect_equal(media.params.get("charset"), "utf-8")
+```
+
+```sh
+ms test media-type.ms
+```
+
+```text
+RUN media-type.ms::media-type
+PASS media-type.ms::media-type
+1 tests, 0 failed
+```
 */
-
-// A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
 export type MediaType:
     // Lower-cased `type/subtype`, such as `text/html`.
     essence: String

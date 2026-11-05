@@ -5,21 +5,46 @@ weight = 5
 
 # Cleanup failures
 
-Cleanup runs when cancellation or a fault ends work, ignoring the cancellation signal and expired deadline that caused the exit (*shielding*). It keeps its access to external services and may wait.
+Keep the original fault visible even when cleanup also fails. Manuscript is in alpha; syntax and APIs evolve.
 
-## If close itself faults
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::keep the original fault\nPASS example.ms::keep the original fault\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import Closeable, panic from "@std/core.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 
-Every registered close action is attempted once; a fault in one does not skip the rest.
+type BrokenCleanup:
+    closed: Bool = false
 
-| Outcome before cleanup | If cleanup faults | If cleanup succeeds |
-| --- | --- | --- |
-| A programming fault is already pending | Keep the original fault as primary; record cleanup faults as secondary diagnostics. | Keep the original fault. |
-| A normal return, expected error, or cancellation is pending | The first cleanup fault becomes primary; record later faults as secondary diagnostics. | Keep the pending outcome. |
+impl Closeable for BrokenCleanup:
+    var fn close() Unit!:
+        if not self.closed:
+            self.closed = true
+            panic("cleanup failed")
+        return ok(unit)
 
-For a request handler, return an expected error response before leaving the handler when recovery is possible; a fault is reported by the host running it.
+fn work() Unit:
+    let _resource = BrokenCleanup()
+    panic("work failed")
 
-## Cleanup can outlast a timeout
+test "keep the original fault":
+    let report = try expect_fault(fn: work())
+    try expect_equal(report.contains("work failed"), true)
+```
 
-A request timeout does not put a time limit on its cleanup. Keep cleanup bounded: shielding cannot force an operation that never finishes to return. After a process stop signal, the runtime applies a separate shutdown grace period and may use [process-level escalation](../../contributing/runtime-conventions.md#host-escalation) if work cannot finish.
+```sh
+ms test example.ms
+```
 
-A close that returns an error is not a fault where the function can return it: the error becomes the function's result (see [Closeable](closeable.md#a-close-returns-a-result)). Commit a transaction explicitly rather than relying on close when you need to react to its failure. See [Closeable](closeable.md) and [resource release](resource-release.md).
+```text
+RUN example.ms::keep the original fault
+PASS example.ms::keep the original fault
+1 tests, 0 failed
+```
+
+<a id="if-close-itself-faults"></a>
+<a id="cleanup-can-outlast-a-timeout"></a>
+
+- An existing fault stays primary. Otherwise the first cleanup fault becomes primary; later faults are secondary, and remaining cleanup is attempted.
+- Cleanup is shielded from cancellation and deadlines. It can wait beyond the original timeout.
+
+Next: [close Results](closeable.md#a-close-returns-a-result), [cancellation](../concurrency/promises.md#cancellation) and [shutdown escalation](../../contributing/runtime-conventions.md#host-escalation).

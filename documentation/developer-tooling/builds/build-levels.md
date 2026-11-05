@@ -5,45 +5,31 @@ weight = 2
 
 # Build levels
 
-`--build-type` sets native optimization and debugging information. The default is an optimized Release executable.
+Review source behavior without optimization or build optimized deployment code; save this as `main.ms`.
 
-Save this entrypoint as `main.ms`:
-
-<!-- manuscript-example: {"mode":"run","stdout":""} -->
-```manuscript
+<!-- manuscript-example: {"mode":"run","stdout":"Ready to review\n","filename":"main.ms"} -->
+```manuscript {filename="main.ms"}
 export fn main() Int:
+    print("Ready to review")
     return 0
 ```
 
-Choose a level when building or running it:
-
 ```sh
+ms run main.ms --build-type Debug
 ms build main.ms --build-type Release -o program
 ms build main.ms --build-type MinSizeRel -o small-program
-ms run main.ms --build-type Debug
 ```
 
-The two builds report `Built program` and `Built small-program`. The debug run exits successfully without printing anything, because this entrypoint only returns an exit status.
+```text
+Ready to review
+Built program
+Built small-program
+```
 
-Use `Debug` for unoptimized code and source attribution, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
+- `Debug` disables optimization; default `Release` favors speed; `MinSizeRel` favors size and strips symbols.
+- Manuscript is in alpha; syntax, APIs and build behavior may change.
 
-On Linux, the default executable runs on glibc 2.28 or newer. Use `--static` with `build`, `run`, `test`, or `bench` to produce a self-contained musl executable for deployment without a glibc dependency. See [platform linking](../../contributing/rust-toolchain.md#platform-linking) for target details.
+<span id="levels"></span>
+<span id="defaults-and-command-behavior"></span>
 
-## Levels
-
-`build`, `run`, `test`, and `profile` accept case-insensitive CMake-style names:
-
-| Level | Optimization | Symbol table |
-| --- | --- | --- |
-| `Debug` | Disabled, including inlining | Kept |
-| `Release` | Speed | Kept, so profilers and backtraces show names |
-| `MinSizeRel` | Speed and size | Stripped |
-
-Every level links with `--gc-sections` (`-dead_strip` on macOS), so runtime and standard-library code the program never reaches is dropped. Executable size depends on the target, build level and reachable library code. Build levels never change language semantics.
-
-## Defaults and command behavior
-
-- The default is `Release`, including for `profile`.
-- Repeated build types, unknown levels, and build-type flags on source-only commands are rejected before compilation.
-- Flags after `--` go to the program.
-- Optimized code may reorder or remove source operations. DWARF provides file/line lookup, without variable, type, or inline-frame information; see [native debugging](../debugging/debugger-integration.md).
+Next: [build options](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/src/help_text.rs), [native debugging](../debugging/debugger-integration.md) and [platform linking](../../contributing/rust-toolchain.md#platform-linking).

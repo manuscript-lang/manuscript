@@ -1,16 +1,32 @@
 import StringBuilder, from_scalars from "@std/string.ms"
 
 /*
-Conversions between text and values: booleans, integers in any base, and quoted literals.
-Scalar classification lives in `@std/unicode.ms`; whole-string operations such as `fields_by`,
-`trim_chars` and `title` are methods on String.
+Recognize text values without inventing a value for invalid input.
 
-    import quote, parse_int_radix from "@std/text.ms"
-    quote("a\tb")                  # a double-quoted literal with the escape written out
-    parse_int_radix("-ff", 16)     # -255
+<!-- manuscript-example: {"mode":"test","filename":"parse-text.ms","stdout":"RUN parse-text.ms::parse-text\nPASS parse-text.ms::parse-text\n1 tests, 0 failed\n"} -->
+```manuscript {filename="parse-text.ms"}
+import parse_bool, parse_int_radix from "@std/text.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "parse-text":
+    try expect_equal(parse_bool("yes"), true)
+    try expect_equal(parse_int_radix("-ff", 16), -255)
+    try expect_equal(parse_bool("perhaps"), none)
+```
+
+```sh
+ms test parse-text.ms
+```
+
+```text
+RUN parse-text.ms::parse-text
+PASS parse-text.ms::parse-text
+1 tests, 0 failed
+```
+
+- Accepts `true/false`, `1/0`, `t/f`, `yes/no`, and `on/off`, ignoring case; other text returns `none`.
+
 */
-
-// Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
 export fn parse_bool(text: String) Bool?:
     let word = text.trim().lower()
     if ["true", "t", "1", "yes", "on"].contains(word):

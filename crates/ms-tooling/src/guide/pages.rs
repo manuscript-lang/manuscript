@@ -127,20 +127,39 @@ pub(crate) fn first_line(doc: &str, limit: usize) -> String {
     String::new()
 }
 
-/// Limits a full doc to `limit` bytes without cutting a rune.
+/// Keeps bounded lookup pages useful without presenting a truncated program.
+/// Complete examples, commands and output stay together in the full reference.
 fn cap_doc(doc: &str, limit: usize) -> String {
-    let doc = doc.trim();
+    let mut prose = String::new();
+    let mut fenced = false;
+    for line in doc.lines() {
+        if line.trim_start().starts_with("```") {
+            fenced = !fenced;
+            continue;
+        }
+        if fenced || line.trim_start().starts_with("<!-- manuscript-example:") {
+            continue;
+        }
+        prose.push_str(line);
+        prose.push('\n');
+    }
+    let doc = prose.trim();
     if doc.len() <= limit {
         return doc.to_string();
     }
-    let mut chars: Vec<char> = doc.chars().collect();
-    while chars.iter().map(|c| c.len_utf8()).sum::<usize>() > limit {
-        let keep = chars.len().saturating_sub(20);
-        chars.truncate(keep);
+    let mut end = limit.saturating_sub('…'.len_utf8());
+    while !doc.is_char_boundary(end) {
+        end -= 1;
     }
-    let mut out: String = chars.into_iter().collect();
-    out.push('…');
-    out
+    format!("{}…", doc[..end].trim_end())
+}
+
+fn reference_link(module: &ApiModule) -> String {
+    let path = module.path.strip_prefix("@std/").unwrap_or(&module.path);
+    let path = path.strip_suffix(".ms").unwrap_or(path);
+    format!(
+        "Full reference and examples: https://manuscript-lang.github.io/manuscript/standard-library/reference/{path}/\n"
+    )
 }
 
 /// The standard modules, `prelude` first and the rest by path.
@@ -299,6 +318,9 @@ fn declaration_page(m: &ApiModule, d: &ApiDeclaration) -> String {
     if m.path != "prelude" {
         b += &format!("import {} from {:?}\n", bare(&d.name), m.path);
     }
+    if d.doc.contains("```") {
+        b += &reference_link(m);
+    }
     let doc = cap_doc(&d.doc, 500);
     if !doc.is_empty() {
         b += &doc;
@@ -351,6 +373,9 @@ fn member_page(m: &ApiModule, d: &ApiDeclaration, name: &str) -> Result<String, 
             m.path,
             clip_lines(member.signature.trim_end_matches('\n'), 6)
         );
+        if member.doc.contains("```") {
+            b += &reference_link(m);
+        }
         let doc = cap_doc(&member.doc, 800);
         if !doc.is_empty() {
             b += &doc;
@@ -395,4 +420,190 @@ pub(crate) fn clip_text(s: &str, limit: usize) -> String {
     );
     out.extend_from_slice(&bytes[s.len() - tail..]);
     String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod bounded_docs_tests {
+    use super::{cap_doc, reference_link};
+    use crate::guide::api::ApiModule;
+
+    #[test]
+    fn reference_links_follow_generated_slugs() {
+        for (path, slug) in [
+            ("@std/data/json.ms", "data/json"),
+            ("@std/core.ms", "core"),
+            ("prelude", "prelude"),
+        ] {
+            let module = ApiModule {
+                path: path.to_string(),
+                declarations: Vec::new(),
+            };
+            assert_eq!(
+                reference_link(&module),
+                format!(
+                    "Full reference and examples: https://manuscript-lang.github.io/manuscript/standard-library/reference/{slug}/\n"
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn examples_are_linked_instead_of_cut_into_fragments() {
+        let program = include_str!("../../tests/lint_promises/waited.ms");
+        let doc = format!(
+            "Read a result.\n\n<!-- manuscript-example: {{}} -->\n```manuscript\n{program}\n```\n\n```sh\nms run example.ms\n```\n\n```text\ndone\n```\n\nKeep the owner alive."
+        );
+        let short = cap_doc(&doc, 500);
+        assert!(short.contains("Read a result."));
+        assert!(short.contains("Keep the owner alive."));
+        assert!(!short.contains("```"));
+        assert!(!short.contains("manuscript-example"));
+        assert!(!short.contains(program.trim()));
+        assert!(!short.contains("done"));
+    }
+
+    #[test]
+    fn prose_budget_respects_multibyte_text() {
+        let short = cap_doc(&"é".repeat(300), 500);
+        assert!(short.len() <= 500);
+        assert!(short.ends_with('…'));
+    }
+
+    // Read the actual documented program, invocation and output together; no copied program fixture.
+    fn producer_example() -> &'static str {
+        let page = include_str!("../../../../documentation/core-language/concurrency/streams.md");
+        let start = page.find("<!-- manuscript-example:").unwrap();
+        let output = page[start..].find("```text\n").unwrap() + start;
+        let end = page[output + 8..].find("\n```").unwrap() + output + 8 + 4;
+        &page[start..end]
+    }
+
+    #[test]
+    fn complete_source_comment_units_below_at_and_above_budget() {
+        let source = include_str!("../../../../stdlib/core.ms");
+        let start = source.find("<!-- manuscript-example:").unwrap();
+        let output = source[start..].find("```text\n").unwrap() + start;
+        let end = source[output + 8..].find("\n```").unwrap() + output + 8 + 4;
+        let example = &source[start..end];
+        assert!(example.contains("ms run print-line.ms"));
+        for limit in [500, 800] {
+            for size in [limit - 1, limit, limit + 1] {
+                let prefix = "Review printed output. ";
+                let padding = "x".repeat(size - prefix.len() - example.len() - 2);
+                let doc = format!("{prefix}{padding}\n\n{example}");
+                assert_eq!(doc.len(), size);
+                let short = cap_doc(&doc, limit);
+                assert_eq!(short, format!("{prefix}{padding}"));
+                assert!(short.len() <= limit);
+                assert!(!short.contains("```"));
+                assert!(!short.contains("manuscript-example"));
+                assert!(!short.contains("ms run print-line.ms"));
+                assert!(!short.contains("total: 3"));
+            }
+        }
+    }
+
+    #[test]
+    fn complete_example_is_atomic_around_each_summary_budget() {
+        let example = producer_example();
+        assert!(example.contains("try producer.wait()"));
+        assert!(example.contains("ms test example.ms"));
+        assert!(example.contains("PASS example.ms::sum a producer stream"));
+        for limit in [500, 800] {
+            // Exercise boundaries in the retained prose, with the complete example before
+            // and after the cut. Fences are omitted even when they would fit a larger budget.
+            for size in [limit - 1, limit, limit + 1] {
+                let prose = format!(
+                    "Review a producer. {}",
+                    "x".repeat(size - "Review a producer. ".len())
+                );
+                assert_eq!(prose.len(), size);
+                for doc in [
+                    format!("{prose}\n\n{example}"),
+                    format!("{example}\n\n{prose}"),
+                ] {
+                    let short = cap_doc(&doc, limit);
+                    assert!(short.starts_with("Review a producer."));
+                    assert!(short.len() <= limit);
+                    assert_eq!(short.ends_with('…'), size > limit);
+                    assert!(!short.contains("```"));
+                    assert!(!short.contains("manuscript-example"));
+                    assert!(!short.contains("try producer.wait()"));
+                    assert!(!short.contains("ms test example.ms"));
+                    assert!(!short.contains("PASS example.ms"));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn multiple_complete_examples_and_unicode_remain_atomic() {
+        let example = producer_example();
+        let doc = format!(
+            "Review café output.\n{example}\n\nSecond example.\n{example}\n{}",
+            "é🙂".repeat(200)
+        );
+        for limit in [500, 800] {
+            let short = cap_doc(&doc, limit);
+            assert!(short.starts_with("Review café output."));
+            assert!(short.contains("Second example."));
+            assert!(short.len() <= limit);
+            assert!(!short.contains("```"));
+            assert!(!short.contains("manuscript-example"));
+            assert!(!short.contains("producer.wait()"));
+            assert!(!short.contains("ms test"));
+            assert!(!short.contains("1 tests, 0 failed"));
+        }
+    }
+
+    #[test]
+    fn actual_pipe_pages_keep_signatures_and_link_complete_example() {
+        let syms = ms_syntax::Names::global();
+        let module = super::modules(syms)
+            .iter()
+            .find(|m| m.path == "@std/io/io.ms")
+            .unwrap();
+        let mut pipe = module
+            .declarations
+            .iter()
+            .find(|d| super::bare(&d.name) == "Pipe")
+            .unwrap()
+            .clone();
+        let example = producer_example();
+        pipe.doc = format!("Review producer ownership.\n\n{example}");
+        let writer = pipe
+            .members
+            .iter_mut()
+            .find(|m| super::bare(&m.name) == "writer")
+            .unwrap();
+        writer.doc = pipe.doc.clone();
+        let signature = super::one_line(&writer.signature, super::LINE_WIDTH);
+        let public = crate::guide::docgen::render_site_module(&ApiModule {
+            path: module.path.clone(),
+            declarations: vec![pipe.clone()],
+        });
+        assert_eq!(
+            public.matches(example).count(),
+            2,
+            "full reference must not truncate either source comment"
+        );
+        for page in [
+            super::declaration_page(module, &pipe),
+            super::member_page(module, &pipe, "writer").unwrap(),
+        ] {
+            assert!(page.len() <= super::PAGE_BUDGET);
+            assert!(page.contains("Review producer ownership."));
+            let normalized = page.split_whitespace().collect::<Vec<_>>().join(" ");
+            assert!(
+                normalized.contains(&signature),
+                "missing {signature:?} in {page}"
+            );
+            assert!(page.contains(&reference_link(module)));
+            assert!(!page.contains("```"));
+            assert!(!page.contains("manuscript-example"));
+            assert!(!page.contains("try producer.wait()"));
+            assert!(!page.contains("ms test example.ms"));
+            assert!(!page.contains("PASS example.ms"));
+        }
+    }
 }

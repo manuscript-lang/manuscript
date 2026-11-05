@@ -5,22 +5,10 @@ weight = 4
 
 # Cleanup order
 
-On scope exit, cleanup closes inner resources before outer ones, and the bindings of one scope last declared first. A borrow registers no extra close. A record or collection that owns resources closes its owned parts; see [holder cleanup](closeable.md#records-and-collections-close-what-they-hold).
+Observe cleanup order by printing when each resource closes. Manuscript is in alpha; syntax and APIs evolve.
 
-1. Evaluate the pending return value or select the initiating error, fault, or cancellation.
-2. Call registered `close()` methods in reverse registration/nesting order.
-3. Deliver the pending return/error, unless cleanup selected a programming fault; otherwise propagate the selected fault or cancellation.
-
-A cleanup fault can suppress a pending return or domain error; see [cleanup failures](cleanup-faults.md) for fault selection.
-
-Returning an owned resource transfers its cleanup duty to the caller: the exiting scope does not close the moved value. Moving it into a field, collection or escaping closure likewise transfers responsibility to the new owner. A borrowed part cannot escape a local owner that is about to close; returning a borrow of an argument keeps the caller responsible for that owner.
-
-## Observe the order
-
-Save as `cleanup.ms` and run `ms run cleanup.ms`. The small resource below prints when it closes:
-
-<!-- manuscript-example: {"mode":"run","stdout":"work\nclose second\nclose first\n"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"run","filename":"example.ms","stdout":"work\nclose second\nclose first\n"} -->
+```manuscript {filename="example.ms"}
 import Closeable from "@std/core.ms"
 
 type Tracked:
@@ -41,9 +29,13 @@ fn work() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    if work().is_error():
-        return 1
-    return 0
+    if let _done = work():
+        return 0
+    return 1
+```
+
+```sh
+ms run example.ms
 ```
 
 ```text
@@ -52,4 +44,9 @@ close second
 close first
 ```
 
-Declare dependencies in an outer scope, or before the resources that use them, so they close after the resources that use them. See [fault selection](cleanup-faults.md).
+<a id="observe-the-order"></a>
+
+- Return expressions evaluate before cleanup: inner scopes first, then newest bindings. Owned parts close in reverse order.
+- Returning or capturing in an escaping closure moves ownership; borrowing adds no cleanup.
+
+Next: [owned parts](closeable.md#records-and-collections-close-what-they-hold) and [cleanup failures](cleanup-faults.md).

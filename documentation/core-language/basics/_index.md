@@ -5,13 +5,28 @@ weight = 1
 
 # Basics
 
-Start with source files and bindings. Use the grammar as a reference.
+Basic expressions let reviewers follow a value from input to result; Manuscript is in alpha and syntax/APIs may change.
 
-| Concept | What you will learn |
-| --- | --- |
-| [Source files](syntax.md) | Read a source file, indentation, comments, and multiline expressions. |
-| [Variables and scope](bindings.md) | Choose let or var, infer local types, and understand shadowing. |
-| [Numbers and booleans](numbers-and-booleans.md) | Use numeric literals, explicit conversions, checked arithmetic, and durations. |
-| [Strings and bytes](text-and-bytes.md) | Interpolate text, encode UTF-8, and distinguish character boundaries. |
-| [Expressions and operators](expressions.md) | Apply precedence, operand types, and evaluation order. |
-| [Source grammar](grammar.md) | Check the exact accepted tokens, declarations, suites, and patterns. |
+<!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::read a small calculation\nPASS example.ms::read a small calculation\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal from "@std/test/test.ms"
+
+test "read a small calculation":
+    let price = 12
+    let quantity = 3
+    let total = price * quantity
+    try expect_equal(total, 36)
+```
+
+```sh
+ms test example.ms
+```
+
+```text
+RUN example.ms::read a small calculation
+PASS example.ms::read a small calculation
+1 tests, 0 failed
+```
+
+
+Next: [Source files](syntax.md) · [Variables and scope](bindings.md) · [Numbers and booleans](numbers-and-booleans.md) · [Strings and bytes](text-and-bytes.md) · [Expressions and operators](expressions.md) · [Source grammar](grammar.md).

@@ -15,20 +15,31 @@ export type JsonLimits:
     max_values: Int?
 
 /*
-A JSON value. Number text is retained to avoid losing precision during parsing.
+Read unstructured JSON through checked optional member lookups.
 
-`get` and `at` read one level and `as_*` read a scalar or container, each returning `none` on a
-mismatch. `get` and `at` borrow the selected part; keep the document available and unchanged
-while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads. Nested reads
-bind each level with `if let`:
+<!-- manuscript-example: {"mode":"test","filename":"json-members.ms","stdout":"RUN json-members.ms::json-members\nPASS json-members.ms::json-members\n1 tests, 0 failed\n"} -->
+```manuscript {filename="json-members.ms"}
+import JsonValue, parse from "@std/data/json.ms"
+import expect_equal from "@std/test/test.ms"
 
-```manuscript
-if let user = doc.get("user"):
-    if let name = user.get("name"):
-        return name.as_string().get("")
+test "json-members":
+    let doc = try parse[JsonValue]("\{\"user\":\{\"name\":\"Ada\"\}\}")
+    let name = try doc.get_in(["user", "name"]).ok_or(Error("missing name"))
+    try expect_equal(name.as_string(), "Ada")
 ```
 
-`get_in` reads a chain of object members in one call and lends the result: `doc.get_in(["user", "name"])`.
+```sh
+ms test json-members.ms
+```
+
+```text
+RUN json-members.ms::json-members
+PASS json-members.ms::json-members
+1 tests, 0 failed
+```
+
+- `get`, `at` and `get_in` borrow; keep the document unchanged while using their results.
+- Number text preserves precision; `as_string`, `as_list` and `as_map` explicitly clone their payloads.
 */
 export enum JsonValue:
     // JSON null, represented without a payload value.
@@ -131,32 +142,11 @@ impl JsonValue:
             _: return false
 
 /*
-Parses one JSON value and applies the supplied input, depth, and value limits.
+Decode JSON into a known record or keep a `JsonValue` tree for explicit inspection.
 
-With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
-document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request! = parse(text)`
-return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
-`EBADMSG`; a type that is not `Data` is rejected at compile time. Input, depth and value limits
-apply to the document before decoding.
+- Shape mismatches and missing required fields return `EBADMSG`; optional fields use `none`, declared defaults apply, and unknown fields follow `ignore_unknown_fields`.
+- `T` must satisfy `Data`; input limits apply before decoding. See [typed JSON](../../../learn/common-tasks.md#read-and-write-typed-json) and [encoding](#stringify).
 
-- A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field. An absent `Unit` field becomes `unit`; any other absent
-  required field returns `EBADMSG`. A member that is not a field is ignored, unless
-  `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
-- An alternative case without payload is its name as a string; one with payload is externally tagged,
-  `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
-  as `Result` follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-- `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`. `List` reads an array.
-- A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
-- `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
-  the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
-  `EBADMSG`.
-- `Timestamp` reads an RFC 3339 string, `Duration` integer nanoseconds, `Bytes` a standard base64
-  string, and `Url`, `IpAddress` and `Cidr` their string forms.
-- `Map[String, T]` reads an object when `T` is `Data`; `JsonValue` keeps its subtree as parsed.
-
-The record-or-document choice comes from `T`, not from the text: `parse[Request]` reads an object as a
-record and `parse[JsonValue]` keeps it as a document.
 */
 export fn parse[T: Data = JsonValue](
     text: String,
@@ -166,87 +156,82 @@ export fn parse[T: Data = JsonValue](
     return msstd_json_parse[T](text, limits, ignore_unknown_fields)
 
 /*
-Customizes how `stringify` encodes a type. It takes precedence over the
-structural encoding for every record and alternative, so it is the way to choose a tagged or
-discriminator encoding, or any other shape. A value whose type implements it is encoded as the
-`JsonValue` its `to_json` returns, wherever it appears: at the root, in a field, in a list, or as a map
-value. The returned `JsonValue` is written as stored and is not customized again. Implement it in the
-module that defines the type. Custom typed decoding is not supported; parse a `JsonValue`
-and handle its cases when the input needs a different shape.
+Choose a JSON representation by implementing `JsonEncode` in the type's defining module.
 
-The default encoding of an alternative is externally tagged, `{"Created":{"id":1}}`, so a structural
-encoding round-trips. This implementation writes an internal `type` discriminator instead, a common
-protocol shape:
+<!-- manuscript-example: {"mode":"test","filename":"custom-json.ms","stdout":"RUN custom-json.ms::custom-json\nPASS custom-json.ms::custom-json\n1 tests, 0 failed\n"} -->
+```manuscript {filename="custom-json.ms"}
+import JsonEncode, JsonValue, stringify from "@std/data/json.ms"
 
-```manuscript
-enum Event:
-    Created(id: Int)
-    Deleted(id: Int)
+type Status:
+    ready: Bool
 
-impl JsonEncode for Event:
+impl JsonEncode for Status:
     fn to_json() JsonValue:
-        match self:
-            Created(id): return tagged("created", id)
-            Deleted(id): return tagged("deleted", id)
+        return JsonValue.StringValue(if self.ready: "ready" else: "waiting")
+import expect_equal from "@std/test/test.ms"
 
-fn tagged(kind: String, id: Int) JsonValue:
-    var fields = Map[String, JsonValue]()
-    fields.add("type", JsonValue.StringValue(kind))
-    fields.add("id", JsonValue.NumberValue("{id}"))
-    return JsonValue.ObjectValue(fields)
+test "custom-json":
+    let text = try stringify(Status(ready: true))
+    try expect_equal(text, "\"ready\"")
 ```
+
+```sh
+ms test custom-json.ms
+```
+
+```text
+RUN custom-json.ms::custom-json
+PASS custom-json.ms::custom-json
+1 tests, 0 failed
+```
+
+- Custom encoding applies at every nesting level; its returned `JsonValue` is written as stored.
+- For custom decoding, parse `JsonValue` and handle its shape explicitly.
+
 */
 export interface JsonEncode:
     // Returns the JSON form of this value.
     fn to_json() JsonValue
 
 /*
-Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at compile time.
+Serialize a typed request so reviewers can see its exact wire fields.
 
-- Record fields appear in declaration order. A field holding `none` is omitted; so is a field
-  holding a value with no JSON form (`Unit`).
-- `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
-  `T??` is allowed: a present `none` is `null` and an absent value is omitted.
-- A root value with no JSON form returns `EBADMSG`.
-- An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
-  externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
-  the labeled fields under the record rules. Payload labels never collide with a discriminator.
-- `Map[String, T]` is an object when `T` is `Data`. Other map keys and `Set` fail the `Data` bound.
-- The sized integers (`Int8` to `Int32`, `UInt8` to `UInt64`) are exact decimal digits, as `Int`.
-  `Float32` is the shortest decimal that reads back as the same `Float32`; NaN and infinities are `null`.
-- Int, BigInt and Decimal are exact decimal digits. Float uses the shortest decimal that parses
-  back to the same value; NaN and infinities are `null`.
-- `Timestamp` is an RFC 3339 string in UTC, `Duration` its integer nanoseconds, `Bytes` a standard
-  base64 string, `Url` its string form, `IpAddress` and `Cidr` their text. `Result`, other standard records and
-  alternatives follow the ordinary rules, so `ok(5)` is `{"ok":{"value":5}}`.
-- A `JsonValue` is written as stored, so parsed documents mix with typed data.
-- A type that implements `JsonEncode` is written as the `JsonValue` its `to_json` returns, instead of any rule above.
-- Strings are UTF-8 JSON strings; only quotes, backslashes and control characters are escaped, so `<`, `>` and `&` stay as written.
-- Values are read when `stringify` runs, so later mutation does not change the text. Ownership
-  prevents cyclic values; each contained value is encoded where it appears.
+<!-- manuscript-example: {"mode":"test","filename":"json-record.ms","stdout":"RUN json-record.ms::json-record\nPASS json-record.ms::json-record\n1 tests, 0 failed\n"} -->
+```manuscript {filename="json-record.ms"}
+import stringify from "@std/data/json.ms"
 
-`strict` makes any value without a JSON form, anywhere in the document, return `EBADMSG` instead
-of being omitted or written as `null`. This covers `Unit`; functions, resources and interface values
-fail the `Data` bound at compile time. A field holding `none` is still omitted.
-
-`indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
-containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
-indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent returns
-`EINVAL`.
-
-```manuscript
 type Request:
     model: String
     stream: Bool
     user: String?
+import expect_equal from "@std/test/test.ms"
 
-let text = try stringify(Request(model: "example", stream: true, user: none))
+test "json-record":
+    let text = try stringify(Request(model: "example", stream: true, user: none))
+    try expect_equal(text, "\{\"model\":\"example\",\"stream\":true\}")
 ```
+
+```sh
+ms test json-record.ms
+```
+
+```text
+RUN json-record.ms::json-record
+PASS json-record.ms::json-record
+1 tests, 0 failed
+```
+
+- Records omit absent fields; string-keyed maps encode objects. Enum payloads are tagged by variant name; `JsonEncode` selects custom shapes.
+- `strict` rejects values without a JSON form. See [typed JSON](../../../learn/common-tasks.md#read-and-write-typed-json) and [custom encoding](#jsonencode).
+
 */
 export fn stringify[T: Data](
     value: T,
+    // Maximum encoded bytes, including indentation; exceeding it returns EOVERFLOW. Negative limits return EINVAL.
     max_bytes: Int?,
+    // Spaces per nesting level, capped at 10; none/0 is compact. A negative indent returns EINVAL.
     indent: Int?,
+    // Reject Unit with EBADMSG instead of omitting a record field or emitting null in a list; absent fields remain omitted.
     strict: Bool = false
 ) String!:
     return msstd_json_stringify(value, max_bytes, indent, strict)

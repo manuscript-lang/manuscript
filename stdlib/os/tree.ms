@@ -2,22 +2,35 @@ import Bytes from "@std/bytes.ms"
 import DirectoryEntry, list, read_file from "@std/os/fs.ms"
 
 /*
-Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
-tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
+Test file-reading code with an in-memory tree instead of temporary files.
 
-Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
-up; a path that would leave the root is `EINVAL`.
+<!-- manuscript-example: {"mode":"test","filename":"memory-files.ms","stdout":"RUN memory-files.ms::memory-files\nPASS memory-files.ms::memory-files\n1 tests, 0 failed\n"} -->
+```manuscript {filename="memory-files.ms"}
+import memory_tree, walk from "@std/os/tree.ms"
+import expect_equal from "@std/test/test.ms"
 
-```manuscript
-import FileTree, walk from "@std/os/tree.ms"
-
-fn names(tree: FileTree) List[String]:
-    let found = walk(tree).get(List())
-    return found.map(fn e: e.path.clone())
+test "memory-files":
+    var tree = memory_tree()
+    try tree.write_file("hello.txt", "hello".to_bytes())
+    let entries = try walk(tree)
+    try expect_equal(entries.length(), 1)
+    try expect_equal(entries[0].path, "hello.txt")
 ```
-*/
 
-// Read files and list directories through one interface: use `host_tree(root)` for disk files or `memory_tree()` to supply test data without temporary files.
+```sh
+ms test memory-files.ms
+```
+
+```text
+RUN memory-files.ms::memory-files
+PASS memory-files.ms::memory-files
+1 tests, 0 failed
+```
+
+- `FileTree` also accepts `host_tree(root)` for disk files; `walk` visits entries beneath the root.
+- Paths use `/`; `.` and empty parts are ignored, `..` walks up, and escaping the root returns `EINVAL`.
+
+*/
 export interface FileTree:
     // Reads a whole file; more than `max_bytes` bytes returns `EOVERFLOW`. A missing path is `ENOENT`.
     fn read(path: String, max_bytes: Int?) Bytes!

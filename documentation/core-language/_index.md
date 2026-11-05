@@ -5,15 +5,34 @@ weight = 2
 
 # Language reference
 
-These chapters define how Manuscript programs behave. New readers should start with [your first program](../learn/getting-started.md) and the [language tour](../learn/tour.md), then return here for exact rules, in this order:
+Check both outcomes of a small operation before following the language guides. Manuscript is in alpha; syntax and APIs evolve.
 
-1. [Basics](basics/_index.md): source files, variables, numbers, text, and expressions.
-2. [Functions](functions/_index.md): parameters, calls, and closures.
-3. [Types](types/_index.md): records, enums, collections, and interfaces.
-4. [Control flow](control-flow/_index.md): conditions, loops, and matching.
-5. [Error handling](errors/_index.md): results, propagation, and faults.
-6. [Modules](modules/_index.md): imports, exports, and public boundaries.
-7. [Managing resources](cleanup/_index.md): closing files and connections when their scope ends.
-8. [Concurrent tasks](concurrency/_index.md): running work at once with promises.
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::visible success and failure\nPASS example.ms::visible success and failure\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import expect_equal, expect_error from "@std/test/test.ms"
 
-Find declarations in the generated [standard-library API reference](../standard-library/reference/_index.md).
+fn doubled(value: Int) Int!:
+    if value < 0:
+        return error(Error("Expected a nonnegative value", kind: "EINVAL"))
+    return ok(value * 2)
+
+test "visible success and failure":
+    try expect_equal(try doubled(4), 8)
+    let cause = try expect_error(doubled(-1))
+    try expect_equal(cause.kind, "EINVAL")
+```
+
+```sh
+ms test example.ms
+```
+
+```text
+RUN example.ms::visible success and failure
+PASS example.ms::visible success and failure
+1 tests, 0 failed
+```
+
+- `try` makes the successful path linear while forwarding the original error.
+- Check data types, ownership and handled outcomes when reviewing generated code.
+
+Start with the [tour](../learn/tour.md), then [types](types/_index.md), [resources](cleanup/_index.md) and [concurrency](concurrency/_index.md).

@@ -126,18 +126,18 @@ fn std_pages_stay_bounded() {
             let path = format!("{name}.{}", bare(&d.name));
             let text = page(syms, &path).unwrap();
             assert!(
-                text.len() <= 3500 + 200,
-                "Page({path:?}): {} bytes",
-                text.len()
+                !text.contains("```") && !text.contains("manuscript-example"),
+                "partial example in {path}"
             );
+            assert!(text.len() <= 3500, "Page({path:?}): {} bytes", text.len());
             for member in &d.members {
                 let path = format!("{path}.{}", bare(&member.name));
                 let text = page(syms, &path).unwrap();
                 assert!(
-                    text.len() <= 3 * (300 + 800 + 200) + 3500 / 2,
-                    "Page({path:?}): {} bytes",
-                    text.len()
+                    !text.contains("```") && !text.contains("manuscript-example"),
+                    "partial example in {path}"
                 );
+                assert!(text.len() <= 3500, "Page({path:?}): {} bytes", text.len());
             }
         }
     }

@@ -5,12 +5,10 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+Tests turn an agent’s claims into outcomes you can review; save each example separately as `test.ms`. Manuscript is in alpha, and syntax and APIs may change.
 
-Save this complete file as `test.ms`:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::addition\nPASS test.ms::addition\nRUN test.ms::zero is unchanged\nPASS test.ms::zero is unchanged\n2 tests, 0 failed\n"} -->
+```manuscript {filename="test.ms"}
 import expect_equal from "@std/test/test.ms"
 
 fn add(a: Int, b: Int) Int:
@@ -35,67 +33,12 @@ PASS test.ms::zero is unchanged
 2 tests, 0 failed
 ```
 
-Select one test or set a per-test deadline:
-
-```sh
-ms test test.ms --filter addition
-ms test test.ms --timeout 10s
-```
-
-With `--filter addition`, only the selected test runs:
-
-```text
-RUN test.ms::addition
-PASS test.ms::addition
-1 tests, 0 failed
-```
-
-`expect_equal` works with numbers, text, collections, and `Equal` types; `assert_equal` is the TDD spelling. Change `3` to `4` to see `FAIL test.ms::addition: expected 4, got 3` and a nonzero exit. A tests file needs no `main`.
-
-## Run tests in a project
-
-```sh
-ms test ms.toml
-ms test ms.toml --filter addition --timeout 10s
-ms test ms.toml --json
-```
-
-- A manifest run discovers `test.ms` and `*_test.ms` files below the project root, plus tests in imports ([discovery rules](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery)).
-- `ms test file.ms` runs that module and its imports only.
-- Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
-- Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
-- `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
-- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `try expect_equal(...)`, or `let _ = try ...` to drop a returned value.
-- `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
-
-For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `try expect_ok` checks success and keeps the payload:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import parse from "@std/data/json.ms"
-import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
-
-test "typed JSON and Optional payloads":
-    let number = try expect_ok(parse[Int]("3"))
-    try expect_equal(number, 3)
-    let cause = try expect_error(parse[Int]("true"))
-    try expect_equal(cause.kind, "EBADMSG")
-    try expect_some([number].first()) | try expect_equal(3)
-```
-
-Test output:
-
-```text
-RUN test.ms::typed JSON and Optional payloads
-PASS test.ms::typed JSON and Optional payloads
-1 tests, 0 failed
-```
-
-Tests can also propagate an `Error` with `try`. See [Results](../core-language/errors/results.md).
+- Assertions return `T!`; `try` makes an assertion failure fail the test.
+- Faults and timeouts also fail tests; each selected test runs in its own process.
 
 ## Select and repeat
 
-With the opening `addition` and `zero is unchanged` tests saved in `test.ms`, list their exact names:
+List the opening example’s test names before selecting one.
 
 ```sh
 ms test test.ms --list
@@ -106,26 +49,49 @@ test.ms::addition
 test.ms::zero is unchanged
 ```
 
-Run one named test, select names with a pattern, or repeat the suite in a seeded order:
-
 ```sh
-ms test test.ms --test 'test.ms::addition' --json
-ms test test.ms --match 'addition|zero' --exclude 'slow' --fail-fast
-ms test test.ms --repeat 10 --shuffle 42
+ms test test.ms --test "test.ms::addition"
 ```
 
-- Copy exact `module::name` identities from `--list`; repeat `--test` to select several.
-- `--filter`, `--match`, and `--exclude` narrow the selection; regexes match any part of the identity. Empty selections fail.
-- `--list` builds but never runs test bodies.
-- Each selected test and repetition runs in a fresh process. In-memory state is isolated; external files and services remain shared unless the test resets them. `--shuffle` takes a seed.
-- `--fail-fast` leaves remaining tests `not_run` in JSON.
+```text
+RUN test.ms::addition
+PASS test.ms::addition
+1 tests, 0 failed
+```
+
+- `--filter` selects name substrings; `--repeat` repeats selected tests and `--shuffle` takes a seed.
+- `--timeout` bounds each test (default 60s); `--json` produces structured results.
+
+## Check payloads and errors
+
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::typed JSON accepts the expected shape\nPASS test.ms::typed JSON accepts the expected shape\n1 tests, 0 failed\n"} -->
+```manuscript {filename="test.ms"}
+import parse from "@std/data/json.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
+
+test "typed JSON accepts the expected shape":
+    let number = try parse[Int]("3")
+    try expect_equal(number, 3)
+    let cause = try expect_error(parse[Int]("true"))
+    try expect_equal(cause.kind, "EBADMSG")
+```
+
+```sh
+ms test test.ms
+```
+
+```text
+RUN test.ms::typed JSON accepts the expected shape
+PASS test.ms::typed JSON accepts the expected shape
+1 tests, 0 failed
+```
+
+- Use `expect_error` to test an expected failure without discarding its cause.
 
 ## Property tests and fuzzing
 
-A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/test/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::reversing twice restores a list\nPASS test.ms::reversing twice restores a list\n1 tests, 0 failed\n"} -->
+```manuscript {filename="test.ms"}
 import check, ints, lists from "@std/test/property.ms"
 import expect_equal from "@std/test/test.ms"
 
@@ -133,7 +99,9 @@ test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))
 ```
 
-Test output:
+```sh
+ms test test.ms
+```
 
 ```text
 RUN test.ms::reversing twice restores a list
@@ -141,91 +109,38 @@ PASS test.ms::reversing twice restores a list
 1 tests, 0 failed
 ```
 
-When a case fails, `check` shrinks the input to a small counterexample and fails the test with it and the case seed:
-
-```text
-FAIL test.ms::small sums: property 'small sums' failed after 3 cases (case seed 2039066943738375196; rerun with --seed 2039066943738375196)
-counterexample: [50]
-expected true, got false
-```
-
-- Generators: `ints(low, high)`, `bools()`, `floats(low, high)`, `strings(alphabet, max_length)`, `lists(gen, min_length, max_length)`, `optionals(gen)`, `pairs(a, b)`, `element_of(values)`, `one_of(gens)`, and `constant(value)`.
-- Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(fn n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
-- Shrinking is automatic for every generator, including your own compositions: generators draw from a recorded stream of integers and shrinking edits and replays it. Integers shrink toward 0, lists toward fewer elements, `optionals` toward `none`, `bools` toward `false`.
-- A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
-- A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs under `expect_fault`.
-
-`ms test` controls property runs from the command line:
-
-```sh
-ms test ms.toml --runs 1000          # cases per property
-ms test ms.toml --seed 2039066943738375196   # replay a reported failure
-ms test ms.toml --fuzz 30s           # keep generating fresh cases for 30s per property
-```
-
-`--fuzz` replaces the case count with a time budget for each `check` call and prints the starting seed to standard error, so a fault that kills the process can still be replayed with `--seed`. It disables the default 60s `--timeout` unless you pass one. An explicit `seed:` argument to `check` overrides `--seed`. The [property-testing example](https://github.com/manuscript-lang/manuscript/tree/main/examples/property-testing) shows a project with several properties.
-
-All assertions return `Result`, so use `try`:
-
-- `expect_some`, `expect_ok`, `expect_error` yield the checked payload.
-- `expect_fault(operation)` checks programming faults.
-- `fail(message)` fails explicitly; `skip(reason)` skips while running cleanup.
-- Write each independently reported case as its own `test` block.
+- A property checks 100 generated cases by default and shrinks a failure to a smaller counterexample.
+- `--runs` sets the count; `--seed` replays a reported seed; `--fuzz` sets a time budget per property.
 
 ## Golden files and misbehaving streams
 
-`expect_golden(path, actual)` in `@std/test/golden.ms` compares text with a file kept next to the test and names the first differing line on a mismatch. Run `MS_UPDATE_GOLDEN=1 ms test ...` to rewrite the files from the actual output, review the change in version control, then run again without it. `expect_golden_bytes` does the same for bytes.
+Create `greeting.txt` containing `Hello!` and a newline before running this test.
 
-`@std/test/iotest.ms` wraps streams to test code that reads and writes: `one_byte(input)` trickles one byte per read, `fail_after(input, n, cause)` fails every read after `n` bytes, and `fail_writer_after(output, n, cause)` fails like a full disk. `check_reader(make, expected)` checks a `ReadStream` you wrote: whole reads, one-byte reads, a respected chunk size, and an end of input that stays ended.
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","files":{"greeting.txt":"Hello!\n"},"stdout":"RUN test.ms::greeting stays stable\nPASS test.ms::greeting stays stable\n1 tests, 0 failed\n"} -->
+```manuscript {filename="test.ms"}
+import expect_golden from "@std/test/golden.ms"
 
-## Benchmark your code
-
-A `bench "name":` block works like a `test` block, but `ms bench` times it instead of checking it. The body is one iteration; `ms bench` repeats it until a sample takes about 100ms (that calibration is also the warmup), takes ten samples, and reports the time per iteration. `ms test` skips bench blocks. Save this complete file as `bench.ms`:
-
-<!-- manuscript-example: {"mode":"bench"} -->
-```manuscript
-import expect_equal from "@std/test/test.ms"
-
-fn sum_to(n: Int) Int:
-    var total = 0
-    for i in 0..n:
-        total += i
-    return total
-
-bench "sum to one hundred":
-    try expect_equal(sum_to(100), 4950)
+test "greeting stays stable":
+    try expect_golden("greeting.txt", "Hello!\n")
 ```
 
 ```sh
-ms bench bench.ms
-ms bench bench.ms --time 500ms --samples 20
-ms bench ms.toml --filter "sum" --json
+ms test test.ms
 ```
 
-- A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
-- `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
-- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/test/bench.ms` checks a computed `Int` so the work stays observable.
-- To keep setup out of the timing, build the data first and time only the work: `try measure(1000, fn: keep(data.sorted().length()))` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
-- Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
-- `--json` adds `stats` to each entry of `benches`: `iterations`, `operations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per operation (per iteration when `operations` is 1).
-- Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `try` so the compiler cannot discard the work; benchmark the default `Release` build.
-
-## Profile application work
-
-Use `ms profile` on a runnable project with an exported `main`:
-
-```sh
-ms profile ms.toml --out-dir capture --top 10
+```text
+RUN test.ms::greeting stays stable
+PASS test.ms::greeting stays stable
+1 tests, 0 failed
 ```
 
-This runs the application entry point, not its test blocks. Put the workload you want to measure in the application's execution path. `capture` must be a new directory; the sampling profile includes folded stacks, pprof data, and a text report. The default build type is `Release`. See [profiling and native debugging](../developer-tooling/debugging/debugger-integration.md) for output files and source-attribution limits.
+- Review changed golden files before accepting new output.
+- Use the [I/O test helpers](../standard-library/reference/test/iotest.ms.md) to exercise short reads and failed writes.
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/test/test.ms`; tests then read it as `fixture`.
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"test.ms","stdout":"RUN test.ms::increments\nPASS test.ms::increments\nRUN test.ms::starts fresh\nPASS test.ms::starts fresh\n2 tests, 0 failed\n"} -->
+```manuscript {filename="test.ms"}
 import TestHooks, expect_equal from "@std/test/test.ms"
 
 type Counter:
@@ -246,7 +161,9 @@ test "starts fresh":
     try expect_equal(fixture.count, 0)
 ```
 
-Test output:
+```sh
+ms test test.ms
+```
 
 ```text
 RUN test.ms::increments
@@ -256,44 +173,59 @@ PASS test.ms::starts fresh
 2 tests, 0 failed
 ```
 
-`ms test` starts a separate process for each selected test. Each process creates its own fixture and runs its hooks, so the second test starts from a fresh `Counter`. The same isolation applies to repetitions.
+- Each test creates a fresh fixture; external files and services still need their own reset.
+- Release fixture resources in `after_all`; [test hooks](../standard-library/reference/test/test.ms.md) also support setup and per-test cleanup.
 
-- One instance for the selected test in its process; the factory and `before_all` run again for the next test or repetition.
-- Optional hooks (use `self`, no arguments, return `Unit`): `before_all`, `before_each`, `after_each`, `after_all`.
-- Build in `make_fixture`, reset in `before_each`, release in `after_all`.
+## Run tests in a project
 
-## Run tests only on some platforms
+- `ms test ms.toml` finds `test.ms` and `*_test.ms`; import application code with relative paths.
+- Project tests use the manifest directory for relative paths; see [discovery rules](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery).
 
-There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/os/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
+## Benchmark your code
 
-To skip a single test, call `skip` in its body:
+Save as `bench.ms`; the assertion keeps the computed result observable.
 
-```manuscript
-import skip from "@std/test/test.ms"
-import os_type from "@std/os/process.ms"
+<!-- manuscript-example: {"mode":"bench","filename":"bench.ms","test_stdout":"RUN bench.ms::sum is correct\nPASS bench.ms::sum is correct\n1 tests, 0 failed\n"} -->
+```manuscript {filename="bench.ms"}
+import expect_equal from "@std/test/test.ms"
 
-test "unix permission bits":
-    if os_type() == "Windows_NT":
-        skip("Unix only")
-    // Unix-only assertions follow.
+fn sum_to(n: Int) Int:
+    var total = 0
+    for i in 0..n:
+        total += i
+    return total
+
+test "sum is correct":
+    try expect_equal(sum_to(100), 4950)
+
+bench "sum to one hundred":
+    try expect_equal(sum_to(100), 4950)
 ```
 
-To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
-
-```manuscript
-import TestHooks, skip from "@std/test/test.ms"
-import os_type from "@std/os/process.ms"
-
-type WindowsOnly:
-    ok: Bool
-
-fn make_fixture() WindowsOnly:
-    return WindowsOnly(os_type() == "Windows_NT")
-
-impl TestHooks for WindowsOnly:
-    var fn before_all() Unit:
-        if not self.ok:
-            skip("Windows only")
+```sh
+ms test bench.ms
 ```
 
-Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.
+```text
+RUN bench.ms::sum is correct
+PASS bench.ms::sum is correct
+1 tests, 0 failed
+```
+
+```sh
+ms bench bench.ms
+```
+
+The timing report ends with this summary:
+
+```text
+1 benches, 0 failed
+```
+
+- Timings vary: the report shows median, minimum, mean, maximum and standard deviation in nanoseconds per operation.
+- Defaults use ten samples of about 100ms each; use `measure` for [untimed setup](../standard-library/reference/test/bench.ms.md).
+
+<span id="profile-application-work"></span>
+<span id="run-tests-only-on-some-platforms"></span>
+
+Next: [benchmark API](../standard-library/reference/test/bench.ms.md), [profiling](../developer-tooling/debugging/debugger-integration.md), [test skipping](../standard-library/reference/test/test.ms.md), [task recipes](common-tasks.md).

@@ -86,7 +86,10 @@ fn source_declarations_reach_documentation() {
             for d in &module.declarations {
                 if !d.declaration.is_empty() {
                     assert!(
-                        output.contains(&format!("```manuscript\n{}```", d.declaration)),
+                        output.contains(&format!(
+                            "```manuscript {{schema=true}}\n{}```",
+                            d.declaration
+                        )),
                         "{}#{} lost its source declaration",
                         module.path,
                         d.name
@@ -444,4 +447,30 @@ fn reference_navigation_follows_source_paths_and_preserves_old_routes() {
         }
     }
     assert!(!files.contains_key("documentation/standard-library/reference/promise.md"));
+}
+
+#[test]
+fn reference_indexes_orient_reviewers_and_link_the_next_step() {
+    let files = site_files(ms_syntax::Names::global());
+    for (path, bytes) in &files {
+        if path.starts_with("documentation/standard-library/reference/")
+            && path.ends_with("/_index.md")
+        {
+            let text = std::str::from_utf8(bytes).unwrap();
+            assert!(text.contains("Review"), "missing review purpose: {path}");
+            assert!(
+                text.contains("Manuscript is in alpha; APIs may change."),
+                "missing alpha context: {path}"
+            );
+            assert!(
+                text.trim_end().ends_with("learn/tour.md)."),
+                "missing final next step: {path}"
+            );
+        }
+    }
+    for path in ["prelude", "@std/core.ms", "@std/collections/collections.ms"] {
+        let text = render_module(&module(path, vec![]));
+        assert!(text.contains("Review"), "missing purpose: {path}");
+        assert!(text.contains("Manuscript is in alpha"));
+    }
 }

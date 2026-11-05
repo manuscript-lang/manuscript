@@ -52,8 +52,8 @@ test('the published browser bundle highlights the landing example and current sy
   }
   assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"changes.txt"'),
     'The input filename must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Helper and entrypoint returns retain keyword styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 4,
+    'Success and error returns retain keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -122,13 +122,13 @@ test('published API routes mirror source directories and preserve old routes', (
   assert.ok(promise.includes('promise.ms'));
 });
 
-test('rendered API signatures match source pages without synthetic contracts', () => {
+test('rendered API examples and declarations match source pages without synthetic contracts', () => {
   const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
   for (const { file, markdown, route } of referencePages()) {
-    const expected = [...markdown.matchAll(/```manuscript\n([\s\S]*?)```/g)].map(match => match[1].trimEnd());
+    const expected = [...markdown.matchAll(/^```[^\n]*\n([\s\S]*?)^```/gm)].map(match => match[1].trimEnd());
     const html = fs.readFileSync(path.join(book, 'standard-library/reference', route, 'index.html'), 'utf8');
     const actual = [...html.matchAll(/<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/g)]
-      .map(match => match[1].replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]).trimEnd());
+      .map(match => match[1].replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]).trimEnd());
     assert.deepEqual(actual, expected, `Rebuild the website: ${file} has stale API signatures`);
     assert.ok(!html.includes('$methods') && !html.includes('SourceMethods'));
   }
@@ -147,7 +147,7 @@ test('Promise and stream guides teach separate topics', () => {
   const streams = read('streams');
   assert.ok(!promises.includes('ReadStream') && !promises.includes('pipe[Update]'));
   for (const text of ['PromiseOptions', 'wait_all', 'Cancellation']) assert.ok(promises.includes(text));
-  for (const text of ['ReadStream', 'Transform', 'Pipelines', 'Pipes', 'defers the read']) assert.ok(streams.includes(text));
+  for (const text of ['ReadStream', 'Transform', 'Pipelines', 'Pipes', 'deferred until wait']) assert.ok(streams.includes(text));
   assert.ok(promises.includes('/manuscript/core-language/concurrency/streams/'));
   assert.ok(streams.includes('/manuscript/core-language/concurrency/promises/'));
 });
@@ -273,4 +273,51 @@ test('landing and documentation pages share one favicon and a loadable brand mar
   const svg = fs.readFileSync(path.join(book, icons[0].slice(prefix.length)), 'utf8');
   assert.match(svg, /viewBox="0 0 32 32"/);
   assert.ok(!/<(?:image|text|script)\b/.test(svg), 'Brand mark stays self-contained vector geometry');
+});
+
+
+test('full API references preserve complete source teaching units and label declarations', () => {
+  const pages = referencePages();
+  const stdlib = path.join(root, 'stdlib');
+  let examples = 0;
+  for (const file of fs.readdirSync(stdlib, { recursive: true }).filter(file => file.endsWith('.ms'))) {
+    const source = fs.readFileSync(path.join(stdlib, file), 'utf8');
+    const comments = [...source.matchAll(/^\/\*([\s\S]*?)^\*\//gm)].map(match => match[1]);
+    comments.push(...[...source.matchAll(/^\/\/[^\n]*(?:\n\/\/[^\n]*)*/gm)]
+      .map(match => match[0].replace(/^\/\/ ?/gm, '')));
+    const generated = pages.find(page => page.file.replaceAll('\\', '/') === file.replaceAll('\\', '/') + '.md')?.markdown;
+    for (const comment of comments) {
+      const markers = [...comment.matchAll(/<!-- manuscript-example: [^\n]+ -->/g)];
+      for (const [i, marker] of markers.entries()) {
+        examples++;
+        const section = comment.slice(marker.index, markers[i + 1]?.index);
+        const unit = section.match(/^<!-- manuscript-example: [^\n]+ -->\n```manuscript[^\n]*\n[\s\S]*?```\n[\s\S]*?```sh\n[\s\S]*?```\n[\s\S]*?```text\n[\s\S]*?```/);
+        assert.ok(unit, `${file}: each source example needs its own program, invocation and output`);
+        assert.ok(generated?.includes(unit[0]), `${file}: keep the full teaching unit in its own module reference`);
+      }
+    }
+  }
+  assert.ok(examples >= 22, 'Discover the source-owned examples, including formerly indented fragments');
+  for (const page of pages.filter(page => page.file.endsWith('.ms.md'))) {
+    assert.ok(page.markdown.includes('**Declaration**\n\n```manuscript {schema=true}'), `${page.file}: identify API schemas`);
+    const html = fs.readFileSync(path.join(book, 'standard-library/reference', page.route, 'index.html'), 'utf8');
+    assert.ok(html.includes('<strong>Declaration</strong>'), `${page.file}: render declaration labels`);
+    assert.ok(!html.includes('manuscript-example:'), `${page.file}: internal execution metadata stays hidden`);
+  }
+});
+
+
+test('authored guides and every generated reference page state alpha context', () => {
+  const authored = path.join(root, 'documentation');
+  for (const file of fs.readdirSync(authored, { recursive: true }).filter(file => file.endsWith('.md'))) {
+    const route = file.replaceAll('\\', '/').replace(/_index\.md$/, '').replace(/\.md$/, '/');
+    const html = fs.readFileSync(path.join(book, route, 'index.html'), 'utf8');
+    assert.match(html, /\balpha\b/i, `${file}: state that syntax/APIs may change`);
+  }
+  for (const page of referencePages()) {
+    assert.match(page.markdown, /\balpha\b/i, `${page.file}: include indexes as well as module pages`);
+  }
+  for (const file of ['README.md', 'VISION.md']) {
+    assert.match(fs.readFileSync(path.join(root, file), 'utf8'), /\balpha\b/i);
+  }
 });

@@ -5,108 +5,197 @@ weight = 1
 
 # Imports and exports
 
-Each `.ms` file is a module with its own boundary. `export` makes a declaration available; `import` brings in one exported declaration. Resolved file paths identify modules. There is no `module` declaration, wildcard import, or cyclic dependency.
+Named imports expose the dependencies in an agent’s change; Manuscript is in alpha, and syntax and APIs may change.
+
+<span id="public-signature-closure"></span>
+
+## A visible contract
+
+Save this tested companion module as `customers.ms`.
+
+<!-- manuscript-example: {"mode":"test","filename":"customers.ms","stdout":"RUN customers.ms::label a customer\nPASS customers.ms::label a customer\n1 tests, 0 failed\n"} -->
+```manuscript {filename="customers.ms"}
+import expect_equal from "@std/test/test.ms"
+
+export type CustomerId:
+    value: String
+
+export fn customer_label(id: CustomerId) String:
+    return "Customer {id.value}"
+
+test "label a customer":
+    try expect_equal(customer_label(CustomerId("C-17")), "Customer C-17")
+```
+
+```sh
+ms test customers.ms
+```
+
+```text
+RUN customers.ms::label a customer
+PASS customers.ms::label a customer
+1 tests, 0 failed
+```
+
+- Public signatures expose only public nominal types, transitively; [opaque types](../types/records.md#public-data-surfaces) hide representation.
+- Each `.ms` file is one module, identified by its resolved path.
+
+Save this caller beside it as `main.ms`.
+
+<!-- manuscript-example: {"mode":"run","filename":"main.ms","files":{"customers.ms":"import expect_equal from \"@std/test/test.ms\"\n\nexport type CustomerId:\n    value: String\n\nexport fn customer_label(id: CustomerId) String:\n    return \"Customer {id.value}\"\n\ntest \"label a customer\":\n    try expect_equal(customer_label(CustomerId(\"C-17\")), \"Customer C-17\")\n"},"stdout":"Customer C-17\n"} -->
+```manuscript {filename="main.ms"}
+import CustomerId, customer_label from "./customers.ms"
+
+export fn main() Int:
+    let id = CustomerId("C-17")
+    print(customer_label(id))
+    return 0
+```
+
+```sh
+ms run main.ms
+```
+
+```text
+Customer C-17
+```
+
+- Relative imports start from the importing file’s directory and name the exact `.ms` file.
+- There is no directory/extension lookup; missing files, exports and cyclic imports are errors.
 
 ## Names and declaration order
 
-Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` wraps a bare list wider than 88 columns into the parenthesized form, one name per line, and leaves parenthesized lists that fit on their line as written. Braces are rejected. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
+<!-- manuscript-example: {"mode":"test","filename":"names.ms","stdout":"RUN names.ms::call a later declaration\nPASS names.ms::call a later declaration\n1 tests, 0 failed\n"} -->
+```manuscript {filename="names.ms"}
+import (
+    expect_equal,
+    expect_error,
+) from "@std/test/test.ms"
 
-Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Two modules that export the same name (for example `parse` in `@std/data/csv.ms` and `@std/data/toml.ms`) cannot both be imported into one module, and imports cannot be renamed. Import one, and wrap the other in a small module that exports it under a new name. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/records.md#recursive-data).
+test "call a later declaration":
+    try expect_equal(try double(3), 6)
+    let cause = try expect_error(double(-1))
+    try expect_equal(cause.message, "negative input")
 
-The intrinsic core type names are `Bool`, `Int`, `Float`, `String`, `Unit`, and `Never`. The standard interfaces `Equal`, `Comparable`, `Hashable`, and `Clonable` also have fixed identities in the prelude. Declarations, imports, and type parameters cannot redefine these. Locals may reuse module-level names. They cannot shadow another local or parameter unless the new name starts with `_`; see [scope and shadowing](../basics/bindings.md#scope-and-shadowing). A value name cannot be used as a type.
+fn double(value: Int) Int!:
+    if value < 0:
+        return error(Error("negative input"))
+    return ok(value * 2)
+```
 
-Prelude declarations: `Optional`, `Result`, `Error`, `List`, `Map`, `Set`, `ListEntry`, `MapEntry`, the function `print`, and `none`, `ok`, `error`. A present optional is a plain value in a `T?` position; there is no `some(...)` constructor. Qualify a Result case when its types need context, for example `Result[Int, Error].ok(3)`. A module declaration or import reusing a prelude name is rejected ("reuses a prelude name"); locals, parameters, and type parameters may shadow them.
+```sh
+ms test names.ms
+```
 
-Explicit imports of any prelude declaration, including `Equal` and `Hashable`, are rejected with `MS2003`; remove the binding. Application declarations and imports cannot reuse prelude names. Other exports of those modules, such as collection builders, need explicit imports.
+```text
+RUN names.ms::call a later declaration
+PASS names.ms::call a later declaration
+1 tests, 0 failed
+```
 
-Other standard declarations (`Decimal`, `Bytes`, builders, `Closeable`, runtime and host APIs) are imported from `@std`; see the [API reference](../../standard-library/reference/_index.md).
-
-Unqualified case shorthand applies only when lexical lookup finds no binding of that name. Candidates are cases of visible enum types (prelude, declared, or imported by name); exactly one must match, and an expected type cannot choose. `Type.Case` selects explicitly. Match patterns use the scrutinee type ([pattern matching](../control-flow/pattern-matching.md)).
-
-Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted type path is not a namespace; import each type by name. Module-level statements and `var` are rejected. A module-level `let` declares a [constant](#constants).
+- Parentheses wrap named imports; declarations can be used before their definition.
+- One module namespace rejects duplicate names and overloads; [shadowing](../basics/bindings.md#scope-and-shadowing) has separate rules.
 
 ## Constants
 
-A module-level `let` names a value usable throughout the module; add `export` to share it.
+Save as `constants.ms`; each use of a list constant creates an independent value.
 
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"constants.ms","stdout":"RUN constants.ms::constant values are independent\nPASS constants.ms::constant values are independent\n1 tests, 0 failed\n"} -->
+```manuscript {filename="constants.ms"}
+import expect_equal from "@std/test/test.ms"
+
 export let MAX_ITEMS = 100
 let NAMES: List[String] = ["Ada", "Grace"]
-let LIMIT = MAX_ITEMS * 2
-
-fn is_full(count: Int) Bool:
-    return count >= LIMIT
-```
-
-The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant interpolations, operators, list and map literals, payloadless cases (`none`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
-
-Group related constants with `let (`, one `name = value` entry per line, indented four spaces; the closing `)` aligns with `let`. Each entry is an independent constant, and `export let (` exports all of them.
-
-```manuscript
 let (
     LOW = 1
     HIGH: Int = LOW + 9
 )
+
+test "constant values are independent":
+    var names = NAMES
+    names.append("Sam")
+    try expect_equal(names.length(), 3)
+    try expect_equal(NAMES.length(), 2)
+    try expect_equal(HIGH, 10)
+    try expect_equal(MAX_ITEMS, 100)
 ```
 
-A constant has no storage or initialization order; each use evaluates the initializer in place, so a list constant is always fresh. Locals and parameters shadow it. Constants cannot be assigned, and `main` must be a function.
-
-## A visible contract
-
-`src/domain/customers.ms` exports a nominal identifier type:
-
-```manuscript
-export type CustomerId:
-    value: String
+```sh
+ms test constants.ms
 ```
 
-`src/main.ms` imports it:
-
-```manuscript
-import CustomerId from "./domain/customers.ms"
+```text
+RUN constants.ms::constant values are independent
+PASS constants.ms::constant values are independent
+1 tests, 0 failed
 ```
 
-Relative imports resolve from the importing file's directory. Paths include `.ms` and name a file exactly; there is no directory or extension lookup.
-
-## Public signature closure
-
-An exported function, data type, or contract cannot expose an internal nominal type through a parameter, result, field, case payload, generic bound, or operation signature, transitively. Imported exported types may appear without being re-exported. Generic parameters are not private declarations.
-
-```manuscript
-type PrivateToken:
-    value: String
-
-// Rejected: callers cannot name the internal result type.
-export fn issue() PrivateToken:
-    return PrivateToken("token")
-```
-
-Exporting a record exposes every field and its constructor; an enum, every case and payload; an `interface`, every operation. `export opaque type` hides record fields and `export opaque enum` hides enum cases outside the declaring file; selective per-field visibility is unsupported ([public data surfaces](../types/records.md#public-data-surfaces)).
-
-An `impl` in a source type's defining module is available wherever the type is used. An `impl` for an imported type stays local to the declaring module. Both follow the [coherence and visibility rules](../types/contracts.md#coherence-and-visibility).
+- Constant expressions use literals, operators or other constants; calls, constructors, functions and `match` are rejected.
+- Each use creates a fresh value; constants cannot change or depend on themselves.
 
 ## Standard-library imports
 
-```manuscript
+Save as `queue_test.ms`; `@std` needs no project alias and cannot be overridden.
+
+<!-- manuscript-example: {"mode":"test","filename":"queue_test.ms","stdout":"RUN queue_test.ms::queue preserves arrival order\nPASS queue_test.ms::queue preserves arrival order\n1 tests, 0 failed\n"} -->
+```manuscript {filename="queue_test.ms"}
 import Queue from "@std/collections/queue.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "queue preserves arrival order":
+    var queue = Queue[Int]()
+    try expect_equal(queue.enqueue(7), true)
+    let first = try queue.dequeue().ok_or(Error("queue is empty"))
+    try expect_equal(first, 7)
 ```
 
-`@std` is always available, needs no `[aliases]` entry, and cannot be overridden. Importing one export does not import the other type names in its signature: importing `Queue` does not bring other names from the module into scope (`Result` is in the prelude). Host accessors are imported separately and return services when called.
+```sh
+ms test queue_test.ms
+```
+
+```text
+RUN queue_test.ms::queue preserves arrival order
+PASS queue_test.ms::queue preserves arrival order
+1 tests, 0 failed
+```
+
+- Imports bring only named exports, not every type in their signatures.
+- Prelude names need no import; [standard APIs](../../standard-library/reference/_index.md) list the other available names.
 
 ## Optional aliases
 
-A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` to `./src/domain/customers.ms`, either import selects the same type:
+Save this project configuration as `ms.toml`, alongside `customers.ms`.
 
-```manuscript
-import CustomerId from "@domain/customers.ms"
+```toml
+[project]
+name = "customers"
+source = "."
+entry = "./alias.ms"
+
+[aliases]
+"@domain" = "."
+"@customers" = "./customers.ms"
 ```
 
-```manuscript
-import CustomerId from "@customers"
+<!-- manuscript-example: {"mode":"run","filename":"alias.ms","target":"ms.toml","files":{"ms.toml":"[project]\nname = \"customers\"\nsource = \".\"\nentry = \"./alias.ms\"\n\n[aliases]\n\"@domain\" = \".\"\n\"@customers\" = \"./customers.ms\"\n","customers.ms":"import expect_equal from \"@std/test/test.ms\"\n\nexport type CustomerId:\n    value: String\n\nexport fn customer_label(id: CustomerId) String:\n    return \"Customer {id.value}\"\n\ntest \"label a customer\":\n    try expect_equal(customer_label(CustomerId(\"C-17\")), \"Customer C-17\")\n"},"stdout":"Customer C-17\n"} -->
+```manuscript {filename="alias.ms"}
+import CustomerId, customer_label from "@domain/customers.ms"
+
+export fn main() Int:
+    let id = CustomerId("C-17")
+    print(customer_label(id))
+    return 0
 ```
 
-Aliases change only how a path is written; module identity follows the resolved file.
+```sh
+ms run ms.toml
+```
 
-Missing files, unknown aliases, missing exports, and cycles are compile errors. See [project configuration](../../developer-tooling/builds/project-configuration.md).
+```text
+Customer C-17
+```
 
-See [source structure](../basics/syntax.md) and [boundary contracts](boundaries.md).
+- Directory alias `@domain` and file alias `@customers` select the same resolved module.
+- Aliases change spelling, not identity; unknown aliases are errors.
+
+Next: [boundaries](boundaries.md), [import resolution](../../developer-tooling/builds/project-configuration.md#resolving-an-import), [impl visibility](../types/contracts.md#coherence-and-visibility).

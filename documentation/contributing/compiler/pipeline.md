@@ -5,27 +5,26 @@ weight = 0
 
 # Pipeline and passes
 
-Use this map to locate the stage responsible for a compiler bug. A rejected valid program starts in parsing or checking; a wrong result after successful checking needs its MIR and native execution compared. The checker exposes typed HIR as a query view over syntax and per-module facts, shared by lowering and tooling.
+Emit MIR to investigate a checked program’s generated behavior (repository root).
 
-## Passes
+```sh
+target/release/ms emit examples/hello/ms.toml -o hello.mir
+head -n 5 hello.mir
+```
 
-| Pass | Crate | Decides | Writes |
-| --- | --- | --- | --- |
-| Resolve modules | `ms-driver` | Module identity, cycles, overlays | Module graph in dependency order |
-| Parse | `ms-syntax` | Layout, structure, positions | Syntax tree, strict or recovered |
-| Check | `ms-check` | Symbols, types, bounds, implementations, flow, captures, cleanup, effects, ownership | Typed HIR and diagnostics |
-| Ownership | `ms-check` (`ownership`) | Moves, borrows, `var` modes, drops | Facts lowering reads |
-| Lower | `ms-lower` | Evaluation order, exit cleanup, defaults, call shape | MIR |
-| Optimize and verify | `ms-mir` | Inlining, copy elimination, range facts, verification | Optimized MIR |
-| Generate code | `ms-clif` | Machine code, line tables | Object file |
-| Link | `ms-build`, `ms-native` | Runtime and standard crates | Native executable |
+```text
+module "main"
+file 0 "src/main.ms"
+file 1 "@std/io/io.ms"
+file 2 "@std/concurrency/promise.ms"
+file 3 "@std/os/process.ms"
+```
 
-Consumers go through the checker's public API (the HIR and its ownership facts), so storage can change freely. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) records the crates and their order.
+- Emission writes `hello.mir`; the excerpt locates source files.
+- MIR is internal notation; alpha representations may change.
 
-## Checking each module once
+<span id="adding-a-pass"></span>
+<span id="checking-each-module-once"></span>
+<span id="passes"></span>
 
-Each module is checked once and shared by whatever needs it. Native standard declarations resolve when the registry loads from `stdlib/*.ms`.
-
-## Adding a pass
-
-A pass reads facts and writes new ones; it does not rewrite the syntax tree. Put it in its own file beside the stage it follows and give its output a field on the existing facts. Tooling that needs source as written must not depend on a pass that rewrites syntax.
+Next: [pass responsibilities](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) and [evaluation order](lowering/evaluation-order.md).

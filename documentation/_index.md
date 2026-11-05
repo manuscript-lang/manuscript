@@ -6,7 +6,7 @@ description = "Help agents build correct, fast programs you can understand. Simp
 +++
 
 {{< docs-home >}}
-<!-- manuscript-example: {"mode":"run","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
+<!-- manuscript-example: {"mode":"run","filename":"generate_release_notes.ms","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
 ```manuscript {filename="generate_release_notes.ms"}
 import open, read_file from "@std/os/fs.ms"
 import lines, collect from "@std/io/streams.ms"
@@ -19,11 +19,17 @@ fn render() Unit!:
         | .filter(fn line: line.starts_with("+ "))
         | .join("\n")
     let page = try template.wait()
-    print(page.decode_utf8().get()
-        .replace("$changes", highlights))
+    if let text = page.decode_utf8():
+        print(text.replace("$changes", highlights))
+    else:
+        return error(Error("Template must be UTF-8"))
     return ok(unit)
 
 export fn main() Int:
-    return if render().is_ok(): 0 else: 1
+    match render():
+        ok(_): return 0
+        error(cause):
+            print(cause.message)
+            return 1
 ```
 {{< /docs-home >}}

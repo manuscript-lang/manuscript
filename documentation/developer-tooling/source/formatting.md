@@ -5,14 +5,10 @@ weight = 1
 
 # Formatting
 
-Let `ms fmt` handle spacing and line wrapping so you can focus on the program. Use its check mode before sharing a change to find formatting drift without rewriting files.
+Keep formatting changes separate from logic during review; save this as `format.ms`.
 
-## Format one file
-
-Save this valid but unevenly spaced program as `format.ms`:
-
-<!-- manuscript-example: {"mode":"run","stdout":"5\n"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"run","stdout":"5\n","filename":"format.ms"} -->
+```manuscript {filename="format.ms"}
 export fn main() Int:
     let total=2+3
     print(total)
@@ -27,40 +23,24 @@ ms fmt format.ms --check
 Formatting needed: format.ms; run ms fmt format.ms to rewrite it
 ```
 
-The check exits with status 1 and leaves the file unchanged. Apply the formatting, then check again:
+- Check mode writes the message to stderr, exits 1 and leaves source unchanged.
+- Manuscript is in alpha; syntax and formatting rules may change.
+
+## Format one file
 
 ```sh
 ms fmt format.ms
 ms fmt format.ms --check
+ms run format.ms
 ```
 
-Both commands now succeed silently. The assignment becomes `let total = 2 + 3`; running the program still prints `5`.
-
-## Format files or a project
-
-```sh
-ms fmt file.ms
-ms fmt file.ms --check
-ms fmt ms.toml --check
-ms fmt ms.toml --check --json
-ms fmt src test.ms
-ms fmt src/*.ms --check
+```text
+5
 ```
 
-- Files are rewritten in place, keeping permissions. Invalid source gets diagnostics and is left unchanged; other files still format.
-- `--check` writes nothing, lists every file needing changes in path order, and returns 1 if any file needs changes or fails.
-- A manifest selects its entry, every `.ms` file below `source`, and `test.ms`/`*_test.ms`. A directory selects all `.ms` files recursively.
-- Discovery skips hidden, `vendor`, and `node_modules` directories and directory symlinks; file symlinks must stay in the root. Explicit files can select excluded paths. Overlaps format once; an empty directory succeeds.
-- Paths display relative to the invocation directory when inside it, otherwise absolute. See the [JSON contract](../implementation.md#machine-readable-checks-and-tests).
+- Both formatting commands succeed silently; the assignment becomes `let total = 2 + 3`.
 
-## Formatter contract
+<span id="format-files-or-a-project"></span>
+<span id="formatter-contract"></span>
 
-Formatting preserves meaning and comments, uses four-space indentation and LF endings with a final newline, and is idempotent. Rules:
-
-- Keep token spellings; wrap only past 88 columns. Groups that fit stay on one line; wrapped lists pack simple elements into rows.
-- Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines. Authored blank lines are discarded, except one kept after a comment-only line so a comment block stays apart from the next comment or declaration.
-- Keep match arms together.
-- One space around operators and after colons and commas; none next to delimiters; two before inline comments.
-- Keep comment text, drop trailing whitespace, round comment-only indentation down to a multiple of four.
-
-See the [complete layout rules](../implementation.md#linting-and-formatting). Rewrites are atomic renames in the same directory.
+Next: [project inputs](../builds/project-configuration.md#commands-and-module-discovery), [selection and write guarantees](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/src/fmt.rs) and [formatter rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-syntax/src/format.rs).

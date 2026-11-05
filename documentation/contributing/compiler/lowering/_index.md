@@ -5,35 +5,35 @@ weight = 2
 
 # Lowering
 
-Lowering translates checked Manuscript into MIR, which `ms-mir` optimizes and verifies and `ms-clif` turns into native code through Cranelift or pinned LLVM tools. Optimized builds use LLVM when available unless `MS_BACKEND=cranelift` is set, and otherwise use Cranelift. It preserves evaluation order, closure captures, and block-level cleanup.
+Inspect lowered code from a known program (repository root).
 
-## Typed values
+```sh
+target/release/ms emit examples/hello/ms.toml -o hello.mir
+sed -n '21,32p' hello.mir
+```
 
-Every Manuscript type has one word-level representation: `Int` is `i64`, `Float` is `f64`, `Bool` is `i8`, ordinary records flatten their fields, `Error` uses a pointer to its fields, and alternatives use a tag and payload (boxed when recursive), and `List[T]` is an owned `{ ptr, len, cap }` value with inline elements. There is no universal boxed value type; generics are monomorphized. The [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets) states the layouts, and the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) state when a value moves, borrows, or copies.
+```text
+fn @main() -> int export !0:4:8 {
+b0:
+  depth.enter
+  %0: str = str "Arguments: " !0:5:5
+  %1: list<str> = call @arguments () !0:5:5
+  %2: int = list.len %1 !0:5:5
+  %3: str = call.rt @msrt_int_to_string (%2) !0:5:5
+  %4: str = call.rt @msrt_string_concat (%0, %3) !0:5:5
+  %5: str = str "\n" !0:5:5
+  %6: str = call.rt @msrt_string_concat (%4, %5) !0:5:5
+  drop %4 !0:5:5
+  drop %3 !0:5:5
+```
 
-- `ms-lower` consumes the checked HIR and ownership facts and builds MIR; native standard calls use the `msrt_` and `msstd_` symbols in `crates/ms-rt/ABI.md`.
-- `ms-mir` verifies every module it produces and has a text format and interpreter for tests.
-- `ms-clif` is the only stage that knows the target machine.
+- The MIR excerpt shows calls and temporary-value drops.
+- Alpha: MIR and native layouts may change.
 
-## Source locations and fault frames
+<span id="defaults-belong-to-the-callee"></span>
+<span id="equality-and-keys"></span>
+<span id="implementation-scope"></span>
+<span id="source-locations-and-fault-frames"></span>
+<span id="typed-values"></span>
 
-- Generated code keeps frame pointers and DWARF line tables, so a fault reports source frames without per-call bookkeeping.
-- Recursive functions compare the stack pointer with the current task segment limit on entry. Crossing it transfers the call through a grow shim to a new segment; exhausting the task stack budget faults. Non-recursive call graphs omit this entry check.
-
-## Defaults belong to the callee
-
-- Source functions bind a defaulted parameter in the callee prologue, so defaults can read earlier parameters and `try` returns from the callee.
-- Native functions, record constructors, and runtime contracts take plain parameters; call sites evaluate their defaults.
-
-## Equality and keys
-
-Types whose machine equality is Manuscript equality (scalars, strings, `Duration`, `Timestamp`, handles, `Unit`) compare directly. Runtime collections of other element types take an element descriptor with `eq`, `hash`, and `copy` entries emitted by the compiler.
-
-## Implementation scope
-
-Implementations in a type's defining module are available wherever that type is used; extensions for imported types stay local to their declaring module. A generic instantiated from another module resolves its type variables' contract operations against the instantiating module first, then its own.
-
-- [Function lowering](function-calls.md)
-- [Source guarantees and representations](value-representations.md)
-- [Evaluation order and call preparation](evaluation-order.md)
-- [Cleanup and fault lowering](cleanup-and-faults.md)
+Next: [calls](function-calls.md), [representations](value-representations.md), [evaluation](evaluation-order.md), [cleanup](cleanup-and-faults.md), and [lowering design](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md).

@@ -5,179 +5,48 @@ weight = 2
 
 # Loops
 
-`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Use a collection when you already have the values, a range when you need a count, or `while` when the next step depends on a condition. Custom sources can implement the standard `Iterator` or `Iterable` interfaces described below.
+Count through a range, step backwards, or repeat until a condition changes. Manuscript is in alpha; syntax and APIs evolve.
 
-## Traversing a list
-
-```manuscript
-fn sum(values: List[Int]) Int:
-    var total = 0
-    for value in values:
-        total += value
-
-    return total
-```
-
-## Counting loops
-
-`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. The bounds are `Int` values. Arithmetic binds first, so `0..n + 1` means `0..(n + 1)`; ranges cannot be chained. A `for` over `start..end` counts directly without allocating a list.
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import panic from "@std/core.ms"
-
-test "sum indexes":
-    var total = 0
-    for index in 0..5:
-        total += index
-    if total != 10:
-        return panic("Expected 10, got {total}")
-```
-
-`end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
-
-Use `while` with a counter for other steps or computed exits:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
-import panic from "@std/core.ms"
-
-test "five iterations":
-    var index = 0
-    var total = 0
-    while index < 5:
-        total += index
-        index += 1
-    if index != 5 or total != 10:
-        return panic("Expected five iterations and total 10")
-```
-
-Increment the counter before any `continue` that would skip its update.
-
-## Stepped ranges
-
-`range_by(start, end, step, max_items)` returns `List[Int]!`. Negative steps count down: `range_by(start: 5, end: 0, step: -2)` is `[5, 3, 1]`. Equal endpoints or a step away from the end give an empty list. `step: 0` is `"EINVAL"`; exceeding `max_items` is `"EOVERFLOW"`. Unwrap the Result before looping:
-
-<!-- manuscript-example: {"mode":"test"} -->
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::sum selected indexes\nPASS example.ms::sum selected indexes\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import range_by from "@std/collections/collections.ms"
 import expect_equal from "@std/test/test.ms"
 
-test "sum even indexes":
-    let indexes = try range_by(start: 0, end: 6, step: 2)
+test "sum selected indexes":
     var total = 0
-    for index in indexes:
+    for index in 0..5:
         total += index
-    try expect_equal(total, 6)
-```
+    try expect_equal(total, 10)
 
-`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections/collections.ms.md#range_by).
-
-## Iterable types and binding
-
-The iterable is evaluated once. Traversal borrows the collection for the loop body; mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
-
-| Iterable | Iteration binding type | Traversal order |
-| --- | --- | --- |
-| `List[T]` | `T` | Position order |
-| `Set[T]` | `T` | Insertion order |
-| `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
-| `Iterator[T]` implementation | `T` | Order of `next()` results |
-| `Iterable[T]` implementation (`Deque`, `Queue`, `PriorityQueue`) | owned `T` | Index order of `at(index)` |
-
-`MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
-
-```manuscript
-fn total(values: Map[String, Int]) Int:
-    var sum = 0
-    for entry in values:
-        let {key: _key, value} = entry
-        sum += value
-    return sum
-```
-
-`for [key, value] in values:` is a parse error. Numbers, text, optionals, functions, and types that merely have a `next` method without `impl Iterator` are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
-
-## Iterators
-
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
-
-<!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
-```manuscript
-import Iterator from "@std/core.ms"
-import stdout from "@std/io/io.ms"
-
-type Countdown:
-    left: Int
-
-impl Iterator[Int] for Countdown:
-    var fn next() Int?:
-        if self.left == 0:
-            return none
-        self.left -= 1
-        return self.left + 1
-
-export fn main() Int:
-    for n in Countdown(3):
-        if stdout().write("{n}\n").is_error():
-            return 1
-    return 0
-```
-
-Output:
-
-```text
-3
-2
-1
-```
-
-## Borrowing containers
-
-A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
-
-
-<!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
-```manuscript
-import Deque from "@std/collections/deque.ms"
-import stdout from "@std/io/io.ms"
-
-export fn main() Int:
-    var steps = Deque[Int]()
-    steps.push_back(11)
-    steps.push_back(12)
-    for step in steps:
-        if stdout().write("{step}\n").is_error():
-            return 1
-    return 0
-```
-
-Output:
-
-```text
-11
-12
-```
-
-## Repeating while a condition holds
-
-```manuscript
-fn count_down(start: Int) Int:
-    var remaining = start
+    let descending = try range_by(start: 5, end: 0, step: -2)
+    try expect_equal(descending, [5, 3, 1])
+    var remaining = 3
     while remaining > 0:
         remaining -= 1
-
-    return remaining
+    try expect_equal(remaining, 0)
 ```
 
-`while` re-tests its condition before every iteration, including after `continue`. An empty iterable or initially false condition runs no body.
+```sh
+ms test example.ms
+```
 
-## Exiting an iteration
+```text
+RUN example.ms::sum selected indexes
+PASS example.ms::sum selected indexes
+1 tests, 0 failed
+```
 
-`break` and `continue` target the nearest enclosing loop in the same function body, take no labels or arguments, and are rejected outside a loop; an anonymous function cannot break its enclosing loop. `return` exits the function.
+<a id="traversing-a-list"></a>
+<a id="counting-loops"></a>
+<a id="stepped-ranges"></a>
+<a id="iterable-types-and-binding"></a>
+<a id="iterators"></a>
+<a id="borrowing-containers"></a>
+<a id="repeating-while-a-condition-holds"></a>
+<a id="exiting-an-iteration"></a>
+<a id="cancellation"></a>
 
-Each of the three runs cleanup for the scopes it exits. Each iteration is its own scope, so a resource bound in the body closes when the iteration ends; a binding that is not a resource registers no cleanup. See [lexical cleanup](../cleanup/_index.md).
+- `0..5` excludes 5; `range_by` supports negative steps and returns a Result.
+- `break` exits the nearest loop; `continue` starts its next iteration. Both close resources in the scope they leave.
 
-## Cancellation
-
-A promise is cancelled at its next wait, so a loop that never waits is not stopped by cancellation or a timeout. Wait inside the loop, or return. Lint rule **MSL111** flags a `while true` loop in a module that imports `@std/concurrency/promise.ms` when its body neither waits nor exits.
+Next: [iteration APIs](../../standard-library/reference/collections/collections.ms.md), [borrowing](../types/references.md) and [CPU-loop cancellation](../concurrency/promises.md#cancellation).

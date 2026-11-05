@@ -34,16 +34,19 @@ fn render(module: &ApiModule, for_site: bool) -> String {
     let path = module.path.as_str();
     let mut b = format!("# {path}\n\n");
     if path == "prelude" {
-        b += "Names available in every module; no import required.\n\n";
+        b += "Review built-in calls and values without imports; these names are available in every module.\n\n";
     } else if path == "@std/core.ms" {
-        b += "`Error`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations; explicit imports of them are rejected.\n\n";
+        b += "Review error handling, ownership and value contracts here. `Error`, `Optional`, `Result`, `Equal`, `Comparable`, and `Hashable` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
     } else if path == "@std/collections/collections.ms" {
-        b += "`List`, `Map`, `Set`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n";
+        b += "Review collection ordering, mutation and ownership here. `List`, `Map`, `Set`, `ListEntry`, and `MapEntry` are prelude declarations; explicit imports of them are rejected.\n\n";
         b += &format!("Import other names with `import Name from {path:?}`.\n\n");
     } else if path.starts_with("@std/") {
-        b += &format!("Import each required symbol with `import Name from {path:?}`.\n\n");
+        b += &format!(
+            "Review agent-written calls against these signatures; import each required symbol with `import Name from {path:?}`.\n\n"
+        );
     }
+    b += "Manuscript is in alpha; APIs may change. Read these declarations to check calls and ownership.\n\n";
     for d in &module.declarations {
         let mut kind = declaration_kind(&d.kind);
         // Native types with receiver signatures share the checker's interface
@@ -63,9 +66,14 @@ fn render(module: &ApiModule, for_site: bool) -> String {
         if !d.doc.is_empty() {
             b += &format!("{}\n\n", d.doc);
         }
-        b += &format!("```manuscript\n{}```\n\n", d.declaration);
+        b += &format!(
+            "**Declaration**\n\n```manuscript {{schema=true}}\n{}```\n\n",
+            d.declaration
+        );
         for implementation in &d.implementation_declarations {
-            b += &format!("```manuscript\n{implementation}```\n\n");
+            b += &format!(
+                "**Declaration**\n\n```manuscript {{schema=true}}\n{implementation}```\n\n"
+            );
         }
         let mut legacy_headings = BTreeSet::new();
         for member in &d.members {
@@ -84,11 +92,25 @@ fn render(module: &ApiModule, for_site: bool) -> String {
                 }
             }
             b += &format!(
-                "### {name}\n\n{}\n\n```manuscript\n{}\n```\n\n",
+                "### {name}\n\n{}\n\n**Declaration**\n\n```manuscript {{schema=true}}\n{}\n```\n\n",
                 member.doc, member.signature
             );
         }
     }
+    if for_site {
+        let levels = module
+            .path
+            .strip_prefix("@std/")
+            .unwrap_or(&module.path)
+            .matches('/')
+            .count()
+            + 2;
+        b += &format!(
+            "Next: [language tour]({}learn/tour.md).\n",
+            "../".repeat(levels)
+        );
+    }
+
     b
 }
 
@@ -97,7 +119,7 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
     let modules = standard_library(syms);
     let mut files = BTreeMap::new();
     let mut index = String::from(
-        "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nLook up types, functions, and import paths in the bundled standard library. Browse the source file tree below; prelude collects names available without an import. These declarations are generated from public source modules and omit implementation bodies. For usage, see the [Promises](../../core-language/concurrency/promises.md) and [Streams and pipes](../../core-language/concurrency/streams.md) topic guides.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
+        "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nReview agent-written calls against the standard library’s signatures and runnable examples. Manuscript is in alpha; APIs may change.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
     );
     let full = standard_library_markdown(syms);
     let mut directories: BTreeMap<String, String> = BTreeMap::new();
@@ -140,7 +162,7 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
                 } else {
                     *directories.get_mut(parent).unwrap() += &link;
                 }
-                directories.insert(directory.clone(), format!("+++\ntitle = {part:?}\nurl = \"/standard-library/reference/tree/{directory}/\"\n+++\n\n# {directory}/\n\n"));
+                directories.insert(directory.clone(), format!("+++\ntitle = {part:?}\nurl = \"/standard-library/reference/tree/{directory}/\"\n+++\n\n# {directory}/\n\nReview calls in this group against their declarations and examples. Manuscript is in alpha; APIs may change.\n\n"));
             }
             // Directory URLs avoid colliding with legacy module URLs (for example io/).
             parent = path.get(..directory.len()).unwrap();
@@ -152,12 +174,17 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
             *directories.get_mut(parent).unwrap() += &link;
         }
     }
-    for (path, body) in directories {
+    for (path, mut body) in directories {
+        body += &format!(
+            "\nNext: [language tour]({}learn/tour.md).\n",
+            "../".repeat(path.matches('/').count() + 3)
+        );
         files.insert(
             format!("documentation/standard-library/reference/{path}/_index.md"),
             body.into_bytes(),
         );
     }
+    index += "\nNext: [language tour](../../learn/tour.md).\n";
     files.insert(
         "documentation/standard-library/reference/_index.md".to_string(),
         index.into_bytes(),

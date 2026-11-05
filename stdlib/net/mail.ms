@@ -5,18 +5,29 @@ import base64_decode, latin1_decode from "@std/data/encoding.ms"
 import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 
 /*
-Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
-`parse_address("Ada <ada@example.com>")` gives name and address; `parse_message` splits a raw
-message into `Headers` and body and decodes RFC 2047 encoded words on request.
+Parse a sender before inspecting its display name and mailbox.
 
-    import parse_address, parse_message from "@std/net/mail.ms"
+<!-- manuscript-example: {"mode":"test","filename":"mail-address.ms","stdout":"RUN mail-address.ms::mail-address\nPASS mail-address.ms::mail-address\n1 tests, 0 failed\n"} -->
+```manuscript {filename="mail-address.ms"}
+import parse_address from "@std/net/mail.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "mail-address":
     let sender = try parse_address("Ada Lovelace <ada@example.com>")
-    print(sender.name)              // "Ada Lovelace"
-    let mail = try parse_message(raw)
-    print(mail.headers.get("Subject").get(""))
-*/
+    try expect_equal(sender.name, "Ada Lovelace")
+    try expect_equal(sender.address, "ada@example.com")
+```
 
-// A mailbox: optional display name and the `local@domain` address.
+```sh
+ms test mail-address.ms
+```
+
+```text
+RUN mail-address.ms::mail-address
+PASS mail-address.ms::mail-address
+1 tests, 0 failed
+```
+*/
 export type Address:
     // Display name with quotes removed; empty when none was given.
     name: String = ""

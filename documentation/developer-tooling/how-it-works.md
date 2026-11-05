@@ -5,54 +5,51 @@ weight = 1
 
 # Build and share a program
 
-Use `ms run` while changing a program, then `ms build` to produce an executable you can run or share. The recipient needs the matching operating system and architecture, but does not need `ms` installed.
+Review the same source you run and ship; save this as `review.ms`.
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ready to review\n","filename":"review.ms"} -->
+```manuscript {filename="review.ms"}
+export fn main() Int:
+    print("Ready to review")
+    return 0
+```
 
 ## Check and run your project
 
-Start from a fresh project so you can try the complete workflow:
-
 ```sh
-ms init my-app
-cd my-app
-ms check ms.toml
-ms run ms.toml --build-type Debug -- first second
+ms check review.ms
+ms run review.ms --build-type Debug
 ```
-
-The check and run report:
 
 ```text
-Checked ms.toml (2 modules)
-Arguments: 2
+Checked review.ms
+Ready to review
 ```
 
-`check` catches source errors without running the application. `run` builds and starts it; arguments after `--` go to your program. `Debug` keeps the edit/run cycle quick. Use `ms run ms.toml --watch -- first second` to rebuild after saved changes, or [set up your editor](implementation.md) for diagnostics while you type.
+- Replace `review.ms` with `ms.toml` for an existing project; arguments after `--` reach the program.
+- Manuscript is in alpha; syntax and APIs may change, so keep the compiler version consistent across reviewers.
 
 ## Build the executable
 
 ```sh
-ms build ms.toml -o my-app
-./my-app first second
+ms build review.ms -o review
+./review
 ```
 
 ```text
-Built my-app
-Arguments: 2
+Built review
+Ready to review
 ```
 
-On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. Builds default to optimized `Release`; choose [a build level](builds/build-levels.md) when you need unoptimized debugging or a smaller executable.
-
-Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](../contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
-
-The adjacent `my-app.ms-build.json` records build identity and source information; it is not needed to run the executable. Keep source and debug artifacts when you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
+- Share with the same operating system and architecture; `ms` is not needed to run it. On Windows use `review.exe` and `.\review.exe`.
+- Linux defaults to glibc 2.28+; `--static` builds with musl. Distribute opened files separately or [embed them](builds/project-configuration.md#embedded-files).
 
 ## Check a change before sharing it {#one-binary}
 
 ```sh
-ms verify ms.toml
-ms diagram ms.toml --format html -o code-map.html
+ms verify review.ms
+ms diagram review.ms --format html -o code-map.html
 ```
-
-For the generated project, `verify` reports:
 
 ```text
 check  passed
@@ -61,25 +58,14 @@ lint   passed
 test   passed
 ```
 
-`verify` checks types, formatting, lint and tests; fix a failed check before building the version you intend to share. It does not rewrite formatting. The second command succeeds silently and writes an offline HTML map: open `code-map.html` to follow source, checked types and calls during review. See [the code-map workflow](implementation.md#interactive-code-map) for change overlays.
-
-The same compiler includes the standard library, formatter, linter, language server and analysis tools. Source-only commands such as `check`, `fmt`, `lint` and `diagram` need no native linker. For a repeatable team setup, use the same `ms` version and keep `ms.toml` with your source.
+- `verify` checks formatting without rewriting it; this file has no tests, so add test blocks for behavioral checks.
+- Diagram generation succeeds silently; open `code-map.html` to review checked source, types and calls offline.
 
 ## Build tools and local setup
 
-Native builds use `lld` to link the executable. Optimized builds also use LLVM tools when available. `ms` uses explicitly configured local tools first, then complete cached tools; it downloads missing tools from pinned releases and verifies their SHA-256 hashes.
+- Native builds reuse cached tools; configure `MS_LLD` and `MS_LLVM_TOOLS` for local tools or offline setup.
+- Missing tools may download; unavailable LLVM falls back to Cranelift, but linking needs a linker.
 
-| Tool | Local setting | Cache |
-| --- | --- | --- |
-| Linker | `MS_LLD`: path to a compatible `lld` executable | `<cache>/ms/lld/` |
-| LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc` and `llvm-link` | `<cache>/ms/llvm/` |
+<span id="runtime-cache"></span>
 
-To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. `MS_BACKEND=cranelift` skips LLVM optimization; a working linker is still required. If the LLVM download fails, the build falls back to Cranelift. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
-
-See [cache locations](builds/incremental-compilation.md) and [platform linking details](../contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](../contributing/rust-toolchain.md#build-and-run).
-
-## Rebuild after changes {#runtime-cache}
-
-`ms build` can reuse an unchanged executable. `run`, `test` and `profile` build fresh executables, while reusing installed tools and the extracted runtime archive. You do not need to manage these caches for normal development; use [build caches](builds/incremental-compilation.md) when troubleshooting reuse or choosing cache locations.
-
-For the compiler's internal stages, see the contributor [compilation pipeline](../contributing/compiler/frontend/pipeline.md).
+Next: [tool resolution](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-clif/src/link/lld.rs), [build caches](builds/incremental-compilation.md) and [source-build setup](../contributing/rust-toolchain.md#build-and-run).

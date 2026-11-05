@@ -5,21 +5,32 @@ weight = 2
 
 # Closing a resource
 
-Usually, let [scope-end cleanup](scopes.md) close a file, socket or stream. Close explicitly when the next operation should begin only after the resource is released, or when you need to handle a close error.
+Close a file early and check that further reads fail. Manuscript is in alpha; syntax and APIs evolve.
 
-Flush before closing when you need the destination to catch up or need to handle a flush failure:
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","files":{"notes.txt":"hello\n"},"stdout":"RUN example.ms::close a file before its scope ends\nPASS example.ms::close a file before its scope ends\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
+import open from "@std/os/fs.ms"
+import expect_equal, expect_error from "@std/test/test.ms"
 
-<!-- manuscript-example: {"mode":"check"} -->
-```manuscript
-import WriteStream from "@std/io/io.ms"
-
-fn finish(var output: WriteStream[String]) Unit!:
-    try output.flush().wait()
-    return output.close()
+test "close a file before its scope ends":
+    var file = try open("notes.txt", flags: "r", mode: 0)
+    try file.close()
+    let cause = try expect_error(file.read_lines(max_lines: 1))
+    try expect_equal(cause.kind, "EBADF")
 ```
 
-`flush().wait()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.
+```sh
+printf 'hello\n' > notes.txt
+ms test example.ms
+```
 
-Choose the operation that confirms your work: `close()` returns a `Result` and a failed scope-end close is returned or faults; explicit commit, finish, or flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
+```text
+RUN example.ms::close a file before its scope ends
+PASS example.ms::close a file before its scope ends
+1 tests, 0 failed
+```
 
-Factories close newly acquired native resources when cancellation or an error prevents delivery, and a binding registers its close right after the initializer succeeds, before cancellation can unwind it. See [Closeable](closeable.md).
+- Flush before close when delivery matters: descriptors drain bytes; pipes wait for queue ≤ capacity.
+- Built-in ends close without awaiting delivery; custom cleanup may wait. Scope-end close remains idempotent.
+
+Next: [streams](../concurrency/streams.md), [FileHandle](../../standard-library/reference/os/fs.ms.md#filehandle) and [close failures](closeable.md#a-close-returns-a-result).

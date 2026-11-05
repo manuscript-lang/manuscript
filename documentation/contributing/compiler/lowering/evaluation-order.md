@@ -5,13 +5,34 @@ weight = 95
 
 # Evaluation order and call preparation
 
-Lowered code must evaluate arguments in the order the caller wrote them, even when named arguments differ from declaration order.
+Observe written argument order; save as `order.ms`.
 
-- Consume the checker's resolved argument names (positional, named, mixed), evaluate each in written order, then place the values by parameter position. Preserve short-circuiting.
-- Closure construction borrows or moves captures according to ownership facts without running bodies.
-- List elements evaluate left to right; an existing list argument evaluates once.
-- Destructuring evaluates its initializer once and extracts bindings in pattern order, keeping each type.
-- The initializer of a binding that holds a resource evaluates once and registers the object's resolved `close` before the next checkpoint. Reassignment closes the replaced owned resource; a move transfers its cleanup duty.
-- A value produced before a later operand that may return early (`try`) is held as a temporary so it is dropped on that exit.
+<!-- manuscript-example: {"mode":"run","filename":"order.ms","stdout":"2\n1\n12\n"} -->
+```manuscript
+fn mark(value: Int) Int:
+    print(value)
+    return value
 
-See [source call order](../../../core-language/functions/declarations-and-calls.md) and [scope-end cleanup](../../../core-language/cleanup/scopes.md).
+fn combine(first: Int, second: Int) Int:
+    return first * 10 + second
+
+export fn main() Int:
+    print(combine(second: mark(2), first: mark(1)))
+    return 0
+```
+
+```sh
+ms run order.ms
+```
+
+```text
+2
+1
+12
+```
+
+- Evaluate arguments left to right before mapping them to parameters.
+- Alpha: lowering internals may change.
+
+
+Next: [source call rules](../../../core-language/functions/declarations-and-calls.md) and [cleanup](cleanup-and-faults.md).

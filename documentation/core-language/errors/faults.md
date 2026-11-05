@@ -5,55 +5,39 @@ weight = 3
 
 # Programming faults
 
-A programming fault means an assumption the code relies on has failed. For invalid user input, return a [Result](results.md) error instead.
+Test an invariant failure separately from expected errors. Manuscript is in alpha; syntax and APIs evolve.
 
-## Invariant checks
-
-Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails.
-
-```manuscript
+<!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::check an invariant failure\nPASS example.ms::check an invariant failure\n1 tests, 0 failed\n"} -->
+```manuscript {filename="example.ms"}
 import panic from "@std/core.ms"
-import Decimal from "@std/math/decimal.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 
-fn discount_validated(price: Decimal, percent: Decimal) Decimal:
-    if price <= 0d:
-        return panic("Price must be positive")
-    if percent <= 0d or percent >= 100d:
-        return panic("Percent must be positive and below 100")
-    return price * (1d - percent / 100d)
+fn require_positive(value: Int) Unit:
+    if value <= 0:
+        panic("Expected a positive value")
+
+test "check an invariant failure":
+    let report = try expect_fault(fn: require_positive(0))
+    try expect_equal(report.contains("Expected a positive value"), true)
 ```
 
-The example treats nonpositive prices and percentages outside (0, 100) as faults. For runtime input, use the validating `discount` in [expected failures](results.md).
-
-## Explicit faults
-
-`panic(message: message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a non-`Unit` function. See [Unit and Never](../functions/declarations-and-calls.md#unit-and-never).
-
-```manuscript
-panic("Required invariant was violated.")
+```sh
+ms test example.ms
 ```
 
-A fault aborts the current operation after cleanup.
+```text
+RUN example.ms::check an invariant failure
+PASS example.ms::check an invariant failure
+1 tests, 0 failed
+```
 
-## Faults the checker rejects
+<a id="invariant-checks"></a>
+<a id="explicit-faults"></a>
+<a id="faults-the-checker-rejects"></a>
+<a id="runaway-recursion"></a>
+<a id="cleanup-and-observation"></a>
 
-When constant operands make a fault certain, `ms check` reports an error instead of leaving it for run time:
+- `try` cannot catch faults. Use Results for expected failures.
+- Checked faults run cleanup. Promises report them as `EIO`; unhandled process faults end the program.
 
-- Integer `+ - * / %` over literals whose result leaves the operand type's range (`9223372036854775807 + 1`).
-- Integer `/` or `%` by a constant zero (`n / 0`, `n % (2 - 2)`).
-- A constant index outside a list literal (`[1, 2][2]`; negative indexes count from the end, so `[1, 2][-3]` is outside too).
-
-Only literals and arithmetic over literals are folded. Values that arrive through bindings, parameters, or calls are checked at run time. To demonstrate a fault in a test, make the operand a runtime value.
-
-## Runaway recursion
-
-- Recursion is limited by stack size, not by a call count: a program and each of its tasks may use up to 256 MiB of stack, so small frames allow millions of nested calls. The task of a promise starts on 512 KiB, which keeps a million parked promises within a few gigabytes, and grows in 512 KiB steps as a recursion needs them. When the stack runs out, the fault is `stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead`, with the innermost source frames. It unwinds and runs cleanup. In a test run, it fails the current test while other tests remain isolated.
-- `ms lint` reports **MSL112** for a function that calls itself on every path, such as `fn f(n: Int) Int: return f(n - 1)`; a `return`, `try`, or fault before the call counts as a base case.
-- A fault trace keeps its innermost 32 frames.
-- `==` and `!=` recurse through nested values; past 250,000 the fault is `equality depth limit exceeded (250000 nested values)`.
-
-## Cleanup and observation
-
-Cleanup runs after a fault. A cleanup fault can replace a pending return, domain error, or cancellation; secondary faults are kept as diagnostics. See [lexical cleanup](../cleanup/_index.md).
-
-[try](propagation.md) propagates only `Result` errors, never faults.
+Next: [cleanup faults](../cleanup/cleanup-faults.md), [fault assertions](../../standard-library/reference/test/test.ms.md#expect_fault) and [runtime boundaries](../../contributing/runtime-conventions.md).

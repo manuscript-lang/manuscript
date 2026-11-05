@@ -8,9 +8,31 @@ import float from "@std/os/random.ms"
 How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
 with `jitter` the wait is a random share of that, so many callers do not retry in step.
 
-```manuscript
-let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
-let body = retry(policy, fn attempt: fetch(url).wait())
+<!-- manuscript-example: {"mode":"test","filename":"retry-attempts.ms","stdout":"RUN retry-attempts.ms::retry-attempts\nPASS retry-attempts.ms::retry-attempts\n1 tests, 0 failed\n"} -->
+```manuscript {filename="retry-attempts.ms"}
+import RetryPolicy, retry from "@std/concurrency/flow.ms"
+import milliseconds from "@std/os/time.ms"
+import expect_equal from "@std/test/test.ms"
+
+fn attempt_value(attempt: Int) Int!:
+    if attempt == 1:
+        return error(Error("try again"))
+    return ok(attempt)
+
+test "retry-attempts":
+    let policy = RetryPolicy(attempts: 2, delay: milliseconds(0), jitter: false)
+    let result = try retry(policy, fn attempt: attempt_value(attempt))
+    try expect_equal(result, 2)
+```
+
+```sh
+ms test retry-attempts.ms
+```
+
+```text
+RUN retry-attempts.ms::retry-attempts
+PASS retry-attempts.ms::retry-attempts
+1 tests, 0 failed
 ```
 */
 export type RetryPolicy:
@@ -76,11 +98,25 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
 
-```manuscript
-var limiter = rate_limiter(10, burst: 20)
-for url in urls:
-    limiter.acquire()
-    let _ = try fetch(url).wait()
+<!-- manuscript-example: {"mode":"run","filename":"rate-limit.ms","stdout":"Ada\nSam\n"} -->
+```manuscript {filename="rate-limit.ms"}
+import rate_limiter from "@std/concurrency/flow.ms"
+
+export fn main() Int:
+    var limiter = rate_limiter(10, burst: 2)
+    for name in ["Ada", "Sam"]:
+        limiter.acquire()
+        print(name)
+    return 0
+```
+
+```sh
+ms run rate-limit.ms
+```
+
+```text
+Ada
+Sam
 ```
 */
 export type RateLimiter:
@@ -150,9 +186,31 @@ export enum CircuitError[E]:
 Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens and calls fail at once with `Open`;
 after `cooldown` one call is let through, and its result closes the circuit (success) or opens it again (failure).
 
-```manuscript
-var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
-let reply = breaker.call(fn: send(request))
+<!-- manuscript-example: {"mode":"test","filename":"circuit-breaker.ms","stdout":"RUN circuit-breaker.ms::circuit-breaker\nPASS circuit-breaker.ms::circuit-breaker\n1 tests, 0 failed\n"} -->
+```manuscript {filename="circuit-breaker.ms"}
+import CircuitBreaker, CircuitError from "@std/concurrency/flow.ms"
+import seconds from "@std/os/time.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "circuit-breaker":
+    var breaker = CircuitBreaker(threshold: 1, cooldown: seconds(60))
+    let failed: Int! = error(Error("service unavailable"))
+    let outcome = breaker.call(fn: failed.clone())
+    match outcome:
+        ok(_): return error(Error("expected the service failure"))
+        error(cause):
+            try expect_equal(cause, CircuitError[Error].Failed(Error("service unavailable")))
+    try expect_equal(breaker.is_open(), true)
+```
+
+```sh
+ms test circuit-breaker.ms
+```
+
+```text
+RUN circuit-breaker.ms::circuit-breaker
+PASS circuit-breaker.ms::circuit-breaker
+1 tests, 0 failed
 ```
 */
 export type CircuitBreaker:
@@ -193,9 +251,27 @@ impl CircuitBreaker:
 // Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
 // A failed worker promise cancels the others. If `work` returns a Result, that Result is an item in the returned list; inspect each outcome.
 //
-// ```manuscript
-// let doubled = try map_concurrent([1, 2, 3], 2, fn n: n * 2)  // [2, 4, 6]
-// ```
+/*
+<!-- manuscript-example: {"mode":"test","filename":"parallel-map.ms","stdout":"RUN parallel-map.ms::parallel-map\nPASS parallel-map.ms::parallel-map\n1 tests, 0 failed\n"} -->
+```manuscript {filename="parallel-map.ms"}
+import map_concurrent from "@std/concurrency/flow.ms"
+import expect_equal from "@std/test/test.ms"
+
+test "parallel-map":
+    let doubled = try map_concurrent([1, 2, 3], 2, fn n: n * 2)
+    try expect_equal(doubled, [2, 4, 6])
+```
+
+```sh
+ms test parallel-map.ms
+```
+
+```text
+RUN parallel-map.ms::parallel-map
+PASS parallel-map.ms::parallel-map
+1 tests, 0 failed
+```
+*/
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
     if limit < 1:
         panic("map_concurrent: limit must be at least 1, found {limit}")
@@ -231,11 +307,26 @@ fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) Li
 /*
 A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
 
-```manuscript
-var spacing = Throttle(interval: milliseconds(200))
-for event in events:
-    if spacing.allow():
-        redraw(event)
+<!-- manuscript-example: {"mode":"run","filename":"throttle.ms","stdout":"Ada\nSam\n"} -->
+```manuscript {filename="throttle.ms"}
+import Throttle from "@std/concurrency/flow.ms"
+import milliseconds from "@std/os/time.ms"
+
+export fn main() Int:
+    var spacing = Throttle(interval: milliseconds(1))
+    for name in ["Ada", "Sam"]:
+        spacing.wait()
+        print(name)
+    return 0
+```
+
+```sh
+ms run throttle.ms
+```
+
+```text
+Ada
+Sam
 ```
 */
 export type Throttle:

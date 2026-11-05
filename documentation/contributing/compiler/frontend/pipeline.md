@@ -5,15 +5,20 @@ weight = 88
 
 # Compilation pipeline
 
-The compiler turns Manuscript source into native code through Cranelift, or pinned LLVM tools for optimized builds when available unless `MS_BACKEND=cranelift` is set; otherwise it uses Cranelift. It checks Manuscript's own rules first.
+Compare checking and execution to locate a regression (repository root).
 
-1. **Load the project.** Read `ms.toml`, find the entry `.ms` file, follow imports, and map paths and aliases to canonical file identities.
-2. **Parse.** Read declarations, expressions, and indented blocks. Each file is a module and needs no `module` declaration.
-3. **Resolve imports and names.** Find exports and reject import cycles.
-4. **Check.** Validate types, scopes, captures, and source contracts.
-5. **Record facts.** Produce typed IR: evaluation order, captures, cleanup scopes, effects, source locations.
-6. **Lower, generate code, and link** MIR with Cranelift or LLVM against the embedded native runtime.
+```sh
+target/release/ms check examples/hello/ms.toml
+target/release/ms run examples/hello/ms.toml -- first second
+```
 
-When narrowing a failure, use `ms check` to separate loading and checking from native compilation. `ms emit` goes through lowering and prints MIR; `ms run` also generates, links and executes native code. Keep the smallest source program that distinguishes the failing stage. The [repository architecture](../../architecture.md) maps these stages to Rust crates.
+```text
+Checked examples/hello/ms.toml (2 modules)
+Arguments: 2
+```
 
-Continue with [project configuration](../../../developer-tooling/builds/project-configuration.md), [type checking](type-checker.md), [scope and capture checking](scope-checker.md), and [typed IR](typed-ir.md).
+- Checking records types and ownership; native compilation consumes those facts.
+- Alpha: compiler stages may change.
+
+
+Next: [pass responsibilities](../pipeline.md) and [project inputs](../../../developer-tooling/builds/project-configuration.md).
