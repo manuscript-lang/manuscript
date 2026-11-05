@@ -311,8 +311,6 @@ impl FnLower<'_> {
                 if !self.dead {
                     let v = match x {
                         Some(x) if borrowed => x.v,
-                        // An optional chain wraps the part it reaches in an `Optional`.
-                        Some(x) if arm.chain => self.owned_wrap(x),
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
