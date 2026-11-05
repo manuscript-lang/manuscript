@@ -2,8 +2,12 @@ import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import open, temporary, write_file from "@std/os/fs.ms"
 import monotonic_time, uptime from "@std/os/system.ms"
 import nanoseconds from "@std/os/time.ms"
-import compress, decompress from "@std/io/archive.ms"
-import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
+import (
+    compress,
+    decompress,
+    CompressionFormat,
+    CompressOptions
+) from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 test "raw monotonic nanoseconds share the typed process uptime origin":
@@ -12,7 +16,7 @@ test "raw monotonic nanoseconds share the typed process uptime origin":
     let after = try uptime()
     try expect_false(reading.compare(before) < 0 or reading.compare(after) > 0)
 
-test "closed codec strings reject spelling changes with their domain errors":
+test "closed normalization forms reject spelling changes with their domain errors":
     let data = "text".to_bytes()
     let normalization_error: String! = error(
         Error("string: invalid input", kind: "EINVAL")
@@ -21,21 +25,14 @@ test "closed codec strings reject spelling changes with their domain errors":
         try expect_equal("text".normalize(form), normalization_error)
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         try expect_equal((try "text".normalize(form)), "text")
-
-    let compression_error: Bytes! = error(
-        Error("compression: operation not supported", kind: "ENOTSUP")
-    )
-
-    for format in ["GZIP", "ZLIB", "DEFLATE", ""]:
-        try expect_equal(compress(data, format, 0), compression_error)
-        try expect_equal(decompress(data, format), compression_error)
-
-    for format in ["gzip", "zlib", "deflate"]:
+    for format in [
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+    ]:
         for level in [0, 9]:
             try expect_equal(
                 (
                     try compress(
-                        data, format, level
+                        data, format, CompressOptions(level: level)
                     ) | try decompress(format)
                 ),
                 data
@@ -43,18 +40,12 @@ test "closed codec strings reject spelling changes with their domain errors":
 
     let level_error: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
     for level in [-1, 10]:
-        try expect_equal(compress(data, "gzip", level), level_error)
-
-    let pack_error: Bytes! = error(
-        Error("archive: operation not supported", kind: "ENOTSUP")
-    )
-    let unpack_error: List[ArchiveEntry]! = error(
-        Error("archive: operation not supported", kind: "ENOTSUP")
-    )
-
-    for format in ["ZIP", "TAR", ""]:
-        try expect_equal(pack([], format), pack_error)
-        try expect_equal(unpack(data, format), unpack_error)
+        try expect_equal(
+            compress(
+                data, CompressionFormat.Gzip, CompressOptions(level: level)
+            ),
+            level_error
+        )
 
 test "all ten string open modes are accepted and changed spellings are invalid":
     let temporary = try temporary("manuscript-open-modes-")

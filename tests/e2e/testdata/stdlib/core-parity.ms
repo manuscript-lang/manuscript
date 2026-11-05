@@ -1,6 +1,6 @@
 import panic from "@std/core.ms"
 import expect_equal, expect_false from "@std/test/test.ms"
-import JsonLimits from "@std/data/json.ms"
+import JsonOptions from "@std/data/json.ms"
 
 type Counter:
     calls: Int
@@ -98,8 +98,8 @@ test "Result preserves unconstrained payloads and success-only composition":
     try expect_equal(pending.values, [1, 2])
     try expect_equal(collection_error.err().values, [1])
 
-    let limits = JsonLimits(-1)
-    let record: JsonLimits!Error = ok(limits.clone())
+    let limits = JsonOptions(max_bytes: -1)
+    let record: JsonOptions!Error = ok(limits.clone())
     var changed = record.clone().map(fn value: value).get().clone()
     changed.max_values = 7
     try expect_equal(changed.max_values.get(), 7)

@@ -39,27 +39,31 @@ export fn base64_decode_unpadded(
 ) Bytes!:
     return msstd_encoding_base64_decode_unpadded(text, url_safe, max_bytes)
 
-// Encodes uppercase RFC 4648 Base32. `hex_alphabet` selects 0-9/A-V; `padded: false` omits `=`.
-// Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
-export fn base32_encode(
-    data: Bytes,
-    hex_alphabet: Bool = false,
+// Alphabet and padding for `base32_encode` and `base32_decode`.
+export type Base32Options:
+    // True selects the extended hex alphabet 0-9/A-V.
+    hex_alphabet: Bool = false
+    // False omits (or forbids) the `=` padding.
     padded: Bool = true
-) String:
-    return msstd_encoding_base32_encode(data, hex_alphabet, padded)
+
+// Encodes uppercase RFC 4648 Base32, using the alphabet and padding in `options`.
+// Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
+export fn base32_encode(data: Bytes, options: Base32Options = Base32Options()) String:
+    return msstd_encoding_base32_encode(data, options.hex_alphabet, options.padded)
 
 /*
-Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
+Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `options.hex_alphabet` is true.
 Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return EBADMSG.
 Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
 */
 export fn base32_decode(
     text: String,
-    hex_alphabet: Bool = false,
-    padded: Bool = true,
-    max_bytes: Int?
+    options: Base32Options = Base32Options(),
+    max_bytes: Int? = none
 ) Bytes!:
-    return msstd_encoding_base32_decode(text, hex_alphabet, padded, max_bytes)
+    return msstd_encoding_base32_decode(
+        text, options.hex_alphabet, options.padded, max_bytes
+    )
 
 // Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) Bytes!:

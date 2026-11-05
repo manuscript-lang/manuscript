@@ -43,22 +43,22 @@ export enum TomlValue:
         values: Map[String, TomlValue]
     )
 
-// Optional input-byte, nesting-depth, and parsed-value limits for TOML parsing.
-// Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `TomlLimits` to change that.
-export type TomlLimits:
+// Input-byte, nesting-depth, and parsed-value limit settings for TOML parsing.
+// Fields set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard against deep nesting and alias expansion.
+export type TomlOptions:
     // Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
-    max_bytes: Int?
+    max_bytes: Int? = none
     // Maximum value depth, including scalar leaves and implicit tables, with the root at one.
-    max_depth: Int?
+    max_depth: Int? = 10000
     // Maximum containers and leaves, excluding keys; checked during parsing and materialization.
-    max_values: Int?
+    max_values: Int? = 1000000
 
 // The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are derived from it
 // only when an error is reported.
 type Reader:
     data: Bytes
     pos: Int
-    limits: TomlLimits
+    options: TomlOptions
     values: Int
     tables: List[Table]
     entries: List[Map[String, Node]]
@@ -194,11 +194,6 @@ fn space(var reader: Reader, multiline: Bool) Unit:
 
     reader.pos = pos
 
-// Limits applied when `parse` is called without any: deep nesting and alias expansion are
-// the usual resource attacks. Pass a `TomlLimits` (even an empty one) to lift or change them.
-fn default_limits() TomlLimits:
-    return TomlLimits(max_depth: 10000, max_values: 1000000)
-
 fn within(value: Int, limit: Int?) Bool:
     if let maximum = limit:
         return value <= maximum
@@ -207,14 +202,14 @@ fn within(value: Int, limit: Int?) Bool:
 
 fn allocate(var reader: Reader) Unit!:
     reader.values += 1
-    if not within(reader.values, reader.limits.max_values): return error(
+    if not within(reader.values, reader.options.max_values): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(unit)
 
 fn budget(reader: Reader, depth: Int) Unit!:
-    if not within(depth, reader.limits.max_depth): return error(
+    if not within(depth, reader.options.max_depth): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
@@ -857,7 +852,8 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
 // Counts the values of the finished document against the limits.
 type Budget:
-    limits: TomlLimits
+    max_depth: Int?
+    max_values: Int?
     values: Int
 
 fn materialize(
@@ -866,12 +862,12 @@ fn materialize(
     depth: Int,
     var budget: Budget
 ) TomlValue!:
-    if not within(depth, budget.limits.max_depth): return error(
+    if not within(depth, budget.max_depth): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
     budget.values += 1
-    if not within(budget.values, budget.limits.max_values): return error(
+    if not within(budget.values, budget.max_values): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
@@ -907,10 +903,7 @@ fn control_pattern() Regex:
     return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
 // Parses a TOML document into a table value and reports source line and column on invalid input.
-export fn parse(text: String, limits: TomlLimits?) TomlValue!:
-    var options = default_limits()
-    if let value = limits:
-        options = value
+export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
             if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
@@ -924,7 +917,7 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!:
     if text.contains("\r"): normalized = text.replace("\r\n", "\n")
 
     var reader = Reader(
-        data: normalized.to_bytes(), pos: 0, limits: options, values: 0, tables: [],
+        data: normalized.to_bytes(), pos: 0, options: options, values: 0, tables: [],
         entries: []
     )
 
@@ -1012,7 +1005,10 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!:
             invalid(reader, "unexpected trailing text")
         )
 
-    var budget = Budget(limits: reader.limits.clone(), values: 0)
+    var budget = Budget(
+        max_depth: reader.options.max_depth, max_values: reader.options.max_values,
+        values: 0
+    )
     return materialize(reader.entries, Node.TableNode(root), 1, var budget)
 
 type Writer:
@@ -1151,7 +1147,7 @@ fn datetimes_valid(value: TomlValue) Bool:
         _: return true
 
 // Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
-export fn stringify(value: TomlValue, max_bytes: Int?) String!:
+export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
     if let limit = max_bytes:
         if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
