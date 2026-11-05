@@ -31,4 +31,4 @@ PASS decrement.ms::checked decrement
 
 <span id="required-coverage"></span>
 
-Next: [regression fixtures](https://github.com/manuscript-lang/manuscript/tree/main/tests/e2e/testdata) and [conformance checks](../../development.md#conformance).
+Next: [regression fixtures](https://github.com/manuscript-lang/manuscript/tree/main/tests/e2e/testdata) and [conformance checks](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).

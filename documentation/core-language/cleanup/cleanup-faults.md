@@ -47,4 +47,4 @@ PASS example.ms::keep the original fault
 - An existing fault stays primary. Otherwise the first cleanup fault becomes primary; later faults are secondary, and remaining cleanup is attempted.
 - Cleanup is shielded from cancellation and deadlines. It can wait beyond the original timeout.
 
-Next: [close Results](closeable.md#a-close-returns-a-result), [cancellation](../concurrency/promises.md#cancellation) and [shutdown escalation](../../contributing/runtime-conventions.md#host-escalation).
+Next: [close Results](closeable.md#a-close-returns-a-result), [cancellation](../concurrency/promises.md#cancellation) and [shutdown escalation](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-rt/src/start.rs#L34-L66).

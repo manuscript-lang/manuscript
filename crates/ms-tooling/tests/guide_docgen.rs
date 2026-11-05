@@ -361,9 +361,7 @@ fn the_standard_library_passes_its_own_gate() {
     let report = inventory(standard_library(syms));
     let policy = standard_description_policy().unwrap();
     assert_eq!(check_descriptions(&report, &policy), Vec::<String>::new());
-    assert!(
-        standard_library_markdown(syms).starts_with("# Manuscript standard library")
-    );
+    assert!(standard_library_markdown(syms).starts_with("# Manuscript standard library"));
 }
 
 #[test]

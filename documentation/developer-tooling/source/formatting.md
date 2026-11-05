@@ -43,4 +43,4 @@ ms run format.ms
 <span id="format-files-or-a-project"></span>
 <span id="formatter-contract"></span>
 
-Next: [project inputs](../builds/project-configuration.md#commands-and-module-discovery), [selection and write guarantees](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/src/fmt.rs) and [formatter rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-syntax/src/format.rs).
+Next: [project inputs](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-driver/src/project/discovery.rs), [selection and write guarantees](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/src/fmt.rs) and [formatter rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-syntax/src/format.rs).

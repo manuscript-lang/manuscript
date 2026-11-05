@@ -32,4 +32,4 @@ Built small-program
 <span id="levels"></span>
 <span id="defaults-and-command-behavior"></span>
 
-Next: [build options](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/src/help_text.rs), [native debugging](../debugging/debugger-integration.md) and [platform linking](../../contributing/rust-toolchain.md#platform-linking).
+Next: [build options](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-cli/src/help_text.rs), [native debugging](../debugging/debugger-integration.md) and [deployment targets](../how-it-works.md#build-the-executable).

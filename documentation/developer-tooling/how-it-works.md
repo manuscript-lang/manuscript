@@ -68,4 +68,4 @@ test   passed
 
 <span id="runtime-cache"></span>
 
-Next: [tool resolution](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-clif/src/link/lld.rs), [build caches](builds/incremental-compilation.md) and [source-build setup](../contributing/rust-toolchain.md#build-and-run).
+Next: [tool resolution](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-clif/src/link/lld.rs), [build caches](builds/incremental-compilation.md) and [source-build setup](../contributing/rust-toolchain.md).
