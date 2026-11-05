@@ -144,7 +144,7 @@ pub fn collect_facts(
         };
         collect_bodies(syms, &mut facts, module, &flow);
     }
-    resolve_type_refs(&mut facts);
+    resolve_type_refs(syms, &mut facts, program);
     for fact in facts.entities.values_mut() {
         fact.calls.sort();
         fact.external.sort();
@@ -224,10 +224,6 @@ fn collect_bodies(syms: ms_syntax::Names, facts: &mut Facts, module: &ModRef, fl
     }
 }
 
-fn is_type(kind: &str) -> bool {
-    matches!(kind, "record" | "alternative" | "interface")
-}
-
 fn slot(syms: ms_syntax::Names, p: &Param) -> Slot {
     let mut slot = match &p.ty {
         Some(ty) => type_slot(syms, syms.str(p.name), ty),
@@ -241,13 +237,11 @@ fn slot(syms: ms_syntax::Names, p: &Param) -> Slot {
 }
 
 fn type_slot(syms: ms_syntax::Names, name: &str, ty: &TypeRef) -> Slot {
-    let mut refs = Vec::new();
-    type_names(syms, ty, &mut refs);
     Slot {
         name: name.to_string(),
         ty: type_text(syms, ty),
         var: false,
-        refs,
+        refs: Vec::new(),
     }
 }
 
@@ -265,27 +259,6 @@ fn type_text(syms: ms_syntax::Names, ty: &TypeRef) -> String {
                 .filter_map(|p| p.ty.as_ref().map(|t| type_text(syms, t)))
                 .collect();
             format!("fn({}) {}", params.join(", "), type_text(syms, result))
-        }
-    }
-}
-
-/// Collects the last segment of every named type in `ty`.
-fn type_names(syms: ms_syntax::Names, ty: &TypeRef, out: &mut Vec<String>) {
-    match &ty.kind {
-        TypeKind::Named { name, args } => {
-            let text = syms.str(name);
-            append_unique(out, text.rsplit('.').next().unwrap_or(text));
-            for arg in args {
-                type_names(syms, arg, out);
-            }
-        }
-        TypeKind::Fn { params, result } => {
-            for p in params {
-                if let Some(t) = &p.ty {
-                    type_names(syms, t, out);
-                }
-            }
-            type_names(syms, result, out);
         }
     }
 }
@@ -358,35 +331,110 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
     }
 }
 
-/// Replaces written type names with the keys of the project types they name
-/// (the same file's type first); names that are not project types drop out.
-fn resolve_type_refs(facts: &mut Facts) {
-    let mut by_name: HashMap<String, Vec<String>> = HashMap::new();
-    for f in facts.entities.values() {
-        if is_type(&f.kind) {
-            by_name
-                .entry(f.name.clone())
-                .or_default()
-                .push(f.key.clone());
+/// Resolve relationships from checked type identities, including imported declarations and
+/// local type variables, rather than guessing from a project's globally repeated spellings.
+fn resolve_type_refs(syms: ms_syntax::Names, facts: &mut Facts, program: &Program) {
+    use ms_check::types::Ty;
+
+    let mut checked: HashMap<String, Ty> = HashMap::new();
+    for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
+        let Some(names) = program.symbols.get(&module.file) else {
+            continue;
+        };
+        let names = names.borrow();
+        for decl in &module.decls {
+            let Some(symbol) = names.get(&decl.name()) else {
+                continue;
+            };
+            if symbol.decl.as_ref().is_some_and(|d| d.same(decl))
+                && let Some(ty) = symbol.ty_opt()
+            {
+                let (kind, name) = kind_and_name(syms, decl);
+                checked.insert(fact_key(syms.str(module.file), kind, &name), ty);
+            }
         }
     }
-    for f in facts.entities.values_mut() {
-        let file = f.file.clone();
-        let resolve = |slot: &mut Slot| {
-            slot.refs = std::mem::take(&mut slot.refs)
-                .iter()
-                .filter_map(|name| {
-                    let keys = by_name.get(name)?;
-                    keys.iter()
-                        .find(|k| k.starts_with(&format!("{file}#")))
-                        .or_else(|| (keys.len() == 1).then(|| &keys[0]))
-                        .cloned()
-                })
-                .collect();
+    for method in &program.methods {
+        let Some(decl) = &method.decl else {
+            continue;
         };
-        f.slots.iter_mut().for_each(resolve);
-        f.result.iter_mut().for_each(resolve);
+        let (_, owner) = kind_and_name(syms, &decl.decl);
+        let key = fact_key(
+            syms.str(method.module),
+            "method",
+            &format!("{owner}.{}", syms.str(decl.name())),
+        );
+        if facts.entities.contains_key(&key) {
+            checked.insert(key, method.ty.clone());
+        }
     }
+    let project: HashSet<String> = facts.entities.keys().cloned().collect();
+    for fact in facts.entities.values_mut() {
+        let Some(ty) = checked.get(&fact.key) else {
+            continue;
+        };
+        if fact.kind == "fn" || fact.kind == "method" {
+            for (slot, param) in fact.slots.iter_mut().zip(&ty.params) {
+                slot.refs = checked_type_refs(syms, &param.ty);
+            }
+            if let Some(slot) = &mut fact.result
+                && let Some(result) = &ty.result
+            {
+                slot.refs = checked_type_refs(syms, result);
+            }
+        } else if let Some(def) = &ty.def {
+            match fact.kind.as_str() {
+                "record" => {
+                    for (slot, field) in fact.slots.iter_mut().zip(def.fields.borrow().iter()) {
+                        slot.refs = checked_type_refs(syms, &field.ty);
+                    }
+                }
+                "alternative" => {
+                    for (slot, case) in fact.slots.iter_mut().zip(def.cases.borrow().iter()) {
+                        for field in &case.fields {
+                            for key in checked_type_refs(syms, &field.ty) {
+                                append_unique(&mut slot.refs, &key);
+                            }
+                        }
+                    }
+                }
+                "interface" => {
+                    for (slot, op) in fact.slots.iter_mut().zip(def.operations.borrow().iter()) {
+                        slot.refs = checked_type_refs(syms, &op.ty);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for slot in fact.slots.iter_mut().chain(fact.result.iter_mut()) {
+            slot.refs.retain(|key| project.contains(key));
+        }
+    }
+}
+
+/// Follow the components of the written type, never the fields of its definition: a
+/// recursive record remains one reference, while a function type includes its signature.
+fn checked_type_refs(syms: ms_syntax::Names, ty: &ms_check::types::Ty) -> Vec<String> {
+    let mut refs = Vec::new();
+    let mut pending = vec![ty];
+    let mut seen = HashSet::new();
+    while let Some(ty) = pending.pop() {
+        // Default generic arguments may share the same resolved type graph. Visit a
+        // shared subtree once, without expanding it exponentially or recursing deeply.
+        if !seen.insert(std::rc::Rc::as_ptr(ty)) {
+            continue;
+        }
+        if let Some(symbol) = ty.def.as_ref().and_then(|def| def.symbol())
+            && let Some(decl) = &symbol.decl
+        {
+            let (kind, name) = kind_and_name(syms, decl);
+            append_unique(&mut refs, &fact_key(syms.str(symbol.module), kind, &name));
+        }
+        pending.extend(ty.result.iter());
+        pending.extend(ty.params.iter().rev().map(|p| &p.ty));
+        pending.extend(ty.args.iter().rev());
+    }
+    refs
 }
 
 struct Sites<'a> {
