@@ -571,6 +571,12 @@ impl<'a> FnLower<'a> {
                     self.temps.push(l.v);
                     return Ok(Val { v: got, own: false });
                 }
+                if l.own && self.needs_drop(self.ty_of(got)) {
+                    // The element is read in place and the list drops with the statement's
+                    // temporaries: a consumer that keeps the element is the one that copies it.
+                    self.temps.push(l.v);
+                    return Ok(Val { v: got, own: false });
+                }
                 if l.own {
                     let o = self.owned(Val { v: got, own: false });
                     self.drop_value(l.v);

@@ -136,6 +136,9 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
+    /// Payloads an `Optional`/`Result` read (`get()`, `err()`) borrows: storing one copies it by the
+    /// language's rule for these two types, so that copy is declared (`owned` does not report it).
+    pub boundary_reads: std::collections::HashSet<Value>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
@@ -600,6 +603,7 @@ impl<'a> FnLower<'a> {
             converting: None,
             scalars_scan: false,
             in_thunk: false,
+            boundary_reads: Default::default(),
             aliases: HashMap::new(),
             scope_override: None,
         }
@@ -660,6 +664,16 @@ impl<'a> FnLower<'a> {
             TyKind::Alt(a) if self.b.m.alts[a.index()].borrowed != 0)
     }
 
+    /// Whether this function returns an `Optional` or a `Result`: a borrowed part it wraps into the
+    /// result is a copy the types' rule declares (`owned_boundary`).
+    pub fn ret_boundary(&self) -> bool {
+        match self.b.m.types.kind(self.ret_ty) {
+            TyKind::Opt(_) => true,
+            TyKind::Alt(a) => self.b.m.alts[a.index()].std == ms_mir::types::Std::Result,
+            _ => false,
+        }
+    }
+
     pub fn result_ty(&self) -> MTy {
         self.ret_ty
     }
@@ -677,17 +691,21 @@ impl<'a> FnLower<'a> {
             return x.v;
         }
         if self.cx.strict_copies
+            && !self.boundary_reads.contains(&x.v)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
                 Some(Op::StrLit | Op::OptNone)
             )
         {
             let at = std::panic::Location::caller();
+            let loc = self.b.loc();
             let site = format!(
-                "{}:{} ({:?})",
+                "{}:{} ({:?}) @{}:{}",
                 at.file().rsplit('/').next().unwrap_or("?"),
                 at.line(),
-                self.b.defining_op_anywhere(x.v)
+                self.b.defining_op_anywhere(x.v),
+                loc.line,
+                loc.col
             );
             self.cx.copy_gaps.push(site);
         }
@@ -700,6 +718,19 @@ impl<'a> FnLower<'a> {
             TyKind::Alt(a) => *a,
             _ => plain,
         }
+    }
+
+    /// An owned value at the `Optional`/`Result` boundary: a read with a default (`get(default)`),
+    /// a payload passed through a combinator, a part wrapped into `some(..)`/`ok(..)`, an optional
+    /// chain, or a `find` item. These types own what they hold, so a borrowed part is copied, and
+    /// the copy is declared by the type's rule so the strict gate does not report it. Chinmay
+    /// (2026-11-04): they are simple helpers that need not follow other types' allocation rules and
+    /// the codebase must not be littered with `.clone()`.
+    pub fn owned_boundary(&mut self, x: Val) -> Value {
+        if x.own {
+            return x.v;
+        }
+        self.clone_value(x.v)
     }
 
     /// An argument a native consumes: in a function value's thunk the argument is borrowed by
@@ -721,6 +752,30 @@ impl<'a> FnLower<'a> {
         field: u32,
         obj: Val,
     ) -> Value {
+        self.take_alt_field_as(alt, case, field, obj, false)
+    }
+
+    /// `take_alt_field` for a combinator that passes a case through unchanged into a new
+    /// `Result` (`map` over an error): from a borrow the copy is declared, because the new
+    /// result owns its payload.
+    pub fn take_alt_field_through(
+        &mut self,
+        alt: ms_mir::types::AltId,
+        case: u32,
+        field: u32,
+        obj: Val,
+    ) -> Value {
+        self.take_alt_field_as(alt, case, field, obj, true)
+    }
+
+    fn take_alt_field_as(
+        &mut self,
+        alt: ms_mir::types::AltId,
+        case: u32,
+        field: u32,
+        obj: Val,
+        declared: bool,
+    ) -> Value {
         let alt = self.alt_of(obj.v, alt);
         let ty = self.b.m.alts[alt.index()].cases[case as usize].fields[field as usize].1;
         // A borrowed case stays in its owner: its payload is copied out, as from any borrow.
@@ -731,7 +786,11 @@ impl<'a> FnLower<'a> {
             return p;
         }
         let p = self.b.alt_get(alt, case, field, obj.v);
-        let o = self.owned(Val { v: p, own: false });
+        let o = if declared {
+            self.owned_boundary(Val { v: p, own: false })
+        } else {
+            self.owned(Val { v: p, own: false })
+        };
         self.finish(obj);
         o
     }
@@ -1296,6 +1355,8 @@ impl<'a> FnLower<'a> {
                 // A view returner hands a plain reference to an interface value on as a value that
                 // owns nothing (`iface.view`); the caller drops it like the views it builds.
                 self.b.iface_view(x.v)
+            } else if self.ret_boundary() {
+                self.owned_boundary(x)
             } else {
                 self.owned(x)
             }
