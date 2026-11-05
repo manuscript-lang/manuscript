@@ -131,7 +131,7 @@ pub struct Program {
     pub moving_params: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
     /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
     pub node_facts: Rc<crate::ownership::NodeFacts>,
-    /// Boolean per-binding ownership facts in a dense table (`ownership::BindingFlags`).
+    /// Boolean per-binding ownership facts keyed by session identity (`ownership::BindingFlags`).
     pub binding_facts: Rc<crate::ownership::BindingFlags>,
 }
 
