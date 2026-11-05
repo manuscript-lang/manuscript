@@ -1,4 +1,4 @@
-import sqrt from "@std/math/math.ms"
+import max, min, sqrt from "@std/math/math.ms"
 import stdout from "@std/io/io.ms"
 import environment, set_environment from "@std/os/process.ms"
 import fail from "@std/test/test.ms"
@@ -22,12 +22,6 @@ type Settings:
     samples: Int
     // Fixed iterations per sample; 0 calibrates from the target duration.
     iterations: Int
-
-fn max(left: Int, right: Int) Int:
-    return if left > right: left else: right
-
-fn min(left: Int, right: Int) Int:
-    return if left < right: left else: right
 
 // Calibration never runs more iterations than this per sample.
 let max_iterations = 100000000
