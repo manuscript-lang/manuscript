@@ -54,6 +54,8 @@ FloatLiteral  = Whole, (Fraction, [ Exponent ] | Exponent) ;
 DecimalLiteral = Whole, [ Fraction ], [ Exponent ], "d" ;
 ```
 
+- `Expression` follows the [expression parser](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-syntax/src/parser.rs#L2145-L2392) and [operator binding powers](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-syntax/src/ast.rs#L568-L583).
+
 ## Modules, declarations, and types
 
 ```ebnf

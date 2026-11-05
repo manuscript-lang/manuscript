@@ -5,7 +5,7 @@ weight = 2
 
 # Error propagation with try
 
-Build on a fallible operation with `try`, forwarding its error unchanged. Manuscript is in alpha; syntax and APIs evolve.
+Follow `try` to review where the original error returns; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::forward the original error\nPASS example.ms::forward the original error\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

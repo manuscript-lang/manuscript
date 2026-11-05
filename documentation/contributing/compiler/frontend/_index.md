@@ -5,7 +5,7 @@ weight = 1
 
 # Parsing and checking
 
-Check the example with the built compiler (repository root).
+Check source acceptance before reviewing an agent’s native-code changes (repository root).
 
 ```sh
 target/release/ms check examples/hello/ms.toml

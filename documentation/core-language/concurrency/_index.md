@@ -5,7 +5,7 @@ weight = 8
 
 # Concurrent tasks
 
-Start independent calculations and collect their results in input order. Manuscript is in alpha; syntax and APIs evolve.
+Collect independent results to review who starts and joins concurrent work; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::collect work in input order\nPASS example.ms::collect work in input order\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

@@ -5,7 +5,7 @@ weight = 5
 
 # Cleanup failures
 
-Keep the original fault visible even when cleanup also fails. Manuscript is in alpha; syntax and APIs evolve.
+Fail during cleanup to review which fault remains primary; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::keep the original fault\nPASS example.ms::keep the original fault\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

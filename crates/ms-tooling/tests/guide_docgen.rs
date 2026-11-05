@@ -362,7 +362,7 @@ fn the_standard_library_passes_its_own_gate() {
     let policy = standard_description_policy().unwrap();
     assert_eq!(check_descriptions(&report, &policy), Vec::<String>::new());
     assert!(
-        standard_library_markdown(syms).starts_with("# Manuscript implemented standard library")
+        standard_library_markdown(syms).starts_with("# Manuscript standard library")
     );
 }
 
@@ -453,9 +453,7 @@ fn reference_navigation_follows_source_paths_and_preserves_old_routes() {
 fn reference_indexes_orient_reviewers_and_link_the_next_step() {
     let files = site_files(ms_syntax::Names::global());
     for (path, bytes) in &files {
-        if path.starts_with("documentation/standard-library/reference/")
-            && path.ends_with("/_index.md")
-        {
+        if path.starts_with("documentation/standard-library/") && path.ends_with("/_index.md") {
             let text = std::str::from_utf8(bytes).unwrap();
             assert!(text.contains("Review"), "missing review purpose: {path}");
             assert!(

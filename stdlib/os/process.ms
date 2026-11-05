@@ -127,9 +127,7 @@ export enum Stdio:
 // The shape of `run` and `spawn`, for code that takes child-process operations as a parameter so a test can pass a fake. Programs call the module functions `run` and `spawn` directly.
 export interface Commands:
     /*
-    Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-    Output beyond `max_output_bytes` in total across both streams returns EOVERFLOW, `timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-    `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    Wait for the child's captured output using the same options and errors as [run](#run); no promise is returned.
     */
     fn run(
         program: String,
@@ -140,8 +138,7 @@ export interface Commands:
         cwd: String?,
         env: Map[String, String] = Map[String, String]()
     ) CommandOutput!
-    // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-    // `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    // Start a live child with [spawn](#spawn)'s stream, environment, error and cleanup rules.
     fn spawn(
         program: String,
         arguments: List[String],
@@ -406,9 +403,12 @@ type RunArgs:
     env: Map[String, String]
 
 /*
-Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `input` is written to its standard input, and its output is captured.
-Output beyond `max_output_bytes` in total across both streams returns EOVERFLOW, `timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-`cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+Start a PATH-resolved program without a shell; pass arguments/input and capture output.
+
+- Combined output beyond `max_output_bytes` returns EOVERFLOW; timeout returns ETIMEDOUT. Both failures and cancellation kill the process group.
+- `cwd`/`env` affect only the child; none inherits cwd and env entries override inherited values. Missing cwd returns EAGAIN; empty/`=` variable names or NUL bytes return EINVAL.
+
+Returns a promise; [Commands.run](#commandsrun) waits directly.
 */
 export fn run(
     program: String,
@@ -431,8 +431,10 @@ export fn run(
         )
     )
 
-// Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
-// `cwd` is the child's working directory (none inherits the caller's); `env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+// Start a PATH-resolved child without a shell; streams select pipes (default), inherited streams or null.
+//
+// - Closing its Subprocess or cancelling acquisition kills the process group; startup errors are EINVAL, EAGAIN or EIO.
+// - Child-only cwd/env rules match [run](#run); missing cwd returns EAGAIN. Scope-end cleanup closes the subprocess.
 export fn spawn(
     program: String,
     arguments: List[String],
@@ -533,7 +535,7 @@ export fn uptime() Duration!:
 /*
 Finds the executable that running `name` would start, or none.
 A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
-Example: `if let path = which("git"): print(path)` prints the executable found on this host.
+
 */
 export fn which(name: String) String?:
     if name == "": return none

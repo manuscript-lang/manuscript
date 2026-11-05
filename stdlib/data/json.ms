@@ -194,7 +194,7 @@ export interface JsonEncode:
     fn to_json() JsonValue
 
 /*
-Serialize a typed request so reviewers can see its exact wire fields.
+Encode typed data: absent record fields are omitted, string-keyed maps become objects, and enum payloads use variant tags.
 
 <!-- manuscript-example: {"mode":"test","filename":"json-record.ms","stdout":"RUN json-record.ms::json-record\nPASS json-record.ms::json-record\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="json-record.ms"}
@@ -221,8 +221,10 @@ PASS json-record.ms::json-record
 1 tests, 0 failed
 ```
 
-- Records omit absent fields; string-keyed maps encode objects. Enum payloads are tagged by variant name; `JsonEncode` selects custom shapes.
-- `strict` rejects values without a JSON form. See [typed JSON](../../../learn/common-tasks.md#read-and-write-typed-json) and [custom encoding](#jsonencode).
+- `max_bytes` includes indentation (`EOVERFLOW`); negative limits/indent return `EINVAL`. Indent is capped at 10; none/0 is compact.
+- `strict` rejects `Unit` (`EBADMSG`); otherwise fields omit it and lists emit null. Root `Unit` always fails; absent fields stay omitted.
+
+Next: [typed JSON](../../../learn/common-tasks.md#read-and-write-typed-json) and [custom encoding](#jsonencode).
 
 */
 export fn stringify[T: Data](
@@ -390,17 +392,10 @@ impl Transform[Bytes, T] for JsonReading[T]:
         return ok(unit)
 
 /*
-Reads a sequence of JSON values of type `T` from a byte stream, such as JSON Lines or concatenated JSON.
+Read typed JSON values incrementally; closing the result closes its input.
 
-Values may be separated by JSON whitespace or directly adjacent when they are strings, arrays, or objects.
-Top-level numbers, `true`, `false`, and `null` end at whitespace or at the end of the stream. Chunk
-boundaries may fall anywhere, including inside a token, an escape, or a UTF-8 scalar, and only the value
-being read is buffered. `T` decodes as in `parse`; the default `JsonValue` keeps each value as a document.
-`limits` applies to each value separately: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and
-`max_values` its parsed values; an exceeded limit fails the read with `EOVERFLOW`. Omit limits only for
-trusted input, because an unterminated value is otherwise buffered without bound. Malformed or truncated
-input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing the result closes
-`input`.
+- Objects, arrays and strings may adjoin; numbers/booleans/null end at whitespace or EOF. Chunks may split tokens or UTF-8; only the current value buffers.
+- [JsonLimits](#jsonlimits) apply per value: exceeded limits return `EOVERFLOW`, negative limits `EINVAL`, malformed/truncated input `EBADMSG`. Unbounded unterminated input keeps buffering. See [parse](#parse).
 */
 export fn json_reader[T: Data = JsonValue](
     input: ReadStream[Bytes],

@@ -7,6 +7,8 @@ weight = 7
 
 Interfaces let a reviewer see the operations a caller depends on, separately from stored data; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="explicit-implementations"></span><span id="interface-conversion"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::call through a checked interface\nPASS example.ms::call through a checked interface\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -39,7 +41,9 @@ PASS example.ms::call through a checked interface
 1 tests, 0 failed
 ```
 
-- An `impl` supplies the declared operations; assignment creates an interface view without constructor syntax.
+<span id="coherence-and-visibility"></span>
+
+- An implementation in the receiver’s defining file follows the type; an implementation for an imported receiver stays local to its file.
 - A view borrows its receiver; storing it in an owning value transfers an eligible receiver or needs a clone.
 
 ## Generic implementations
@@ -78,6 +82,6 @@ PASS box.ms::generic interface returns owned data
 - Receiver parameters and declared bounds scope the implementation; every application must satisfy them.
 - The explicit clone gives the caller an owned result while the box keeps its value.
 
-<span id="explicit-implementations"></span><span id="coherence-and-visibility"></span><span id="generic-operations"></span><span id="interface-conversion"></span><span id="selecting-an-operation"></span><span id="interfaces-and-services"></span>
+<span id="generic-operations"></span><span id="selecting-an-operation"></span><span id="interfaces-and-services"></span>
 
-Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [generics and bounds](generics.md).
+Next: [implementation visibility](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/types.rs#L691-L696); [generics and bounds](generics.md).

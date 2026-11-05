@@ -5,7 +5,7 @@ weight = 104
 
 # Semantic conformance tests
 
-Turn the expected result into an assertion; save as `decrement.ms`.
+Make an agent’s claimed result testable; save this regression as `decrement.ms`.
 
 <!-- manuscript-example: {"mode":"test","filename":"decrement.ms","stdout":"RUN decrement.ms::checked decrement\nPASS decrement.ms::checked decrement\n1 tests, 0 failed\n"} -->
 ```manuscript

@@ -317,6 +317,9 @@ test('authored guides and every generated reference page state alpha context', (
   for (const page of referencePages()) {
     assert.match(page.markdown, /\balpha\b/i, `${page.file}: include indexes as well as module pages`);
   }
+  const library = fs.readFileSync(path.join(book, 'standard-library/index.html'), 'utf8');
+  assert.ok(library.includes('Batteries-included standard library'));
+  assert.match(library, /\balpha\b/i);
   for (const file of ['README.md', 'VISION.md']) {
     assert.match(fs.readFileSync(path.join(root, file), 'utf8'), /\balpha\b/i);
   }

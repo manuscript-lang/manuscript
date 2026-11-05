@@ -5,7 +5,7 @@ weight = 2
 
 # Loops
 
-Count through a range, step backwards, or repeat until a condition changes. Manuscript is in alpha; syntax and APIs evolve.
+Trace bounds and updates to review which iterations run; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::sum selected indexes\nPASS example.ms::sum selected indexes\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

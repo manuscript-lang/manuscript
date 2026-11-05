@@ -5,7 +5,7 @@ weight = 2
 
 # Development workflow
 
-Preview the required source checks from the repository root.
+Preview the checks required to validate an agent’s compiler patch (repository root).
 
 ```sh
 make -n check

@@ -5,7 +5,7 @@ weight = 3
 
 # Pattern matching
 
-Describe payment outcomes with one flat match. Manuscript is in alpha; syntax and APIs evolve.
+Match payments to review whether every variant is handled; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::describe a payment\nPASS example.ms::describe a payment\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
@@ -46,7 +46,7 @@ PASS example.ms::describe a payment
 <a id="contract-type-patterns"></a>
 <a id="matching-resource-references"></a>
 
-- Cover every enum variant, or finish with `_`. Bind payloads in declaration order.
-- Borrowed matches lend payloads; a last-use owned match can move them.
+- Cover each variant or end with `_`; payloads bind in declaration order.
+- Borrowed matches lend payloads; last-use owned matches may move them.
 
-Next: [enums](../types/alternatives.md), [interfaces](../types/contracts.md) and [ownership](../types/references.md).
+Next: [enums](../types/alternatives.md), [ownership](../types/references.md), [match-value checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/stmts.rs#L1567) and [flat-flow lint](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-tooling/src/lint/matches.rs#L86-L105).

@@ -5,7 +5,7 @@ weight = 2
 
 # Language reference
 
-Check both outcomes of a small operation before following the language guides. Manuscript is in alpha; syntax and APIs evolve.
+Check success and failure to review an operation’s contract; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::visible success and failure\nPASS example.ms::visible success and failure\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

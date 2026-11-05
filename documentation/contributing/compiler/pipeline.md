@@ -5,7 +5,7 @@ weight = 0
 
 # Pipeline and passes
 
-Emit MIR to investigate a checked program’s generated behavior (repository root).
+Locate source mappings in MIR to review an agent’s pipeline change (repository root).
 
 ```sh
 target/release/ms emit examples/hello/ms.toml -o hello.mir

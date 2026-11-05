@@ -336,12 +336,10 @@ export fn hours(n: Int) Duration:
     return nanoseconds(n * 3600000000000)
 
 /*
-Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.to_string() result.
-Accepts one optional leading `+` or `-`, then decimal components with units `ns`, `us`, `µs`, `μs`, `ms`, `s`, `m`, or `h`.
-Components may repeat or appear in any order; `.5s` and `1.s` are valid. Bare `0` is also valid, including `+0` and `-0`.
-Fractions may have any number of ASCII digits; each component truncates toward zero to whole nanoseconds, without floating-point rounding. Negative zero becomes zero.
-Whitespace, exponents, missing units, and other syntax return EBADMSG, even after an overflowing prefix.
-A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns ERANGE.
+Parse signed spans such as `1h30m`, `-250ms` and Duration's display form.
+
+- Accept units ns/us/µs/μs/ms/s/m/h in any order, including repeats; fractions `.5s`/`1.s` and signed bare zero work. Components truncate toward zero to nanoseconds.
+- Whitespace, exponents and missing units return `EBADMSG`, even after overflow. Valid syntax outside signed 64-bit nanoseconds returns `ERANGE`.
 */
 export fn parse_duration(text: String) Duration!:
     let data = text.to_bytes()

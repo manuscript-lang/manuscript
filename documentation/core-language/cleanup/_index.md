@@ -5,7 +5,7 @@ weight = 7
 
 # Managing resources
 
-Read `notes.txt` and let its owner close the file at scope end. Manuscript is in alpha; syntax and APIs evolve.
+Follow the file’s owner to review when its resource closes; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","files":{"notes.txt":"hello\n"},"stdout":"RUN example.ms::read a note within its scope\nPASS example.ms::read a note within its scope\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

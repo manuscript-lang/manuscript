@@ -5,7 +5,7 @@ weight = 3
 
 # Implementing Closeable
 
-Implement `Closeable` to release a custom resource and report a failed release. Manuscript is in alpha; syntax and APIs evolve.
+Implement fallible cleanup to review how release failures reach callers; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::return a scope-end close error\nPASS example.ms::return a scope-end close error\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
@@ -48,4 +48,4 @@ PASS example.ms::return a scope-end close error
 - Implement standard `Closeable`; a same-named method alone does not opt in. Close may wait and must tolerate repeated calls.
 - Implicit close errors propagate through `T!` when possible; otherwise they fault. An existing error wins after remaining cleanup runs.
 
-Next: [the Closeable contract](../../standard-library/reference/core.ms.md#closeable), [cleanup order](exit-order.md) and [fault selection](cleanup-faults.md).
+Next: [the Closeable contract](../../standard-library/reference/core.ms.md#closeable), [owned-part order](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-lower/src/close.rs#L40-L53) and [fault selection](cleanup-faults.md).

@@ -35,9 +35,13 @@ PASS example.ms::context determines the values
 1 tests, 0 failed
 ```
 
+<span id="exact-and-nominal-identity"></span>
+
 - Records and enums have declared identities; equal field shapes do not make them interchangeable.
+<span id="propagating-context"></span>
+
 - Expected types guide literals, optional wrapping and typed `ok`/`error` constructors, without numeric widening or ambiguous name resolution.
 
-<span id="exact-and-nominal-identity"></span><span id="propagating-context"></span><span id="validation-boundaries"></span>
+<span id="validation-boundaries"></span>
 
-Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [generics and bounds](generics.md).
+Next: [type compatibility](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/types.rs#L1018-L1060); [generics and bounds](generics.md).

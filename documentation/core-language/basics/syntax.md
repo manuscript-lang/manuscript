@@ -35,9 +35,11 @@ PASS example.ms::customer greeting
 1 tests, 0 failed
 ```
 
+<span id="blocks-and-layout"></span><span id="module-boundaries"></span>
+
 - Each block adds four spaces; its end is the dedent. Module-level executable work belongs in functions or tests.
 - Imports name exact exports; records use `type`, choices use `enum`, and errors are handled explicitly.
 
-<span id="blocks-and-layout"></span><span id="module-boundaries"></span>
+
 
 Next: [source grammar](grammar.md); [variables and scope](bindings.md).

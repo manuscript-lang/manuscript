@@ -46,6 +46,7 @@ ms diagram config.ms --format html -o code-map.html
 
 ## Direction
 
-Keep agent generation, human review and native delivery in one coherent toolchain.
+- Make real applications productive with the libraries and integrations they need.
+- Keep agent generation, human review and delivery in one coherent workflow.
 
 [Run a first program](documentation/learn/getting-started.md) · [Build and share](documentation/developer-tooling/how-it-works.md) · [Measured agent use](bench/agent/README.md)

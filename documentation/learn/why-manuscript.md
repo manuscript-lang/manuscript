@@ -105,4 +105,4 @@ PASS config.ms::configuration defaults
 <span id="where-this-is-going"></span>
 <span id="try-it"></span>
 
-Next: [first program](getting-started.md), [agent commands](../developer-tooling/implementation.md#commands-for-agents), [concurrency](../core-language/concurrency/_index.md), [ownership](../core-language/types/references.md), [measured results](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md).
+Next: [first program](getting-started.md), [check and inspect](../developer-tooling/implementation.md), [concurrency](../core-language/concurrency/_index.md), [ownership](../core-language/types/references.md), [measured results](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md).

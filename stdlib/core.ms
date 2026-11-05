@@ -3,14 +3,8 @@
 export type Error:
     // Human-readable description of the failure.
     message: String
-    // A short code for what went wrong, or `none` when no code fits. The kind itself never allocates when it is a literal or at most 15 bytes.
-    // The standard library reports POSIX errno names (`EAUTH` is Manuscript's own), so `error.kind == "ENOENT"` means the same on every platform:
-    //   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
-    //   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
-    //   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,
-    //   EIO a task, process or peer ended abnormally, EAGAIN service unavailable, EBUSY resource busy,
-    //   ETIMEDOUT a deadline expired, ECANCELED cancelled, EAUTH authentication failed.
-    // Your own code uses its own prefix, such as `"EQUOTA"`.
+    // Optional failure code: standard APIs use POSIX errno names (EAUTH is Manuscript-specific); callers can use a domain prefix such as EQUOTA.
+    // Literal codes and codes of at most 15 bytes do not allocate. See [expected errors](../../core-language/errors/results.md).
     kind: String? = none
     // Extra facts about the failure, such as the path or operation, keyed by name.
     details: Map[String, String] = Map[String, String]()
@@ -67,16 +61,14 @@ export fn print[T](value: T) Unit:
     msrt_io_write_stdout("\n")
 
 /*
-A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
-The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
-other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
-close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
-already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
-handle the failure; the binding is then consumed.
+Close owned resources on every scope exit.
+
+- Implicit close propagates Error after other cleanup; without a compatible result, or inside a holder, failure faults. An existing error wins over close failures.
+- Handle explicit `close()` failures; the binding remains available. Scope-end cleanup may close it again, so close must be idempotent. See [cleanup](../../core-language/cleanup/closeable.md).
 */
 export interface Closeable:
     /*
-    Releases the implementation's resource state; with calls this on every scope exit.
+    Releases the implementation's resource state; ordinary bindings call this at scope exit.
     Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
     fail returns `ok(unit)`.
     */
@@ -197,12 +189,10 @@ export interface Clonable:
     fn clone() Self
 
 /*
-A type whose values are plain data: no resource, function, interface value, or runtime handle
-anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
-typed JSON stream codecs require `T: Data`. Promises and pipes do not require this bound.
-There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
-only `List` is, when its element is, and a `Map[String, T]` is, when `T` is (it is a JSON object). A `Set` or a `Map` with another key type is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
-is `Data` by declaration, so a dynamic JSON object travels as a `JsonValue`.
+Plain owned data accepted by typed JSON; there is no implementation to write.
+
+- Records/enums/lists qualify when their parts do; Map[String,T] qualifies when T does. JsonValue qualifies explicitly.
+- Sets, other map keys, resources, functions, interfaces, handles and opaque types do not qualify. Promises/pipes do not require Data. See [typed JSON](../../learn/common-tasks.md#read-and-write-typed-json).
 */
 export interface Data: ...
 

@@ -5,7 +5,7 @@ weight = 1
 
 # Expected failures with Result
 
-Return useful successes and specific failure causes. Manuscript is in alpha; syntax and APIs evolve.
+Check both outcomes to review the value and cause an operation returns; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::quantity validation\nPASS example.ms::quantity validation\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

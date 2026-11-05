@@ -5,7 +5,7 @@ weight = 5
 
 # Error handling
 
-Reject an invalid quantity with an error the caller can inspect. Manuscript is in alpha; syntax and APIs evolve.
+Reject invalid quantities to review which failures callers can handle; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::valid and invalid quantities\nPASS example.ms::valid and invalid quantities\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

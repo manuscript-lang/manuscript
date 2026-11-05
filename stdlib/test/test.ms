@@ -2,12 +2,10 @@ import panic from "@std/core.ms"
 import (msstd_test_catch_fault, msstd_test_repr) from "@std/internal/test.ms"
 
 /*
-Setup and cleanup for tests that need a fixture. Define `fn make_fixture() T` in the test file,
-where `T` implements `TestHooks`; each test accesses its own instance as `fixture`.
-Each selected test and repetition runs in a fresh process, so the factory and all hooks run again.
-Missing hooks are no-ops. All supplied hooks take no arguments and return Unit.
-For a server fixture, start the server in the factory and close it in `after_all`.
-Tests share the fixture definition, not one running server or mutable instance.
+Give each test a fixture from `fn make_fixture() T`, accessed as `fixture`.
+
+- `T` implements TestHooks; supplied hooks take no arguments and return Unit, and omitted hooks do nothing.
+- Every test/repetition runs the factory and hooks in a fresh process. Acquire services in the factory and release them in `after_all`.
 */
 export interface TestHooks:
     // Runs after the fixture factory in each selected test process.

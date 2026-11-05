@@ -5,7 +5,7 @@ weight = 2
 
 # Lowering
 
-Inspect lowered code from a known program (repository root).
+Inspect generated calls and drops to review an agent’s lowering change (repository root).
 
 ```sh
 target/release/ms emit examples/hello/ms.toml -o hello.mir

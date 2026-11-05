@@ -5,7 +5,7 @@ weight = 3
 
 # Compiler conformance
 
-Run the example’s behavioral assertions (repository root).
+Run behavioral assertions to verify an agent’s language-behavior claim (repository root).
 
 ```sh
 target/release/ms test examples/hello/ms.toml

@@ -5,7 +5,7 @@ weight = 1
 
 # Repository architecture
 
-Locate the compiler stages in this checkout (repository root).
+Locate the responsible compiler stage to focus review of an agent’s change (repository root).
 
 ```sh
 git ls-files crates/ms-{syntax,check,lower,mir,clif}/Cargo.toml

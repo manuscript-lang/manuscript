@@ -5,7 +5,7 @@ weight = 88
 
 # Compilation pipeline
 
-Compare checking and execution to locate a regression (repository root).
+Separate checking failures from execution failures when reviewing an agent’s pipeline change (repository root).
 
 ```sh
 target/release/ms check examples/hello/ms.toml

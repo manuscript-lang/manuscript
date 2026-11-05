@@ -5,7 +5,7 @@ weight = 3
 
 # HTTP server
 
-Start a local HTTP server and test its response with a real request. Manuscript is in alpha; syntax and APIs evolve.
+Make a real request to review a handler’s status and response body; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::serve a greeting\nPASS example.ms::serve a greeting\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

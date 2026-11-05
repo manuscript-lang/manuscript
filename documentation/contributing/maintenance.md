@@ -5,7 +5,7 @@ weight = 3
 
 # Maintain the repository
 
-Check the release version before updating packaging (repository root).
+Check the shared version pin when reviewing an agent’s packaging change (repository root).
 
 ```sh
 cat .msversion

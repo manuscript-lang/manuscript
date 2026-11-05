@@ -29,7 +29,11 @@ PASS example.ms::remaining stock
 1 tests, 0 failed
 ```
 
+<span id="local-type-inference"></span><span id="reassignment-and-references"></span>
+
 - `let` prevents mutation; `var` makes intended changes explicit. Types stay fixed after initialization.
+<span id="scope-and-shadowing"></span>
+
 - Locals cannot shadow locals or parameters unless the new name starts with `_`; unused names also begin with `_`.
 
 ## Grouping bindings
@@ -60,6 +64,6 @@ PASS settings.ms::grouped settings
 - Group entries use lines, not commas; later entries can use earlier ones.
 - A binding group cannot appear inside an inline body.
 
-<span id="local-type-inference"></span><span id="destructuring"></span><span id="scope-and-shadowing"></span><span id="reassignment-and-references"></span>
+<span id="destructuring"></span>
 
 Next: [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md); [mutation and references](../types/references.md).

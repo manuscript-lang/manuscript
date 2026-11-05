@@ -198,4 +198,4 @@ Customer C-17
 - Directory alias `@domain` and file alias `@customers` select the same resolved module.
 - Aliases change spelling, not identity; unknown aliases are errors.
 
-Next: [boundaries](boundaries.md), [import resolution](../../developer-tooling/builds/project-configuration.md#resolving-an-import), [impl visibility](../types/contracts.md#coherence-and-visibility).
+Next: [boundaries](boundaries.md), [import resolution](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-driver/src/project/paths.rs), [impl visibility](../types/contracts.md#coherence-and-visibility).

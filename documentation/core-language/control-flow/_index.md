@@ -5,7 +5,7 @@ weight = 4
 
 # Control flow
 
-Add prices only when the calculation is enabled. Manuscript is in alpha; syntax and APIs evolve.
+Trace the enabled branch and changing total to review which prices contribute; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::total enabled prices\nPASS example.ms::total enabled prices\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

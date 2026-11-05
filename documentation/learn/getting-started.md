@@ -10,7 +10,7 @@ Run, change and test a program before reviewing an agent’s edits; Manuscript i
 
 ## 1. Get the compiler and run
 
-[Build current source](../contributing/rust-toolchain.md#build-and-run) or extract a [release archive](https://github.com/manuscript-lang/manuscript/releases), then add its compiler directory to `PATH`.
+[Build current source](../contributing/rust-toolchain.md) or extract a [release archive](https://github.com/manuscript-lang/manuscript/releases), then add its compiler directory to `PATH`.
 
 ```sh
 ms init my-app
@@ -67,7 +67,7 @@ Hello! You passed 2 arguments.
 ```
 
 - On Windows, build with `-o hello.exe` and run `.\hello.exe first second`.
-- The executable needs no installed `ms`; choose a compatible [target and build level](../developer-tooling/builds/build-levels.md).
+- Build for the recipient’s OS and architecture; no installed `ms` is needed. Choose a [build level](../developer-tooling/builds/build-levels.md).
 
 ## 4. Check and test your project {#create-your-own-project}
 
@@ -94,7 +94,7 @@ ms diagram ms.toml --format html -o code-map.html
 ```
 
 - Succeeds silently and writes `code-map.html`; open it to follow source, types and calls offline.
-- Add a [diff overlay](../developer-tooling/implementation.md#interactive-code-map) when reviewing a change.
+- Use the [code map](../developer-tooling/implementation.md#interactive-code-map) when reviewing a change.
 
 ## Compiler versions and setup
 

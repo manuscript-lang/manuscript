@@ -5,7 +5,7 @@ weight = 1
 
 # Promises
 
-Cancel pending work and inspect its promise’s result. Manuscript is in alpha; syntax and APIs evolve.
+Inspect cancellation to review how pending work stops; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::cancel pending work\nPASS example.ms::cancel pending work\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
@@ -39,7 +39,7 @@ PASS example.ms::cancel pending work
 <a id="faults"></a>
 <a id="threads"></a>
 
-- Wait takes one result. Set deadlines through `PromiseOptions` at construction or `.with`.
-- Cancellation acts at waits; CPU loops must cooperate. Dropping unfinished work cancels and joins.
+- Wait takes one result; set `PromiseOptions` deadlines at construction or `.with`.
+- Cancellation needs waits or signal checks; drop cancels and joins unfinished work.
 
-Next: [Promise/Cancel APIs](../../standard-library/reference/concurrency/promise.ms.md), [streams](streams.md) and [shielded cleanup](../cleanup/cleanup-faults.md).
+Next: [Promise API](../../standard-library/reference/concurrency/promise.ms.md#promise) and [signal checks](../../standard-library/reference/concurrency/promise.ms.md#signalcancelled), [streams](streams.md) and [shielded cleanup](../cleanup/cleanup-faults.md).

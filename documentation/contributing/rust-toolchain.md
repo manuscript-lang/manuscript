@@ -5,7 +5,7 @@ weight = 4
 
 # Rust toolchain
 
-Build the compiler and its runtime from the repository root.
+Build this checkout’s compiler and runtime to reproduce an agent’s changes (repository root).
 
 ```sh
 cargo xtask runtime

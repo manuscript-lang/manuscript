@@ -5,7 +5,7 @@ weight = 90
 
 # Scope and closure checking
 
-Expose a callback’s captured value; save as `capture.ms`.
+Expose captured values to review an agent’s closure-checking change; save as `capture.ms`.
 
 <!-- manuscript-example: {"mode":"run","filename":"capture.ms","stdout":"12\n"} -->
 ```manuscript

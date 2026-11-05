@@ -30,7 +30,9 @@ PASS example.ms::checked numeric boundaries
 ```
 
 - Numeric kinds do not widen implicitly; narrowing conversions return `T?` when the value may not fit.
-- Integer overflow and division by zero fault; use checked APIs for expected invalid input.
+<span id="runtime-numeric-outcomes"></span><span id="int"></span><span id="float"></span>
+
+- Integer overflow/division by zero fault; Float overflow gives infinity and invalid arithmetic gives NaN. Decimal overflow/division by zero fault.
 
 ## Decimal
 
@@ -86,6 +88,6 @@ PASS interval.ms::name an elapsed span
 - Duration is signed nanoseconds with checked arithmetic; use monotonic clock readings for elapsed time.
 - Instant comparisons require one clock domain; cross-domain operations fault.
 
-<span id="arithmetic-and-conversion"></span><span id="sized-numbers"></span><span id="numeric-conversion"></span><span id="runtime-numeric-outcomes"></span><span id="int"></span><span id="float"></span><span id="scale-rounding-and-fixed-places"></span><span id="bigint"></span><span id="booleans"></span>
+<span id="arithmetic-and-conversion"></span><span id="sized-numbers"></span><span id="numeric-conversion"></span><span id="scale-rounding-and-fixed-places"></span><span id="bigint"></span><span id="booleans"></span>
 
 Next: [numeric APIs](../../standard-library/reference/math/math.ms.md) and [Decimal rounding](../../standard-library/reference/math/decimal.ms.md); [strings and bytes](text-and-bytes.md).

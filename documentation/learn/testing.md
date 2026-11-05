@@ -179,7 +179,7 @@ PASS test.ms::starts fresh
 ## Run tests in a project
 
 - `ms test ms.toml` finds `test.ms` and `*_test.ms`; import application code with relative paths.
-- Project tests use the manifest directory for relative paths; see [discovery rules](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery).
+- Project tests use the manifest directory for relative paths; see [discovery rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-driver/src/project/discovery.rs).
 
 ## Benchmark your code
 

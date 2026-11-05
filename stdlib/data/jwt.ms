@@ -102,11 +102,10 @@ export fn sign_token[T: Data](
     return ok("{signing_input}.{base64_encode_unpadded(signature, url_safe: true)}")
 
 /*
-Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
-The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
-`exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
-`key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
-Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
+Verify the signature before decoding claims as `T`.
+
+- Accept only `check.algorithm`; use an HMAC secret or the algorithm's public key. Enforce present `exp`/`nbf` and configured issuer/audience.
+- Errors identify failed checks; give untrusted callers a generic failure message. See [JwtCheck](#jwtcheck) and [JwtAlgorithm](#jwtalgorithm).
 */
 export fn verify_token[T: Data = JsonValue](
     token: String,

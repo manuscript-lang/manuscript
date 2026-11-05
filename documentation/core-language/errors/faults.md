@@ -5,7 +5,7 @@ weight = 3
 
 # Programming faults
 
-Test an invariant failure separately from expected errors. Manuscript is in alpha; syntax and APIs evolve.
+Assert an invariant failure to review faults separately from expected errors; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::check an invariant failure\nPASS example.ms::check an invariant failure\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

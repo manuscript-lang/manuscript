@@ -5,7 +5,7 @@ weight = 1
 
 # Scope-end cleanup
 
-Keep a file open while reading, then close it automatically. Manuscript is in alpha; syntax and APIs evolve.
+Locate a file’s binding to review its automatic cleanup boundary; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","files":{"notes.txt":"hello\n"},"stdout":"RUN example.ms::read a note within its scope\nPASS example.ms::read a note within its scope\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

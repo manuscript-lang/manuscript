@@ -5,7 +5,7 @@ weight = 2
 
 # Streams and pipes
 
-Send values through a pipe and add them as they arrive. Manuscript is in alpha; syntax and APIs evolve.
+Trace producer shutdown to review whether a pipe’s reader can finish; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::sum a producer stream\nPASS example.ms::sum a producer stream\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

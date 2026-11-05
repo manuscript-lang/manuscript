@@ -5,7 +5,7 @@ weight = 93
 
 # Function lowering
 
-Distinguish callback creation from invocation; save as `calls.ms`.
+Separate closure creation from invocation to review agent-written call lowering; save as `calls.ms`.
 
 <!-- manuscript-example: {"mode":"run","filename":"calls.ms","stdout":"created\ncallback\n12\n"} -->
 ```manuscript

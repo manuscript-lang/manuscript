@@ -373,11 +373,10 @@ impl Sink[T] for PipeSink[T]:
         msrt_pipe_close_writer(self.id)
         return ok(unit)
 
-// An in-memory stream of whole values, in order: any number of writers and one reader. A write hands the pipe a copy
-// (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
-// `capacity` is the number of queued values above which a writer's `flush` waits. The pipe itself is not a writer: the
-// reader ends once every writer from `writer()` has closed, so make the writers before reading. Closing the reader
-// makes later writes fail with `EBADF`.
+// Send whole values in order through any number of writers to one reader.
+//
+// - Writes copy Clonable values into the queue. Above capacity, writer flush waits; flushing need not empty the queue.
+// - Create writers before reading: EOF needs every writer closed and the queue drained. Closing the reader makes later writes fail with EBADF.
 export opaque type Pipe[T: Clonable]:
     // The runtime pipe's id.
     id: Int

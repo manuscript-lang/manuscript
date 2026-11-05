@@ -5,7 +5,7 @@ weight = 96
 
 # Cleanup and fault lowering
 
-Observe reverse-order resource release; save as `cleanup.ms`.
+Observe release order to review an agent’s cleanup-lowering change; save as `cleanup.ms`.
 
 <!-- manuscript-example: {"mode":"run","filename":"cleanup.ms","stdout":"using first and second\nclosed second\nclosed first\n"} -->
 ```manuscript

@@ -5,7 +5,7 @@ weight = 94
 
 # Source guarantees and representations
 
-Observe independent cloned storage; save as `copies.ms`.
+Observe clone independence to review an agent’s ownership-lowering change; save as `copies.ms`.
 
 <!-- manuscript-example: {"mode":"run","filename":"copies.ms","stdout":"2 / 3\n"} -->
 ```manuscript

@@ -31,7 +31,11 @@ PASS example.ms::clear call arguments
 ```
 
 - Named functions declare parameter and result types; `try` propagates an error to the caller.
+<span id="argument-names"></span><span id="default-arguments"></span>
+
 - Unlabeled arguments fill the first unfilled parameter; defaults evaluate for omitted arguments at each call.
+
+<span id="collections-as-arguments"></span>
 
 ## Collection parameters
 
@@ -65,6 +69,6 @@ PASS total.ms::one list argument
 - The list is one required argument, even when empty.
 - Reading through a borrowed parameter leaves the caller’s list available.
 
-<span id="declarations-and-resolution"></span><span id="argument-names"></span><span id="default-arguments"></span><span id="collections-as-arguments"></span><span id="evaluation-order"></span><span id="unit-and-never"></span><span id="calls-that-block"></span>
+<span id="declarations-and-resolution"></span><span id="evaluation-order"></span><span id="unit-and-never"></span><span id="calls-that-block"></span>
 
 Next: [call checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/calls.rs); [function values and closures](function-values-and-closures.md).

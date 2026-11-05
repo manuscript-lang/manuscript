@@ -7,6 +7,8 @@ weight = 9
 
 Generics keep one implementation reusable while each call still has known types; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="bounds"></span><span id="declarations-and-applications"></span><span id="body-checking-and-well-formedness"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::typed reusable values\nPASS example.ms::typed reusable values\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -36,6 +38,8 @@ PASS example.ms::typed reusable values
 
 - Generic bounds expose the operations a function can use; callers supply one concrete type for each parameter.
 - Data permits typed JSON: resource, function and interface values do not satisfy that bound.
+
+<span id="default-type-arguments"></span>
 
 ## Defaults
 
@@ -67,6 +71,6 @@ PASS pair.ms::default second type
 - Inference runs before defaults; later type parameters need defaults once an earlier one has one.
 - A default can name earlier type parameters and must satisfy its bounds.
 
-<span id="bounds"></span><span id="declarations-and-applications"></span><span id="default-type-arguments"></span><span id="inference-from-arguments"></span><span id="body-checking-and-well-formedness"></span><span id="finite-recursive-applications"></span><span id="built-in-requirements"></span>
+<span id="inference-from-arguments"></span><span id="finite-recursive-applications"></span><span id="built-in-requirements"></span>
 
-Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [type compatibility](compatibility.md).
+Next: [generic bound checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/contracts.rs#L1356-L1470); [type compatibility](compatibility.md).

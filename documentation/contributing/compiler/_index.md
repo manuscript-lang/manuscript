@@ -5,7 +5,7 @@ weight = 4
 
 # Compiler internals
 
-Compare checking with execution using the built compiler (repository root).
+Compare checking with execution to locate a failure in an agent’s compiler change (repository root).
 
 ```sh
 target/release/ms check examples/hello/ms.toml

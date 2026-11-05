@@ -5,7 +5,7 @@ weight = 1
 
 # Ownership glossary
 
-Copy a collection, then change its original. Manuscript is in alpha; syntax and APIs evolve.
+Track copies and mutation when reviewing an agent’s data flow; Manuscript is in alpha, and syntax/APIs may change.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::keep an independent copy\nPASS example.ms::keep an independent copy\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

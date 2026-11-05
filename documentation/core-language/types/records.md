@@ -34,8 +34,10 @@ PASS example.ms::independent customer update
 1 tests, 0 failed
 ```
 
-- Record names are nominal types; construction names that declaration, not just a matching shape.
-- `let` prevents field mutation; use `var` intentionally and `.clone()` for independent owned data.
+<span id="public-data-surfaces"></span><span id="opaque-types"></span>
+
+- Export exposes record constructors/fields and enum variants. `export opaque type` or `export opaque enum` hides that representation outside its file; use exported functions instead.
+- Record identity follows its declaration. `let` prevents mutation; use `var` intentionally and `.clone()` for independent data.
 
 ## Moving a field out
 
@@ -100,6 +102,6 @@ PASS chain.ms::finite linked values
 - End recursive data with an absent value, a base case or an empty collection.
 - Recursive types do not derive hashing; generic cycles must preserve their type parameters.
 
-<span id="construction"></span><span id="mutation-and-cloning"></span><span id="domain-identity"></span><span id="public-data-surfaces"></span><span id="opaque-types"></span><span id="resource-fields"></span>
+<span id="construction"></span><span id="mutation-and-cloning"></span><span id="domain-identity"></span><span id="resource-fields"></span>
 
 Next: [type and ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md); [enums](alternatives.md).

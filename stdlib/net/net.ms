@@ -933,12 +933,10 @@ export fn restrict(
 ) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
-// Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-// A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns EIO.
-// Returns EINVAL for invalid options (`cores` below 1 included). Close the server, or drop it, to stop it.
-// `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
-// A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its resource cleanup runs. A client that half-closes its end after sending the request counts as disconnected.
-// A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+// Serve HTTP exchanges; [buffered helpers](http.ms.md) read/reply to whole messages. Closing or dropping the server stops it.
+//
+// - Options set bounds, TLS and thread count. Excess concurrent requests get 503, oversized headers 431, handler faults 500; invalid options return EINVAL and bind failures EIO.
+// - Timeout or disconnect (including half-close) cancels the handler, interrupts waits and runs cleanup. Return error responses for expected failures. See [HttpServerOptions](http.ms.md#httpserveroptions).
 export fn serve(
     address: String,
     handler: fn(var HttpExchange) Unit!,

@@ -7,6 +7,8 @@ weight = 4
 
 An optional makes missing input visible without hiding the fallback; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="checking-and-extracting-values"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::optional greeting\nPASS example.ms::optional greeting\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -67,6 +69,8 @@ PASS city.ms::optional city
 - `?.` skips the rest of the chain on absence and flattens an already-optional member.
 - Mutating through a chain requires a mutable owner; clone an owned field before moving it out.
 
+<span id="converting-absence-to-a-result"></span>
+
 ## Handling errors
 
 <!-- manuscript-example: {"mode":"test","stdout":"RUN port.ms::parse a port\nPASS port.ms::parse a port\n1 tests, 0 failed\n"} -->
@@ -95,6 +99,6 @@ PASS port.ms::parse a port
 - `ok_or(cause)` evaluates its cause eagerly; `ok_or_else` creates it only on absence.
 - Bare `ok_or()` supplies `Error` with kind `"ENOENT"` and the call’s source position.
 
-<span id="passing-optional-arguments"></span><span id="checking-and-extracting-values"></span><span id="converting-absence-to-a-result"></span><span id="data-modeling"></span>
+<span id="passing-optional-arguments"></span><span id="data-modeling"></span>
 
-Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [expected errors](../errors/results.md).
+Next: [optional operations](../../standard-library/reference/prelude.md#optional); [expected errors](../errors/results.md).

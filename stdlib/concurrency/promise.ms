@@ -46,7 +46,7 @@ PASS promise-result.ms::promise-result
 ```
 
 - `promise` starts eagerly; stream reads may defer work until `wait`.
-- Captured values are read-only; send changes through a pipe to a single owner.
+- Borrowed captures stay read-only; captured resources move into the work and take their cleanup duties with them.
 */
 export opaque type Promise[T]:
     // The runtime slot of this promise: a generation and an index, never reused while this id is live.
@@ -197,9 +197,9 @@ export fn complete[U](id: Int, result: U!) Unit:
         error(cause):
             msrt_promise_put(id, cause, 1)
 
-// Runs `entry` on a thread the runtime picks and returns its promise. The promise reads what `entry` captures, so the
-// values it reads must outlive it and cannot change while it lives; nothing the entry captures can be changed from
-// inside it. A fault inside ends only this promise: `wait` reports it as `EIO`.
+// Runs `entry` on a runtime-selected thread. Borrowed data must outlive the promise and remain unchanged.
+// Captured resources move into the work; a resource captured from var may be mutated there and closes when its owner ends.
+// A fault ends this promise; `wait` reports EIO. See [promise ownership](../../../core-language/concurrency/promises.md).
 export fn promise[U](
     entry: fn() U!,
     options: PromiseOptions = PromiseOptions()

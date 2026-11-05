@@ -5,7 +5,7 @@ weight = 1
 
 # Conditionals
 
-Choose a greeting for a present or missing name. Manuscript is in alpha; syntax and APIs evolve.
+Compare present and missing names to review both branches and their fallback; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","stdout":"RUN example.ms::present and missing names\nPASS example.ms::present and missing names\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}

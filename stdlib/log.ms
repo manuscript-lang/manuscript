@@ -381,9 +381,10 @@ impl Transport for RotatingTransport:
         self.closed = true
 
 /*
-Appends log records to the file at `path` and rotates it by size.
-When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `EINVAL`. An existing file keeps being appended to, counting its current size.
-Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5), none, none, none)`.
+Append records and rotate files when a write would exceed `max_bytes`; an oversized record remains whole in a fresh file.
+
+- Rotations shift through `.1` to `.<keep>` and delete the oldest; keep=0 discards previous contents. Existing file size counts toward the limit.
+- Nonpositive `max_bytes` or negative `keep` returns `EINVAL`.
 */
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
     if max_bytes <= 0 or keep < 0: return error(

@@ -7,6 +7,8 @@ weight = 3
 
 Choose a collection whose ordering and update behavior a reviewer can recognize; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="list-literals"></span><span id="mutation-and-copies"></span><span id="naming-and-migration"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::update one independent list\nPASS example.ms::update one independent list\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -32,6 +34,8 @@ PASS example.ms::update one independent list
 
 - A clone has independent storage; an ordinary binding of a place can borrow instead.
 - Use `var` only for mutations; collection cleanup follows ownership of the stored values.
+
+<span id="map-literals"></span><span id="lookup-and-updates"></span>
 
 ## Maps
 
@@ -63,6 +67,6 @@ PASS visits.ms::count visits by path
 - Map and set traversal keeps insertion order; replacing an existing entry keeps its position.
 - Keys and set elements require `Hashable`; ordinary lookup returns `T?` when absence is expected.
 
-<span id="list-literals"></span><span id="map-literals"></span><span id="element-requirements"></span><span id="iteration"></span><span id="walking-two-lists-or-a-list-with-its-index"></span><span id="mutation-and-copies"></span><span id="naming-and-migration"></span><span id="other-collections"></span><span id="primitive-storage-and-memory"></span><span id="lookup-and-updates"></span><span id="search-and-enumeration"></span><span id="transforming-map-keys-and-values"></span><span id="reducing-and-querying"></span><span id="building-data"></span>
+<span id="element-requirements"></span><span id="iteration"></span><span id="walking-two-lists-or-a-list-with-its-index"></span><span id="other-collections"></span><span id="primitive-storage-and-memory"></span><span id="search-and-enumeration"></span><span id="transforming-map-keys-and-values"></span><span id="reducing-and-querying"></span><span id="building-data"></span>
 
 Next: [type and ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md); [equality and hashing](equality-and-hashing.md).

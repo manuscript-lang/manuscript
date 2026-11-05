@@ -7,6 +7,8 @@ weight = 8
 
 Explicit key identity makes deduplication and lookup decisions reviewable; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="domain-identity"></span><span id="key-consistency"></span><span id="built-in-value-semantics"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::deduplicate by identifier\nPASS example.ms::deduplicate by identifier\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -43,6 +45,6 @@ PASS example.ms::deduplicate by identifier
 - An explicit Equal implementation defines identity; Hashable must give equal values equal hashes.
 - Records and enums otherwise compare their components when those components support equality.
 
-<span id="built-in-value-semantics"></span><span id="domain-identity"></span><span id="key-consistency"></span>
 
-Next: [type checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/checker.rs); [interfaces and implementations](contracts.md).
+
+Next: [equality and hashing operations](../../standard-library/reference/prelude.md); [interfaces and implementations](contracts.md).

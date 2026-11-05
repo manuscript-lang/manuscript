@@ -5,7 +5,7 @@ weight = 95
 
 # Evaluation order and call preparation
 
-Observe written argument order; save as `order.ms`.
+Expose argument effects to catch reordering in agent-written lowering; save as `order.ms`.
 
 <!-- manuscript-example: {"mode":"run","filename":"order.ms","stdout":"2\n1\n12\n"} -->
 ```manuscript

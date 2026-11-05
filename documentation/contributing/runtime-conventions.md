@@ -5,7 +5,7 @@ weight = 22
 
 # Typed runtime conventions
 
-Locate the shared runtime layouts before changing native code (repository root).
+Locate authoritative layouts to catch duplicated ABI assumptions in agent-written native code (repository root).
 
 ```sh
 rg '^pub struct (Obj|StrVal|TypeDesc)' crates/ms-rt-abi/src/lib.rs

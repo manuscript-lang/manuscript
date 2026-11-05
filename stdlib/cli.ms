@@ -257,23 +257,10 @@ fn help_at(
     return error(cli_unknown_command(words[from].clone(), names.join(" ")))
 
 /*
-Builds a leaf command whose handler receives the options record `T`.
+Build a leaf whose handler receives typed options and returns the exit status.
 
-Each field of `T` is filled from the flag or argument with its name, dashes written as underscores, and has the
-type its kind names:
-
-| declared | field type |
-| --- | --- |
-| `FlagKind.Bool` | `Bool` (absent is false) |
-| `FlagKind.String` | `String` |
-| `FlagKind.Int` | `Int` |
-| `FlagKind.Float` | `Float` |
-| `FlagKind.List`, and a `rest` argument | `List[String]` (absent is empty) |
-| any other `Arg` | `String` |
-
-A flag with neither a default nor `required`, and an optional `Arg`, needs an `...?` field, which is `none`
-when absent. A field with no matching value, or of the wrong type, fails the run with an `Error` with kind `"EINVAL"`. The
-handler returns the exit status.
+- Field names match flags/arguments with dashes changed to underscores; their types follow [FlagKind](#flagkind). Plain arguments are String; rest arguments are List[String].
+- Absent Bool/List flags use false/empty; other optional inputs need `T?`. Missing or mismatched fields return `EINVAL`. See [Command](#command).
 */
 export fn command[T: Data](
     name: String,

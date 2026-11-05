@@ -7,6 +7,8 @@ weight = 5
 
 Explicit grouping and pipe steps make the order of agent-written calculations easy to review; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="precedence-and-grammar"></span><span id="evaluation"></span><span id="examples"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::group a calculation\nPASS example.ms::group a calculation\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -62,6 +64,6 @@ PASS port.ms::read a pipe from top to bottom
 - `x | f` passes x as the first argument; `x | .method()` calls on x.
 - `try` before a step handles that result; `| try` handles the value already flowing through.
 
-<span id="precedence-and-grammar"></span><span id="operand-and-result-types"></span><span id="never-operands"></span><span id="evaluation"></span><span id="examples"></span>
+<span id="operand-and-result-types"></span><span id="never-operands"></span>
 
 Next: [operator checking](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/src/exprs.rs); [source grammar](grammar.md).

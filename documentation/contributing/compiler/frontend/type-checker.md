@@ -5,7 +5,7 @@ weight = 89
 
 # Type checking and source contracts
 
-Assert named-argument mapping; save as `types.ms`.
+Assert argument mapping to review an agent’s call-checking change; save as `types.ms`.
 
 <!-- manuscript-example: {"mode":"test","filename":"types.ms","stdout":"RUN types.ms::named arguments retain their meaning\nPASS types.ms::named arguments retain their meaning\n1 tests, 0 failed\n"} -->
 ```manuscript

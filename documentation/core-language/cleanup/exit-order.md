@@ -5,7 +5,7 @@ weight = 4
 
 # Cleanup order
 
-Observe cleanup order by printing when each resource closes. Manuscript is in alpha; syntax and APIs evolve.
+Print close events to review resource dependencies in cleanup order; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"run","filename":"example.ms","stdout":"work\nclose second\nclose first\n"} -->
 ```manuscript {filename="example.ms"}

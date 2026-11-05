@@ -7,6 +7,8 @@ weight = 4
 
 Review text boundaries and explicit conversions before passing strings to files, protocols or users; Manuscript is in alpha and syntax/APIs may change.
 
+<span id="string-literals"></span><span id="multi-line-and-raw-literals"></span><span id="interpolation"></span><span id="converting-values-to-string"></span>
+
 <!-- manuscript-example: {"mode":"test","stdout":"RUN example.ms::text and interpolation\nPASS example.ms::text and interpolation\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
 import expect_equal from "@std/test/test.ms"
@@ -36,6 +38,8 @@ PASS example.ms::text and interpolation
 
 - Strings are immutable UTF-8; interpolation converts each expression once, left to right.
 - Triple-quoted text removes closing indentation; prefix it with `r` for literal braces and backslashes.
+
+<span id="indexing-and-character-boundaries"></span>
 
 ## Half-open slices
 
@@ -136,6 +140,6 @@ PASS example.ms::binary codecs
 1 tests, 0 failed
 ```
 
-<span id="string-literals"></span><span id="multi-line-and-raw-literals"></span><span id="interpolation"></span><span id="converting-values-to-string"></span><span id="indexing-and-character-boundaries"></span><span id="replacing-text"></span><span id="deterministic-formatting"></span>
+<span id="replacing-text"></span><span id="deterministic-formatting"></span>
 
 Next: [String methods](../../standard-library/reference/prelude.md#string) and [Bytes methods](../../standard-library/reference/bytes.ms.md); [Numbers](numbers-and-booleans.md) · [Bytes reference](../../standard-library/reference/bytes.ms.md).

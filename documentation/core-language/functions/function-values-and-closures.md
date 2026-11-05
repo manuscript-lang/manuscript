@@ -31,8 +31,12 @@ PASS example.ms::borrow a prepared offset
 1 tests, 0 failed
 ```
 
+<span id="closure-captures"></span><span id="resource-captures"></span>
+
 - Local closures borrow captures; an escaping closure takes ownership and its cleanup duties.
 - Function-value calls and interface methods return owned values; clone captured data when an independent owner is needed.
+
+<span id="changing-parameters"></span>
 
 ## Mutable parameters
 
@@ -65,6 +69,6 @@ PASS mutation.ms::explicit mutation through a callback
 - Both the function type and call mark the mutable argument with `var`.
 - A mutable parameter remains owned by the caller; it cannot be moved out without replacement.
 
-<span id="function-type-compatibility"></span><span id="changing-parameters"></span><span id="closure-captures"></span><span id="resource-captures"></span><span id="contextual-callback-inference"></span>
+<span id="function-type-compatibility"></span><span id="contextual-callback-inference"></span>
 
 Next: [capture and ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md); [mutation and references](../types/references.md).

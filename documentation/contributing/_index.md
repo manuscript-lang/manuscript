@@ -5,7 +5,7 @@ weight = 6
 
 # Contributing
 
-Build and run the checkout before changing it (repository root).
+Build and run the checkout to reproduce an agent’s compiler change (repository root).
 
 ```sh
 make build

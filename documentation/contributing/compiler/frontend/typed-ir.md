@@ -5,7 +5,7 @@ weight = 91
 
 # Typed intermediate representation
 
-Inspect checked relationships before adding a compiler query (repository root).
+Inspect checked types and positions to review an agent’s compiler-query change (repository root).
 
 ```sh
 target/release/ms inspect examples/hello/ms.toml -o inspection.json

@@ -10,11 +10,10 @@ export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
     value: V
 
 /*
-A map kept in ascending key order, so lookups by position (first, last, floor, ceiling, range) are as cheap as lookups by key.
-Keys use their Comparable order; keys that compare equal are the same key. Replacing a key's value keeps the original key.
-Written in Manuscript as a list of sorted chunks of at most 128 entries: get, contains, floor and ceiling take O(log n);
-add and remove locate the key and shift entries within its chunk; splitting or removing a chunk also updates the chunk lists.
-Use clone() for an independent deep copy. Use Map when insertion order is enough and you need average O(1) key lookup.
+Keep keys in Comparable order for positional and range lookup; keys comparing equal identify one entry, and replacement retains the original key.
+
+- Lookup, floor and ceiling are O(log n); updates shift entries within sorted chunks and may split chunks.
+- Clone for independent data; choose Map for insertion order and average O(1) key lookup.
 */
 export type SortedMap[K: Comparable & Clonable, V: Clonable]:
     // Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not this field.

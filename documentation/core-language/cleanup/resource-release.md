@@ -5,7 +5,7 @@ weight = 2
 
 # Closing a resource
 
-Close a file early and check that further reads fail. Manuscript is in alpha; syntax and APIs evolve.
+Read after explicit close to review when a file becomes unusable; syntax and APIs evolve during alpha.
 
 <!-- manuscript-example: {"mode":"test","filename":"example.ms","files":{"notes.txt":"hello\n"},"stdout":"RUN example.ms::close a file before its scope ends\nPASS example.ms::close a file before its scope ends\n1 tests, 0 failed\n"} -->
 ```manuscript {filename="example.ms"}
