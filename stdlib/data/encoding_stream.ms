@@ -57,7 +57,8 @@ impl Transform[String, Bytes] for Base64Decoding:
         let part = text.slice(0, whole).get("")
         let decoded = try base64_decode(part, self.url_safe, none)
 
-        if part.ends_with("="):
+        // Every complete group decodes to three bytes unless the last group has padding.
+        if decoded.length() != whole / 4 * 3:
             self.ended = true
 
             if not self.tail.is_empty():
