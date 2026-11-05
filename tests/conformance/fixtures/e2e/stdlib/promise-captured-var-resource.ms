@@ -1,0 +1,29 @@
+// conform: tags=scope-cleanup,stdlib-promise,tier-io
+// conform: phase=run
+import Closeable from "@std/core.ms"
+import stdout from "@std/io/io.ms"
+import promise from "@std/concurrency/promise.ms"
+
+type Door:
+    names: List[String]
+
+impl Closeable for Door:
+    var fn close() Unit!:
+        stdout().write("closed\n").get()
+        return ok(unit)
+
+impl Door:
+    var fn swing() Int:
+        self.names.append("swung")
+        return self.names.length()
+
+fn use(var door: Door) Int!:
+    return ok(door.swing())
+
+// A promise that passes a captured `var` resource on shares the variable's storage: the scope still
+// closes the door once and drops its names (`make leak-check` reports a block left behind).
+export fn main() Int:
+    var door = Door(["front", "back"])
+    let moved = promise(fn: use(var door))
+    stdout().write("{moved.wait().get(0)}\n").get()
+    return 0

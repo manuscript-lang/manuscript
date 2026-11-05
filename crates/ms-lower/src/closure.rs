@@ -111,6 +111,12 @@ impl FnLower<'_> {
                 cap_tys.push(MTy::PTR);
                 cap_vals.push(slot);
                 scoped = true;
+                // The checker counts an escaping closure as taking the variable, but this one
+                // shares the variable's storage, so the scope still owns the value: it closes
+                // and drops it at its end.
+                if self.moves_at(b.uid, e.id) {
+                    self.must_move.remove(&b.uid);
+                }
                 continue;
             }
             let x = if self.moves_at(b.uid, e.id) {
