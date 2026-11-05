@@ -377,7 +377,7 @@ impl<'a> FnLower<'a> {
                         },
                         &mut |s| {
                             let hit = load(s);
-                            let hit = s.owned(Val { v: hit, own: false });
+                            let hit = s.owned_boundary(Val { v: hit, own: false });
                             s.finish(d.val);
                             Ok(Some(hit))
                         },

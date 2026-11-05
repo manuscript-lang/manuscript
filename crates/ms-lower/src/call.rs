@@ -600,12 +600,9 @@ impl<'a> FnLower<'a> {
             // A field or element place the callee changes: the value is copied into the slot and the
             // original is dropped when the result is written back, so this copy is the call's
             // copy-in, not a stored duplicate (interim: take the place's value out instead).
-            None if !a.own
-                && place
-                    .is_some_and(|p| self.is_place(p) && !matches!(p.kind, ExprKind::Name(_))) =>
-            {
-                self.clone_value(a.v)
-            }
+            // A variable another argument of the same call reads is copied in the same way:
+            // taking it would leave that read an empty slot.
+            None if !a.own && place.is_some_and(|p| self.is_place(p)) => self.clone_value(a.v),
             None => self.owned(a),
         };
         let slot = self
