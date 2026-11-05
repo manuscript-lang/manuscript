@@ -238,14 +238,14 @@ test('previous and next links follow the rendered sidebar reading order', () => 
     'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
     'learn/why-manuscript/', 'guide/', 'guide/values-and-functions/',
   ].map(route => prefix + route), 'Teach running, reading, and the guide before task recipes');
-  assert.ok(routes.indexOf(prefix + 'guide/cleaning-up/') < routes.indexOf(prefix + 'learn/common-tasks/'),
+  assert.ok(routes.indexOf(prefix + 'guide/cleaning-up/') < routes.indexOf(prefix + 'cookbook/'),
     'The guide comes before task recipes');
   assert.deepEqual(routes.filter(route => route.startsWith(prefix + 'developer-tooling/')).slice(0, 3),
     ['developer-tooling/', 'developer-tooling/how-it-works/', 'developer-tooling/implementation/'].map(route => prefix + route),
     'Teach building and sharing before the tooling command reference');
   assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
   const retired = fs.readFileSync(path.join(book, 'learn/best-practices/index.html'), 'utf8');
-  assert.ok(retired.includes(prefix + 'learn/common-tasks/'), 'Retired advice page redirects to runnable recipes');
+  assert.ok(retired.includes(prefix + 'cookbook/'), 'Retired advice page redirects to runnable recipes');
 
   for (const [index, route] of routes.entries()) {
     const file = path.join(book, route.slice(prefix.length), 'index.html');

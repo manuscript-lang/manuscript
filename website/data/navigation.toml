@@ -7,8 +7,12 @@ label = "Guide"
 paths = ["guide"]
 
 [[groups]]
+label = "Cookbook"
+paths = ["cookbook"]
+
+[[groups]]
 label = "Build with Manuscript"
-paths = ["learn/common-tasks", "developer-tooling"]
+paths = ["developer-tooling"]
 
 [[groups]]
 label = "Coming from another language"

@@ -415,4 +415,4 @@ let mixed = [1, "two"]    // List elements need a common type.
 line_total(12)            // Supply the required quantity.
 ```
 
-Next: [testing](testing.md), [task recipes](common-tasks.md), the [language reference](../core-language/_index.md), and the [API reference](../standard-library/reference/_index.md).
+Next: [testing](testing.md), [cookbook](../cookbook/_index.md), the [language reference](../core-language/_index.md), and the [API reference](../standard-library/reference/_index.md).

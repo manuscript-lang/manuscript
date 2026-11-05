@@ -56,7 +56,7 @@ export fn main() Int:
 - `write` takes text and returns a `Result`; `is_error()` tests for failure.
 - Four spaces open a block; statements need no terminator.
 
-For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](common-tasks.md#print-a-line) for output and error handling.
+For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](../cookbook/command-line.md#print-a-line) for output and error handling.
 
 ## 3. Make it yours
 
@@ -126,4 +126,4 @@ Manuscript is in alpha. These guides follow `main`; for a published release, use
 
 ## Keep going
 
-Next: the [language tour](tour.md), then [testing](testing.md) and [task recipes](common-tasks.md). For editors, see [developer tools](../developer-tooling/implementation.md).
+Next: the [language tour](tour.md), then [testing](testing.md) and [cookbook](../cookbook/_index.md). For editors, see [developer tools](../developer-tooling/implementation.md).

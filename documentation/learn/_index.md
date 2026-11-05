@@ -15,13 +15,13 @@ Run a program, learn the language, then build something useful. The same `ms` co
 2. **[Read the guide](../guide/_index.md).** One small shop program, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
    Want the whole language on one page? Take the [tour](tour.md).
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
-4. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
+4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
 Read in order with **Next**.
 
 ## Ready to build?
 
-[Task recipes](common-tasks.md) are complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
+The [cookbook](../cookbook/_index.md) has complete programs: arguments, files, JSON, and HTTP. [Developer tools](../developer-tooling/_index.md) cover editor setup, builds, and debugging.
 
 ## Need an exact answer?
 
