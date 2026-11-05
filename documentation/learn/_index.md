@@ -12,8 +12,8 @@ Run a program, learn the language, then build something useful. The same `ms` co
 [Why Manuscript](why-manuscript.md) follows an agent building a program, from first mistake to shipped executable. Know TypeScript, Go or Python? See [coming from another language](../coming-from/_index.md).
 
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
-2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
-   Prefer a longer walk-through? The [guide](../guide/_index.md) builds one small shop program chapter by chapter.
+2. **[Read the guide](../guide/_index.md).** One small shop program, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
+   Want the whole language on one page? Take the [tour](tour.md).
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](common-tasks.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
