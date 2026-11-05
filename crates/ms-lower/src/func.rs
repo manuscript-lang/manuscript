@@ -136,6 +136,8 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
+    /// This instance is the borrowed-signature adapter of a function that moves a parameter.
+    pub adapter: bool,
     /// The scrutinee `hold` just evaluated is a declared read (see `boundary_reads`).
     pub hold_declared: bool,
     /// Values whose copy on storing is declared: the payload an `Optional`/`Result` read (`get()`,
@@ -606,6 +608,7 @@ impl<'a> FnLower<'a> {
             converting: None,
             scalars_scan: false,
             in_thunk: false,
+            adapter: false,
             hold_declared: false,
             boundary_reads: Default::default(),
             aliases: HashMap::new(),
@@ -695,6 +698,7 @@ impl<'a> FnLower<'a> {
             return x.v;
         }
         if self.cx.strict_copies
+            && !self.adapter
             && !self.boundary_reads.contains(&x.v)
             // A `trim` view kept as a value is the allocation `trim` would have made.
             && !self.views.contains(&x.v)
@@ -1439,18 +1443,13 @@ impl<'a> FnLower<'a> {
             ms_check::hir::Body::Expr(_) => Default::default(),
         };
         // The borrowed instance (reached through an interface or a function value) of a function
-        // that moves a parameter copies it where the body moves it: the borrowed signature's
-        // declared adaptation, not a hidden copy.
-        let moving = (!self.variant.owned)
-            .then(|| self.cx.owned_mask(c))
-            .flatten();
+        // that moves a parameter is the copying adapter for the borrowed signature: its copies
+        // are the declared adaptation, not hidden ones.
+        self.adapter = !self.variant.owned && self.cx.owned_mask(c).is_some();
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
                 self.bind_var_parameter(b, v)?;
                 continue;
-            }
-            if moving.as_ref().is_some_and(|mask| mask[i]) {
-                self.boundary_reads.insert(v);
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
