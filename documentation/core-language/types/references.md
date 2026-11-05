@@ -43,7 +43,7 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `let x = m.get(k)` keeps `m` unchangeable until `x` is last used, and `if var x = m.get(k)` changes the entry in place. Use `if let` to read a borrowed resource or function value without moving it out of its container.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `let x = m.get(k)` keeps `m` unchangeable until `x` is last used, `let x = m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if let` to read a borrowed resource or function value without moving it out of its container.
 
 ## Reassignment
 

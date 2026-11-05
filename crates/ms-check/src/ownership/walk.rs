@@ -1361,6 +1361,21 @@ impl Walker<'_> {
             && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !self.syms.str(m.native).is_empty())
     }
 
+    /// `value` is `map.get(key).get()`: the `map.get(key)` call whose payload it reads.
+    fn entry_get<'e>(&self, value: &'e Expr) -> Option<&'e Expr> {
+        let ExprKind::Call { callee, args } = &value.kind else {
+            return None;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return None;
+        };
+        (self.syms.str(name) == "get"
+            && args.is_empty()
+            && self.cx.m.ty(left).is(Builtin::Optional)
+            && self.map_get(left))
+        .then_some(&**left)
+    }
+
     fn receiver_consumed(&self) -> bool {
         self.cx
             .c
@@ -2024,6 +2039,18 @@ impl Walker<'_> {
             && let Some(origins) = self.projection_origins(value)
         {
             // Reading part of a value that stays where it is.
+            if mutable && let Some(entry) = self.entry_get(value) {
+                // `var x = map.get(key).get()`: the entry, borrowed exclusively like
+                // `if var x = map.get(key)`; an absent key faults.
+                if let ExprKind::Call { callee, args } = &entry.kind
+                    && let ExprKind::Member { left, .. } = &callee.kind
+                {
+                    self.expr(&args[0].value, Demand::Read);
+                    let scrutinee = self.scrutinee(left);
+                    self.mutable_entry(&b, role, entry, &scrutinee, pattern.pos);
+                }
+                return;
+            }
             if mutable && let ExprKind::Call { .. } = &value.kind {
                 self.bind_getter(s, &b, role, value);
                 return;
@@ -2727,6 +2754,18 @@ impl Walker<'_> {
         let Some(b) = self.cx.m.pattern_binding(p) else {
             return;
         };
+        self.mutable_entry(&b, Role::Pattern, value, source, p.pos);
+    }
+
+    /// `b` borrows the entry `value` (`place[key]?` or `map.get(key)`) of `source` exclusively.
+    fn mutable_entry(
+        &mut self,
+        b: &BindingRef,
+        role: Role,
+        value: &Expr,
+        source: &Scrutinee,
+        pos: Pos,
+    ) {
         // `place[key]?` and `map.get(key)` both find an entry in place.
         let probe = matches!(value.kind, ExprKind::Probe(_)) || self.map_get(value);
         let value = match &value.kind {
@@ -2739,7 +2778,7 @@ impl Walker<'_> {
             _ => None,
         });
         let (Some((root, root_node)), false) = (root, source.owned) else {
-            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            self.declare(b, role, Perm::Mutable, None, false);
             return;
         };
         let info = PlaceInfo {
@@ -2752,22 +2791,22 @@ impl Walker<'_> {
         };
         if !probe {
             self.error(
-                p.pos,
+                pos,
                 format!(
                     "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `{}` is not one; bind a clone with `if let`, then `var x = x.clone()`, or write the changed value back",
                     info.text
                 ),
             );
-            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            self.declare(b, role, Perm::Mutable, None, false);
             return;
         }
         let before = self.diags.len();
-        self.mutate(p.pos, &info, "borrow mutably");
+        self.mutate(pos, &info, "borrow mutably");
         if self.diags.len() == before {
             let parent = self.borrow_parent(&info.root);
-            self.declare_mut_borrow(&b, Role::Pattern, source.origins.clone(), p.pos, parent);
+            self.declare_mut_borrow(b, role, source.origins.clone(), pos, parent);
         } else {
-            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            self.declare(b, role, Perm::Mutable, None, false);
         }
     }
 

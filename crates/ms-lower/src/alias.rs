@@ -70,6 +70,24 @@ impl<'a> FnLower<'a> {
                 Ok(a)
             }
             ExprKind::Call { callee, args } => {
+                // `map.get(key).get()`: the entry, as `if var x = map.get(key)` names it; an
+                // absent key faults.
+                if let ExprKind::Member { left, name } = &callee.kind
+                    && self.syms.str(name) == "get"
+                    && args.is_empty()
+                    && matches!(&left.kind, ExprKind::Call { .. })
+                    && self.cx.getters.get(&(self.hir.data.file, e.id)).is_none()
+                {
+                    let (alias, found) = self.alias_accessor(left, None)?;
+                    let (ok, bad) = (self.b.new_block(), self.b.new_block());
+                    self.b.br_if(found, ok, &[], bad, &[]);
+                    self.b.seal_block(ok);
+                    self.b.seal_block(bad);
+                    self.b.switch_to(bad);
+                    self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
+                    self.b.switch_to(ok);
+                    return Ok(alias);
+                }
                 let Some(fields) = self.cx.getters.get(&(self.hir.data.file, e.id)).cloned() else {
                     return Err(Error::new(
                         "a mutable borrow needs a field or element of a variable",
@@ -107,7 +125,11 @@ impl<'a> FnLower<'a> {
 
     /// The place `if var name = recv[key]?` (or `if var name = map.get(key)`) names, and the
     /// test for whether it exists.
-    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Value), Error> {
+    pub(crate) fn alias_accessor(
+        &mut self,
+        cond: &Expr,
+        body: Option<&[Stmt]>,
+    ) -> Result<(Alias, Value), Error> {
         let (left, index) = match &cond.kind {
             ExprKind::Probe(target) => {
                 crate::mutation::index_parts(self.syms, &self.hir, target)
@@ -153,6 +175,14 @@ impl<'a> FnLower<'a> {
                     && matches!(
                         self.hir.resolution(index),
                         Resolution::Local(b) if !b.mutable
+                            || body.is_some_and(|body| !crate::mutation::mutated_locals(
+                                self.syms,
+                                &self.hir,
+                                ms_check::hir::Body::Block(body),
+                                &self.cx.callables,
+                                &self.cx.mutated,
+                            )
+                            .contains(&b.uid))
                     );
                 let key = if unchanging {
                     let var = self
@@ -160,8 +190,13 @@ impl<'a> FnLower<'a> {
                         .declare_var(self.ty_of(k.v), ms_mir::ir::Mode::Borrow);
                     self.b.def_var(var, k.v);
                     var
-                } else {
+                } else if k.own {
                     self.bind_hidden(k)
+                } else {
+                    // The body changes the key's variable: the borrow keeps the key it found the
+                    // entry by, a declared copy.
+                    let copy = self.clone_value(k.v);
+                    self.bind_hidden(Val { v: copy, own: true })
                 };
                 let ptr = self.map_entry_ptr(whole.v, key)?;
                 let missing = self
