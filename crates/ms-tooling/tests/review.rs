@@ -8,7 +8,7 @@ use ms_tooling::mark::{explain, explain_json, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, TIER_EFFECT, compare_facts};
 use ms_tooling::tree::Node;
-use ms_tooling::views::build_view;
+use ms_tooling::views::{NODE_CAP, build_view, mermaid_view};
 use std::collections::BTreeMap;
 
 const SAMPLE_DIFF: &str = "diff --git a/src/a.ms b/src/a.ms\nindex 111..222 100644\n--- a/src/a.ms\n+++ b/src/a.ms\n@@ -1,4 +1,5 @@\n fn one() Int:\n-    return 1\n+    let x = 1\n+    return x\n \n fn two() Int:\ndiff --git a/new.ms b/new.ms\nnew file mode 100644\n--- /dev/null\n+++ b/new.ms\n@@ -0,0 +1,2 @@\n+fn n() Int:\n+    return 0\n";
@@ -541,5 +541,106 @@ fn ownership_view_names_each_borrow_mode() {
     assert_eq!(
         tree,
         "OWNERSHIP VIEW\n`- save  [fn] o.ms:2\n   |- db: Db  var (exclusive borrow)\n   |- name: String  borrow\n   |- returns Int  owned\n   `- closes 1 resource scope(s)\n"
+    );
+}
+
+// Read a class's declared ID using a distinguishing member, independently of its label.
+fn class_with_member<'a>(diagram: &'a str, member: &str) -> &'a str {
+    let block = diagram
+        .split("    class ")
+        .skip(1)
+        .find(|block| block.split("    }\n").next().unwrap().contains(member))
+        .unwrap();
+    block.split([' ', '[']).next().unwrap()
+}
+
+#[test]
+fn types_mermaid_preserves_distinct_declaration_identities() {
+    let mut first = fact("a.ms", "record", "Item", 1);
+    let mut second = fact("b.ms", "record", "Item", 1);
+    let mut sanitized = fact("c.ms", "interface", "Box[Item]", 1);
+    let mut literal = fact("d.ms", "alternative", "Box_Item_", 1);
+    let reserved = fact("e.ms", "record", "__ms_type_0", 1);
+    first.slots = vec![slot("first", "Item", false, &[&second.key])];
+    second.slots = vec![slot("second", "Item", false, &[&first.key])];
+    sanitized.slots = vec![slot("sanitized", "", false, &[&literal.key])];
+    literal.slots = vec![slot("literal", "", false, &[&reserved.key])];
+    let facts = facts_of(vec![literal, second, reserved, first, sanitized]);
+    let diagram = mermaid_view(&facts, "types", "", 1).unwrap();
+    let ids: Vec<_> = diagram
+        .lines()
+        .filter_map(|line| {
+            line.strip_prefix("    class ")
+                .map(|rest| rest.split([' ', '[']).next().unwrap())
+        })
+        .collect();
+    assert_eq!(ids.len(), 5, "{diagram}");
+    assert_eq!(
+        ids.iter().collect::<std::collections::HashSet<_>>().len(),
+        5,
+        "{diagram}"
+    );
+    let first = class_with_member(&diagram, "+Item first");
+    let second = class_with_member(&diagram, "+Item second");
+    let sanitized = class_with_member(&diagram, "        sanitized");
+    let literal = class_with_member(&diagram, "        literal");
+    assert!(
+        diagram.contains(&format!("    {first} *-- {second} : first\n")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("    {second} *-- {first} : second\n")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("    {sanitized} *-- {literal} : sanitized\n")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("    {literal} *-- __ms_type_0 : literal\n")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("class {second}[\"Item\"]")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("class {literal}[\"Box_Item_\"]")),
+        "{diagram}"
+    );
+    assert_eq!(diagram, mermaid_view(&facts, "types", "", 1).unwrap());
+}
+
+#[test]
+fn types_mermaid_only_links_declared_nodes_at_the_cap() {
+    let mut types: Vec<_> = (0..=NODE_CAP)
+        .map(|i| fact(&format!("{i:03}.ms"), "record", "Item", 1))
+        .collect();
+    let included = types[NODE_CAP - 1].key.clone();
+    let excluded = types[NODE_CAP].key.clone();
+    types[0].slots = vec![
+        slot("included", "Item", false, &[&included]),
+        slot("excluded", "Item", false, &[&excluded]),
+    ];
+    let facts = facts_of(types);
+    let diagram = mermaid_view(&facts, "types", "", 1).unwrap();
+    let ids: std::collections::HashSet<_> = diagram
+        .lines()
+        .filter_map(|line| {
+            line.strip_prefix("    class ")
+                .map(|rest| rest.split([' ', '[']).next().unwrap())
+        })
+        .collect();
+    assert_eq!(ids.len(), NODE_CAP, "{diagram}");
+    let edges: Vec<_> = diagram
+        .lines()
+        .filter(|line| line.contains(" *-- "))
+        .collect();
+    assert_eq!(edges.len(), 1, "{diagram}");
+    assert!(edges[0].ends_with(" : included"), "{diagram}");
+    let endpoints: Vec<_> = edges[0].split_whitespace().collect();
+    assert!(
+        ids.contains(endpoints[0]) && ids.contains(endpoints[2]),
+        "{diagram}"
     );
 }

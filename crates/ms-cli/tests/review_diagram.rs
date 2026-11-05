@@ -412,3 +412,206 @@ fn html_page_embeds_the_program_and_escapes_script_text() {
     );
     assert!(!bad.status.success());
 }
+
+#[test]
+fn type_relationships_follow_checked_imports_and_generic_scope() {
+    let dir = scratch("checked-types");
+    for (name, source) in [
+        ("main.ms", include_str!("diagram_types/main.ms")),
+        ("a.ms", include_str!("diagram_types/a.ms")),
+        ("b.ms", include_str!("diagram_types/b.ms")),
+    ] {
+        std::fs::write(dir.join(name), source).unwrap();
+    }
+    type ExpectedSlot<'a> = (&'a str, Option<&'a str>);
+    let cases: &[(&str, &[ExpectedSlot])] = &[
+        (
+            "main.ms#record#Box",
+            &[
+                ("items:", Some("a.ms#record#Item")),
+                ("callback:", Some("a.ms#record#Item")),
+                ("maybe:", Some("a.ms#record#Item")),
+            ],
+        ),
+        (
+            "Pick",
+            &[
+                ("case missing", None),
+                ("case found", Some("a.ms#record#Item")),
+            ],
+        ),
+        (
+            "Reader",
+            &[("read:", Some("a.ms#record#Item")), ("generic:", None)],
+        ),
+        (
+            "echo",
+            &[
+                ("item:", Some("a.ms#record#Item")),
+                ("returns", Some("a.ms#record#Item")),
+            ],
+        ),
+        ("Box.first", &[("returns", Some("a.ms#record#Item"))]),
+        ("Generic", &[("value:", None)]),
+        ("identity", &[("item:", None), ("returns", None)]),
+    ];
+    for (entity, expected) in cases {
+        let out = ms(
+            &dir,
+            &[
+                "diagram", "main.ms", "--view", "types", "--entity", entity, "--json",
+            ],
+        );
+        let doc = json(&out);
+        let root = &doc
+            .get("tree")
+            .unwrap()
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()[0];
+        let slots = root.get("children").unwrap().as_array().unwrap();
+        for (prefix, target) in *expected {
+            let slot = slots
+                .iter()
+                .find(|s| {
+                    s.get("label")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .starts_with(prefix)
+                })
+                .unwrap();
+            let refs: Vec<_> = slot
+                .get("children")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|s| s.get("reference").unwrap().as_str().unwrap())
+                .collect();
+            assert_eq!(
+                refs,
+                target.iter().copied().collect::<Vec<_>>(),
+                "{entity}: {prefix}"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn shared_default_type_arguments_keep_one_reference_per_declaration() {
+    let dir = scratch("shared-type-defaults");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_types/shared-defaults.ms"),
+    )
+    .unwrap();
+    let doc = json(&ms(
+        &dir,
+        &[
+            "diagram", "main.ms", "--view", "types", "--entity", "Root", "--json",
+        ],
+    ));
+    let root = &doc
+        .get("tree")
+        .unwrap()
+        .get("children")
+        .unwrap()
+        .as_array()
+        .unwrap()[0];
+    let slot = &root.get("children").unwrap().as_array().unwrap()[0];
+    let refs: Vec<_> = slot
+        .get("children")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s.get("reference").unwrap().as_str().unwrap())
+        .collect();
+    assert_eq!(refs, ["main.ms#record#Pair", "main.ms#record#Item"]);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn types_mermaid_keeps_same_named_module_types_and_their_edges_distinct() {
+    let dir = scratch("class-identity");
+    for (name, source) in [
+        ("a.ms", include_str!("diagram_class_identity/a.ms")),
+        ("b.ms", include_str!("diagram_class_identity/b.ms")),
+        ("main.ms", include_str!("diagram_class_identity/main.ms")),
+    ] {
+        std::fs::write(dir.join(name), source).unwrap();
+    }
+    let args = [
+        "diagram", "main.ms", "--view", "types", "--format", "mermaid",
+    ];
+    let output = ms(&dir, &args);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    assert_eq!(output.stdout, ms(&dir, &args).stdout);
+    let diagram = String::from_utf8(output.stdout).unwrap();
+    let id_for = |member: &str| {
+        diagram
+            .split("    class ")
+            .skip(1)
+            .find(|block| block.split("    }\n").next().unwrap().contains(member))
+            .unwrap()
+            .split([' ', '['])
+            .next()
+            .unwrap()
+    };
+    let named_item = id_for("+String name");
+    let counted_item = id_for("+Int count");
+    assert_ne!(named_item, counted_item, "{diagram}");
+    assert!(
+        diagram.contains(&format!("    ABox *-- {named_item} : item\n")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("    BBox *-- {counted_item} : item\n")),
+        "{diagram}"
+    );
+    assert_eq!(
+        diagram
+            .lines()
+            .filter(|line| line.starts_with("    class "))
+            .count(),
+        4,
+        "{diagram}"
+    );
+    assert_eq!(
+        diagram
+            .lines()
+            .filter(|line| line.contains(" *-- "))
+            .count(),
+        2,
+        "{diagram}"
+    );
+    let focused = ms(
+        &dir,
+        &[
+            "diagram", "main.ms", "--view", "types", "--entity", "ABox", "--format", "mermaid",
+        ],
+    );
+    assert!(
+        focused.status.success(),
+        "{}",
+        String::from_utf8_lossy(&focused.stderr)
+    );
+    let focused = String::from_utf8(focused.stdout).unwrap();
+    assert!(
+        focused.contains("class Item {") && focused.contains("ABox *-- Item : item"),
+        "{focused}"
+    );
+    assert!(
+        !focused.contains("+Int count") && !focused.contains("BBox"),
+        "{focused}"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

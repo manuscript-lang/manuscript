@@ -41,19 +41,31 @@ export fn base64_encoded(
 type Base64Decoding:
     url_safe: Bool
     tail: String
+    ended: Bool = false
 
 impl Transform[String, Bytes] for Base64Decoding:
     var fn step(value: String, var out: WriteStream[Bytes]) Unit!:
+        if self.ended and not value.is_empty(): return error(
+            Error("encoding: invalid data", kind: "EBADMSG")
+        )
+
         let text = self.tail.concat(value)
         let whole = text.length() - text.length() % 4
         self.tail = text.slice(whole, text.length()).get("")
         if whole == 0: return ok(unit)
 
-        return out.write(
-            try base64_decode(
-                text.slice(0, whole).get(""), self.url_safe, none
-            )
-        )
+        let part = text.slice(0, whole).get("")
+        let decoded = try base64_decode(part, self.url_safe, none)
+
+        // Every complete group decodes to three bytes unless the last group has padding.
+        if decoded.length() != whole / 4 * 3:
+            self.ended = true
+
+            if not self.tail.is_empty():
+                self.tail = ""
+                return error(Error("encoding: invalid data", kind: "EBADMSG"))
+
+        return out.write(decoded)
 
     var fn finish(var out: WriteStream[Bytes]) Unit!:
         let last = self.tail.clone()
