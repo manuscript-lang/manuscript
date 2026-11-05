@@ -29,11 +29,15 @@
 - Preserve normalized pending-return ownership alongside its Value; replacement drops only a value the function owns.
 - Preserve the exact existing owned error value and every message/kind/details field; do not reconstruct an Error from text.
 - Finalize local and consumed-parameter implicit cleanup facts before computing mixed return ownership.
-- A compatible implicit close contributes an owned Result.error outcome using canonical Result/Error identities.
+- Only a compatible propagating close contributes an owned Result.error outcome, using canonical identities.
+- Derive capability from the direct closer and held resources: generated holder/part closes return Unit and fault, so they add no owned error path.
 - A generic error type that can instantiate Error must conservatively include that outcome; concrete incompatible error types do not.
 - Determine owned-path presence from actual owned-case facts as well as explicit return positions; positions remain diagnostic metadata.
 - Existing disjoint-case borrowing retains borrowed ok with owned cleanup error; use the existing borrowing alternative representation.
 - Overlapping borrowed/owned Error cases use only existing legal Result-boundary normalization; never clone a resource or weaken checking.
+- A whole Result borrow lends both cases; adapt hidden cleanup outcomes while preserving explicit mixed plain-return diagnostics.
+- Normalize overlapping cases only, preserving the disjoint mask and selective ViewWrap facts.
+- Uncopyable generic payloads retain the existing conservative consumption rule; never duplicate them.
 - Whole Result forwarding must preserve or legally normalize its case mask, including callers whose sources are temporary.
 - Keep first close Error when no domain error was pending; later close errors are dropped after their resources close.
 - Explicitly handled close errors, nonfallible-function faults, holder/temporary fault policy and cancellation/fault cleanup remain unchanged.

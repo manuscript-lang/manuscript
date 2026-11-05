@@ -32,6 +32,8 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
         ("consumed_parameter", 1 << Std::OK),
         ("mixed_error", 1 << Std::ERROR),
         ("forward_error", 0),
+        ("whole_result", 1 << Std::OK),
+        ("overlapping", 1 << Std::OK),
     ] {
         let f = module.funcs.iter().find(|f| f.name == name).expect(name);
         let TyKind::Alt(a) = module.types.kind(f.ret) else {
@@ -55,6 +57,23 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
             }
         }
     }
+    for name in ["holder_result", "own_holder_result"] {
+        let f = module.funcs.iter().find(|f| f.name == name).expect(name);
+        assert!(
+            f.ret_borrowed,
+            "{name}: holder closes cannot return an owned Error"
+        );
+    }
+    let generic = module
+        .funcs
+        .iter()
+        .find(|f| f.name == "generic_whole")
+        .expect("generic_whole");
+    assert_eq!(
+        generic.params[1].mode,
+        ms_mir::ir::Mode::Move,
+        "unbounded payloads move instead of copying"
+    );
     let borrowed = module
         .funcs
         .iter()
