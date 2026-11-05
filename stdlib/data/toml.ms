@@ -3,6 +3,7 @@ import parse_int, parse_float from "@std/math/math.ms"
 import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
 import log, sqrt from "@std/math/math.ms"
+import quote_text from "@std/data/quote.ms"
 
 // A TOML value. Date and time values retain their original TOML text.
 export enum TomlValue:
@@ -1018,33 +1019,6 @@ type Writer:
     out: StringBuilder
     started: Bool
 
-fn hex4(code: Int) String:
-    var digits = code.to_string_radix(16)
-    while digits.length() < 4: digits = "0".concat(digits)
-    return digits
-
-fn quote_text(text: String) String:
-    var result = StringBuilder()
-    result.append("\"")
-
-    for c in text.chars():
-        let code = c.scalar_at(0)
-
-        if c == "\"": result.append("\\\"")
-        else if c == "\\": result.append("\\\\")
-        else if c == "\n": result.append("\\n")
-        else if c == "\t": result.append("\\t")
-        else if c == "\r": result.append("\\r")
-        else if code == 8: result.append("\\b")
-        else if code == 12: result.append("\\f")
-        else if code < 32 or code == 127:
-            result.append("\\u")
-            result.append(hex4(code))
-        else: result.append(c)
-
-    result.append("\"")
-    return result.build()
-
 fn format_key(key: String) String:
     var bare = key != ""
     for c in key.chars():
@@ -1053,7 +1027,7 @@ fn format_key(key: String) String:
         ): bare = false
     if bare: return key.clone()
 
-    return quote_text(key)
+    return quote_text(key, escape_c1: false)
 
 fn format_float(value: Float) String:
     if value.is_nan(): return "nan"
@@ -1070,7 +1044,7 @@ fn format_float(value: Float) String:
 
 fn inline_value(value: TomlValue) String:
     match value:
-        StringValue(text): return quote_text(text)
+        StringValue(text): return quote_text(text, escape_c1: false)
         IntValue(number): return number.to_string()
         FloatValue(number): return format_float(number)
         BoolValue(flag): return flag.to_string()

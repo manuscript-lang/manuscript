@@ -2,6 +2,7 @@
 import Bytes from "@std/bytes.ms"
 import parse_int from "@std/math/math.ms"
 import from_scalars, StringBuilder from "@std/string.ms"
+import quote_text from "@std/data/quote.ms"
 
 // A YAML value represented as null, boolean, number text, string, array, or object.
 export enum YamlValue:
@@ -1462,14 +1463,7 @@ fn block_value(
     return ok(result)
 
 fn pad(width: Int) String:
-    var builder = StringBuilder()
-    var spaces = width
-
-    while spaces > 0:
-        builder.append(" ")
-        spaces -= 1
-
-    return builder.build()
+    return "".pad_start(width, " ")
 
 // Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
 fn nested_columns(line: String, base: Int) List[Int]:
@@ -1917,42 +1911,6 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!:
     try validate(var context, result, 1)
     return ok(result)
 
-fn hex4(code: Int) String:
-    var digits = code.to_string_radix(16)
-    while digits.length() < 4: digits = "0".concat(digits)
-    return digits
-
-fn quote_text(text: String) String:
-    var clean = true
-
-    for code in text.scalar_values():
-        if code < 32 or code == 34 or code == 92 or (code >= 127 and code <= 159):
-            clean = false
-            break
-
-    if clean: return "\"".concat(text).concat("\"")
-
-    var result = StringBuilder()
-    result.append("\"")
-
-    for c in text.chars():
-        let code = c.scalar_at(0)
-
-        if c == "\"": result.append("\\\"")
-        else if c == "\\": result.append("\\\\")
-        else if c == "\n": result.append("\\n")
-        else if c == "\t": result.append("\\t")
-        else if c == "\r": result.append("\\r")
-        else if code == 8: result.append("\\b")
-        else if code == 12: result.append("\\f")
-        else if code < 32 or (code >= 127 and code <= 159):
-            result.append("\\u")
-            result.append(hex4(code))
-        else: result.append(c)
-
-    result.append("\"")
-    return result.build()
-
 fn format_key(key: String) String:
     var plain = key != ""
     var first = true
@@ -1975,7 +1933,7 @@ fn format_key(key: String) String:
         ): plain = false
     if plain: return key.clone()
 
-    return quote_text(key)
+    return quote_text(key, escape_c1: true)
 
 // A number keeps its original token, so it must resolve back to a number.
 fn valid_number(text: String) Bool:
@@ -1999,7 +1957,7 @@ fn scalar_text(value: YamlValue) String!:
     match value:
         Null: return ok("null")
         BoolValue(flag): return ok(flag.to_string())
-        StringValue(text): return ok(quote_text(text))
+        StringValue(text): return ok(quote_text(text, escape_c1: true))
         NumberValue(text):
             if not valid_number(text.clone()): return error(
                 Error("invalid YAML input", kind: "EINVAL")
