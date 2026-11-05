@@ -9,4 +9,4 @@ Reference navigation follows the source directories and filenames; compatibility
 
 Apply when: changing library docs or the book pipeline.
 Evidence: [docgen](../../crates/ms-tooling/src/guide/docgen.rs), [docgen binary](../../crates/ms-tooling/src/bin/ms-docgen.rs), [Makefile docs targets](../../Makefile).
-Verify: `make docs-check` works without generated Markdown; `make book-check` generates the mounted pages and validates routes and downloads.
+Verify: `make docs-check` works without generated Markdown; `make book-check` generates the mounted pages and validates routes and downloads. Also run publication tests against the production output; redirect tests must accept its canonical origin as well as the validation origin.

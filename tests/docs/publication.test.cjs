@@ -96,7 +96,10 @@ test('published API routes mirror source directories and preserve old routes', (
       const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
       assert.ok(script, 'Alias must preserve a method fragment');
       vm.runInNewContext(script, { location: { search: '?from=old', hash: '#promisepromisemethodstwait', replace: value => { destination = value; } } });
-      assert.equal(destination, `https://example.org/manuscript/standard-library/reference/${page.route}?from=old#promisepromisemethodstwait`);
+      const canonicalTag = [...html.matchAll(/<link\b[^>]*>/g)].map(match => match[0]).find(tag => attribute(tag, 'rel') === 'canonical');
+      const canonical = attribute(canonicalTag, 'href');
+      assert.equal(new URL(canonical).pathname, `/manuscript/standard-library/reference/${page.route}`);
+      assert.equal(destination, `${canonical}?from=old#promisepromisemethodstwait`);
 
     }
   }
