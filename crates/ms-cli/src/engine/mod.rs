@@ -84,6 +84,18 @@ impl<L: Lower> Engine<L> {
         kind: BuildType,
         link: &[String],
     ) -> Result<(), String> {
+        self.build_executable(compiled, output, kind, link)?;
+        write_metadata(output, kind)
+    }
+
+    /// Produces a native executable without publishing command metadata.
+    pub(crate) fn build_executable(
+        &self,
+        compiled: &mut Compiled,
+        output: &Path,
+        kind: BuildType,
+        link: &[String],
+    ) -> Result<(), String> {
         let build = self.build_options();
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
@@ -100,8 +112,7 @@ impl<L: Lower> Engine<L> {
             &runtime,
             &extra,
             &build,
-        )?;
-        write_metadata(output, kind)
+        )
     }
 }
 

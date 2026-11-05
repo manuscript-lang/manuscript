@@ -6,7 +6,7 @@ use ms_build::Lower;
 use ms_driver::project::pathops;
 
 use super::{Engine, Failure, compile, write_metadata};
-use crate::backend::{BackendResult, BuildRequest, Io};
+use crate::backend::{BackendResult, BuildRequest, BuildType, Io};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::json::Json;
 use crate::profile::native_document;
@@ -160,17 +160,28 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Err(message) = backend.link(
+    let stage = match ms_build::native::BuildStage::for_output(Path::new(&output)) {
+        Ok(stage) => stage,
+        Err(error) => {
+            let message = format!("cannot create build staging directory: {error}");
+            return Ok(fail(io, &compiled.source_root, "build", &message));
+        }
+    };
+    if let Err(message) = backend.build_executable(
         &mut compiled,
-        Path::new(&output),
+        &stage.path().join("program.exe"),
         request.build_type,
         &request.link,
     ) {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Some(cache) = &cache
-        && let Err(message) = cache.record(&compiled, &sources, &output)
-    {
+    let completed = finish_build(stage, Path::new(&output), request.build_type, |artifact| {
+        if let Some(cache) = &cache {
+            cache.record(&compiled.source_root, &sources, &artifact.to_string_lossy())?;
+        }
+        Ok(())
+    });
+    if let Err(message) = completed {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if structured {
@@ -423,11 +434,10 @@ impl BuildCache {
         ms_build::cache::lookup(&self.directory, &self.key).map(Hit)
     }
 
-    /// Stores the finished build at `output` for the next one (or, under `MS_CACHE=verify`,
-    /// compares it with the stored build).
+    /// Stores or verifies this build's private executable before public publication.
     fn record(
         &self,
-        compiled: &super::Compiled,
+        source_root: &str,
         sources: &[std::path::PathBuf],
         output: &str,
     ) -> Result<(), String> {
@@ -445,7 +455,7 @@ impl BuildCache {
         ms_build::cache::store(
             &self.directory,
             &self.key,
-            &compiled.source_root,
+            source_root,
             sources,
             output,
             companion.as_deref(),
@@ -733,3 +743,31 @@ mod tests {
         assert_eq!(actual, expected);
     }
 }
+
+/// Completes one build while its private staging directory is still owned.
+fn finish_build(
+    stage: ms_build::native::BuildStage,
+    output: &Path,
+    kind: BuildType,
+    record: impl FnOnce(&Path) -> Result<(), String>,
+) -> Result<(), String> {
+    let staged = stage.path().join("program.exe");
+    let completed = (|| {
+        // The public output can be replaced by another build at any point. Cache and verify
+        // only this owned candidate, including its companion, before exposing its name.
+        record(&staged)?;
+        ms_build::publish(&staged, output)
+            .map_err(|error| format!("cannot write {}: {error}", output.display()))?;
+        write_metadata(output, kind)
+    })();
+    // Remove only the owned candidate. Publication may retain an old companion backup in
+    // this directory for recovery; BuildStage intentionally leaves nonempty directories.
+    let _ = std::fs::remove_file(&staged);
+    if let Some(companion) = ms_clif_companion(&staged) {
+        let _ = std::fs::remove_dir_all(companion);
+    }
+    completed
+}
+
+#[cfg(test)]
+mod cache_provenance;
