@@ -262,7 +262,6 @@ impl<'a> FnLower<'a> {
             && let Some(b) = self.hir.pattern_binding(pattern)
             && self.cx.shared(b.uid)
             && !x.own
-            && self.ownership_checked()
             && !self.slotted.contains(&b.uid)
             && self.needs_drop(self.ty_of(x.v))
         {
@@ -862,7 +861,6 @@ impl<'a> FnLower<'a> {
                     && !o.own
                     && !bnd.mutable
                     && matches!(p.kind, PatternKind::Name(_))
-                    && self.ownership_checked()
                     && !self.slotted.contains(&bnd.uid)
                     && self.needs_drop(self.ty_of(payload));
                 let held = Val {
@@ -1243,7 +1241,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(), Error> {
         let item = if scalars { MTy::INT } else { MTy::STR };
         // The checker keeps a borrowed text unchanged while the loop reads it: walk it in place.
-        let text_var = if !text.own && untouched && self.ownership_checked() {
+        let text_var = if !text.own && untouched {
             let var = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
             self.b.def_var(var, text.v);
             var
@@ -1458,12 +1456,11 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };
-                let frozen = self.ownership_checked()
-                    && self
-                        .hir
-                        .stmt(s)
-                        .loop_binding
-                        .is_some_and(|b| self.cx.shared(b.uid));
+                let frozen = self
+                    .hir
+                    .stmt(s)
+                    .loop_binding
+                    .is_some_and(|b| self.cx.shared(b.uid));
                 let var = if !it.own && (frozen || self.iterates_untouched_local(iter, body)) {
                     // The checker keeps the list unchanged while the loop variable borrows it
                     // (or the body never names it): walk it in place instead of copying it, so

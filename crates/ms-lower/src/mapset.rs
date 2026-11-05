@@ -301,7 +301,6 @@ impl<'a> FnLower<'a> {
         if parts.first() != Some(&key_ty) {
             return Ok(None);
         }
-        let stable = self.stable_place(map);
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));
@@ -354,11 +353,9 @@ impl<'a> FnLower<'a> {
                     self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
                     self.b.switch_to(good);
                     let v = load(self);
-                    // A `let` of this value is a lexical borrow of the map when the ownership
-                    // checker vetted the function: it rejects changing the map while it lives.
-                    if stable || self.ownership_checked() {
-                        self.stable_reads.insert(v);
-                    }
+                    // A `let` of this value is a lexical borrow of the map: the ownership
+                    // checker rejects changing the map while it lives.
+                    self.stable_reads.insert(v);
                     // `Optional.get()` borrows its payload; a `let` that keeps it copies it.
                     self.boundary_reads.insert(v);
                     Ok(Some(Val { v, own: false }))

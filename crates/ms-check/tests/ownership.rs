@@ -132,7 +132,7 @@ fn facts_expose_moves_modes_and_drops() {
         );
         assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
         let hir = program.hir();
-        let ownership = hir.ownership(syms);
+        let ownership = hir.ownership();
         assert!(
             ownership.diagnostics.is_empty(),
             "{:?}",
