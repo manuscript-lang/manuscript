@@ -24,8 +24,6 @@ fn render() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    if render().is_error():
-        return 1
-    return 0
+    return if render().is_ok(): 0 else: 1
 ```
 {{< /docs-home >}}
