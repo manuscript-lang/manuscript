@@ -106,7 +106,7 @@ pub(crate) fn build_bound_alias(
     let alias = fl.aliases.remove(&binding.uid).expect("restored alias");
     let current = fl.alias_read(&alias)?;
     let ty = fl.ty_of(current.v);
-    let owned = fl.owned(current);
+    let owned = fl.owned_boundary(current);
     let slot =
         fl.b.emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
             .expect("slot");

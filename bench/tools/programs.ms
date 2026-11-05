@@ -43,9 +43,10 @@ fn run(work: String, n: Int) Result[String, Error]:
     try build_ms("{work}/ms", "{work}/ms/bench")
 
     var raw = List[String]()
+    let rotations = orders()
 
     for i in 0..n:
-        for v in orders()[i % 4]:
+        for v in rotations[i % 4]:
             let out = try sample("{work}/{v}/bench", [], lines)
             for line in out.split("\n"):
                 if line != "": raw.append("{v} {line}")

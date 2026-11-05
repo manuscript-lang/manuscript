@@ -697,14 +697,13 @@ impl<'a> FnLower<'a> {
         if x.own || !self.needs_drop(self.ty_of(x.v)) {
             return x.v;
         }
-        if self.cx.strict_copies
-            && !self.adapter
+        if !self.adapter
             && !self.boundary_reads.contains(&x.v)
             // A `trim` view kept as a value is the allocation `trim` would have made.
             && !self.views.contains(&x.v)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
-                Some(Op::StrLit | Op::OptNone)
+                Some(Op::StrLit | Op::BytesLit | Op::OptNone)
             )
         {
             let at = std::panic::Location::caller();

@@ -2,7 +2,7 @@
 //! object leaf has one owner, so a program duplicates it only through a written `.clone()`
 //! (`copy 1`); any other `copy` of such a value is lowering duplicating what it should have
 //! moved or borrowed. This pass lists every such `copy` so the build can report them
-//! (`MS_COPY_PROBE`) or fail on them (`MS_STRICT_COPIES`, see `make copy-check`). A copy of a
+//! (`MS_COPY_PROBE`) or fail on them (`MS_COPY_PROBE=strict`, see `make copy-check`). A copy of a
 //! `none` is exempt: it touches no object.
 
 use crate::ir::{Func, Imm, Module, Op, Value};

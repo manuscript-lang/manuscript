@@ -195,10 +195,8 @@ impl FnLower<'_> {
             };
             let index = cap_vals.len();
             cap_tys.push(self.ty_of(value));
-            cap_vals.push(self.owned(Val {
-                v: value,
-                own: false,
-            }));
+            // The captured key or index is the closure's own copy.
+            cap_vals.push(self.clone_value(value));
             steps.push(if is_key {
                 CapturedStep::Key(index)
             } else {
@@ -1751,6 +1749,10 @@ fn lower_lambda_body(
             // A parameter the body changes is the lambda's own copy.
             fl.bind_local(b, Val { v: *v, own: false });
         } else {
+            // A function value borrows its arguments (the call rule), so a lambda that hands one
+            // back (`fn acc, k, v: acc`) copies it: the declared adaptation of the borrowed
+            // signature, which fold-style callers consume.
+            fl.boundary_reads.insert(*v);
             fl.bind_borrowed(b, *v);
         }
     }
