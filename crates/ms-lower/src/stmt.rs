@@ -1374,7 +1374,10 @@ impl<'a> FnLower<'a> {
         let (start, len) = match self.range_bounds(iter)? {
             Some(bounds) => bounds,
             None => {
-                let borrowed = !loop_var.mutable && !self.slotted.contains(&loop_var.uid);
+                // A loop that moves its element needs the owned snapshot, not a borrowed walk.
+                let borrowed = !loop_var.mutable
+                    && !self.slotted.contains(&loop_var.uid)
+                    && !self.cx.moves.contains_key(&loop_var.uid);
                 let call_root = match &iter.kind {
                     ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
                         ExprKind::Member { left, .. } => Some(&**left),
@@ -1391,7 +1394,9 @@ impl<'a> FnLower<'a> {
                     self.split_iter_for = Some(iter as *const Expr);
                 }
                 self.chars_iter_for = Some(iter as *const Expr);
-                self.keys_view_for = Some(iter as *const Expr);
+                if borrowed {
+                    self.keys_view_for = Some(iter as *const Expr);
+                }
                 let it = self.expr(iter);
                 self.split_iter_for = None;
                 self.chars_iter_for = None;
