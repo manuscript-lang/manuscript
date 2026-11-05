@@ -982,12 +982,12 @@ export fn parse(text: String, limits: TomlLimits?) TomlValue!:
 
                 let next = new_table(var reader, explicit: true, dotted: false)
                 try append_table(
-                    reader: var reader, parent: parent, key: key, next: next
+                    reader: var reader, parent: parent, key: key.clone(), next: next
                 )
                 current = next
             else:
                 current = try child(
-                    reader: var reader, parent: parent, key: key, dotted: false
+                    reader: var reader, parent: parent, key: key.clone(), dotted: false
                 )
 
                 var state = flags(reader, current).clone()

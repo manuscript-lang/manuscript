@@ -1328,6 +1328,7 @@ impl Walker<'_> {
         let recv = self.cx.m.ty(left);
         let returns_borrow = match (self.syms.str(name), args.len()) {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
+            ("get", 0) => recv.is(Builtin::Optional),
             ("first" | "last", 0) => recv.is(Builtin::List),
             ("view", 2) => recv.is(Builtin::Bytes),
             _ => false,
