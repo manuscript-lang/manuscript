@@ -2,18 +2,19 @@ use super::*;
 use crate::{CheckOptions, ImportMap, Program, Session};
 use std::sync::Arc;
 
-const FACTS: [BindingFact; 6] = [
+const FACTS: [BindingFact; 7] = [
     BindingFact::SharedBorrow,
     BindingFact::ExclusiveBorrow,
     BindingFact::ImplicitClose,
     BindingFact::ExplicitClose,
     BindingFact::MovedPayload,
     BindingFact::ConditionalMove,
+    BindingFact::CloseHandled,
 ];
 
 #[test]
 fn binding_flags_preserve_all_combinations_and_exclusive_precedence() {
-    for bits in 0..64 {
+    for bits in 0..128 {
         let mut flags = BindingFlags::default();
         for fact in FACTS.into_iter().rev() {
             if bits & fact as u8 != 0 {

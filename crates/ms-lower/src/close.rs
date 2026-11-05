@@ -9,7 +9,7 @@ use ms_check::types as ct;
 use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
-use ms_mir::types::{AltId, IfaceId, Native, RecId, Ty as MTy, TyKind};
+use ms_mir::types::{AltId, IfaceId, Native, RecId, Std, Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
 /// How a binding is closed.
@@ -1305,6 +1305,18 @@ impl FnLower<'_> {
     /// The close at scope end: its failure is returned like `try`, unless the program already
     /// called `close()` on this path and handled the result, which is not returned a second time.
     fn scope_close(&mut self, uid: usize, closer: &Closer) {
+        if self
+            .cx
+            .binding_facts
+            .has(uid, ms_check::ownership::BindingFact::CloseHandled)
+        {
+            // The checker proved every lifetime transferred or explicitly handled its
+            // result. Keep cleanup, but do not generate an impossible owned error return.
+            if let Some(r) = self.emit_close(uid, closer) {
+                self.drop_value(r);
+            }
+            return;
+        }
         let Some(explicit) = closer.explicit else {
             if let Some(r) = self.emit_close(uid, closer) {
                 self.propagate_close_error(uid, r);
@@ -1448,25 +1460,49 @@ impl FnLower<'_> {
             self.drop_value(r);
             return;
         }
+        // Select the already-pending error before compatibility: even a custom domain
+        // error takes precedence over the Error returned by a scope close.
+        if let Some(pending) = self.pending_return
+            && matches!(self.b.m.types.kind(self.b.ty(pending.v)), TyKind::Alt(a)
+                if self.b.m.alts[a.index()].std == Std::Result)
+        {
+            let tag = self.b.alt_tag(pending.v);
+            let error = self.b.iconst(Std::ERROR as i64);
+            let is_error = self.b.icmp(Cc::Eq, tag, error);
+            let (keep, replace, join) =
+                (self.b.new_block(), self.b.new_block(), self.b.new_block());
+            self.b.br_if(is_error, keep, &[], replace, &[]);
+            self.b.seal_block(keep);
+            self.b.seal_block(replace);
+            self.enter(keep);
+            self.drop_value(r);
+            self.b.br(join, &[]);
+            self.enter(replace);
+            self.return_close_error(uid, r);
+            self.b.br(join, &[]);
+            self.b.seal_block(join);
+            self.enter(join);
+            return;
+        }
+        self.return_close_error(uid, r);
+    }
+
+    /// No domain error has been selected: a failed close can select this function's outcome.
+    fn return_close_error(&mut self, uid: usize, r: Value) {
         let rty = self.b.ty(r);
-        let case_of = |m: &ms_mir::ir::Module, alt: AltId, name: &str| {
-            m.alts[alt.index()]
-                .cases
-                .iter()
-                .position(|c| c.name == name)
-        };
         let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
             return;
         };
-        let err = case_of(self.b.m, a, "error").expect("a close returns a Result");
+        let err = Std::ERROR;
         // A function that cannot return the close's `Error` faults on a failed close instead.
         let returned = match self.b.m.types.kind(self.result_ty()).clone() {
-            TyKind::Alt(ra) => case_of(self.b.m, ra, "error")
-                .filter(|&e| {
-                    self.b.m.alts[ra.index()].cases[e].fields[0].1
-                        == self.b.m.alts[a.index()].cases[err].fields[0].1
-                })
-                .map(|e| (ra, e)),
+            TyKind::Alt(ra)
+                if self.b.m.alts[ra.index()].std == Std::Result
+                    && self.b.m.alts[ra.index()].cases[err].fields[0].1
+                        == self.b.m.alts[a.index()].cases[err].fields[0].1 =>
+            {
+                Some((ra, err))
+            }
             _ => None,
         };
         let Some((ra, ret_err)) = returned else {
@@ -1485,8 +1521,10 @@ impl FnLower<'_> {
         let po = self.b.alt_take(a, err as u32, 0, r);
         self.b.alt_release(a, err as u32, 1, r);
         let out = self.b.alt_new(ra, ret_err as u32, &[po]);
-        if let Some(pending) = self.pending_return {
-            self.drop_value(pending);
+        if let Some(pending) = self.pending_return
+            && pending.own
+        {
+            self.drop_value(pending.v);
         }
         // This binding is closed; release its value, then return through the enclosing scopes
         // without closing again what this path has already closed.
