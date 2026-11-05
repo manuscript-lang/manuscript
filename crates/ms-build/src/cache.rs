@@ -10,6 +10,7 @@
 //! A new file that would shadow an imported one (a different resolution of the same import) is
 //! not noticed until some listed file changes; `MS_CACHE=off` or deleting `.ms-cache` covers it.
 
+use crate::Backend;
 use ms_clif::BuildOptions;
 use std::fmt::Write as _;
 use std::hash::{DefaultHasher, Hasher};
@@ -91,10 +92,22 @@ pub struct Entry {
     manifest: String,
     /// The source root recorded with the build (reported in `--json` output).
     pub source_root: String,
+    /// The backend that produced this executable, independent of current tool availability.
+    pub backend: Backend,
 }
 
-fn parse(manifest: &str) -> Option<(String, Vec<(Stamp, &str)>)> {
+struct Manifest<'a> {
+    source_root: String,
+    backend: Backend,
+    files: Vec<(Stamp, &'a str)>,
+}
+
+fn parse(manifest: &str) -> Option<Manifest<'_>> {
     let mut lines = manifest.lines();
+    if lines.next()? != "ms-build-cache-v3" {
+        return None;
+    }
+    let backend = Backend::parse(lines.next()?)?;
     let root = lines.next()?.to_string();
     let mut files = Vec::new();
     for line in lines {
@@ -103,17 +116,31 @@ fn parse(manifest: &str) -> Option<(String, Vec<(Stamp, &str)>)> {
         let size = f.next()?.parse().ok()?;
         files.push((Stamp { mtime, size }, f.next()?));
     }
-    Some((root, files))
+    Some(Manifest {
+        source_root: root,
+        backend,
+        files,
+    })
+}
+
+// A retained lookup must not reopen another backend's executable after a store
+// replaces the same key. Tool availability can change without changing that key.
+fn executable(dir: &Path, backend: Backend) -> PathBuf {
+    dir.join(format!("exe-{}", backend.as_str()))
 }
 
 /// The entry for `key` in `dir` when every listed source still has its recorded stamp.
 pub fn lookup(dir: &Path, key: &str) -> Option<Entry> {
     let entry = dir.join(key);
-    if !entry.join("exe").is_file() {
+    let manifest = std::fs::read_to_string(entry.join("manifest")).ok()?;
+    let Manifest {
+        source_root,
+        backend,
+        files,
+    } = parse(&manifest)?;
+    if !executable(&entry, backend).is_file() {
         return None;
     }
-    let manifest = std::fs::read_to_string(entry.join("manifest")).ok()?;
-    let (source_root, files) = parse(&manifest)?;
     if files.is_empty() || files.iter().any(|(s, p)| stamp(Path::new(p)) != Some(*s)) {
         return None;
     }
@@ -121,6 +148,7 @@ pub fn lookup(dir: &Path, key: &str) -> Option<Entry> {
     Some(Entry {
         dir: entry,
         source_root,
+        backend,
         manifest,
     })
 }
@@ -144,11 +172,12 @@ pub fn store(
     dir: &Path,
     key: &str,
     source_root: &str,
+    backend: Backend,
     sources: &[PathBuf],
     executable: &Path,
     companion: Option<&Path>,
 ) {
-    store_with(dir, key, source_root, sources, companion, |to| {
+    store_with(dir, key, (source_root, backend), sources, companion, |to| {
         std::fs::copy(executable, to).map(|_| ())
     });
 }
@@ -157,12 +186,17 @@ pub fn store(
 fn store_with(
     dir: &Path,
     key: &str,
-    source_root: &str,
+    identity: (&str, Backend),
     sources: &[PathBuf],
     companion: Option<&Path>,
     copy: impl FnOnce(&Path) -> std::io::Result<()>,
 ) {
-    let mut manifest = format!("{}\n", source_root.replace('\n', " "));
+    let (source_root, backend) = identity;
+    let mut manifest = format!(
+        "ms-build-cache-v3\n{}\n{}\n",
+        backend.as_str(),
+        source_root.replace('\n', " ")
+    );
     for source in sources {
         let (Some(s), Some(text)) = (stamp(source), source.to_str()) else {
             return;
@@ -177,7 +211,7 @@ fn store_with(
         return;
     };
     let done = (|| -> std::io::Result<()> {
-        copy(&staged.join("exe"))?;
+        copy(&executable(&staged, backend))?;
         if let Some(companion) = companion.filter(|c| c.exists()) {
             copy_tree(companion, &staged.join("companion"))?;
         }
@@ -273,7 +307,7 @@ impl Entry {
     pub fn inputs(&self) -> impl Iterator<Item = &Path> {
         self.manifest
             .lines()
-            .skip(1)
+            .skip(3)
             .filter_map(|line| line.splitn(3, '\t').nth(2))
             .map(Path::new)
     }
@@ -282,7 +316,7 @@ impl Entry {
     /// resource is renamed after `staged` as the publication step expects. `false` on failure.
     pub fn restore(&self, staged: &Path, companion: Option<&Path>) -> bool {
         let restored = (|| -> std::io::Result<()> {
-            std::fs::copy(self.dir.join("exe"), staged)?;
+            std::fs::copy(executable(&self.dir, self.backend), staged)?;
             let cached = self.dir.join("companion");
             if let (Some(companion), true) = (companion, cached.exists()) {
                 copy_tree(&cached, companion)?;
@@ -303,7 +337,7 @@ impl Entry {
     /// Whether the stored executable has the same bytes as `built`.
     pub fn matches(&self, built: &Path) -> bool {
         matches!(
-            (std::fs::read(self.dir.join("exe")), std::fs::read(built)),
+            (std::fs::read(executable(&self.dir, self.backend)), std::fs::read(built)),
             (Ok(x), Ok(y)) if x == y
         )
     }
@@ -383,12 +417,14 @@ mod tests {
             &cache,
             "k",
             "/root",
+            Backend::Cranelift,
             std::slice::from_ref(&source),
             &built,
             None,
         );
         let entry = lookup(&cache, "k").expect("fresh entry");
         assert_eq!(entry.source_root, "/root");
+        assert_eq!(entry.backend, Backend::Cranelift);
         let staged = dir.join("staged");
         assert!(entry.restore(&staged, None));
         assert!(entry.matches(&staged));
@@ -397,6 +433,111 @@ mod tests {
         std::fs::remove_file(&source).unwrap();
         assert!(lookup(&cache, "k").is_none());
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn cache_backend_and_all_inputs_survive_the_manifest_round_trip() {
+        let dir = scratch("backend-manifest");
+        let sources: Vec<_> = ["first source.ms", "second.ms", "runtime.a", "helper.ll"]
+            .into_iter()
+            .map(|name| {
+                let path = dir.join(name);
+                std::fs::write(&path, b"input").unwrap();
+                path
+            })
+            .collect();
+        let built = dir.join("program");
+        std::fs::write(&built, b"executable bytes").unwrap();
+        let cache = dir.join("cache");
+        for backend in [Backend::Cranelift, Backend::Llvm] {
+            store(
+                &cache,
+                "same-key",
+                "source root",
+                backend,
+                &sources,
+                &built,
+                None,
+            );
+            let entry = lookup(&cache, "same-key").unwrap();
+            assert_eq!(entry.backend, backend);
+            assert_eq!(entry.source_root, "source root");
+            assert_eq!(entry.inputs().collect::<Vec<_>>(), sources);
+            assert!(entry.matches(&built));
+        }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn cache_entries_without_known_backend_provenance_are_misses() {
+        let dir = scratch("unknown-backend");
+        let cache = dir.join("cache");
+        let source = dir.join("source.ms");
+        let built = dir.join("program");
+        std::fs::write(&source, b"source").unwrap();
+        std::fs::write(&built, b"executable").unwrap();
+        store(&cache, "k", "root", Backend::Llvm, &[source], &built, None);
+        let path = cache.join("k/manifest");
+        let good = std::fs::read_to_string(&path).unwrap();
+        for invalid in [
+            good.lines().skip(2).collect::<Vec<_>>().join("\n"), // Legacy entries have no provenance.
+            good.replacen("\nllvm\n", "\nunknown\n", 1),
+            good.replacen("\nllvm\n", "\n\n", 1),
+            "ms-build-cache-v3\nllvm\nroot\ninvalid stamp\n".into(),
+        ] {
+            std::fs::write(&path, invalid).unwrap();
+            assert!(lookup(&cache, "k").is_none());
+            assert_eq!(std::fs::read(&built).unwrap(), b"executable");
+        }
+        std::fs::write(path, good).unwrap();
+        assert_eq!(lookup(&cache, "k").unwrap().backend, Backend::Llvm);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn retained_cache_hits_never_restore_another_backends_executable() {
+        let dir = scratch("retained-backend");
+        let cache = dir.join("cache");
+        let source = dir.join("source.ms");
+        let built = dir.join("program");
+        let restored = dir.join("restored");
+        std::fs::write(&source, b"source").unwrap();
+        for (first, second) in [
+            (Backend::Llvm, Backend::Cranelift),
+            (Backend::Cranelift, Backend::Llvm),
+        ] {
+            std::fs::write(&built, b"first backend's executable").unwrap();
+            store(
+                &cache,
+                "k",
+                "root",
+                first,
+                std::slice::from_ref(&source),
+                &built,
+                None,
+            );
+            let retained = lookup(&cache, "k").unwrap();
+            std::fs::write(&built, b"second backend's executable").unwrap();
+            store(
+                &cache,
+                "k",
+                "root",
+                second,
+                std::slice::from_ref(&source),
+                &built,
+                None,
+            );
+            assert!(!retained.restore(&restored, None));
+            assert!(!retained.matches(&built));
+            let current = lookup(&cache, "k").unwrap();
+            assert_eq!(current.backend, second);
+            assert!(current.restore(&restored, None));
+            assert_eq!(
+                std::fs::read(&restored).unwrap(),
+                b"second backend's executable"
+            );
+        }
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     fn concurrent_stores(first_fails: bool) {
@@ -420,6 +561,7 @@ mod tests {
             &cache,
             "k",
             "original",
+            Backend::Cranelift,
             std::slice::from_ref(&first_source),
             &first_exe,
             None,
@@ -430,15 +572,22 @@ mod tests {
         let a_source = first_source.clone();
         let a_exe = first_exe.clone();
         let first = std::thread::spawn(move || {
-            store_with(&a_cache, "k", "first", &[a_source], None, |to| {
-                std::fs::copy(&a_exe, to)?;
-                first_ready.send(()).unwrap();
-                first_continue.recv().unwrap();
-                if first_fails {
-                    return Err(std::io::Error::other("fixture copy failed"));
-                }
-                Ok(())
-            });
+            store_with(
+                &a_cache,
+                "k",
+                ("first", Backend::Llvm),
+                &[a_source],
+                None,
+                |to| {
+                    std::fs::copy(&a_exe, to)?;
+                    first_ready.send(()).unwrap();
+                    first_continue.recv().unwrap();
+                    if first_fails {
+                        return Err(std::io::Error::other("fixture copy failed"));
+                    }
+                    Ok(())
+                },
+            );
         });
         first_waiting.recv_timeout(Duration::from_secs(30)).unwrap();
         let (second_ready, second_waiting) = mpsc::channel();
@@ -447,12 +596,19 @@ mod tests {
         let b_source = second_source.clone();
         let b_exe = second_exe.clone();
         let second = std::thread::spawn(move || {
-            store_with(&b_cache, "k", "second", &[b_source], None, |to| {
-                std::fs::copy(&b_exe, to)?;
-                second_ready.send(()).unwrap();
-                second_continue.recv().unwrap();
-                Ok(())
-            });
+            store_with(
+                &b_cache,
+                "k",
+                ("second", Backend::Cranelift),
+                &[b_source],
+                None,
+                |to| {
+                    std::fs::copy(&b_exe, to)?;
+                    second_ready.send(()).unwrap();
+                    second_continue.recv().unwrap();
+                    Ok(())
+                },
+            );
         });
         second_waiting
             .recv_timeout(Duration::from_secs(30))
@@ -463,6 +619,14 @@ mod tests {
         assert_eq!(
             entry.source_root,
             if first_fails { "original" } else { "first" }
+        );
+        assert_eq!(
+            entry.backend,
+            if first_fails {
+                Backend::Cranelift
+            } else {
+                Backend::Llvm
+            }
         );
         assert!(
             entry.matches(&first_exe),
@@ -523,7 +687,15 @@ mod tests {
         let executable = dir.join("executable");
         std::fs::write(&source, b"source").unwrap();
         std::fs::write(&executable, b"executable").unwrap();
-        store(&cache, "k", "root", &[source], &executable, None);
+        store(
+            &cache,
+            "k",
+            "root",
+            Backend::Cranelift,
+            &[source],
+            &executable,
+            None,
+        );
         assert_eq!(
             std::fs::read(stale.join("retained")).unwrap(),
             b"another attempt"
@@ -550,6 +722,7 @@ mod tests {
             &cache,
             "k",
             "root",
+            Backend::Cranelift,
             &[source],
             &executable,
             Some(&companion),
@@ -579,6 +752,7 @@ mod tests {
                 &cache,
                 name,
                 "/r",
+                Backend::Cranelift,
                 std::slice::from_ref(&source),
                 &built,
                 None,
@@ -619,6 +793,7 @@ mod tests {
                 &cache,
                 &format!("e{i}"),
                 "/r",
+                Backend::Cranelift,
                 std::slice::from_ref(&source),
                 &built,
                 None,

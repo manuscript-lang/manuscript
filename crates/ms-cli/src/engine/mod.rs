@@ -83,7 +83,7 @@ impl<L: Lower> Engine<L> {
         output: &Path,
         kind: BuildType,
         link: &[String],
-    ) -> Result<(), String> {
+    ) -> Result<ms_build::Backend, String> {
         let build = self.build_options();
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
@@ -93,7 +93,7 @@ impl<L: Lower> Engine<L> {
             },
         };
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
-        ms_build::build_executable(
+        let backend = ms_build::build_executable(
             &mut compiled.module,
             output,
             profile(kind),
@@ -101,7 +101,8 @@ impl<L: Lower> Engine<L> {
             &extra,
             &build,
         )?;
-        write_metadata(output, kind)
+        write_metadata(output, kind, backend)?;
+        Ok(backend)
     }
 }
 
@@ -423,21 +424,27 @@ pub(crate) fn profile(kind: BuildType) -> ms_build::Profile {
 }
 
 /// `<executable>.ms-build.json`: what built the executable.
-fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
+fn write_metadata(
+    output: &Path,
+    kind: BuildType,
+    backend: ms_build::Backend,
+) -> Result<(), String> {
     static STAGED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-    write_metadata_with(output, kind, &STAGED)
+    write_metadata_with(output, kind, backend, &STAGED)
 }
 
 fn write_metadata_with(
     output: &Path,
     kind: BuildType,
+    backend: ms_build::Backend,
     next: &std::sync::atomic::AtomicUsize,
 ) -> Result<(), String> {
     let mut name = output.as_os_str().to_owned();
     name.push(".ms-build.json");
     let document = format!(
-        "{{\n  \"format\": 1,\n  \"version\": {},\n  \"backend\": \"cranelift\",\n  \"build_type\": \"{}\"\n}}\n",
+        "{{\n  \"format\": 1,\n  \"version\": {},\n  \"backend\": \"{}\",\n  \"build_type\": \"{}\"\n}}\n",
         crate::quote(crate::VERSION),
+        backend.as_str(),
         kind.as_str()
     );
     let path = PathBuf::from(name);
@@ -538,7 +545,13 @@ mod staging_file_tests {
         std::fs::create_dir(&occupied).unwrap();
         std::fs::write(occupied.join("sentinel"), b"preserve this directory").unwrap();
         let next = AtomicUsize::new(0);
-        write_metadata_with(&output, BuildType::Debug, &next).unwrap();
+        write_metadata_with(
+            &output,
+            BuildType::Debug,
+            ms_build::Backend::Cranelift,
+            &next,
+        )
+        .unwrap();
         assert_eq!(next.load(Ordering::Relaxed), 2);
         assert_eq!(
             std::fs::read(occupied.join("sentinel")).unwrap(),

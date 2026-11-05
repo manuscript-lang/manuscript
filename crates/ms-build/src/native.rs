@@ -81,6 +81,31 @@ pub enum Profile {
     MinSizeRel,
 }
 
+/// The backend selected for the program's functions. LLVM builds still use
+/// Cranelift for data, descriptors and the native entry point.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Backend {
+    Cranelift,
+    Llvm,
+}
+
+impl Backend {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cranelift => "cranelift",
+            Self::Llvm => "llvm",
+        }
+    }
+
+    pub(crate) fn parse(text: &str) -> Option<Self> {
+        match text {
+            "cranelift" => Some(Self::Cranelift),
+            "llvm" => Some(Self::Llvm),
+            _ => None,
+        }
+    }
+}
+
 impl Profile {
     fn options(self, build: &BuildOptions) -> (Level, Options) {
         let mut options = Options {
@@ -177,7 +202,7 @@ pub fn build_executable(
     runtime: &Path,
     extra: &[PathBuf],
     build: &BuildOptions,
-) -> Result<(), String> {
+) -> Result<Backend, String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
             "--link {} does not name a file; pass an object (.o) or static library (.a)",
@@ -203,6 +228,11 @@ pub fn build_executable(
         }
     };
     let (level, options) = profile.options(build);
+    let backend = if options.llvm.is_some() {
+        Backend::Llvm
+    } else {
+        Backend::Cranelift
+    };
     optimize(module, level, cfg!(debug_assertions));
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
     let unwound = ms_mir::unwind::run(module);
@@ -275,7 +305,8 @@ pub fn build_executable(
     publish(&staged, output).map_err(|error| {
         cleanup();
         format!("cannot write {}: {error}", output.display())
-    })
+    })?;
+    Ok(backend)
 }
 
 /// Publish the native debug companion together with the staged executable. If

@@ -99,7 +99,7 @@ pub(super) fn build<L: Lower>(
         && let Some(entry) = cache.lookup()
         && artifact_source_collision(&output, &request.filename, entry.inputs()).is_none()
         && entry.restore_to(&output).is_ok()
-        && write_metadata(Path::new(&output), request.build_type).is_ok()
+        && write_metadata(Path::new(&output), request.build_type, entry.backend).is_ok()
     {
         if structured {
             return Ok(emit_json(
@@ -160,16 +160,17 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Err(message) = backend.link(
+    let selected = match backend.link(
         &mut compiled,
         Path::new(&output),
         request.build_type,
         &request.link,
     ) {
-        return Ok(fail(io, &compiled.source_root, "build", &message));
-    }
+        Ok(selected) => selected,
+        Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
+    };
     if let Some(cache) = &cache
-        && let Err(message) = cache.record(&compiled, &sources, &output)
+        && let Err(message) = cache.record(&compiled, &sources, &output, selected)
     {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
@@ -430,6 +431,7 @@ impl BuildCache {
         compiled: &super::Compiled,
         sources: &[std::path::PathBuf],
         output: &str,
+        backend: ms_build::Backend,
     ) -> Result<(), String> {
         let output = Path::new(output);
         if self.mode == ms_build::cache::Mode::Verify {
@@ -446,6 +448,7 @@ impl BuildCache {
             &self.directory,
             &self.key,
             &compiled.source_root,
+            backend,
             sources,
             output,
             companion.as_deref(),
@@ -568,6 +571,7 @@ mod tests {
             &cache,
             key,
             "root",
+            ms_build::Backend::Cranelift,
             &[source],
             &executable,
             Some(&companion),
