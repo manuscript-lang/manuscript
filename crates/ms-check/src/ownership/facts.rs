@@ -77,35 +77,37 @@ pub enum BindingFact {
     ConditionalMove = 1 << 5,
 }
 
-/// Binding fact flags in one dense table indexed by binding identity (`Binding::uid`, handed out
-/// in sequence while checking).
+/// Binding fact flags keyed by stable session binding identities. Only bindings with facts
+/// occupy storage: later programs may have arbitrarily large gaps before their own identities.
 #[derive(Default, Debug)]
 pub struct BindingFlags {
-    flags: Vec<u8>,
+    flags: HashMap<usize, u8>,
 }
 
 impl BindingFlags {
     /// Records `fact` for binding `uid`.
     pub fn set(&mut self, uid: usize, fact: BindingFact) {
-        if self.flags.len() <= uid {
-            self.flags.resize(uid + 1, 0);
-        }
-        self.flags[uid] |= fact as u8;
+        *self.flags.entry(uid).or_default() |= fact as u8;
     }
 
     /// Whether `fact` holds for binding `uid`.
     pub fn has(&self, uid: usize, fact: BindingFact) -> bool {
-        self.flags.get(uid).is_some_and(|b| b & fact as u8 != 0)
+        self.flags.get(&uid).is_some_and(|b| b & fact as u8 != 0)
     }
 
     /// How binding `uid` borrows a place, if it does.
     pub fn borrow(&self, uid: usize) -> Option<super::BorrowKind> {
-        if self.has(uid, BindingFact::ExclusiveBorrow) {
+        let flags = self.flags.get(&uid).copied().unwrap_or(0);
+        if flags & BindingFact::ExclusiveBorrow as u8 != 0 {
             Some(super::BorrowKind::Exclusive)
-        } else if self.has(uid, BindingFact::SharedBorrow) {
+        } else if flags & BindingFact::SharedBorrow as u8 != 0 {
             Some(super::BorrowKind::Shared)
         } else {
             None
         }
     }
 }
+
+#[cfg(test)]
+#[path = "facts_tests.rs"]
+mod tests;
