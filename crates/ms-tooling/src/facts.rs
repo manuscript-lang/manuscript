@@ -59,6 +59,21 @@ pub enum ParameterOwnership {
     Move,
 }
 
+impl Slot {
+    /// The checked passing mode, with an explicit exclusive borrow taking priority.
+    pub fn passing_mode(&self) -> &'static str {
+        if self.var {
+            "var"
+        } else {
+            match self.ownership {
+                ParameterOwnership::Copy => "copy",
+                ParameterOwnership::Move => "move",
+                ParameterOwnership::Borrow => "borrow",
+            }
+        }
+    }
+}
+
 /// The checker's result flags distinguish an owned view/wrapper from a borrowed result.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ResultOwnership {

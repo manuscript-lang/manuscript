@@ -1,6 +1,6 @@
 //! The diagram views: one question each, built from the fact model.
 
-use crate::facts::{Fact, Facts, ParameterOwnership, Slot};
+use crate::facts::{Fact, Facts};
 use crate::tree::Node;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
@@ -565,7 +565,7 @@ fn ownership_node(
         let mode = if s.var {
             "var (exclusive borrow)"
         } else {
-            param_mode(s)
+            s.passing_mode()
         };
         node.children
             .push(Node::new(format!("{}: {}  {mode}", s.name, s.ty)));
@@ -840,7 +840,7 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
                 f.name.replace('"', "'")
             );
             for s in &f.slots {
-                let mode = param_mode(s);
+                let mode = s.passing_mode();
                 let style = match mode {
                     "var" => "stroke:#d33,stroke-width:3px",
                     "copy" => "stroke:#999,stroke-dasharray:4",
@@ -896,18 +896,6 @@ fn ownership_roots<'a>(facts: &'a Facts, entity: &str) -> Vec<&'a Fact> {
                     && (f.scopes > 0 || f.slots.iter().any(|s| s.var))
             })
             .collect(),
-    }
-}
-
-fn param_mode(s: &Slot) -> &'static str {
-    if s.var {
-        "var"
-    } else {
-        match s.ownership {
-            ParameterOwnership::Copy => "copy",
-            ParameterOwnership::Move => "move",
-            ParameterOwnership::Borrow => "borrow",
-        }
     }
 }
 

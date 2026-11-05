@@ -31,7 +31,7 @@ test('enum signatures preserve escaping and other declaration spellings', () => 
   for (const [kind, spelling] of [['alternative', 'enum'], ['record', 'type'], ['interface', 'interface']]) {
     assert.equal(sigOf({kind, name: 'Choice<T&"'}), `<code><span class="tk-kw">${spelling}</span> Choice&lt;T&amp;&quot;</code>`);
   }
-  assert.equal(sigOf({kind: 'fn', name: 'case', slots: [{name: 'value', ty: 'String', var: false}], result: {ty: 'Int'}}), '<code>case(value: <span class="brw">String</span>) <span class="own">Int</span></code>');
+  assert.equal(sigOf({kind: 'fn', name: 'case', slots: [{name: 'value', ty: 'String', var: false, ownership: 'borrow'}], result: {ty: 'Int', ownership: 'owned'}}), '<code>case(value: <span class="brw" data-ownership="borrow" title="borrow">String</span>) <span class="own" data-ownership="owned" title="owned">Int</span></code>');
 });
 
 test('checked CLI enum facts render bare cases and retain type relationships', () => {
