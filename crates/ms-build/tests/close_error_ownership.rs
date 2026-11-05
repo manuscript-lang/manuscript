@@ -74,6 +74,19 @@ fn close_errors_preserve_owned_identity_and_disjoint_borrowing() {
         ms_mir::ir::Mode::Move,
         "unbounded payloads move instead of copying"
     );
+    for f in &module.funcs {
+        for i in f.blocks.iter().flat_map(|b| &b.insts) {
+            if i.op == Op::Clone
+                && let TyKind::Rec(r) = module.types.kind(f.ty(i.args[0]))
+            {
+                assert_ne!(
+                    module.records[r.index()].name,
+                    "Failing",
+                    "resources must move, including generic error payloads"
+                );
+            }
+        }
+    }
     let borrowed = module
         .funcs
         .iter()

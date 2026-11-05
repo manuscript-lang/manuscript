@@ -371,3 +371,13 @@ test "a generic propagating closer consumes its whole Result without a forbidden
         try generic_whole[String](log, ok("moved payload")), "moved payload"
     )
     try expect_equal(events(log), "close 1\n")
+
+fn resource_domain_error(log: String) Bool:
+    let result = generic_error(log, Failing(log.clone(), 2, fail: false))
+    return result.is_error()
+
+test "a generic resource error stays owned and closes exactly once":
+    let dir = temporary("close-resource-error-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try expect_equal(resource_domain_error(log), true)
+    try expect_equal(events(log), "close 1\nclose 2\n")
