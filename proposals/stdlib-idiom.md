@@ -217,3 +217,14 @@ Today a caller cannot predict where a setting goes. Measured across `stdlib/**/*
 - Add a `repo-check` rule: an exported function parameter of type `T?` with no default fails, and a parameter named `*options*` or `*limits*` must have a default. (Pattern: `stream-names-allowed.txt` for existing offenders, shrinking to empty.)
 - Mechanical, so it lands as one stage right after the numeric work: `make conform`, `make docs-check`, LSP snapshots regenerated. Because it changes call shapes it is a breaking change in the same sense as the renames above; positional trailing `none` stays valid because defaults accept explicit values.
 - Decided by Chinmay: the threshold is three parameters in total, not three optional ones. Functions over it today (e.g. `copy`, `glob`, `run`, `spawn` with 7, `table.format`) get or keep an options record; `read_file(path, max_bytes)` and `list(path, max_entries)` stay loose.
+
+### Addendum 4 follow-up: what blocks it (traced 2026-11-05)
+
+- `world.intrinsic` is `HashMap<Name, Ty>`, one interface per primitive, read by four consumers: `contracts.rs:1586` (method lookup), `hints.rs:608`, `editor.rs:71` (completion), `ms-tooling/src/guide/api.rs:467`. A list of interfaces touches all four.
+- The native identity of a primitive method is `"{receiver.id}/{name}"` (`contracts.rs:1590`, `is_receiver_native`), so `Int32Operations/compare` becomes `IntegerOperations/compare`; lowering and `rt_symbols`/ABI tables that key on the old string must be traced before the move. Generic `compare(other: T)` also needs `T` bound to the receiver by `substitution(t)`.
+- The conversion matrix cannot be trimmed by grep: every `to_*` name is used somewhere (`to_int8` 10, `to_uint16` 4, `to_float64` 2 sites), and a name does not say which receiver. Trimming needs a compiler-assisted run (delete candidate, run `make conform`/e2e) per pair.
+- Result: this is a compiler change (`ms-check`, `ms-lower`, `ms-tooling`) with its own PR, not a stdlib tidy-up. Not started; ask for a go-ahead as a separate workstream.
+
+### Addendum 4 outcome
+
+Implemented: `IntegerOperations[T]` (all integer types) and `SignedIntegerOperations[T]` (`Int`, `Int8`, `Int16`, `Int32`) hold the shared operations; `stdlib.rs` `SHARED_OPERATIONS` lists the members and each primitive gets its own interface plus the shared ones applied to itself. `intrinsics.ms` went from 427 to 333 lines. The conversion matrix (`to_int8` and the other sized conversions) stays declared per type: every name is used somewhere and grep cannot tell which receiver, so trimming needs a per-pair compiler-assisted run. `Float`/`Float32` could share `FloatingPointOperations[T]` the same way (about 6 declarations); not done.
