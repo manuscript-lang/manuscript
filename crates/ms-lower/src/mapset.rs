@@ -359,6 +359,8 @@ impl<'a> FnLower<'a> {
                     if stable || self.ownership_checked() {
                         self.stable_reads.insert(v);
                     }
+                    // `Optional.get()` borrows its payload; a `let` that keeps it copies it.
+                    self.boundary_reads.insert(v);
                     Ok(Some(Val { v, own: false }))
                 }
                 Some(d) => {
