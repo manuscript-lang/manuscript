@@ -63,4 +63,4 @@ export fn main() Int:
 
 Objects are not shared by reference. Each value has one owner, and `.clone()` is the only copy. Passing a list to a function lends it, and the compiler tells you when you use something after moving it. [Ownership and borrowing](../core-language/types/references.md)
 
-Next: [the language tour](../learn/tour.md).
+Next: [the guide](../guide/_index.md).

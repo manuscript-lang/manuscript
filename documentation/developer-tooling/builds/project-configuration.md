@@ -150,4 +150,4 @@ Paths are normalized and symlinks resolved to one canonical file identity per bu
 - `@std/...` resolves only inside the pinned standard library, which cannot import application modules.
 - Changes to source roots, entry, aliases, or the standard-library distribution change the module graph and build cache identity.
 
-See [module exports and imports](../../core-language/modules/declarations.md), [the compilation pipeline](../../contributing/compiler/frontend/pipeline.md), and [build caches](incremental-compilation.md).
+See [module exports and imports](../../core-language/modules/declarations.md), [the compilation pipeline](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/compiler/frontend/pipeline.md), and [build caches](incremental-compilation.md).

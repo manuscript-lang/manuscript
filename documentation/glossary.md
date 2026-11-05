@@ -41,10 +41,10 @@ Unfamiliar term? Follow its link for exact rules.
 | Join | Wait until every started operation has finished, including its cleanup. |
 | [Cancel signal](core-language/concurrency/promises.md#waiting) | A signal attached through `PromiseOptions` so a `Cancel` can request that several promises stop. |
 | [Cancellation checkpoint](core-language/concurrency/promises.md#cancellation) | A wait where cancellation can stop work and run cleanup. A loop that never waits must check a cancel signal itself. |
-| [Unwind](core-language/cleanup/exit-order.md) | Leave active scopes and run their registered cleanup. |
+| [Unwind](core-language/cleanup/scopes.md#cleanup-order) | Leave active scopes and run their registered cleanup. |
 | [Shielded cleanup](core-language/cleanup/cleanup-faults.md) | Cleanup that can run despite the cancellation or deadline that ended ordinary work. |
-| [Host](contributing/runtime-conventions.md#host-escalation) | The runtime entry point that runs a CLI application or handles HTTP requests. |
-| [Typed IR](contributing/compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
-| [Lowering](contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into native code while preserving their behavior. |
-| [Conformance](contributing/compiler/conformance/_index.md) | Tests and evidence that the implementation follows the language's rules. |
+| [Host](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/runtime-conventions.md#host-escalation) | The runtime entry point that runs a CLI application or handles HTTP requests. |
+| [Typed IR](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/compiler/frontend/typed-ir.md) | The compiler's internal program representation after names and types have been checked. |
+| [Lowering](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/compiler/lowering/_index.md) | Translating checked Manuscript operations into native code while preserving their behavior. |
+| [Conformance](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/compiler/conformance/_index.md) | Tests and evidence that the implementation follows the language's rules. |
 | Normative | Defines a required rule. Other explanations and examples must agree with it. |

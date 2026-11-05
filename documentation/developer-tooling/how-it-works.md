@@ -41,7 +41,7 @@ Arguments: 2
 
 On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. Builds default to optimized `Release`; choose [a build level](builds/build-levels.md) when you need unoptimized debugging or a smaller executable.
 
-Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](../contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
+Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
 
 The adjacent `my-app.ms-build.json` holds build identity and source information; it is not needed to run the executable. Keep source and debug artifacts when you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
 
@@ -76,10 +76,10 @@ Native builds use `lld` to link the executable. Optimized builds also use LLVM t
 
 To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. `MS_BACKEND=cranelift` skips LLVM optimization; a working linker is still required. If the LLVM download fails, the build falls back to Cranelift. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
 
-See [cache locations](builds/incremental-compilation.md) and [platform linking details](../contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](../contributing/rust-toolchain.md#build-and-run).
+See [cache locations](builds/incremental-compilation.md) and [platform linking details](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run).
 
 ## Rebuild after changes {#runtime-cache}
 
 `ms build` can reuse an unchanged executable. `run`, `test` and `profile` build fresh executables, while reusing installed tools and the extracted runtime archive. You do not need to manage these caches for normal development; use [build caches](builds/incremental-compilation.md) when troubleshooting reuse or choosing cache locations.
 
-For the compiler's internal stages, see the contributor [compilation pipeline](../contributing/compiler/frontend/pipeline.md).
+For the compiler's internal stages, see the contributor [compilation pipeline](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/compiler/frontend/pipeline.md).

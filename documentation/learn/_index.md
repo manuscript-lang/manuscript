@@ -13,7 +13,6 @@ Run a program, learn the language, then build something useful. The same `ms` co
 
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Read the guide](../guide/_index.md).** One small shop program, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
-   Want the whole language on one page? Take the [tour](tour.md).
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 

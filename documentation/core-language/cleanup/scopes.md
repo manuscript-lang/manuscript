@@ -1,6 +1,7 @@
 +++
 title = "Scope-end cleanup"
 weight = 1
+aliases = ["/core-language/cleanup/resource-release/", "/core-language/cleanup/exit-order/"]
 +++
 
 # Scope-end cleanup
@@ -48,3 +49,79 @@ slow_work(head)
 ```
 
 `close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush().wait()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.
+
+## Close a resource explicitly
+
+# Closing a resource
+
+Usually, let scope-end cleanup close a file, socket or stream. Close explicitly when the next operation should begin only after the resource is released, or when you need to handle a close error.
+
+Flush before closing when you need the destination to catch up or need to handle a flush failure:
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+import WriteStream from "@std/io/io.ms"
+
+fn finish(var output: WriteStream[String]) Unit!:
+    try output.flush().wait()
+    return output.close()
+```
+
+`flush().wait()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.
+
+Choose the operation that confirms your work: `close()` returns a `Result` and a failed scope-end close is returned or faults; explicit commit, finish, or flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
+
+Factories close newly acquired native resources when cancellation or an error prevents delivery, and a binding registers its close right after the initializer succeeds, before cancellation can unwind it. See [Closeable](closeable.md).
+
+## Cleanup order
+
+# Cleanup order
+
+On scope exit, cleanup closes inner resources before outer ones, and the bindings of one scope last declared first. A borrow registers no extra close. A type or collection that owns resources closes its owned parts; see [holder cleanup](closeable.md#types-and-collections-close-what-they-hold).
+
+1. Evaluate the pending return value or select the initiating error, fault, or cancellation.
+2. Call registered `close()` methods in reverse registration/nesting order.
+3. Deliver the pending return/error, unless cleanup selected a programming fault; otherwise propagate the selected fault or cancellation.
+
+A cleanup fault can suppress a pending return or domain error; see [cleanup failures](cleanup-faults.md) for fault selection.
+
+Returning an owned resource transfers its cleanup duty to the caller: the exiting scope does not close the moved value. Moving it into a field, collection or escaping closure likewise transfers responsibility to the new owner. A borrowed part cannot escape a local owner that is about to close; returning a borrow of an argument keeps the caller responsible for that owner.
+
+## Observe the order
+
+Save as `cleanup.ms` and run `ms run cleanup.ms`. The small resource below prints when it closes:
+
+<!-- manuscript-example: {"mode":"run","stdout":"work\nclose second\nclose first\n"} -->
+```manuscript
+import Closeable from "@std/core.ms"
+
+type Tracked:
+    name: String
+    closed: Bool = false
+
+impl Closeable for Tracked:
+    var fn close() Unit!:
+        if not self.closed:
+            self.closed = true
+            print("close {self.name}")
+        return ok(unit)
+
+fn work() Unit!:
+    let _first = Tracked("first")
+    let _second = Tracked("second")
+    print("work")
+    return ok(unit)
+
+export fn main() Int:
+    if work().is_error():
+        return 1
+    return 0
+```
+
+```text
+work
+close second
+close first
+```
+
+Declare dependencies in an outer scope, or before the resources that use them, so they close after the resources that use them. See [fault selection](cleanup-faults.md).

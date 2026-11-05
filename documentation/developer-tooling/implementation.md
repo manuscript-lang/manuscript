@@ -5,7 +5,7 @@ weight = 2
 
 # Commands and editor setup
 
-Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](../contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
+Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
 ## Choose the next command
 

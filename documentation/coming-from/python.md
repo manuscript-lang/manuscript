@@ -61,4 +61,4 @@ export fn main() Int:
 
 The same shape decodes JSON directly with `parse[User](text)`. [Typed JSON](../cookbook/text-and-data.md#read-and-write-typed-json)
 
-Next: [the language tour](../learn/tour.md).
+Next: [the guide](../guide/_index.md).

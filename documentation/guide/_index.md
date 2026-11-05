@@ -1,6 +1,7 @@
 +++
 title = "Guide"
 weight = 3
+aliases = ["/learn/tour/"]
 +++
 
 # Guide

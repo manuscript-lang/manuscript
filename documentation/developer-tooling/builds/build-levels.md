@@ -27,7 +27,7 @@ The two builds report `Built program` and `Built small-program`. The debug run e
 
 Use `Debug` for unoptimized code and source attribution, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
 
-On Linux, the default executable runs on glibc 2.28 or newer. Use `--static` with `build`, `run`, `test`, or `bench` to produce a self-contained musl executable for deployment without a glibc dependency. See [platform linking](../../contributing/rust-toolchain.md#platform-linking) for target details.
+On Linux, the default executable runs on glibc 2.28 or newer. Use `--static` with `build`, `run`, `test`, or `bench` to produce a self-contained musl executable for deployment without a glibc dependency. See [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for target details.
 
 ## Levels
 

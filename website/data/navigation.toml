@@ -21,7 +21,3 @@ paths = ["coming-from"]
 [[groups]]
 label = "Reference"
 paths = ["core-language", "standard-library/reference", "glossary"]
-
-[[groups]]
-label = "Contribute"
-paths = ["contributing"]

@@ -234,8 +234,8 @@ test('previous and next links follow the rendered sidebar reading order', () => 
   const groups = [...nav.matchAll(/<div\b[^>]*class=(?:"nav-group"|'nav-group'|nav-group)[^>]*>([\s\S]*?)<\/div>/g)];
   const routes = groups.flatMap(group => [...group[1].matchAll(/<a\b[^>]*>/g)]
     .map(match => attribute(match[0], 'href')));
-  assert.deepEqual(routes.slice(0, 7), [
-    'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
+  assert.deepEqual(routes.slice(0, 6), [
+    'learn/', 'learn/getting-started/', 'learn/testing/',
     'learn/why-manuscript/', 'guide/', 'guide/values-and-functions/',
   ].map(route => prefix + route), 'Teach running, reading, and the guide before task recipes');
   assert.ok(routes.indexOf(prefix + 'guide/cleaning-up/') < routes.indexOf(prefix + 'cookbook/'),
