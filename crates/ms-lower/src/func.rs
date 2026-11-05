@@ -696,6 +696,8 @@ impl<'a> FnLower<'a> {
         }
         if self.cx.strict_copies
             && !self.boundary_reads.contains(&x.v)
+            // A `trim` view kept as a value is the allocation `trim` would have made.
+            && !self.views.contains(&x.v)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
                 Some(Op::StrLit | Op::OptNone)

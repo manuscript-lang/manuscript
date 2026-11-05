@@ -23,11 +23,15 @@ fn map_keys[K: Hashable, V: Clonable, W: Hashable](
 ) Map[W, V]:
     return values.map_keys[W](transform)
 
-fn reverse_map[K: Hashable, V, A](values: Map[K, V], initial: A, step: fn(A, K, V) A) A:
-    return values.fold_right[A](initial, step)
+fn reverse_map[K: Hashable, V, A: Clonable](
+    values: Map[K, V],
+    initial: A,
+    step: fn(A, K, V) A
+) A:
+    return values.fold_right[A](initial.clone(), step)
 
-fn reverse_set[T: Hashable, A](values: Set[T], initial: A, step: fn(A, T) A) A:
-    return values.fold_right(initial, step)
+fn reverse_set[T: Hashable, A: Clonable](values: Set[T], initial: A, step: fn(A, T) A) A:
+    return values.fold_right(initial.clone(), step)
 
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
@@ -165,7 +169,7 @@ test "Map reverse fold and last match retain ordered snapshots":
         fn acc,
         k,
         v:
-            var next = acc
+            var next = acc.clone()
             next.append(k + v.count.to_string())
             return next
     )
@@ -206,7 +210,7 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
         initial.clone(),
         fn acc,
         v:
-            var next = acc
+            var next = acc.clone()
             next.append(v.label.clone())
             return next
     )
@@ -239,7 +243,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             k,
             v:
                 empty_calls.append(1)
-                return acc
+                return acc.clone()
         ),
         initial: initial.clone()
     )
@@ -254,7 +258,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
             fn acc,
             v:
                 empty_calls.append(1)
-                return acc
+                return acc.clone()
         )
     )
 
@@ -299,7 +303,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
                 .find_last(
                     fn k,
                     v:
-                        seen_map.append(k)
+                        seen_map.append(k.clone())
                         return false
                 )
                 .is_none()

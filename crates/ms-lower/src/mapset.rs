@@ -950,7 +950,7 @@ impl<'a> FnLower<'a> {
         let first = self.b.list_new(entry, n);
         self.b.def_var(acc, first);
         self.each_element(lv, &mut |s, i, x| {
-            let xo = s.owned(Val { v: x, own: false });
+            let xo = s.owned_boundary(Val { v: x, own: false });
             let rec = s.b.rec_new(rid, &[i, xo]);
             let cur = s.b.use_var(acc);
             let next = s.b.list_push(cur, rec);

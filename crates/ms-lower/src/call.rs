@@ -166,7 +166,7 @@ impl<'a> FnLower<'a> {
                 .any(|l| crate::mutation::has_try(l.expr));
             let x = match &a.wrap_optional {
                 Some(opt) => {
-                    let o = self.owned(x);
+                    let o = self.owned_boundary(x);
                     let _ = opt;
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
@@ -422,7 +422,13 @@ impl<'a> FnLower<'a> {
             if !vars.contains(&i) {
                 // A consumed parameter takes the value itself: a copy only when `a` is a borrow.
                 if owned_mask.as_ref().is_some_and(|mask| mask[i]) {
-                    vals.push(self.owned(a));
+                    // An `Optional` is passed on under the type's boundary rule.
+                    let v = if matches!(self.b.m.types.kind(self.ty_of(a.v)), TyKind::Opt(_)) {
+                        self.owned_boundary(a)
+                    } else {
+                        self.owned(a)
+                    };
+                    vals.push(v);
                 } else {
                     vals.push(self.borrow(a));
                 }
@@ -1154,7 +1160,11 @@ impl<'a> FnLower<'a> {
                     own: variant != a,
                 });
             }
-            let o = self.owned(x);
+            let o = if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result {
+                self.owned_boundary(x)
+            } else {
+                self.owned(x)
+            };
             let v = self.b.alt_new(a, idx as u32, &[o]);
             return Ok(Val { v, own: true });
         }
@@ -1186,7 +1196,13 @@ impl<'a> FnLower<'a> {
             let x = if later_try {
                 self.hold_temp(x)
             } else {
-                let v = self.owned(x);
+                let v = if matches!(self.b.m.types.kind(mt), TyKind::Alt(a)
+                    if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result)
+                {
+                    self.owned_boundary(x)
+                } else {
+                    self.owned(x)
+                };
                 Val {
                     v,
                     own: self.holds(self.ty_of(v)),
@@ -1198,11 +1214,18 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new(format!("no field {}", self.syms.str(a.slot.name))))?;
             slots[idx] = Some(x);
         }
+        // `ok(x)` / `error(x)` of a borrow is the `Result` boundary copy the type declares.
+        let result_case = matches!(self.b.m.types.kind(mt), TyKind::Alt(a)
+            if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result);
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
                 Some(x) => {
-                    let v = self.owned(x);
+                    let v = if result_case {
+                        self.owned_boundary(x)
+                    } else {
+                        self.owned(x)
+                    };
                     vals.push(v);
                 }
                 None => {
