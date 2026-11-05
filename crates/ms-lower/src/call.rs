@@ -1178,6 +1178,8 @@ impl<'a> FnLower<'a> {
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
         let mut held: Vec<Value> = Vec::new();
+        let mut resources = Vec::new();
+        let has_defaults = params.len() > view.arguments.len();
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -1194,6 +1196,20 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            let idx = params
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .ok_or_else(|| Error::new(format!("no field {}", self.syms.str(a.slot.name))))?;
+            // Every later operand can fault or suspend, and defaults run after the written
+            // arguments. An acquired resource stays owned until all that evaluation succeeds.
+            if x.own
+                && (n + 1 < view.arguments.len() || has_defaults)
+                && let Some(key) = self.hold_resource_temp(x.v)?
+            {
+                resources.push((idx, key));
+                slots[idx] = Some(Val { v: key, own: false });
+                continue;
+            }
             // A later field may return early (`try`): hold this one as a temporary until then.
             let x = if later_try {
                 if x.own && self.holds(self.ty_of(x.v)) {
@@ -1219,18 +1235,16 @@ impl<'a> FnLower<'a> {
                     own: self.holds(self.ty_of(v)),
                 }
             };
-            let idx = params
-                .iter()
-                .position(|p| p.name == a.slot.name)
-                .ok_or_else(|| Error::new(format!("no field {}", self.syms.str(a.slot.name))))?;
             slots[idx] = Some(x);
         }
         // `ok(x)` / `error(x)` of a borrow is the `Result` boundary copy the type declares.
         let result_case = matches!(self.b.m.types.kind(mt), TyKind::Alt(a)
             if self.b.m.alts[a.index()].std == ms_mir::types::Std::Result);
         let mut vals = Vec::new();
+        let mut defaults_left = slots.iter().filter(|s| s.is_none()).count();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
+                Some(x) if self.resource_temps.contains_key(&x.v) => vals.push(x.v),
                 Some(x) if held.contains(&x.v) => {
                     // Every `try` of the fields has passed: the field takes the temporary.
                     self.unhold_temp(x.v);
@@ -1245,15 +1259,29 @@ impl<'a> FnLower<'a> {
                     vals.push(v);
                 }
                 None => {
+                    defaults_left -= 1;
                     let earlier: Vec<(ct::Name, Value)> = params
                         .iter()
                         .zip(&vals)
                         .map(|(p, v)| (p.name, *v))
                         .collect();
                     let v = self.field_default(&t, case, i, &earlier)?;
-                    vals.push(v);
+                    if defaults_left > 0
+                        && let Some(key) = self.hold_resource_temp(v)?
+                    {
+                        resources.push((i, key));
+                        vals.push(key);
+                    } else {
+                        vals.push(v);
+                    }
                 }
             }
+        }
+        // Commit the fields only after every argument and default has succeeded. Retire
+        // registrations last acquired first, then immediately consume their owned values.
+        for (i, key) in resources.into_iter().rev() {
+            vals[i] = self.take_resource_temp(key).0;
+            self.unhold_temp(key);
         }
         let v = match (self.b.m.types.kind(mt).clone(), case) {
             (TyKind::Rec(r), None) => self.b.rec_new(r, &vals),
