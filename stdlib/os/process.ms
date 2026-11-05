@@ -2,7 +2,8 @@ import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 import Promise, owned_promise from "@std/concurrency/promise.ms"
-import access, join, stat from "@std/os/fs.ms"
+import access, stat from "@std/os/fs.ms"
+import join from "@std/os/path.ms"
 import IpFamily from "@std/net/net.ms"
 import (
     ReadStream,
