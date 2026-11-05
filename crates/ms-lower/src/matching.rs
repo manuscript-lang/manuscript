@@ -390,8 +390,17 @@ impl FnLower<'_> {
                 }
                 let mask = if n >= 32 { u32::MAX } else { (1u32 << n) - 1 };
                 self.b.alt_release(*a, k as u32, mask, cur);
-                for (i, v) in fields.into_iter().enumerate() {
-                    self.bind_payload(bindings.get(i).and_then(|b| b.as_ref()), v)?;
+                // Named fields become bindings before omitted fields close, just as in a
+                // record pattern. The omitted fields close in reverse declaration order.
+                for (i, &v) in fields.iter().enumerate() {
+                    if let Some(b) = bindings.get(i).and_then(|b| b.as_ref()) {
+                        self.bind_payload(Some(b), v)?;
+                    }
+                }
+                for (i, v) in fields.into_iter().enumerate().rev() {
+                    if bindings.get(i).is_none_or(|b| b.is_none()) {
+                        self.bind_payload(None, v)?;
+                    }
                 }
             }
             TyKind::Opt(_) => {
@@ -413,7 +422,7 @@ impl FnLower<'_> {
         let x = Val { v, own: true };
         let Some(b) = b else {
             let ty = self.ty_of(v);
-            if self.needs_drop(ty) {
+            if self.holds(ty) {
                 let mut v = v;
                 if let Some(kind) = self.part_closer_mir(ty)? {
                     v = self.close_discarded_kind(&kind, v);
