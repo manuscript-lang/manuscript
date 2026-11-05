@@ -5,7 +5,7 @@ weight = 8
 
 # Testing and shipping
 
-The invoice rules are the part of the shop where a mistake costs money, so they get tests. A `test` block sits in the same file as the code, and `ms test` runs it.
+The invoice rules are the part where a mistake costs money, so they get tests. A `test` block sits in the same file as the code, and `ms test` runs it.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript {filename="totals.ms"}

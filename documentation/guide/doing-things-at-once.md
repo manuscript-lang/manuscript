@@ -5,7 +5,7 @@ weight = 6
 
 # Doing things at once
 
-The shop gets its orders as one file per day. Reading them one after another wastes time when each read waits on the disk. In Manuscript a function that waits is an ordinary function, so there is no `async` to add. A call that waits returns a `Promise`, and you can start several before you collect any.
+Orders arrive as one file per day. Reading them one after another wastes time when each read waits on the disk. In Manuscript a function that waits is an ordinary function, so there is no `async` to add. A call that waits returns a `Promise`, and you can start several before you collect any.
 
 <!-- manuscript-example: {"mode":"run","files":{"a.csv":"1,Sam,1250\n","b.csv":"2,Ada,4000\n3,Lin,900\n"},"stdout":"3 rows from 2 files\n"} -->
 ```manuscript {filename="rows.ms"}

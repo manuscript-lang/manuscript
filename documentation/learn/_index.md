@@ -9,10 +9,10 @@ Run a program, learn the language, then build something useful. The same `ms` co
 
 ## New to Manuscript?
 
-[Why Manuscript](why-manuscript.md) follows an agent building a program, from first mistake to shipped executable. Know TypeScript, Go or Python? See [coming from another language](../coming-from/_index.md).
+[Why Manuscript](why-manuscript.md) follows an agent building a program, from first mistake to shipped executable.
 
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
-2. **[Read the guide](../guide/_index.md).** One small shop program, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
+2. **[Read the guide](../guide/_index.md).** Small order-processing programs, chapter by chapter: values, data, errors, ownership, cleanup, concurrency, modules, tests, working with an agent.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
 4. **[Build a small tool](../cookbook/_index.md).** Start from a complete arguments, files, JSON, or HTTP recipe.
 
