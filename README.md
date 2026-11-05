@@ -82,6 +82,12 @@ test "an unset port uses the default":
     try expect_equal(port, 8080)
 ```
 
+```text
+RUN config.ms::an unset port uses the default
+PASS config.ms::an unset port uses the default
+1 tests, 0 failed
+```
+
 Then hand your agent a small CLI you need and watch it work through `ms guide`, `ms search_symbol` and the compiler's feedback.
 
 [Language tour](documentation/learn/tour.md) · [Task recipes](documentation/learn/common-tasks.md) · [Vision](VISION.md)

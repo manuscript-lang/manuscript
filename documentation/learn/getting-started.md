@@ -85,6 +85,10 @@ ms build ms.toml -o hello
 ./hello first second
 ```
 
+```text
+Hello! You passed 2 arguments.
+```
+
 On Windows, use `ms build ms.toml -o hello.exe`, then `.\hello.exe first second`. It prints the same greeting and runs without `ms` installed. See [build levels](../developer-tooling/builds/build-levels.md) for debug builds.
 
 ## 5. Check and test your project {#create-your-own-project}
@@ -97,7 +101,16 @@ ms fmt ms.toml
 ms test ms.toml
 ```
 
-`check` finds errors without running, `fmt` formats, and `test` runs the generated test block. `ms verify ms.toml` checks source, checks formatting without rewriting files, lints, and runs tests; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
+For this generated project, the commands report:
+
+```text
+Checked ms.toml (2 modules)
+RUN test.ms::arithmetic
+PASS test.ms::arithmetic
+1 tests, 0 failed
+```
+
+`fmt` succeeds silently. `check` finds errors without running, `fmt` formats, and `test` runs the generated test block. `ms verify ms.toml` checks source, checks formatting without rewriting files, lints, and runs tests; `ms --help` lists all commands. See [project configuration](../developer-tooling/builds/project-configuration.md) when you need to change the entry point or add dependencies.
 
 ## 6. Explore your program
 
@@ -105,7 +118,7 @@ ms test ms.toml
 ms diagram ms.toml --format html -o code-map.html
 ```
 
-Open `code-map.html` in a browser to follow calls, read the source and inspect checked types. The interactive file works offline and grows with your project. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map) for navigation and change overlays.
+The command succeeds silently and writes `code-map.html`. Open it in a browser to follow calls, read the source and inspect checked types. The interactive file works offline and grows with your project. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map) for navigation and change overlays.
 
 ## Compiler versions and setup
 

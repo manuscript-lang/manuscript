@@ -9,3 +9,5 @@ Decision: lead onboarding with a successful program and its benefits. Keep condi
 Apply when: adding tutorials, revising design chapters, or explaining new syntax.
 Evidence: the user’s November 5 correction of “an Internet connection for its first build” and request to feature HTML reports for human understanding; [learn index](../../documentation/learn/_index.md), [tool resolution](../../crates/ms-clif/src/link/lld.rs), [code map](../../documentation/developer-tooling/implementation.md#interactive-code-map).
 Verify: run the displayed source and commands with the stated prerequisites; check that the reading path introduces dependencies before using them.
+
+Decision: show concise, verified output beside practical commands and complete examples. State silent success accurately; use stable excerpts for variable reports and keep machine-specific paths, timings and IDs out of examples. Fragments do not need invented output. A learning page must teach a concrete task; remove generic advice that only repeats the tour or reference and redirect useful old routes.

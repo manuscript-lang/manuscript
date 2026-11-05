@@ -41,7 +41,7 @@ See [references and borrowing](../core-language/types/references.md) for the exa
 
 The standard library includes files, streams, processes, HTTP client and server, TCP, JSON and other data formats, time, crypto, regex, logging, command-line parsing and a test runner. Discover what's available with `ms search_symbol <words>` or browse the [API reference](../standard-library/reference/_index.md). Most library code is written in Manuscript; native primitives are implemented in Rust.
 
-For a known JSON shape, `parse[Config](text)` decodes directly into your record. Defaults handle omitted fields; shape mismatches return a `Result` error. This avoids building and walking a public JSON tree just to read configuration. Use `JsonValue` for unknown shapes. Start with the [JSON recipes](common-tasks.md) and [typed configuration example](best-practices.md#let-types-describe-your-data).
+For a known JSON shape, `parse[Config](text)` decodes directly into your record. Defaults handle omitted fields; shape mismatches return a `Result` error. This avoids building and walking a public JSON tree just to read configuration. Use `JsonValue` for unknown shapes. Start with the [JSON recipes](common-tasks.md) and [typed configuration example](common-tasks.md#read-and-write-typed-json).
 
 ## Measured against agents
 

@@ -51,7 +51,7 @@ Create a map of your project and open the resulting file in a browser:
 ms diagram ms.toml --format html -o code-map.html
 ```
 
-The single HTML file includes the source and works offline. Start at a module or function, follow callers and callees, and click source identifiers to see their checked types. Switch between overview, calls, sequence, behavior, types and route views. Function signatures show parameter borrow modes and returned values, connecting ownership to the code you are reading.
+The command succeeds silently and writes `code-map.html`. The single HTML file includes the source and works offline. Start at a module or function, follow callers and callees, and click source identifiers to see their checked types. Switch between overview, calls, sequence, behavior, types and route views. Function signatures show parameter borrow modes and returned values, connecting ownership to the code you are reading.
 
 For a review, add a unified diff to highlight changed declarations and filter the map to changed code:
 
@@ -60,7 +60,7 @@ git diff --no-renames > change.patch
 ms diagram ms.toml --format html --diff change.patch -o review.html
 ```
 
-Run this against the working tree represented by the diff's after state. The map shows relationships and control flow from the checked source; sequence and behavior views are static views, not runtime execution traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
+These commands write `change.patch` and `review.html` without terminal output. Run this against the working tree represented by the diff's after state. The map shows relationships and control flow from the checked source; sequence and behavior views are static views, not runtime execution traces. Use [profiling](debugging/debugger-integration.md) to observe a running program and [tests](../learn/testing.md) to check its outcomes.
 
 ## Source inspection
 

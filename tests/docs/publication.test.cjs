@@ -204,11 +204,13 @@ test('previous and next links follow the rendered sidebar reading order', () => 
   const groups = [...nav.matchAll(/<div\b[^>]*class=(?:"nav-group"|'nav-group'|nav-group)[^>]*>([\s\S]*?)<\/div>/g)];
   const routes = groups.flatMap(group => [...group[1].matchAll(/<a\b[^>]*>/g)]
     .map(match => attribute(match[0], 'href')));
-  assert.deepEqual(routes.slice(0, 7), [
+  assert.deepEqual(routes.slice(0, 6), [
     'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
-    'learn/best-practices/', 'learn/why-manuscript/', 'learn/common-tasks/',
+    'learn/why-manuscript/', 'learn/common-tasks/',
   ].map(route => prefix + route), 'Teach running, reading, and testing before task recipes');
   assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
+  const retired = fs.readFileSync(path.join(book, 'learn/best-practices/index.html'), 'utf8');
+  assert.ok(retired.includes(prefix + 'learn/common-tasks/'), 'Retired advice page redirects to runnable recipes');
 
   for (const [index, route] of routes.entries()) {
     const file = path.join(book, route.slice(prefix.length), 'index.html');
