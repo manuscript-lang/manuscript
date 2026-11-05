@@ -154,3 +154,16 @@ test "a replacement cancel signal detaches the previous switch":
 
     let reason = slow.wait() | try expect_error
     try expect_equal(reason.kind, "ECANCELED")
+
+fn ignore_inner(inner: Promise[Int]) Int!:
+    return ok(1)
+
+fn nap(ms: Int) Int!:
+    sleep(milliseconds(ms)).wait().get(unit)
+    return ok(ms)
+
+test "a promise that ends holding an unfinished promise cancels it instead of hanging":
+    for round in 0..20:
+        let inner = promise(fn: nap(100000))
+        let outer = promise(fn: ignore_inner(inner))
+        try expect_equal(outer.wait() | try expect_ok, 1)
