@@ -21,6 +21,14 @@ pub(crate) enum CloseKind {
     Func { fid: FuncId, writes_back: bool },
 }
 
+/// A complete owned resource held as a pending operand, including intact wrapper payloads.
+#[derive(Clone)]
+pub(crate) struct ResourceTemp {
+    slot: Value,
+    handle: Value,
+    kind: CloseKind,
+}
+
 impl CloseKind {
     /// Whether the close changes the value it closes, so it needs the value's own storage.
     fn writes_back(&self) -> bool {
@@ -352,9 +360,52 @@ fn close_at_result(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
 }
 
 impl FnLower<'_> {
+    /// Holds an intact owned resource until a later operand finishes. Its ordered temporary
+    /// entry handles source-level exits; the registered slot handles faults and cancellation.
+    pub(crate) fn hold_resource_temp(&mut self, v: Value) -> Result<Option<Value>, Error> {
+        let ty = self.ty_of(v);
+        let Some(kind) = self.part_closer_mir(ty)? else {
+            return Ok(None);
+        };
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+            .expect("resource temporary slot");
+        self.move_into(slot, v);
+        let thunk = self.close_thunk(&kind, ty, true);
+        let handle = self
+            .b
+            .emit(Op::CleanupPush, &[slot], Imm::Func(thunk), Some(MTy::INT))
+            .expect("resource temporary cleanup");
+        let key = self
+            .b
+            .emit(Op::Load, &[slot], Imm::Ty(ty), Some(ty))
+            .expect("resource temporary view");
+        self.resource_temps
+            .insert(key, ResourceTemp { slot, handle, kind });
+        self.temps.push(key);
+        Ok(Some(key))
+    }
+
+    /// Retires the resource's cleanup and takes its sole owned value. Call in reverse
+    /// registration order, with no further operand evaluation before the values are consumed.
+    /// Keep the metadata: emitting an early-return branch must not change the continuing path.
+    pub(crate) fn take_resource_temp(&mut self, key: Value) -> (Value, CloseKind) {
+        let owner = self.resource_temps[&key].clone();
+        let _ = self.call_runtime("msrt_cleanup_discard", &[owner.handle], MTy::UNIT);
+        let v = self.move_out(owner.slot, self.ty_of(key));
+        (v, owner.kind)
+    }
+
     /// Drops an owned temporary at the end of its statement, closing it first when it is a
     /// resource (`open().id()`).
     pub(crate) fn drop_temp(&mut self, v: Value) {
+        if self.resource_temps.contains_key(&v) {
+            let (v, kind) = self.take_resource_temp(v);
+            let v = self.close_discarded_kind(&kind, v);
+            self.drop_value(v);
+            return;
+        }
         let v = self.close_temp(v);
         self.drop_value(v);
     }
