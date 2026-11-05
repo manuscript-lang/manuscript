@@ -2,7 +2,7 @@
 
 # Teach a runnable path before formal reference
 
-Decision: public documentation should focus on Manuscript and what readers can build. Remove comparisons with other languages, coverage maps, implementation inventories, and review bookkeeping. Keep one getting-started guide; modules, references, and cleanup belong in the language reference, application builds in developer tools, and compiler internals in contributor documentation. Use clear topic names and keep the sidebar, overview, and reading order consistent.
+Decision: public documentation should focus on Manuscript and what readers can build. Keep language comparisons out of the guide and reference (owner decision, 2026-11-05: they live only in `documentation/coming-from/`, one page each for TypeScript, Go, Python, never linked from guide pages). Remove coverage maps, implementation inventories, and review bookkeeping. Keep one getting-started guide; modules, references, and cleanup belong in the language reference, application builds in developer tools, and compiler internals in contributor documentation. Use clear topic names and keep the sidebar, overview, and reading order consistent.
 
 Decision: lead onboarding with a successful program and its benefits. Keep conditional tool downloads, cache behavior and local overrides together in the build guide; do not turn them into a universal Internet prerequisite in learning-page introductions. Keep consequential requirements accurate and reachable, and place troubleshooting beside the action it helps. Introduce review tools through a concrete task, such as exploring the offline HTML code map, rather than an implementation inventory.
 

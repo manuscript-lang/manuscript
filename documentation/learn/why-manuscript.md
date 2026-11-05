@@ -5,54 +5,109 @@ weight = 6
 
 # Why Manuscript
 
-Manuscript is designed for agents to write and people to understand. Its small language, compiler feedback and native toolchain support one workflow: write a program, catch mistakes, review the important decisions, and build an executable.
+**The language for the agentic era.**
 
-## Read the code, ship the executable {#familiar-to-read-native-to-run}
+Soon most code will be written by agents. You will still own it. You won't read every line, but you will need to understand what a program does, what can fail, and who owns what, and you will need to trust it enough to ship it.
 
-Manuscript chooses a small type system with generics, no `any` escape hatch and no runtime reflection API. Every expression has a compiler-checked type, including values used through interface contracts. This keeps data shapes and operation signatures available to analysis while catching mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every enum, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
+Manuscript is a language and a toolchain designed for that arrangement. Here is what it looks like to build something with an agent.
 
-The same `ms` command checks, formats, tests and builds your project. Use debug builds while iterating and optimized release builds when sharing your program. The executable runs without Manuscript installed. See [build levels](../developer-tooling/builds/build-levels.md) for deployment choices.
+## The agent writes a program
 
-## Understand what your agent built
+You ask for a small tool that totals orders by customer from a JSON file. The agent writes this.
 
-`ms diagram ms.toml --format html -o code-map.html` turns the checked program into one interactive file you can open offline. Read the source beside its call graph, inspect identifier types, and explore behavior and sequence views alongside parameter borrow modes. A diff overlay highlights the declarations a change touches, so you can move from a broad overview to the code that needs attention.
+<!-- manuscript-example: {"mode":"run","files":{"orders.json":"[{\"customer\":\"Sam\",\"cents\":1250},{\"customer\":\"Ada\",\"cents\":4000},{\"customer\":\"Sam\",\"cents\":3100}]"},"stdout":"Sam: 4350 cents\nAda: 4000 cents\n"} -->
+```manuscript {filename="totals.ms"}
+import read_file from "@std/os/fs.ms"
+import parse from "@std/data/json.ms"
 
-The map presents checked source relationships. Tests and profiling show how the program behaves when run. Pair it with `ms review --diff` to prioritize changed contracts, error flow and resource scopes. See [the interactive code map](../developer-tooling/implementation.md#interactive-code-map).
+type Order:
+    customer: String
+    cents: Int
 
-## Feedback an agent can act on
+fn totals(path: String) Map[String, Int]!:
+    let text = try read_file(path).wait()
+    let orders = try parse[List[Order]](try text.decode_utf8().ok_or())
+    var sums = Map[String, Int]()
+    for order in orders:
+        let total = sums.get(order.customer).get(0) + order.cents
+        sums.add(order.customer, total)
+    return ok(sums)
 
-Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `name.toUpperCase()`, `def`, `async` or `except`, the message names the Manuscript spelling instead of reporting a bare syntax error. When the repair is mechanical, the JSON diagnostic carries a byte-exact `fix` and `ms check --fix` applies it. A runtime fault from `ms run --json` or `ms test --json` is a document with a kind, a message that includes the remedy, a position and a trace, so the agent reads data rather than scraping stderr.
+export fn main() Int:
+    let sums = totals("orders.json")
+    if sums.is_error():
+        print(sums.err().message)
+        return 1
+    for entry in sums.get().entries():
+        print("{entry.key}: {entry.value} cents")
+    return 0
+```
 
-`ms guide` prints a compact language cheat sheet, `ms search_symbol <words>` finds project and standard-library APIs with bounded output, and `ms verify` folds type checking, formatting checks, lint and tests into one exit status. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents) and [diagnostics](../developer-tooling/source/diagnostics.md).
+```text
+Sam: 4350 cents
+Ada: 4000 cents
+```
 
-## Concurrency without `async`
+You can understand this without reading every line. `totals` can fail, because of the `!`, and each `try` marks a place it can. If `orders.json` is missing or malformed, the caller gets an error message instead of a crash:
 
-Any function can wait, so there is no `async`, no `await` and no function coloring. `promise(fn: ...)` starts concurrent work and returns a `Promise[T]`; `wait()` takes its result. Streams are pulled lazily. Promises can read borrowed captures; mutable state stays with one owner and updates travel over a `pipe`. A resource moved into a promise belongs to that work. Dropping an unfinished promise cancels it and waits for it to end.
+```text
+filesystem: file or directory not found: orders.json
+```
 
-Cancellation is cooperative at waits. The [concurrency guide](../core-language/concurrency/_index.md) explains how to coordinate work and handle its results.
+`var sums` is the only thing that changes. Nothing is copied behind your back, because the only mark for that is `.clone()`. Each value has one owner, the compiler frees it at its last use, and there is no garbage collector and no lifetime annotation. Those few marks are how you understand a change without reading all of it.
 
-## Ownership you can follow
+## The agent makes a mistake
 
-Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Functions can return borrowed parts of arguments, including through `Optional` or `Result`; `try` preserves the active case's ownership instead of copying its payload. The owner must remain available while the returned borrow is used.
+Agents carry habits from other languages. This one first tried to add the total in one line, using `order.customer` as the key and again for the lookup:
 
-See [references and borrowing](../core-language/types/references.md) for the exact rules, including how long a returned borrow remains valid. Bind files and connections in the [scope that needs them](../core-language/cleanup/scopes.md) so they close on exit, and flush fallible writes before closing to observe errors.
+```manuscript
+        sums.add(order.customer, sums.get(order.customer).get(0) + order.cents)
+```
 
-## Batteries-included standard library {#a-growing-standard-library}
+The compiler stops it and says how to repair it:
 
-The standard library includes files, streams, processes, HTTP client and server, TCP, JSON and other data formats, time, crypto, regex, logging, command-line parsing and a test runner. Discover what's available with `ms search_symbol <words>` or browse the [API reference](../standard-library/reference/_index.md). Most library code is written in Manuscript; native primitives are implemented in Rust.
+```text
+totals.ms:13:24: type: `order.customer` is moved here but used again at 13:43; a value has one owner, so use `order.customer.clone()` to keep the original, or move it only at its last use
+```
 
-For a known JSON shape, `parse[Config](text)` decodes directly into your record. Defaults handle omitted fields; shape mismatches return a `Result` error. This avoids building and walking a public JSON tree just to read configuration. Use `JsonValue` for unknown shapes. Start with the [JSON recipes](common-tasks.md) and [typed configuration example](common-tasks.md#read-and-write-typed-json).
+Every diagnostic reads `cause; fix`. When an agent writes `len(xs)`, the answer is not "syntax error" but `there is no len() function: call the length member, e.g. xs.length()`. When the fix is mechanical, `ms check --fix` applies it. When a program fails at run time, `ms test --json` hands back the fault as data: kind, values, position and trace. The agent never needs the whole manual. `ms guide` is a one-page cheat sheet, `ms search_symbol read file` answers one API question, and `ms verify` runs checks, formatting, lint and tests with a single exit code. The agent loops until that exit code is zero.
 
-## Measured against agents
+## You review the result
 
-The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) measures correctness, repair rounds, tokens and cost on programs with hidden tests. Dated results and reproduction instructions let you assess its progress on the tasks you care about.
+You don't read the diff top to bottom. You run:
 
-The [performance suites](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/README.md) cover kernels, data formats, HTTP and concurrent work. Each result belongs to a particular revision, workload and machine. Use those reproduction commands to assess your workload.
+```sh
+ms diagram ms.toml --format html -o code-map.html
+```
 
-## Where this is going
+You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye.
 
-Manuscript is in alpha, with evolving syntax and APIs. The [vision](https://github.com/manuscript-lang/manuscript/blob/main/VISION.md) is a language and toolchain an agent-driven team can grow with, from a script to a deployed service, while people keep a clear view of the result.
+## The tests go looking for bugs
 
-## Try it
+Property tests draw inputs nobody thought of and shrink any failure to a small case. `ms test --fuzz 30s` turns the same tests into a fuzzer. The agent's code meets odd inputs before your users do.
 
-[Run your first program](getting-started.md), then take the [language tour](tour.md).
+## Then the project gets hardened
+
+Manuscript is young, and it is hardened the way you will harden your own code: with agents, on purpose.
+
+A **bug bash** points an agent at one area. It writes probe programs against new features and their edges, compares what happens with the documented rule, fixes real bugs with regression tests, and files an issue with a minimal repro for anything that needs a decision. A **perf bash** starts from a measured gap. The agent reproduces it, changes one thing, and shows before and after on the same machine. Results are added as dated sections, never edited, and a fix that costs more than it earns is closed with the numbers. For example, one bug bash found that the diagnostic for an empty block told users to write `unit`, which the parser then rejected ([#1914](https://github.com/manuscript-lang/manuscript/pull/1914)). Both workflows are written down as skills in the repository: [bug bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/bug-bash/SKILL.md) and [perf bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/perf-bash/SKILL.md).
+
+## Speed is a priority, at compile time and at run time
+
+An agent runs the compiler dozens of times per task, so compile speed is part of the design. `ms check` parses and type-checks without building, and debug builds use Cranelift for a quick edit-check-run loop. Release builds use LLVM and optimize the executable you ship. The front end is cheap by design, and compile-time work is tracked against Go with a [compile-time benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/compile-time/README.md) that names its bottlenecks and fixes.
+
+Runtime speed comes from a straightforward program, not from tricks: values are laid out flat, memory is freed at last use with no collector pause, and the standard library is written in Manuscript on small native primitives. Kernels, data structures, JSON, CSV, workers and an HTTP server are compared against hand-written Go and Rust in the [performance suites](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/README.md). Perf bashes keep closing the gaps those suites show.
+
+## It ships
+
+`ms build --release` produces a native executable that runs without Manuscript installed. The standard library already covers HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, so common programs need nothing extra. Work that waits, such as a request or a file read, is written like any other call: there is no `async`, and dropping a promise cancels it.
+
+## We measure it with agents
+
+The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md) gives agents the same challenges in TypeScript, Go, Rust and Manuscript and grades them on hidden tests. What goes wrong there decides what we build next. Every result records its revision and machine.
+
+## Where it stands
+
+The language core, the `ms` toolchain and the standard library work today. Syntax and APIs still evolve, and each release hardens them further. The [vision](https://github.com/manuscript-lang/manuscript/blob/main/VISION.md) describes where this is heading.
+
+**Next:** [Run your first program](getting-started.md)

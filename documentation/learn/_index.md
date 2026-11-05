@@ -9,7 +9,7 @@ Run a program, learn the language, then build something useful. The same `ms` co
 
 ## New to Manuscript?
 
-[Why Manuscript](why-manuscript.md) is a one-page summary of what makes it worth trying.
+[Why Manuscript](why-manuscript.md) follows an agent building a program, from first mistake to shipped executable. Know TypeScript, Go or Python? See [coming from another language](../coming-from/_index.md).
 
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
