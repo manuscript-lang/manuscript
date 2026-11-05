@@ -272,7 +272,7 @@ mermaid is a flowchart for rendering. --view or --entity switch to one question'
 overview (modules, their effects and cross-module calls), calls (who is called), effects (where effects enter), errors (error types and try sites),
 modules (imports), flow (one function's ordered steps), scope (its cleanup scopes and exits),
 tasks (its task groups and the work each spawn starts),
-types (aliases: class; fields and cases that hold other types), ownership (alias: mutability; borrow, var and owned per parameter and result). flow, scope and tasks need --entity. --entity roots the tree at one declaration (name, file::name, or full entity ID file#kind#name; a module
+types (aliases: class; fields and cases that hold other types), ownership (alias: mutability; checked copy, borrow, move and var parameters; owned or borrowed results). flow, scope and tasks need --entity. --entity roots the tree at one declaration (name, file::name, or full entity ID file#kind#name; a module
 path for modules) and --depth bounds expansion (default 3, at most 200 nodes).
 An exact entity ID takes precedence over declaration names and qualified names.
 
