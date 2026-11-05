@@ -1130,6 +1130,19 @@ impl Verifier<'_> {
                     "closure.cap reads the environment (ptr) and yields the capture type",
                 )
             }
+            Op::ClosureCapAddr => {
+                arity(1)?;
+                let Imm::Idx(i) = inst.imm else {
+                    return Err("missing index".into());
+                };
+                let FuncKind::Closure { captures } = &f.kind else {
+                    return Err("closure.cap_addr outside a closure function".into());
+                };
+                want(
+                    t(0) == Ty::PTR && res == Some(Ty::PTR) && (i as usize) < captures.len(),
+                    "closure.cap_addr takes the environment (ptr) and yields the capture's address",
+                )
+            }
             Op::IfaceNew | Op::IfaceBorrow => {
                 arity(1)?;
                 let Imm::Vtable(v) = inst.imm else {
