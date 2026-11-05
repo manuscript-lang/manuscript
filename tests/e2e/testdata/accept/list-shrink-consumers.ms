@@ -36,7 +36,7 @@ fn observe[T: Clonable](
             .clone()
             .for_each(
                 fn(value: T): step(
-                    var seen, var visits, var values, value, mode, fill.clone()
+                    var seen, var visits, var values, value.clone(), mode, fill.clone()
                 )
             )
         )

@@ -29,6 +29,9 @@ pub enum Fact {
     /// An `ok(..)` or `error(..)` constructor in return position of a function whose result is a
     /// borrowing variant: lowering builds it in the variant.
     RetCtor = 1 << 8,
+    /// A field of an owned local or parameter moved out at its last use (`f(b.items)`,
+    /// `return b.items`): the checker's move, whose lowering may still copy the field.
+    PartialMove = 1 << 9,
 }
 
 /// Fact flags by module file, then by node id.

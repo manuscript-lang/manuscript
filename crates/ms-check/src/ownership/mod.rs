@@ -343,6 +343,9 @@ impl Hir<'_> {
             if out.facts.borrowed_cases & modes::BORROWED_ERROR != 0 {
                 node_facts.set(c.module.file, c.id(), Fact::BorrowedError);
             }
+            for n in out.facts.partial_moves.keys() {
+                node_facts.set(file, *n, Fact::PartialMove);
+            }
             for n in &out.facts.ret_ctors {
                 node_facts.set(file, *n, Fact::RetCtor);
             }

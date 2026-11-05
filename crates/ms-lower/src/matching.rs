@@ -63,6 +63,7 @@ impl FnLower<'_> {
             return Ok(None);
         }
         let t = self.ty_of(x.v);
+        self.hold_declared = self.boundary_reads.contains(&x.v);
         if !x.own && self.ownership_checked() {
             // A borrowed part: the checker keeps its origin unchanged while payloads borrow it,
             // so it is read in place and a borrow-returning function can hand back those payloads.
@@ -86,6 +87,7 @@ impl FnLower<'_> {
             self.pop_scope();
             return Ok(self.dummy(MTy::UNIT));
         };
+        let scrut_declared = std::mem::take(&mut self.hold_declared);
         let sty = self.b.var_ty(sv);
         let kind = self.b.m.types.kind(sty).clone();
         // An owned scrutinee (`match make():`, or a local the match moving_params) is the match's
@@ -291,6 +293,15 @@ impl FnLower<'_> {
                     (TyKind::Opt(_), Some(_)) => self.b.opt_get(cur),
                     _ => return Err(Error::new("payload binding on a wildcard arm")),
                 };
+                if scrut_declared {
+                    // A part of a payload an `Optional`/`Result` read borrows is the same declared read.
+                    self.boundary_reads.insert(payload);
+                }
+                if by_type && owned_uid.is_some() {
+                    // The checker moves the payload out of the last-use scrutinee; the box is
+                    // dropped whole at scope end, so the move is realized as a declared copy.
+                    self.boundary_reads.insert(payload);
+                }
                 self.scrutinee_lives = owned_uid.is_none();
                 self.bind_local(
                     b,
