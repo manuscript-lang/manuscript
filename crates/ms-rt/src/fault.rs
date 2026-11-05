@@ -176,17 +176,20 @@ impl ShieldRef {
 }
 
 pub static TABLES: Process<*const Tables> = Process::new(core::ptr::null());
-/// Lowest and highest valid stack addresses for frame walking (0 = unknown). Process-wide until
-/// worker isolates exist: the Windows sampler thread and the `SIGPROF` handler read them from other
-/// threads (see `proposals/worker-threads.md`).
-pub static STACK_LO: Process<usize> = Process::new(0);
-pub static STACK_HI: Process<usize> = Process::new(0);
-/// The chain cell of the running task's stack segment: the address of `[lo, hi, chain, 0]`
-/// describing the segment below it, or 0 on a task's home segment. A task that recursed past
-/// its slot runs on further segments (`task::msrt_task_grow`), and a frame walker that leaves
-/// the bounds follows the chain. The cell lives at the top of the segment, written before any
-/// frame exists there, so a signal handler can read it.
-pub static STACK_CHAIN: Process<usize> = Process::new(0);
+crate::isolate_static! {
+    /// Lowest and highest valid stack addresses of the running segment for frame walking (0 =
+    /// unknown). Per thread: every scheduler thread runs its own tasks and switches these in
+    /// `swap_ctx`, so a process-wide copy let two threads overwrite each other's segments and
+    /// close a cycle in the chain cells.
+    pub static STACK_LO: usize = 0;
+    pub static STACK_HI: usize = 0;
+    /// The chain cell of the running task's stack segment: the address of `[lo, hi, chain, 0]`
+    /// describing the segment below it, or 0 on a task's home segment. A task that recursed past
+    /// its slot runs on further segments (`task::msrt_task_grow`), and a frame walker that leaves
+    /// the bounds follows the chain. The cell lives at the top of the segment, written before any
+    /// frame exists there, so a signal handler can read it.
+    pub static STACK_CHAIN: usize = 0;
+}
 
 /// The running segment's bounds and chain cell.
 pub(crate) fn segment_state() -> (usize, usize, usize) {
@@ -1647,7 +1650,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
                 teb.as_ptr(),
             )
         }
-        GUARD_MESSAGE = if status == GUARD_FAULT {
+        *GUARD_MESSAGE.ptr() = if status == GUARD_FAULT {
             crate::string::from_bytes(&message)
         } else {
             crate::string::NO_STR
@@ -1693,7 +1696,11 @@ pub(crate) unsafe fn pop_trap_guard() {
 }
 
 #[cfg(not(test))]
-static mut GUARD_MESSAGE: ms_rt_abi::StrVal = crate::string::NO_STR;
+crate::isolate_static! {
+    /// The fault message `guard_exit` hands to the landing of `msrt_guard_call`. Per thread: tasks on
+    /// different scheduler threads leave guards at the same time.
+    static GUARD_MESSAGE: ms_rt_abi::StrVal = crate::string::NO_STR;
+}
 
 #[cfg(not(test))]
 unsafe extern "C" {
@@ -1905,12 +1912,11 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                 return GUARD_OK;
             }
             if !msg_out.is_null() {
-                *msg_out = core::ptr::read(&raw const GUARD_MESSAGE);
+                *msg_out = core::ptr::read(GUARD_MESSAGE.ptr());
             } else {
-                let held = &raw const GUARD_MESSAGE;
-                crate::string::release_opt(&*held);
+                crate::string::release_opt(&*GUARD_MESSAGE.ptr());
             }
-            GUARD_MESSAGE = crate::string::NO_STR;
+            *GUARD_MESSAGE.ptr() = crate::string::NO_STR;
             r as u8
         }
         #[cfg(test)]

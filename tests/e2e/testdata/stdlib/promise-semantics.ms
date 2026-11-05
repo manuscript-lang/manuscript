@@ -1,5 +1,6 @@
 import panic from "@std/core.ms"
 import (
+    Promise,
     promise,
     wait_all,
     wait_first,
@@ -26,6 +27,23 @@ test "a fault inside a promise ends only that promise":
     let reason = broken.wait() | try expect_error
     report(reason) | try expect_equal("promise fault")
     fine.wait() | try expect_ok | try expect_equal(7)
+
+fn fault_at(index: Int) Int!:
+    let empty: List[Int] = []
+    return ok(empty[index])
+
+// Faults on different scheduler threads leave their guards at the same moment. They once shared one message
+// cell, so a report came back empty or from another promise, and a string was released twice.
+test "promises faulting on several threads each report their own fault":
+    for round in 0..100:
+        var batch: List[Promise[Int]] = []
+        for i in 0..200:
+            batch.append(promise(fn: fault_at(round * 1000 + i + 1)))
+
+        for i in 0..batch.length():
+            let reason = batch[i].wait() | try expect_error
+            let text = report(reason)
+            try expect_true(text.contains("index {round * 1000 + i + 1} out of range"))
 
 test "a timed out wait reports Timeout and cancels the work":
     let slow = promise(
