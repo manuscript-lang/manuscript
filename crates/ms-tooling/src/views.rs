@@ -1,6 +1,6 @@
 //! The diagram views: one question each, built from the fact model.
 
-use crate::facts::{Fact, Facts, Slot};
+use crate::facts::{Fact, Facts, ParameterOwnership, Slot};
 use crate::tree::Node;
 use std::collections::HashSet;
 use std::fmt::Write;
@@ -490,7 +490,8 @@ fn capped(root: &mut Node, skipped: usize) {
 }
 
 /// How a callable's parameters and result move ownership, per the memory model:
-/// a plain parameter is a shared borrow, `var` an exclusive borrow, a result is owned.
+/// plain parameters follow their checked passing mode, `var` is exclusive, and
+/// result labels preserve borrowed values and owned views/cases.
 fn ownership_view(facts: &Facts, entity: &str, depth: i64) -> Result<Node, String> {
     let roots: Vec<&Fact> = if entity.is_empty() {
         facts
@@ -534,17 +535,18 @@ fn ownership_node(
     for s in &f.slots {
         let mode = if s.var {
             "var (exclusive borrow)"
-        } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
-            "copy"
         } else {
-            "borrow"
+            param_mode(s)
         };
         node.children
             .push(Node::new(format!("{}: {}  {mode}", s.name, s.ty)));
     }
     if let Some(r) = &f.result {
-        node.children
-            .push(Node::new(format!("returns {}  owned", r.ty)));
+        node.children.push(Node::new(format!(
+            "returns {}  {}",
+            r.ty,
+            f.result_ownership.label()
+        )));
     }
     if f.scopes > 0 {
         node.children
@@ -757,7 +759,7 @@ fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
     Some(out)
 }
 
-/// Types flow into a function as borrows, copies, or `var` borrows; the result flows out owned.
+/// Render checked parameter/result modes without inferring ownership from type spellings.
 fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
     let roots = ownership_roots(facts, entity);
     let mut out = String::from("flowchart LR\n");
@@ -788,6 +790,7 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
                 let style = match mode {
                     "var" => "stroke:#d33,stroke-width:3px",
                     "copy" => "stroke:#999,stroke-dasharray:4",
+                    "move" => "stroke:#2a2,stroke-width:3px",
                     _ => "stroke:#37b",
                 };
                 let tid = flow_type_node(&mut out, &mut declared, &s.ty);
@@ -796,8 +799,15 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
             }
             if let Some(r) = &f.result {
                 let tid = flow_type_node(&mut out, &mut declared, &r.ty);
-                let _ = writeln!(out, "    {fid} -->|owned| {tid}");
-                styles.push("stroke:#2a2,stroke-width:3px");
+                let mode = f.result_ownership.label();
+                let _ = writeln!(out, "    {fid} -->|\"{mode}\"| {tid}");
+                styles.push(
+                    if matches!(f.result_ownership, crate::facts::ResultOwnership::Borrow) {
+                        "stroke:#37b"
+                    } else {
+                        "stroke:#2a2,stroke-width:3px"
+                    },
+                );
             }
             if level < depth {
                 next.extend(f.calls.iter().filter_map(|k| facts.entities.get(k)));
@@ -838,10 +848,12 @@ fn ownership_roots<'a>(facts: &'a Facts, entity: &str) -> Vec<&'a Fact> {
 fn param_mode(s: &Slot) -> &'static str {
     if s.var {
         "var"
-    } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
-        "copy"
     } else {
-        "borrow"
+        match s.ownership {
+            ParameterOwnership::Copy => "copy",
+            ParameterOwnership::Move => "move",
+            ParameterOwnership::Borrow => "borrow",
+        }
     }
 }
 
@@ -921,8 +933,8 @@ fn ascii_classes(facts: &Facts, chosen: &[&Fact]) -> String {
 }
 
 /// One signature line per function: `var` marks an argument the callee may
-/// change, a plain parameter is borrowed (or copied, for scalars), the result is
-/// owned. Callees nest beneath their caller.
+/// change; parameter and result modes are available in the JSON/Mermaid view.
+/// Callees nest beneath their caller.
 fn ascii_ownership(facts: &Facts, entity: &str, depth: i64) -> String {
     let mut out = String::new();
     let mut lines = 0;

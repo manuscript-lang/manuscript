@@ -501,6 +501,7 @@ fn slot(name: &str, ty: &str, var: bool, refs: &[&str]) -> ms_tooling::facts::Sl
         name: name.into(),
         ty: ty.into(),
         var,
+        ownership: Default::default(),
         refs: refs.iter().map(|r| r.to_string()).collect(),
     }
 }

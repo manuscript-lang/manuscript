@@ -533,3 +533,147 @@ fn shared_default_type_arguments_keep_one_reference_per_declaration() {
     assert_eq!(refs, ["main.ms#record#Pair", "main.ms#record#Item"]);
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn ownership_labels_follow_checked_value_classes_and_return_borrows() {
+    let dir = scratch("checked-ownership");
+    std::fs::write(dir.join("main.ms"), include_str!("ownership_modes/main.ms")).unwrap();
+    for (entity, expected) in [
+        (
+            "inputs",
+            vec![
+                "a: Int8  copy",
+                "b: Int16  copy",
+                "c: Int32  copy",
+                "d: Int64  copy",
+                "e: Float32  copy",
+                "f: Float  copy",
+                "g: Int  copy",
+                "h: Bool  copy",
+                "i: Unit  copy",
+                "j: Flag  copy",
+                "k: Number  copy",
+                "item: Item  borrow",
+                "count: Count  borrow",
+                "changed: Int  var (exclusive borrow)",
+            ],
+        ),
+        ("item_name", vec!["returns String  borrow"]),
+        ("fresh_name", vec!["returns String  owned"]),
+        ("generic", vec!["value: T  borrow", "returns T  borrow"]),
+        (
+            "hold",
+            vec!["item: Item  move", "returns List[Item]  owned"],
+        ),
+        ("optional_name", vec!["returns Optional[String]  borrow"]),
+        ("result_name", vec!["returns Result[String, Error]  borrow"]),
+        (
+            "maybe_name",
+            vec!["returns Result[String, Error]  owned; borrowed ok"],
+        ),
+        ("Item.borrowed", vec!["returns String  borrow"]),
+        (
+            "Item.copied",
+            vec!["value: Int8  copy", "returns Int8  owned"],
+        ),
+        ("named", vec!["returns Named  owned view"]),
+        (
+            "maybe_count",
+            vec!["returns Result[Int, Error]  owned; borrowed error"],
+        ),
+        (
+            "Item.boxed",
+            vec!["item: Item  move", "returns List[Item]  owned"],
+        ),
+        (
+            "ms_ownership_scalar",
+            vec!["value: Int8  copy", "returns Int8  owned"],
+        ),
+    ] {
+        let doc = json(&ms(
+            &dir,
+            &[
+                "diagram",
+                "main.ms",
+                "--view",
+                "ownership",
+                "--entity",
+                entity,
+                "--json",
+            ],
+        ));
+        let root = &doc
+            .get("tree")
+            .unwrap()
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()[0];
+        let labels: Vec<_> = root
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n.get("label").unwrap().as_str().unwrap())
+            .collect();
+        for expected in expected {
+            assert!(
+                labels.contains(&expected),
+                "{entity}: expected {expected:?}, got {labels:?}"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn ownership_mermaid_uses_the_same_checked_modes_as_json() {
+    let dir = scratch("ownership-mermaid");
+    std::fs::write(dir.join("main.ms"), include_str!("ownership_modes/main.ms")).unwrap();
+    for (entity, expected) in [
+        (
+            "inputs",
+            vec![
+                "|\"a copy\"|",
+                "|\"j copy\"|",
+                "|\"item borrow\"|",
+                "|\"changed var\"|",
+            ],
+        ),
+        ("hold", vec!["|\"item move\"|", "|\"owned\"|"]),
+        ("item_name", vec!["|\"borrow\"|"]),
+        ("fresh_name", vec!["|\"owned\"|"]),
+        ("named", vec!["|\"owned view\"|"]),
+        ("maybe_name", vec!["|\"owned; borrowed ok\"|"]),
+        ("maybe_count", vec!["|\"owned; borrowed error\"|"]),
+        ("Item.boxed", vec!["|\"item move\"|"]),
+    ] {
+        let out = ms(
+            &dir,
+            &[
+                "diagram",
+                "main.ms",
+                "--view",
+                "ownership",
+                "--entity",
+                entity,
+                "--format",
+                "mermaid",
+            ],
+        );
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let diagram = String::from_utf8(out.stdout).unwrap();
+        for expected in expected {
+            assert!(
+                diagram.contains(expected),
+                "{entity}: expected {expected:?} in {diagram}"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
