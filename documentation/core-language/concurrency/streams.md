@@ -45,7 +45,7 @@ PASS example.ms::sum a producer stream
 <a id="pipelines"></a>
 <a id="pipes"></a>
 
-- The producer closes its writer so the reader reaches the end. Stream iteration yields Results; handle each item and the producer result.
-- Built-in writes buffer; flush follows the destination’s backpressure rule. Custom source, sink and transform operations may wait.
+- Reads are lazy; stream items carry `T!` failures. Custom sources and sinks may wait.
+- Pipe flush applies backpressure and may leave queued items; close alone does not guarantee delivery.
 
-Next: [stream helpers](../../standard-library/reference/io/streams.ms.md), [stream and pipe contracts](../../standard-library/reference/io/io.ms.md) and [delivery before close](../cleanup/resource-release.md).
+Next: [promises](promises.md), [stream helpers](../../standard-library/reference/io/streams.ms.md), [stream and pipe contracts](../../standard-library/reference/io/io.ms.md) and [delivery before close](../cleanup/resource-release.md).
