@@ -15,6 +15,27 @@ export type Error:
     // Extra facts about the failure, such as the path or operation, keyed by name.
     details: Map[String, String] = Map[String, String]()
 
+// The runtime reports a failed native as a status number; lowering builds the `Error` from these rows (`// ms: status <number> <kind> <words>`, built by crates/ms-lower/build.rs).
+// The message is `<domain>: <words>`, and `-` words mean the native's own text is the whole message.
+// A module that words a status differently declares `// ms: words <number> <words>` at the top of its file, covering the externs that file declares.
+// ms: status 1 EINVAL invalid input
+// ms: status 2 ERANGE value out of range
+// ms: status 3 EOVERFLOW limit exceeded
+// ms: status 4 EBADMSG invalid data
+// ms: status 5 ENOENT not found
+// ms: status 6 EEXIST already exists
+// ms: status 7 ENOTEMPTY directory not empty
+// ms: status 8 EACCES permission denied
+// ms: status 9 ENOTSUP operation not supported
+// ms: status 10 EBADF resource is closed
+// ms: status 11 EIO -
+// ms: status 12 EAGAIN service unavailable
+// ms: status 13 ETIMEDOUT operation timed out
+// ms: status 14 EOVERFLOW output limit exceeded
+// ms: status 15 ENOTTY not a terminal
+// ms: status 17 EBUSY terminal is busy
+// ms: status 18 EAUTH authentication failed
+
 // Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 

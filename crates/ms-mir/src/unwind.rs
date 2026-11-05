@@ -48,7 +48,7 @@ pub fn run(m: &mut Module) -> bool {
         noreturn: false,
         pure_: false,
         fresh: false,
-        role: ExternRole::None,
+        role: ExternRole::CleanupDiscard,
         leaf: true,
         reads: false,
     });
@@ -816,7 +816,7 @@ fn covered_slot_takes(m: &Module, f: &Func) -> BTreeSet<u32> {
     let step = |covered: &mut BTreeSet<u32>, inst: &Inst| match (inst.op, inst.imm) {
         (Op::CleanupRun, _) => covered.clear(),
         (Op::CallRt, Imm::Ext(e)) if inst.args.len() == 1 => {
-            if m.externs[e.index()].name == "msrt_cleanup_discard"
+            if m.externs[e.index()].role == ExternRole::CleanupDiscard
                 && let Some(slot) = handle.get(&inst.args[0].0)
             {
                 covered.remove(slot);
