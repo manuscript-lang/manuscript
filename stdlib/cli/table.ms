@@ -32,8 +32,11 @@ for every font or terminal. Cells containing controls (tabs, CR/LF, ESC, C1, U+2
 added padding; a table without rows renders as "".
 */
 export type Table:
+    // One alignment per column; also fixes the number of cells every row must have.
     columns: List[Align]
+    // Spaces between columns; negative counts as 0.
     padding: Int = 2
+    // Spaces before each non-blank line.
     indent: Int = 0
     // Internal state: the added rows.
     rows: List[List[String]] = []
