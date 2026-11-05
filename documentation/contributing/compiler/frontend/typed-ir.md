@@ -5,7 +5,7 @@ weight = 91
 
 # Typed intermediate representation
 
-After checking, the program is stored as typed IR holding the facts code generation and tooling need, so they are never rediscovered.
+Use `Program::hir()` when adding a lowering or tooling query. HIR is a view over the syntax tree and per-module checker facts, not a separately rebuilt tree. Resolve an operation once in checking, then read that identity rather than inferring it again from a name.
 
 | Fact | Why it stays explicit |
 | --- | --- |
@@ -18,6 +18,6 @@ After checking, the program is stored as typed IR holding the facts code generat
 | Effects and host boundaries | Derive host/service relationships and diagrams |
 | Source locations | Map generated behavior to source |
 
-`Hir::ownership()` records move, borrow, mutation, and drop facts for lowering. It rejects use after move and overlapping borrows before code generation; see the [ownership contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
+`Hir::ownership()` exposes move, borrow, mutation, and drop facts for lowering. Ownership checking rejects use after move and overlapping borrows before code generation; see the [ownership contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md).
 
 See [pipeline](pipeline.md), [evaluation lowering](../lowering/evaluation-order.md), and [metadata](../../../developer-tooling/debugging/metadata.md).

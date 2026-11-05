@@ -5,7 +5,7 @@ weight = 3
 
 # Implementing Closeable
 
-Import `Closeable` from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
+Implement `Closeable` when your type owns a resource that must be released at scope end. Import it from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
 ```manuscript
 interface Closeable:
@@ -19,7 +19,7 @@ For a type that implements `Closeable`, cleanup calls its declared operation:
 
 A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Unit!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
 
-The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are opaque types that implement `Closeable`, so a binding of one closes at scope end. Closing never waits: a writer's buffered data goes to the runtime, which drains it in the background and before the program exits. Call `flush().wait()` first when delivery matters.
+The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are opaque types that implement `Closeable`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush().wait()`](resource-release.md) to observe the destination’s backpressure or drain result before closing.
 
 ## Cloning a resource
 
@@ -60,6 +60,7 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         if self.fails:
+            self.fails = false
             return error(Error("gate stuck"))
         return ok(unit)
 
@@ -68,11 +69,13 @@ fn use_gate(fails: Bool) Unit!:
     return ok(unit)
 ```
 
+This example reports the release failure once; a later close succeeds without repeating the release attempt.
+
 The scope-end close behaves like `try gate.close()`: a failed close becomes the function's error, after the other bindings of the scopes it leaves have closed. This holds for every exit, including `break`, `continue` and `return`.
 
 - If the scope is already returning an error, that error is kept and a close error after it is dropped.
 - Call `close()` yourself to handle the failure; the scope end then closes the binding once more, which `close()` being idempotent makes harmless, and drops that second result, so a failure you handled is not returned again. Like any `Result`, the call needs `try`, `if let` or `let _ =`.
-- A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Unit!` (`Result[_, Error]`), a part of a holder, a replaced or temporary value.
+- A close with nowhere to return its error is a fault, never silently ignored: a function that does not return `Result[_, Error]`, a part of a holder, a replaced or temporary value.
 - A fault or cancellation runs each close and discards its result; the failure being reported takes precedence.
 
 A close failure does not skip other actions. After a failed release, leave the object unusable or quarantined; faults and remaining obligations go to the host.

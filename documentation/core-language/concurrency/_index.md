@@ -22,16 +22,18 @@ test "run work at once and collect it":
     try expect_equal(results, [9, 16])
 ```
 
-## The rules
+The test passes with the results in input order: `[9, 16]`. The two operations may finish in either order.
+
+## Starting, waiting and sharing
 
 1. A `Promise[T]` represents an operation with one result. `wait()` gives `T!` and takes the result once. `promise(fn: ...)` starts work eagerly; stream reads may defer work until the wait.
-2. A task pauses at a wait, including waits inside called functions. Code between two waits runs without interleaving.
+2. A task pauses at a wait, including waits inside called functions. Other promises on the same scheduler thread run when it yields; promises on other threads can run at the same time.
 3. `promise(fn: ...)` runs on a thread the runtime picks and stays there. A CPU-heavy promise delays the promises sharing its thread until it waits. A promise may borrow what it captures, so the values it reads must outlive it (rule 4).
 4. Work you start ends before the values it uses. Dropping a promise cancels it and waits for it to end.
 5. Concurrent code can read shared values but never change them. To change shared state, give it one owner and send it values over a `pipe`.
 6. Errors and faults inside a promise come back from `wait` as errors. A fault outside any promise ends the program.
 
-All threads share one heap and values move between them by pointer, so nothing is copied or encoded when a value crosses a thread. There are no channels, task groups, locks or shared cells.
+Use a pipe to transfer owned values between promises without serializing them. Each writer owns its stream end, and one reader owns the receiving end; the [pipe example](streams.md#pipes) shows the lifetime of both.
 
 The terminal (raw mode and key events in `@std/io/io.ms`) belongs to the main thread: a promise on another thread that uses it faults with "only available on the main thread", so do terminal work in the main task and send it values.
 
@@ -41,4 +43,4 @@ The terminal (raw mode and key events in `@std/io/io.ms`) belongs to the main th
 | [Streams and pipes](streams.md) | Read and write values over time, build pipelines, and pass values between promises. |
 | [HTTP server](http-server.md) | Serve on every core with one `serve` call. |
 
-The API reference is generated from `stdlib/concurrency/promise.ms`, `stdlib/io/io.ms` and `stdlib/net/net.ms`.
+For signatures and options, use the [promise](../../standard-library/reference/concurrency/promise.ms.md), [I/O](../../standard-library/reference/io/io.ms.md) and [network](../../standard-library/reference/net/net.ms.md) API pages.

@@ -7,10 +7,20 @@ weight = 2
 
 `let` bindings cannot be reassigned; `var` bindings can.
 
+Save as `stock.ms` and run `ms run stock.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n"} -->
 ```manuscript
-let count: Int = 3
-var remaining = count
-remaining -= 1
+export fn main() Int:
+    let count = 3
+    var remaining = count
+    remaining -= 1
+    print("{remaining} of {count} left")
+    return 0
+```
+
+```text
+2 of 3 left
 ```
 
 ## Grouping bindings

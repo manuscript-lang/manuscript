@@ -422,7 +422,7 @@ impl Sink[List[String]] for CsvRowsSink:
 
 /*
 Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the
-options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes never wait; `flush`
+options' line ending). Invalid `options` fail the first write with `EINVAL`. Writes never wait; `flush().wait()`
 waits for `output` to drain. Closing the result closes `output`.
 */
 export fn csv_writer(

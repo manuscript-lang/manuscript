@@ -1,7 +1,7 @@
 /*
-A cache of a function's results by argument, so each distinct argument is computed once (Python `functools.cache`, lodash `memoize`).
-`Memo` has no capacity limit or expiry: it suits pure functions over a bounded set of arguments, such as a recursive Fibonacci.
-`var fib = Memo[Int, Int](compute: slow_fib)` then `fib.get(30)` runs `slow_fib(30)` once, however often it is asked.
+A cache of a function's results by argument, so repeated calls reuse the first result.
+Use it for a pure function called repeatedly with the same arguments. Entries stay until `clear()`; there is no capacity limit or expiry.
+`var squares = Memo[Int, Int](compute: fn n: n * n)` then `squares.get(4)` returns `16`; asking again reads the cached result.
 */
 export type Memo[K: Hashable & Clonable, V: Clonable]:
     // The function that produces the result for an argument. It should be pure: a result is kept and returned for every later request.

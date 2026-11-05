@@ -43,8 +43,8 @@ export fn panic(message: String) Never: ...
 extern fn msrt_io_write_stdout(text: String) Unit
 
 /*
-Writes `value` as text, then a newline, to standard output, in the same representation as `{value}` interpolation. It never fails: output is buffered and
-flushed at exit. Use `@std/io/io.ms` `stdout()` when you need write errors, bytes, or no trailing newline.
+Writes `value` as text and a newline to standard output. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
+It never fails: output is buffered and flushed at exit. Use `@std/io/io.ms` `stdout()` when you need write errors, bytes, or no trailing newline.
 
 ```manuscript
 print("total: {total}")

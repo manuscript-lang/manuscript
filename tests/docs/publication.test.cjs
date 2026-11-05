@@ -208,6 +208,9 @@ test('previous and next links follow the rendered sidebar reading order', () => 
     'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
     'learn/why-manuscript/', 'learn/common-tasks/',
   ].map(route => prefix + route), 'Teach running, reading, and testing before task recipes');
+  assert.deepEqual(routes.filter(route => route.startsWith(prefix + 'developer-tooling/')).slice(0, 3),
+    ['developer-tooling/', 'developer-tooling/how-it-works/', 'developer-tooling/implementation/'].map(route => prefix + route),
+    'Teach building and sharing before the tooling command reference');
   assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
   const retired = fs.readFileSync(path.join(book, 'learn/best-practices/index.html'), 'utf8');
   assert.ok(retired.includes(prefix + 'learn/common-tasks/'), 'Retired advice page redirects to runnable recipes');

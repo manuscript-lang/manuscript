@@ -5,7 +5,36 @@ weight = 1
 
 # Formatting
 
-The formatter gives source one consistent layout.
+Let `ms fmt` handle spacing and line wrapping so you can focus on the program. Use its check mode before sharing a change to find formatting drift without rewriting files.
+
+## Format one file
+
+Save this valid but unevenly spaced program as `format.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"5\n"} -->
+```manuscript
+export fn main() Int:
+    let total=2+3
+    print(total)
+    return 0
+```
+
+```sh
+ms fmt format.ms --check
+```
+
+```text
+Formatting needed: format.ms; run ms fmt format.ms to rewrite it
+```
+
+The check exits with status 1 and leaves the file unchanged. Apply the formatting, then check again:
+
+```sh
+ms fmt format.ms
+ms fmt format.ms --check
+```
+
+Both commands now succeed silently. The assignment becomes `let total = 2 + 3`; running the program still prints `5`.
 
 ## Format files or a project
 

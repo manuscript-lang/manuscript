@@ -5,12 +5,27 @@ weight = 4
 
 # Optional values
 
-`T?` makes absence part of the declared type: it holds a `T` or `none`. There is no `some`: a plain `T` converts wherever a `T?` is expected, and `some(...)` is rejected. `none` is in the prelude.
+Use `T?` when a value may be absent: an optional name, a failed lookup, or text that might not contain a number. It holds a `T` or `none`; a plain `T` becomes present wherever a `T?` is expected. `none` needs no import.
 
+Save as `greeting.ms` and run `ms run greeting.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Hello, Ada!\nHello, guest!\n"} -->
 ```manuscript
-let present: String? = "Ada"
-let missing: String? = none
+fn greeting(name: String?) String:
+    return "Hello, {name.get("guest")}!"
+
+export fn main() Int:
+    print(greeting("Ada"))
+    print(greeting())
+    return 0
 ```
+
+```text
+Hello, Ada!
+Hello, guest!
+```
+
+`get("guest")` supplies a fallback only when the value is absent. An empty string is still present. There is no `some(...)` constructor.
 
 `T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
 

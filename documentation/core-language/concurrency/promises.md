@@ -26,6 +26,12 @@ export fn main() Int:
     return 0
 ```
 
+For a `config.json` containing exactly `{}` (two bytes), the program prints:
+
+```text
+2
+```
+
 `promise(fn: ...)` starts work eagerly. Each operation defines when its work begins. For incremental I/O and pipelines, see [Streams and pipes](streams.md).
 
 ## Waiting
@@ -70,7 +76,7 @@ I/O operations copy their small arguments (paths, URLs, headers), so their promi
 
 ## Faults
 
-A fault inside a promise ends only that promise, and `wait` reports it as `"EIO"`. Because a promise cannot write outside state, nothing is left half-written. A fault in runtime code, or in code outside any promise, ends the program.
+A fault inside a promise ends only that promise, and `wait` reports it as `"EIO"`. The promise cannot mutate shared captured values. External operations such as file writes may already have happened, so handle partial effects at the application boundary. A fault in runtime code, or in code outside any promise, ends the program.
 
 ## Threads
 

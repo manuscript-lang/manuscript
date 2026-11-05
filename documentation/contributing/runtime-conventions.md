@@ -18,7 +18,7 @@ weight = 22
 - Ownership at the boundary: arguments are borrowed unless the signature is documented as consuming; returned objects are owned.
 - Native functions, record constructors, and contracts take plain parameters; callers evaluate defaults.
 - Long-running operations check the cancellation flag; blocking calls wait in short slices so a pending stop request interrupts them.
-- Generics are monomorphized. Runtime functions that cannot be monomorphized take an element descriptor `{ size, align, drop, eq, hash, clone }`.
+- Generics are monomorphized. Shared collection routines take a `TypeDesc` describing slot size, alignment, kind, child descriptors, and optional `drop`, `copy`, `eq` and `hash` operations. Read its exact layout in `ms-rt-abi`; do not duplicate offsets in native code.
 
 ## Representation
 
@@ -28,20 +28,14 @@ Values have one owner and are dropped deterministically; records, lists, maps, s
 
 Cleanup waits for work to end. The runtime cannot terminate work that ignores cancellation, so such work can block cleanup forever. Escalation is the host's last resort: it ends the process and never reports stuck work as joined.
 
-Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers scope-end cleanup and resource close.
+The native process starts a grace timer after its first stop signal (SIGINT or SIGTERM), while cancellation and stop hooks ask running work to finish. Ordinary promise deadlines do not arm this process timer. The timer includes any scope-end cleanup and resource close that follows the stop request.
 
 | Setting | Default |
 | --- | --- |
 | Grace period after the stop request | 30 seconds |
 | A second stop request during the grace period | Escalates immediately |
 
-On escalation the host:
-
-1. writes one stderr diagnostic per outstanding operation with its current suspension location, and accepted stop reason;
-2. writes retained primary and secondary fault diagnostics;
-3. terminates without further cleanup.
-
-The CLI exits 67, labeled incomplete cleanup. The native runtime (`crates/ms-rt/src/start.rs`) implements the grace period and second-request rule but today writes one `incomplete cleanup: <reason>` line, and the grace period is not configurable. Conformance treats an escalated exit as program failure. See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+On escalation, `crates/ms-rt/src/start.rs` writes an `incomplete cleanup: <reason>` diagnostic to stderr and an incomplete-cleanup fault record, then exits 67 without further cleanup. It does not report each outstanding operation separately. The grace period is fixed. Test both the grace-expiry and second-request paths when changing shutdown handling; see [cleanup faults](../core-language/cleanup/cleanup-faults.md).
 
 ## Verifying
 

@@ -19,14 +19,26 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 
 On `ok`, `value` holds the `Decimal`. On `error`, the function returns that error immediately. Success types may differ (decimal versus text); the error type is forwarded unchanged.
 
-`Result[Unit, E]` can be propagated as a statement:
+`Result[Unit, E]` can be propagated as a statement. Save this complete test as `ready_test.ms` and run `ms test ready_test.ms`:
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
+import expect_equal from "@std/test/test.ms"
+
 fn prepare() Unit!: ok(unit)
 
 fn ready_label() String!:
     try prepare()
     return ok("ready")
+
+test "prepare before returning a label":
+    try expect_equal(try ready_label(), "ready")
+```
+
+```text
+RUN ready_test.ms::prepare before returning a label
+PASS ready_test.ms::prepare before returning a label
+1 tests, 0 failed
 ```
 
 Standalone `try call()` requires a `Unit` success. Otherwise bind it (`let name = try call()`) or `return try call()`.

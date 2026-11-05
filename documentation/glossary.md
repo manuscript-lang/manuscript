@@ -34,7 +34,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Alias](core-language/types/references.md) | Another borrow of the same object. Closing a resource affects every alias. |
 | [Resource lifetime](core-language/cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |
 | [Promise](core-language/concurrency/promises.md) | An operation with one result taken through `wait()`; stream reads may defer work until the wait. Dropping it cancels and waits for completion. |
-| [Stream](core-language/concurrency/streams.md) | `ReadStream[T]` produces values over time; `WriteStream[T]` accepts them. Reads and writes can wait. |
+| [Stream](core-language/concurrency/streams.md) | `ReadStream[T]` produces values over time; `WriteStream[T]` accepts them. Reads obtain the next item; built-in writers buffer immediately, and flushing follows the destination’s backpressure rule. Custom stream operations may wait. |
 | [Pipe](core-language/concurrency/streams.md) | An in-memory reader and writer for transferring values between promises. |
 | Capability / authority | A service object that permits external operations, obtained through a host accessor or passed to a helper. |
 | [Effect](developer-tooling/source/effects.md) | External behavior reachable from an operation, such as reading, writing, or calling a service. |

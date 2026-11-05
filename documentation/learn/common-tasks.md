@@ -107,7 +107,7 @@ Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import read_file, write_file from "@std/os/fs.ms"
+import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
@@ -142,7 +142,7 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import read_file, write_file from "@std/os/fs.ms"
+import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))

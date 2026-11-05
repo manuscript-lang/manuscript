@@ -5,9 +5,11 @@ weight = 3
 
 # Numbers and booleans
 
-`3` is an `Int`, `0.5` a `Float`, `12.50d` a `Decimal`. Conversions are explicit. Booleans are `true` and `false`.
+Use `Int` for counts and indexes, `Float` for approximate measurements, and `Decimal` for base-ten calculations where rounding must be explicit. Booleans are `true` and `false`. Numeric types stay distinct: choose a type for the calculation and convert at its boundaries.
 
 ```manuscript
+import Decimal from "@std/math/decimal.ms"
+
 let count = 3
 let ratio = 0.5
 let price = 12.50d
@@ -174,4 +176,4 @@ Booleans drive [if](../control-flow/conditionals.md) and [while](../control-flow
 
 `500.milliseconds()`, `2.seconds()`, and `2.minutes()` are `Duration` values; these are methods of `Int`. A `Duration` is a signed 64-bit nanosecond count (`2.seconds()` is 2,000,000,000), and they check overflow. `@std/os/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
 
-`Instant` is an opaque monotonic instant with no source constructor, comparable only within one run's clock domain; crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds() + 1` is a type error.
+Use `monotonic()` from `@std/os/time.ms` to read an `Instant` for measuring elapsed time. An instant records a clock domain and a nanosecond tick; compare readings from the same domain, since crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds() + 1` is a type error.

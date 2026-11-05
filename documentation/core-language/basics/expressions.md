@@ -5,7 +5,7 @@ weight = 5
 
 # Expressions and operators
 
-Reference for operator precedence, operand types, and evaluation order. Only the operators listed here exist.
+Expressions combine values into a result. Parentheses make grouping explicit; pipe flows make a sequence of transformations read from top to bottom. The tables below define precedence and accepted operand types.
 
 ## Precedence and grammar
 
@@ -74,13 +74,26 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 | `x \| try step` | `try` of the step's result |
 | `x \| try` | `try x`: unwrap the value so far |
 
+Save as `port.ms` and run `ms run port.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
 ```manuscript
-fn load(path: String) Config!:
-    let config = try read(path)
-        | try parse
-        | normalize
-        | try validate
-    return ok(config)
+fn port_number(text: String) Int!:
+    let port = text.trim()
+        | .parse_int()
+        | .ok_or(Error("expected a port number"))
+        | try
+    return ok(port)
+
+export fn main() Int:
+    if let port = port_number(" 8080 "):
+        print(port)
+        return 0
+    return 1
+```
+
+```text
+8080
 ```
 
 - `|` has the lowest precedence: `a + b | f` is `f(a + b)`. Parenthesize a pipe used as an operand: `(x | f) == y`. A leading `try` binds only the head: `try read(path: path) | f`.
@@ -94,12 +107,12 @@ fn load(path: String) Config!:
 
 | Operator | Accepted operands | Result |
 | --- | --- | --- |
-| Unary `+`, `-` | Any integer or float width, or Decimal | Same numeric type |
-| `+`, `-`, `*`, `/` | Matching integer or float types, or both Decimal | The common operand type |
+| Unary `+`, `-` | Signed integer or float widths, Decimal, or BigInt; unary `+` also accepts unsigned integers | Same numeric type |
+| `+`, `-`, `*`, `/` | Matching integer or float types, both Decimal, or both BigInt | The common operand type |
 | `+` | Both String | String |
-| `%` | Matching integer types | The common operand type |
+| `%` | Matching integer types, or both BigInt | The common operand type |
 | `..` | Both Int | List[Int]; a direct `for` uses a counter loop |
-| `<`, `<=`, `>`, `>=` | Matching integer or float types, both Decimal, or both String | Bool |
+| `<`, `<=`, `>`, `>=` | Matching integer or float types, both Decimal, both BigInt, or both String | Bool |
 | `==`, `!=` | Same exact type satisfying Equal | Bool |
 | `not` | Bool | Bool |
 | `and`, `or` | Both Bool | Bool |
@@ -109,7 +122,7 @@ fn load(path: String) Config!:
 | `-` | Both Instant | Duration |
 | `<`, `<=`, `>`, `>=` | Both Duration or both Instant in the same clock domain | Bool |
 
-Decimal, Duration, Instant, and Result rows apply only to the standard declarations; a local type with the same name does not enable them.
+Decimal, BigInt, Duration, Instant, and Result rows apply only to the standard declarations; a local type with the same name does not enable them.
 
 - String ordering is lexicographic by Unicode scalar value, with no normalization, case folding, or collation.
 - Mixed numeric arithmetic, numeric truthiness, and operator overloads do not exist: `1 + 0.5`, `"a" + 1`, and `not 1` fail checking. Convert or interpolate instead.

@@ -1,11 +1,11 @@
 +++
 title = "Source tools"
-weight = 3
+weight = 4
 +++
 
 # Source tools
 
-Format source, read diagnostics, and inspect the external behavior of checked functions.
+Keep a change readable, repair a compiler error, then inspect data access and external calls. These tools operate on source without running your application.
 
 1. [Formatting](formatting.md)
 2. [Diagnostics](diagnostics.md)

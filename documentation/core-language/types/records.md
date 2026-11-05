@@ -5,7 +5,7 @@ weight = 1
 
 # Records and nominal types
 
-A record groups named fields into one value. Fields can change through a `var` receiver; a record is a container with one owner, so bindings and arguments borrow it, storing it moves it, and `.clone()` makes an explicit deep copy. Each declaration is a distinct nominal type.
+A record groups related data into named fields. Use it when a function should receive one meaningful value, such as a customer or an order. Each declaration creates a distinct type; fields change through a `var` binding.
 
 ```manuscript
 type Customer:
@@ -27,9 +27,9 @@ let name = customer.name
 Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
 
 ```manuscript
-// Rejected: required email is missing.
-let incomplete = Customer(name: "Ada")
-// Accepted: let fixes the binding, not the record fields.
+// An omitted optional field is none.
+let without_email = Customer(name: "Ada")
+// Rejected: changing a field requires a var binding.
 customer.name = "Grace"
 ```
 
@@ -43,11 +43,35 @@ type Options:
 let options = Options(count: 5)  // total defaults to 6
 ```
 
-A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `()`, `none`, or zero, skips the default. Generic arguments never come from defaults.
+An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
-Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the record are rejected. A method can update receiver fields in place:
+A clone gives a value its own nested data. Changing the clone leaves the original alone.
+
+Save as `customers.ms` and run `ms run customers.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Ada\nGrace\n"} -->
+```manuscript
+type Customer:
+    name: String
+    email: String?
+
+export fn main() Int:
+    let original = Customer("Ada")
+    var updated = original.clone()
+    updated.name = "Grace"
+    print(original.name)
+    print(updated.name)
+    return 0
+```
+
+```text
+Ada
+Grace
+```
+
+Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the record are rejected. A method marked `var fn` can update receiver fields in place:
 
 ```manuscript
 interface Counter:
@@ -88,7 +112,7 @@ fn rows_of_copy(rows: List[Int]) Int:
 ```
 
 - Each function above takes the record; `r.title` stays usable after `r.rows` moved because fields are tracked separately. Using `r.rows` again, or the whole `r`, after the move is `is moved here but used again`; `r.rows = value` makes the field usable again.
-- It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), `ref` fields, borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
+- It applies to owned fields (strings, lists, records, resources) of a `let` binding or parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, `for` variables, closure captures, and records that declare `close` still need `.clone()` or a whole-value move.
 - `let x = r.rows` stays a borrow of the field; pass `r.rows` directly to the consuming call or `return` instead.
 - A parameter with a field moved out is consumed: the caller gives the record up (`.clone()` at the call keeps it).
 
@@ -188,7 +212,7 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 
 ## Opaque types
 
-`export opaque type Approved:` hides the fields of a record, or the cases of an alternative, outside the file that declares it. The module exports functions and methods that build and read the value; every other file can hold, pass, copy, and clone it, and call its methods.
+`export opaque type Approved:` hides the fields of a record, or the cases of an alternative, outside the file that declares it. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
 
 ```text
 # gate.ms
@@ -206,10 +230,10 @@ let {entity} = approve("u2")                 # error: its fields cannot be destr
 
 Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no `impl` (so no new methods or interface implementations). Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.
 
-Opaque is visibility, not ownership: an opaque value can still be copied and cloned, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
+Opaque controls visibility: an opaque value can still be cloned when its fields permit it, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
 
 ## Resource fields
 
-A record holding a resource neither closes it nor extends its lifetime; cleanup follows [resource scopes](../cleanup/scopes.md). Copying does not duplicate native services.
+A record owns the resources moved into its fields and closes the fields it still owns when its scope ends. Moving a field out transfers that cleanup duty to the new owner. Such a record is not clonable. See [aggregate cleanup](../cleanup/closeable.md#records-and-collections-close-what-they-hold).
 
 Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).

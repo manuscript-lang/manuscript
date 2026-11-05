@@ -356,11 +356,11 @@ export fn bit_not(value: Int) Int:
 export fn shift_left(value: Int, count: Int) Int:
     return msrt_bits_shift_left(value, count)
 
-// Shifts bits toward the low end, filling with the sign bit (JavaScript `>>`); `count` must be 0 through 63 or the call faults.
+// Shifts bits toward the low end, filling with the sign bit; `count` must be 0 through 63 or the call faults.
 export fn shift_right(value: Int, count: Int) Int:
     return msrt_bits_shift_right(value, count)
 
-// Shifts bits toward the low end, filling with zeros (JavaScript `>>>`); `count` must be 0 through 63 or the call faults.
+// Shifts bits toward the low end, filling with zeros; `count` must be 0 through 63 or the call faults.
 export fn shift_right_unsigned(value: Int, count: Int) Int:
     return msrt_bits_shift_right_unsigned(value, count)
 
@@ -454,7 +454,7 @@ export fn wrapping_add(left: Int, right: Int) Int:
 export fn wrapping_subtract(left: Int, right: Int) Int:
     return msrt_bits_wrapping_subtract(left, right)
 
-// Multiplies with two's-complement wraparound instead of faulting on overflow (JavaScript `Math.imul` at 64 bits).
+// Multiplies with two's-complement wraparound instead of faulting on overflow.
 export fn wrapping_multiply(left: Int, right: Int) Int:
     return msrt_bits_wrapping_multiply(left, right)
 

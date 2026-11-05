@@ -5,7 +5,7 @@ weight = 2
 
 # Loops
 
-`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Loops are statements: no labels, result values, or custom iteration protocol.
+`for` / `in` visits collection values; `while` repeats while a `Bool` condition holds. `break` ends the loop; `continue` starts the next iteration. Use a collection when you already have the values, a range when you need a count, or `while` when the next step depends on a condition. Custom sources can implement the standard `Iterator` or `Iterable` interfaces described below.
 
 ## Traversing a list
 
@@ -20,7 +20,7 @@ fn sum(values: List[Int]) Int:
 
 ## Counting loops
 
-`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. It is the standard `range` call from `@std/collections/collections.ms`, which is not importable by name, so it binds looser than `+` and `-` (`0..n + 1` is `0..(n + 1)`), is not chainable, and takes `Int` bounds. A `for` over `start..end` or a direct `range` call is a counter loop that allocates no list.
+`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. The bounds are `Int` values. Arithmetic binds first, so `0..n + 1` means `0..(n + 1)`; ranges cannot be chained. A `for` over `start..end` counts directly without allocating a list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -124,6 +124,14 @@ export fn main() Int:
     return 0
 ```
 
+Output:
+
+```text
+3
+2
+1
+```
+
 ## Borrowing containers
 
 A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn length() Int` and `fn at(index: Int) T?`) is iterable: `for item in container:` reads `length()` once and then `at(index)` for each index, so the container is read in place and never copied, and `item` is an owned element. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Iterable` iterates with `Iterator`. The item count is fixed when the loop starts; a body that changes the container sees the new values at later indexes.
@@ -142,6 +150,13 @@ export fn main() Int:
         if stdout().write("{step}\n").is_error():
             return 1
     return 0
+```
+
+Output:
+
+```text
+11
+12
 ```
 
 ## Repeating while a condition holds

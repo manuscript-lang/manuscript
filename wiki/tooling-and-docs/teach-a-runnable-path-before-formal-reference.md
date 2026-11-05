@@ -11,3 +11,5 @@ Evidence: the user’s November 5 correction of “an Internet connection for it
 Verify: run the displayed source and commands with the stated prerequisites; check that the reading path introduces dependencies before using them.
 
 Decision: show concise, verified output beside practical commands and complete examples. State silent success accurately; use stable excerpts for variable reports and keep machine-specific paths, timings and IDs out of examples. Fragments do not need invented output. A learning page must teach a concrete task; remove generic advice that only repeats the tour or reference and redirect useful old routes.
+
+Decision: audit public pages in navigation and prerequisite context, including generated library pages against their source comments. A page must help a reader perform or understand a concrete task; keep compiler stages in contributor material and exact contracts in their canonical reference. Record coverage and unexecuted platform checks outside the repository, not as user-facing review bookkeeping.
