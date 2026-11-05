@@ -1,0 +1,345 @@
+import Closeable, Iterator from "@std/core.ms"
+import ReadStream, Source, stream from "@std/io/io.ms"
+import promise from "@std/concurrency/promise.ms"
+import milliseconds, sleep from "@std/os/time.ms"
+import append_file, read_file, temporary from "@std/os/fs.ms"
+import expect_equal, expect_ok, expect_error from "@std/test/test.ms"
+
+type Token:
+    id: Int
+    log: String
+    closed: Bool = false
+
+impl Closeable for Token:
+    var fn close() Unit!:
+        if not self.closed:
+            self.closed = true
+            try append_file(self.log, "close {self.id}\n")
+
+        return ok(unit)
+
+type Tokens:
+    log: String
+    at: Int = 0
+    fail_at: Int = 0
+
+impl Source[Token] for Tokens:
+    var fn next() Token?!:
+        self.at += 1
+        if self.at == self.fail_at:
+            return error(Error("source failed", kind: "EIO"))
+        if self.at <= 2:
+            return ok(Token(self.at, self.log.clone()))
+
+        return ok(none)
+
+    var fn close() Unit!:
+        return ok(unit)
+
+fn events(log: String) String:
+    if let bytes = read_file(log).wait():
+        return bytes.decode_utf8().get("")
+
+    return ""
+
+fn read_one(input: ReadStream[Token]) Unit!:
+    var owned = input
+    if let token = try owned.read().wait():
+        try use_token(token)
+    return ok(unit)
+
+fn wait_one(input: ReadStream[Token]) Unit!:
+    var owned = input
+
+    for item in owned.wait():
+        let token = try item
+        try use_token(token)
+        break
+
+    return ok(unit)
+
+test "direct read keeps resource open through the body and closes once":
+    let dir = temporary("resource-read-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try read_one(stream[Token](Tokens(log.clone())))
+    try expect_equal(events(log), "body 1\nclose 1\n")
+
+test "iterator keeps resource open through the body and closes once":
+    let dir = temporary("resource-wait-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try wait_one(stream[Token](Tokens(log.clone())))
+    try expect_equal(events(log), "body 1\nclose 1\n")
+
+// A body uses the external log as well as the value's state: a duplicated resource can
+// have `closed == false` while another copy already released the same external resource.
+fn use_token(token: Token) Unit!:
+    try expect_equal(token.closed, false)
+    try expect_equal(events(token.log).contains("close {token.id}\n"), false)
+    try append_file(token.log, "body {token.id}\n")
+    return ok(unit)
+
+fn close_item(input: Token!) Unit!:
+    var owned = input
+
+    if var token = owned:
+        try use_token(token)
+        try token.close()
+
+    return ok(unit)
+
+fn walk(log: String, action: Int) Unit!:
+    var input = stream[Token](Tokens(log.clone()))
+
+    for item in input.wait():
+        if action == 5:
+            try close_item(item)
+            continue
+
+        let token = try item
+        try use_token(token)
+        if action == 1:
+            break
+        if action == 2:
+            return ok(unit)
+        if action == 3:
+            return error(Error("body failed", kind: "EBODY"))
+        if action == 4:
+            continue
+
+        if action == 6:
+            try input.close()
+
+    return ok(unit)
+
+test "exhaustion and continue close each item after its body":
+    let dir = temporary("resource-exhaust-") | try expect_ok
+
+    for action in [0, 4]:
+        let log = "{dir.path()}/{action}"
+        try walk(log, action)
+        try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+
+test "break return and error close the current item once":
+    let dir = temporary("resource-exit-") | try expect_ok
+
+    for action in [1, 2, 3]:
+        let log = "{dir.path()}/{action}"
+        let result = walk(log, action)
+        try expect_equal(result.is_error(), action == 3)
+        try expect_equal(events(log), "body 1\nclose 1\n")
+
+test "explicit item close and stream close preserve each item owner":
+    let dir = temporary("resource-close-") | try expect_ok
+
+    for action in [5, 6]:
+        let log = "{dir.path()}/{action}"
+        try walk(log, action)
+        try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+
+fn source_error(log: String, fail_at: Int) Unit!:
+    var input = stream[Token](Tokens(log.clone(), fail_at: fail_at))
+
+    for item in input.wait():
+        let token = try item
+        try use_token(token)
+
+    return ok(unit)
+
+test "a source error relays through try after closing earlier items":
+    let dir = temporary("resource-error-") | try expect_ok
+    let first = "{dir.path()}/first"
+    let reason = source_error(first, 1) | try expect_error
+    try expect_equal(reason.kind, "EIO")
+    try expect_equal(events(first), "")
+
+    let later = "{dir.path()}/later"
+    let later_reason = source_error(later, 2) | try expect_error
+    try expect_equal(later_reason.kind, "EIO")
+    try expect_equal(events(later), "body 1\nclose 1\n")
+
+fn direct_next(log: String) Unit!:
+    var input = stream[Token](Tokens(log.clone()))
+    var waiting = input.wait()
+
+    if let item = waiting.next():
+        let token = try item
+        try use_token(token)
+
+    return ok(unit)
+
+test "calling Waiting next directly transfers the item":
+    let dir = temporary("resource-next-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try direct_next(log)
+    try expect_equal(events(log), "body 1\nclose 1\n")
+
+type PlainTokens:
+    log: String
+    at: Int = 0
+
+impl Iterator[Token] for PlainTokens:
+    var fn next() Token?:
+        self.at += 1
+        if self.at <= 2:
+            return Token(self.at, self.log.clone())
+
+        return none
+
+fn plain(log: String) Unit!:
+    for token in PlainTokens(log.clone()):
+        try use_token(token)
+    return ok(unit)
+
+test "a custom Iterator transfers each freshly produced resource":
+    let dir = temporary("resource-plain-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try plain(log)
+    try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+
+type OptionalTokens:
+    log: String
+    at: Int = 0
+
+impl Source[Token?] for OptionalTokens:
+    var fn next() Token??!:
+        self.at += 1
+        if self.at > 1:
+            return ok(none)
+
+        let inner: Token? = Token(1, self.log.clone())
+        return ok(inner)
+
+    var fn close() Unit!:
+        return ok(unit)
+
+fn optional_payload(log: String) Unit!:
+    var input = stream[Token?](OptionalTokens(log.clone()))
+
+    for item in input.wait():
+        let maybe = try item
+        if let token = maybe:
+            try use_token(token)
+
+    return ok(unit)
+
+test "a nested optional payload transfers its resource":
+    let dir = temporary("resource-optional-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try optional_payload(log)
+    try expect_equal(events(log), "body 1\nclose 1\n")
+
+type ResultTokens:
+    log: String
+    at: Int = 0
+
+impl Source[Token!] for ResultTokens:
+    var fn next() Result[Result[Token, Error]?, Error]:
+        self.at += 1
+        if self.at > 1:
+            return ok(none)
+
+        let inner: Token! = ok(Token(1, self.log.clone()))
+        return ok(inner)
+
+    var fn close() Unit!:
+        return ok(unit)
+
+fn result_payload(log: String) Unit!:
+    var input = stream[Token!](ResultTokens(log.clone()))
+
+    for item in input.wait():
+        let inner = try item
+        let token = try inner
+        try use_token(token)
+
+    return ok(unit)
+
+test "a nested result payload transfers its resource":
+    let dir = temporary("resource-result-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try result_payload(log)
+    try expect_equal(events(log), "body 1\nclose 1\n")
+
+// Wait for the exact acquisition/body event before cancelling; the deadline bounds a failed handshake.
+fn wait_for_event(log: String, expected: String) Unit!:
+    for attempt in 0..1000:
+        if events(log).contains(expected):
+            return ok(unit)
+
+        let _ = sleep(milliseconds(10)).wait()
+
+    return error(Error("resource handshake timed out", kind: "ETIMEDOUT"))
+
+fn wait_cancelled(log: String) Unit!:
+    var input = stream[Token](Tokens(log.clone()))
+
+    for item in input.wait():
+        let token = try item
+        try use_token(token)
+
+        let _ = sleep(milliseconds(60000)).wait()
+
+    return ok(unit)
+
+test "cancelling an active body closes the delivered item once":
+    let dir = temporary("resource-body-cancel-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let work = promise(fn: wait_cancelled(log))
+    try wait_for_event(log, "body 1\n")
+    work.cancel()
+
+    let reason = work.wait() | try expect_error
+    try expect_equal(reason.kind, "ECANCELED")
+    try expect_equal(events(log), "body 1\nclose 1\n")
+
+type PendingTokens:
+    log: String
+
+impl Source[Token] for PendingTokens:
+    var fn next() Token?!:
+        let token = Token(1, self.log.clone())
+        try append_file(self.log, "ready\n")
+
+        let _ = sleep(milliseconds(60000)).wait()
+        return ok(token)
+
+    var fn close() Unit!:
+        return ok(unit)
+
+fn next_cancelled(log: String) Unit!:
+    var input = stream[Token](PendingTokens(log.clone()))
+
+    for item in input.wait():
+        let token = try item
+        try use_token(token)
+
+    return ok(unit)
+
+test "cancelling a source step closes its undelivered item once":
+    let dir = temporary("resource-next-cancel-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let work = promise(fn: next_cancelled(log))
+    try wait_for_event(log, "ready\n")
+    work.cancel()
+
+    let reason = work.wait() | try expect_error
+    try expect_equal(reason.kind, "ECANCELED")
+    try expect_equal(events(log), "ready\nclose 1\n")
+
+fn resume_after_break(log: String) Unit!:
+    var input = stream[Token](Tokens(log.clone()))
+
+    for item in input.wait():
+        let token = try item
+        try use_token(token)
+        break
+
+    if let token = try input.read().wait():
+        try use_token(token)
+    return ok(unit)
+
+test "breaking returns the source so its next resource can be read":
+    let dir = temporary("resource-resume-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try resume_after_break(log)
+    try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
