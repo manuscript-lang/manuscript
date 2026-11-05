@@ -6,10 +6,22 @@ use ms_build::native::BuildStage;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, MutexGuard};
 
-struct Fixture(PathBuf);
+// Another fixture's fork can inherit a writable executable descriptor until its exec.
+// Isolate independent fixture lifetimes; the forced A/B publication ordering stays inside
+// one fixture and the separate CLI controls still run concurrent compiler processes.
+static NATIVE_FIXTURE: Mutex<()> = Mutex::new(());
+
+struct Fixture {
+    root: PathBuf,
+    _native: MutexGuard<'static, ()>,
+}
 impl Fixture {
     fn new(name: &str) -> Self {
+        let native = NATIVE_FIXTURE
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join(format!(
             "ms-build-provenance-{name}-{}-{}",
@@ -17,7 +29,10 @@ impl Fixture {
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&dir).unwrap();
-        Self(dir)
+        Self {
+            root: dir,
+            _native: native,
+        }
     }
     fn source(&self, first: bool) -> PathBuf {
         let (name, contents) = if first {
@@ -25,21 +40,21 @@ impl Fixture {
         } else {
             ("second.ms", include_str!("tests/second.ms"))
         };
-        let path = self.0.join(name);
+        let path = self.root.join(name);
         std::fs::write(&path, contents).unwrap();
         path
     }
     fn cache(&self, key: &str, mode: ms_build::cache::Mode) -> BuildCache {
         BuildCache {
             mode,
-            directory: self.0.join("cache"),
+            directory: self.root.join("cache"),
             key: key.into(),
         }
     }
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+        let _ = std::fs::remove_dir_all(&self.root);
     }
 }
 
@@ -115,7 +130,7 @@ fn concurrent_publication_keeps_each_cached_executable() {
         let fixture = Fixture::new("interleave");
         let first = fixture.source(first_is_a);
         let second = fixture.source(!first_is_a);
-        let output = fixture.0.join("renamed public program");
+        let output = fixture.root.join("renamed public program");
         let a = fixture.cache("a", ms_build::cache::Mode::On);
         let b = fixture.cache("b", ms_build::cache::Mode::On);
         let stage_a = prepare(&first, &output);
@@ -137,7 +152,7 @@ fn concurrent_publication_keeps_each_cached_executable() {
         assert_eq!(status(&output), if first_is_a { 11 } else { 7 });
         companion_names_match(&output, b_companion);
         assert!(ms_json::parse(std::fs::read_to_string(metadata(&output)).unwrap()).is_ok());
-        no_stages(&fixture.0);
+        no_stages(&fixture.root);
     }
 }
 
@@ -145,7 +160,7 @@ fn concurrent_publication_keeps_each_cached_executable() {
 fn record_failure_preserves_prior_public_artifacts_and_cleans_stage() {
     let fixture = Fixture::new("record-error");
     let first = fixture.source(true);
-    let output = fixture.0.join("program");
+    let output = fixture.root.join("program");
     std::fs::write(&output, b"previous executable").unwrap();
     std::fs::write(metadata(&output), b"previous metadata").unwrap();
     let result = finish_build(prepare(&first, &output), &output, BuildType::Debug, |_| {
@@ -157,7 +172,7 @@ fn record_failure_preserves_prior_public_artifacts_and_cleans_stage() {
         std::fs::read(metadata(&output)).unwrap(),
         b"previous metadata"
     );
-    no_stages(&fixture.0);
+    no_stages(&fixture.root);
 }
 
 #[test]
@@ -165,7 +180,7 @@ fn cache_verification_rejects_before_replacing_public_artifacts() {
     let fixture = Fixture::new("verify-error");
     let first = fixture.source(true);
     let second = fixture.source(false);
-    let output = fixture.0.join("program");
+    let output = fixture.root.join("program");
     let prior = prepare(&second, &output);
     let cache = fixture.cache("verify", ms_build::cache::Mode::On);
     record(&cache, &first, &prior.path().join("program.exe")).unwrap();
@@ -183,14 +198,14 @@ fn cache_verification_rejects_before_replacing_public_artifacts() {
     assert!(std::fs::read(&output).unwrap() == old_executable);
     assert_eq!(std::fs::read(metadata(&output)).unwrap(), old_metadata);
     assert_eq!(status(&output), 11);
-    no_stages(&fixture.0);
+    no_stages(&fixture.root);
 }
 
 #[test]
 fn publication_failure_retains_valid_cache_for_retry() {
     let fixture = Fixture::new("publish-error");
     let source = fixture.source(true);
-    let output = fixture.0.join("program");
+    let output = fixture.root.join("program");
     let stage = prepare(&source, &output);
     let companion = has_companion(&stage.path().join("program.exe"));
     // An output can become a directory after the command's initial destination check.
@@ -206,7 +221,7 @@ fn publication_failure_retains_valid_cache_for_retry() {
         std::fs::read(metadata(&output)).unwrap(),
         b"previous metadata"
     );
-    no_stages(&fixture.0);
+    no_stages(&fixture.root);
     std::fs::remove_dir(&output).unwrap();
     restore(&cache, &output);
     assert_eq!(status(&output), 7);
@@ -217,7 +232,7 @@ fn publication_failure_retains_valid_cache_for_retry() {
 fn metadata_failure_keeps_produced_executable_and_correct_cache() {
     let fixture = Fixture::new("metadata-error");
     let source = fixture.source(true);
-    let output = fixture.0.join("program");
+    let output = fixture.root.join("program");
     let stage = prepare(&source, &output);
     let companion = has_companion(&stage.path().join("program.exe"));
     std::fs::create_dir(metadata(&output)).unwrap();
@@ -228,7 +243,7 @@ fn metadata_failure_keeps_produced_executable_and_correct_cache() {
     assert!(result.unwrap_err().contains("cannot write build metadata"));
     assert_eq!(status(&output), 7);
     assert!(metadata(&output).is_dir());
-    no_stages(&fixture.0);
+    no_stages(&fixture.root);
     std::fs::remove_dir(metadata(&output)).unwrap();
     restore(&cache, &output);
     assert_eq!(status(&output), 7);
@@ -239,9 +254,9 @@ fn metadata_failure_keeps_produced_executable_and_correct_cache() {
 fn best_effort_cache_failure_does_not_fail_publication() {
     let fixture = Fixture::new("cache-error");
     let source = fixture.source(true);
-    let output = fixture.0.join("program");
+    let output = fixture.root.join("program");
     let stage = prepare(&source, &output);
-    std::fs::write(fixture.0.join("cache"), b"cache unavailable").unwrap();
+    std::fs::write(fixture.root.join("cache"), b"cache unavailable").unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
     finish_build(stage, &output, BuildType::Debug, |artifact| {
         record(&cache, &source, artifact)
@@ -250,14 +265,14 @@ fn best_effort_cache_failure_does_not_fail_publication() {
     assert_eq!(status(&output), 7);
     assert!(metadata(&output).is_file());
     assert!(cache.lookup().is_none());
-    no_stages(&fixture.0);
+    no_stages(&fixture.root);
 }
 
 #[test]
 fn failed_recording_preserves_retained_companion_recovery_files() {
     let fixture = Fixture::new("retained-recovery");
     let source = fixture.source(true);
-    let output = fixture.0.join("program");
+    let output = fixture.root.join("program");
     let stage = prepare(&source, &output);
     let private = stage.path().to_path_buf();
     let recovery = private.join("program.exe.previous.dSYM");
