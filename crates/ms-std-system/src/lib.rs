@@ -85,10 +85,6 @@ native! {
         imp::cpu_count()
     }
 
-    safe fn msstd_system_working_directory() -> Text {
-        Text(control::working_directory().unwrap_or_default())
-    }
-
     fn msstd_system_hostname(; err: ErrOut) -> Result<Text, StatusCode> {
         text(imp::hostname(), &err)
     }

@@ -127,8 +127,6 @@ export extern fn msstd_system_os_version() String!
 
 export extern fn msstd_system_set_priority(pid: Int, priority: Int) Unit!
 
-export extern fn msstd_system_working_directory() String
-
 export extern fn msstd_process_replace(
     program: String,
     arguments: List[String],

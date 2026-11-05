@@ -10,6 +10,7 @@ import (
 ) from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import read_all from "@std/io/streams.ms"
 import TlsOptions from "@std/net/tls.ms"
 import NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms"
 import (
@@ -210,20 +211,9 @@ impl HttpClient:
         max_response_bytes: Int?,
         timeout: Duration?
     ) StreamingResponse!:
-        var input = body
-        var chunks: List[Bytes] = []
-
-        while true:
-            let chunk = try input.read().wait()
-
-            if let bytes = chunk:
-                chunks.append(bytes)
-            else:
-                break
-
-        try input.close()
+        let data = try read_all(body, none)
         return self.request_bytes(
-            method, url, headers, join(chunks), max_response_bytes, timeout
+            method, url, headers, data, max_response_bytes, timeout
         )
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
