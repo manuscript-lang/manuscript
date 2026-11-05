@@ -176,17 +176,20 @@ impl ShieldRef {
 }
 
 pub static TABLES: Process<*const Tables> = Process::new(core::ptr::null());
-/// Lowest and highest valid stack addresses for frame walking (0 = unknown). Process-wide until
-/// worker isolates exist: the Windows sampler thread and the `SIGPROF` handler read them from other
-/// threads (see `proposals/worker-threads.md`).
-pub static STACK_LO: Process<usize> = Process::new(0);
-pub static STACK_HI: Process<usize> = Process::new(0);
-/// The chain cell of the running task's stack segment: the address of `[lo, hi, chain, 0]`
-/// describing the segment below it, or 0 on a task's home segment. A task that recursed past
-/// its slot runs on further segments (`task::msrt_task_grow`), and a frame walker that leaves
-/// the bounds follows the chain. The cell lives at the top of the segment, written before any
-/// frame exists there, so a signal handler can read it.
-pub static STACK_CHAIN: Process<usize> = Process::new(0);
+crate::isolate_static! {
+    /// Lowest and highest valid stack addresses of the running segment for frame walking (0 =
+    /// unknown). Per thread: every scheduler thread runs its own tasks and switches these in
+    /// `swap_ctx`, so a process-wide copy let two threads overwrite each other's segments and
+    /// close a cycle in the chain cells.
+    pub static STACK_LO: usize = 0;
+    pub static STACK_HI: usize = 0;
+    /// The chain cell of the running task's stack segment: the address of `[lo, hi, chain, 0]`
+    /// describing the segment below it, or 0 on a task's home segment. A task that recursed past
+    /// its slot runs on further segments (`task::msrt_task_grow`), and a frame walker that leaves
+    /// the bounds follows the chain. The cell lives at the top of the segment, written before any
+    /// frame exists there, so a signal handler can read it.
+    pub static STACK_CHAIN: usize = 0;
+}
 
 /// The running segment's bounds and chain cell.
 pub(crate) fn segment_state() -> (usize, usize, usize) {

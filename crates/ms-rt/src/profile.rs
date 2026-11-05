@@ -4,7 +4,9 @@
 //! `ucontext`, walks the frame-pointer chain inside the stack bounds recorded at
 //! start and stores the pcs in a preallocated ring (no allocation, async-signal-safe).
 //! At exit the pcs are resolved through the function table and aggregated.
-use crate::fault::{TABLES, find_func, segment_of, segment_state};
+#[cfg(unix)]
+use crate::fault::segment_state;
+use crate::fault::{TABLES, find_func, segment_of};
 use crate::global::Process;
 use crate::num;
 use crate::sys;
@@ -58,8 +60,9 @@ mod regs {
     }
 }
 
-/// Stores one sample: the program counter and the frame-pointer chain from `fp`.
-fn record(pc: usize, mut fp: usize) {
+/// Stores one sample: the program counter and the frame-pointer chain from `fp`, which lies on
+/// the sampled thread's running segment `seg` (its `segment_state`).
+fn record(pc: usize, mut fp: usize, mut seg: (usize, usize, usize)) {
     let n = COUNT.load(Ordering::Relaxed);
     if n >= MAX_SAMPLES {
         DROPPED.fetch_add(1, Ordering::Relaxed);
@@ -69,7 +72,6 @@ fn record(pc: usize, mut fp: usize) {
     // bounds.
     unsafe {
         let base = (*BUFFER.ptr()).add(n * SAMPLE_WORDS);
-        let mut seg = segment_state();
         let mut k = 0;
         *base.add(1) = pc;
         k += 1;
@@ -109,7 +111,8 @@ extern "C" fn on_sample(_sig: i32, _info: *mut u8, uctx: *mut u8) {
             *(r.add(regs::FP_OFFSET) as *const usize),
         )
     };
-    record(pc, fp);
+    // The signal runs on the sampled thread, so its own state is the sampled one.
+    record(pc, fp, segment_state());
 }
 
 fn parse_hz() -> i64 {
@@ -156,10 +159,14 @@ unsafe fn disarm_timer() {
 #[cfg(windows)]
 mod sampler {
     use super::*;
+    use crate::fault::{STACK_CHAIN, STACK_HI, STACK_LO};
     use core::ffi::c_void;
 
     static TARGET: Process<*mut c_void> = Process::new(core::ptr::null_mut());
     static SAMPLER: Process<*mut c_void> = Process::new(core::ptr::null_mut());
+    /// The runtime thread's segment cells (`STACK_LO`, `STACK_HI`, `STACK_CHAIN`), which live in
+    /// that thread's storage: the sampler reads them from outside, as it reads the thread's registers.
+    static CELLS: Process<[*const usize; 3]> = Process::new([core::ptr::null(); 3]);
 
     unsafe extern "system" fn run(_: *mut c_void) -> u32 {
         let ms = (1000 / parse_hz()).max(1) as u32;
@@ -172,7 +179,17 @@ mod sampler {
             }
             // SAFETY: `target` is a sampling handle of the runtime thread.
             if let Some((pc, fp)) = unsafe { sys::sample_thread(target) } {
-                record(pc, fp);
+                // SAFETY: the cells outlive the runtime thread's sampling; a racing read at worst
+                // ends the walk early.
+                let seg = unsafe {
+                    let [lo, hi, chain] = *CELLS.ptr();
+                    (
+                        lo.read_volatile(),
+                        hi.read_volatile(),
+                        chain.read_volatile(),
+                    )
+                };
+                record(pc, fp, seg);
             }
         }
         0
@@ -186,6 +203,11 @@ mod sampler {
                 return;
             }
             *TARGET.ptr() = target;
+            *CELLS.ptr() = [
+                STACK_LO.ptr().cast_const(),
+                STACK_HI.ptr().cast_const(),
+                STACK_CHAIN.ptr().cast_const(),
+            ];
             *SAMPLER.ptr() = sys::thread_spawn(0, run);
         }
     }
