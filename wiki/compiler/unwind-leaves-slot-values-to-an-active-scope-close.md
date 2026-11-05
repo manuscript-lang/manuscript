@@ -8,6 +8,8 @@ The fix is narrow. A `take` from a local slot whose scope close is registered an
 
 The 1000-line #2281 pass was reverted (#2350) because the faulting fixtures lost frames on Windows and macOS; do not restore it, `SharedGuard` or `TaskGroup`.
 
+A slot passed to a `call.ind` is covered when every closure of that arity only borrows the pointer at that position (`closures_borrow`). The compiler-built `serve.stream` thunk keeps the exchange in such a slot, so before this a faulting HTTP handler leaked one 8-byte block per fault (fixture `http-fault-handler-frees-exchange-view`).
+
 Apply when: changing the unwind pass, inlining of mutable methods, or slot-held cleanup entries.
 Evidence: [lifecycle fixture](../../tests/e2e/testdata/accept/promise-fault-scope-close-unwind.ms), [MIR controls](../../crates/ms-mir/tests/unwind.rs).
 Verify: run the fixture in Debug under valgrind or a counting runtime, and dispatch the full platform matrix.
