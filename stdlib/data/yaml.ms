@@ -4,7 +4,7 @@ import parse_int from "@std/math/math.ms"
 import from_scalars, StringBuilder from "@std/string.ms"
 
 // A YAML value represented as null, boolean, number text, string, array, or object.
-export type YamlValue:
+export enum YamlValue:
     // YAML null, including an empty document or a plain null spelling.
     case Null
     // A core-schema true or false value; yes and no remain strings.

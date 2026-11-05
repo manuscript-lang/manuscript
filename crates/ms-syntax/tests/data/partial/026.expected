@@ -1,4 +1,4 @@
-diag parse 5:1:193 end=5:6:198 fix=- "expected a module declaration or import, found name 'mport'; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn"
+diag parse 5:1:193 end=5:6:198 fix=- "expected a module declaration or import, found name 'mport'; top level holds only import, let constants, fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn"
 import 1:1:0 1:8:7 "range" "@std/collections/collections.ms"
 import 2:1:52 2:8:59 "bench" "./harness.ms"
 import 3:1:85 3:8:92 "basename" "@std/os/fs.ms"

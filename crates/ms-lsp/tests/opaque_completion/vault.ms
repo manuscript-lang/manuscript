@@ -11,7 +11,7 @@ export type Open[T]:
 export fn vault() Vault[Int]:
     return Vault[Int](7)
 
-export opaque type Choice:
+export opaque enum Choice:
     case Payload(value: Int)
     case Empty
 

@@ -313,7 +313,11 @@ fn type_field_at(tokens: &[EditorToken], declaration: usize) -> bool {
         .skip_while(|t| t.start < declaration)
         .take_while(|t| !t.is(b'\n'))
         .collect();
-    if !header.iter().take(3).any(|t| t.is_name("type")) {
+    if !header
+        .iter()
+        .take(3)
+        .any(|t| t.is_name("type") || t.is_name("enum"))
+    {
         return false;
     }
     let (mut depth, mut body, mut annotation, mut default) = (0, false, None, None);

@@ -1,4 +1,4 @@
-type Shape:
+enum Shape:
     case Circle(radius: Int)
     case Square
 

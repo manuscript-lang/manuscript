@@ -426,7 +426,7 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
     let workspace = Workspace::new("completion-cases");
     std::fs::write(
         workspace.path("shapes.ms"),
-        "export type Shape:\n    case Circle(r: Float)\n    case Sq(s: Float)\n\nexport opaque type Hidden:\n    case Secret\n    case Other\n",
+        "export enum Shape:\n    case Circle(r: Float)\n    case Sq(s: Float)\n\nexport opaque enum Hidden:\n    case Secret\n    case Other\n",
     )
     .expect("shapes source");
     let labels = |source: &str, line: usize, character: usize| {

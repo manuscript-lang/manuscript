@@ -118,7 +118,7 @@ export type CommandOutput:
 
 // Where a child's standard input, output, or error goes, chosen per stream.
 // `spawn("make", [], stdout: Stdio.Inherit, stderr: Stdio.Inherit)` lets the child's output reach the parent's terminal while stdin stays piped.
-export type Stdio:
+export enum Stdio:
     // An OS pipe to the parent, read or written through the Subprocess's stream.
     case Pipe
     case Inherit  // The parent's own stream, so the child reads or writes it directly.

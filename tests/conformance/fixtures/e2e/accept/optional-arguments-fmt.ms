@@ -32,7 +32,7 @@ type Box[T]:
 type DefaultBox:
     value: Int?
 
-type Choice[T]:
+enum Choice[T]:
     case chosen(value: T?)
 
 interface Read:

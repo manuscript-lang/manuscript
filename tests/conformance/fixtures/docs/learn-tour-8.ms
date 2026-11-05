@@ -7,7 +7,7 @@ type Todo:
     title: String
     completed: Bool = false
 
-type Status:
+enum Status:
     case Draft
     case Published(url: String)
 

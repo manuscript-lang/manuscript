@@ -13,7 +13,7 @@ type Rect:
     w: Int
     h: Int
 
-type Sign:
+enum Sign:
     case Plus(n: Int)
     case Minus(n: Int)
 

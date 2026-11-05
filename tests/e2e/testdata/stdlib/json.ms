@@ -112,7 +112,7 @@ type Request:
     temperature: Float
     tags: List[String]
 
-type Shape:
+enum Shape:
     case Circle(radius: Int)
     case Rect(width: Int, height: Int)
     case Dot
@@ -206,7 +206,7 @@ type Stamped:
     data: Bytes
     link: Url
 
-type Tagged:
+enum Tagged:
     case Named(name: String, alias: String?)
     case Plain
 
@@ -278,7 +278,7 @@ test "JSON stringify omits a Unit field and rejects a Unit root":
         "\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}"
     )
 
-type Event:
+enum Event:
     case Created(id: Int)
     case Deleted(id: Int)
 
@@ -308,7 +308,7 @@ test "JSON stringify lets JsonEncode override the structural encoding of an alte
     let expected = "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
     try expect_equal((try encoded(feed)), expected)
 
-type Change:
+enum Change:
     case Added(id: Int)
     case Removed(id: Int)
 
@@ -503,7 +503,7 @@ type Pair[A, B]:
     left: A
     right: B
 
-type Op:
+enum Op:
     case Add(left: Int, right: Int)
     case Neg(v: Int?)
     case Nop

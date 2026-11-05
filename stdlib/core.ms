@@ -63,7 +63,7 @@ export interface Iterator[T]:
     var fn next() T?
 
 // Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
-export type Optional[T]:
+export enum Optional[T]:
     // A present payload, retained by reference when T is mutable.
     case some(
         // The contained value; unwrap and matching return this original payload.
@@ -103,7 +103,7 @@ impl T?:
     fn ok_or_else[E](create: fn() E) T!E: ...
 
 // Holds either a successful value (`ok`) or an expected failure (`error`).
-export type Result[T, E]:
+export enum Result[T, E]:
     // A successful result, retaining its payload without a deep copy.
     case ok(
         // The successful value returned by unwrap, matching, or propagation.

@@ -10,7 +10,7 @@ type Cell:
     d: Bool
     e: Int16
 
-type Tok:
+enum Tok:
     case Num(v: Int16, s: Float32)
     case Word(t: String, k: Int8)
     case End

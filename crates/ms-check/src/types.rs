@@ -35,7 +35,7 @@ pub enum Kind {
     Variable,
     /// A record type (`type T:` with fields).
     Record,
-    /// An alternative type (`type T:` with cases).
+    /// An enum (`enum T:` with cases).
     Alternative,
     /// An interface (contract).
     Contract,

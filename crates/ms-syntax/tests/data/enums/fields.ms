@@ -1,0 +1,2 @@
+enum Wrong:
+    value: Int

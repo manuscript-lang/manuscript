@@ -4,7 +4,7 @@ import arguments from "@std/os/process.ms"
 
 extern type Counter
 
-type ParseError:
+enum ParseError:
     case Failed(code: Int, message: String)
     case Empty
     case Unknown(code: Int)

@@ -5,7 +5,7 @@ type Row:
 type Table:
     rows: List[Row]
 
-type Shape:
+enum Shape:
     case Circle(label: String)
     case Rect(label: String, w: Int)
 

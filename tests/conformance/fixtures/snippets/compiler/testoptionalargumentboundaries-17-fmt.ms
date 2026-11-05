@@ -1,7 +1,7 @@
 // conform: tags=alternatives,formatter,generics,optional,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/optional_test.go:53 TestOptionalArgumentBoundaries
-type Optional[T]:
+enum Optional[T]:
     case T
     case none
 

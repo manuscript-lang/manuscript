@@ -17,7 +17,7 @@ fn fail() Result[Int, TextError]:
 fn use() Unit:
     fail()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	23	61	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	23	61	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	3	18	90	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport network from "@std/net/net.ms"
 import HttpResponse from "@std/net/http.ms"
 import panic from "@std/faults.ms"
@@ -256,7 +256,7 @@ fn apply(transform: fn(Int) Int) Int:
     return transform(1)
 type Box:
     value: Int
-type Choice:
+enum Choice:
     case Payload(value: Int)
 interface Read:
     fn get() Int
@@ -274,7 +274,7 @@ impl Read for Box:
     return item + 1impl Increment for Offset:
     fn apply(value: Int) Int:
         return value + self.delta
-resolution	1	20	19	unknown type Offset; declare it with 'type Offset:' / 'interface Offset:', declare it as a type parameter, or import itfn apply(value: Int) Int:
+resolution	1	20	19	unknown type Offset; declare it with 'type Offset:' / 'enum Offset:' / 'interface Offset:', declare it as a type parameter, or import itfn apply(value: Int) Int:
         return value + self.deltaparse	2	9	34	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn apply(item: Int) Int:
         return item + self.deltaparse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4let {key, value} = entry
         let label: Int = keyparse	2	9	33	unexpected indentation, 8 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet callback = Callback(increment)
@@ -313,9 +313,9 @@ impl Equal for Data:
     fn compare() Unit:
         return
 type	4	8	54	extra operation compare; Equal declares: equals (remove it or add it to the interface)
-type	3	1	26	missing implementation operation equals; add fn equals(other: Data) Bool to this impltype First:
+type	3	1	26	missing implementation operation equals; add fn equals(other: Data) Bool to this implenum First:
     case Ready(value: Int)
-type Second:
+enum Second:
     case Ready(value: Int)
 fn wrong() First:
     return Ready(value: 1)
@@ -419,24 +419,24 @@ type Box[T]:
 impl Read[U] for Box[U]:
     fn get() U:
         return self.value
-resolution	5	22	81	unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it
-resolution	5	11	70	unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it
-resolution	6	14	98	unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import itinterface Read[V]:
+resolution	5	22	81	unknown type U; declare it with 'type U:' / 'enum U:' / 'interface U:', declare it as a type parameter, or import it
+resolution	5	11	70	unknown type U; declare it with 'type U:' / 'enum U:' / 'interface U:', declare it as a type parameter, or import it
+resolution	6	14	98	unknown type U; declare it with 'type U:' / 'enum U:' / 'interface U:', declare it as a type parameter, or import itinterface Read[V]:
     fn get() V
 type Box[T]:
     value: T
 impl Read[T] for Box[Int]:
     fn get() T:
         return self.value
-resolution	5	11	70	unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it
-resolution	6	14	100	unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import itinterface Read:
+resolution	5	11	70	unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it
+resolution	6	14	100	unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import itinterface Read:
     fn get() Int
 type Box[T]:
     value: T
 impl Read for Box[Int]:
     fn get() T:
         return self.value
-resolution	6	14	96	unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it
+resolution	6	14	96	unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it
 type	6	8	90	implementation operation signature does not match contract; get must be declared as fn get() Intinterface Same[V: Equal]:
     fn same(other: V) Bool
 type Box[T]:
@@ -460,7 +460,7 @@ type MapBuilder:
     value: Int
 resolution	1	8	7	module does not export MapBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'fn old[T: MissingBound](value: T) T:
     return value
-resolution	1	11	10	unknown type MissingBound; declare it with 'type MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import itinterface Read:
+resolution	1	11	10	unknown type MissingBound; declare it with 'type MissingBound:' / 'enum MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import itinterface Read:
     fn get() Int
 fn old(value: Read & Equal) Unit:
     return
@@ -531,7 +531,7 @@ fn call(x: Int?) Int:
 type	1	27	26	arithmetic requires numeric operandsfn f(x: Int?) Int:
     return match x:
         n: n
-type	2	12	30	non-exhaustive match; missing cases: none, or add a final '_:' arm; add the arms 'case none:'fn f(x: Int?) Unit:
+type	2	12	30	non-exhaustive match; missing cases: none, or add a final '_:' arm; add the arms 'none:'fn f(x: Int?) Unit:
     let y = match x:
         n: n
         none: "missing"
@@ -584,7 +584,7 @@ type Override:
     received: Bool
 impl FileSystem for Override:
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	4	6	74	unknown type FileSystem; declare it with 'type FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import ittest "filesystem concrete overrides and interface defaults":
+resolution	4	6	74	unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import ittest "filesystem concrete overrides and interface defaults":
     let item = Override(false)
     let view = FileSystem(item)
 resolution	2	16	76	unknown binding Override; declare it with 'let Override = ...' before use, define 'fn Override(...) T:', or import it from a module
@@ -595,27 +595,27 @@ test "reject":
     let value = %s()
 parse	1	8	7	expected a name, found '%'fn wrong() Result[Unit, JsonError]:
     return error(cause: EncodingError.InvalidData)
-resolution	1	25	24	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	1	25	24	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	25	60	unknown binding EncodingError; declare it with 'let EncodingError = ...' before use, define 'fn EncodingError(...) T:', or import it from a modulefn wrong() JsonError:
     return JsonError.PermissionDenied
-resolution	1	12	11	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	1	12	11	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	33	unknown binding JsonError; declare it with 'let JsonError = ...' before use, define 'fn JsonError(...) T:', or import it from a moduleimport hex_decode from "@std/data/encoding.ms"
 fn wrong() Result[Unit, JsonError]:
     let bytes = try hex_decode(text: "ff", max_bytes: 1)
     return ok(value: unit)
-resolution	2	25	71	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import ittype Impostor:
+resolution	2	25	71	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import ittype Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return value
 type	4	12	78	expected Error, found Impostor (in the return value)fn wrong() Result[String, Error]:
     return Result[Int, JsonError].ok(value: 1)
-resolution	2	24	57	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(value: Error) JsonError:
+resolution	2	24	57	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(value: Error) JsonError:
     return value
-resolution	1	24	23	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(values: List[JsonError]) List[Error]:
+resolution	1	24	23	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(values: List[JsonError]) List[Error]:
     return values
-resolution	1	23	22	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(operation: fn() JsonError) fn() Error:
+resolution	1	23	22	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itfn wrong(operation: fn() JsonError) fn() Error:
     return operation
-resolution	1	26	25	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itinterface Diagnostic:
+resolution	1	26	25	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import itinterface Diagnostic:
     fn message() String
 type LocalError:
     detail: String
@@ -694,8 +694,8 @@ fn propagated() Result[Unit, Error]:
 fn constructed() Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)
 resolution	1	8	7	module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonLimits, JsonValue, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/data/json.ms"'
-resolution	3	19	107	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
-resolution	5	26	167	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	3	19	107	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	5	26	167	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	6	25	203	unknown binding JsonError; declare it with 'let JsonError = ...' before use, define 'fn JsonError(...) T:', or import it from a module
 resolution	13	25	451	unknown binding JsonError; declare it with 'let JsonError = ...' before use, define 'fn JsonError(...) T:', or import it from a modulefn diagnostic(cause: %s) String:
     return cause.message()
@@ -852,16 +852,16 @@ export fn main() Int:
     if stdout().write(data: %q).is_error():
         return 1
     return 0
-parse	4	29	86	expected an expression, found '%'; write a value, name, call, or literal heretype A:
+parse	4	29	86	expected an expression, found '%'; write a value, name, call, or literal hereenum A:
     case X
-type B:
+enum B:
     case X
 fn f() Int:
     let a = X
     return 1
-resolution	6	13	62	ambiguous alternative case X; qualify it with its type, e.g. Type.Xtype A:
+resolution	6	13	62	ambiguous alternative case X; qualify it with its type, e.g. Type.Xenum A:
     case X(n: Int)
-type B:
+enum B:
     case X(n: Int)
 fn f() Int:
     let a = X(n: 1)
@@ -890,7 +890,7 @@ type	1	20	19	a bound must be an interface, but T resolves to a type parameter; r
     value: Int
 fn record[T: Data](value: T) Unit: return
 type	3	14	39	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'fn unknown[T: Missing](value: T) Unit: return
-resolution	1	15	14	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn identity[T](value: T) T:
+resolution	1	15	14	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn identity[T](value: T) T:
     return value
 fn call() Int:
     return identity(3)
@@ -902,7 +902,7 @@ fn example() Unit:
     children: Map[String, Value]
 type Wrapper:
     entries: Map[String, Node]
-type Node:
+enum Node:
     case Leaf(value: Value)
     case Children(values: List[Wrapper])
 type Growing[T]:
@@ -937,8 +937,8 @@ fn first() Unit:
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, Missing]: fail("empty")
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	3	24	138	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it
+resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	24	138	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it
 resolution	2	57	95	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduletype Failure:
     code: Int
 impl Error for Failure:
@@ -956,7 +956,7 @@ type	7	24	209	expected Result[<invalid>, Error], found Result[Int, Failure] (in 
 fn use() Pair[Int]: Pair[Int](1, 2)
 fn f[A = Int, B](value: B) B: value
 type	1	15	14	type parameter B needs a default because an earlier parameter has one; give B a default or move it before the defaulted parametersfn f[A = B, B = Int](value: B) B: value
-resolution	1	10	9	unknown type B; declare it with 'type B:' / 'interface B:', declare it as a type parameter, or import itinterface Named:
+resolution	1	10	9	unknown type B; declare it with 'type B:' / 'enum B:' / 'interface B:', declare it as a type parameter, or import itinterface Named:
     fn name() String
 fn f[T: Named = Int]() Unit: unit
 type	3	17	54	Int does not satisfy Named; choose a default that already implements ittype Trio[A, B, C = A]:
@@ -1066,7 +1066,7 @@ fn f() Int:
             return x
         none:
             return 0
-resolution	1	11	10	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn f(a: Int, b: Int) Int:
+resolution	1	11	10	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn f(a: Int, b: Int) Int:
     return a + b
 fn call() Int:
     return f(1, 2)
@@ -1182,7 +1182,7 @@ export type Counter:
 
     undocumented: Int = 1
 
-export type Outcome:
+export enum Outcome:
     // A completed count.
     case Ready(value: Int)
     // Work is pending.
@@ -1215,18 +1215,18 @@ impl parse	2	6	6	expected a name, found end of lineinterface DatagramSocket:
     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]
 resolution	4	49	118	unknown type Duration; add: import Duration from "@std/os/time.ms"
 resolution	4	74	143	unknown type Datagram; add: import Datagram from "@std/net/net.ms"
-resolution	4	84	153	unknown type NetworkError; declare it with 'type NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
+resolution	4	84	153	unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
 resolution	5	53	219	unknown type Duration; add: import Duration from "@std/os/time.ms"
-resolution	5	84	250	unknown type NetworkError; declare it with 'type NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
+resolution	5	84	250	unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
 resolution	6	25	288	unknown type Bytes; add: import Bytes from "@std/bytes.ms"
 resolution	6	58	321	unknown type Duration; add: import Duration from "@std/os/time.ms"
-resolution	6	89	352	unknown type NetworkError; declare it with 'type NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import ittype DnsRecord:
+resolution	6	89	352	unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import ittype DnsRecord:
     kind: DnsKind
     value: String
     priority: Int
     weight: Int
     port: Int
-resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net/net.ms"type Optional[T]:
+resolution	2	11	26	unknown type DnsKind; add: import DnsKind from "@std/net/net.ms"enum Optional[T]:
     case T
     case none
 
@@ -1241,7 +1241,7 @@ impl T?:
     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
 resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
 type	12	17	291	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-resolution	12	25	299	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+resolution	12	25	299	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
 type	13	22	370	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 type	5	1	44	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
     return left + right
@@ -1334,7 +1334,7 @@ fn f(p: P) Int:
     values.insert(1)
 resolution	2	12	40	unknown or ambiguous member insert on Set[Int]; did you mean 'add'?fn f(values: List[Int]) Unit:
     values.delete(0)
-resolution	2	12	41	unknown or ambiguous member delete on List[Int]; did you mean 'remove'?type S:
+resolution	2	12	41	unknown or ambiguous member delete on List[Int]; did you mean 'remove'?enum S:
     case A
     case B
     case C
@@ -1343,7 +1343,7 @@ fn f(s: S) Int:
         A:
             return 1
     return 0
-type	6	5	61	non-exhaustive match; missing cases: B, C, or add a final '_:' arm; add the arms 'case B:', 'case C:'fn f() Int:
+type	6	5	61	non-exhaustive match; missing cases: B, C, or add a final '_:' arm; add the arms 'B:', 'C:'fn f() Int:
     return "a" + 1
 type	2	16	27	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with "{value}", or convert between Int and Float)fn f(o: Int?) Int:
     match o:
@@ -1391,7 +1391,7 @@ fn f() Int:
     let q = PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)
     return 0
 resolution	1	8	7	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?
-resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/collections/queue.ms"type Choice[T]:
+resolution	3	13	67	unknown binding PriorityQueue; add: import PriorityQueue from "@std/collections/queue.ms"enum Choice[T]:
     case Found(value: T)
     case Missing
 fn f(c: Choice[Int], o: Int?) Int:
@@ -1401,7 +1401,7 @@ fn f(c: Choice[Int], o: Int?) Int:
     match c:
         Choice.Found(v): return v
         Choice.Missing: return 0
-type Choice[T]:
+enum Choice[T]:
     case Found(value: T)
     case Missing
 fn f(c: Choice[Int]) Int:
@@ -1439,7 +1439,7 @@ fn f() Int:
     return n > 0
 fn f() Int:
     return [1].filter(positive).length()
-type S:
+enum S:
     case A
     case B
 fn f(s: S) Int:
@@ -1448,7 +1448,7 @@ fn f(s: S) Int:
             return 1
         other:
             return 2
-resolution	8	9	99	'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, Bexport type MoneyError:
+resolution	8	9	99	'other' is not a case of S; a lone lowercase name binds an Optional's payload, but this is not an Optional; use '_' for a catch-all arm, or one of the cases: A, Bexport enum MoneyError:
     case Invalid
 export fn parse_cents() Int: 0
 export fn format_cents() String: "0"
@@ -1458,32 +1458,32 @@ export fn format_cents() String: "0"
     fn m() Int
 impl I for Missing:
     fn m() Int: return 1
-resolution	3	12	39	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import ittype S:
+resolution	3	12	39	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import ittype S:
     x: Int
 impl Missing for S:
     fn m() Int: return 1
-resolution	3	6	24	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn boxed(value: SetBuilder[Int]) Unit: return
-resolution	1	17	16	unknown type SetBuilder; declare it with 'type SetBuilder:' / 'interface SetBuilder:', declare it as a type parameter, or import itlet result: Result[Int, TextError] = fail("empty")
+resolution	3	6	24	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn boxed(value: SetBuilder[Int]) Unit: return
+resolution	1	17	16	unknown type SetBuilder; declare it with 'type SetBuilder:' / 'enum SetBuilder:' / 'interface SetBuilder:', declare it as a type parameter, or import itlet result: Result[Int, TextError] = fail("empty")
     return resultparse	2	5	55	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport TextError from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]: ...
     resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	3	24	138	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	24	138	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	57	95	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a modulefn collect[T, U](items: List[T], step: fn(T) Result[List[U], MissingError]) Result[List[U], MissingError]:
     return step(items.get(0))
 fn first() Unit:
     let result = collect(items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value]))
     let unrelated: Int = "wrong"
-resolution	1	62	61	unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
-resolution	1	93	92	unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
-resolution	4	80	233	unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
+resolution	1	62	61	unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
+resolution	1	93	92	unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
+resolution	4	80	233	unknown type MissingError; declare it with 'type MissingError:' / 'enum MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it
 type	5	26	286	expected Int, found String (in the initializer of 'unrelated')import TextError from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn first() Result[Int, TextError]: fail[Int]("empty")
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	3	24	138	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	39	77	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	24	138	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	57	95	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a modulefn convert[T, U](value: T) U?: none
 fn first() Unit:
     let value = convert(1)
@@ -1491,20 +1491,20 @@ fn first() Unit:
 fn empty[T]() T?: none
 fn first() Unit:
     let value = empty()
-resolution	1	18	17	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it
+resolution	1	18	17	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import it
 type	4	17	95	cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameterinterface Shape:
     fn area() Int
 type Sq:
     s: Int
 impl Shape for Sq:
     fn area() Int: self.s * self.s
-resolution	1	16	15	unknown type Sq; declare it with 'type Sq:' / 'interface Sq:', declare it as a type parameter, or import itfn shape() Shape: Sq(2)
-resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	16	15	unknown type Sq; declare it with 'type Sq:' / 'enum Sq:' / 'interface Sq:', declare it as a type parameter, or import itfn shape() Shape: Sq(2)
+resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	19	18	unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...) T:', or import it from a modulefn shapes() List[Shape]: [Sq(2)]
-resolution	1	18	17	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	18	17	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	27	26	unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...) T:', or import it from a modulefn area(shape: Shape) Int: shape.area()
 fn run() Int: area(Sq(2))
-resolution	1	16	15	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	16	15	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	2	20	59	unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...) T:', or import it from a moduleinterface Read[T]:
     fn get() T
 type Box[T]:
@@ -1528,9 +1528,9 @@ type Sq:
 impl Shape for Sq:
     fn area() Int: self.s * self.s
 fn shape() Shape: Shape(value: Sq(2))
-resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	19	18	unknown binding Shape; did you mean 'shape'?fn shape() Shape: Shape(Sq(2))
-resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	19	18	unknown binding Shape; did you mean 'shape'?type E:
     text: String
 impl Error for E:
@@ -1570,49 +1570,49 @@ let Y = X + X
 resolution	2	13	27	unknown binding nope; declare it with 'let nope = ...' before use, define 'fn nope(...) T:', or import it from a modulefn f(text: String) Result[JsonValue, JsonError]:
     return parse(text)
 resolution	1	27	26	unknown type JsonValue; add: import JsonValue from "@std/data/json.ms"
-resolution	1	38	37	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	1	38	37	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	60	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
-resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     return parse(text)
-resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request = try parse[Request](text)
     return ok(request)
-resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	23	101	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
     let request: Request = try parse(text)
     return ok(request)
-resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	4	32	110	unknown binding parse; add: import parse from "@std/data/csv.ms"fn f[T](text: String) Result[T, JsonError]:
     return parse[T](text)
-resolution	1	33	32	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	1	33	32	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	55	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     callback: fn() Int
 fn f(text: String) Result[Request, JsonError]:
     return parse[Request](text)
-resolution	3	36	72	unknown type JsonError; declare it with 'type JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
-resolution	4	12	95	unknown binding parse; add: import parse from "@std/data/csv.ms"type Expr:
+resolution	3	36	72	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
+resolution	4	12	95	unknown binding parse; add: import parse from "@std/data/csv.ms"enum Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr?)
 type Node:
     next: Node
-type A:
+enum A:
     case End
     case Next(value: B)
 type B:
     a: A
-type Tree[T]:
+enum Tree[T]:
     case Leaf(value: T)
     case Branch(left: Tree[T], right: Tree[T])
 type A[T]:
@@ -1639,7 +1639,7 @@ type Person:
     primary: Entry?
 type Config:
     value: Int??
-type Config:
+enum Config:
     case Value(value: Int??)
 type Config:
     value: Result[Result[Int, Error], Error]
@@ -1677,7 +1677,7 @@ type	2	5	15	recursive generic applications must preserve their parameters in A.b
     next: Bridge
 type Bridge:
     next: Grow[Int]
-type	4	5	48	recursive generic applications must preserve their parameters in Bridge.next; keep the same type arguments in the same positions along a recursive cycletype Tree[T]:
+type	4	5	48	recursive generic applications must preserve their parameters in Bridge.next; keep the same type arguments in the same positions along a recursive cycleenum Tree[T]:
     case Leaf(value: T)
     case Pair(left: Tree[Int], right: Tree[String])
 type	3	15	52	recursive generic applications must preserve their parameters in Tree.Pair.left; keep the same type arguments in the same positions along a recursive cycle
@@ -1686,15 +1686,15 @@ type	3	32	69	recursive generic applications must preserve their parameters in Tr
 type Layer%d[T]:
     left: Layer%d[T]
     right: Layer%d[T]
-parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype Layer0:
+parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype Layer0:
     value: Int
 type Layer%d:
     left: Layer%d
     right: Layer%d
-parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn hash(value: Layer32) Int: return value.hash()
-resolution	1	16	15	unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import itfn equal(left: Layer32, right: Layer32) Bool: return left == right
-resolution	1	16	15	unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it
-resolution	1	32	31	unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import itfn f[T](a: T) T:
+parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodyfn hash(value: Layer32) Int: return value.hash()
+resolution	1	16	15	unknown type Layer32; declare it with 'type Layer32:' / 'enum Layer32:' / 'interface Layer32:', declare it as a type parameter, or import itfn equal(left: Layer32, right: Layer32) Bool: return left == right
+resolution	1	16	15	unknown type Layer32; declare it with 'type Layer32:' / 'enum Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it
+resolution	1	32	31	unknown type Layer32; declare it with 'type Layer32:' / 'enum Layer32:' / 'interface Layer32:', declare it as a type parameter, or import itfn f[T](a: T) T:
     return a.foo()
 resolution	2	14	30	unknown or ambiguous member foo on T; this type has no fields or operationsfn f() Int:
     let x = 1
@@ -1781,8 +1781,8 @@ fn make_fixture() State:
     return State(value: 1)
 test "reads fixture":
     let value: Int = fixture.value
-resolution	2	19	44	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	2	19	44	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	62	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a module
 resolution	5	22	121	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
@@ -1793,8 +1793,8 @@ fn make_fixture() State:
 test "closure captures fixture":
     let read = fn() Int: fixture.value
     let value: Int = read()
-resolution	4	19	107	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	4	19	107	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	4	1	89	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	125	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a module
 resolution	7	26	199	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
@@ -1804,24 +1804,24 @@ fn make_fixture() State:
     return State(value: 1)
 test "test":
     return
-resolution	4	19	96	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	4	19	96	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	4	1	78	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	114	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture(value: Int) State:
     return State(value)
 test "test":
     return
-resolution	2	29	54	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	2	29	54	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	2	1	26	make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture
 resolution	3	12	72	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture[T]() State:
     return State(1)
 test "test":
     return
-resolution	2	22	47	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	2	22	47	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	2	1	26	make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture
 resolution	3	12	65	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture() TestHooks:
@@ -1829,21 +1829,21 @@ fn make_fixture() TestHooks:
 test "test":
     return
 resolution	2	19	44	unknown type TestHooks; add: import TestHooks from "@std/test/test.ms"
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	66	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a modulefn make_fixture() State:
     return State(1)
 test "test":
     return
-resolution	1	19	18	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	19	18	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	1	1	0	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	2	12	36	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture() State:
     return State(fixture.value)
 test "test":
     return
-resolution	2	19	44	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	2	19	44	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
+resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
 type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	62	unknown binding State; declare it with 'let State = ...' before use, define 'fn State(...) T:', or import it from a moduletest "test":
     let value = fixture.value
@@ -1925,21 +1925,21 @@ type Box[T]:
     value: T
 type Callback[T, U]:
     transform: fn(T) U
-type Choice[T]:
+enum Choice[T]:
     case Payload(value: T)
 type Pair:
     first: Int
     second: Int = 2
-type TwoPayloads:
+enum TwoPayloads:
     case Pair(first: Int, second: Int)
 interface Read:
     fn get() Int
 impl Read for Box[Int]:
     fn get() Int: self.value
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	4	40	209	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	4	62	231	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	5	26	280	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itlet value = result(fn():
+resolution	4	40	209	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	4	62	231	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	5	26	280	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itlet value = result(fn():
         let n = try checked()
         return ok(n)
     )parse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn example() Unit: ...
@@ -1995,14 +1995,14 @@ fn choose(algorithm: HashAlgorithm) Unit:
 fn wrong() Unit:
     choose(CompressionFormat.Gzip)
 resolution	2	8	50	unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?
-resolution	6	12	178	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"type Other:
+resolution	6	12	178	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"enum Other:
     case OutOfRange
 fn other() Other: Other.OutOfRange
 fn standard() CollectionError: CollectionError.OutOfRange
 fn recognize(value: Other) Int:
     match value:
         OutOfRange: return 1
-resolution	4	15	81	unknown type CollectionError; declare it with 'type CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import it
+resolution	4	15	81	unknown type CollectionError; declare it with 'type CollectionError:' / 'enum CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import it
 resolution	4	32	98	unknown binding CollectionError; declare it with 'let CollectionError = ...' before use, define 'fn CollectionError(...) T:', or import it from a moduleimport ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from "@std/collections/collections.ms"
 import ErrorCategory, TextError, category from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
@@ -2015,15 +2015,15 @@ resolution	1	33	32	module does not export SetBuilder; @std/collections/collectio
 resolution	2	8	115	unknown standard module @std/errors.ms
 resolution	2	23	130	unknown standard module @std/errors.ms
 resolution	2	34	141	unknown standard module @std/errors.ms
-resolution	6	32	316	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	6	32	316	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	5	23	257	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a module
-resolution	6	43	327	unknown binding TextError; did you mean 'text_error'?type Other:
+resolution	6	43	327	unknown binding TextError; did you mean 'text_error'?enum Other:
     case OutOfRange
 fn get() Other: OutOfRange
 type ListEntry[T]:
     payload: T
 fn get() List[ListEntry[Int]]: [1].entries()
-resolution	1	1	0	declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declarationtype CollectionError:
+resolution	1	1	0	declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declarationenum CollectionError:
     case OutOfRange
 fn get() Result[List[Int], CollectionError]: [1].slice(0, 1)
 type	3	50	91	expected Result[List[Int], CollectionError], found Result[List[Int], Error] (in the return value)fn entries(values: MapEntry[List[Int], Int]) Unit: unit
@@ -2049,16 +2049,16 @@ resolution	1	14	13	redundant prelude import Map; remove Map from this import and
 resolution	1	19	18	redundant prelude import Set; remove Set from this import and use its prelude declaration directlyfn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn message(values: List[Int]) String: first(values).err().message()
 fn widen(cause: MissingValue) Error: cause
-resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
-resolution	3	17	162	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import ittype Other:
+resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+resolution	3	17	162	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itenum Other:
     case Missing(value: Int)
 fn other() Other: Other.Missing(1)
 fn standard() MissingValue: MissingValue.Missing("location")
 fn read(value: Other) Int:
     match value:
         Missing(found): return found
-resolution	4	15	90	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
-resolution	4	29	104	unknown binding MissingValue; declare it with 'let MissingValue = ...' before use, define 'fn MissingValue(...) T:', or import it from a moduletype Other:
+resolution	4	15	90	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
+resolution	4	29	104	unknown binding MissingValue; declare it with 'let MissingValue = ...' before use, define 'fn MissingValue(...) T:', or import it from a moduleenum Other:
     case Missing(value: Int)
 fn get() Other: Missing(1)
 import compress, CompressionFormat, CompressionError from "@std/compress.ms"
@@ -2089,7 +2089,7 @@ resolution	8	5	283	unknown binding CompressionFormat; add: import CompressionFor
 type	8	57	335	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
 resolution	9	5	345	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"let initial = Mode.Idle
 
-type Mode:
+enum Mode:
     case Idle
     case Busy
 
@@ -2124,15 +2124,15 @@ fn consume(value: Int?) Unit: return
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	8	46	unknown standard module @std/faults.ms
 type	4	21	170	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-resolution	3	39	112	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	3	39	112	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 type	20	1	627	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
 type	21	8	658	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	3	57	130	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a module
 resolution	10	30	443	unknown binding panic; add: import panic from "@std/core.ms"fn first() Unit:
-    let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+    let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	42	58	unknown binding fail; add: import fail from "@std/test/test.ms"fn first() Unit:
     let callback: fn() Int? = fn: absent()resolution	2	35	51	unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a modulefn failed[T]() Result[T, Failure]: error(Failure("empty"))
-fn first() Result[Int, Error]: failed()resolution	1	26	25	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it
+fn first() Result[Int, Error]: failed()resolution	1	26	25	unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it
 resolution	1	42	41	unknown binding Failure; did you mean 'failed'?
 type	2	32	90	cannot infer type argument T for failed; write failed[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameterinterface Read:
     fn get() Int
@@ -2151,14 +2151,14 @@ fn first() Unit:
     callback = required
     callback()resolution	3	33	84	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
 type	5	5	157	missing argument _0: Int in call to callback; add '_0: <Int>'fn first() Unit:
-    let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+    let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	52	68	unknown binding fail; add: import fail from "@std/test/test.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)type	2	61	97	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest
 type	2	61	97	expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)fn check(value: Int, key: String) Bool: true
-fn wrong(value: Map[String, Int]) Bool: value.every(check)resolution	2	47	91	unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)type Optional[T]:
+fn wrong(value: Map[String, Int]) Bool: value.every(check)resolution	2	47	91	unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)enum Optional[T]:
     case T
     case none
-fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declarationtype Result[T, E]:
+fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declarationenum Result[T, E]:
     case ok(value: T)
     case error(cause: E)
 fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declarationfn f() Int:
@@ -2168,7 +2168,7 @@ fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	
 type	3	10	40	try requires Result, found Int; apply try only to a call returning Result[T, E]fn wrong(value: Set[Int]) Unit:
     let output = value.map(fn n: n.to_float())type	2	24	55	Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimalfn wrong[U](value: Set[Int], transform: fn(Int) U) Unit:
     let output = value.map(transform)type	2	24	80	U does not satisfy Hashable; pass a type that already implements itfn wrong(value: Map[String, Int]) Unit:
-    let output = value.filter(fn k, n: n)type	2	40	79	expected Bool, found Int (in the return value)type Result[T, E]:
+    let output = value.filter(fn k, n: n)type	2	40	79	expected Bool, found Int (in the return value)enum Result[T, E]:
     case ok(value: T)
     case error(cause: E)
 fn wrong(value: Result[Int, String]) Int: value.get()resolution	1	1	0	declaration Result reuses a prelude name; rename it, because Result always refers to the standard declarationfn identity(n: Int) Int: return n
@@ -2244,7 +2244,7 @@ fn grow[T](value: T) Int:
 type	3	17	46	recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])fn missing() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)type Handle:
     fn read() Int:
-parse	2	5	17	a type declares only fields or cases; write its methods in an 'impl Handle:' block, or implement an interface with 'impl <Interface> for Handle:'fn wrong() String:
+parse	2	5	17	a type declares only record fields; write its methods in an 'impl Handle:' block, or implement an interface with 'impl <Interface> for Handle:'fn wrong() String:
     let convert = unescape
     return convert(value: "&amp;")resolution	2	19	37	unknown binding unescape; add: import unescape from "@std/data/html.ms"fn identity[T](value: T) T: value
 fn first() Int: ... type	2	1	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)let x = match 0:
@@ -2354,12 +2354,12 @@ export fn invoke[T: Read[Int]](value: T) Int:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-resolution	1	18	17	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itfn use(value: Box[Int]) Int:
+resolution	1	18	17	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itfn use(value: Box[Int]) Int:
     return value.get()
-resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itfn use(value: Box[Int]) Read[Int]:
+resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itfn use(value: Box[Int]) Read[Int]:
     return Read[Int](value: value)
-resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import it
-resolution	1	25	24	unknown type Read; declare it with 'type Read:' / 'interface Read:', declare it as a type parameter, or import it
+resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import it
+resolution	1	25	24	unknown type Read; declare it with 'type Read:' / 'enum Read:' / 'interface Read:', declare it as a type parameter, or import it
 resolution	2	12	46	unknown binding Read; declare it with 'let Read = ...' before use, define 'fn Read(...) T:', or import it from a moduleimport Closeable from "@std/cleanup.ms"
 impl Closeable for Box[T]:
     fn close() Unit:
@@ -2367,19 +2367,19 @@ impl Closeable for Box[T]:
 export fn loaded() Int:
     return 1
 resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
     fn get() Int:
         return 0
-resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[T] for Box[T]:
+resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[T] for Box[T]:
     fn get() T:
         return missing
-resolution	1	18	17	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+resolution	1	18	17	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
     fn get() String:
         return "wrong"
-resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
     fn extra() Int:
         return 0
-resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Int:
+resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Int:
     fn get() Int:
         return self
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesimpl Read[Int] for List[Int]:
@@ -2388,13 +2388,13 @@ resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'interface Bo
 type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesimpl Read[Int] for Read[Int]:
     fn get() Int:
         return 0
-resolution	1	20	19	unknown type Read; declare it with 'type Read:' / 'interface Read:', declare it as a type parameter, or import itexport interface Read:
+resolution	1	20	19	unknown type Read; declare it with 'type Read:' / 'enum Read:' / 'interface Read:', declare it as a type parameter, or import itexport interface Read:
     fn original() Int
 export type Box[T: Read]:
     value: T
 export fn read(value: Box[Int]) Int:
     return value.get()
-resolution	1	23	22	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itvalues.add(1, 2)
+resolution	1	23	22	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itvalues.add(1, 2)
     let found = values.get(1)
     let present = values.contains(1)
     let size = values.length()parse	2	5	21	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet alias = values
@@ -2465,7 +2465,7 @@ fn count(items: List[Int], data: Bytes) Int:
 fn wrong(values: Map[String, Int]) Map[String, Int]: values.map(transform)type	2	65	113	expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)fn wrong(values: Map[String, Int]) Unit:
     let found = values.find_last(fn k, v: v)type	2	43	83	expected Bool, found Int (in the return value)fn allowed(values: Map[String, Int]) Map[String, Float]:
     return values.map(fn key, value: value.to_float())
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Square(s: Int)
     case Tri(b: Int)
@@ -2495,7 +2495,7 @@ resolution	6	16	146	unknown binding area; declare it with 'let area = ...' befor
     var sumparse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let f = area
     var sumparse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let read = fn(value: Shape = shapes.get(0)) Shape: value
     var sumparse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn unknown(s: Shape) Int: return area(s)
-resolution	1	15	14	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	15	14	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	34	33	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a modulefn other() Int:
     let shapes = [Shape.Square(9223372036854775807)]
     return area(shapes.get(0))
@@ -2523,16 +2523,16 @@ impl Read for Val:
 resolution	2	8	42	module does not export File; did you mean 'Pipe'?
 resolution	3	8	75	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?fn f(value: Val) Unit:
     value.val = true
-resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
+resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'enum Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f(value: Val) Unit:
     value.missing = 1
-resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
+resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'enum Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:
     Val.val = 1
 resolution	2	5	17	unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...) T:', or import it from a module
 type	2	9	21	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f(value: Val) Unit:
     value.get = 1
-resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
+resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'enum Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:
     let value = Val(val: 0)
     value = Val(val: 1)
@@ -2540,7 +2540,7 @@ type	2	11	33	assignment requires a record field; only fields of a record value c
 type	3	5	45	cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'
 resolution	3	13	53	unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...) T:', or import it from a modulefn f(value: Val) Unit:
     value = Val(val: 1)
-resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
+resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'enum Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	5	27	cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'
 resolution	2	13	35	unknown binding Val; declare it with 'let Val = ...' before use, define 'fn Val(...) T:', or import it from a modulefn f() Unit:
     let value = 1
@@ -2555,12 +2555,12 @@ resolution	2	13	35	unknown binding Val; declare it with 'let Val = ...' before u
     value += 1.5
 type	3	11	41	operator operands require the same independently known type, found Int + Float; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)fn f(value: Val) Unit:
     value.val += true
-resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
+resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'enum Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f() Unit:
     stdout().clone()
 resolution	2	5	17	unknown binding stdout; add: import stdout from "@std/io/io.ms"fn f(file: File) Unit:
     file.clone()
-resolution	1	12	11	unknown type File; declare it with 'type File:' / 'interface File:', declare it as a type parameter, or import itimport Network from "@std/net/net.ms"
+resolution	1	12	11	unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import itimport Network from "@std/net/net.ms"
 fn f(socket: Network) Unit:
     socket.clone()
 fn f(queue: Queue[Int]) Unit:
@@ -2601,7 +2601,7 @@ fn call() Unit:
 fn call() Unit: f(other: 4)
 type	2	19	49	unknown argument other; parameters of f: valuefn f(value: Int?) Unit: return
 fn call() Unit: f(4, value: 5)
-type	2	22	52	duplicate argument value; pass each argument oncetype Optional[T]:
+type	2	22	52	duplicate argument value; pass each argument onceenum Optional[T]:
     case T
     case none
 fn f(value: Int?) Unit: return
@@ -2612,7 +2612,7 @@ fn call() Unit: f(4)
     return value.get()
 type	2	18	45	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchfn wrong(value: Result[Int, String]) Bool:
     return value.is_some()
-resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optionaltype Optional[T]:
+resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optionalenum Optional[T]:
     case T
     case none
 fn wrong(value: Int?) Int:
@@ -2636,7 +2636,7 @@ fn broken(
     let result = error(cause: "failed")
 type	2	18	30	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Error:
     return "failed"
-type	2	12	25	expected Error, found String (in the return value)type Other:
+type	2	12	25	expected Error, found String (in the return value)enum Other:
     case Int
 fn f() Int?:
     return 1
@@ -2816,11 +2816,11 @@ fn probe() Int: return count[String]("unused")
 resolution	2	16	28	unknown binding Node; declare it with 'let Node = ...' before use, define 'fn Node(...) T:', or import it from a modulefn f() Unit:
     let node = Node(value: 1, next: "wrong")
 resolution	2	16	28	unknown binding Node; declare it with 'let Node = ...' before use, define 'fn Node(...) T:', or import it from a modulefn f(node: Node) Int: return node.hash()
-resolution	1	12	11	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import itfn f(values: Map[Node, Int]) Unit: return
-resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import itfn f(values: Set[Node]) Unit: return
-resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import itfn hash[T: Hashable](value: T) Int: return value.hash()
+resolution	1	12	11	unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import itfn f(values: Map[Node, Int]) Unit: return
+resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import itfn f(values: Set[Node]) Unit: return
+resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import itfn hash[T: Hashable](value: T) Int: return value.hash()
 fn f(node: Node) Int: return hash(node)
-resolution	2	12	67	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import ittype B[T]:
+resolution	2	12	67	unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import ittype B[T]:
     a: A[List[T]]
 type A[T]:
     b: B[T]
@@ -2840,22 +2840,22 @@ export fn main() Int:
     let i = I[Int](value: b)
     return 0
 type	11	13	196	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
-type	2	8	23	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycletype Expr:
+type	2	8	23	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycleenum Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 fn value(expr: Expr) Int:
     match expr:
         Num(value): return value
-type	5	5	104	non-exhaustive match; missing cases: Add, or add a final '_:' arm; add the arms 'case Add(left, right):'fn compare(left: Node, right: Node) Bool: return left == right
-resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it
-resolution	1	31	30	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import ittype Pair:
+type	5	5	104	non-exhaustive match; missing cases: Add, or add a final '_:' arm; add the arms 'Add(left, right):'fn compare(left: Node, right: Node) Bool: return left == right
+resolution	1	18	17	unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import it
+resolution	1	31	30	unknown type Node; declare it with 'type Node:' / 'enum Node:' / 'interface Node:', declare it as a type parameter, or import ittype Pair:
     left: Int
     right: Int
 fn hash(pair: Pair) Int: return pair.hash()
 type Box[T]:
     value: T
 fn hash(box: Box[Box[Int]]) Int: return box.hash()
-type Expr:
+enum Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 fn tree() Expr: return Expr.Add(left: Expr.Num(1), right: Expr.Num(2))
@@ -2908,12 +2908,12 @@ resolution	2	52	112	unknown binding f; declare it with 'let f = ...' before use,
 fn first(cause: Error) Unit: both[Int, Error](cause: cause, r: f())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 resolution	2	64	124	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Holder[T]:
     r: Result[T, Error]
-fn first() Holder[Int]: Holder(f())resolution	3	32	71	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Wrapped[T]:
+fn first() Holder[Int]: Holder(f())resolution	3	32	71	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduleenum Wrapped[T]:
     case value(r: Result[T, Error])
 fn first() Wrapped[Int]: Wrapped.value(f())resolution	3	40	92	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module], value: T) Unit: return
 fn first(r: parse	1	1	0	unmatched closing delimiter ']'; remove it or add the matching opener before itfn bounded[T: Equal](r: Result[T, Error]) Unit: return
-fn first(r: Result[Error, E1]) Unit: bounded(r)resolution	2	27	81	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import itfn domain[T](r: Result[T, E2]) Unit: return
-fn first() Unit: domain(f())resolution	1	27	26	unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import it
+fn first(r: Result[Error, E1]) Unit: bounded(r)resolution	2	27	81	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import itfn domain[T](r: Result[T, E2]) Unit: return
+fn first() Unit: domain(f())resolution	1	27	26	unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it
 type	2	18	61	cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	25	68	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn same[T, E: Error](first: Result[T, E], second: Result[T, E]) Unit: return
 fn first() Unit: same(first: f(), second: other())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
@@ -2924,14 +2924,14 @@ fn first() Unit: values([f()])type	2	18	70	cannot infer type argument T for val
 resolution	2	26	78	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn twice[T](r: Result[T, Error]??) Unit: return
 fn first() Unit: twice(f())type	2	18	65	cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	24	71	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn nested[T](r: Result[Result[T, Error], Error]) Unit: return
-fn first(r: Result[Result[Int, E1], E2]) Unit: nested(r)resolution	2	32	93	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it
-resolution	2	37	98	unknown type E2; declare it with 'type E2:' / 'interface E2:', declare it as a type parameter, or import itfn callback[T](r: Result[fn(T) Int, Error]) Unit: return
-fn first(r: Result[fn(Int) Int, E1]) Unit: callback(r)resolution	2	33	89	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import itinterface Read:
+fn first(r: Result[Result[Int, E1], E2]) Unit: nested(r)resolution	2	32	93	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it
+resolution	2	37	98	unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import itfn callback[T](r: Result[fn(T) Int, Error]) Unit: return
+fn first(r: Result[fn(Int) Int, E1]) Unit: callback(r)resolution	2	33	89	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import itinterface Read:
     fn get() Int
 impl Read for E1:
     fn get() Int: self.code
 fn read[T](r: Result[T, Read]) Unit: return
-fn first() Unit: read(f())resolution	3	15	47	unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it
+fn first() Unit: read(f())resolution	3	15	47	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it
 type	6	18	140	cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	6	23	145	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Cause:
     text: String
@@ -2956,18 +2956,18 @@ type	4	8	58	extra operation message; Error declares:  (remove it or add it to th
         if let found = parse	2	5	16	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn affine(n: Int = 0) Result[Int, Cause]:
     if n < 0: return error(Cause("negative"))
     return ok(n + 1)
-resolution	1	35	34	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
+resolution	1	35	34	unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	2	28	69	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a modulefn affine(n: Int) Result[Int, Cause]:
     if n < 0: return ok(9223372036854775807)
     return ok(n + 1)
-resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import itfn affine(n: Int) Result[Int, Cause]:
+resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import itfn affine(n: Int) Result[Int, Cause]:
     if n < 0: return error(Cause("negative {n}"))
     return ok(n + 1)
-resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
+resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a modulefn affine(n: Int) Result[Int, Cause]:
     if n < 0: return error(Cause())
     return ok(n + 1)
-resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
+resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a modulefn affine(n: Int) Result[Int, Cause]:
     if n < 0:
         return error(Cause(match n:
@@ -2976,11 +2976,11 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
             none: "negative"
         ))
     return ok(n + 1)
-resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
+resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	3	22	73	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a modulefn affine(n: Int) Result[Int, Cause]:
     if n < 0: return error(Cause("negative"))
     return ok(n + 9223372036854775807)
-resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it
+resolution	1	31	30	unknown type Cause; declare it with 'type Cause:' / 'enum Cause:' / 'interface Cause:', declare it as a type parameter, or import it
 resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a moduletype Cause:
     text: String
 impl Error for Cause:
@@ -3034,13 +3034,13 @@ fn tail(value: Result[Int, TextError]) Result[Int, TextError]:
     let output = try value
     return ok(output)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	2	52	90	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
+resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	52	90	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
 fn tail(value: Result[Int, TextError]) Result[Int, Error]:
     let output = try value
     return ok(output)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it.ms"
+resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it.ms"
 fn check() Unit:
     let decoded = parse(text: "a: 1")
 parse	1	4	3	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn operation() Result[Unit, Error]: ok(unit)
@@ -3179,7 +3179,7 @@ fn probe() Int:
     value: Int
 impl Tag for Key%d:
     fn tag() Int: self.value
-parse	1	9	8	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn probe() Int: ...
+parse	1	9	8	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodyfn probe() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    let map%d = Map[Int, Int]()
     map%d.add(1, 2)
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn affine%d(value: Int) Result[Int, TextError]:
@@ -3212,7 +3212,7 @@ fn probe() Int:
     for x%d in values:
         sum += x%d
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with ittype Shape%d:
-parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn area%d(s: Shape%d) Int:
+parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodyfn area%d(s: Shape%d) Int:
     var out = 0
     match s:
 parse	1	8	7	expected '(', found '%'; a call or parameter list starts with '('    return out
@@ -3286,7 +3286,7 @@ let NAMES: List[String] = ["a"]
         ok(n): return n
     return 0
 type	3	23	70	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match
-type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm; add the arms 'case error(cause):'fn f() String: "é \{1 + * 2\}"
+type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm; add the arms 'error(cause):'fn f() String: "é \{1 + * 2\}"
 export fn commands() Commands: ...
 resolution	1	22	21	unknown type Commands; add: import Commands from "@std/os/process.ms"export type Duration: ...
 type List[T]: ...
@@ -3294,7 +3294,7 @@ impl List[T]:
     fn map[U](transform: fn(T) U) List[U]: ...
     fn length() Int: ...
 resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declaration
-type	2	1	18	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Optional[T]:
+type	2	1	18	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesenum Optional[T]:
     case none
     case T
 impl T?:
@@ -3309,27 +3309,27 @@ impl Counter:
     fn read(limit: Int? = none) Int
 impl Error for Failure:
     fn message() String: ...
-resolution	1	16	15	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import ittype Options:
+resolution	1	16	15	unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import ittype Options:
     count: Int = 3
     total: Int = count + 1
 fn empty() Unit: ...
 // empty body
 fn answer() Int: return 3
 export fn commands() Commands
-parse	1	30	29	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype List[T]:
+parse	1	30	29	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype List[T]:
 impl List[T]:
     fn get() T
-parse	3	15	42	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype List[T]:
+parse	3	15	42	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype List[T]:
     fn get() T:
-parse	2	5	18	a type declares only fields or cases; write its methods in an 'impl List[T]:' block, or implement an interface with 'impl <Interface> for List[T]:'type A:
+parse	2	5	18	a type declares only record fields; write its methods in an 'impl List[T]:' block, or implement an interface with 'impl <Interface> for List[T]:'type A:
     x: Int
     fn f() Int:
         return x
-parse	3	5	23	a type declares only fields or cases; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'impl Show Point:
+parse	3	5	23	a type declares only record fields; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'impl Show Point:
     fn show() String:
-parse	1	11	10	expected ':', found name 'Point'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype Duration
-parse	1	14	13	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodynative fn commands() Commands
-parse	1	1	0	expected a module declaration or import, found name 'native'; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fnfn f() Unit:
+parse	1	11	10	expected ':', found name 'Point'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype Duration
+parse	1	14	13	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodynative fn commands() Commands
+parse	1	1	0	expected a module declaration or import, found name 'native'; top level holds only import, let constants, fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fnfn f() Unit:
     if true:
 parse	3	1	26	suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declarationfn f() Unit:
     while true:
@@ -3496,7 +3496,7 @@ fn after() Unit: unit
     return 1 < 2 < 3
 parse	2	18	30	comparison operators cannot chain; combine two comparisons with 'and', e.g. a < b and b < cfn f(value: fn(x: Int = 1) Int) Unit:
     return
-parse	1	17	16	expected ')', found ':'; close the parenthesis, separating items with commastype F:
+parse	1	17	16	expected ')', found ':'; close the parenthesis, separating items with commasenum F:
     case Value(value: Int = 1)
 parse	2	27	34	function types and case payloads cannot have defaults; put the default on a named function parameter or a record field insteadfn f() Unit:
     (1 + 2) = 1
@@ -3506,7 +3506,7 @@ fn after() Unit: unit
 type	2	8	20	local binding g is never read; remove it, use it, or name it with a leading '_' to ignore ittype Mixed:
     value: Int
     case Ready
-parse	3	5	31	a type cannot mix fields and cases; use either fields (a record) or 'case' lines (an alternative), and wrap shared data in a case payloadimport panic from "@std/faults.ms"
+parse	1	1	0	a record declared with 'type' cannot contain cases; declare alternatives with 'enum' insteadimport panic from "@std/faults.ms"
 
 test "bad":
     if not ("\q" == ""):
@@ -3557,11 +3557,11 @@ impl Read[T] for Box[T]:
         return self.value
 type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`type Read:
     fn get() Int
-parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
+parse	2	5	15	a type declares only record fields; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
-parse	2	5	20	a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' blockinterface Read:
+parse	2	5	20	an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' blockinterface Read:
     case Ready
-parse	2	5	20	a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' blockinterface Read:
+parse	2	5	20	an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' blockinterface Read:
     fn get() Int:
         return 1
 parse	2	17	32	expected end of statement, found ':'; put one statement per line, and join operands with an operator or a comma inside bracketsinterface Read:
@@ -3606,10 +3606,10 @@ type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, who
         return value + other
     )
 resolution	2	5	17	unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...) T:', or import it from a modulefn f(value) Int: value
-parse	1	11	10	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn f(transform: fn(value) Int) Unit: return
-resolution	1	20	19	unknown type value; declare it with 'type value:' / 'interface value:', declare it as a type parameter, or import ittype Choice:
+parse	1	11	10	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodyfn f(transform: fn(value) Int) Unit: return
+resolution	1	20	19	unknown type value; declare it with 'type value:' / 'enum value:' / 'interface value:', declare it as a type parameter, or import itenum Choice:
     case Payload(value)
-parse	2	23	35	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn f() Int:
+parse	2	23	35	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodyfn f() Int:
     1
 parse	2	5	16	only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
     if true: 1
@@ -3740,7 +3740,7 @@ fn use(value: Envelope) Int:
             _,
             NotFound,
         ): return 1
-resolution	2	15	28	unknown type Envelope; declare it with 'type Envelope:' / 'interface Envelope:', declare it as a type parameter, or import itfn value() String:
+resolution	2	15	28	unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import itfn value() String:
     return "parse	2	13	31	unterminated text literalfn broken(
 fn later(
 parse	3	1	21	unterminated delimiter '(' opened at line 2:9; add the matching ')' before the end of the filefn later() Int: ...
@@ -3814,7 +3814,7 @@ interface Read:
 impl Read for Box:
     fn read(value: Int = choose(8)) Int:
         return choose(9)
-resolution	4	14	115	unknown type Array; declare it with 'type Array:' / 'interface Array:', declare it as a type parameter, or import it
+resolution	4	14	115	unknown type Array; declare it with 'type Array:' / 'enum Array:' / 'interface Array:', declare it as a type parameter, or import it
 type	6	9	168	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/elsefn choose(value: Int) Int:
     return value
 fn collect(fallback: Int = choose(1)) String:
@@ -3954,7 +3954,7 @@ fn two() Int:
 parse	3	1	28	unexpected source character '@'; this character is not part of Manuscript's syntax outside textfn a() Int:
     return 0
 fn example(value: String) Bool
-parse	1	31	30	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body
+parse	1	31	30	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body
 type parameters: ...type Data:
     value: Int
 type State:
@@ -4074,14 +4074,14 @@ resolution	5	11	147	unknown binding pending_withdrawal_total; declare it with 'l
     )
 resolution	2	5	20	unknown binding send; declare it with 'let send = ...' before use, define 'fn send(...) T:', or import it from a modulefn map_box[T, U_wwwwwwwwwwww](b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T], f_wwwwwwwwwww: fn(T) U_wwwwwwwwwwww) Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww]:
     return b_wwwwwwwwwwwwwwwwwwwwwwww
-resolution	1	59	58	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it
-resolution	1	124	123	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import itfn map_box[T, U_wwwwwwwwwwww](
+resolution	1	59	58	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'enum Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it
+resolution	1	124	123	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'enum Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import itfn map_box[T, U_wwwwwwwwwwww](
     b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T],
     f_wwwwwwwwwww: fn(T) U_wwwwwwwwwwww
 ) Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww]:
     return b_wwwwwwwwwwwwwwwwwwwwwwww
-resolution	2	33	63	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it
-resolution	4	3	133	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import itfn work() Int:
+resolution	2	33	63	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'enum Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it
+resolution	4	3	133	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'enum Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import itfn work() Int:
     if let value = [2, 5, 3, (-6), (-9), 1, 2, 3, 4].clone().sorted(fn(l: Int, r: Int) Int: l - r).first():
         return value
     return 0
@@ -4240,13 +4240,13 @@ resolution	2	96	113	unknown binding current_separator; declare it with 'let curr
 resolution	5	23	118	unknown binding legacy_separator; declare it with 'let legacy_separator = ...' before use, define 'fn legacy_separator(...) T:', or import it from a module
 resolution	5	46	141	unknown binding current_separator; declare it with 'let current_separator = ...' before use, define 'fn current_separator(...) T:', or import it from a modulefn work(first: Int, second: String) Result[Map[String, String]?, ApplicationError]:
     return error(cause)
-resolution	1	66	65	unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it
+resolution	1	66	65	unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it
 resolution	2	18	101	unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...) T:', or import it from a modulefn work(
     first: Int,
     second: String
 ) Result[Map[String, String]?, ApplicationError]:
     return error(cause)
-resolution	4	32	75	unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it
+resolution	4	32	75	unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it
 resolution	5	18	111	unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...) T:', or import it from a modulefn work() Unit:
     send(  // Delivery settings.
             first: 1, // First setting.
@@ -4306,7 +4306,7 @@ resolution	5	11	136	unknown binding pending_withdrawal_total; declare it with 'l
     match value:
         long_variant(first_payload_name, second_payload_name, third_payload_name, fourth_payload_name): return 1
         _: return 0
-resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn choose(value: Choice) Int:
+resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'enum Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn choose(value: Choice) Int:
     match value:
         long_variant(
             first_payload_name,
@@ -4315,7 +4315,7 @@ resolution	5	11	136	unknown binding pending_withdrawal_total; declare it with 'l
             fourth_payload_name
         ): return 1
         _: return 0
-resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn work() Bool:
+resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'enum Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn work() Bool:
     return Error(value: CommandError.Failed(message: "command diagnostic")).message() != "command diagnostic"
 type	2	18	33	unknown argument value; parameters of Error: details, kind, message
 resolution	2	25	40	unknown binding CommandError; declare it with 'let CommandError = ...' before use, define 'fn CommandError(...) T:', or import it from a module
@@ -4406,7 +4406,7 @@ resolution	9	11	222	unknown binding save; declare it with 'let save = ...' befor
             return result
         _: return 0
     return 3
-resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn choose(value: Choice) Int:
+resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'enum Choice:' / 'interface Choice:', declare it as a type parameter, or import itfn choose(value: Choice) Int:
     match value:
         first: return 1
         second: return 2
@@ -4416,7 +4416,7 @@ resolution	9	11	222	unknown binding save; declare it with 'let save = ...' befor
         _: return 0
 
     return 3
-resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it// A public contract.
+resolution	1	18	17	unknown type Choice; declare it with 'type Choice:' / 'enum Choice:' / 'interface Choice:', declare it as a type parameter, or import it// A public contract.
 export interface Run:
     fn first() Int
     fn second() Int
@@ -4435,7 +4435,7 @@ impl Run for Runner:
                 return 2
 // Application entry.
 fn main() Int: return 0
-resolution	6	14	119	unknown type Runner; declare it with 'type Runner:' / 'interface Runner:', declare it as a type parameter, or import it// A public contract.
+resolution	6	14	119	unknown type Runner; declare it with 'type Runner:' / 'enum Runner:' / 'interface Runner:', declare it as a type parameter, or import it// A public contract.
 export interface Run:
     fn first() Int
     fn second() Int
@@ -4458,7 +4458,7 @@ impl Run for Runner:
 
 // Application entry.
 fn main() Int: return 0
-resolution	7	14	120	unknown type Runner; declare it with 'type Runner:' / 'interface Runner:', declare it as a type parameter, or import itfn example() Int:
+resolution	7	14	120	unknown type Runner; declare it with 'type Runner:' / 'enum Runner:' / 'interface Runner:', declare it as a type parameter, or import itfn example() Int:
     let result = apply(
         value: 3,
         transform: (
@@ -5165,17 +5165,17 @@ fn run() Int:
 type Pair:
     first: Int
     second: Int
-type Pair:
+enum Pair:
     case Values(first: Int, second: Int)
 fn run() Unit:
     let number = 10
     let pair = parse	3	16	50	expected an expression, found end of line; write a value, name, call, or literal herefn entries(values: List[Int]) List[ListEntry[Int]]: values.entries()
 fn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()
 fn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)
-resolution	3	45	194	unknown type CollectionError; declare it with 'type CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import itimport MissingValue from "@std/errors.ms" // keep
+resolution	3	45	194	unknown type CollectionError; declare it with 'type CollectionError:' / 'enum CollectionError:' / 'interface CollectionError:', declare it as a type parameter, or import itimport MissingValue from "@std/errors.ms" // keep
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	41	90	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itimport List from "@std/collections/collections.ms" // keep
+resolution	2	41	90	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itimport List from "@std/collections/collections.ms" // keep
 fn count() Int: List[Int]().length()
 resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
@@ -5189,7 +5189,7 @@ fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	2	5	13	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	3	5	31	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, SearchResult, Set, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	5	17	101	unknown binding ListBuilder; declare it with 'let ListBuilder = ...' before use, define 'fn ListBuilder(...) T:', or import it from a modulefn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
-resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itfn bad() Unit:
+resolution	1	41	40	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import itfn bad() Unit:
    unit
 import ListBuilder, List from "@std/collections/collections.ms"
 parse	2	4	18	indentation must be a multiple of four spaces, found 3; use 0 or 4export type Row[T]:
@@ -5329,14 +5329,14 @@ fn use(value: Int?) Int:
     return match value:
         ok(n): n
         error(_): 0
-type Shape:
+enum Shape:
     case Dot
     case Line
 fn use(value: Shape) Int:
     return match value:
         Dot: 0
         Line: 1
-type Failure:
+enum Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5346,10 +5346,10 @@ fn classify(result: Result[Int, Failure]) Int:
         error(NotFound): return 1
         ok(value): return value
 type	4	1	64	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	8	95	extra operation message; Error declares:  (remove it or add it to the interface)type Failure:
+type	5	8	95	extra operation message; Error declares:  (remove it or add it to the interface)enum Failure:
     case NotFound
     case Denied
-type Envelope:
+enum Envelope:
     case Pair(left: Failure, right: Failure)
 fn use(value: Envelope) Int:
     match value:
@@ -5364,21 +5364,21 @@ fn use(value: Item?) Int:
     match value:
         int: return Int
         none: return 0
-type	3	21	62	type name requires a constructor call; write Int(field: value, ...) to build a valuetype Flag:
+type	3	21	62	type name requires a constructor call; write Int(field: value, ...) to build a valueenum Flag:
     case Ready
 fn use(value: Int?) Int:
     match value:
         ready: return Ready
         none: return 0
-type	5	23	90	expected Int, found Flag (in the return value)type First:
+type	5	23	90	expected Int, found Flag (in the return value)enum First:
     case Ready
-type Second:
+enum Second:
     case Ready
 fn use(value: Int?) Int:
     match value:
         ready: return Ready
         none: return 0
-resolution	7	23	119	ambiguous alternative case Ready; qualify it with its type, e.g. Type.Readytype Failure[T]:
+resolution	7	23	119	ambiguous alternative case Ready; qualify it with its type, e.g. Type.Readyenum Failure[T]:
     case NotFound
     case Denied(reason: T)
 impl Error for Failure[T]:
@@ -5391,7 +5391,7 @@ fn use[T](value: Result[Int, Failure[T]]) Int:
 type	5	8	96	extra operation message; Error declares:  (remove it or add it to the interface)
 type	9	9	224	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
     fn describe() String
-type State:
+enum State:
     case Ready
     case Waiting
 impl Describe for State:
@@ -5407,7 +5407,7 @@ fn use[T](value: Box[T]?) T:
         box: return Box.value
         none: return panic(message: "empty")
 resolution	5	25	96	unknown or non-nullary alternative case value of Box; cases:  (cases with payloads need call syntax)
-resolution	6	22	123	unknown binding panic; add: import panic from "@std/core.ms"type Flag:
+resolution	6	22	123	unknown binding panic; add: import panic from "@std/core.ms"enum Flag:
     case Ready
 fn use(value: Int?) Int:
     let Flag = 2
@@ -5416,7 +5416,7 @@ fn use(value: Int?) Int:
         none: return 0
 type	6	23	107	expected Int, found Flag (in the return value)    let NotFound = 2
     match result:parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn NotFound() Int: 2
-type Failure:
+enum Failure:
     case NotFound
 fn use() Int:
     let NotFound = 1
@@ -5427,7 +5427,7 @@ fn use() Int:
         none: return panic(message: "empty")
 type	3	9	49	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'
 resolution	3	23	63	unknown binding Value; did you mean 'value'?
-resolution	4	22	90	unknown binding panic; add: import panic from "@std/core.ms"type Failure:
+resolution	4	22	90	unknown binding panic; add: import panic from "@std/core.ms"enum Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5441,7 +5441,7 @@ fn classify(result: Result[Int, Failure]) Int:
         error(cause): return failure_code(cause)
         ok(value): return value
 type	4	1	64	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	8	95	extra operation message; Error declares:  (remove it or add it to the interface)export type Failure:
+type	5	8	95	extra operation message; Error declares:  (remove it or add it to the interface)export enum Failure:
     case NotFound
     case Denied(reason: String)
 impl Error for Failure:
@@ -5557,7 +5557,7 @@ export fn run() Int:
 export fn load(n: Int) Result[Int, TextError]:
     return ok(n)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	36	74	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itexport fn load(n: Int) Result[Int, Error]:
+resolution	2	36	74	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itexport fn load(n: Int) Result[Int, Error]:
     return ok(n)
 fn one() Int:
     return 1
@@ -5708,9 +5708,9 @@ impl Data:
 type	4	8	48	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)type Data:
 impl Data:
     fn read() Int
-parse	3	18	39	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype Data:
+parse	3	18	39	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype Data:
     fn read() Int:
-parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Data:' block, or implement an interface with 'impl <Interface> for Data:'type Data:
+parse	2	5	15	a type declares only record fields; write its methods in an 'impl Data:' block, or implement an interface with 'impl <Interface> for Data:'type Data:
     count Int
 parse	2	10	20	expected ':' between 'count' and its type; parameters and fields are written name: Typetype Data:
     count: Int =
@@ -5915,7 +5915,7 @@ export fn main() Int:
     let result = value.ok_or_else(crash)
     return 0
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	12	50	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	12	50	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	3	12	72	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport Closeable from "@std/cleanup.ms"
 type AggregateResource:
     visits: List[Int]
@@ -6116,8 +6116,8 @@ fn chain(n: Int) Result[Int, TextError]:
 export fn main() Int:
     return chain(9223372036854775807).get()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	32	70	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	6	30	190	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	32	70	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	6	30	190	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	4	22	117	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleinterface Counter:
     fn bump(by: Int) Int
 type Cell:
@@ -6170,30 +6170,30 @@ fn deep(value: Result[Int, TextError]) Int:
 export fn main() Int:
     return deep(error(TextError("expected failure")))
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	5	23	150	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport TextError from "@std/errors.ms"
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     let extract = value.err
     return extract().text.scalar_length()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	3	28	88	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
+resolution	3	28	88	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
 fn crash(value: Int) Int:
     return 1 / value
 export fn main() Int:
     let value: Result[Int, TextError] = ok(0)
     return value.map(crash).get()
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	5	28	135	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
+resolution	5	28	135	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
 fn crash(cause: TextError) Int:
     return 1 / 0
 export fn main() Int:
     let value: Result[Int, TextError] = error(TextError("expected failure"))
     return value.or_else(crash)
 resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	17	55	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	2	17	55	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 type	3	14	84	division by zero always faults; guard the divisor or use a nonzero constant
-resolution	5	28	137	unknown type TextError; declare it with 'type TextError:' / 'interface TextError:', declare it as a type parameter, or import it
+resolution	5	28	137	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	5	47	156	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a modulefn crash(key: String, value: Int) Bool:
     return 1 / value == 0
 export fn main() Int:
@@ -6279,7 +6279,7 @@ export fn main() Int:
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-resolution	5	31	135	unknown type FileSystemError; declare it with 'type FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it
+resolution	5	31	135	unknown type FileSystemError; declare it with 'type FileSystemError:' / 'enum FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it
 resolution	5	56	160	unknown binding FileSystemError; declare it with 'let FileSystemError = ...' before use, define 'fn FileSystemError(...) T:', or import it from a moduletype Counter:
     value: Int
 
@@ -6293,7 +6293,7 @@ test "inherent fault frame":
     x: Int
     fn f() Int:
         return 1
-parse	3	5	23	a type declares only fields or cases; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'interface I:
+parse	3	5	23	a type declares only record fields; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'interface I:
     fn f() Int
 impl I:
     fn f() Int:
@@ -6445,7 +6445,7 @@ export fn main() Int:
     let shapes = [Shape.Circle(2)]
     let good = area(shapes.get(0))
     return unknown(Shape.Square(9223372036854775807))
-resolution	1	15	14	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
+resolution	1	15	14	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	34	33	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module
 resolution	3	19	81	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module
 resolution	4	16	113	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module
@@ -6570,7 +6570,7 @@ export fn main() Int:
 resolution	1	8	7	module does not export files; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
 resolution	2	8	41	module does not export File; did you mean 'Pipe'?
 resolution	3	8	74	module does not export IoError; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
-resolution	5	11	126	unknown type File; declare it with 'type File:' / 'interface File:', declare it as a type parameter, or import it
+resolution	5	11	126	unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it
 resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"test %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)

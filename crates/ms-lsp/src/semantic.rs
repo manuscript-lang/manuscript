@@ -46,12 +46,12 @@ struct Token {
 
 fn lexer_tokens(d: &Document) -> Vec<Token> {
     let mut tokens = scanned_tokens(d);
-    // `opaque` is contextual: a keyword only in front of `type`.
+    // `opaque` is contextual: a keyword only in front of `type` or `enum`.
     for i in 1..tokens.len() {
         if tokens[i - 1].kind == Lex::Name
             && tokens[i - 1].text == "opaque"
             && tokens[i].kind == Lex::Keyword
-            && tokens[i].text == "type"
+            && matches!(tokens[i].text.as_str(), "type" | "enum")
         {
             tokens[i - 1].kind = Lex::Keyword;
         }
@@ -82,7 +82,7 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
             tokens.push(Token {
                 kind,
                 previous_fn: previous == Tok::Fn,
-                previous_type: previous == Tok::Type,
+                previous_type: matches!(previous, Tok::Type | Tok::Enum),
                 text: lexed.source[t.lo as usize..t.hi as usize].to_string(),
                 offset: t.pos.offset as usize,
             });
@@ -111,7 +111,7 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
         tokens.push(Token {
             kind,
             previous_fn: previous == "fn",
-            previous_type: previous == "type",
+            previous_type: matches!(previous, "type" | "enum"),
             text: t.text.to_string(),
             offset: t.start,
         });

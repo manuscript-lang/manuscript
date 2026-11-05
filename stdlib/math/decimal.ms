@@ -9,7 +9,7 @@ import (
 ) from "@std/internal/decimal.ms"
 
 // How a Decimal rounds to a multiple of the requested power of ten.
-export type RoundingMode:
+export enum RoundingMode:
     case HalfEven  // Nearest value; an exact tie chooses the even coefficient.
     case HalfAwayFromZero  // Nearest value; an exact tie rounds away from zero.
     case TowardZero  // Discards the fractional coefficient toward zero.

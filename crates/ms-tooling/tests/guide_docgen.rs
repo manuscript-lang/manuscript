@@ -31,7 +31,7 @@ fn declaration_kind_presentation() {
     for (kind, label) in [
         ("fn", "Function"),
         ("record", "Record"),
-        ("alternative", "Alternative"),
+        ("alternative", "Enum"),
         ("interface", "Interface"),
         ("type", "Type"),
         ("native", "Native type"),

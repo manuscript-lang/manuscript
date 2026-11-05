@@ -1,10 +1,10 @@
 // conform: tags=alternatives,diagnostics,records,tier-core,scope-cleanup
 // conform: phase=check
 // conform: origin=documentation/core-language/types/alternatives.md:38
-type LeftState:
+enum LeftState:
     case Ready
 
-type RightState:
+enum RightState:
     case Ready
 
 let left: LeftState = LeftState.Ready

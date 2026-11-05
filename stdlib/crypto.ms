@@ -122,7 +122,7 @@ export fn verify(key: Bytes, data: Bytes, signature: Bytes) Bool:
     return msstd_crypto_verify(key, data, signature)
 
 // Selects an elliptic curve for ECDSA and ECDH keys.
-export type Curve:
+export enum Curve:
     case P256  // NIST P-256 (secp256r1).
     case P384  // NIST P-384 (secp384r1).
     case P521  // NIST P-521 (secp521r1).
@@ -235,7 +235,7 @@ export fn rsa_decrypt(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes
 
 // Selects a supported hash algorithm for digests, HMAC, PBKDF2 and HKDF.
 // Md5 and Sha1 exist for interoperability with existing formats; prefer SHA-2 or SHA-3 for new designs.
-export type HashAlgorithm:
+export enum HashAlgorithm:
     case Md5  // MD5, producing a 16-byte digest or HMAC. Not collision resistant.
     case Sha1  // SHA-1, producing a 20-byte digest or HMAC. Not collision resistant.
     case Sha224  // SHA-224, producing a 28-byte digest or HMAC.

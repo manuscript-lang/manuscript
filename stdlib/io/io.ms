@@ -557,7 +557,7 @@ export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadSt
     return stream[B](Through[A, B](source_of[A](input), transform, out, false))
 
 // One of this process's three standard streams.
-export type StdStream:
+export enum StdStream:
     case Input  // Standard input; once redirected it reads as end of file.
     case Output  // Standard output; once redirected its writes are discarded.
     case Error  // Standard error; once redirected its writes are discarded.
@@ -607,7 +607,7 @@ together. `Key` names a non-printing or modified key: `enter`, `tab`,
 `insert`, `delete`, `page_up`, `page_down`, `f1` to `f12`, or a letter with
 `ctrl` or `alt` set. `Resize` carries the new size.
 */
-export type TerminalEvent:
+export enum TerminalEvent:
     // Printable characters typed together.
     case Text(
         // The typed characters in order, as valid UTF-8 text.
@@ -633,7 +633,7 @@ export type TerminalEvent:
     )
 
 // The part of the screen cleared by `RawTerminal.erase`.
-export type EraseRegion:
+export enum EraseRegion:
     case Screen  // Every cell of the screen; the cursor does not move.
     case Line  // The whole cursor line.
     case LineEnd  // From the cursor to the end of the line.

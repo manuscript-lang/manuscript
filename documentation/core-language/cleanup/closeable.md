@@ -29,7 +29,7 @@ A `Connection` has no `clone()`; its input and output streams own their respecti
 
 ## Records and collections close what they hold
 
-A record, alternative, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in the order below. A part whose close fails faults, because the holder has no error to return.
+A record, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in the order below. A part whose close fails faults, because the holder has no error to return.
 
 | Holder | Close order |
 | --- | --- |

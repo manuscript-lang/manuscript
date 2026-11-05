@@ -1,0 +1,2 @@
+union State:
+    case Ready

@@ -1,4 +1,4 @@
-type Link:
+enum Link:
     case End
     case More(next: Link)
     case Tag(n: Int, rest: Link)

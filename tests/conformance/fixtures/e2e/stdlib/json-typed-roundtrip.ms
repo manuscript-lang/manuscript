@@ -4,7 +4,7 @@ import expect_equal, expect_error from "@std/test/test.ms"
 import parse, stringify from "@std/data/json.ms"
 import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net/net.ms"
 
-type Color:
+enum Color:
     case Red
     case Green
 

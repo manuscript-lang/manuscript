@@ -1,7 +1,7 @@
 // conform: tags=diagnostics,match,alternatives,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-type S:
+enum S:
     case A
     case B(x: Int)
 

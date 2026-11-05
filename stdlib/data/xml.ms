@@ -22,7 +22,7 @@ export type XmlAttribute:
     value: String
 
 // A node of a parsed XML tree.
-export type XmlNode:
+export enum XmlNode:
     // An element with its attributes in source order and its child nodes.
     case XmlElement(
         // Tag name as written, including any prefix.

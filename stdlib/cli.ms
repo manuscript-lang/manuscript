@@ -55,7 +55,7 @@ fn cli_invalid_schema(reason: String) Error:
     return Error("cli: invalid command schema: {reason}", kind: "EINVAL")
 
 // What a flag accepts. Each case fills the record field of the same language type.
-export type FlagKind:
+export enum FlagKind:
     // `Bool` field. Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
     case Bool
     // `String` field. Any text, including text that begins with a dash when given as `--name=value`.
@@ -170,7 +170,7 @@ export type Command:
     exec: fn(Matches) Int! = fn m: ok(0)
 
 // The outcome of parsing: help text to show, or a node ready to run.
-export type Parsed:
+export enum Parsed:
     // `-h`, `--help`, `help` or a group without a handler.
     case Help(
         // The rendered help ending in a newline, ready to write to stdout.

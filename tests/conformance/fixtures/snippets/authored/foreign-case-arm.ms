@@ -1,7 +1,7 @@
 // conform: tags=diagnostics,parser,tier-core
 // conform: phase=parse
 // conform: origin=foreign-syntax diagnostics
-type E:
+enum E:
     case A
 
 fn f(e: E) Int:

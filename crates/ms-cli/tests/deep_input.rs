@@ -44,7 +44,7 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
     std::fs::create_dir_all(&dir).unwrap();
     // Nesting depth 64 prints `...`; a long list formats in linear time.
     let source = "import stdout from \"@std/io/io.ms\"\n\
-        type L:\n\
+        enum L:\n\
         \x20   case Nil\n\
         \x20   case Cons(head: Int, tail: L)\n\
         export fn main() Int:\n\
@@ -92,7 +92,7 @@ fn build_time_for_cases(cases: usize) -> std::time::Duration {
     let dir = std::env::temp_dir().join(format!("ms-cli-cases-{}-{cases}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let mut source = String::from("import stdout from \"@std/io/io.ms\"\ntype E:\n");
+    let mut source = String::from("import stdout from \"@std/io/io.ms\"\nenum E:\n");
     for i in 0..cases {
         source.push_str(&format!("    case C{i}(x: Int)\n"));
     }

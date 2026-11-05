@@ -32,7 +32,7 @@ type Holder:
     inner: Latch
     tag: Int
 
-type Slot:
+enum Slot:
     case Full(inner: Latch)
     case Empty
 

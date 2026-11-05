@@ -74,7 +74,7 @@ fn example() Int:
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
 - Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `unit`, `false`, and zero are supplied values.
 - A failing default stops later defaults and the body. `try` in a default propagates under the function's result type.
-- Named functions, closures, and `impl` methods may declare defaults; function types and alternative payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
+- Named functions, closures, and `impl` methods may declare defaults; function types and enum payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
 - Record fields have their own [defaults](../types/records.md#construction). Omitted arguments give no generic type evidence.
 - Defaults are callable permissions of known callables. Inferred immutable copies preserve them; explicit function types, mutable callable bindings, and generic inference require every parameter. Defaults are not part of function-type identity.
 - Native standard-library slice: expression defaults work on nongeneric functions and ordinary record fields. Standard interface defaults must be closed literals. Native generic defaults, defaults on opaque native constructors, and recursive native default expansion are unsupported.

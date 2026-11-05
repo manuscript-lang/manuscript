@@ -1,4 +1,4 @@
-diag parse 13:5:171 end=13:7:173 fix=- "a type declares only fields or cases; write its methods in an 'impl Customer:' block, or implement an interface with 'impl <Interface> for Customer:'"
+diag parse 13:5:171 end=13:7:173 fix=- "a type declares only record fields; write its methods in an 'impl Customer:' block, or implement an interface with 'impl <Interface> for Customer:'"
 diag parse 14:5:220 end=14:8:223 fix=- "expected a name, found 'let'; 'let' is a reserved word and cannot be used as a name"
 diag parse 15:5:273 end=15:11:279 fix=- "expected a name, found 'return'; 'return' is a reserved word and cannot be used as a name"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"

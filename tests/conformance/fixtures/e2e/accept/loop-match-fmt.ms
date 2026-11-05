@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/loop-match.ms
 import expect_equal from "@std/test/test.ms"
 
-type State:
+enum State:
     case Ready
     case Waiting
 

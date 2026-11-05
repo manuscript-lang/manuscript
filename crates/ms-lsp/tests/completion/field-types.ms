@@ -6,7 +6,7 @@ type Envelope[T]:
     nested: Payload
     defaulted: Payload = Payload(1)
 
-type Choice[T]:
+enum Choice[T]:
     case Data(value: T, nested: Payload)
     case Empty
 

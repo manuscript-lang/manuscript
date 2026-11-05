@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "match arms are written without 'case', e.g. Paid(receipt): or Missing:; 'case' only declares the cases of a type",
+        "message": "match arms are written without 'case', e.g. Paid(receipt): or Missing:; 'case' only declares the cases of an enum",
         "position": {
           "file": "foreign-case-arm.ms",
           "line": 9,

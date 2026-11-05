@@ -5,7 +5,7 @@ import flip, shifted from "./other.ms"
 type Point:
     x: Int
 
-type Mode:
+enum Mode:
     case Off
     case On
 

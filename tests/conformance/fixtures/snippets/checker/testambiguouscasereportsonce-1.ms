@@ -1,10 +1,10 @@
 // conform: tags=alternatives,diagnostics,records,tier-core
 // conform: phase=check
 // conform: origin=pkg/checker/ambiguous_case_test.go:16 TestAmbiguousCaseReportsOnce
-type A:
+enum A:
     case X
 
-type B:
+enum B:
     case X
 
 fn f() Int:

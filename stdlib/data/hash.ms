@@ -58,7 +58,7 @@ export fn fnv1_64(data: Bytes) UInt64:
     return unsigned(hash)
 
 // Selects the polynomial of a 64-bit cyclic redundancy check.
-export type Crc64Polynomial:
+export enum Crc64Polynomial:
     // CRC-64/XZ (ECMA-182, reflected 0xC96C5795D7870F42), as used by xz and Go's `crc64.ECMA`.
     case Ecma
     // CRC-64/GO-ISO (reflected 0xD800000000000000), Go's `crc64.ISO`.

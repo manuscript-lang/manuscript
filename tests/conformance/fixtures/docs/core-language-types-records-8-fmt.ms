@@ -3,7 +3,7 @@
 // conform: origin=documentation/core-language/types/records.md:99
 import panic from "@std/core.ms"
 
-type Expr:
+enum Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 

@@ -6,7 +6,7 @@ import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
 
 // Severity levels accepted by a logger, ordered from Trace through Fatal.
-export type LogLevel:
+export enum LogLevel:
     // Most detailed records, encoded with numeric level 10.
     case Trace
     // Development diagnostics, encoded with numeric level 20.

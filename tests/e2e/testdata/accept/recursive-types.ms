@@ -1,6 +1,6 @@
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-type Expr:
+enum Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr)
@@ -11,11 +11,11 @@ fn evaluate(expr: Expr) Int:
         Add(left, right): return evaluate(left) + evaluate(right)
         Neg(inner): return -evaluate(inner)
 
-type Tree[T]:
+enum Tree[T]:
     case Leaf(value: T)
     case Branch(left: Tree[T], right: Tree[T])
 
-type Forest:
+enum Forest:
     case Empty
     case More(tree: MutualTree)
 
@@ -128,7 +128,7 @@ type Entry:
 type Person:
     primary: Entry?
 
-type NestedOptional:
+enum NestedOptional:
     case Value(value: Int??)
 
 type NestedResult:

@@ -11,7 +11,7 @@ type Pix:
     f: Float32
     n: Int32
 
-type Shape:
+enum Shape:
     case Dot(x: Int8)
     case Box(w: Int16, h: Float32, c: Int32)
     case Big(v: Int)

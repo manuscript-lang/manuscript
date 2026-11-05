@@ -4,6 +4,8 @@ fn unfinished_functions_do_not_swallow_constants_or_externs() {
     let file = Arc::from("recover.ms");
     for declaration in [
         "let VALUE = 3\n",
+        "enum State:\n    case Ready\n",
+        "export opaque enum Hidden:\n    case Secret(value: Int)\n",
         "let(\n    VALUE = 3\n)\n",
         "extern fn native(value: Int) Int\n",
         "extern type Handle\n",

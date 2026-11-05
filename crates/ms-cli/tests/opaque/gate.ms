@@ -4,7 +4,7 @@ export opaque type Approved:
     entity: String
     nonce: String
 
-export opaque type Mode:
+export opaque enum Mode:
     case Safe
     case Wild(level: Int)
 

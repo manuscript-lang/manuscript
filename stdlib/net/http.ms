@@ -102,7 +102,7 @@ impl ClientResponse:
         return self.head.clone()
 
 // Known HTTP methods, plus extension tokens validated by outgoing operations.
-export type HttpMethod:
+export enum HttpMethod:
     // Requests the selected representation.
     case Get
     // Requests response metadata without a body.

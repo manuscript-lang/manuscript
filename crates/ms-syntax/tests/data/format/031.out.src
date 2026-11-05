@@ -13,7 +13,7 @@ import WebSocketError from "@std/net/net.ms"
 import WebSocketOptions from "@std/net/net.ms"
 
 // Errors returned for invalid requests, transport failures, timeouts, and limits.
-export type HttpError:
+export enum HttpError:
     // The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
     case InvalidInput
     // The response headers are not valid UTF-8, so they cannot become Strings.

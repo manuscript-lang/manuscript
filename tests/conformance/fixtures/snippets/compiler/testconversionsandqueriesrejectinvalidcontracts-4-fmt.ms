@@ -1,7 +1,7 @@
 // conform: tags=alternatives,formatter,generics,optional,parser,records,strings,tier-core,try-result
 // conform: phase=parse
 // conform: origin=pkg/compiler/conversions_queries_test.go:25 TestConversionsAndQueriesRejectInvalidContracts
-type T!E:
+enum T!E:
     case ok(value: T)
     case error(cause: E)
 

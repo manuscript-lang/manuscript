@@ -9,7 +9,7 @@ extern fn native_call(value: Int) Int
 export type Box[T: Equal & Hashable = Int]:
     value: T
 
-type State:
+enum State:
     case Ready
     case Data(value: Int)
 

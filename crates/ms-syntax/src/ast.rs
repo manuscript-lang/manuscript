@@ -108,7 +108,7 @@ pub enum DeclKind {
     Const(ConstDecl),
     /// `type Name:` with `field: Type [= default]` lines.
     Record(RecordDecl),
-    /// `type Name:` with `case` lines.
+    /// `enum Name:` with `case` lines.
     Alternative(AlternativeDecl),
     /// `interface Name:` with `fn` signatures.
     Interface(InterfaceDecl),
@@ -172,7 +172,7 @@ pub struct RecordDecl {
     pub opaque: bool,
 }
 
-/// `type Name[T]:` with `case` lines.
+/// `enum Name[T]:` with `case` lines.
 #[derive(Debug, Clone)]
 pub struct AlternativeDecl {
     /// Type name.
@@ -181,7 +181,7 @@ pub struct AlternativeDecl {
     pub type_params: Vec<TypeParam>,
     /// Cases in declaration order.
     pub cases: Vec<Case>,
-    /// `opaque type`: cases are visible only in the declaring file.
+    /// `opaque enum`: cases are visible only in the declaring file.
     pub opaque: bool,
 }
 

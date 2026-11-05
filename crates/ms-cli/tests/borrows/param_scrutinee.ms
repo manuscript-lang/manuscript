@@ -1,4 +1,4 @@
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Name(s: String)
 

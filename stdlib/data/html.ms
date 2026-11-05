@@ -33,7 +33,7 @@ export type HtmlAttribute:
     value: String
 
 // A parsed HTML document tree with document, element, text, comment, and doctype nodes.
-export type HtmlNode:
+export enum HtmlNode:
     // Root document node, including any elements implied by HTML tree normalization.
     case Document(
         // Direct child nodes in normalized document order.

@@ -1,5 +1,5 @@
 // A shape with two cases.
-export type Shape:
+export enum Shape:
     // A circle.
     case Circle(radius: Float)
     // A square.

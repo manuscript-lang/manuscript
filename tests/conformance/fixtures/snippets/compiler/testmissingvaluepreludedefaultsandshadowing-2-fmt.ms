@@ -1,7 +1,7 @@
 // conform: tags=alternatives,formatter,match,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/collection_prelude_imports_test.go:187 TestMissingValuePreludeDefaultsAndShadowing
-type Other:
+enum Other:
     case Missing(value: Int)
 
 fn other() Other: Other.Missing(1)

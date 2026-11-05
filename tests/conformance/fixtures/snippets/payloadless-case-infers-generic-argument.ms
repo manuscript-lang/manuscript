@@ -3,7 +3,7 @@
 // conform: origin=thread/type-checker-bug-bash
 import stdout from "@std/io/io.ms"
 
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Dot
 

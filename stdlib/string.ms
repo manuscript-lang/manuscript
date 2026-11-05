@@ -27,7 +27,7 @@ impl StringAffixCuts for String:
         return none
 
 // The four Unicode normalization forms, selected without runtime string spelling errors.
-export type NormalizationForm:
+export enum NormalizationForm:
     // Canonical decomposition followed by canonical recomposition where Unicode permits it.
     case Nfc
     // Canonical decomposition with combining marks placed in canonical order.

@@ -42,7 +42,7 @@ fn a_match_over_many_cases_checks_in_linear_time() {
     // Naming a case used to substitute the type arguments of every case of the alternative, so
     // each arm cost the number of cases: 4000 arms took 1.2 s and 16 000 about 20 s.
     let cases = 8_000;
-    let mut source = String::from("type E:\n");
+    let mut source = String::from("enum E:\n");
     for i in 0..cases {
         source.push_str(&format!("    case C{i}(x: Int)\n"));
     }

@@ -12,7 +12,7 @@ type Counter:
 type Box[T]:
     item: T
 
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Square(s: Int)
 

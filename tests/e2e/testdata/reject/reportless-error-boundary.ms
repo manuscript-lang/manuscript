@@ -1,7 +1,7 @@
-type DomainError:
+enum DomainError:
     case Invalid
 
-type OtherError:
+enum OtherError:
     case Rejected
 
 fn domain_failure() Int!DomainError:

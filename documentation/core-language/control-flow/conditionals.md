@@ -107,4 +107,4 @@ fn nonnegative(value: Int) Bool:
 
 ## Bindings after a branch
 
-To select a value for use after the conditional, initialize an outer `var` and assign it in the branches. See [bindings](../basics/bindings.md). Use [pattern matching](pattern-matching.md) to branch on the case of an alternative.
+To select a value for use after the conditional, initialize an outer `var` and assign it in the branches. See [bindings](../basics/bindings.md). Use [pattern matching](pattern-matching.md) to branch on the case of an enum.

@@ -56,7 +56,7 @@ type Box[T]:
 type Box_Int:
     value: String
 
-type Shape:
+enum Shape:
     case Circle(radius: Int)
     case Square(side: Int)
 

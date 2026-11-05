@@ -2,7 +2,7 @@
 // expect-mir: "switch"
 // expect-mir: "closure.new"
 
-type Shape:
+enum Shape:
     case Circle(radius: Int)
     case Dot
 

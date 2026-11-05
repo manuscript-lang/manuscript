@@ -15,7 +15,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Record](core-language/types/records.md) | A value with named fields, such as a customer with a name and email. |
 | [Opaque type](core-language/types/records.md#opaque-types) | A type whose fields stay hidden outside the file that declares it; other files use the functions it exports. |
 | [Nominal type](core-language/types/records.md) | A type identified by its declaration. Two records with identical fields can still be different types. |
-| [Alternative](core-language/types/alternatives.md) | A type with a fixed set of cases. A value is one case at a time and may carry that case's data. |
+| [Enum (alternative)](core-language/types/alternatives.md) | A nominal tagged union declared with `enum`, with a fixed set of cases. A value is one case at a time and may carry that case's data. |
 | [Contract / interface](core-language/types/contracts.md) | A declared set of operations an implementation must provide. |
 | [Generic parameter](core-language/types/generics.md) | A placeholder for a type, such as `T` in `List[T]`. |
 | [Bound](core-language/types/generics.md) | A requirement on a type parameter, such as supporting comparison or supplying a particular operation. |

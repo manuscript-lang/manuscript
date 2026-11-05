@@ -65,7 +65,7 @@ Field writes keep the declared type; the receiver evaluates once, before the new
 
 `.clone()` is a deep copy of nested records and collections; changing a clone never affects the original. Resource handles are never copied.
 
-Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value: it owns its captures and has one owner. A record, alternative or collection that holds a resource or a function value is not `Clonable`, so it has no `.clone()` and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
+Records, enums, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value: it owns its captures and has one owner. A record, enum or collection that holds a resource or a function value is not `Clonable`, so it has no `.clone()` and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
 
 ## Moving a field out
 
@@ -142,13 +142,13 @@ Exporting a record exports its constructor and every field; there are no per-fie
 
 ## Recursive data
 
-Records and alternatives may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
+Records and enums may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
-type Expr:
+enum Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
@@ -188,7 +188,7 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 
 ## Opaque types
 
-`export opaque type Approved:` hides the fields of a record, or the cases of an alternative, outside the file that declares it. The module exports functions and methods that build and read the value; every other file can hold, pass, copy, and clone it, and call its methods.
+`export opaque type Approved:` hides record fields outside the declaring file; `export opaque enum Choice:` hides enum cases in the same way. The module exports functions and methods that build and read the value; every other file can hold, pass, copy, and clone it, and call its methods.
 
 ```text
 # gate.ms
@@ -212,4 +212,4 @@ Opaque is visibility, not ownership: an opaque value can still be copied and clo
 
 A record holding a resource neither closes it nor extends its lifetime; cleanup follows [resource scopes](../cleanup/scopes.md). Copying does not duplicate native services.
 
-Use [alternatives](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).
+Use [enums](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).

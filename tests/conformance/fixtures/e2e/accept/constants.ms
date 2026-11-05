@@ -29,7 +29,7 @@ test "a local binding shadows a constant":
     let LIMIT = 3
     try expect_equal(LIMIT, 3)
 
-type Phase:
+enum Phase:
     case Idle
     case Active(count: Int)
 

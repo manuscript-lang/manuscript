@@ -46,7 +46,7 @@ export fn unpack(
 
 // Selects a supported archive format without a runtime string spelling check.
 // Existing pack/unpack format: String calls remain available.
-export type ArchiveFormat:
+export enum ArchiveFormat:
     case Zip  // ZIP files and directories.
     case Tar  // TAR files and directories.
 
@@ -80,7 +80,7 @@ export fn decompress(data: Bytes, format: String, max_bytes: Int?) Bytes!:
 
 // Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
 // Existing compress/decompress format: String calls remain available.
-export type CompressionFormat:
+export enum CompressionFormat:
     case Gzip  // DEFLATE data wrapped in GZIP headers and a checksum trailer.
     case Zlib  // DEFLATE data with ZLIB header and Adler-32 checksum framing.
     case Deflate  // Raw DEFLATE without framing.

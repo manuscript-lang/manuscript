@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 
-type DivideError:
+enum DivideError:
     case DivideByZero
     case Overflow
 

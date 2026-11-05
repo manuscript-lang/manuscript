@@ -1,6 +1,6 @@
 import expect_equal from "@std/test/test.ms"
 
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Rect(w: Int, h: Int)
     case Dot

@@ -6,7 +6,7 @@ import expect_equal from "@std/test/test.ms"
 type Items:
     count: Int
 
-type Outcome:
+enum Outcome:
     case Value(value: Int)
 
 fn compute(value: Int) Int:

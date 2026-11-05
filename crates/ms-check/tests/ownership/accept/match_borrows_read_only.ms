@@ -1,4 +1,4 @@
-type Tree:
+enum Tree:
     case Leaf
     case Node(left: Tree, value: Int)
 

@@ -30,7 +30,7 @@ if let user = doc.get("user"):
 
 `get_in` reads a chain of object members in one call and lends the result: `doc.get_in(["user", "name"])`.
 */
-export type JsonValue:
+export enum JsonValue:
     // JSON null, represented without a payload value.
     case Null
     // A JSON true or false value.
@@ -179,7 +179,7 @@ encoding round-trips. This implementation writes an internal `type` discriminato
 protocol shape:
 
 ```manuscript
-type Event:
+enum Event:
     case Created(id: Int)
     case Deleted(id: Int)
 

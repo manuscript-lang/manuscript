@@ -7,7 +7,7 @@ type Person:
     name: String
     age: Int
 
-type Outcome:
+enum Outcome:
     case Ready(value: Person)
     case Waiting
 

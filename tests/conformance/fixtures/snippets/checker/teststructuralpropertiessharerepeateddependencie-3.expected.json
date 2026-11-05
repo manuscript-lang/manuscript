@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it",
+        "message": "unknown type Layer32; declare it with 'type Layer32:' / 'enum Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it",
         "position": {
           "file": "teststructuralpropertiessharerepeateddependencie-3.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/teststructuralpropertiessharerepeateddependencie-3.ms:4:16: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n   |\n 4 | fn hash(value: Layer32) Int: return value.hash()\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/teststructuralpropertiessharerepeateddependencie-3.ms:4:16: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'enum Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n   |\n 4 | fn hash(value: Layer32) Int: return value.hash()\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

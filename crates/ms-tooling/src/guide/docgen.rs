@@ -12,7 +12,7 @@ fn declaration_kind(kind: &str) -> &str {
         "fn" => "Function",
         "constant" => "Constant",
         "record" => "Record",
-        "alternative" => "Alternative",
+        "alternative" => "Enum",
         "interface" => "Interface",
         "type" => "Type",
         "native" => "Native type",

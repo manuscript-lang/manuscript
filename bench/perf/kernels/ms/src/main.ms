@@ -15,7 +15,7 @@ type Grid:
     height: Int
     cells: List[Int]
 
-type Tree:
+enum Tree:
     case Leaf
     case Node(left: Tree, right: Tree)
 

@@ -1,4 +1,4 @@
-export opaque type Token:
+export opaque enum Token:
     case Minted
     case Labeled(text: String)
 

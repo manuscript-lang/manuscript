@@ -32,7 +32,7 @@ interface Hashable:
 - `Bool`, `Int`, `Decimal`, `String`, `Bytes`, `Unit`, `Duration`, and `Instant` are built-in `Equal` and `Hashable`; `Never` vacuously is.
 - Float has IEEE equality (NaN is unequal, `0.0 == -0.0`) and no hashing.
 - Strings compare exact Unicode scalars, without normalization. Decimal compares numeric value. Instants must share a clock domain.
-- Records, alternatives, Optional, and Result compare nominal type and all components, and satisfy each interface when all components do.
+- Records, enums, Optional, and Result compare nominal type and all components, and satisfy each interface when all components do.
 
 | Collection | Equality | Hashing |
 | --- | --- | --- |

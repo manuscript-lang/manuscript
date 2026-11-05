@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected ':', found '!'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body",
+        "message": "expected ':', found '!'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body",
         "position": {
           "file": "testcoreparityrejectsinvalidcontracts-4-fmt.ms",
           "line": 4,

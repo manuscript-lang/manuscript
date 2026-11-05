@@ -60,7 +60,7 @@ An `Error` fits most code. Use your own type as `E` when callers need typed payl
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
-type DiscountError:
+enum DiscountError:
     case InvalidPrice
     case InvalidPercent
 

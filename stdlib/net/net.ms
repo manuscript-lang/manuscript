@@ -272,7 +272,7 @@ fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
     )
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
-export type DnsKind:
+export enum DnsKind:
     case A  // IPv4 address records for the queried name.
     case AAAA  // IPv6 address records for the queried name.
     case CNAME  // Canonical name alias records for the queried name.
@@ -296,7 +296,7 @@ impl DnsKind:
             SRV: return "SRV"
 
 // Numeric address families reported by IP values and host interfaces.
-export type IpFamily:
+export enum IpFamily:
     case IPv4  // A four-byte numeric address.
     case IPv6  // A sixteen-byte numeric address.
 
@@ -671,7 +671,7 @@ export type RawWebSocket:
     native: NativeWebSocket
 
 // The kind of a WebSocket message.
-export type WebSocketKind:
+export enum WebSocketKind:
     case Text  // A text frame: the payload is valid UTF-8.
     case Binary  // A binary frame: the payload is arbitrary bytes.
     case Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.

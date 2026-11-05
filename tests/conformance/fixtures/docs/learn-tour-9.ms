@@ -1,7 +1,7 @@
 // conform: tags=alternatives,control-flow,diagnostics,records,tier-core,try-result
 // conform: phase=check
 // conform: origin=documentation/learn/tour.md:172
-type QuantityError:
+enum QuantityError:
     case MustBePositive
 
 fn quantity(value: Int) Result[Int, QuantityError]:

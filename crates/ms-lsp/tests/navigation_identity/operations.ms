@@ -12,7 +12,7 @@ impl Named for Sample:
     fn label() String:
         return "sample"
 
-export type Shape:
+export enum Shape:
     case Number(value: Int)
     case Empty
 

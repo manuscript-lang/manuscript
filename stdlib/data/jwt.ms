@@ -15,7 +15,7 @@ import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
 
 // Selects how a token is signed. A verifier names the one it accepts; it never trusts the algorithm a token claims.
-export type JwtAlgorithm:
+export enum JwtAlgorithm:
     // HMAC with SHA-256 and a shared secret of any length (use at least 32 random bytes).
     case Hs256
     // HMAC with SHA-384 and a shared secret.

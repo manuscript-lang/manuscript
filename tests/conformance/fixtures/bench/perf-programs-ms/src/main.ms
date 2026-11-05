@@ -13,7 +13,7 @@ impl Counter for Acc:
         self.total += by
         return self.total
 
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Square(s: Int)
     case Tri(b: Int)

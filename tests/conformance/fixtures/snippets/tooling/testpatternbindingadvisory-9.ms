@@ -1,7 +1,7 @@
 // conform: tags=alternatives,diagnostics,match,optional,records,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/pattern_lint_test.go:31 TestPatternBindingAdvisory
-type Flag:
+enum Flag:
     case Ready
 
 fn use(value: Int?) Int:

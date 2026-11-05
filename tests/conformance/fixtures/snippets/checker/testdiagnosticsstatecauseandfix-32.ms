@@ -1,7 +1,7 @@
 // conform: tags=alternatives,diagnostics,generics,match,optional,records,tier-core
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:51 TestDiagnosticsStateCauseAndFix
-type Choice[T]:
+enum Choice[T]:
     case Found(value: T)
     case Missing
 

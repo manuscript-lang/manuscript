@@ -16,7 +16,7 @@ let missing: String? = none
 
 A parameter or record field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
 
-`T?` is an invariant alternative. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
+`T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
 
 ```manuscript
 let explicit: String? = none
@@ -40,7 +40,7 @@ fn main() Unit:
     var _unbounded = Queue[Int]()
 ```
 
-- Applies to functions, methods, function values, constructor fields, and alternative payloads.
+- Applies to functions, methods, function values, constructor fields, and enum payloads.
 - Wraps exactly one layer: an `Int?` fits `Int??`, a bare `Int` does not.
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.

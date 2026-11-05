@@ -3,10 +3,10 @@
 // conform: origin=ms_abi.h signature table
 extern type Handle
 
-type Wrong:
+enum Wrong:
     case Detail(reason: String)
 
-type Fine:
+enum Fine:
     case Failed(code: Int, message: String)
 
 extern fn takes_map(values: Map[String, Int]) Unit

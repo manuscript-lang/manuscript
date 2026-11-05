@@ -20,7 +20,7 @@ impl Read[Int] for Holder[T]:
     fn get() Int:
         return self.value.get()
 
-export type Choice:
+export enum Choice:
     case Some(value: Int)
     case Empty
 

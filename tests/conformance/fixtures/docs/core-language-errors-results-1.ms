@@ -3,7 +3,7 @@
 // conform: origin=documentation/core-language/errors/results.md:14
 import Decimal from "@std/math/decimal.ms"
 
-type DiscountError:
+enum DiscountError:
     case InvalidPrice
     case InvalidPercent
 

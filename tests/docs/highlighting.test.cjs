@@ -166,3 +166,10 @@ test('every authored Manuscript fence preserves its exact source text', () => {
   }
   assert.ok(fences > 100, 'Discover the current authored examples');
 });
+
+// Lowercase enum names and opaque headers exercise declaration rules independently of capitalization.
+test('enum declarations and opaque enum headers are highlighted', () => {
+  assertScopes('export opaque enum outcome[T]:\n    case Ready\n    case Value(value: T)\n', [
+    ['export', 'k'], ['opaque', 'k'], ['enum', 'k'], ['outcome', 'nc'], ['case', 'k'], ['Ready', 'nc'],
+  ]);
+});

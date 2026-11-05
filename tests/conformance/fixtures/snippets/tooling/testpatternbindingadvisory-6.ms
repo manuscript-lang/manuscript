@@ -1,7 +1,7 @@
 // conform: tags=alternatives,control-flow,diagnostics,generics,interfaces,match,records,strings,tier-core,try-result
 // conform: phase=check
 // conform: origin=pkg/tooling/pattern_lint_test.go:28 TestPatternBindingAdvisory
-type Failure[T]:
+enum Failure[T]:
     case NotFound
     case Denied(reason: T)
 

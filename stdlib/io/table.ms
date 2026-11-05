@@ -4,7 +4,7 @@ import msstd_table_cell_width from "@std/internal/table.ms"
 
 // Horizontal placement of a cell within its column's measured display width.
 // Example: `format([["name", "count"], ["tea", "2"]], [Alignment.Left, Alignment.Right])`.
-export type Alignment:
+export enum Alignment:
     case Left  // Places unused column space after the cell.
     case Right  // Places unused column space before the cell.
     case Center  // Splits unused space, putting an odd extra space after the cell.

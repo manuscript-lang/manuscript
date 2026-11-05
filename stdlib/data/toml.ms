@@ -5,7 +5,7 @@ import Bytes from "@std/bytes.ms"
 import log, sqrt from "@std/math/math.ms"
 
 // A TOML value. Date and time values retain their original TOML text.
-export type TomlValue:
+export enum TomlValue:
     // Text decoded from TOML basic or literal string syntax.
     case StringValue(
         // Unicode contents after the applicable escapes and multiline rules.
@@ -70,7 +70,7 @@ type Table:
 
 // Tables are stored in the reader and referenced by index, so a parent can name a child that
 // later keys keep extending without two copies of the same table.
-type Node:
+enum Node:
     case Leaf(value: TomlValue)
     case TableNode(id: Int)
     case ArrayNode(values: List[Node])

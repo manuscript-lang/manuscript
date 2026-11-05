@@ -313,3 +313,36 @@ fn common_mistakes_stay_short() {
         mistakes().len()
     );
 }
+
+#[test]
+fn enum_reference_declarations_keep_methods_in_impl_blocks() {
+    let syms = ms_syntax::Names::global();
+    let mut seen = 0;
+    for module in standard_library(syms) {
+        for declaration in &module.declarations {
+            if declaration.kind != "alternative" {
+                continue;
+            }
+            seen += 1;
+            assert!(
+                declaration.declaration.starts_with("enum "),
+                "{}",
+                declaration.declaration
+            );
+            // Reference method signatures omit bodies. The enum schema must
+            // parse on its own, and methods must follow in a separate impl.
+            let schema = declaration.declaration.split("\nimpl ").next().unwrap();
+            let parsed = ms_syntax::parser::parse(&Arc::from("reference.ms"), schema);
+            assert!(parsed.is_ok(), "{schema}: {parsed:?}");
+            assert!(!schema.contains("    fn ") && !schema.contains("    var fn "));
+            if !declaration.members.is_empty() && declaration.declaration.contains("    fn ") {
+                assert!(
+                    declaration.declaration.contains("\nimpl "),
+                    "{}",
+                    declaration.declaration
+                );
+            }
+        }
+    }
+    assert!(seen > 5);
+}

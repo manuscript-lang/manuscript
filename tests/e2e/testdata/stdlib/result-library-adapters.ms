@@ -2,7 +2,7 @@ import Bytes from "@std/bytes.ms"
 import Duration, parse_duration from "@std/os/time.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
-type InputFailure:
+enum InputFailure:
     case Binary(cause: Error)
     case Time(cause: Error)
     case MissingPrefix

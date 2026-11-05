@@ -2,7 +2,7 @@ import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import assert_error, assert_ok from "@std/test/test.ms"
 import expect_contains, expect_true from "@std/test/test.ms"
 
-type ValidationError:
+enum ValidationError:
     case BelowMinimum(actual: Int, minimum: Int)
 
 fn checked(value: Int) Int!ValidationError:

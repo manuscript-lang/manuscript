@@ -19,7 +19,7 @@ fn apply(transform: fn(Int) Int) Int:
 type Box:
     value: Int
 
-type Choice:
+enum Choice:
     case Payload(value: Int)
 
 interface Read:

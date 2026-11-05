@@ -1336,6 +1336,7 @@ impl Scanner<'_> {
                     | Tok::While
                     | Tok::Match
                     | Tok::Type
+                    | Tok::Enum
                     | Tok::Impl
                     | Tok::Test
                     | Tok::Interface

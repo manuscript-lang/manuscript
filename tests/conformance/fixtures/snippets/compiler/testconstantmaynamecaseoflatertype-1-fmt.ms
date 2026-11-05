@@ -3,7 +3,7 @@
 // conform: origin=pkg/compiler/constant_before_type_test.go:8 TestConstantMayNameCaseOfLaterType
 let initial = Mode.Idle
 
-type Mode:
+enum Mode:
     case Idle
     case Busy
 

@@ -4,7 +4,7 @@
 interface Describe:
     fn describe() String
 
-type State:
+enum State:
     case Ready
     case Waiting
 

@@ -1,8 +1,8 @@
-export type Choice[T]:
+export enum Choice[T]:
     case Value(value: T)
     case Empty
 
-type Other:
+enum Other:
     case Value(value: Int)
     case Empty
 

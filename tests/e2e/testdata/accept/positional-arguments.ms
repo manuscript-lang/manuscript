@@ -31,7 +31,7 @@ type Record[T]:
     first: T
     second: T = first
 
-type Choice[T]:
+enum Choice[T]:
     case Pair(first: T, second: T)
 
 interface Subtract:

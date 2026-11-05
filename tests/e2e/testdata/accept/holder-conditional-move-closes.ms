@@ -85,7 +85,7 @@ fn block_wrap(log: String) Unit:
     if made.length() == 0:
         return
 
-type Shape:
+enum Shape:
     case Circle(door: Door)
     case Empty
 

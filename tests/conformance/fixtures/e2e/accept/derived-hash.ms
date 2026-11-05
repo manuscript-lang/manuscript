@@ -8,7 +8,7 @@ type P:
     x: Int
     name: String
 
-type Shape:
+enum Shape:
     case Dot(x: Int)
     case Line(a: Int, b: Int?)
 

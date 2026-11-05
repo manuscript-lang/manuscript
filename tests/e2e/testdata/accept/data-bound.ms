@@ -14,7 +14,7 @@ impl JsonEncode for Money:
     fn to_json() JsonValue:
         return JsonValue.StringValue("usd:{self.cents}")
 
-type Mode:
+enum Mode:
     case Fast
     case Slow
 

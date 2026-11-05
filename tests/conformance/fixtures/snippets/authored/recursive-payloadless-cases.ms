@@ -3,12 +3,12 @@
 // conform: origin=perf: payloadless cases of recursive alternatives share one block
 import expect_equal from "@std/test/test.ms"
 
-type Tree:
+enum Tree:
     case Leaf
     case Gap
     case Node(left: Tree, right: Tree)
 
-type Chain:
+enum Chain:
     case End
     case Link(value: Int, rest: Chain)
 

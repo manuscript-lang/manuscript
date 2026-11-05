@@ -1,6 +1,6 @@
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-type Shape:
+enum Shape:
     case Circle(radius: Float)
 
 type Point:

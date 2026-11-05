@@ -1,7 +1,7 @@
 // conform: tags=alternatives,closures,formatter,generics,interfaces,optional,parser,records,tier-core,try-result
 // conform: phase=parse
 // conform: origin=pkg/checker/documentation_test.go:89 TestDocumentationUsesManuscriptDeclarations
-type Optional[T]:
+enum Optional[T]:
     case T
     case none
 

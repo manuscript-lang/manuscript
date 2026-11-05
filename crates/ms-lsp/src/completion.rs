@@ -592,6 +592,7 @@ impl Completer<'_> {
                 words = vec![
                     "fn",
                     "type",
+                    "enum",
                     "interface",
                     "impl",
                     "import",
@@ -720,6 +721,7 @@ fn keyword_template(word: &str) -> Option<&'static str> {
         "interface" => "interface ${1:Name}:\n    ${0:fn operation() Unit}",
         "fn" => "fn ${1:name}(${2}) ${3:Unit}:\n    ${0:return unit}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
+        "enum" => "enum ${1:Name}:\n    case ${0:Ready}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
         "test" => "test \"${1:name}\":\n    ${0:return unit}",
@@ -1181,7 +1183,10 @@ fn signature_arguments(d: &Document, c: &mut CursorContext) -> Vec<Option<String
         let at = open + 1 + token.start;
         if at > c.offset
             && d.text.as_bytes().get(at - 1) == Some(&b'\n')
-            && matches!(token.text, "fn" | "export" | "type" | "test" | "import")
+            && matches!(
+                token.text,
+                "fn" | "export" | "type" | "enum" | "test" | "import"
+            )
         {
             break;
         }

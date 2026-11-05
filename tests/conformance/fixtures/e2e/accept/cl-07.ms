@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/cl-07.ms
 import expect_equal from "@std/test/test.ms"
 
-type Outcome:
+enum Outcome:
     case Ready(value: Int)
     case Failed(reason: String)
 

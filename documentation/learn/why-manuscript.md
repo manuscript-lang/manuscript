@@ -9,7 +9,7 @@ Manuscript is designed for agents to write and people to understand. Its small l
 
 ## Read the code, ship the executable {#familiar-to-read-native-to-run}
 
-Static types catch mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every alternative, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
+Static types catch mismatched data and calls before execution. `Result` makes expected failures visible, exhaustive `match` checks every enum, and ownership tells you where a value can change or move. In review, `var` marks mutation and `.clone()` marks an explicit copy.
 
 The same `ms` command checks, formats, tests and builds your project. Debug builds use Cranelift for the edit-run loop; release builds use LLVM when available and otherwise fall back to Cranelift. Set `MS_BACKEND=cranelift` to keep builds on Cranelift. The executable runs without Manuscript installed. On Linux it needs glibc 2.28 or newer; `--static` produces a musl executable. See [build levels](../developer-tooling/builds/build-levels.md).
 
@@ -27,7 +27,7 @@ Cancellation happens only at a `wait`, and a fault ends only the promise it happ
 
 ## Ownership you can follow
 
-Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Functions can return borrowed parts of arguments, including through `Optional` or `Result`; `try` preserves the active case's ownership instead of copying its payload. The owner must remain available while the returned borrow is used.
+Records, lists, maps, strings and enums are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it. Functions can return borrowed parts of arguments, including through `Optional` or `Result`; `try` preserves the active case's ownership instead of copying its payload. The owner must remain available while the returned borrow is used.
 
 See [references and borrowing](../core-language/types/references.md) for the exact rules, including how long a returned borrow remains valid. Bind files and connections in the [scope that needs them](../core-language/cleanup/scopes.md) so they close on exit, and flush fallible writes before closing to observe errors.
 

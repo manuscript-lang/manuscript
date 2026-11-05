@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/control-flow/pattern-matching.md:36
 
-type Cents:
+enum Cents:
     case Valid(amount: Int)
     case Invalid
 

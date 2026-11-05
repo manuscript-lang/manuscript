@@ -34,7 +34,7 @@ call functions or run code, and `max_output` bounds the result.
 */
 
 // A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
-export opaque type TemplateExpr:
+export opaque enum TemplateExpr:
     // A literal string, number, boolean or null written in the template.
     case Literal(
         // The literal as a JSON value.
@@ -68,7 +68,7 @@ export opaque type TemplateBranch:
     body: List[TemplateNode]
 
 // A parsed template node: text, a printed value, a conditional, a loop or an include. Internal to the engine.
-export opaque type TemplateNode:
+export opaque enum TemplateNode:
     // Literal text copied to the output.
     case Text(
         // The text between actions, after trim markers.

@@ -7,7 +7,7 @@ impl Closeable for Res:
     var fn close() Unit!:
         return ok(unit)
 
-type Holder:
+enum Holder:
     case Has(r: Res)
     case Empty
 

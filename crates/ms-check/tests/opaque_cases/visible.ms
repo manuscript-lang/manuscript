@@ -1,6 +1,6 @@
 import Token from "./gate.ms"
 
-export type Visible:
+export enum Visible:
     case Minted
     case Labeled(value: Int)
 

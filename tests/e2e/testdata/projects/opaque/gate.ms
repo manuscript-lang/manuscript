@@ -5,7 +5,7 @@ export opaque type Approved:
 export opaque type Counter:
     count: Int
 
-export opaque type Mode:
+export opaque enum Mode:
     case Safe
     case Wild(level: Int)
 

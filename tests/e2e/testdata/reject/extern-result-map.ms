@@ -1,4 +1,4 @@
-type ReadError:
+enum ReadError:
     case Missing
 
 extern fn read_values() Map[String, Int]!ReadError

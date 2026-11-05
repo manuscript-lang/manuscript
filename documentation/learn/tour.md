@@ -142,7 +142,7 @@ type Todo:
     title: String
     completed: Bool = false
 
-type Status:
+enum Status:
     case Draft
     case Published(url: String)
 
@@ -165,13 +165,13 @@ test "publish a help page":
 ```
 
 - Records group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
-- Alternatives list cases; `match` must handle every case.
+- Enums list cases; `match` must handle every case.
 - Types are nominal: identical fields do not make two types equal.
 
 ## Expected errors
 
 ```manuscript
-type QuantityError:
+enum QuantityError:
     case MustBePositive
 
 fn quantity(value: Int) Result[Int, QuantityError]:

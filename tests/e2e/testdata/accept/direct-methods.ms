@@ -3,7 +3,7 @@ import expect_equal from "@std/test/test.ms"
 type Counter:
     n: Int
 
-type Shape:
+enum Shape:
     case Circle(r: Int)
     case Square(side: Int)
 

@@ -29,7 +29,7 @@ type Nested:
     pair: Pair
     all: List[Tracked]
 
-type Slot:
+enum Slot:
     case Empty
     case Full(item: Tracked)
     case Both(left: Tracked, right: Tracked)

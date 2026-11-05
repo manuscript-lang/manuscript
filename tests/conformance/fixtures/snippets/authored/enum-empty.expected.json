@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "an enum must declare at least one case; replace '...' with 'case Name' or 'case Name(field: Type)'",
+        "position": {
+          "file": "enum-empty.ms",
+          "line": 3,
+          "column": 13,
+          "offset": 95
+        },
+        "end": {
+          "file": "enum-empty.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 98
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/enum-empty.ms:3:13: parse: an enum must declare at least one case; replace '...' with 'case Name' or 'case Name(field: Type)'\n   |\n 3 | enum Wrong: ...\n   |             ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 export type Point:
     x: Int
 
-export type Mode:
+export enum Mode:
     case Off
     case On
 
