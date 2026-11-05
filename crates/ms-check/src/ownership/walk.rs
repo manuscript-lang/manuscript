@@ -182,6 +182,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         borrowed_return: None,
         wrap_returns: Vec::new(),
         plain_borrowed: false,
+        plain_result_borrowed: false,
+        close_error_return: false,
         borrowed_cases: 0,
         owned_cases: 0,
         ret_ctors: Vec::new(),
@@ -307,9 +309,13 @@ struct Walker<'a> {
     borrowed_return: Option<Pos>,
     /// Returned references that are wrappers (`x?`, `ok(x)`, the error of a `try`): beside an
     /// owned path they become new values again instead of an error.
-    wrap_returns: Vec<NodeId>,
+    wrap_returns: Vec<(NodeId, u8)>,
     /// Some returned reference is the part itself, not a wrapper of it.
     plain_borrowed: bool,
+    /// A whole Result returned as a reference, rather than a source-level wrapper.
+    plain_result_borrowed: bool,
+    /// Cleanup contributes an owned Error outcome not written as a source return.
+    close_error_return: bool,
     /// `Result` cases (`BORROWED_OK`, `BORROWED_ERROR`, or 4 for another shape) the returned wrappers lend,
     /// and the cases the owned returns build (7 when unknown).
     borrowed_cases: u8,
@@ -599,7 +605,7 @@ impl Walker<'_> {
                 self.borrowed_return.get_or_insert(e.pos);
                 if wrapped {
                     self.facts.view_wraps.insert(e.id);
-                    self.wrap_returns.push(e.id);
+                    self.wrap_returns.push((e.id, self.wrap_case(e)));
                     self.borrowed_cases |= self.wrap_case(e);
                     // A part that cannot be copied is moved out once the borrow is withdrawn
                     // (`moves_withdrawn_borrow`), which a caller's temporary source needs.
@@ -611,6 +617,14 @@ impl Walker<'_> {
                     if self.result_case(e).is_some() {
                         self.ret_ctors.push(e.id);
                     }
+                } else if self.cx.m.ty(e).is(Builtin::Result) && self.result_is_result() {
+                    // A whole Result reference lends both payload cases. If cleanup adds an
+                    // owned error path, only the overlapping cases need boundary normalization.
+                    self.borrowed_cases |= BORROWED_OK | BORROWED_ERROR;
+                    self.plain_borrowed = true;
+                    self.plain_result_borrowed = true;
+                    self.borrow_not_clonable |=
+                        !self.cx.classes.clonable(self.syms, &self.cx.m.ty(e));
                 } else if !self.list_get(e) {
                     // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
                     // element is copied out; any other reference has no owned form.
@@ -827,7 +841,11 @@ impl Walker<'_> {
     /// A scope close can return a fresh Error even when every written return borrows.
     /// An error type variable can instantiate Error; incompatible concrete errors fault.
     fn implicit_close_return(&mut self) {
-        if self.facts.implicit_closes.is_empty() {
+        if !self.facts.implicit_closes.iter().any(|uid| {
+            self.meta
+                .get(uid)
+                .is_some_and(|m| self.close_returns_error(&m.binding.ty))
+        }) {
             return;
         }
         let result = match (self.cx.c.func.method(), self.cx.c.func.func()) {
@@ -842,7 +860,51 @@ impl Walker<'_> {
                     .is_some_and(|e| e.is(Builtin::Error) || e.kind == Kind::Variable)
         }) {
             self.owned_cases |= BORROWED_ERROR;
+            self.close_error_return = true;
         }
+    }
+
+    /// Direct closes can return Error. A generated holder close returns Unit and faults on
+    /// failed parts, so it contributes no owned Result.error path to this callable.
+    fn close_returns_error(&self, ty: &Ty) -> bool {
+        if ty.kind == Kind::Variable {
+            return true;
+        }
+        if ty.kind == Kind::Contract {
+            return ty.def.as_ref().is_some_and(|d| {
+                let s = substitution(ty);
+                d.operations.borrow().iter().any(|op| {
+                    op.name == n("close")
+                        && is_close_result(self.syms, &sub(&op.ty, &s).result_ty())
+                })
+            });
+        }
+        if !self.cx.classes.closes_itself(ty) {
+            return false;
+        }
+        let resource = |t: &Ty| self.cx.classes.class(self.syms, t) == Class::Resource;
+        if ty.kind == Kind::Record && fields(ty).iter().any(|f| resource(&f.ty)) {
+            return false;
+        }
+        if ty.kind == Kind::Alternative
+            && ty.def.as_ref().is_some_and(|d| {
+                let s = substitution(ty);
+                d.cases
+                    .borrow()
+                    .iter()
+                    .any(|c| c.fields.iter().any(|f| resource(&sub(&f.ty, &s))))
+            })
+        {
+            return false;
+        }
+        let held = if ty.is(Builtin::List) || ty.is(Builtin::Optional) {
+            ty.args.first()
+        } else if ty.is(Builtin::Map) {
+            ty.args.get(1)
+        } else {
+            None
+        };
+        !held.is_some_and(resource)
     }
 
     fn result_is_interface(&self) -> bool {
@@ -876,12 +938,17 @@ impl Walker<'_> {
     /// Reports a function that returns a reference on one path and an owned value on another:
     /// the caller could not tell whether to hold or drop the result.
     fn mixed_returns(&mut self) {
+        // A source-level whole-reference/new-value mix keeps its existing diagnostic.
+        // Only the hidden close outcome requires adapting an otherwise borrowing Result.
+        if self.plain_result_borrowed && self.close_error_return && self.owned_return.is_none() {
+            self.plain_borrowed = false;
+        }
         if self.view_return {
             // Every path of a view returner returns an owned value. A plain reference to an
             // interface value is handed on as a view that owns nothing; a wrapper of a part
             // becomes a new value of its own, as beside an owned path; any other plain
             // reference has no owned form.
-            for n in std::mem::take(&mut self.wrap_returns) {
+            for (n, _) in std::mem::take(&mut self.wrap_returns) {
                 self.facts.view_wraps.remove(&n);
             }
             if self.plain_borrowed && !self.result_is_interface() {
@@ -911,17 +978,22 @@ impl Walker<'_> {
         if !self.plain_borrowed {
             // The borrowed cases of a `Result` stay references when no owned path builds the same
             // case: the caller drops only the cases the function owns.
+            let mask = self.borrowed_cases & !self.owned_cases;
             if self.borrowed_cases & 4 == 0
                 && !self.borrow_not_clonable
-                && self.borrowed_cases != 0
-                && self.borrowed_cases & self.owned_cases == 0
+                && mask != 0
                 && self.result_is_result()
             {
-                self.borrowed_mask = self.borrowed_cases;
+                self.borrowed_mask = mask;
+                for &(node, case) in &self.wrap_returns {
+                    if case & mask == 0 {
+                        self.facts.view_wraps.remove(&node);
+                    }
+                }
                 return;
             }
             self.borrowed_return = None;
-            for n in std::mem::take(&mut self.wrap_returns) {
+            for (n, _) in std::mem::take(&mut self.wrap_returns) {
                 self.facts.view_wraps.remove(&n);
             }
             return;
@@ -1095,7 +1167,7 @@ impl Walker<'_> {
                 self.view_return = true;
             } else {
                 self.facts.view_wraps.insert(e.id);
-                self.wrap_returns.push(e.id);
+                self.wrap_returns.push((e.id, BORROWED_ERROR));
                 self.borrowed_cases |= BORROWED_ERROR;
                 if let Some(err) = self.cx.m.ty(operand).args.get(1)
                     && !self.cx.classes.clonable(self.syms, err)

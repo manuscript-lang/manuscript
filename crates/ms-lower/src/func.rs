@@ -1408,6 +1408,9 @@ impl<'a> FnLower<'a> {
     /// A forwarded Result may lend a case this function must own (an implicit close can
     /// return a fresh Error). Move owned cases and copy only newly-owned borrowed payloads.
     fn result_return(&mut self, x: Val) -> Val {
+        if self.b.func_mut().ret_borrowed {
+            return x;
+        }
         let (TyKind::Alt(src), TyKind::Alt(dst)) = (
             self.b.m.types.kind(self.ty_of(x.v)).clone(),
             self.b.m.types.kind(self.ret_ty).clone(),
@@ -1415,13 +1418,14 @@ impl<'a> FnLower<'a> {
             return x;
         };
         let (from, to) = (&self.b.m.alts[src.index()], &self.b.m.alts[dst.index()]);
-        if src == dst
-            || from.borrowed == to.borrowed
+        let available = if x.own { from.borrowed } else { 3 };
+        if (src == dst && (x.own || from.borrowed == 0))
+            || (x.own && from.borrowed == to.borrowed)
             || from.std != ms_mir::types::Std::Result
             || to.std != ms_mir::types::Std::Result
             || from.name != to.name
             || from.cases != to.cases
-            || to.borrowed & !from.borrowed != 0
+            || to.borrowed & !available != 0
         {
             return x;
         }

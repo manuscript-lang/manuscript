@@ -270,3 +270,104 @@ test "a consumed parameter closes on its retained path before borrowed success":
     try expect_equal(cause.kind, "ECLOSE")
     try expect_equal(payload, "still borrowed")
     try expect_equal(events(log), "close 1\n")
+
+fn whole_result(log: String, source: Int!, fail: Bool) Int!:
+    let _resource = Failing(log.clone(), 1, fail: fail)
+    return source
+
+type Holder:
+    resource: Failing
+
+fn holder_result[T](log: String, source: T!) T!:
+    let _holder = Holder(Failing(log.clone(), 1, fail: false))
+    return source
+
+fn overlapping(log: String, value: String, cause: Error, fail: Bool) String!:
+    let _resource = Failing(log.clone(), 1, fail: false)
+    if fail: return error(cause)
+
+    return ok(value)
+
+test "whole Result forwarding preserves the body error and caller source":
+    let dir = temporary("close-whole-error-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: Int! = error(
+        Error("whole body", kind: "EWHOLE", details: {"id": "whole"})
+    )
+    let cause = whole_result(log, original, true) | try expect_error
+    try expect_equal(cause.message, "whole body")
+    try expect_equal(cause.kind, "EWHOLE")
+    try expect_equal(cause.details["id"], "whole")
+
+    let source = original | try expect_error
+    try expect_equal(source.kind, "EWHOLE")
+    try expect_equal(events(log), "close 1\n")
+
+test "whole Result forwarding returns the first close error after success":
+    let dir = temporary("close-whole-success-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: Int! = ok(73)
+    let cause = whole_result(log, original, true) | try expect_error
+    try expect_equal(cause.kind, "ECLOSE")
+    try expect_equal(try original, 73)
+    try expect_equal(events(log), "close 1\n")
+
+test "holder cleanup does not withdraw a generic whole Result borrow":
+    let dir = temporary("close-holder-result-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("holder body", kind: "EHOLDER"))
+    let cause = holder_result(log, original) | try expect_error
+    try expect_equal(cause.message, "holder body")
+    try expect_equal(cause.kind, "EHOLDER")
+
+    let source = original | try expect_error
+    try expect_equal(source.kind, "EHOLDER")
+    try expect_equal(events(log), "close 1\n")
+
+test "overlapping borrowed errors normalize without copying borrowed success":
+    let dir = temporary("close-overlapping-") | try expect_ok
+    let first = "{dir.path()}/first"
+    let second = "{dir.path()}/second"
+    let value = "borrowed success"
+    let original = Error("borrowed overlap", kind: "EOVERLAP")
+    try expect_equal(try overlapping(first, value, original, false), value)
+
+    let cause = overlapping(second, value, original, true) | try expect_error
+    try expect_equal(cause.kind, "EOVERLAP")
+    try expect_equal(original.message, "borrowed overlap")
+    try expect_equal(events(first), "close 1\n")
+    try expect_equal(events(second), "close 1\n")
+
+type OwnHolder:
+    resource: Failing
+
+impl Closeable for OwnHolder:
+    var fn close() Unit!:
+        return ok(unit)
+
+fn own_holder_result[T](log: String, source: T!) T!:
+    let _holder = OwnHolder(Failing(log.clone(), 1, fail: false))
+    return source
+
+fn generic_whole[T](log: String, source: T!) T!:
+    let _resource = Failing(log.clone(), 1, fail: false)
+    return source
+
+test "a holder with its own close still preserves a generic Result borrow":
+    let dir = temporary("close-own-holder-") | try expect_ok
+    let log = "{dir.path()}/events"
+    let original: String! = error(Error("own holder body", kind: "EOWNHOLDER"))
+    let cause = own_holder_result(log, original) | try expect_error
+    try expect_equal(cause.kind, "EOWNHOLDER")
+
+    let source = original | try expect_error
+    try expect_equal(source.message, "own holder body")
+    try expect_equal(events(log), "close 1\n")
+
+test "a generic propagating closer consumes its whole Result without a forbidden copy":
+    let dir = temporary("close-generic-whole-") | try expect_ok
+    let log = "{dir.path()}/events"
+    try expect_equal(
+        try generic_whole[String](log, ok("moved payload")), "moved payload"
+    )
+    try expect_equal(events(log), "close 1\n")
