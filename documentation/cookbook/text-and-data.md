@@ -73,7 +73,7 @@ Without a type, `parse` returns a `JsonValue` tree for unknown shapes.
 
 ## Read and write typed JSON
 
-Save as `config.ms`. Parse a record directly and serialize it back. Use strict encoding so a value with no JSON representation fails instead of being silently omitted.
+Save as `config.ms`. Parse into a type directly and serialize it back. Use strict encoding so a value with no JSON representation fails instead of being silently omitted.
 
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
@@ -109,4 +109,4 @@ ms run config.ms -- '{"name":"Sam"}'
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
 - Unknown members are ignored unless `ignore_unknown_fields: false`.
 - Write `parse[Config]` explicitly after `try`.
-- `stringify` writes fields in declaration order. `strict: true` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` record fields.
+- `stringify` writes fields in declaration order. `strict: true` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` fields.

@@ -1,6 +1,6 @@
 // conform: tags=alternatives,control-flow,faults,formatter,match,modules,parser,records,stdlib-faults,testing,tier-stdlib
 // conform: phase=parse
-// conform: origin=documentation/core-language/types/records.md:99
+// conform: origin=documentation/core-language/types/named-types.md:99
 import panic from "@std/core.ms"
 
 enum Expr:

@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "core-language-types-records-9.ms::recursive links",
+          "name": "core-language-types-named-types-9.ms::recursive links",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN core-language-types-records-9.ms::recursive links\nPASS core-language-types-records-9.ms::recursive links\n1 tests, 0 failed\n",
+      "stdout": "RUN core-language-types-named-types-9.ms::recursive links\nPASS core-language-types-named-types-9.ms::recursive links\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

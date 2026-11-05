@@ -5,7 +5,7 @@ weight = 4
 
 # Cleanup order
 
-On scope exit, cleanup closes inner resources before outer ones, and the bindings of one scope last declared first. A borrow registers no extra close. A record or collection that owns resources closes its owned parts; see [holder cleanup](closeable.md#records-and-collections-close-what-they-hold).
+On scope exit, cleanup closes inner resources before outer ones, and the bindings of one scope last declared first. A borrow registers no extra close. A type or collection that owns resources closes its owned parts; see [holder cleanup](closeable.md#types-and-collections-close-what-they-hold).
 
 1. Evaluate the pending return value or select the initiating error, fault, or cancellation.
 2. Call registered `close()` methods in reverse registration/nesting order.

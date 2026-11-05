@@ -27,13 +27,13 @@ A resource has one owner and is never copied implicitly. It is not `Clonable`, s
 
 A `Connection` has no `clone()`; its input and output streams own their respective ends. Temporary directories and raw terminal mode also have no `clone()`.
 
-## Records and collections close what they hold
+## Types and collections close what they hold
 
-A record, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in the order below. A part whose close fails faults, because the holder has no error to return.
+A type, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is itself a resource: it moves, it cannot be cloned, and when its scope ends without anything taking it, the compiler closes what it holds. The type's own `close`, if it has one, runs first; then its parts close in the order below. A part whose close fails faults, because the holder has no error to return.
 
 | Holder | Close order |
 | --- | --- |
-| Record | Fields, last declared first |
+| Type | Fields, last declared first |
 | Alternative | Fields of the active case, last declared first |
 | `Optional` | The payload, if present |
 | `List` | Elements, last index first |
@@ -41,7 +41,7 @@ A record, enum, `Optional`, `List` or `Map` that holds a `Closeable` value is it
 
 A `Map` iterates in insertion order, so its close order is the reverse of the order you added the entries; no order is unspecified. Nested holders close depth first in the same way. A value derived from a resource, such as `let name = r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
 
-A holder of values that are not resources adds no code, because a `List[Int]` or a record of strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic holder such as `List[T]` also closes its resource parts: lowering selects cleanup for each concrete instance, and an instance holding only plain data adds no close calls. Overwriting a record field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move a list element out with `pop`. `remove` closes the removed element. A `Set` cannot hold resources because its elements must be `Hashable`.
+A holder of values that are not resources adds no code, because a `List[Int]` or a type whose fields are strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic holder such as `List[T]` also closes its resource parts: lowering selects cleanup for each concrete instance, and an instance holding only plain data adds no close calls. Overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move a list element out with `pop`. `remove` closes the removed element. A `Set` cannot hold resources because its elements must be `Hashable`.
 
 A similarly named method without `impl Closeable` does not opt a concrete type into cleanup.
 

@@ -188,7 +188,7 @@ test "binary codecs":
 
 ## Deterministic formatting
 
-Interpolation and direct `to_string()` conversion use the forms below, independent of locale or host settings. To retain a type-specific representation with `print`, pass the converted text: `print("{value}")`. Generic `print(value)` can render records structurally.
+Interpolation and direct `to_string()` conversion use the forms below, independent of locale or host settings. To retain a type-specific representation with `print`, pass the converted text: `print("{value}")`. Generic `print(value)` can render types structurally.
 
 | Type | Formatting |
 | --- | --- |
@@ -198,7 +198,7 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
-| Record | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
+| Type | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
 | Optional | `Optional.some(value)` or `Optional.none`; for example, an `Int?` holding 42 formats as `Optional.some(42)` |
 | Result | `Result.ok(value)` or `Result.error(cause)`; for example, `ok(42)` formats as `Result.ok(42)` |
@@ -209,13 +209,13 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | Interface view | Conversion of its underlying receiver |
 | Function | `[function]`, including bound methods; the function is not called |
 | Duration | Human-readable units, such as `2s`, `250ms`, or `0s` |
-| Instant | A record displaying its clock `domain` and nanosecond `tick` |
+| Instant | A type displaying its clock `domain` and nanosecond `tick` |
 | BigInt | Base-ten integer digits |
 | Timestamp | UTC RFC 3339 text with fractional seconds as needed |
 | Regex | Pattern text |
 | Other opaque native values, authorities, and resources | `[object]`; internal state and addresses are not inspected |
 
-Record and enum names omit modules and type arguments. Nested Strings are unquoted. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
+Type and enum names omit modules and type arguments. Nested Strings are unquoted. Empty values keep their delimiters: `[]`, `Map()`, `Type()`. These forms are for display, not serialization. At nesting depth 64 conversion emits `...`; the outer value is depth 0, and each field, payload, item, key/value, or interface receiver adds one.
 
 **Float.** Choose the shortest decimal that converts back to the same binary64 (nearest, ties to even); among equal lengths take the closest to the exact value, then the even final digit. Strip trailing zeros. Zero is `0`, negative zero `-0`.
 

@@ -11,7 +11,7 @@
         "phase": "type",
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
-          "file": "core-language-types-records-2.ms",
+          "file": "core-language-types-named-types-2.ms",
           "line": 4,
           "column": 16,
           "offset": 145
@@ -22,7 +22,7 @@
         "phase": "type",
         "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
-          "file": "core-language-types-records-2.ms",
+          "file": "core-language-types-named-types-2.ms",
           "line": 5,
           "column": 21,
           "offset": 200
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-records-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | let customer = Customer(name: \"Ada\", email: none)\n   |                ^\n<DIR>/core-language-types-records-2.ms:5:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let name = customer.name\n   |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-named-types-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | let customer = Customer(name: \"Ada\", email: none)\n   |                ^\n<DIR>/core-language-types-named-types-2.ms:5:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let name = customer.name\n   |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

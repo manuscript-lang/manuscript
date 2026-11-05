@@ -115,7 +115,7 @@ To share library code today, copy its sources into each consuming project, for e
 "@graph" = "src/graph"
 ```
 
-Keep the copy under version control and record the upstream URL, exact revision, SHA-256 checksums, and license notices. Update it deliberately. The compiler does not fetch packages or verify those checksums, and copied content is not pinned. An alias to a sibling project or an external symlink is rejected.
+Keep the copy under version control and note the upstream URL, exact revision, SHA-256 checksums, and license notices. Update it deliberately. The compiler does not fetch packages or verify those checksums, and copied content is not pinned. An alias to a sibling project or an external symlink is rejected.
 
 ## Resolving an import
 
@@ -144,7 +144,7 @@ For an import in `src/main.ms`, the first path resolves to `src/domain/customers
 
 ## Module identity and configuration scope
 
-Paths are normalized and symlinks resolved to one canonical file identity per build, so importing a file by relative path, file alias, or directory alias yields one module and cycle checks cannot be bypassed. Build metadata records paths relative to the project root.
+Paths are normalized and symlinks resolved to one canonical file identity per build, so importing a file by relative path, file alias, or directory alias yields one module and cycle checks cannot be bypassed. Build metadata types paths relative to the project root.
 
 - Application paths, source directories, and aliases must resolve inside the project root after symlink resolution; escapes are compile errors.
 - `@std/...` resolves only inside the pinned standard library, which cannot import application modules.

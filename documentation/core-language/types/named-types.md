@@ -1,11 +1,12 @@
 +++
-title = "Records and nominal types"
+title = "Types and nominal types"
+aliases = ["/core-language/types/records/"]
 weight = 1
 +++
 
-# Records and nominal types
+# Types and nominal types
 
-A record groups related data into named fields. Use it when a function should receive one meaningful value, such as a customer or an order. Each declaration creates a distinct type; fields change through a `var` binding.
+A type groups related data into named fields. Use it when a function should receive one meaningful value, such as a customer or an order. Each declaration creates a distinct type; fields change through a `var` binding.
 
 ```manuscript
 type Customer:
@@ -13,7 +14,7 @@ type Customer:
     email: String?
 ```
 
-Field types are explicit and names unique. An empty record is `type Marker:`. A field may have a default expression checked against its type.
+Field types are explicit and names unique. An empty type is `type Marker:`. A field may have a default expression checked against its type.
 
 ## Construction
 
@@ -33,7 +34,7 @@ let without_email = Customer(name: "Ada")
 customer.name = "Grace"
 ```
 
-Generic records declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
+Generic types declare parameters (`type Box[T]:`) and construct as `Box[Int](value: 1)`; see [generics](generics.md).
 
 ```manuscript
 type Options:
@@ -71,7 +72,7 @@ Ada
 Grace
 ```
 
-Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the record are rejected. A method marked `var fn` can update receiver fields in place:
+Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implementations](contracts.md#explicit-implementations)); methods inside the type are rejected. A method marked `var fn` can update receiver fields in place:
 
 ```manuscript
 interface Counter:
@@ -85,15 +86,15 @@ impl Counter for Val:
         self.val = self.val + 1
 ```
 
-Field writes keep the declared type; the receiver evaluates once, before the new value. Records follow the move and borrow rules of every container; only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
+Field writes keep the declared type; the receiver evaluates once, before the new value. Types follow the move and borrow rules of every container; only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
 
-`.clone()` is a deep copy of nested records and collections; changing a clone never affects the original. Resource handles are never copied.
+`.clone()` is a deep copy of nested types and collections; changing a clone never affects the original. Resource handles are never copied.
 
-Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value: it owns its captures and has one owner. A record, alternative or collection that holds a resource or a function value is not `Clonable`, so it has no `.clone()` and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
+Types, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value: it owns its captures and has one owner. A type, alternative or collection that holds a resource or a function value is not `Clonable`, so it has no `.clone()` and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
 
 ## Moving a field out
 
-Move a field into a new owner when you no longer need that field in the original record. This avoids cloning a large value just to store it somewhere else.
+Move a field into a new owner when you no longer need that field in the original type. This avoids cloning a large value just to store it somewhere else.
 
 Save as `batches.ms` and run `ms run batches.ms`:
 
@@ -117,8 +118,8 @@ scores
 ```
 
 - The outer list owns `report.rows` after construction. The sibling field `report.title` remains readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected; use `report.rows.clone()` at construction if both owners need the rows.
-- Field moves apply to owned fields (strings, lists, records, resources) of a `let` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and records that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
-- A parameter whose field is moved into another owner is consumed: its caller gives up the record. Passing `.clone()` keeps an independent caller-owned record.
+- Field moves apply to owned fields (strings, lists, types, resources) of a `let` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and types that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
+- A parameter whose field is moved into another owner is consumed: its caller gives up the type. Passing `.clone()` keeps an independent caller-owned type.
 
 Reading a field is different from moving it. `let rows = report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
 
@@ -127,9 +128,9 @@ fn rows_of(report: Report) List[Int]:
     return report.rows
 ```
 
-Calling `rows_of(report)` leaves `report.rows` readable; the record must stay available while the returned borrow is used. See [borrow-returning functions](references.md#borrowing).
+Calling `rows_of(report)` leaves `report.rows` readable; the type must stay available while the returned borrow is used. See [borrow-returning functions](references.md#borrowing).
 
-A resource field moves without a copy, and the new owner closes it. The record closes only the fields that were not moved, last declared first, on every way out of the function:
+A resource field moves without a copy, and the new owner closes it. The type closes only the fields that were not moved, last declared first, on every way out of the function:
 
 ```manuscript
 import Closeable from "@std/core.ms"
@@ -155,7 +156,7 @@ Here `r.spare` closes when `open_door` returns and `r.door` closes with `doors`'
 
 ## Domain identity
 
-Wrap identifiers in their own records so they cannot be mixed up.
+Wrap identifiers in their own types so they cannot be mixed up.
 
 ```manuscript
 type CustomerId:
@@ -175,11 +176,11 @@ Identity is module, declaration, and type arguments; alternate import paths to o
 
 ## Public data surfaces
 
-Exporting a record exports its constructor and every field; there are no per-field visibility modifiers; [`export opaque type`](#opaque-types) hides all fields outside the declaring file. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a record does not import its field types' names.
+Exporting a type exports its constructor and every field; there are no per-field visibility modifiers; [`export opaque type`](#opaque-types) hides all fields outside the declaring file. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a type does not import its field types' names.
 
 ## Recursive data
 
-Records and alternatives may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
+Types and alternatives may refer to themselves or each other directly, with no box. Give construction an endpoint with a base case, `Optional`, or a collection.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -200,7 +201,7 @@ test "recursive expression":
         panic("unexpected expression value")
 ```
 
-A linked record ends with an absent successor; a link owns its successor, so a clone copies the whole chain:
+A linked type ends with an absent successor; a link owns its successor, so a clone copies the whole chain:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -225,7 +226,7 @@ Generic recursion must preserve type parameters along every cycle; see [finite r
 
 ## Opaque types
 
-`export opaque type Approved:` hides record fields outside the declaring file; `export opaque enum Choice:` hides enum cases in the same way. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
+`export opaque type Approved:` hides fields outside the declaring file; `export opaque enum Choice:` hides enum cases in the same way. The module exports functions and methods that build and read the value; other files can hold it, pass it, call its methods, and clone it when its fields are clonable.
 
 ```text
 # gate.ms
@@ -247,6 +248,6 @@ Opaque controls visibility: an opaque value can still be cloned when its fields 
 
 ## Resource fields
 
-A record owns the resources moved into its fields and closes the fields it still owns when its scope ends. Moving a field out transfers that cleanup duty to the new owner. Such a record is not clonable. See [aggregate cleanup](../cleanup/closeable.md#records-and-collections-close-what-they-hold).
+A type owns the resources moved into its fields and closes the fields it still owns when its scope ends. Moving a field out transfers that cleanup duty to the new owner. Such a type is not clonable. See [aggregate cleanup](../cleanup/closeable.md#types-and-collections-close-what-they-hold).
 
 Use [enums](alternatives.md) for a choice among cases and `interface` for [operation contracts](contracts.md).

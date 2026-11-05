@@ -148,7 +148,7 @@ fn describe(shape: Shape) String:
             return "area {shape.area()}"
 ```
 
-- The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.
+- The type is a local or imported nominal type or alternative with an explicit implementation of the scrutinee's exact contract.
 - Give exactly one receiver name or `_`, even for a payloadless alternative. The binding has the concrete type. Native opaque receivers fall to the wildcard.
 - Generic patterns name the full application: `Boxed[Int](value)` differs from `Boxed[String]`; an in-scope parameter may be an argument (`Boxed[T](value)`). The first arm matching the exact runtime type wins; duplicate patterns are rejected. A pattern cannot name another contract, a bare type parameter, or a single alternative case.
 - A final wildcard is required because contracts are open. It binds nothing; use the original value for generic handling.

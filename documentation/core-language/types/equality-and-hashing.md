@@ -5,7 +5,7 @@ weight = 8
 
 # Equality and hashing
 
-- `Equal`: values can be compared with `==` and `!=`. Records of the same type are equal when all fields are equal, not only when they are the same object.
+- `Equal`: values can be compared with `==` and `!=`. Values of the same type are equal when all fields are equal, not only when they are the same object.
 - `Hashable`: a lookup code for map keys and set elements, which also require `Equal`. The hash finds the entry; equality resolves collisions.
 
 Both are prelude interfaces from `@std/core.ms`; importing them is rejected. They are independent of sharing and resource lifetime.
@@ -32,7 +32,7 @@ interface Hashable:
 - `Bool`, `Int`, `Decimal`, `String`, `Bytes`, `Unit`, `Duration`, and `Instant` are built-in `Equal` and `Hashable`; `Never` vacuously is.
 - Float has IEEE equality (NaN is unequal, `0.0 == -0.0`) and no hashing.
 - Strings compare exact Unicode scalars, without normalization. Decimal compares numeric value. Instants must share a clock domain.
-- Records, enums, Optional, and Result compare nominal type and all components, and satisfy each interface when all components do.
+- Types, enums, Optional, and Result compare nominal type and all components, and satisfy each interface when all components do.
 
 | Collection | Equality | Hashing |
 | --- | --- | --- |

@@ -7,7 +7,7 @@ weight = 2
 
 Exports define what other files can use. Export the types that public functions name; keep helpers private.
 
-Save this module as `pricing.ms`. It exports a record and the operation callers need:
+Save this module as `pricing.ms`. It exports a type and the operation callers need:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -38,6 +38,6 @@ Run `ms run main.ms`:
 46
 ```
 
-The caller imports `Item` to build values and `total` to use them. A public signature cannot expose a private type ([public type visibility](../types/records.md#public-data-surfaces)).
+The caller imports `Item` to build values and `total` to use them. A public signature cannot expose a private type ([public type visibility](../types/named-types.md#public-data-surfaces)).
 
 Functions that need files, network access, or other services can import a host accessor or take a service parameter. Parameters make dependencies visible and let tests substitute them. See [interfaces](../types/contracts.md).

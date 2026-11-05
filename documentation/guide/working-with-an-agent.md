@@ -52,6 +52,6 @@ Manuscript itself is built this way, and the same workflows fit your project.
 - **Bug bash.** Pick one area. An agent writes small probe programs aimed at new features and their edges, compares the results with the documented rules, fixes real bugs with a regression test, and files an issue with a minimal repro for anything that needs a decision. The workflow is the [`bug-bash` skill](https://github.com/manuscript-lang/manuscript/blob/main/skills/bug-bash/SKILL.md).
 - **Perf bash.** Start from a measured gap. The agent reproduces it on a release build, measures before changing, fixes it in the right layer, and shows before and after on the same machine. `ms profile` gives it folded stacks and a top report. The workflow is the [`perf-bash` skill](https://github.com/manuscript-lang/manuscript/blob/main/skills/perf-bash/SKILL.md).
 
-Both skills are written for work on the Manuscript compiler and standard library, and they show the shape of the loop: probe, measure, fix with a test, and record the result.
+Both skills are written for work on the Manuscript compiler and standard library, and they show the shape of the loop: probe, measure, fix with a test, and write down the result.
 
 **Next:** [Standard library reference](../standard-library/reference/_index.md). **Exact rules:** [Commands for agents](../developer-tooling/implementation.md#commands-for-agents), [Diagnostics](../developer-tooling/source/diagnostics.md).

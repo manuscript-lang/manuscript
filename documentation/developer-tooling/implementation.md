@@ -97,7 +97,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
 | `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(fn: ...)` with the calls its work makes (needs `--entity`) |
-| `types` (alias `class`) | Records, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
+| `types` (alias `class`) | Types, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
 | `ownership` (alias `mutability`) | Per function: checked `copy`, `borrow`, `move`, or `var (exclusive borrow)` parameters; owned, borrowed, or owned-view results, including borrowed `Result` cases; closed resource scopes. Callees expand to `--depth`. Without `--entity`, functions with `var` parameters or resource scopes |
 
 - `--entity name`, `file::name`, or a full entity ID `file#kind#name` roots the tree at one declaration (a project-relative path for `modules`). An exact entity ID takes precedence over declaration names and qualified names. A missing or ambiguous name fails with a selection remedy. A type and its `impl` share the same `file::name`; use the distinct IDs offered by the diagnostic, such as `--entity 'src/main.ms#record#Box'` and `--entity 'src/main.ms#impl#Box'`. Without `--entity`, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
@@ -245,9 +245,9 @@ Open a `.ms` file, hover over a name to see its type, use **Go to Definition** t
 
 The language server provides incremental sync with validated UTF-16 ranges, diagnostics and lint codes, document and workspace symbols, semantic tokens, folding, inferred-local type hints, hover, definition and type-definition navigation, highlights, references, signature help, formatting, import organization, code actions, and rename.
 
-- Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, record fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
+- Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
 - Completion keeps working while code is incomplete; checking, formatting, and builds never accept repaired source.
-- References and rename cover declarations, uses, assignments, type annotations, imports, parameter labels, record fields and constructors, and interface operations, including unopened modules. Rename checks the proposed snapshot, rejects identifiers that could capture, and cannot rename external declarations or malformed source.
+- References and rename cover declarations, uses, assignments, type annotations, imports, parameter labels, fields and constructors, and interface operations, including unopened modules. Rename checks the proposed snapshot, rejects identifiers that could capture, and cannot rename external declarations or malformed source.
 - Standard-library definitions open read-only in VS Code with hover and navigation.
 - VS Code hides inline type hints by default; hover still shows types. Set `editor.inlayHints.enabled` to `on` or `offUnlessPressed` under `[manuscript]` to show hints.
 
@@ -281,7 +281,7 @@ Implicit imports (such as `List` for list literals) count as uses. Unused-import
 
 Format code as paragraphs: keep related steps together and put space between new sections. Blank lines come only from these structural rules; authored ones are discarded. Rules also apply inside anonymous functions.
 
-- Separate top-level declarations from each other and from imports, and implementation methods from each other. Interface signatures, record fields, and alternative cases stay compact.
+- Separate top-level declarations from each other and from imports, and implementation methods from each other. Interface signatures, fields, and alternative cases stay compact.
 - Separate substantial conditionals, loops, resource scopes, and matches from neighbors. A single-step branch or loop without `else` stays with adjacent work.
 - Keep local bindings with the actions, checks, or simple return that follow them. Start a new paragraph when another binding follows completed work.
 - Start a paragraph before a leading comment between statements; keep the comment attached to the code it introduces.

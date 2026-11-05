@@ -1,6 +1,6 @@
 // conform: tags=formatter,parser,records,tier-core
 // conform: phase=parse
-// conform: origin=documentation/core-language/types/records.md:38
+// conform: origin=documentation/core-language/types/named-types.md:38
 type Options:
     count: Int = 3
     total: Int = count + 1

@@ -12,9 +12,9 @@ Unfamiliar term? Follow its link for exact rules.
 | [Binding](core-language/basics/bindings.md) | A name attached to a value. `let` prevents reassignment; `var` allows a replacement value. |
 | [Scope](core-language/basics/bindings.md#scope-and-shadowing) | The part of a program where a name is visible. |
 | [Module](core-language/modules/declarations.md) | One `.ms` source file. It imports and exports individual declarations. |
-| [Record](core-language/types/records.md) | A value with named fields, such as a customer with a name and email. |
-| [Opaque type](core-language/types/records.md#opaque-types) | A type whose fields stay hidden outside the file that declares it; other files use the functions it exports. |
-| [Nominal type](core-language/types/records.md) | A type identified by its declaration. Two records with identical fields can still be different types. |
+| [Type](core-language/types/named-types.md) | A value with named fields, such as a customer with a name and email. |
+| [Opaque type](core-language/types/named-types.md#opaque-types) | A type whose fields stay hidden outside the file that declares it; other files use the functions it exports. |
+| [Nominal type](core-language/types/named-types.md) | A type identified by its declaration. Two types with identical fields can still be different types. |
 | [Enum (alternative)](core-language/types/alternatives.md) | A nominal tagged union declared with `enum`, with a fixed set of cases. A value is one case at a time and may carry that case's data. |
 | [Contract / interface](core-language/types/contracts.md) | A declared set of operations an implementation must provide. |
 | [Generic parameter](core-language/types/generics.md) | A placeholder for a type, such as `T` in `List[T]`. |
@@ -29,7 +29,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Own](core-language/types/references.md) | The binding, field, or collection slot responsible for dropping a value. A move transfers that responsibility; replacing an owned value drops the old one. |
 | [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`let`, plain argument) or exclusive (`var`). It ends at its last use. |
 | [Move](core-language/types/references.md) | Ownership transfers to a new holder at the value's last use. The old name is dead until reassigned. |
-| [Clone](core-language/types/records.md#mutation-and-cloning) | `.clone()`: the only explicit, deep duplicate of an owned value. Numbers and other plain values copy implicitly. |
+| [Clone](core-language/types/named-types.md#mutation-and-cloning) | `.clone()`: the only explicit, deep duplicate of an owned value. Numbers and other plain values copy implicitly. |
 | [Capture](core-language/functions/function-values-and-closures.md) | A binding used from a surrounding function. Non-escaping closures borrow captures; escaping closures take ownership when created, following the move rules. |
 | [Alias](core-language/types/references.md) | Another borrow of the same object. Closing a resource affects every alias. |
 | [Resource lifetime](core-language/cleanup/_index.md) | How long a file, connection, or other external resource remains open and usable. |

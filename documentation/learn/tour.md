@@ -210,7 +210,7 @@ PASS example.ms::publish a help page
 1 tests, 0 failed
 ```
 
-- Records group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
+- Types group named fields; omitted fields use defaults, and changing a field needs a `var` binding.
 - Enums list cases; `match` must handle every case.
 - Types are nominal: identical fields do not make two types equal.
 
