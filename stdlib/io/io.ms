@@ -144,8 +144,10 @@ impl Iterator[T!] for Waiting[T]:
             self.ended = true
             return error(result.err())
 
-        if let item = result.get():
-            return ok(item)
+        // Consume both wrappers so the yielded item takes their cleanup obligation.
+        if let maybe = result:
+            if let item = maybe:
+                return ok(item)
 
         self.ended = true
         return none
