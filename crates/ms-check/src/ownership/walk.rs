@@ -196,8 +196,9 @@ pub fn analyze(cx: &Context) -> Outcome {
     };
     w.run();
     w.unclosed_resources();
-    w.mixed_returns();
     w.consumed_param_resources();
+    w.implicit_close_return();
+    w.mixed_returns();
     w.moved_payloads();
     let declared = Summary::declared(&cx.c.func);
     let summary = Summary {
@@ -224,7 +225,9 @@ pub fn analyze(cx: &Context) -> Outcome {
             // A view returner returns owned values on every path, so a new value beside a view
             // is no mix.
             returns_borrow: w.borrowed_return.is_some()
-                && (w.owned_return.is_none() || w.view_return || w.borrowed_mask != 0),
+                && ((w.owned_return.is_none() && w.owned_cases == 0)
+                    || w.view_return
+                    || w.borrowed_mask != 0),
             view: w.view_return || w.borrowed_mask != 0,
             borrowed_cases: w.borrowed_mask,
             receiver: w.borrow_receiver,
@@ -821,6 +824,27 @@ impl Walker<'_> {
             .is_some_and(|t| t.is(Builtin::Result))
     }
 
+    /// A scope close can return a fresh Error even when every written return borrows.
+    /// An error type variable can instantiate Error; incompatible concrete errors fault.
+    fn implicit_close_return(&mut self) {
+        if self.facts.implicit_closes.is_empty() {
+            return;
+        }
+        let result = match (self.cx.c.func.method(), self.cx.c.func.func()) {
+            (Some(m), _) => m.func.result.id,
+            (None, Some(f)) => f.result.id,
+            (None, None) => return,
+        };
+        if self.cx.m.type_ref(result).is_some_and(|t| {
+            t.is(Builtin::Result)
+                && t.args
+                    .get(1)
+                    .is_some_and(|e| e.is(Builtin::Error) || e.kind == Kind::Variable)
+        }) {
+            self.owned_cases |= BORROWED_ERROR;
+        }
+    }
+
     fn result_is_interface(&self) -> bool {
         let c = self.cx.c;
         let result = match (c.func.method(), c.func.func()) {
@@ -871,9 +895,17 @@ impl Walker<'_> {
             }
             return;
         }
-        let (Some(owned), Some(borrowed)) = (self.owned_return, self.borrowed_return) else {
+        let Some(borrowed) = self.borrowed_return else {
             return;
         };
+        if self.owned_return.is_none() && self.owned_cases == 0 {
+            return;
+        }
+        // Forwarded mixed Results and implicit closes contribute owned cases without a
+        // written owned return. Source positions locate diagnostics, not semantic outcomes.
+        let owned = self
+            .owned_return
+            .unwrap_or_else(|| self.cx.c.func.decl.pos());
         // A wrapper of a part is a reference only when every path returns a borrow; beside a new value it
         // is built as a new value of its own (its payload copied), as before.
         if !self.plain_borrowed {
@@ -881,8 +913,6 @@ impl Walker<'_> {
             // case: the caller drops only the cases the function owns.
             if self.borrowed_cases & 4 == 0
                 && !self.borrow_not_clonable
-                // A resource closed at scope end can return its close error, an owned error.
-                && self.facts.implicit_closes.is_empty()
                 && self.borrowed_cases != 0
                 && self.borrowed_cases & self.owned_cases == 0
                 && self.result_is_result()
