@@ -1,4 +1,4 @@
-import Closeable, Data from "@std/core.ms"
+import Closeable from "@std/core.ms"
 import (
     ReadStream,
     WriteStream,
@@ -16,6 +16,9 @@ import HttpClient from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
 import HttpExchange from "@std/net/http.ms"
 import HttpHeaders from "@std/net/http.ms"
+import Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms"
+import TlsInfo, TlsOptions from "@std/net/tls.ms"
+import RawWebSocket, WebSocket, WebSocketOptions, web_socket_from from "@std/net/websocket.ms"
 import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
 import NativeServing, NativeWorker from "@std/net/http.ms"
@@ -30,13 +33,6 @@ import (
 ) from "@std/concurrency/promise.ms"
 import sleep from "@std/os/time.ms"
 import (
-    msstd_url_encode_component,
-    msstd_net_ip_address_text,
-    msstd_net_ip_address_family,
-    msstd_net_cidr_text,
-    msstd_net_contains_ip,
-    msstd_net_parse_cidr,
-    msstd_net_parse_ip,
     msstd_net_network,
     msstd_net_network_bind_datagram,
     msstd_net_network_close,
@@ -55,14 +51,6 @@ import (
     msstd_net_network_restrict,
     msstd_net_network_web_socket,
     msstd_net_network_with_resolver,
-    msstd_tls_parse_certificates,
-    msstd_tls_verify_certificates,
-    msstd_url_decode_component,
-    msstd_url_format,
-    msstd_url_format_query,
-    msstd_url_parse,
-    msstd_url_parse_query,
-    msstd_url_resolve,
     msstd_net_connection_close,
     msstd_net_connection_share,
     msstd_net_connection_close_if_last,
@@ -84,15 +72,7 @@ import (
     msstd_net_listener_address,
     msstd_net_listener_close,
     msstd_net_listener_raw_owner,
-    msstd_net_release_unadopted,
-    msstd_websocket_close,
-    msstd_websocket_share,
-    msstd_websocket_close_if_last,
-    msstd_websocket_ping,
-    msstd_websocket_ping_bytes,
-    msstd_websocket_receive,
-    msstd_websocket_send_bytes,
-    msstd_websocket_subprotocol
+    msstd_net_release_unadopted
 ) from "@std/internal/net.ms"
 import (
     msstd_http_serving_new,
@@ -271,82 +251,6 @@ fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
         output: writer[Datagram](DatagramSink(other)), address: address
     )
 
-// Supported DNS query categories; unknown spellings are rejected by checking.
-export enum DnsKind:
-    A  // IPv4 address records for the queried name.
-    AAAA  // IPv6 address records for the queried name.
-    CNAME  // Canonical name alias records for the queried name.
-    MX  // Mail exchange records with priority values.
-    NS  // Name server records for the queried zone.
-    TXT  // Text records returned as string values.
-    PTR  // Reverse address pointer records for an IP.
-    SRV  // Service location records with priority, weight and port.
-
-impl DnsKind:
-    // Returns the uppercase wire category.
-    fn text() String:
-        match self:
-            A: return "A"
-            AAAA: return "AAAA"
-            CNAME: return "CNAME"
-            MX: return "MX"
-            NS: return "NS"
-            TXT: return "TXT"
-            PTR: return "PTR"
-            SRV: return "SRV"
-
-// Numeric address families reported by IP values and host interfaces.
-export enum IpFamily:
-    IPv4  // A four-byte numeric address.
-    IPv6  // A sixteen-byte numeric address.
-
-impl IpFamily:
-    // Returns IPv4 or IPv6.
-    fn text() String:
-        match self:
-            IPv4: return "IPv4"
-            IPv6: return "IPv6"
-
-// A validated numeric IPv4/IPv6 address without a port or zone.
-export extern type IpAddress
-
-impl Data for IpAddress:
-
-impl IpAddress:
-    // Returns canonical text; mapped IPv6 input is normalized to IPv4.
-    fn text() String:
-        return msstd_net_ip_address_text(self)
-
-    // Returns the normalized address family.
-    fn family() IpFamily:
-        if msstd_net_ip_address_family(self):
-            return IPv6
-
-        return IPv4
-
-// A validated, masked numeric CIDR range.
-export extern type Cidr
-
-impl Data for Cidr:
-
-impl Cidr:
-    // Returns the canonical masked prefix without reparsing.
-    fn text() String:
-        return msstd_net_cidr_text(self)
-
-// DNS record data returned by a typed lookup.
-export type DnsRecord:
-    // The same typed category used by the query.
-    kind: DnsKind
-    // The record's answer: an IP address for A and AAAA, the target host name for CNAME, MX, NS, PTR, and SRV, or the text for TXT.
-    value: String
-    // The preference of an MX record or the priority of an SRV record, where lower values are tried first; 0 for other kinds.
-    priority: Int
-    // The relative weight of an SRV record among targets with the same priority; 0 for other kinds.
-    weight: Int
-    // The service port of an SRV record; 0 for other kinds.
-    port: Int
-
 // The runtime handle behind a `Listener`.
 export extern type NativeListener
 
@@ -396,18 +300,6 @@ type AcceptArgs:
 fn accepted(native: NativeListener, timeout: Duration?) Connection!:
     let raw = try msstd_net_listener_accept(native, timeout)
     return ok(connection(raw))
-
-// Reports whether an IP address belongs to a CIDR range.
-export fn contains_ip(cidr: Cidr, address: IpAddress) Bool!:
-    return msstd_net_contains_ip(cidr, address)
-
-// Validates and canonicalizes an IPv4 or IPv6 CIDR range.
-export fn parse_cidr(text: String) Cidr!:
-    return msstd_net_parse_cidr(text)
-
-// Validates and canonicalizes an IPv4 or IPv6 address.
-export fn parse_ip(text: String) IpAddress!:
-    return msstd_net_parse_ip(text)
 
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
@@ -553,225 +445,6 @@ impl Network:
 // The network of the current host.
 fn host_network() Network:
     return Network(native: msstd_net_network())
-
-// Parsed certificate identity, validity range, and original DER bytes.
-export type CertificateInfo:
-    // The certificate subject as a distinguished-name string, such as `CN=example.com,O=Example`.
-    subject: String
-    // The issuing authority as a distinguished-name string, in the same format as `subject`.
-    issuer: String
-    // DNS subject alternative names in certificate order; empty when the certificate has none.
-    dns_names: List[String]
-    // Start of the validity period as a UTC Timestamp.
-    not_before: Timestamp
-    // End of the validity period as a UTC Timestamp.
-    not_after: Timestamp
-    // The certificate's binary DER encoding, as a copy independent of the PEM text.
-    der: Bytes
-
-// Negotiated TLS version, cipher, protocol, and peer certificate information.
-export type TlsInfo:
-    // Negotiated protocol version as its numeric wire code, such as 771 (0x0303) for TLS 1.2 or 772 (0x0304) for TLS 1.3.
-    version: Int
-    // Negotiated cipher suite as its numeric IANA identifier, such as 4865 (0x1301) for TLS_AES_128_GCM_SHA256.
-    cipher_suite: Int
-    // The application protocol both sides agreed on, or an empty string when none was negotiated.
-    alpn: String
-    // The peer's presented certificates as DER bytes, leaf first; empty when the peer sent none.
-    peer_certificates: List[Bytes]
-    // True when the peer's certificate chain was verified against the configured roots; False when no peer chain was verified.
-    verified: Bool
-
-// Client or server TLS settings, including roots, certificates, and ALPN protocols.
-export type TlsOptions:
-    // Host name a TLS client sends for server name indication and matches against the server certificate; it must be non-empty for `connect_tls_config`.
-    // HTTP and WebSocket clients take the name from the URL host and ignore this field, and servers do not use it.
-    server_name: String
-    // PEM certificates to trust. Clients use them instead of the system roots; servers use them to verify client certificates. An empty string selects the system roots; invalid PEM is rejected.
-    roots_pem: String
-    // PEM certificate chain this side presents, paired with `private_key_pem`. Servers must supply it; clients supply it only for mutual TLS.
-    certificate_pem: String
-    // PEM private key matching `certificate_pem`. Both must be set together and match, or setup fails.
-    private_key_pem: String
-    // Application-layer protocols to offer or accept, in preference order, such as `h2` or `http/1.1`. Each must be 1 through 255 bytes; empty disables negotiation.
-    alpn: List[String]
-    // Servers only: when True, a client must present a certificate that verifies against `roots_pem`. Setting it on a client configuration is rejected.
-    require_client_certificate: Bool
-
-// Parses PEM certificates and optionally limits the number returned.
-export fn parse_certificates(pem: String, max_certificates: Int?) List[CertificateInfo]!:
-    return msstd_tls_parse_certificates(pem, max_certificates)
-
-// Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
-export fn verify_certificates(
-    chain_pem: String,
-    roots_pem: String,
-    server_name: String,
-    now: Timestamp
-) Unit!:
-    return msstd_tls_verify_certificates(chain_pem, roots_pem, server_name, now)
-
-// One decoded key and value in a URL query string.
-export type QueryEntry:
-    // Decoded query key; duplicate keys retain separate entries in input order.
-    key: String
-    // Decoded query value; a bare key has an empty value and plus decodes as a space.
-    value: String
-
-// Parsed URL components. A missing port is represented by `none`.
-export type Url:
-    // URL scheme, lowercased during parsing; native parse rejects missing schemes and opaque URLs.
-    scheme: String
-    // Lowercased hostname, excluding the port and IPv6 brackets; user information is rejected.
-    host: String
-    // Explicit numeric port in 0..65535, or none when the input has no port.
-    port: Int?
-    // Escaped path text, retaining escaped separators; format validates its percent escapes and UTF-8.
-    path: String
-    // Encoded query contents without the leading question mark; parse_query decodes individual entries.
-    query: String
-    // Decoded fragment contents without the leading hash mark.
-    fragment: String
-
-// Decodes one percent-encoded URL component. `+` is not treated as a space.
-export fn decode_component(text: String) String!:
-    return msstd_url_decode_component(text)
-
-// Percent-encodes one URL component using UTF-8 bytes.
-export fn encode_component(text: String) String:
-    return msstd_url_encode_component(text)
-
-// Formats URL components as an absolute hierarchical URL.
-// Missing or malformed schemes and hostless relative paths return EINVAL, as do other invalid components.
-export fn format(value: Url) String!:
-    return msstd_url_format(value)
-
-// Encodes query entries as a query string.
-export fn format_query(entries: List[QueryEntry]) String:
-    return msstd_url_format_query(entries)
-
-// Parses an absolute URL into its components.
-export fn parse(text: String) Url!:
-    return msstd_url_parse(text)
-
-// Parses a query string, preserving duplicate keys and their input order.
-export fn parse_query(text: String, max_entries: Int?) List[QueryEntry]!:
-    return msstd_url_parse_query(text, max_entries)
-
-// Resolves a relative reference against a base URL.
-export fn resolve(base: Url, reference: String) Url!:
-    return msstd_url_resolve(base, reference)
-
-// The runtime handle behind a `RawWebSocket`.
-export extern type NativeWebSocket
-
-// The native WebSocket a handshake returns; it is wrapped into a `WebSocket`.
-export type RawWebSocket:
-    // The runtime handle; it is released when the last end closes.
-    native: NativeWebSocket
-
-// The kind of a WebSocket message.
-export enum WebSocketKind:
-    Text  // A text frame: the payload is valid UTF-8.
-    Binary  // A binary frame: the payload is arbitrary bytes.
-    Ping  // A ping control frame, at most 125 bytes; written only, the peer's pongs are answered automatically.
-
-// One WebSocket message.
-export type WebSocketMessage:
-    // The payload bytes; for a text message they are the UTF-8 encoding of the text.
-    data: Bytes
-    // Whether the message is text or binary, or a ping.
-    kind: WebSocketKind
-
-// A message as the native layer reports it.
-export type RawWebSocketMessage:
-    // The payload bytes; for a text frame they are the UTF-8 encoding of the text.
-    data: Bytes
-    // True for a text frame, false for a binary frame.
-    text: Bool
-
-type WebSocketSource:
-    raw: RawWebSocket
-
-impl Source[WebSocketMessage] for WebSocketSource:
-    // Waits for the next complete message; none once the peer closes normally.
-    // A larger message is `EOVERFLOW` and a malformed text message `EBADMSG`; after any failure the connection is closed.
-    var fn next() WebSocketMessage?!:
-        let raw = try msstd_websocket_receive(self.raw.native)
-
-        if let message = raw:
-            var kind = WebSocketKind.Binary
-            if message.text:
-                kind = WebSocketKind.Text
-            return ok(WebSocketMessage(message.data, kind))
-
-        return ok(none)
-
-    var fn close() Unit!:
-        msstd_websocket_close_if_last(self.raw.native)
-        return ok(unit)
-
-type WebSocketSink:
-    raw: RawWebSocket
-
-impl Sink[WebSocketMessage] for WebSocketSink:
-    // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a payload over `max_message_bytes` returns EOVERFLOW.
-    var fn put(value: WebSocketMessage) Unit!:
-        match value.kind:
-            Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
-            Binary: return msstd_websocket_send_bytes(
-                self.raw.native, value.data, false
-            )
-            Ping: return msstd_websocket_ping_bytes(self.raw.native, value.data)
-
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
-
-    var fn close() Unit!:
-        msstd_websocket_close_if_last(self.raw.native)
-        return ok(unit)
-
-/*
-A WebSocket connection: `input` reads whole messages and `output` writes them. Move the streams to different tasks to
-receive and send at once. The connection closes, after a normal-closure frame, when both streams are closed, which is
-also what closing the `WebSocket` does.
-*/
-export type WebSocket:
-    // Messages from the peer; none once the peer closes normally.
-    input: ReadStream[WebSocketMessage]
-    // Messages to the peer.
-    output: WriteStream[WebSocketMessage]
-    // The subprotocol the server selected during the handshake, or an empty string when none was negotiated.
-    subprotocol: String
-
-impl Closeable for WebSocket:
-    // Closes both streams, and with them the connection.
-    var fn close() Unit!:
-        try self.input.close()
-        return self.output.close()
-
-// Wraps a native WebSocket into a `WebSocket`.
-export fn web_socket_from(raw: RawWebSocket) WebSocket:
-    let subprotocol = msstd_websocket_subprotocol(raw.native)
-    let other = RawWebSocket(msstd_websocket_share(raw.native))
-    return WebSocket(
-        input: stream[WebSocketMessage](WebSocketSource(raw)),
-        output: writer[WebSocketMessage](WebSocketSink(other)), subprotocol: subprotocol
-    )
-
-// WebSocket message, timeout, TLS, and per-message compression settings.
-export type WebSocketOptions:
-    // Largest message accepted or sent, in bytes. Must be positive; none sets no limit.
-    max_message_bytes: Int?
-    // Time budget for connecting and completing the opening handshake. none waits indefinitely and a negative duration is rejected.
-    timeout: Duration?
-    // TLS settings for `wss` URLs: trusted roots, client identity, and protocols.
-    tls: TlsOptions
-    // When True, offers per-message compression during the handshake; it applies only if the peer agrees.
-    compression: Bool
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 // A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.

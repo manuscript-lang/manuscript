@@ -10,7 +10,7 @@ import (
     reply,
     text
 ) from "@std/net/http.ms"
-import RawWebSocket from "@std/net/net.ms"
+import RawWebSocket from "@std/net/websocket.ms"
 import Logger from "@std/log.ms"
 import uuid_v4 from "@std/os/random.ms"
 import monotonic from "@std/os/time.ms"

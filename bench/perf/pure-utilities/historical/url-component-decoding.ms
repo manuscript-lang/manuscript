@@ -1,4 +1,4 @@
-import decode_component from "@std/net/net.ms"
+import decode_component from "@std/net/url.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "component decoding preserves plus Unicode and escaped percent":

@@ -13,7 +13,8 @@ import (
     headers
 ) from "@std/net/http.ms"
 import parse, stringify from "@std/data/json.ms"
-import Network, TlsOptions, http_client from "@std/net/net.ms"
+import Network, http_client from "@std/net/net.ms"
+import TlsOptions from "@std/net/tls.ms"
 import Duration, Instant, seconds, monotonic from "@std/os/time.ms"
 import (
     msstd_http_client_request_bytes,

@@ -1,28 +1,24 @@
 import Bytes from "@std/bytes.ms"
 import (
-    CertificateInfo,
-    Cidr,
     Datagram,
     RawConnection,
     RawDatagramSocket,
-    RawWebSocket,
-    IpAddress,
     NativeConnection,
     NativeDatagramSocket,
     NativeListener,
     NativeNetwork,
-    NativeWebSocket,
-    DnsKind,
-    DnsRecord,
     Listener,
-    Network,
-    TlsOptions,
-    WebSocketOptions,
-    QueryEntry,
-    TlsInfo,
-    Url,
-    RawWebSocketMessage
+    Network
 ) from "@std/net/net.ms"
+import Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms"
+import CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms"
+import QueryEntry, Url from "@std/net/url.ms"
+import (
+    NativeWebSocket,
+    RawWebSocket,
+    RawWebSocketMessage,
+    WebSocketOptions
+) from "@std/net/websocket.ms"
 import (
     ClientResponse,
     HttpClient,

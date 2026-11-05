@@ -4,8 +4,8 @@ import http_client, serve, web_socket from "@std/net/net.ms"
 import HttpExchange from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
-import TlsOptions from "@std/net/net.ms"
-import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/net.ms"
+import TlsOptions from "@std/net/tls.ms"
+import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
 
 fn echo(var exchange: HttpExchange) Unit!:
     if exchange.path() == "/ws":

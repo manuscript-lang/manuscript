@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import cpus, metrics, network_interfaces from "@std/os/process.ms"
-import IpFamily from "@std/net/net.ms"
+import IpFamily from "@std/net/ip.ms"
 
 test "network interfaces describe each address and include a loopback":
     let found = network_interfaces()

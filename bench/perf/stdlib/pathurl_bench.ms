@@ -1,6 +1,6 @@
 import keep, measure from "@std/test/bench.ms"
 import basename, join, normalize from "@std/os/fs.ms"
-import parse, encode_component from "@std/net/net.ms"
+import parse, encode_component from "@std/net/url.ms"
 import sqrt, sin from "@std/math/math.ms"
 
 bench "path.join_normalize":

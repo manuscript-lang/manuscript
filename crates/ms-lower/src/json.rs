@@ -429,11 +429,11 @@ impl FnLower<'_> {
             Some((KIND_STRING, "msstd_time_parse_timestamp", false))
         } else if t.is(Builtin::Bytes) {
             Some((KIND_STRING, "msstd_encoding_base64_decode", true))
-        } else if t.is_source_type(self.syms, "@std/net/net.ms", "Url") {
+        } else if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
             Some((KIND_STRING, "msstd_url_parse", false))
-        } else if t.is_source_type(self.syms, "@std/net/net.ms", "IpAddress") {
+        } else if t.is_source_type(self.syms, "@std/net/ip.ms", "IpAddress") {
             Some((KIND_STRING, "msstd_json_dec_ip", false))
-        } else if t.is_source_type(self.syms, "@std/net/net.ms", "Cidr") {
+        } else if t.is_source_type(self.syms, "@std/net/ip.ms", "Cidr") {
             Some((KIND_STRING, "msstd_json_dec_cidr", false))
         } else if t.is(Builtin::Decimal) {
             Some((KIND_NUMBER, "msstd_decimal_parse", false))
@@ -1099,7 +1099,7 @@ impl FnLower<'_> {
             return Ok(self.jwritten());
         }
         // A URL is its formatted text.
-        if t.is_source_type(self.syms, "@std/net/net.ms", "Url") {
+        if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
             return self.jencode_url(w, value);
         }
         // An address or network is its text.
@@ -1107,7 +1107,7 @@ impl FnLower<'_> {
             ("IpAddress", "msstd_net_ip_address_text"),
             ("Cidr", "msstd_net_cidr_text"),
         ] {
-            if t.is_source_type(self.syms, "@std/net/net.ms", name) {
+            if t.is_source_type(self.syms, "@std/net/ip.ms", name) {
                 let text = self.call_runtime(sym, &[value], MTy::STR)?;
                 self.jw("msstd_json_w_string", &[w, text])?;
                 self.drop_value(text);

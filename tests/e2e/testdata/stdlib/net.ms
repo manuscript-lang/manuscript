@@ -1,24 +1,7 @@
 import expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
-import (
-    bind_datagram,
-    connect,
-    connect_unix,
-    listen,
-    listen_unix,
-    resolve_dns,
-    restrict,
-    with_resolver,
-    parse_ip,
-    parse_cidr,
-    contains_ip,
-    Datagram,
-    DatagramSocket,
-    DnsKind,
-    IpFamily,
-    Listener,
-    Connection
-) from "@std/net/net.ms"
+import bind_datagram, connect, connect_unix, listen, listen_unix, resolve_dns, restrict, with_resolver, Datagram, DatagramSocket, Listener, Connection from "@std/net/net.ms"
+import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import sleep, monotonic from "@std/os/time.ms"
 

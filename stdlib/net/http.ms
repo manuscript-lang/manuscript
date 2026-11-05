@@ -10,8 +10,8 @@ import (
 ) from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
-import TlsOptions from "@std/net/net.ms"
-import WebSocket, RawWebSocket, web_socket_from from "@std/net/net.ms"
+import TlsOptions from "@std/net/tls.ms"
+import WebSocket, RawWebSocket, web_socket_from from "@std/net/websocket.ms"
 import (
     msstd_http_client_close,
     msstd_http_headers_append,

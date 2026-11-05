@@ -1,7 +1,7 @@
 # ms-std-net ABI
 
-Native implementations of `@std/net/net.ms`, `@std/net/net.ms`, `@std/net/http.ms` and
-`@std/net/net.ms` for the Rust pipeline. The general rules are those of
+Native implementations of `@std/net/net.ms`, `@std/net/ip.ms`, `@std/net/tls.ms`, `@std/net/websocket.ms`, `@std/net/http.ms` and
+`@std/net/url.ms` for the Rust pipeline. The general rules are those of
 [`crates/ms-rt/ABI.md`](../ms-rt/ABI.md); this file adds what is specific to these
 modules. Behavior follows the standard-library contract in `stdlib/`. `@std/net/sse.ms` is written in Manuscript and
 has no natives.

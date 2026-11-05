@@ -2,11 +2,11 @@
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/library-url.ms
 import expect_equal from "@std/test/test.ms"
-import parse from "@std/net/net.ms"
-import format from "@std/net/net.ms"
-import encode_component from "@std/net/net.ms"
-import decode_component from "@std/net/net.ms"
-import resolve from "@std/net/net.ms"
+import parse from "@std/net/url.ms"
+import format from "@std/net/url.ms"
+import encode_component from "@std/net/url.ms"
+import decode_component from "@std/net/url.ms"
+import resolve from "@std/net/url.ms"
 
 fn verify_url() Unit!:
     let url = try parse(text: "https://EXAMPLE.COM/a%2Fb?q=x#frag")

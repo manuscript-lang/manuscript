@@ -3,23 +3,10 @@ import expect_equal, expect_error, expect_false, expect_ok from "@std/test/test.
 import http_result from "./support/http.ms"
 import HttpMethod from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
-import (
-    parse_certificates,
-    verify_certificates,
-    CertificateInfo,
-    TlsOptions
-) from "@std/net/net.ms"
+import parse_certificates, verify_certificates, CertificateInfo, TlsOptions from "@std/net/tls.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
 import Bytes from "@std/bytes.ms"
-import (
-    connect,
-    connect_tls,
-    connect_tls_config,
-    http_client,
-    listen,
-    listen_tls,
-    serve
-) from "@std/net/net.ms"
+import connect, connect_tls, connect_tls_config, http_client, listen, listen_tls, serve from "@std/net/net.ms"
 import timestamp from "@std/os/time.ms"
 import promise, wait_all from "@std/concurrency/promise.ms"
 import Listener, Connection from "@std/net/net.ms"

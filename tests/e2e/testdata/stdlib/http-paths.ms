@@ -11,7 +11,7 @@ import (
     HttpHeaders
 ) from "@std/net/http.ms"
 import http_client, request, serve from "@std/net/net.ms"
-import TlsOptions from "@std/net/net.ms"
+import TlsOptions from "@std/net/tls.ms"
 import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:

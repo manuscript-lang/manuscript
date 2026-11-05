@@ -3,7 +3,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/os/time.ms"
 import Promise, owned_promise from "@std/concurrency/promise.ms"
 import access, join, stat from "@std/os/fs.ms"
-import IpFamily from "@std/net/net.ms"
+import IpFamily from "@std/net/ip.ms"
 import (
     ReadStream,
     WriteStream,

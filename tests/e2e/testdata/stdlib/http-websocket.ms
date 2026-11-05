@@ -6,8 +6,8 @@ import headers, HttpMethod, upgrade from "@std/net/http.ms"
 import text_headers, list_headers from "./support/http.ms"
 import connect, http_client, request, serve, web_socket from "@std/net/net.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
-import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/net.ms"
-import TlsOptions from "@std/net/net.ms"
+import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
+import TlsOptions from "@std/net/tls.ms"
 
 fn tls_options() TlsOptions:
     return TlsOptions(

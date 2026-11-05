@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal, expect_error from "@std/test/test.ms"
 import parse, stringify from "@std/data/json.ms"
-import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net/net.ms"
+import IpAddress, Cidr, parse_ip, parse_cidr from "@std/net/ip.ms"
 
 enum Color:
     Red

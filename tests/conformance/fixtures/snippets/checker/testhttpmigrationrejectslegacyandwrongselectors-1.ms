@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/checker/http_migration_test.go:9 TestHTTPMigrationRejectsLegacyAndWrongSelectors
 import HttpMethod, HttpHeaders, headers from "@std/net/http.ms"
-import DnsKind, IpFamily, IpAddress, Cidr from "@std/net/net.ms"
+import DnsKind, IpFamily, IpAddress, Cidr from "@std/net/ip.ms"
