@@ -119,7 +119,7 @@ pub(super) fn build<L: Lower>(
     if let Some(error) = path_error {
         return Ok(fail(io, &compiled.source_root, "build", &error));
     }
-    let sources = match build_inputs(&compiled) {
+    let sources = match build_inputs(&compiled, backend, request) {
         Ok(sources) => sources,
         Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
     };
@@ -185,7 +185,11 @@ pub(super) fn build<L: Lower>(
 }
 
 /// Inventory inputs before publication, and retain the same list for the next cache hit.
-fn build_inputs(compiled: &super::Compiled) -> Result<Vec<std::path::PathBuf>, String> {
+fn build_inputs<L: Lower>(
+    compiled: &super::Compiled,
+    backend: &Engine<L>,
+    request: &BuildRequest,
+) -> Result<Vec<std::path::PathBuf>, String> {
     let mut sources = compiled.sources.clone();
     // A single-file build reads the enclosing manifest even though `project_root` is empty.
     let manifest = Path::new(&compiled.source_root).join("ms.toml");
@@ -201,6 +205,11 @@ fn build_inputs(compiled: &super::Compiled) -> Result<Vec<std::path::PathBuf>, S
     }
     if !compiled.project_root.is_empty() {
         sources.push(Path::new(&compiled.project_root).join("ms.toml"));
+    }
+    sources.push(backend.runtime_path()?);
+    sources.extend(request.link.iter().map(std::path::PathBuf::from));
+    if let ms_build::RtHot::File(path) = backend.build_options().rt_hot {
+        sources.push(path);
     }
     Ok(sources)
 }

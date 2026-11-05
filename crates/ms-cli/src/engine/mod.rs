@@ -76,6 +76,18 @@ impl<L: Lower> Engine<L> {
         self
     }
 
+    /// The archive selected for linking and for build-input publication protection.
+    pub(crate) fn runtime_path(&self) -> Result<PathBuf, String> {
+        if let Some(runtime) = &self.runtime {
+            return Ok(runtime.clone());
+        }
+        let build = self.build_options();
+        if let Some(runtime) = ms_build::runtime_override(&build)? {
+            return Ok(runtime);
+        }
+        runtime::embedded(build.static_musl)
+    }
+
     /// Compile the lowered module into the executable `output`.
     pub(crate) fn link(
         &self,
@@ -85,13 +97,7 @@ impl<L: Lower> Engine<L> {
         link: &[String],
     ) -> Result<(), String> {
         let build = self.build_options();
-        let runtime = match &self.runtime {
-            Some(runtime) => runtime.clone(),
-            None => match ms_build::runtime_override(&build)? {
-                Some(runtime) => runtime,
-                None => runtime::embedded(build.static_musl)?,
-            },
-        };
+        let runtime = self.runtime_path()?;
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
         ms_build::build_executable(
             &mut compiled.module,
