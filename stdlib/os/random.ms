@@ -69,7 +69,7 @@ export fn ulid() String!:
     return ok(out)
 
 /*
-Returns a random token of `size` bytes as unpadded URL-safe Base64, the shape of Python's `secrets.token_urlsafe`.
+Returns a random token of `size` bytes as unpadded URL-safe Base64.
 The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
 `size` follows `random_bytes`: 0 through 16 MiB, otherwise EINVAL.
 */
@@ -77,7 +77,7 @@ export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
     return ok(base64_encode_unpadded(data, url_safe: true))
 
-// Returns a secure Float at least 0.0 and below 1.0 with 53 random bits (JavaScript `Math.random`, but cryptographically secure).
+// Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the operating system's entropy.
 export fn float() Float!:
     return draw_float()
 

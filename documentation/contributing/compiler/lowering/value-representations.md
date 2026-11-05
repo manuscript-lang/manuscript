@@ -10,7 +10,7 @@ A machine value must keep the behavior its Manuscript type promises: `Int` arith
 | Source guarantee | Lowering |
 | --- | --- |
 | Checked `Int` | `i64` with checked operations that fault on overflow |
-| Valid UTF-8 `String` | Validated construction and conversion; header, length, bytes |
+| Valid UTF-8 `String` | Validated construction and conversion; two-word tagged `StrVal` holding inline bytes or a pointer and length |
 | Records and collections | Ordinary records flatten fields; `Error` stores its fields behind one pointer; collections own their headers and buffers; `.clone()` makes a deep clone |
 | Tagged alternatives | Tag and payload slots; recursive alternatives use a heap pointer; exhaustive frontend checking |
 | Optional and `Result` | Null pointer or `{ present, value }`; tag plus payload |

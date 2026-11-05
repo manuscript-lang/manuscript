@@ -60,9 +60,9 @@ export type FlagKind:
     case Bool
     // `String` field. Any text, including text that begins with a dash when given as `--name=value`.
     case String
-    // `Int` field. A whole number that fits in Int; other text is an InvalidValue error.
+    // `Int` field. A whole number that fits in Int; other text returns an Error with kind `"EINVAL"`.
     case Int
-    // `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, is an InvalidValue error.
+    // `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, returns an Error with kind `"EINVAL"`.
     case Float
     // `List[String]` field. The flag may repeat; every occurrence is kept in order.
     case List
@@ -153,7 +153,7 @@ impl Matches:
 /*
 A command or command group: its schema, subcommands and handler.
 
-A group is a Command with `children`. Build a leaf with `command[T]`, or set `exec` directly to read `Matches` yourself.
+A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../learn/common-tasks.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
 */
 export type Command:
     // The word that selects this node; the program name for the root.

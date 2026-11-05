@@ -327,7 +327,7 @@ export fn milliseconds(n: Int) Duration:
 export fn seconds(n: Int) Duration:
     return nanoseconds(n * 1000000000)
 
-// Constructs a duration of `n` minutes, as in `clock().now().difference(start).compare(minutes(5)) > 0` to test an elapsed span; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
+// Constructs a duration of `n` minutes, as in `monotonic().difference(start).compare(minutes(5)) > 0` to test an elapsed span; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn minutes(n: Int) Duration:
     return nanoseconds(n * 60000000000)
 

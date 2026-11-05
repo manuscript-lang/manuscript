@@ -13,6 +13,7 @@ Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to
 
 ```manuscript
 import panic from "@std/core.ms"
+import Decimal from "@std/math/decimal.ms"
 
 fn discount_validated(price: Decimal, percent: Decimal) Decimal:
     if price <= 0d:
@@ -46,7 +47,7 @@ Only literals and arithmetic over literals are folded. Values that arrive throug
 
 ## Runaway recursion
 
-- Recursion is limited by stack size, not by a call count: a program and each of its tasks may use up to 256 MiB of stack, so small frames allow millions of nested calls. The task of a promise starts on 512 KiB, which keeps a million parked promises within a few gigabytes, and grows in 512 KiB steps as a recursion needs them. When the stack runs out, the fault is `stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead`, with the innermost source frames. It unwinds, runs cleanup, and fails only the current test.
+- Recursion is limited by stack size, not by a call count: a program and each of its tasks may use up to 256 MiB of stack, so small frames allow millions of nested calls. The task of a promise starts on 512 KiB, which keeps a million parked promises within a few gigabytes, and grows in 512 KiB steps as a recursion needs them. When the stack runs out, the fault is `stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead`, with the innermost source frames. It unwinds and runs cleanup. In a test run, it fails the current test while other tests remain isolated.
 - `ms lint` reports **MSL112** for a function that calls itself on every path, such as `fn f(n: Int) Int: return f(n - 1)`; a `return`, `try`, or fault before the call counts as a base case.
 - A fault trace keeps its innermost 32 frames.
 - `==` and `!=` recurse through nested values; past 250,000 the fault is `equality depth limit exceeded (250000 nested values)`.

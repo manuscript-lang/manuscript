@@ -68,7 +68,7 @@ ms test ms.toml --json
 - A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `try expect_equal(...)`, or `let _ = try ...` to drop a returned value.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
 
-`try expect_ok` checks success and keeps the payload:
+For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `try expect_ok` checks success and keeps the payload:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -95,11 +95,23 @@ Tests can also propagate an `Error` with `try`. See [Results](../core-language/e
 
 ## Select and repeat
 
+With the opening `addition` and `zero is unchanged` tests saved in `test.ms`, list their exact names:
+
 ```sh
-ms test ms.toml --list
-ms test ms.toml --test 'tests/math_test.ms::addition' --json
-ms test ms.toml --match 'addition|zero' --exclude 'slow' --fail-fast
-ms test ms.toml --repeat 10 --shuffle 42
+ms test test.ms --list
+```
+
+```text
+test.ms::addition
+test.ms::zero is unchanged
+```
+
+Run one named test, select names with a pattern, or repeat the suite in a seeded order:
+
+```sh
+ms test test.ms --test 'test.ms::addition' --json
+ms test test.ms --match 'addition|zero' --exclude 'slow' --fail-fast
+ms test test.ms --repeat 10 --shuffle 42
 ```
 
 - Copy exact `module::name` identities from `--list`; repeat `--test` to select several.

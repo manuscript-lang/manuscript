@@ -12,7 +12,7 @@ import (
 ) from "@std/internal/bytes.ms"
 import msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms"
 
-// An immutable sequence of bytes. Indices and slice bounds are zero-based.
+// An immutable sequence of bytes, such as `"hello".to_bytes()`. Use `decode_utf8()` to read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from zero.
 export extern type Bytes
 
 impl Data for Bytes:
@@ -269,7 +269,7 @@ impl BytesCodecs for Bytes:
     /*
     Reads an unsigned base-128 integer, least-significant group first, from absolute byte offset `at`.
     Reads at most ten bytes; byte ten must be 0 or 1. Accepts nonminimal encodings and ignores trailing bytes.
-    Offsets require 0 <= at <= length(); an unterminated shorter input is Incomplete.
+    Offsets require 0 <= at <= length(), otherwise ERANGE; an unterminated shorter input returns EBADMSG.
     */
     fn uvarint(at: Int) VarintRead[UInt64]!:
         if at < 0 or at > self.length():

@@ -1,6 +1,6 @@
 /*
 An ordered mutable collection with indexing, iteration, and transformations.
-Primitive backing stores Int values at the platform's Int width and Float values at 64 bits, Bool values as bytes, and String references without an element box.
+Start with a literal such as `["docs", "release"]`; use `var` when you want to append, remove, or replace items.
 Lists are owned values; clone makes a deep copy and accessors can borrow elements.
 `List[T]()` creates an empty list; `List[T](reserve: n)` also preallocates room for `n` items without changing the length. A negative `n` reserves nothing.
 */
@@ -287,7 +287,7 @@ export fn range_by(start: Int, end: Int, step: Int, max_items: Int?) List[Int]!:
 // Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...
 
-// Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
+// Concatenates the inner lists in order into one new list; `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.
 export fn flatten[T](lists: List[List[T]]) List[T]:
     return msrt_list_flatten(lists)
 

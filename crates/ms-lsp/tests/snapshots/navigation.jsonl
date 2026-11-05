@@ -1560,12 +1560,12 @@
 {"id":1559,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"stdout","uri":"manuscript-stdlib:///cli.ms"},{"range":"stdout","uri":"manuscript-stdlib:///log.ms"},{"range":"stdout","uri":"manuscript-stdlib:///test/bench.ms"},{"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1560,"jsonrpc":"2.0","result":null}
 {"id":1561,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}},{"kind":2,"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}},{"kind":2,"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}]}
-{"id":1562,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\nMoves `value` into the stream's buffer. `EBADF` once the reader is gone."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
+{"id":1562,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\nSends `value` to the sink, which may wait; returns sink errors, including `EBADF` for a closed pipe reader."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
 {"id":1563,"jsonrpc":"2.0","result":[{"range":"write","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1564,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1565,"jsonrpc":"2.0","result":null}
 {"id":1566,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}]}
-{"id":1567,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\nMoves `value` into the stream's buffer. `EBADF` once the reader is gone."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
+{"id":1567,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\nSends `value` to the sink, which may wait; returns sink errors, including `EBADF` for a closed pipe reader."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
 {"id":1568,"jsonrpc":"2.0","result":[{"range":"write","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1569,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1570,"jsonrpc":"2.0","result":null}
@@ -1605,12 +1605,12 @@
 {"id":1604,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"stdout","uri":"manuscript-stdlib:///cli.ms"},{"range":"stdout","uri":"manuscript-stdlib:///log.ms"},{"range":"stdout","uri":"manuscript-stdlib:///test/bench.ms"},{"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1605,"jsonrpc":"2.0","result":null}
 {"id":1606,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}},{"kind":2,"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}},{"kind":2,"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}]}
-{"id":1607,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Promise[Unit]\n```\n\nA promise that finishes when the buffer has drained."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
+{"id":1607,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Promise[Unit]\n```\n\nReturns the sink's flush promise; a pipe may still hold up to its capacity of unread values when this completes."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
 {"id":1608,"jsonrpc":"2.0","result":[{"range":"flush","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1609,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1610,"jsonrpc":"2.0","result":null}
 {"id":1611,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}]}
-{"id":1612,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Promise[Unit]\n```\n\nA promise that finishes when the buffer has drained."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
+{"id":1612,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Promise[Unit]\n```\n\nReturns the sink's flush promise; a pipe may still hold up to its capacity of unread values when this completes."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
 {"id":1613,"jsonrpc":"2.0","result":[{"range":"flush","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1614,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1615,"jsonrpc":"2.0","result":null}

@@ -95,7 +95,7 @@ export fn extension_for_media_type(media_type: String) String?:
     return none
 
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are lower-cased;
-// a missing slash, empty part, or unterminated quote is `InvalidMediaType`.
+// a missing slash, empty part, or unterminated quote returns `EBADMSG`.
 export fn parse_media_type(text: String) MediaType!:
     let pieces = split_params(text)
     let essence = pieces[0].trim().lower()
@@ -197,7 +197,7 @@ fn quote_value(value: String) String:
     return "\"{escaped}\""
 
 // Parses a header block (up to the first blank line). Continuation lines starting with space or tab
-// join the previous value with one space. A line without a colon, or a fold before any field, is `InvalidHeader`.
+// join the previous value with one space. A line without a colon, or a fold before any field, returns `EBADMSG`.
 export fn parse_headers(text: String) Headers!:
     var fields = List[HeaderField]()
 
@@ -277,7 +277,7 @@ fn make_part(section: Bytes) Part!:
 /*
 Splits a multipart body into parts using `boundary`. Text before the first delimiter and after the
 closing delimiter is ignored. Parts keep their body bytes exactly; headers are parsed as `Headers`.
-A body without a closing delimiter is `InvalidMultipart`.
+A body without a closing delimiter returns `EBADMSG`.
 */
 export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
     if boundary.is_empty(): return error(

@@ -1,26 +1,26 @@
 +++
 title = "Commands and editor setup"
-weight = 1
+weight = 2
 +++
 
 # Commands and editor setup
 
 Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](../contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
-```sh
-ms lint source.ms --json
-ms lint ms.toml --json
-ms fmt source.ms --check
-ms fmt ms.toml --check
-ms fmt source.ms --drop-labels
-ms check source.ms --fix
-ms verify ms.toml --json
-ms lsp
-ms search_symbol read file lines
-ms search_symbol parse_config
-ms search_symbol json
-ms profile ms.toml --out-dir capture --top 10 -- arg1
-```
+## Choose the next command
+
+Run project commands from the directory containing `ms.toml`. For a single-file tool, replace `ms.toml` with its `.ms` filename.
+
+| Your task | Command | Result |
+| --- | --- | --- |
+| Check a change before running it | `ms check ms.toml` | Diagnostics, or a successful check summary |
+| Apply consistent layout | `ms fmt ms.toml` | Formatted files; silent on success |
+| Check formatting in CI | `ms fmt ms.toml --check` | Names files needing changes; leaves source untouched |
+| Check code, formatting, lint and tests together | `ms verify ms.toml` | A status for each step; nonzero if a step fails |
+| Find an API | `ms search_symbol json` | A bounded page of matching declarations |
+| Understand a program visually | `ms diagram ms.toml --format html -o code-map.html` | An offline HTML file with checked source relationships |
+
+Start with the [first-program workflow](../learn/getting-started.md) for a complete example and its output. The sections below explain command options and structured results for automation.
 
 - Bare `ms` prints help. `ms version` and `ms --version` print the compiler version.
 - Command-line arguments must be valid UTF-8; invalid OS arguments return usage status 2.
@@ -239,6 +239,10 @@ Test results:
 
 ## Editor features
 
+Install the [Manuscript VS Code extension](https://github.com/manuscript-lang/manuscript/tree/main/extensions/vscode#readme), then open your project folder. Put `ms` on `PATH` or set `manuscript.serverPath` to your compiler executable. After changing that setting, run **Manuscript: Restart language server**. The extension starts `ms lsp` for you; it is a protocol server, not an interactive terminal command. Other LSP clients can launch the same command over standard input/output.
+
+Open a `.ms` file, hover over a name to see its type, use **Go to Definition** to follow it, and apply a diagnostic's quick fix when offered. Formatting uses the same rules as `ms fmt`, keeping editor and command-line edits consistent.
+
 The language server provides incremental sync with validated UTF-16 ranges, diagnostics and lint codes, document and workspace symbols, semantic tokens, folding, inferred-local type hints, hover, definition and type-definition navigation, highlights, references, signature help, formatting, import organization, code actions, and rename.
 
 - Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, record fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
@@ -264,7 +268,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
-| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
+| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `try x.flush()`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.

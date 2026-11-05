@@ -1,23 +1,69 @@
 +++
-title = "How it works"
-weight = 0
+title = "Build and share a program"
+weight = 1
 +++
 
-# How it works
+# Build and share a program
 
-`ms` checks your program and compiles it ahead of time to a native executable. The compiler, Cranelift backend, runtime and standard library ship together. The resulting executable runs directly on its target platform.
+Use `ms run` while changing a program, then `ms build` to produce an executable you can run or share. The recipient needs the matching operating system and architecture, but does not need `ms` installed.
 
-```text
-.ms source → parse → check (HIR) → lower (MIR) → Cranelift or LLVM object code → link → executable
+## Check and run your project
+
+Start from a fresh project so you can try the complete workflow:
+
+```sh
+ms init my-app
+cd my-app
+ms check ms.toml
+ms run ms.toml --build-type Debug -- first second
 ```
 
-1. **Parse and check.** Resolves imports, then checks types, control flow, cleanup, and effects. Errors stop here.
-2. **Lower and compile.** Checked HIR becomes MIR, which is optimized and verified before Cranelift or LLVM emits object code. Debug uses Cranelift to keep compilation fast for quick iteration. Release uses LLVM to optimize runtime performance, and MinSizeRel favors code size as well. Both use Cranelift if the LLVM tools are unavailable or cannot be fetched. `ms emit` prints MIR for inspection.
-3. **Link.** The pinned `lld` links the object with the embedded runtime and native standard library. `ms build` writes the executable; `ms run` and `ms test` use a temporary directory.
+The check and run report:
 
-## One binary
+```text
+Checked ms.toml (2 modules)
+Arguments: 2
+```
 
-`ms` also includes the formatter, linter, language server (`ms lsp`), interactive code maps (`ms diagram ms.toml --format html`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Source-only commands such as `check`, `fmt`, `lint` and `diagram` work without native linking tools.
+`check` catches source errors without running the application. `run` builds and starts it; arguments after `--` go to your program. `Debug` keeps the edit/run cycle quick. Use `ms run ms.toml --watch -- first second` to rebuild after saved changes, or [set up your editor](implementation.md) for diagnostics while you type.
+
+## Build the executable
+
+```sh
+ms build ms.toml -o my-app
+./my-app first second
+```
+
+```text
+Built my-app
+Arguments: 2
+```
+
+On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. Builds default to optimized `Release`; choose [a build level](builds/build-levels.md) when you need unoptimized debugging or a smaller executable.
+
+Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](../contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
+
+The adjacent `my-app.ms-build.json` records build identity and source information; it is not needed to run the executable. Keep source and debug artifacts when you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
+
+## Check a change before sharing it {#one-binary}
+
+```sh
+ms verify ms.toml
+ms diagram ms.toml --format html -o code-map.html
+```
+
+For the generated project, `verify` reports:
+
+```text
+check  passed
+fmt    passed
+lint   passed
+test   passed
+```
+
+`verify` checks types, formatting, lint and tests; fix a failed check before building the version you intend to share. It does not rewrite formatting. The second command succeeds silently and writes an offline HTML map: open `code-map.html` to follow source, checked types and calls during review. See [the code-map workflow](implementation.md#interactive-code-map) for change overlays.
+
+The same compiler includes the standard library, formatter, linter, language server and analysis tools. Source-only commands such as `check`, `fmt`, `lint` and `diagram` need no native linker. For a repeatable team setup, use the same `ms` version and keep `ms.toml` with your source.
 
 ## Build tools and local setup
 
@@ -32,12 +78,8 @@ To avoid these tool downloads, provision the local tools or populate the matchin
 
 See [cache locations](builds/incremental-compilation.md) and [platform linking details](../contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](../contributing/rust-toolchain.md#build-and-run).
 
-## Runtime cache
+## Rebuild after changes {#runtime-cache}
 
-The embedded runtime archive is extracted once and reused by later links. `ms build` can also reuse an unchanged executable; `run`, `test` and `profile` rebuild. See [build caches](builds/incremental-compilation.md) for locations and overrides.
+`ms build` can reuse an unchanged executable. `run`, `test` and `profile` build fresh executables, while reusing installed tools and the extracted runtime archive. You do not need to manage these caches for normal development; use [build caches](builds/incremental-compilation.md) when troubleshooting reuse or choosing cache locations.
 
-## Where to go next
-
-- [Build levels](builds/build-levels.md)
-- [Build caches](builds/incremental-compilation.md)
-- [Debugging](debugging/_index.md) and [commands and editor setup](implementation.md)
+For the compiler's internal stages, see the contributor [compilation pipeline](../contributing/compiler/frontend/pipeline.md).

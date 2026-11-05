@@ -14,6 +14,6 @@ The compiler turns Manuscript source into native code through Cranelift, or pinn
 5. **Record facts.** Produce typed IR: evaluation order, captures, cleanup scopes, effects, source locations.
 6. **Lower, generate code, and link** MIR with Cranelift or LLVM against the embedded native runtime.
 
-The compiler is written in Rust. External adapters remain design work; the [repository architecture](../../architecture.md) describes the current layout.
+When narrowing a failure, use `ms check` to separate loading and checking from native compilation. `ms emit` goes through lowering and prints MIR; `ms run` also generates, links and executes native code. Keep the smallest source program that distinguishes the failing stage. The [repository architecture](../../architecture.md) maps these stages to Rust crates.
 
 Continue with [project configuration](../../../developer-tooling/builds/project-configuration.md), [type checking](type-checker.md), [scope and capture checking](scope-checker.md), and [typed IR](typed-ir.md).

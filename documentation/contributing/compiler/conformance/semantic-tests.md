@@ -7,9 +7,9 @@ weight = 104
 
 A conformance test checks a rule by observing a program.
 
-Core-language fixtures in `tests/e2e/testdata/accept/` (`cl-*.ms`) hold independent accepted modules and rejected variants for grammar, operators, inference, contracts, and control flow; their parse, resolution, and type outcomes are authoritative.
+Start with a small accepted program or a single rejected use. Place successful core-language examples under `tests/e2e/testdata/accept/` (`cl-*.ms` and related fixtures), and rejection cases under `tests/e2e/testdata/reject/`. The e2e runner executes accepted files with `ms test` and requires rejected files to fail `ms check`. Use a test body when the regression depends on execution; a declaration alone only checks acceptance.
 
-Tests use `test "name":` blocks and assertions from `@std/test/test.ms`. Propagate their `Result` with `try` so a failed assertion fails the test.
+For example, save this as `decrement.ms`. Tests use `test "name":` blocks and assertions from `@std/test/test.ms`. Propagate their `Result` with `try` so a failed assertion fails the test.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -18,6 +18,18 @@ import expect_equal from "@std/test/test.ms"
 test "checked decrement":
     let value = 3
     try expect_equal(value - 1, 2)
+```
+
+Run it with the compiler built from your checkout:
+
+```sh
+target/release/ms test decrement.ms
+```
+
+```text
+RUN decrement.ms::checked decrement
+PASS decrement.ms::checked decrement
+1 tests, 0 failed
 ```
 
 A test follows `Result[Unit, Error]` return rules; normal completion succeeds. `ms test` runs each selected test in a separate process. See [testing](../../../learn/testing.md) for fixtures, selection and reporting.

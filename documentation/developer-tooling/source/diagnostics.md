@@ -5,13 +5,51 @@ weight = 2
 
 # Diagnostics
 
-Each diagnostic has a stable rule code, a message, and a source position, plus an exclusive end when the extent is known. Coordinates follow the [metadata span contract](../debugging/metadata.md).
+Use `ms check` while editing to find mistakes before running the program. A diagnostic tells you where the problem is, what rule failed and how to repair it.
+
+## Follow a repair
+
+Save this program as `count.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
+```manuscript
+export fn main() Int:
+    var count = 2
+    count += 1
+    print(count)
+    return 0
+```
+
+```sh
+ms run count.ms
+```
+
+```text
+3
+```
+
+Change `var count` to `let count`, then run `ms check count.ms`. It exits with status 1 and points to the assignment on line 3. The diagnostic message is:
+
+```text
+cannot assign immutable binding count; declare it with 'var count = ...' instead of 'let'
+```
+
+Here the intended repair is mechanical, so you can apply it and run again:
+
+```sh
+ms check count.ms --fix
+ms run count.ms
+```
+
+The checker reports `ms: applied 1 fix in 1 file` and `Checked count.ms`; the program prints `3` again. Review applied edits before keeping them. When a repair needs a choice about the program's meaning, follow the explanation and edit the source yourself.
+
+Each diagnostic also has a stable rule code and source position for editor and agent integrations. The same error is `MS3060` in `ms check count.ms --json`; the JSON includes the exact replacement range and `"replacement": "var"`.
 
 ## Message shape
 
 Messages read `<cause>; <fix>`. The cause has stable wording naming the offending name, type, or count.
 
-The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/core.ms"`, `declare it with 'var x = ...' instead of 'let'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported. New messages extend the matching tests in `crates/ms-check/tests`, `crates/ms-syntax/tests`, or `crates/ms-cli/tests`.
+The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/core.ms"`, `declare it with 'var x = ...' instead of 'let'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported.
 
 ## Explaining a violated rule
 
@@ -42,4 +80,4 @@ Several inputs share one document; see [analysis selection](../implementation.md
 
 `ms guide <code>` prints a code's or sub-code's family and usual repair (`--json` for structured output), for example `ms guide MS3000.1`.
 
-Rules are defined by [type checking](../../contributing/compiler/frontend/type-checker.md) and [scope and capture checking](../../contributing/compiler/frontend/scope-checker.md).
+For the language rules behind a diagnostic, start with [variables](../../core-language/basics/bindings.md) and [values and references](../../core-language/types/references.md).

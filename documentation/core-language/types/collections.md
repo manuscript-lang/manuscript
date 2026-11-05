@@ -5,7 +5,7 @@ weight = 3
 
 # Collections
 
-Collections have one owner. Bindings, arguments and borrow-returning accessor (`first`, `last`, `Map.get`) borrow them; storing one moves it at its last use; `.clone()` makes an explicit deep copy. Mutation requires `var`; see [mutation and references](references.md).
+Choose a `List` for an ordered sequence, a `Map` for lookup by key, and a `Set` to keep distinct values. Declare a collection with `var` when you will update it; use `.clone()` when you need an independent copy. See [mutation and references](references.md) for moves and borrows.
 
 `List`, `Map`, `Set`, `ListEntry[T]`, and `MapEntry[K: Hashable, V]` are prelude names (with `Optional`, `Result`, `Error`, `Equal`, `Hashable`); importing them is rejected. Builders and factories need imports. See [names and declaration order](../modules/declarations.md#names-and-declaration-order).
 
@@ -48,7 +48,7 @@ Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name:
 
 ## Element requirements
 
-Collections accept any value type (functions, contract views, builders, services, resources); storing a resource neither keeps it open nor registers cleanup. Map keys and set elements also require `Hashable`.
+Lists and map values accept functions, interface values, builders and resources. Moving a resource into a collection transfers its cleanup duty to that collection; [aggregate cleanup](../cleanup/closeable.md#records-and-collections-close-what-they-hold) closes owned resources at scope end. Map keys and set elements also require `Hashable`.
 
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
@@ -60,7 +60,7 @@ let mixed = [1, 2.0]
 let unknown = []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so `[none, 1]` is `List[Int?]` and `[none]` is rejected. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `let values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
 
 ## Iteration
 
@@ -70,17 +70,26 @@ Maps and sets iterate in insertion order, with a [for loop](../control-flow/loop
 
 `xs.entries()` pairs each element with its index, and `a.zip(b)` pairs two lists by position. Neither needs a nested index loop:
 
-```ms
-import stdout from "@std/io/io.ms"
+Save as `pairs.ms` and run `ms run pairs.ms`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n"} -->
+```manuscript
 export fn main() Int:
     let names = ["ann", "bo", "cy"]
     let scores = [90, 72]
     for pair in names.zip(scores):
-        stdout().write("{pair.first}: {pair.second}\n")
+        print("{pair.first}: {pair.second}")
     for part in [1, 2, 3, 4, 5].chunks(2):
-        stdout().write("{part.length()}\n")
+        print(part.length())
     return 0
+```
+
+```text
+ann: 90
+bo: 72
+2
+2
+1
 ```
 
 ## Mutation and copies
@@ -113,24 +122,13 @@ List `slice` returns `Result[List[T], Error]` with strict bounds `0 <= start <= 
 
 A collection loop or non-escaping callback borrows the receiver for the traversal. The checker rejects mutation, reassignment, or a move of that receiver while the borrow is live. To mutate the original while traversing independent data, make an explicit `.clone()` first.
 
-### Naming and migration
+### Choosing a copy or an update {#naming-and-migration}
 
-Verbs mutate; use `.clone()` for a separate result. Transforms such as `concat`, `filter`, `sorted`, and `reversed` copy. Bytes `with_value` and `slice` copy. `view(start, end)` borrows a byte range without copying; invalid bounds fault, while `slice` returns an error. Use `.clone()` to keep bytes independently of the borrowed range.
+Mutating methods such as `append`, `set`, `add` and `reverse` update a `var` receiver. Transforms such as `concat`, `filter`, `sorted` and `reversed` return independent results. For bytes, `slice` copies and `view(start, end)` borrows a range; see [half-open slices](../basics/text-and-bytes.md#half-open-slices).
 
-These removed spellings looked like copies but mutated. Labels and return types are unchanged.
+Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqueue`, `dequeue`, `peek`); `dequeue` is O(1). Use `Deque` when adding or removing at both ends. Both are owned values: declare them with `var` to mutate and use `.clone()` for an independent copy.
 
-| Receiver | Removed spelling | Use | Result |
-| --- | --- | --- | --- |
-| List | `with_value`, `without`, `with_values`, `reverse_in_place` | `set`, `remove`, `splice`, `reverse` | Same List |
-| Map | `with_entry`, `without` | `add`, `remove` | Same Map |
-| Map | `with_default`, `with_default_from` | `add_default`, `add_default_from` | Same Map |
-| Set | `with_value`, `without` | `add`, `remove` | Same Set |
-| Bytes | `reverse` | `reversed` | Copy of byte storage |
-| StringBuilder, BytesBuilder | `freeze` | `build` | The sealed value |
-
-`List.shift` is removed. Use `Queue` from `@std/collections/queue.ms` (`enqueue`, `dequeue`, `peek`) for first-in, first-out work; like `Deque` and `List` it is an owned value, so a copy is independent (declare it with `var` to mutate). `dequeue` is O(1), where `shift` cost O(n) per call. Use `Deque` when values are pushed or popped at both ends.
-
-Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
+Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. For an independent map, bind `var copy = map.clone()` and call `copy.add_default(...)`.
 
 Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
 
@@ -217,6 +215,7 @@ Enumeration returns owned results. Callbacks borrow the receiver for the travers
 
 List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: fn a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 import panic from "@std/core.ms"
 
@@ -227,7 +226,7 @@ test "sorting and aggregates":
     scores.sort(fn a, b: b - a)
     if scores != [3, 2, 1]:
         return panic("check failed")
-    if scores.sum() != 6 or scores.max() != 3 or List[Int]().min() != none:
+    if scores.sum() != 6 or scores.max() != 3 or not List[Int]().min().is_none():
         return panic("check failed")
 ```
 

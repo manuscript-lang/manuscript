@@ -592,7 +592,7 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
 ```manuscript
-let sources = glob(".", GlobOptions(patterns: ["*.ms"]))
+let sources = try glob(".", GlobOptions(patterns: ["*.ms"]))
 ```
 */
 export fn glob(
@@ -609,7 +609,7 @@ source and destination path and skips the entry when it returns False.
 Entry and byte limits apply cumulatively across the whole copy.
 
 ```manuscript
-copy("a.txt", "b.txt", CopyOptions(replace: true))
+try copy("a.txt", "b.txt", CopyOptions(replace: true))
 ```
 */
 export fn copy(
@@ -870,7 +870,7 @@ With an interval it compares snapshots of the tree every `interval`, which must 
 fails with EOVERFLOW the same way on every platform.
 
 ```manuscript
-var watcher = watch("src", true, WatchOptions(interval: 1.seconds()))
+var watcher = try watch("src", true, WatchOptions(interval: 1.seconds()))
 ```
 */
 export fn watch(

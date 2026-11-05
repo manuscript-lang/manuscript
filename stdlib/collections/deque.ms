@@ -3,7 +3,7 @@ import Iterable from "@std/collections/iterable.ms"
 
 /*
 A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
-Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
+Use `.clone()` for an independent deque when its elements are Clonable; assigning a deque transfers ownership.
 Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
 */
 export type Deque[T]:

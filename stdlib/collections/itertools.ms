@@ -2,7 +2,7 @@ import Pair from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
 
 /*
-Combinatorial and sequence helpers over lists, in the spirit of Python's `itertools`.
+Build combinations, consecutive groups, and running totals from lists.
 Every function builds a new list of copies and leaves its inputs unchanged, so the elements must be Clonable.
 Results that grow combinatorially (`permutations`, `combinations`, `product`) are built whole: bound the input size.
 `itertools.pairwise([1, 2, 3])` pairs each item with the next one. Chunking and sliding windows are `List.chunks` and `List.windows`.
@@ -74,7 +74,7 @@ export fn zip_longest[A: Clonable, B: Clonable](
     return out
 
 /*
-Splits the list into runs of consecutive items whose `key` is equal (Python `itertools.groupby`); `key` is called once per item in order.
+Splits the list into runs of consecutive items whose `key` is equal; `key` is called once per item in order.
 Items with the same key that are not adjacent form separate runs: sort first to gather them. An empty list gives an empty list.
 Example: `group_runs([1, 1, 2, 1], fn n: n)` has the runs `1 1`, `2` and `1`.
 */

@@ -59,8 +59,8 @@ fn next_count(count: Int, elapsed: Int, target: Int) Int:
 Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
   bench "sorts":
-      let data = ints(100000)
-      try measure(100000, fn: keep(data.sorted().length()))
+      let data = [3, 1, 2]
+      try measure(1, fn: keep(data.sorted().length()))
 Everything the body does before `measure` runs once, untimed.
 */
 export fn measure(operations: Int, work: fn() Unit!) Unit!:
@@ -109,8 +109,8 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
 
     return measure(operations, body)
 
-// Consumes a bench's result so the work that computed it stays observable; returns an error only for the one value
-// no workload should produce (the smallest Int), so the check cannot be optimized away or tripped by accident.
+// Checks a bench's Int result so the work that computed it stays observable. Apply `try keep(value)` in the body.
+// The smallest Int returns an error; choose a different checksum if that value is a valid result of your workload.
 export fn keep(checksum: Int) Unit!:
     if checksum == -9223372036854775807 - 1:
         return fail(

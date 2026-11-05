@@ -5,11 +5,17 @@ weight = 3
 
 # Pattern matching
 
-`match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. Avoid it on `Optional` and `Result` (see [below](#optional-and-result-values)). Guards, ranges, nested case patterns, and combined patterns are rejected. Literal arms are described in [matching literals](#matching-literals).
+`match` handles each case of an alternative type and names the case's data. Use it for your own alternatives and contract views. For an Optional payload or Result success, use `if let` or `try` as described [below](#optional-and-result-values).
 
-`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. This handles the `Payment` type from [alternatives](../types/alternatives.md):
+`match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. Save this complete example as `payment.ms` and run `ms run payment.ms`:
 
+<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\n"} -->
 ```manuscript
+type Payment:
+    case Paid(receipt: String)
+    case Declined(reason: String)
+    case Pending(reference: String)
+
 fn describe(payment: Payment) String:
     match payment:
         Paid(receipt):
@@ -18,7 +24,17 @@ fn describe(payment: Payment) String:
             return "Declined: {reason}"
         Pending(reference):
             return "Pending: {reference}"
+
+export fn main() Int:
+    print(describe(Payment.Paid("receipt-42")))
+    return 0
 ```
+
+```text
+Paid: receipt-42
+```
+
+Each arm handles one case and gives its payload a local name. A newly added case needs an arm unless the match has a wildcard. Guards, ranges, nested case patterns and combined patterns are rejected; use another statement after binding the payload. Literal arms are described in [matching literals](#matching-literals).
 
 ## Keep match flow flat
 
@@ -112,7 +128,8 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
-```text
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
 interface Shape:
     fn area() Int
 
@@ -120,7 +137,7 @@ type Square:
     side: Int
 
 impl Shape for Square:
-    fn area() Int: self.side * self.side
+    fn area() Int: return self.side * self.side
 
 fn describe(shape: Shape) String:
     match shape:

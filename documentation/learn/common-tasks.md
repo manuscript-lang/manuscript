@@ -27,7 +27,7 @@ ms run hello.ms
 Hello, Manuscript!
 ```
 
-`print` converts any value to text and returns `Unit`. For recoverable I/O errors, use `stdout().write(...)` and `stdout().flush().wait()` as in the next recipe. `try` propagates those errors; `main` returns 1 on failure. To show an error, use `cause.message` ([the Error record](../core-language/errors/results.md#the-error-record)).
+`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush().wait()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
 ## Read command-line arguments
 
@@ -107,7 +107,7 @@ Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import read_file, write_file from "@std/os/fs.ms"
+import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
@@ -142,7 +142,7 @@ Save as `write.ms`. `replace: false` fails if the file exists.
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/process.ms"
-import read_file, write_file from "@std/os/fs.ms"
+import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))

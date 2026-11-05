@@ -13,16 +13,15 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 - Bidirectional text controls (U+202A to U+202E and U+2066 to U+2069) are rejected in comments and text, since they can make source display differently from how it is read; write `\u{202E}` in text when the character is needed.
 - Identifiers are `[A-Za-z_][A-Za-z0-9_]*` and case-sensitive. A lone `_` is a pattern placeholder. Unicode is allowed in text and comments only.
 
-The reserved words are:
+The language uses these keywords:
 
 ```manuscript
 and break case continue else export extern false fixture fn for if
-impl import in interface let match not or ref return self test true try type
+impl import in interface let match not or return self test true try type
 unit var while
 ```
 
-- `ref` is reserved but has no meaning: a program that writes it is rejected with a hint to drop it, because a function that returns a part of a parameter returns a borrow of it without a marker.
-- `opaque` is contextual too: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
+- `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.

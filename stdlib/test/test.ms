@@ -2,21 +2,21 @@ import panic from "@std/core.ms"
 import (msstd_test_catch_fault, msstd_test_repr) from "@std/internal/test.ms"
 
 /*
-Assertions for declared test blocks. Each returns a Result whose error describes the failed expectation;
-apply `try` so a test block returns that error and fails. The error's `details["site"]` names the call.
-File-level test lifecycle. A local make_fixture() returns its concrete implementer.
+Setup and cleanup for tests that need a fixture. Define `fn make_fixture() T` in the test file,
+where `T` implements `TestHooks`; each test accesses its own instance as `fixture`.
+Each selected test and repetition runs in a fresh process, so the factory and all hooks run again.
 Missing hooks are no-ops. All supplied hooks take no arguments and return Unit.
-Example: a file declares fn make_fixture() ApiFixture and impl TestHooks for ApiFixture;
-its tests access the shared concrete instance as fixture, and after_all closes its server.
+For a server fixture, start the server in the factory and close it in `after_all`.
+Tests share the fixture definition, not one running server or mutable instance.
 */
 export interface TestHooks:
-    // Runs once after the fixture factory and before the file's selected tests.
+    // Runs after the fixture factory in each selected test process.
     var fn before_all() Unit
     // Runs before each selected test execution, including repetitions.
     var fn before_each() Unit
     // Runs after each test attempt, including before_each failure, skip, or assertion failure.
     var fn after_each() Unit
-    // Runs once after selected tests finish or stop; also runs when before_all fails.
+    // Runs after the test finishes or stops in its process; also runs when before_all fails.
     var fn after_all() Unit
 
 // The position (`file:line:col`) of the call that omitted this argument. Valid only as a parameter default, in a function called directly.
