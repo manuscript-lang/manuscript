@@ -1,11 +1,13 @@
 //! Derives the review fact model from a checked program and its inspection.
 
-use crate::facts::{Fact, Facts, append_unique, error_type, fact_key};
+use crate::facts::{Fact, Facts, Slot, append_unique, error_type, fact_key};
 use crate::flow::{FlowBuilder, Site, StmtView};
 use ms_check::syntax::DeclRef;
 use ms_check::{ModRef, Program};
 use ms_syntax::visit::{Visitor, walk_callable, walk_expr};
-use ms_syntax::{DeclKind, Expr, ExprKind, Method, NodeId, Stmt, StmtKind, UnaryOp};
+use ms_syntax::{
+    DeclKind, Expr, ExprKind, Method, NodeId, Param, Stmt, StmtKind, TypeKind, TypeRef, UnaryOp,
+};
 use std::collections::{HashMap, HashSet};
 
 /// An inspection entity, as far as facts need it.
@@ -118,6 +120,9 @@ pub fn collect_facts(
             );
         }
         let source: &str = &module.source;
+        facts
+            .sources
+            .insert(syms.str(module.file).to_string(), source.to_string());
         let module_facts = module.facts();
         let scoped: HashSet<NodeId> = module_facts
             .patterns
@@ -139,6 +144,7 @@ pub fn collect_facts(
         };
         collect_bodies(syms, &mut facts, module, &flow);
     }
+    resolve_type_refs(&mut facts);
     for fact in facts.entities.values_mut() {
         fact.calls.sort();
         fact.external.sort();
@@ -156,8 +162,8 @@ fn kind_and_name(syms: ms_syntax::Names, decl: &DeclRef) -> (&'static str, Strin
     match &d.kind {
         DeclKind::Fn(f) => ("fn", syms.str(f.name).to_string()),
         DeclKind::Const(c) => ("constant", syms.str(c.name).to_string()),
-        DeclKind::Record(r) => ("type", syms.str(r.name).to_string()),
-        DeclKind::Alternative(a) => ("type", syms.str(a.name).to_string()),
+        DeclKind::Record(r) => ("record", syms.str(r.name).to_string()),
+        DeclKind::Alternative(a) => ("alternative", syms.str(a.name).to_string()),
         DeclKind::Interface(i) => ("interface", syms.str(i.name).to_string()),
         DeclKind::Impl(i) => ("impl", i.display_name(syms, d.synthetic)),
         DeclKind::Test(t) => (if t.bench { "bench" } else { "test" }, t.name.to_string()),
@@ -188,6 +194,9 @@ fn collect_bodies(syms: ms_syntax::Names, facts: &mut Facts, module: &ModRef, fl
                 _ => Vec::new(),
             };
             facts.flows.insert(key, steps);
+            let (slots, result) = declared_slots(syms, &decl.decl().kind);
+            fact.slots = slots;
+            fact.result = result;
         }
         let methods = decl.methods();
         for (i, method) in methods.iter().enumerate() {
@@ -200,12 +209,183 @@ fn collect_bodies(syms: ms_syntax::Names, facts: &mut Facts, module: &ModRef, fl
                 &format!("{name}.{}", syms.str(method.func.name)),
             );
             if let Some(fact) = facts.entities.get_mut(&key) {
+                if let DeclKind::Impl(i) = &decl.decl().kind {
+                    fact.label =
+                        format!("{}.{}", i.receiver.name(syms), syms.str(method.func.name));
+                }
                 fact.first = method.pos.line as usize;
                 fact.last = end;
                 (fact.tries, fact.scopes) = count_method(flow.scoped, method);
+                fact.slots = method.func.params.iter().map(|p| slot(syms, p)).collect();
+                fact.result = Some(type_slot(syms, "", &method.func.result));
                 facts.flows.insert(key, flow.body(&method.func.body));
             }
         }
+    }
+}
+
+fn is_type(kind: &str) -> bool {
+    matches!(kind, "record" | "alternative" | "interface")
+}
+
+fn slot(syms: ms_syntax::Names, p: &Param) -> Slot {
+    let mut slot = match &p.ty {
+        Some(ty) => type_slot(syms, syms.str(p.name), ty),
+        None => Slot {
+            name: syms.str(p.name).to_string(),
+            ..Slot::default()
+        },
+    };
+    slot.var = p.mutable;
+    slot
+}
+
+fn type_slot(syms: ms_syntax::Names, name: &str, ty: &TypeRef) -> Slot {
+    let mut refs = Vec::new();
+    type_names(syms, ty, &mut refs);
+    Slot {
+        name: name.to_string(),
+        ty: type_text(syms, ty),
+        var: false,
+        refs,
+    }
+}
+
+/// The type as written, with its arguments.
+fn type_text(syms: ms_syntax::Names, ty: &TypeRef) -> String {
+    match &ty.kind {
+        TypeKind::Named { name, args } if args.is_empty() => syms.str(name).to_string(),
+        TypeKind::Named { name, args } => {
+            let args: Vec<String> = args.iter().map(|a| type_text(syms, a)).collect();
+            format!("{}[{}]", syms.str(name), args.join(", "))
+        }
+        TypeKind::Fn { params, result } => {
+            let params: Vec<String> = params
+                .iter()
+                .filter_map(|p| p.ty.as_ref().map(|t| type_text(syms, t)))
+                .collect();
+            format!("fn({}) {}", params.join(", "), type_text(syms, result))
+        }
+    }
+}
+
+/// Collects the last segment of every named type in `ty`.
+fn type_names(syms: ms_syntax::Names, ty: &TypeRef, out: &mut Vec<String>) {
+    match &ty.kind {
+        TypeKind::Named { name, args } => {
+            let text = syms.str(name);
+            append_unique(out, text.rsplit('.').next().unwrap_or(text));
+            for arg in args {
+                type_names(syms, arg, out);
+            }
+        }
+        TypeKind::Fn { params, result } => {
+            for p in params {
+                if let Some(t) = &p.ty {
+                    type_names(syms, t, out);
+                }
+            }
+            type_names(syms, result, out);
+        }
+    }
+}
+
+/// Fields, case payloads, or parameters, and the result, of one declaration.
+fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option<Slot>) {
+    match kind {
+        DeclKind::Record(r) => (r.fields.iter().map(|p| slot(syms, p)).collect(), None),
+        DeclKind::Alternative(a) => {
+            let cases = a
+                .cases
+                .iter()
+                .map(|c| {
+                    let fields: Vec<Slot> = c.fields.iter().map(|p| slot(syms, p)).collect();
+                    let text: Vec<String> = fields
+                        .iter()
+                        .map(|f| format!("{}: {}", f.name, f.ty))
+                        .collect();
+                    let mut refs = Vec::new();
+                    for f in &fields {
+                        for r in &f.refs {
+                            append_unique(&mut refs, r);
+                        }
+                    }
+                    Slot {
+                        name: syms.str(c.name).to_string(),
+                        ty: if text.is_empty() {
+                            String::new()
+                        } else {
+                            format!("({})", text.join(", "))
+                        },
+                        var: false,
+                        refs,
+                    }
+                })
+                .collect();
+            (cases, None)
+        }
+        DeclKind::Interface(i) => (
+            i.methods
+                .iter()
+                .map(|m| {
+                    let params: Vec<Slot> = m.func.params.iter().map(|p| slot(syms, p)).collect();
+                    let result = type_slot(syms, "", &m.func.result);
+                    let text: Vec<String> = params
+                        .iter()
+                        .map(|p| format!("{}: {}", p.name, p.ty))
+                        .collect();
+                    let mut refs = result.refs.clone();
+                    for p in &params {
+                        for r in &p.refs {
+                            append_unique(&mut refs, r);
+                        }
+                    }
+                    Slot {
+                        name: syms.str(m.func.name).to_string(),
+                        ty: format!("({}) {}", text.join(", "), result.ty),
+                        var: m.mutating,
+                        refs,
+                    }
+                })
+                .collect(),
+            None,
+        ),
+        DeclKind::Fn(f) => (
+            f.params.iter().map(|p| slot(syms, p)).collect(),
+            Some(type_slot(syms, "", &f.result)),
+        ),
+        _ => (Vec::new(), None),
+    }
+}
+
+/// Replaces written type names with the keys of the project types they name
+/// (the same file's type first); names that are not project types drop out.
+fn resolve_type_refs(facts: &mut Facts) {
+    let mut by_name: HashMap<String, Vec<String>> = HashMap::new();
+    for f in facts.entities.values() {
+        if is_type(&f.kind) {
+            by_name
+                .entry(f.name.clone())
+                .or_default()
+                .push(f.key.clone());
+        }
+    }
+    for f in facts.entities.values_mut() {
+        let file = f.file.clone();
+        let resolve = |slot: &mut Slot| {
+            slot.refs = std::mem::take(&mut slot.refs)
+                .iter()
+                .filter_map(|name| {
+                    let keys = by_name.get(name)?;
+                    keys.iter()
+                        .find(|k| k.starts_with(&format!("{file}#")))
+                        .or_else(|| (keys.len() == 1).then(|| &keys[0]))
+                        .cloned()
+                })
+                .collect();
+        };
+        f.slots.iter_mut().for_each(resolve);
+        f.result.iter_mut().for_each(resolve);
     }
 }
 

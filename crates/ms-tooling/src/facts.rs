@@ -13,6 +13,8 @@ pub struct Fact {
     pub file: String,
     pub kind: String,
     pub name: String,
+    /// Display name when it differs from `name`: an impl method reads `Receiver.method`.
+    pub label: String,
     pub ty: String,
     pub exported: bool,
     pub line: usize,
@@ -24,9 +26,24 @@ pub struct Fact {
     /// Keys of project entities called.
     pub calls: Vec<String>,
     pub external: Vec<String>,
+    /// Record fields, case payloads, or parameters, in declaration order.
+    pub slots: Vec<Slot>,
+    /// The declared result of a callable.
+    pub result: Option<Slot>,
     /// The entity's head-side line range, for mapping a diff.
     pub first: usize,
     pub last: usize,
+}
+
+/// One typed position: a field, a case payload, a parameter, or a result.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Slot {
+    pub name: String,
+    pub ty: String,
+    /// A `var` parameter: the callee may change the argument.
+    pub var: bool,
+    /// Keys of the project types the written type names (resolved after collection).
+    pub refs: Vec<String>,
 }
 
 /// The fact model of one checked program.
@@ -37,6 +54,8 @@ pub struct Facts {
     pub imports: BTreeMap<String, Vec<String>>,
     /// Each callable's ordered significant steps, for the flow and scope views.
     pub flows: BTreeMap<String, Vec<Node>>,
+    /// Project file to its source text, for views that show code.
+    pub sources: BTreeMap<String, String>,
 }
 
 pub fn fact_key(file: &str, kind: &str, name: &str) -> String {

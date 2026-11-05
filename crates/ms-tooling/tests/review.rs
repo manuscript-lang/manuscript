@@ -495,3 +495,51 @@ fn mark_and_explain() {
             .starts_with("no finding 9;")
     );
 }
+
+fn slot(name: &str, ty: &str, var: bool, refs: &[&str]) -> ms_tooling::facts::Slot {
+    ms_tooling::facts::Slot {
+        name: name.into(),
+        ty: ty.into(),
+        var,
+        refs: refs.iter().map(|r| r.to_string()).collect(),
+    }
+}
+
+#[test]
+fn types_view_expands_held_types_and_marks_cycles() {
+    let mut order = fact("t.ms", "record", "Order", 1);
+    let mut item = fact("t.ms", "record", "Item", 5);
+    order.slots = vec![slot("items", "List[Item]", false, &[&item.key])];
+    item.slots = vec![slot("order", "Order", false, &[&order.key])];
+    let mut facts = facts_of(vec![order, item]);
+    let tree = build_view(&facts, "types", "Order", 0).unwrap().ascii();
+    assert_eq!(
+        tree,
+        "TYPES VIEW\n`- Order  [record] t.ms:1\n   `- items: List[Item]\n      `- Item  [record] t.ms:5\n         `- order: Order\n            `- Order  (cycle)\n"
+    );
+    // Without --entity a type nothing holds is the root; a pure cycle falls back to all types.
+    let all = build_view(&facts, "types", "", 1).unwrap().ascii();
+    assert!(all.contains("Order") && all.contains("Item"), "{all}");
+    facts.entities.clear();
+    assert_eq!(
+        build_view(&facts, "types", "", 0).unwrap().ascii(),
+        "TYPES VIEW\n`- none\n"
+    );
+}
+
+#[test]
+fn ownership_view_names_each_borrow_mode() {
+    let mut save = fact("o.ms", "fn", "save", 2);
+    save.slots = vec![
+        slot("db", "Db", true, &[]),
+        slot("name", "String", false, &[]),
+    ];
+    save.result = Some(slot("", "Int", false, &[]));
+    save.scopes = 1;
+    let facts = facts_of(vec![save]);
+    let tree = build_view(&facts, "ownership", "", 0).unwrap().ascii();
+    assert_eq!(
+        tree,
+        "OWNERSHIP VIEW\n`- save  [fn] o.ms:2\n   |- db: Db  var (exclusive borrow)\n   |- name: String  borrow\n   |- returns Int  owned\n   `- closes 1 resource scope(s)\n"
+    );
+}

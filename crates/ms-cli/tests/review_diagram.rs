@@ -267,3 +267,148 @@ fn project_review_counts_discovered_test_files() {
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(text.contains("tests                 1"), "{text}");
 }
+
+#[test]
+fn types_and_ownership_views_render_in_ascii_and_mermaid() {
+    let dir = scratch("types");
+    std::fs::write(
+        dir.join("main.ms"),
+        "type Item:\n    name: String\n\ntype Order:\n    items: List[Item]\n\nfn add(var o: Order, i: Item) Order:\n    return o\n",
+    )
+    .unwrap();
+    let text = |args: &[&str]| {
+        let out = ms(&dir, args);
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let types = text(&["diagram", "main.ms", "--view", "class"]);
+    assert!(
+        types.contains("| items: List[Item] |\n+-------------------+\n  <>-- items --> Item\n"),
+        "{types}"
+    );
+    assert!(
+        text(&[
+            "diagram", "main.ms", "--view", "types", "--format", "mermaid"
+        ])
+        .starts_with("classDiagram\n")
+    );
+    let own = text(&["diagram", "main.ms", "--view", "mutability"]);
+    assert!(own.contains("add(var o: Order, i: Item) Order\n"), "{own}");
+    assert!(
+        text(&[
+            "diagram",
+            "main.ms",
+            "--view",
+            "ownership",
+            "--format",
+            "mermaid"
+        ])
+        .starts_with("flowchart LR\n")
+    );
+}
+
+#[test]
+fn overview_shows_modules_effects_and_cross_module_calls() {
+    let dir = scratch("overview");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_overview/main.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("util.ms"),
+        include_str!("diagram_overview/util.ms"),
+    )
+    .unwrap();
+    let text = |args: &[&str]| {
+        let out = ms(&dir, args);
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let ascii = text(&["diagram", "main.ms", "--view", "overview"]);
+    assert!(
+        ascii.contains("main.ms  [entry]") && ascii.contains("-> util.ms  (1 calls)"),
+        "{ascii}"
+    );
+    let mermaid = text(&[
+        "diagram", "main.ms", "--view", "overview", "--format", "mermaid",
+    ]);
+    assert!(
+        mermaid.starts_with("flowchart LR\n") && mermaid.contains("|1 calls|"),
+        "{mermaid}"
+    );
+}
+
+#[test]
+fn html_page_embeds_the_program_and_escapes_script_text() {
+    let dir = scratch("html");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_overview/main.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("util.ms"),
+        include_str!("diagram_overview/util.ms"),
+    )
+    .unwrap();
+    let out = ms(&dir, &["diagram", "main.ms", "--format", "html"]);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let page = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        page.starts_with("<!doctype html>") && page.contains("\"fn\",\"double\""),
+        "{page}"
+    );
+    assert!(!page.contains("__DATA__"));
+    assert!(
+        page.contains("export fn double(n: Int) Int:"),
+        "source is embedded"
+    );
+    assert!(
+        page.contains("\"t\":[[") && page.contains("\"Int\""),
+        "checked identifier types are embedded"
+    );
+    std::fs::write(
+        dir.join("change.patch"),
+        include_str!("diagram_overview/change.patch"),
+    )
+    .unwrap();
+    let diff = ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--format",
+            "html",
+            "--diff",
+            "change.patch",
+        ],
+    );
+    assert!(
+        diff.status.success(),
+        "{}",
+        String::from_utf8_lossy(&diff.stderr)
+    );
+    assert!(
+        String::from_utf8(diff.stdout)
+            .unwrap()
+            .contains("\"x\":[[1,\"double\"")
+    );
+    let bad = ms(
+        &dir,
+        &["diagram", "main.ms", "--format", "html", "--view", "calls"],
+    );
+    assert!(!bad.status.success());
+}

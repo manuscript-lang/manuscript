@@ -1,0 +1,6 @@
+--- a/util.ms
++++ b/util.ms
+@@ -1,2 +1,2 @@
+ export fn double(n: Int) Int:
+-    return n * 3
++    return n * 2

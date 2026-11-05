@@ -15,7 +15,7 @@ use ms_tooling::inspect::inspect;
 use ms_tooling::mark::{explain, explain_json, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, compare_facts};
-use ms_tooling::views::build_view;
+use ms_tooling::views::{ascii_view, build_view, mermaid_view};
 
 use super::build::protected_output;
 use super::{Failure, command_diagnostic};
@@ -537,7 +537,11 @@ pub fn diagram(syms: ms_syntax::Names, request: &DiagramRequest, io: &mut Io) ->
         Ok(checked) => checked,
         Err(done) => return done,
     };
-    if request.json || !request.view.is_empty() || !request.entity.is_empty() {
+    if request.json
+        || !request.view.is_empty()
+        || !request.entity.is_empty()
+        || request.format == "html"
+    {
         return Ok(view(syms, request, &checked, io));
     }
     let program = checked.program.as_ref().expect("accepted program");
@@ -563,6 +567,26 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
         &request.view
     };
     let facts = facts_of(syms, head);
+    if request.format == "html" {
+        let changes = if request.diff.is_empty() {
+            None
+        } else {
+            let (input, base) =
+                match diff_inputs(syms, &request.filename, &request.diff, head, false, io) {
+                    Ok(inputs) => inputs,
+                    Err(status) => return status,
+                };
+            Some(compare_facts(&base, &facts, &input))
+        };
+        let analysis = ms_lsp::analysis::compile_file(
+            syms,
+            &request.filename,
+            &ms_lsp::analysis::Options::default(),
+        );
+        let hints = ms_lsp::nav::type_hints(syms, &analysis);
+        let page = ms_tooling::html::html_page(&facts, changes.as_deref(), &hints);
+        return write_output(io, &request.output, page.as_bytes());
+    }
     let mut tree = match build_view(&facts, name, &request.entity, request.depth as i64) {
         Ok(tree) => tree,
         Err(message) => {
@@ -592,9 +616,18 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
         .pretty_line(ms_json::Escape::HtmlSafe)
             + "\n"
     } else if request.format == "mermaid" {
-        tree.mermaid()
+        // A diff marks the generic tree, so it keeps the generic rendering.
+        let custom = request
+            .diff
+            .is_empty()
+            .then(|| mermaid_view(&facts, name, &request.entity, request.depth as i64));
+        custom.flatten().unwrap_or_else(|| tree.mermaid())
     } else {
-        tree.ascii()
+        let custom = request
+            .diff
+            .is_empty()
+            .then(|| ascii_view(&facts, name, &request.entity, request.depth as i64));
+        custom.flatten().unwrap_or_else(|| tree.ascii())
     };
     write_output(io, &request.output, text.as_bytes())
 }
