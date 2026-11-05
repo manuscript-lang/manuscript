@@ -1345,8 +1345,12 @@ impl<'a> FnLower<'a> {
             && !self.cx.moves.contains_key(&loop_var.uid)
         {
             self.bind_borrow_of(loop_var, ch);
-        } else {
+        } else if scalars {
             self.bind_local(loop_var, Val { v: ch, own: false });
+        } else {
+            // A piece the body keeps or changes is the loop variable's own copy.
+            let own = self.clone_value(ch);
+            self.bind_local(loop_var, Val { v: own, own: true });
         }
         self.stmts(body)?;
         self.pop_scope();

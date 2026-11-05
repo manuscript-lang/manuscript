@@ -101,7 +101,7 @@ export type Gen[T]:
 // Generates integers from `low` through `high`, both included, shrinking toward the value nearest 0.
 // When the range spans 0, a sign draw comes first and the magnitude after it. `high - low` must fit in Int.
 export fn ints(low: Int, high: Int) Gen[Int]:
-    return Gen[Int](fn s: ints_draw(s, low, high))
+    return Gen[Int](fn s: ints_draw(s.clone(), low, high))
 
 fn ints_draw(s: Source, low: Int, high: Int) Drawn[Int]:
     if low >= 0:
@@ -123,7 +123,7 @@ fn ints_draw(s: Source, low: Int, high: Int) Drawn[Int]:
 
 // Generates `true` and `false`, shrinking toward `false`.
 export fn bools() Gen[Bool]:
-    return Gen[Bool](fn s: bool_draw(s))
+    return Gen[Bool](fn s: bool_draw(s.clone()))
 
 fn bool_draw(s: Source) Drawn[Bool]:
     let {value, source} = draw(s, 1)
@@ -131,7 +131,7 @@ fn bool_draw(s: Source) Drawn[Bool]:
 
 // Generates floats from `low` through `high` at 2^-53 resolution, shrinking toward `low`.
 export fn floats(low: Float, high: Float) Gen[Float]:
-    return Gen[Float](fn s: float_draw(s, low, high))
+    return Gen[Float](fn s: float_draw(s.clone(), low, high))
 
 fn float_draw(s: Source, low: Float, high: Float) Drawn[Float]:
     let {value, source} = draw(s, 9007199254740992)
@@ -139,11 +139,11 @@ fn float_draw(s: Source, low: Float, high: Float) Drawn[Float]:
 
 // Always generates a copy of `value`, consuming no draws, so it never shrinks.
 export fn constant[T: Clonable](value: T) Gen[T]:
-    return Gen[T](fn s: Drawn(value.clone(), s))
+    return Gen[T](fn s: Drawn(value.clone(), s.clone()))
 
 // Generates one of `values`, shrinking toward the first. `values` must not be empty.
 export fn element_of[T: Clonable](values: List[T]) Gen[T]:
-    return Gen[T](fn s: element_draw(values, s))
+    return Gen[T](fn s: element_draw(values, s.clone()))
 
 fn element_draw[T: Clonable](values: List[T], s: Source) Drawn[T]:
     let {value, source} = draw(s, values.length() - 1)
@@ -151,7 +151,7 @@ fn element_draw[T: Clonable](values: List[T], s: Source) Drawn[T]:
 
 // Generates by picking one of `gens`, shrinking toward the first. `gens` must not be empty.
 export fn one_of[T](gens: List[Gen[T]]) Gen[T]:
-    return Gen[T](fn s: one_draw(gens, s))
+    return Gen[T](fn s: one_draw(gens, s.clone()))
 
 fn one_draw[T](gens: List[Gen[T]], s: Source) Drawn[T]:
     let {value, source} = draw(s, gens.length() - 1)
@@ -168,7 +168,7 @@ impl Gen[T]:
 
     // Keeps values for which `keep` is true. After 50 consecutive rejections the case is marked invalid and discarded.
     fn filter(keep: fn(T) Bool) Gen[T]:
-        return Gen[T](fn s: filter_draw(self, keep, s))
+        return Gen[T](fn s: filter_draw(self, keep, s.clone()))
 
     // Combines one value from this generator with one from `other`.
     fn zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
@@ -211,7 +211,7 @@ fn zip_draw[A, B, C](
 
 // Generates a value or `none`, shrinking toward `none`.
 export fn optionals[T](gen: Gen[T]) Gen[T?]:
-    return Gen[T?](fn s: optional_draw(gen, s))
+    return Gen[T?](fn s: optional_draw(gen, s.clone()))
 
 fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
     let {value: flag, source: middle} = draw(s, 3)
@@ -223,7 +223,7 @@ fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
 
 // Generates lists of `min_length` through `max_length` elements, shrinking toward fewer and simpler elements.
 export fn lists[T](gen: Gen[T], min_length: Int = 0, max_length: Int = 20) Gen[List[T]]:
-    return Gen[List[T]](fn s: list_draw(gen, min_length, max_length, s))
+    return Gen[List[T]](fn s: list_draw(gen, min_length, max_length, s.clone()))
 
 fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[List[T]]:
     var items = List[T]()

@@ -128,7 +128,8 @@ impl FnLower<'_> {
                 closers.push((cap_vals.len() as u32, close));
             }
             cap_tys.push(cap_ty);
-            cap_vals.push(self.owned(x));
+            // A closure holds its own copy of a borrowed value it captures: declared here.
+            cap_vals.push(self.owned_boundary(x));
             self.moved_closer(b.uid, e);
         }
         let mut ps = vec![Param {
