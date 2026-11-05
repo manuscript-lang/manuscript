@@ -376,6 +376,10 @@ fn html_page_embeds_the_program_and_escapes_script_text() {
         page.contains("export fn double(n: Int) Int:"),
         "source is embedded"
     );
+    assert!(
+        page.contains("\"t\":[[") && page.contains("\"Int\""),
+        "checked identifier types are embedded"
+    );
     std::fs::write(
         dir.join("change.patch"),
         include_str!("diagram_overview/change.patch"),

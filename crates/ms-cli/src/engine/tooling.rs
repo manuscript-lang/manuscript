@@ -578,7 +578,13 @@ fn view(syms: ms_syntax::Names, request: &DiagramRequest, head: &Checked, io: &m
                 };
             Some(compare_facts(&base, &facts, &input))
         };
-        let page = ms_tooling::html::html_page(&facts, changes.as_deref());
+        let analysis = ms_lsp::analysis::compile_file(
+            syms,
+            &request.filename,
+            &ms_lsp::analysis::Options::default(),
+        );
+        let hints = ms_lsp::nav::type_hints(syms, &analysis);
+        let page = ms_tooling::html::html_page(&facts, changes.as_deref(), &hints);
         return write_output(io, &request.output, page.as_bytes());
     }
     let mut tree = match build_view(&facts, name, &request.entity, request.depth as i64) {

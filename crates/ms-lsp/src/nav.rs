@@ -169,6 +169,49 @@ pub fn location(uri: &str, range: Range) -> Json {
     obj([("uri", uri.into()), ("range", range.json())])
 }
 
+/// The type hover shows for an occurrence, or `None` when its type did not resolve.
+pub fn hover_type(syms: ms_syntax::Names, info: &OccInfo) -> Option<String> {
+    let mut shown = info.ty.clone()?;
+    if let Some(symbol) = &info.symbol
+        && symbol.is_constant()
+        && symbol.ty_opt().is_some_and(|t| Rc::ptr_eq(&t, &shown))
+        && let Some(value) = symbol.value_type()
+    {
+        shown = value;
+    }
+    (!ms_check::types::invalid_ty(&shown)).then(|| shown.display(syms).to_string())
+}
+
+/// The checked type of every identifier in the project's own modules, for the html map.
+pub fn type_hints(syms: ms_syntax::Names, analysis: &Analysis) -> Vec<ms_tooling::html::TypeHint> {
+    let modules: HashMap<Name, ModRef> = analysis
+        .source_modules(syms)
+        .into_iter()
+        .filter(|m| !syms.str(m.file).starts_with("@std/"))
+        .map(|m| (m.file, m))
+        .collect();
+    let mut hints = Vec::new();
+    for entry in analysis.occurrence_index(syms) {
+        let (Some(module), Some(info)) = (modules.get(&entry.file), &entry.info) else {
+            continue;
+        };
+        let Some(ty) = hover_type(syms, info) else {
+            continue;
+        };
+        let at = text::position(&module.source, entry.offset);
+        hints.push(ms_tooling::html::TypeHint {
+            file: syms.str(entry.file).to_string(),
+            line: at.line,
+            col: at.character,
+            len: text::utf16_length(
+                &module.source.as_bytes()[entry.offset..entry.end.min(module.source.len())],
+            ),
+            ty,
+        });
+    }
+    hints
+}
+
 /// Hover or definition at a position.
 pub fn navigation(
     syms: ms_syntax::Names,
@@ -183,21 +226,10 @@ pub fn navigation(
     };
     let info = hit.info.clone();
     if method == Navigate::Hover {
-        let Some(mut shown) = info.ty.clone() else {
+        let Some(shown) = hover_type(syms, &info) else {
             return Json::Null;
         };
-        if let Some(symbol) = &info.symbol
-            && symbol.is_constant()
-            && symbol.ty_opt().is_some_and(|t| Rc::ptr_eq(&t, &shown))
-            && let Some(value) = symbol.value_type()
-        {
-            shown = value;
-        }
-        // A name whose type did not resolve has nothing useful to show.
-        if ms_check::types::invalid_ty(&shown) {
-            return Json::Null;
-        }
-        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown.display(syms));
+        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
         let docs = hover_documentation(syms, analysis, &info);
         if !docs.is_empty() {
             value.push_str("\n\n");

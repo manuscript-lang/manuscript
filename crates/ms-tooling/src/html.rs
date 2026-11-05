@@ -88,10 +88,53 @@ fn entity_json(facts: &Facts, ix: &Index, f: &Fact) -> Json {
     ])
 }
 
+/// The checked type of one identifier occurrence, positioned as the page reads
+/// source: a zero-based line and a UTF-16 column.
+#[derive(Clone, Debug)]
+pub struct TypeHint {
+    pub file: String,
+    pub line: usize,
+    pub col: usize,
+    pub len: usize,
+    pub ty: String,
+}
+
+/// Most hints one page embeds; later ones are dropped so a huge program stays loadable.
+pub const HINT_CAP: usize = 200_000;
+
+/// Hints grouped as `[type table, [file index, line, col, len, type index, ...]]`
+/// with each file's entries in source order.
+fn hints_json(ix: &Index, hints: &[TypeHint]) -> Json {
+    let mut table: Vec<&str> = Vec::new();
+    let mut seen: HashMap<&str, usize> = HashMap::new();
+    let mut rows: Vec<(usize, usize, usize, usize, usize)> = Vec::new();
+    for h in hints.iter().take(HINT_CAP) {
+        let Some(&file) = ix.file_ix.get(h.file.as_str()) else {
+            continue;
+        };
+        let ty = *seen.entry(h.ty.as_str()).or_insert_with(|| {
+            table.push(&h.ty);
+            table.len() - 1
+        });
+        rows.push((file, h.line, h.col, h.len, ty));
+    }
+    rows.sort_unstable();
+    Json::Arr(vec![
+        Json::strings(&table.iter().map(|t| t.to_string()).collect::<Vec<_>>()),
+        Json::Arr(
+            rows.into_iter()
+                .flat_map(|(file, line, col, len, ty)| [file, line, col, len, ty])
+                .map(Json::from)
+                .collect(),
+        ),
+    ])
+}
+
 /// The whole program as one interactive page. `changes` are a diff's findings:
-/// the page marks those entities and lists what changed. The data is escaped
-/// for embedding in a script element, so no program text can close it.
-pub fn html_page(facts: &Facts, changes: Option<&[Finding]>) -> String {
+/// the page marks those entities and lists what changed; `hints` give each
+/// identifier its checked type. The data is escaped for embedding in a script
+/// element, so no program text can close it.
+pub fn html_page(facts: &Facts, changes: Option<&[Finding]>, hints: &[TypeHint]) -> String {
     let mut ix = Index {
         files: Vec::new(),
         file_ix: HashMap::new(),
@@ -142,7 +185,8 @@ pub fn html_page(facts: &Facts, changes: Option<&[Finding]>) -> String {
             ),
         )
         .with("m", Json::Arr(modules))
-        .with("e", Json::Arr(entities));
+        .with("e", Json::Arr(entities))
+        .with("t", hints_json(&ix, hints));
     if let Some(findings) = changes {
         // [entity index or -1 when removed, name, tier, what changed]
         let rows = findings

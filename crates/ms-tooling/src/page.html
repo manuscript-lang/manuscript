@@ -42,7 +42,8 @@ aside{grid-row:2;grid-column:1;display:flex;flex-direction:column;min-height:0;b
 .item.sel{background:var(--sel);color:var(--acc);font-weight:600}.item:focus,.file:focus{outline:1px solid var(--acc)}
 .k{display:inline-block;width:16px;color:var(--mut);font-size:11px;font-family:system-ui,sans-serif}
 .item.sel .k{color:var(--acc)}.star{color:#e0a82e}
-.split{grid-row:2;cursor:col-resize;background:transparent;border-left:1px solid var(--line);margin-left:-1px;z-index:2}.split:hover,.split.drag{background:var(--acc);opacity:.45}
+#sp1{grid-column:2}#sp2{grid-column:4}
+.split{grid-row:2;width:4px;cursor:col-resize;background:transparent;border-left:1px solid var(--line);margin-left:-1px;z-index:2}.split:hover,.split.drag{background:var(--acc);opacity:.45}
 main{grid-row:2;grid-column:3;overflow:auto;padding:0;min-width:0;display:flex;flex-direction:column}
 #info{padding:8px 14px 6px;border-bottom:1px solid var(--line);background:var(--bg)}
 #info .crumbs{color:var(--mut);font-size:12px;margin:0 0 2px}.crumbs a{color:var(--mut);cursor:pointer;text-decoration:none}.crumbs a:hover{color:var(--acc)}
@@ -78,12 +79,19 @@ svg .life{stroke:var(--line);stroke-dasharray:4}svg .note rect{fill:var(--eff);s
 .chip:hover{border-color:var(--acc)}.chip.chg{border-color:var(--var);color:var(--var)}.gone{text-decoration:line-through;color:var(--mut)}
 .route{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px}.route .step{padding:6px 12px;border-radius:8px;border:1px solid var(--effs);background:var(--eff);cursor:pointer}.route .arrow{color:var(--mut)}
 .tk-kw{color:var(--kw);font-weight:600}.tk-ty{color:var(--ty)}.tk-st{color:var(--st)}.tk-nu{color:var(--nu)}.tk-cm{color:var(--cm);font-style:italic}.tk-fn{color:var(--fnc)}
-.tk-fn.link{cursor:pointer;text-decoration:underline dotted}.tk-fn.link:hover{color:var(--acc)}
+.id{cursor:pointer;border-radius:3px}.id:hover,.id.on{background:var(--sel);box-shadow:0 0 0 1px var(--acc) inset}
+#tip{position:fixed;z-index:9;max-width:min(440px,92vw);padding:8px 10px;background:var(--bg);border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:12.5px}
+#tip{pointer-events:none}#tip .go{pointer-events:auto}#tip[hidden]{display:none}#tip .nm{font:600 12.5px ui-monospace,SFMono-Regular,Menlo,monospace}#tip .ty{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:3px;overflow-wrap:anywhere}#tip .no{color:var(--mut)}#tip .go{display:block;margin-top:6px;color:var(--acc);text-decoration:none;font-size:12px}
 #src{grid-row:2;grid-column:5;width:var(--w2,430px);border-left:1px solid var(--line);overflow:auto;background:var(--bg)}#src[hidden],.split[hidden]{display:none}
 #src .hd{position:sticky;top:0;display:flex;gap:6px;align-items:center;padding:6px 10px;background:var(--bg);border-bottom:1px solid var(--line);z-index:1}
 #src .hd .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:12px}#src .hd b{color:var(--fg);font-size:13px;margin-right:6px}
-pre.code{margin:0;padding:8px 0;overflow:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:4}pre.code.wrap{white-space:pre-wrap}
-pre.code .ln{display:inline-block;width:46px;padding-right:12px;text-align:right;color:var(--mut);user-select:none;opacity:.7}
+.code{padding:6px 0 24px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:4;min-width:0}
+.code .r{display:flex}.code .r:hover{background:var(--pan)}
+.code .ln{flex:none;position:sticky;left:0;width:46px;padding-right:12px;text-align:right;color:var(--mut);user-select:none;background:inherit;opacity:.8}
+.code .r:not(:hover) .ln{background:var(--bg)}
+.code .tx{flex:1 1 auto;white-space:pre;padding-right:16px}
+.code.wrap .tx{white-space:pre-wrap;overflow-wrap:break-word;min-width:0;padding-left:calc(var(--i,0)*1ch + 2ch);text-indent:calc(-1*(var(--i,0)*1ch + 2ch))}
+.code:not(.wrap) .r{min-width:max-content}
 footer{grid-column:1/-1;display:flex;gap:16px;align-items:center;padding:0 12px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;background:var(--pan)}footer .sp{flex:1}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;z-index:10}
 .ov.on{display:flex}.ov .box{width:min(620px,92vw);background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
@@ -125,7 +133,7 @@ body.focus{grid-template-columns:0 0 minmax(0,1fr) 0 0}body.focus aside,body.foc
 <main><div id="info"></div><div id="view"></div></main>
 <div class="split" id="sp2" hidden></div><section id="src" hidden></section>
 <footer id="status"></footer>
-<div id="scrim"></div><div id="pal" class="ov"><div class="box"><input id="palq" placeholder="Go to function, type, test or file" autocomplete="off"><div class="res" id="palres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div></div></div>
+<div id="tip" hidden></div><div id="scrim"></div><div id="pal" class="ov"><div class="box"><input id="palq" placeholder="Go to function, type, test or file" autocomplete="off"><div class="res" id="palres"></div><div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span></div></div></div>
 <div id="help" class="pal-like" style="display:none"></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
@@ -156,15 +164,20 @@ const KI={fn:'ƒ',method:'ƒ',record:'T',alternative:'T',interface:'I',constant:
 const isCheck=e=>e.kind==='test'||e.kind==='bench';
 const KW=new Set('and break case continue else export extern false fixture fn for if impl import in interface let match not or ref return self test true try type unit var while'.split(' '));
 const TK=/(\/\/.*)|("(?:\\.|[^"\\])*")|(\b\d[\d_.]*[a-zA-Z]*)|([A-Za-z_]\w*)|(\s+|.)/g;
-function hl(line,cm){let o='',m;TK.lastIndex=0;
+function hl(line,sym){let o='',m;TK.lastIndex=0;
   while((m=TK.exec(line))){const t=m[0];
     if(m[1])o+='<span class="tk-cm">'+esc(t)+'</span>';
     else if(m[2])o+='<span class="tk-st">'+esc(t)+'</span>';
     else if(m[3])o+='<span class="tk-nu">'+esc(t)+'</span>';
-    else if(m[4]){const nx=line[TK.lastIndex];
-      o+=KW.has(t)?'<span class="tk-kw">'+t+'</span>':/^[A-Z]/.test(t)?'<span class="tk-ty">'+t+'</span>':nx==='('?(cm&&cm[t]?'<span class="tk-fn link" data-key="'+esc(cm[t])+'">'+t+'</span>':'<span class="tk-fn">'+t+'</span>'):t}
+    else if(m[4]){
+      if(KW.has(t)){o+='<span class="tk-kw">'+t+'</span>';continue}
+      const k=/^[A-Z]/.test(t)?'tk-ty':line[TK.lastIndex]==='('?'tk-fn':'';
+      o+=sym?'<span class="id '+k+'" data-c="'+m.index+'">'+t+'</span>':k?'<span class="'+k+'">'+t+'</span>':t}
     else o+=esc(t)}
   return o}
+/* checked types of identifiers: file -> line -> [column, length, type] */
+const HT=R.t?R.t[0]:[],HF={};
+if(R.t){const a=R.t[1];for(let i=0;i<a.length;i+=5){const f=HF[a[i]]||(HF[a[i]]={}),l=f[a[i+1]]||(f[a[i+1]]=[]);l.push([a[i+2],a[i+3],a[i+4]])}}
 const base=f=>f.split('/').pop();
 const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
 const fx=e=>e.effects.filter(x=>x!=='unknown');
@@ -425,15 +438,19 @@ function behavior(){
   const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
   return '<div class="tools"><button data-flow="collapse">Collapse all</button><button data-flow="expand">Expand all</button></div><div class="flow">'+(e.flow.length?flowHTML(e.flow,0):'<span class="hint">no steps</span>')+'</div>';
 }
-let wrap=store.get('wrap',false),srcOpen=store.get('srcOpen',innerWidth>900);
+let curCm={},wrap=store.get('wrap',true),srcOpen=store.get('srcOpen',innerWidth>900),curSrc='';
 function srcPanel(){
   const box=$('src'),e=S.sel&&E[S.sel];
   const src=e?R.s[e.fi]||'':'';
   if(!srcOpen||!e||!src||!e.first){box.hidden=true;$('sp2').hidden=true;return}
   let ls=src.split('\n').slice(e.first-1,e.last);while(ls.length&&!ls[ls.length-1].trim())ls.pop();
-  const cm={};for(const k of e.calls){const c=E[k];if(c)cm[c.name]=k}
+  curSrc=ls.join('\n');
+  curCm={};for(const k of e.calls){const c=E[k];if(c)curCm[c.name]=k}
+  const keep=box.scrollTop;hideTip();
   box.hidden=false;$('sp2').hidden=false;
-  box.innerHTML='<div class="hd"><span class="t"><b>'+esc(e.name)+'</b>'+esc(e.file)+':'+e.first+'–'+(e.first+ls.length-1)+'</span><button class="ib'+(wrap?' on':'')+'" data-wrap="1" title="Wrap lines">↩</button><button class="ib" data-copy="1" title="Copy source">⧉</button><button class="ib" data-close="1" title="Close">✕</button></div><pre class="code'+(wrap?' wrap':'')+'">'+ls.map((l,i)=>'<span class="ln">'+(e.first+i)+'</span>'+hl(l,cm)).join('\n')+'</pre>'}
+  box.innerHTML='<div class="hd"><span class="t"><b>'+esc(e.name)+'</b>'+esc(e.file)+':'+e.first+'–'+(e.first+ls.length-1)+'</span><button class="ib'+(wrap?' on':'')+'" data-wrap="1" title="'+(wrap?'Wrapping lines (click for horizontal scroll)':'Scrolling sideways (click to wrap lines)')+'">↩</button><button class="ib" data-copy="1" title="Copy source">⧉</button><button class="ib" data-close="1" title="Hide source">✕</button></div><div class="code'+(wrap?' wrap':'')+'">'+
+    ls.map((l,i)=>{const ind=l.replace(/\t/g,'    ').length-l.replace(/\t/g,'    ').trimStart().length;return '<div class="r" data-ln="'+(e.first-1+i)+'"><span class="ln">'+(e.first+i)+'</span><span class="tx" style="--i:'+ind+'">'+(l?hl(l,true):'\u200b')+'</span></div>'}).join('')+'</div>';
+  box.scrollTop=keep}
 function route(){
   const opt=(sel)=>sel&&E[sel]?'<option value="'+esc(sel)+'" selected>'+esc(E[sel].name)+'</option>':'';
   let h='<div class="tools"><input id="rf" list="fl" placeholder="from" value="'+(S.from?esc(E[S.from].name):'')+'"> → <input id="rt" list="fl" placeholder="to" value="'+(S.to?esc(E[S.to].name):'')+'"><datalist id="fl"></datalist></div>';
@@ -524,9 +541,25 @@ function splitter(id,cssVar,sign,min,max,key,target){const el=$(id);
     const up=()=>{el.classList.remove('drag');el.removeEventListener('pointermove',mv);el.removeEventListener('pointerup',up);store.set(key,w)};
     el.addEventListener('pointermove',mv);el.addEventListener('pointerup',up)})}
 splitter('sp1','--w1',1,180,520,'w1','side');splitter('sp2','--w2',-1,300,900,'w2','src');
+/* a clicked identifier shows its checked type; the card never blocks clicks on the code under it */
+function hideTip(){const t=$('tip');if(t)t.hidden=true;document.querySelectorAll('#src .id.on').forEach(x=>x.classList.remove('on'))}
+function showTip(el){
+  const e=S.sel&&E[S.sel],row=el.closest('.r');if(!e||!row)return;
+  hideTip();el.classList.add('on');
+  const line=+row.dataset.ln,col=+el.dataset.c,name=el.textContent,hs=(HF[e.fi]||{})[line]||[];
+  const h=hs.find(x=>x[0]===col&&x[1]===name.length);
+  const key=curCm[name]&&el.classList.contains('tk-fn')?curCm[name]:'';
+  const tip=$('tip');
+  tip.innerHTML='<div class="nm">'+esc(name)+'</div>'+(h?'<div class="ty">'+hl(HT[h[2]])+'</div>':'<div class="no">No type information for this name.</div>')+(key?'<a class="go" href="#" data-key="'+esc(key)+'">Go to definition</a>':'');
+  tip.hidden=false;
+  const r=el.getBoundingClientRect(),w=tip.offsetWidth,hgt=tip.offsetHeight;
+  tip.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left))+'px';
+  tip.style.top=(r.bottom+hgt+10<innerHeight?r.bottom+6:Math.max(8,r.top-hgt-6))+'px'}
 /* clicks */
 let timer=null;
 document.addEventListener('click',ev=>{
+  const idEl=ev.target.closest('#src .id');if(idEl){ev.preventDefault();showTip(idEl);return}
+  if(!ev.target.closest('#tip'))hideTip();
   const t=ev.target.closest('[data-tg],[data-copy],[data-close],[data-src],[data-tab],[data-key],[data-mod],[data-scope],[data-id],[data-expand],[data-routefrom],[data-star],[data-link],[data-wrap],[data-export],[data-flow],[data-kf]');if(!t)return;ev.preventDefault();
   if(t.dataset.tg!==undefined){const k=t.dataset.tg;if(OPEN.has(k))OPEN.delete(k);else OPEN.add(k);setList();return}
   if(t.dataset.kf){KF[t.dataset.kf]=!KF[t.dataset.kf];setKinds();setList();return}
@@ -536,7 +569,7 @@ document.addEventListener('click',ev=>{
   if(t.dataset.wrap){wrap=!wrap;store.set('wrap',wrap);srcPanel();return}
   if(t.dataset.export){exportSvg();return}
   if(t.dataset.flow){document.querySelectorAll('.flow details').forEach(d=>{d.open=t.dataset.flow==='expand'});return}
-  if(t.dataset.copy){try{navigator.clipboard.writeText(document.querySelector('pre.code').innerText.replace(/^\d+/gm,''))}catch(_){}return}
+  if(t.dataset.copy){try{navigator.clipboard.writeText(curSrc)}catch(_){}t.classList.add('on');setTimeout(()=>t.classList.remove('on'),700);return}
   if(t.closest('#list'))document.body.classList.remove('nav-open');
   if(t.dataset.tab)S.tab=t.dataset.tab;
   else if(t.dataset.expand){const li=t.closest('li');const e=E[t.dataset.expand];const slot=li.querySelector(':scope > .callee');
@@ -565,6 +598,7 @@ document.addEventListener('click',ev=>{if(!ev.target.closest('#optpop,#optbtn'))
 $('helpbtn').addEventListener('click',()=>help.classList.toggle('on'));
 const toggleFocus=()=>{document.body.classList.toggle('focus');$('focusbtn').classList.toggle('on')};$('focusbtn').addEventListener('click',toggleFocus);
 /* keyboard */
+$('src').addEventListener('scroll',()=>hideTip());
 $('list').addEventListener('keydown',ev=>{
   const rows=[...$('list').querySelectorAll('[tabindex]')],el=document.activeElement,i=rows.indexOf(el);
   if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ev.preventDefault();const n=rows[Math.max(0,Math.min(rows.length-1,(i<0?0:i+(ev.key==='ArrowDown'?1:-1))))];if(n)n.focus()}
@@ -574,7 +608,7 @@ $('list').addEventListener('keydown',ev=>{
 addEventListener('keydown',ev=>{
   const typing=/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName||'');
   if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='k'){ev.preventDefault();openPal();return}
-  if(ev.key==='Escape'){closePal();help.classList.remove('on');return}
+  if(ev.key==='Escape'){closePal();help.classList.remove('on');hideTip();return}
   if(ev.altKey&&ev.key==='ArrowLeft'){ev.preventDefault();go(-1);return}
   if(ev.altKey&&ev.key==='ArrowRight'){ev.preventDefault();go(1);return}
   if(typing||ev.ctrlKey||ev.metaKey||ev.altKey)return;
