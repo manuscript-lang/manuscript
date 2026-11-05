@@ -279,7 +279,7 @@ impl FnLower<'_> {
                     s.b.switch_to(keep);
                     let owned: Vec<Value> = xs
                         .iter()
-                        .map(|x| s.owned(Val { v: *x, own: false }))
+                        .map(|x| s.owned_wrap(Val { v: *x, own: false }))
                         .collect();
                     let item = match s.b.m.types.kind(inner).clone() {
                         TyKind::Rec(rid) if xs.len() == 2 => s.b.rec_new(rid, &owned),

@@ -393,7 +393,7 @@ impl FnLower<'_> {
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned(x);
+                    let o = self.owned_wrap(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1016,7 +1016,7 @@ impl FnLower<'_> {
         if self.ty_of(x.v) != inner {
             return x;
         }
-        let o = self.owned(x);
+        let o = self.owned_wrap(x);
         let v = self.b.opt_some(o);
         Val { v, own: true }
     }
@@ -1041,7 +1041,7 @@ impl FnLower<'_> {
             },
             &mut |s| {
                 let d = default(s)?;
-                Ok(Some(s.owned(d)))
+                Ok(Some(s.owned_wrap(d)))
             },
         )
     }
@@ -1071,7 +1071,7 @@ impl FnLower<'_> {
             },
             &mut |s| {
                 let d = default(s)?;
-                let d = s.owned(d);
+                let d = s.owned_wrap(d);
                 let some = s.b.opt_some(d);
                 s.b.def_var(holder, some);
                 Ok(Some(s.b.opt_get(some)))
@@ -1120,7 +1120,7 @@ impl FnLower<'_> {
             }
             let x = match &a.wrap_optional {
                 Some(_) => {
-                    let o = self.owned(x);
+                    let o = self.owned_wrap(x);
                     let v = self.b.opt_some(o);
                     Val { v, own: true }
                 }
@@ -1567,6 +1567,7 @@ fn lower_bound_native(
     let params = fl.b.params();
     let env = params[0];
     let held = job.held.capture(recv_ty);
+    fl.in_thunk = true;
     let mut cap =
         fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(held))
             .expect("capture");

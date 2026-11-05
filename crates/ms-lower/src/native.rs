@@ -2206,7 +2206,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| match default {
                         Some(d) => {
                             let v = if d.wrapped {
-                                s.owned(d.val)
+                                s.owned_wrap(d.val)
                             } else {
                                 let p = s.b.opt_unwrap(d.val.v);
                                 s.finish(d.val);
