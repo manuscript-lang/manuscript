@@ -1,6 +1,6 @@
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import pack, unpack, ArchiveEntry from "@std/io/archive.ms"
+import pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms"
 import sse_events from "@std/net/sse.ms"
 import ReadStream, Source, stream from "@std/io/io.ms"
 import parse_timestamp from "@std/os/time.ms"
@@ -55,7 +55,7 @@ bench "archive.zip_pack":
     let list = entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, "zip"):
+        if let b = pack(list, ArchiveFormat.Zip):
             return keep(b.length())
 
         return keep(0)
@@ -66,7 +66,7 @@ bench "archive.tar_pack":
     let list = entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, "tar"):
+        if let b = pack(list, ArchiveFormat.Tar):
             return keep(b.length())
 
         return keep(0)
@@ -74,9 +74,9 @@ bench "archive.tar_pack":
     try measure(2000, work)
 
 bench "archive.zip_unpack":
-    if let packed = pack(entries(2000), "zip"):
+    if let packed = pack(entries(2000), ArchiveFormat.Zip):
         fn work() Result[Unit, Error]:
-            if let e = unpack(packed, "zip"):
+            if let e = unpack(packed, ArchiveFormat.Zip):
                 return keep(e.length())
 
             return keep(0)
