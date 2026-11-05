@@ -108,7 +108,7 @@ pub(crate) struct FnLower<'a> {
     /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
     pub counts_depth: bool,
     /// The value `return` is carrying while the scopes unwind, which a close error replaces.
-    pub pending_return: Option<Value>,
+    pub pending_return: Option<Val>,
     /// `return` already ran its var-slot, temporary and fixture handling on this path.
     pub prologue_done: bool,
     /// Bindings whose close already ran on the path that is returning a close error.
@@ -1360,6 +1360,7 @@ impl<'a> FnLower<'a> {
         // A borrow-returning function returns the reference itself; the caller never releases it.
         let borrowed = self.b.func_mut().ret_borrowed;
         let views = self.b.func_mut().ret_view;
+        let value = value.map(|x| self.result_return(x));
         let v = value.map(|x| {
             if borrowed {
                 x.v
@@ -1387,8 +1388,11 @@ impl<'a> FnLower<'a> {
             }
             self.end_fixture();
         }
-        let outer_pending =
-            std::mem::replace(&mut self.pending_return, if nested { None } else { v });
+        let pending = v.map(|v| Val { v, own: !borrowed });
+        let outer_pending = std::mem::replace(
+            &mut self.pending_return,
+            if nested { None } else { pending },
+        );
         self.prologue_done = true;
         self.unwind_to(0);
         self.prologue_done = nested;
@@ -1399,6 +1403,74 @@ impl<'a> FnLower<'a> {
         }
         self.b.ret(v);
         self.terminated();
+    }
+
+    /// A forwarded Result may lend a case this function must own (an implicit close can
+    /// return a fresh Error). Move owned cases and copy only newly-owned borrowed payloads.
+    fn result_return(&mut self, x: Val) -> Val {
+        let (TyKind::Alt(src), TyKind::Alt(dst)) = (
+            self.b.m.types.kind(self.ty_of(x.v)).clone(),
+            self.b.m.types.kind(self.ret_ty).clone(),
+        ) else {
+            return x;
+        };
+        let (from, to) = (&self.b.m.alts[src.index()], &self.b.m.alts[dst.index()]);
+        if src == dst
+            || from.borrowed == to.borrowed
+            || from.std != ms_mir::types::Std::Result
+            || to.std != ms_mir::types::Std::Result
+            || from.name != to.name
+            || from.cases != to.cases
+            || to.borrowed & !from.borrowed != 0
+        {
+            return x;
+        }
+        let borrowed = to.borrowed;
+        let mode = if self.needs_drop(self.ret_ty) {
+            Mode::Move
+        } else {
+            Mode::Borrow
+        };
+        let out = self.b.declare_var(self.ret_ty, mode);
+        let held = self.b.declare_var(
+            self.ty_of(x.v),
+            if x.own { Mode::Move } else { Mode::Borrow },
+        );
+        self.b.def_var(held, x.v);
+        let tag = self.b.alt_tag(x.v);
+        let error = self.b.iconst(ms_mir::types::Std::ERROR as i64);
+        let is_error = self.b.icmp(ms_mir::ir::Cc::Eq, tag, error);
+        let (ok, err, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(is_error, err, &[], ok, &[]);
+        self.b.seal_block(ok);
+        self.b.seal_block(err);
+        for (block, case) in [
+            (ok, ms_mir::types::Std::OK),
+            (err, ms_mir::types::Std::ERROR),
+        ] {
+            self.enter(block);
+            let cur = Val {
+                v: self.b.use_var(held),
+                own: x.own,
+            };
+            let v = if borrowed & (1 << case) != 0 {
+                let payload = self.b.alt_get(src, case as u32, 0, cur.v);
+                let v = self.b.alt_view(dst, case as u32, &[payload]);
+                self.finish(cur);
+                v
+            } else {
+                let payload = self.take_alt_field_through(src, case as u32, 0, cur);
+                self.b.alt_new(dst, case as u32, &[payload])
+            };
+            self.b.def_var(out, v);
+            self.b.br(join, &[]);
+        }
+        self.b.seal_block(join);
+        self.enter(join);
+        Val {
+            v: self.b.use_var(out),
+            own: true,
+        }
     }
 
     // --------------------------------------------------------------- bodies
