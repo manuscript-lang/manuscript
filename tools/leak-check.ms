@@ -1,7 +1,8 @@
 // Leak sweep (`make leak-check`): runs the programs of the conformance corpus that finish normally against a runtime
 // built with allocation counters (`ms-rt` feature `stats`), which prints the count of live heap blocks at exit. A
 // correct program frees everything it allocated, so any nonzero count is a leak. Faulting and rejected programs print
-// no count and are skipped. Arguments name the files to sweep instead.
+// no count and are skipped. The `test` blocks of tests/e2e/testdata run the same way, one count per test. Arguments name
+// the files to sweep instead; a file with test blocks is run with `ms test`.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/leak-check.ms [-- files]
 import tool_ms, use_stats_runtime from "./lib.ms"
@@ -20,6 +21,21 @@ fn live_blocks(text: String) List[Int]:
                 n
             )
     return counts
+
+// The tests of one `ms test` run that left live blocks, as "name: count" lines: each test prints RUN before it
+// starts, and the runtime prints its count as the process exits or after the test.
+fn leaking_tests(text: String) List[String]:
+    var leaks = List[String]()
+    var current = ""
+    for line in text.split("\n"):
+        if line.starts_with("RUN "): current = line.slice(4, line.length()).get("")
+        else if line.starts_with("ms-rt live blocks at exit: "):
+            let n = line.slice(27, line.length()).get("").trim().parse_int().get(0)
+            if n != 0: leaks.append("{current}: {n}")
+    return leaks
+
+fn has_tests(source: String) Bool:
+    return source.starts_with("test \"") or source.contains("\ntest \"")
 
 export fn main() Int:
     let code = use_stats_runtime()
@@ -40,6 +56,13 @@ export fn main() Int:
                     ""
                 ).contains("fn main"): files.append(path.clone())
 
+    if files.length() == 0:
+        for f in glob("tests/e2e/testdata", GlobOptions(patterns: ["**/*.ms"])).get([]):
+            let path = "tests/e2e/testdata/{f.path}"
+            if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
+                path.clone()
+            )
+
     let ms = tool_ms(root.clone())
     let scratch = temporary("ms-leak-").get()
     change_directory(scratch.path()).get()
@@ -49,6 +72,16 @@ export fn main() Int:
 
     for f in files:
         let absolute = "{root}/{f}"
+        let source = read_file(absolute.clone()).wait().get().decode_utf8().get("")
+
+        if has_tests(source):
+            if let out = run(ms.clone(), ["test", absolute.clone()], timeout: seconds(600)).wait():
+                let found = leaking_tests(out.stderr.decode_utf8().get(""))
+                swept += 1
+                if found.length() > 0:
+                    leaks += 1
+                    stdout().write("leak: {absolute}\n  {found.join("\n  ")}\n").get()
+            continue
 
         if let out = run(ms.clone(), ["run", absolute.clone()], timeout: seconds(60)).wait():
             let counts = live_blocks(out.stderr.decode_utf8().get(""))

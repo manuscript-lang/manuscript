@@ -1,3 +1,5 @@
+// conform: tags=stdlib-http,stdlib-net,tier-io
+// conform: phase=run
 import headers, HttpRequest, HttpResponse, buffered, HttpServerOptions from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 

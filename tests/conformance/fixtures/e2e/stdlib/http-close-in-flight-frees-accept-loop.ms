@@ -1,3 +1,5 @@
+// conform: tags=stdlib-http,stdlib-net,tier-io
+// conform: phase=run
 import FetchOptions, fetch from "@std/net/fetch.ms"
 import HttpRequest, HttpResponse, headers, buffered from "@std/net/http.ms"
 import serve from "@std/net/net.ms"

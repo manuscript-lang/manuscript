@@ -165,10 +165,10 @@ runs:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/e2e.ms
-    - name: Cancelled promises release what they own
+    - name: Programs and tests release what they own
       if: env.GATES == 'true'
       shell: bash
-      run: MS=target/debug/ms target/debug/ms run tools/leak-check.ms -- tests/conformance/fixtures/e2e/stdlib/promise-cancel-release.ms
+      run: MS=target/debug/ms target/debug/ms run tools/leak-check.ms
     - name: Ownership counts and cleanup order hold
       if: env.GATES == 'true'
       shell: bash

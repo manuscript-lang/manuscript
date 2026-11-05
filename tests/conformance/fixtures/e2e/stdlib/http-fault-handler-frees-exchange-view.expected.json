@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 0,
     "stdout": "500\n",
-    "stderr": ""
+    "stderr": "HTTP stream handler fault: index 5 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-handler-frees-exchange-view.ms:10 in faulting\n"
   }
 }
