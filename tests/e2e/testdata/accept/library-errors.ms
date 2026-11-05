@@ -79,7 +79,7 @@ fn general_read(cause: ReadError) Unit!:
     if failed.is_error():
         return error(
             Error(
-                "read failed", kind: "EIO", details: {"path": failed.err().path}
+                "read failed", kind: "EIO", details: {"path": failed.err().path.clone()}
             )
         )
 

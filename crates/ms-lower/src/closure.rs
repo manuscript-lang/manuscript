@@ -1567,6 +1567,7 @@ fn lower_bound_native(
     let params = fl.b.params();
     let env = params[0];
     let held = job.held.capture(recv_ty);
+    fl.in_thunk = true;
     let mut cap =
         fl.b.emit(Op::ClosureCap, &[env], Imm::Idx(0), Some(held))
             .expect("capture");
