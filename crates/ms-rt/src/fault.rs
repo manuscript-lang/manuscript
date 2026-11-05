@@ -1650,7 +1650,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
                 teb.as_ptr(),
             )
         }
-        GUARD_MESSAGE = if status == GUARD_FAULT {
+        *GUARD_MESSAGE.ptr() = if status == GUARD_FAULT {
             crate::string::from_bytes(&message)
         } else {
             crate::string::NO_STR
@@ -1696,7 +1696,11 @@ pub(crate) unsafe fn pop_trap_guard() {
 }
 
 #[cfg(not(test))]
-static mut GUARD_MESSAGE: ms_rt_abi::StrVal = crate::string::NO_STR;
+crate::isolate_static! {
+    /// The fault message `guard_exit` hands to the landing of `msrt_guard_call`. Per thread: tasks on
+    /// different scheduler threads leave guards at the same time.
+    static GUARD_MESSAGE: ms_rt_abi::StrVal = crate::string::NO_STR;
+}
 
 #[cfg(not(test))]
 unsafe extern "C" {
@@ -1908,12 +1912,11 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
                 return GUARD_OK;
             }
             if !msg_out.is_null() {
-                *msg_out = core::ptr::read(&raw const GUARD_MESSAGE);
+                *msg_out = core::ptr::read(GUARD_MESSAGE.ptr());
             } else {
-                let held = &raw const GUARD_MESSAGE;
-                crate::string::release_opt(&*held);
+                crate::string::release_opt(&*GUARD_MESSAGE.ptr());
             }
-            GUARD_MESSAGE = crate::string::NO_STR;
+            *GUARD_MESSAGE.ptr() = crate::string::NO_STR;
             r as u8
         }
         #[cfg(test)]
