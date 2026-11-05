@@ -2459,7 +2459,7 @@ impl<'a> FnLower<'a> {
                 if (!recv.own || self.b.m.alts[alt.index()].borrows(err as usize))
                     && self.needs_drop(out) =>
             {
-                // A borrowed result lends its error, and so does a borrowing temporary whose
+                // A borrowed result borrows its error, and so does a borrowing temporary whose
                 // error case lives in its source; a consumer that keeps it must clone it.
                 let (bad, good) = (self.b.new_block(), self.b.new_block());
                 self.b.br_if(is_ok, bad, &[], good, &[]);

@@ -37,7 +37,7 @@ test "a scalar walk reads the text as it was when the loop began":
     var s = "ab"
     var total = 0
 
-    for c in s.scalar_values():
+    for c in s.clone().scalar_values():
         s = "{s}é"
         total += c
 

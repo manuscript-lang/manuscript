@@ -136,7 +136,7 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
-    /// Payloads an `Optional`/`Result` read (`get()`, `err()`) lends: storing one copies it by the
+    /// Payloads an `Optional`/`Result` read (`get()`, `err()`) borrows: storing one copies it by the
     /// language's rule for these two types, so that copy is declared (`owned` does not report it).
     pub boundary_reads: std::collections::HashSet<Value>,
     /// Exclusive borrows in scope: the place each names.
@@ -662,6 +662,16 @@ impl<'a> FnLower<'a> {
     pub fn ret_borrowing(&self) -> bool {
         matches!(self.b.m.types.kind(self.ret_ty),
             TyKind::Alt(a) if self.b.m.alts[a.index()].borrowed != 0)
+    }
+
+    /// Whether this function returns an `Optional` or a `Result`: a borrowed part it wraps into the
+    /// result is a copy the types' rule declares (`owned_boundary`).
+    pub fn ret_boundary(&self) -> bool {
+        match self.b.m.types.kind(self.ret_ty) {
+            TyKind::Opt(_) => true,
+            TyKind::Alt(a) => self.b.m.alts[a.index()].std == ms_mir::types::Std::Result,
+            _ => false,
+        }
     }
 
     pub fn result_ty(&self) -> MTy {
@@ -1345,6 +1355,8 @@ impl<'a> FnLower<'a> {
                 // A view returner hands a plain reference to an interface value on as a value that
                 // owns nothing (`iface.view`); the caller drops it like the views it builds.
                 self.b.iface_view(x.v)
+            } else if self.ret_boundary() {
+                self.owned_boundary(x)
             } else {
                 self.owned(x)
             }

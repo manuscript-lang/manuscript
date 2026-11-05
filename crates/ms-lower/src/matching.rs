@@ -578,7 +578,7 @@ impl FnLower<'_> {
             self.emit_return(Some(Val { v: out, own: true }));
             self.closed_on_path = before;
         } else {
-            let po = self.owned(x);
+            let po = self.owned_boundary(x);
             let out = self.b.alt_new(ra, ret_err as u32, &[po]);
             if hidden {
                 self.drop_value(cur);

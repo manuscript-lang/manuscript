@@ -72,6 +72,6 @@ test "a var parameter of a one-owner value is not copied":
     var words = ["a"]
     let extend = fn(var xs: List[String], more: List[String]):
         for w in more:
-            xs.append(w)
+            xs.append(w.clone())
     extend(var words, ["b", "c"])
     words | try expect_equal(["a", "b", "c"])
