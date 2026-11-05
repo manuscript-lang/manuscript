@@ -25,7 +25,7 @@ Top sites for the last row: `native_method_tail` (argument to an owning native p
 ## Design
 
 - `owned(x)` keeps three exits: owned already or no drop duty (unchanged); static (`StrLit`, `OptNone`) goes through a new `own_static`; anything else is a gate failure. `clone(x)` is the explicit entry for `.clone()` and recorded conversions.
-- Gate failure records `internal: implicit copy of a borrow in <fn> at <pos>` and fails lowering. Stage: first behind `MS_STRICT_COPIES=1` while the ~560 firings are fixed per site, then unconditional.
+- Gate failure records `internal: implicit copy of a borrow in <fn> at <pos>` and fails lowering. Stage: first behind an env switch while the ~560 firings are fixed per site, then unconditional.
 - Each fixed site takes one of: a move (the checker already proved last use, `moves`/`close_moves`), a borrow (the callee parameter is borrowed), or a checker fact that was missing (add it to the walk). No site gets a copy "to be safe".
 - `NodeFacts` (stage 2): `Vec<NodeFacts>` per module indexed by `NodeId`: a `u32` bitset (borrow kind, implicit/explicit close, moved payload, conditional move, view lender/wrap/move, lent match, bound borrow) plus an index into a side `Vec` for payload facts (`close_moves`, `resource_moves`, `getter_borrows`, `owned_lends`). `(Name, NodeId)` keys become the node's id; `Name` is already in the node.
 - After the gate is on, delete the `copyelim` sub-passes whose `opt_copyelim` tests no longer exercise a copy, then `buildmove` and the copy cases of `lastuse`. `lastuse` stays for drop placement. `Op::Copy` loses the `rc` effect flag.

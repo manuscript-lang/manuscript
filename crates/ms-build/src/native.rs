@@ -145,7 +145,7 @@ fn verify_after(module: &Module, name: &str) -> Result<(), String> {
 }
 
 /// Reports or rejects the copies of object values in `module` (`MS_COPY_PROBE`,
-/// `MS_STRICT_COPIES`): one-owner lowering duplicates an object only through `.clone()`.
+/// `MS_COPY_PROBE=strict`): one-owner lowering duplicates an object only through `.clone()`.
 fn probe_copies(module: &Module, probe: CopyProbe) -> Result<(), String> {
     if probe == CopyProbe::Off {
         return Ok(());

@@ -2234,7 +2234,7 @@ impl<'a> FnLower<'a> {
                     inner,
                     &mut |s| {
                         let p = s.b.opt_get(r);
-                        let o = s.owned(Val { v: p, own: false });
+                        let o = s.owned_boundary(Val { v: p, own: false });
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(o))
@@ -2549,7 +2549,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         let p = s.b.alt_get(alt, ok, 0, r);
-                        let o = s.owned(Val { v: p, own: false });
+                        let o = s.owned_boundary(Val { v: p, own: false });
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(o))

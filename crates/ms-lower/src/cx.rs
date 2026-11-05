@@ -329,8 +329,6 @@ pub struct Cx {
     pub syms: ms_syntax::Names,
     /// The session whose standard library the program was checked against.
     pub session: Rc<ms_check::Session>,
-    /// `MS_STRICT_COPIES=1`: an owning position that receives a borrowed place is an error.
-    pub strict_copies: bool,
     /// Boolean ownership facts per node (returners, view wraps, bound borrows, view moves, borrowed matches).
     pub node_facts: Rc<ms_check::ownership::NodeFacts>,
     /// Boolean ownership facts per binding (borrows, closes, conditional moves).
@@ -400,7 +398,7 @@ pub struct Cx {
 }
 
 impl Cx {
-    /// Fails when strict mode recorded an implicit copy of a borrow.
+    /// Fails when lowering recorded an implicit copy of a borrow.
     pub fn check_strict_copies(&self) -> Result<(), crate::Error> {
         if self.copy_gaps.is_empty() {
             return Ok(());
@@ -448,7 +446,6 @@ impl Cx {
             session: program.session.clone(),
             node_facts: program.node_facts.clone(),
             binding_facts: program.binding_facts.clone(),
-            strict_copies: std::env::var_os("MS_STRICT_COPIES").is_some(),
             copy_gaps: Vec::new(),
             extended,
             scope_names: Vec::new(),

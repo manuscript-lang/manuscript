@@ -442,7 +442,7 @@ impl FnLower<'_> {
         }
         sig |= code(self, ret)? << 56;
         let thunk = self.invoke_thunk(fty, &ps, ret);
-        let held = self.owned(Val { v: f, own: false });
+        let held = self.clone_value(f);
         let wty = self.b.m.types.func(vec![MTy::PTR], MTy::UNIT);
         let wrapper = self
             .b

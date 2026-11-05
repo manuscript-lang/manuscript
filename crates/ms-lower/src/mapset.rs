@@ -369,7 +369,7 @@ impl<'a> FnLower<'a> {
                         value_ty,
                         &mut |s| {
                             let v = if d.wrapped {
-                                s.owned(d.val)
+                                s.owned_boundary(d.val)
                             } else {
                                 let x = s.b.opt_unwrap(d.val.v);
                                 s.finish(d.val);
@@ -854,7 +854,7 @@ impl<'a> FnLower<'a> {
         self.two_ways(
             missing,
             result,
-            &mut |s| Ok(Some(s.owned(fallback))),
+            &mut |s| Ok(Some(s.owned_boundary(fallback))),
             &mut |s| {
                 let hit =
                     s.b.emit(Op::Load, &[ptr], Imm::Ty(result), Some(result))
