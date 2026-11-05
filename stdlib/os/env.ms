@@ -60,7 +60,7 @@ export fn which(name: String) String?:
     return none
 
 fn runnable(path: String, windows: Bool) Bool:
-    let info = stat(path, true)
+    let info = stat(path, follow_links: true)
     if info.is_error() or not info.get().regular: return false
     if windows: return true
 

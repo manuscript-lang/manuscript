@@ -59,8 +59,6 @@ test "subprocess validation returns expected domain errors":
     )
 
 test "subprocess streams that are not piped are closed":
-    if os() == Os.Windows: return
-
     let child = try spawn(
         "sh", ["-c", "cat; echo done >&2"],
         SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null)
@@ -78,8 +76,6 @@ test "subprocess streams that are not piped are closed":
     try expect_false(input.write("x".to_bytes()).is_ok())
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
-    if os() == Os.Windows: return
-
     let child = try spawn("cat", [])
     var input = child.stdin()
     try input.write("ping\n".to_bytes())
@@ -93,8 +89,6 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
     try expect_false((try output.read().wait()).is_some())
 
 test "run and spawn pass the environment to the child":
-    if os() == Os.Windows: return
-
     var env: Map[String, String] = Map[String, String]()
     env.add("MS_CHILD_VALUE", "from-parent")
 
