@@ -1,0 +1,22 @@
+{{- /* Screenshots live in website/static/images and are written as ![alt](/images/name.png "caption").
+       A sibling name-dark.png, when present, is shown in the dark theme. Alt text is required. */ -}}
+{{- $src := .Destination -}}
+{{- $alt := .PlainText -}}
+{{- if strings.HasPrefix $src "/images/" -}}
+  {{- if not $alt }}{{ errorf "Image %s in %s needs alt text" $src .Page.File.Path }}{{ end -}}
+  {{- $file := printf "static%s" $src -}}
+  {{- if not (fileExists $file) }}{{ errorf "Missing image %s referenced from %s" $file .Page.File.Path }}{{ end -}}
+  {{- $dark := replaceRE `\.(png|jpg|webp)$` "-dark.$1" $src -}}
+  {{- $hasDark := fileExists (printf "static%s" $dark) -}}
+  <figure class="docs-shot{{ if $hasDark }} has-dark{{ end }}">
+    <img class="shot-light" src="{{ strings.TrimPrefix "/" $src | relURL }}" alt="{{ $alt }}" loading="lazy" decoding="async">
+    {{- if $hasDark }}
+    <img class="shot-dark" src="{{ strings.TrimPrefix "/" $dark | relURL }}" alt="{{ $alt }}" loading="lazy" decoding="async">
+    {{- end }}
+    {{- with .Title }}
+    <figcaption>{{ . }}</figcaption>
+    {{- end }}
+  </figure>
+{{- else -}}
+  {{- errorf "Image %s in %s must be under /images/ (website/static/images)" $src .Page.File.Path -}}
+{{- end -}}
