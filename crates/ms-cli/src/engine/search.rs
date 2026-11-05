@@ -29,7 +29,7 @@ pub fn search_symbol(
     request: &SearchSymbolRequest,
     io: &mut Io,
 ) -> BackendResult {
-    if request.names.is_empty() {
+    if request.names.iter().all(|name| name.trim().is_empty()) {
         let _ = write!(io.stdout, "{}", ms_tooling::guide::index(syms));
         return Ok(0);
     }

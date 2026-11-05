@@ -119,5 +119,9 @@ fn search_symbol_describes_project_and_standard_symbols() {
         out.starts_with("No project or standard-library symbol like"),
         "{out}"
     );
+    let (status, blank) = ms(&dir, &[""]);
+    let (_, index) = ms(&dir, &[]);
+    assert_eq!(status, 0);
+    assert_eq!(blank, index, "a blank query lists the index like no query");
     let _ = std::fs::remove_dir_all(&dir);
 }
