@@ -26,6 +26,110 @@ fn json(output: &Output) -> Json {
 }
 
 #[test]
+fn diagram_ambiguous_entity_remedies_are_usable() {
+    let dir = scratch("selectors");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_selectors/main.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("other.ms"),
+        include_str!("diagram_selectors/other.ms"),
+    )
+    .unwrap();
+    for (name, expected) in [
+        ("Box", vec!["main.ms#impl#Box", "main.ms#record#Box"]),
+        (
+            "main.ms::Box",
+            vec!["main.ms#impl#Box", "main.ms#record#Box"],
+        ),
+        ("Item", vec!["main.ms#record#Item", "other.ms#record#Item"]),
+        (
+            "Named",
+            vec!["main.ms#record#Named", "other.ms#record#Named"],
+        ),
+    ] {
+        let args = [
+            "diagram", "main.ms", "--view", "types", "--entity", name, "--json",
+        ];
+        let output = ms(&dir, &args);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(output.stderr, ms(&dir, &args).stderr);
+        let error = std::str::from_utf8(&output.stderr).unwrap().trim();
+        let error = error.strip_prefix("ms diagram: ").unwrap();
+        let (_, remedies) = error.split_once(": ").unwrap();
+        let remedies = remedies.split("; ").next().unwrap();
+        let selected: Vec<_> = remedies
+            .split(", ")
+            .map(|selector| {
+                let doc = json(&ms(
+                    &dir,
+                    &[
+                        "diagram", "main.ms", "--view", "types", "--entity", selector, "--json",
+                    ],
+                ));
+                let children = doc
+                    .get("tree")
+                    .unwrap()
+                    .get("children")
+                    .unwrap()
+                    .as_array()
+                    .unwrap();
+                assert_eq!(children.len(), 1);
+                children[0]
+                    .get("reference")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect();
+        assert_eq!(selected, expected);
+        if name == "Item" {
+            assert_eq!(remedies, "main.ms::Item, other.ms::Item");
+        }
+    }
+    for selector in ["unique", "main.ms::unique", "main.ms#fn#unique"] {
+        let doc = json(&ms(
+            &dir,
+            &[
+                "diagram", "main.ms", "--view", "calls", "--entity", selector, "--json",
+            ],
+        ));
+        assert_eq!(
+            doc.get("tree")
+                .unwrap()
+                .get("children")
+                .unwrap()
+                .as_array()
+                .unwrap()[0]
+                .get("reference")
+                .unwrap()
+                .as_str(),
+            Some("main.ms#fn#unique")
+        );
+    }
+    let missing = ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--entity",
+            "main.ms#record#Missing",
+            "--json",
+        ],
+    );
+    assert_eq!(missing.status.code(), Some(2));
+    assert!(missing.stdout.is_empty());
+    let error = String::from_utf8_lossy(&missing.stderr);
+    assert!(error.contains("no entity named main.ms#record#Missing"));
+    assert!(error.contains("file#kind#name"), "{error}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn diagram_json_preserves_source_navigation_and_recursion() {
     let dir = scratch("json");
     std::fs::write(
