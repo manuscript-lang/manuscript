@@ -150,7 +150,7 @@ impl FnLower<'_> {
         // A hook that changes `self` takes the address of a slot holding a copy of the fixture
         // and puts the final value back into it.
         let ty = self.ty_of(recv.v);
-        let copy = self.owned(recv);
+        let copy = self.owned_boundary(recv);
         let slot = self
             .b
             .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))

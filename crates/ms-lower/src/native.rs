@@ -1391,7 +1391,7 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::collection_mutation(self.syms, m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
-            let old = self.owned(Val { v: b, own: false });
+            let old = self.owned_boundary(Val { v: b, own: false });
             let (new, r) = self.mutate_any(&name, old, &m.ty.params, args, true, result)?;
             if result == MTy::UNIT {
                 self.drop_value(new);
@@ -3211,7 +3211,7 @@ impl<'a> FnLower<'a> {
                     let payload = if by_index {
                         i
                     } else {
-                        s.owned(Val { v: x, own: false })
+                        s.owned_boundary(Val { v: x, own: false })
                     };
                     let some = s.b.opt_some(payload);
                     let old = s.b.use_var(acc);

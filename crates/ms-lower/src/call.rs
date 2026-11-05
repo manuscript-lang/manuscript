@@ -356,7 +356,8 @@ impl<'a> FnLower<'a> {
             let binding = callee.parameters[j].clone();
             if vars.contains(&(j + offset)) {
                 let ty = self.ty_of(v.v);
-                let o = self.owned(v);
+                // An earlier `var` argument is the call's copy-in, as in `var_argument`.
+                let o = self.owned_boundary(v);
                 let var = self.b.declare_var(ty, Mode::Move);
                 self.b.def_var(var, o);
                 self.locals.insert(
@@ -1340,7 +1341,8 @@ impl<'a> FnLower<'a> {
         self.variant = saved_variant;
         self.file = saved_file;
         let x = r?;
-        Ok(self.owned(x))
+        // The default's value is the argument's own: a borrowed one is the declared copy.
+        Ok(self.owned_boundary(x))
     }
 
     /// A default written as a literal, `none`, an empty list or map, or a constructor call of literals in a
