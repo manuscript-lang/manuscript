@@ -1130,7 +1130,7 @@ impl FnLower<'_> {
             .split_first()
             .ok_or_else(|| Error::new("no error kind for a runtime status"))?;
         let build = |s: &mut Self| -> Result<Value, Error> {
-            let text = if kind == "EIO" {
+            let text = if words == "-" {
                 match s.err_slot {
                     Some(slot) => {
                         s.b.emit(Op::Take, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
@@ -1317,34 +1317,22 @@ impl FnLower<'_> {
     }
 }
 
+include!(concat!(env!("OUT_DIR"), "/status_rows.rs"));
+
 /// The error code and message words of each runtime status of `sym`'s module, as
-/// `(status, kind, words)`. Every runtime crate uses the shared `ms-rt-abi` `STATUS_*` numbers;
-/// only the `NotFound` words name the module.
+/// `(status, kind, words)`. The rows are declared in the standard library next to `Error.kind`
+/// (`stdlib/core.ms`); a module's own wording for a status is declared in the file that holds
+/// `sym` (see `build.rs`). Words `-` mean the native's own text is the message.
 pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> {
-    let not_found = if sym.starts_with("msstd_fs_") {
-        "file or directory not found"
-    } else {
-        "not found"
-    };
-    vec![
-        (1, "EINVAL", "invalid input"),
-        (2, "ERANGE", "value out of range"),
-        (3, "EOVERFLOW", "limit exceeded"),
-        (4, "EBADMSG", "invalid data"),
-        (5, "ENOENT", not_found),
-        (6, "EEXIST", "already exists"),
-        (7, "ENOTEMPTY", "directory not empty"),
-        (8, "EACCES", "permission denied"),
-        (9, "ENOTSUP", "operation not supported"),
-        (10, "EBADF", "resource is closed"),
-        (11, "EIO", ""),
-        (12, "EAGAIN", "service unavailable"),
-        (13, "ETIMEDOUT", "operation timed out"),
-        (14, "EOVERFLOW", "output limit exceeded"),
-        (15, "ENOTTY", "not a terminal"),
-        (17, "EBUSY", "terminal is busy"),
-        (18, "EAUTH", "authentication failed"),
-    ]
+    STATUS_ROWS
+        .iter()
+        .map(|&(n, kind, words)| {
+            let own = STATUS_WORDS
+                .binary_search_by(|&(s, status, _)| (s, status).cmp(&(sym, n)))
+                .map(|at| STATUS_WORDS[at].2);
+            (n, kind, own.unwrap_or(words))
+        })
+        .collect()
 }
 
 /// How messages of `sym`'s module name their domain.

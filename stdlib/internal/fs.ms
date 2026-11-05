@@ -1,3 +1,5 @@
+// ms: words 5 file or directory not found
+// ms: native msstd_fs_copy msstd_fs_glob_entries
 import Bytes from "@std/bytes.ms"
 import (
     Directory,
