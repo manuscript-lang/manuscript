@@ -533,3 +533,85 @@ fn shared_default_type_arguments_keep_one_reference_per_declaration() {
     assert_eq!(refs, ["main.ms#record#Pair", "main.ms#record#Item"]);
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn types_mermaid_keeps_same_named_module_types_and_their_edges_distinct() {
+    let dir = scratch("class-identity");
+    for (name, source) in [
+        ("a.ms", include_str!("diagram_class_identity/a.ms")),
+        ("b.ms", include_str!("diagram_class_identity/b.ms")),
+        ("main.ms", include_str!("diagram_class_identity/main.ms")),
+    ] {
+        std::fs::write(dir.join(name), source).unwrap();
+    }
+    let args = [
+        "diagram", "main.ms", "--view", "types", "--format", "mermaid",
+    ];
+    let output = ms(&dir, &args);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    assert_eq!(output.stdout, ms(&dir, &args).stdout);
+    let diagram = String::from_utf8(output.stdout).unwrap();
+    let id_for = |member: &str| {
+        diagram
+            .split("    class ")
+            .skip(1)
+            .find(|block| block.split("    }\n").next().unwrap().contains(member))
+            .unwrap()
+            .split([' ', '['])
+            .next()
+            .unwrap()
+    };
+    let named_item = id_for("+String name");
+    let counted_item = id_for("+Int count");
+    assert_ne!(named_item, counted_item, "{diagram}");
+    assert!(
+        diagram.contains(&format!("    ABox *-- {named_item} : item\n")),
+        "{diagram}"
+    );
+    assert!(
+        diagram.contains(&format!("    BBox *-- {counted_item} : item\n")),
+        "{diagram}"
+    );
+    assert_eq!(
+        diagram
+            .lines()
+            .filter(|line| line.starts_with("    class "))
+            .count(),
+        4,
+        "{diagram}"
+    );
+    assert_eq!(
+        diagram
+            .lines()
+            .filter(|line| line.contains(" *-- "))
+            .count(),
+        2,
+        "{diagram}"
+    );
+    let focused = ms(
+        &dir,
+        &[
+            "diagram", "main.ms", "--view", "types", "--entity", "ABox", "--format", "mermaid",
+        ],
+    );
+    assert!(
+        focused.status.success(),
+        "{}",
+        String::from_utf8_lossy(&focused.stderr)
+    );
+    let focused = String::from_utf8(focused.stdout).unwrap();
+    assert!(
+        focused.contains("class Item {") && focused.contains("ABox *-- Item : item"),
+        "{focused}"
+    );
+    assert!(
+        !focused.contains("+Int count") && !focused.contains("BBox"),
+        "{focused}"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
