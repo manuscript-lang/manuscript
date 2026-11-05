@@ -697,7 +697,7 @@ impl<'a> FnLower<'a> {
             self.call_runtime("msrt_list_insert", &[slot, d, i, element], MTy::UNIT)?;
             let new = self.take_slot(slot, mt);
             let result = copy_result.then(|| {
-                let v = self.owned(Val { v: new, own: false });
+                let v = self.clone_value(new);
                 Val { v, own: true }
             });
             return Ok((new, result));
@@ -797,7 +797,7 @@ impl<'a> FnLower<'a> {
         self.enter(join);
         let new = self.take_slot(slot, mt);
         let result = copy_result.then(|| {
-            let v = self.owned(Val { v: new, own: false });
+            let v = self.clone_value(new);
             Val { v, own: true }
         });
         Ok((new, result))

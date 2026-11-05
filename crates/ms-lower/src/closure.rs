@@ -1975,7 +1975,8 @@ impl FnLower<'_> {
             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
             slot
         } else {
-            self.owned(x)
+            // The adapter holds the function value it adapts: a declared copy of a borrowed one.
+            self.owned_boundary(x)
         };
         let v = self
             .b

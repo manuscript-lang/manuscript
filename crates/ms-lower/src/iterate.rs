@@ -214,7 +214,7 @@ impl FnLower<'_> {
                 let init = callback("initial").ok_or_else(|| Error::new("fold without initial"))?;
                 let acc_ty = out;
                 let acc = self.fresh_var(acc_ty);
-                let init = self.owned(init.val);
+                let init = self.owned_arg(init.val);
                 self.b.def_var(acc, init);
                 self.each_item(items, name == "fold_right", &mut |s, xs| {
                     let f = s.b.use_var(fvar);
