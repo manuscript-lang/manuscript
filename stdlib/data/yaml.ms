@@ -386,7 +386,7 @@ fn numeric(text: String) Bool:
     if exponent.length() > 2: return false
 
     if exponent.length() == 2:
-        var power = exponent.last().get()
+        var power = exponent.last().get().clone()
         if power.starts_with("+") or power.starts_with("-"): power = power.slice(
             1, power.scalar_length()
         ).get("")
