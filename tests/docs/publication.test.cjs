@@ -92,6 +92,12 @@ test('published API routes mirror source directories and preserve old routes', (
     for (const alias of page.aliases) {
       const html = fs.readFileSync(path.join(book, alias, 'index.html'), 'utf8');
       assert.ok(html.includes(`/manuscript/standard-library/reference/${page.route}`));
+      let destination;
+      const script = html.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[1];
+      assert.ok(script, 'Alias must preserve a method fragment');
+      vm.runInNewContext(script, { location: { search: '?from=old', hash: '#promisepromisemethodstwait', replace: value => { destination = value; } } });
+      assert.equal(destination, `https://example.org/manuscript/standard-library/reference/${page.route}?from=old#promisepromisemethodstwait`);
+
     }
   }
   const promise = fs.readFileSync(path.join(output, 'concurrency/promise/index.html'), 'utf8');
@@ -108,6 +114,13 @@ test('rendered API signatures match source pages without synthetic contracts', (
       .map(match => match[1].replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]).trimEnd());
     assert.deepEqual(actual, expected, `Rebuild the website: ${file} has stale API signatures`);
     assert.ok(!html.includes('$methods') && !html.includes('SourceMethods'));
+  }
+});
+
+test('legacy method fragments remain beside the public method headings', () => {
+  const page = fs.readFileSync(path.join(book, 'standard-library/reference/concurrency/promise/index.html'), 'utf8');
+  for (const [legacy, current] of [['promisepromisemethodstwait', 'promisewait'], ['cancelcancelmethodscancel', 'cancelcancel'], ['signalsignalmethodscancelled', 'signalcancelled']]) {
+    assert.ok(new RegExp(`<span id=["']?${legacy}["']?[^>]*></span>\\s*<h3 id=["']?${current}`).test(page), `${legacy} must target ${current}`);
   }
 });
 

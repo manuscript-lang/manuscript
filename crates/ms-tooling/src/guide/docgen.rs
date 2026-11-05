@@ -67,6 +67,7 @@ fn render(module: &ApiModule, for_site: bool) -> String {
         for implementation in &d.implementation_declarations {
             b += &format!("```manuscript\n{implementation}```\n\n");
         }
+        let mut legacy_headings = BTreeSet::new();
         for member in &d.members {
             if member.doc.trim().is_empty() {
                 continue;
@@ -76,6 +77,12 @@ fn render(module: &ApiModule, for_site: bool) -> String {
             } else {
                 format!("{}.{}.{}", d.name, member.contract, member.name)
             };
+            if for_site && !member.legacy_contract.is_empty() {
+                let legacy = format!("{}.{}.{}", d.name, member.legacy_contract, member.name);
+                if legacy_headings.insert(legacy.clone()) {
+                    b += &format!("{{{{< api-legacy-anchor {legacy:?} >}}}}\n\n");
+                }
+            }
             b += &format!(
                 "### {name}\n\n{}\n\n```manuscript\n{}\n```\n\n",
                 member.doc, member.signature

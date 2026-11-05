@@ -15,6 +15,7 @@ fn member(name: &str, kind: &str, signature: &str, doc: &str) -> ApiMember {
         signature: signature.into(),
         doc: doc.into(),
         contract: String::new(),
+        legacy_contract: String::new(),
     }
 }
 
@@ -409,6 +410,10 @@ fn inherent_methods_keep_public_names_and_real_contracts() {
         );
         assert!(render_module(module).contains(&format!("impl {name}")));
         if name == "Promise" {
+            assert!(
+                render_site_module(module)
+                    .contains("api-legacy-anchor \"Promise.Promise$methods[T].wait\"")
+            );
             assert!(declaration.implements.iter().any(|c| c == "Closeable"));
         }
     }
