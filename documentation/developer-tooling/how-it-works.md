@@ -5,7 +5,7 @@ weight = 0
 
 # How it works
 
-`ms` checks your program and compiles it ahead of time to a native executable. Execution uses the compiled machine code, with no JIT compiler. The compiler, Cranelift backend, runtime and standard library ship together. Native linking and LLVM optimization use pinned tools downloaded on first use and cached for later builds; a fresh installation needs network access. See [toolchain requirements](../contributing/rust-toolchain.md#differences-users-can-see) for local-tool overrides and platform details.
+`ms` checks your program and compiles it ahead of time to a native executable. The compiler, Cranelift backend, runtime and standard library ship together. The resulting executable runs directly on its target platform.
 
 ```text
 .ms source → parse → check (HIR) → lower (MIR) → Cranelift or LLVM object code → link → executable
@@ -17,7 +17,20 @@ weight = 0
 
 ## One binary
 
-`ms` also includes the formatter, linter, language server (`ms lsp`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Source-only commands such as `check`, `fmt` and `lint` do not need native linking tools. The first native link downloads `lld`; the first optimized build also fetches the LLVM tools. Downloads are checked against pinned SHA-256 hashes. Set `MS_LLD` to a local linker and `MS_LLVM_TOOLS` to a local LLVM tools directory to provision these ahead of time; `MS_BACKEND=cranelift` skips LLVM optimization but still needs a linker.
+`ms` also includes the formatter, linter, language server (`ms lsp`), interactive code maps (`ms diagram ms.toml --format html`), and profiling commands (`ms profile`). The standard library matches your `ms` version. Source-only commands such as `check`, `fmt`, `lint` and `diagram` work without native linking tools.
+
+## Build tools and local setup
+
+Native builds use `lld` to link the executable. Optimized builds also use LLVM tools when available. `ms` uses explicitly configured local tools first, then complete cached tools; it downloads missing tools from pinned releases and verifies their SHA-256 hashes.
+
+| Tool | Local setting | Cache |
+| --- | --- | --- |
+| Linker | `MS_LLD`: path to a compatible `lld` executable | `<cache>/ms/lld/` |
+| LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc` and `llvm-link` | `<cache>/ms/llvm/` |
+
+To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. `MS_BACKEND=cranelift` skips LLVM optimization; a working linker is still required. If the LLVM download fails, the build falls back to Cranelift. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
+
+See [cache locations](builds/incremental-compilation.md) and [platform linking details](../contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](../contributing/rust-toolchain.md#build-and-run).
 
 ## Runtime cache
 

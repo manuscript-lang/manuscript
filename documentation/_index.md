@@ -2,7 +2,7 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "Help agents build correct, fast programs you can understand. Static checks catch mistakes, compiler feedback guides repairs, and straightforward code compiles to native executables."
+description = "Help agents build correct, fast programs you can understand. Simple types and generics keep code clear, compiler feedback guides repairs, and interactive code maps make review easier."
 +++
 
 {{< docs-home >}}

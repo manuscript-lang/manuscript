@@ -25,8 +25,29 @@ test "zero is unchanged":
 
 ```sh
 ms test test.ms
+```
+
+```text
+RUN test.ms::addition
+PASS test.ms::addition
+RUN test.ms::zero is unchanged
+PASS test.ms::zero is unchanged
+2 tests, 0 failed
+```
+
+Select one test or set a per-test deadline:
+
+```sh
 ms test test.ms --filter addition
 ms test test.ms --timeout 10s
+```
+
+With `--filter addition`, only the selected test runs:
+
+```text
+RUN test.ms::addition
+PASS test.ms::addition
+1 tests, 0 failed
 ```
 
 `expect_equal` works with numbers, text, collections, and `Equal` types; `assert_equal` is the TDD spelling. Change `3` to `4` to see `FAIL test.ms::addition: expected 4, got 3` and a nonzero exit. A tests file needs no `main`.
@@ -62,6 +83,14 @@ test "typed JSON and Optional payloads":
     try expect_some([number].first()) | try expect_equal(3)
 ```
 
+Test output:
+
+```text
+RUN test.ms::typed JSON and Optional payloads
+PASS test.ms::typed JSON and Optional payloads
+1 tests, 0 failed
+```
+
 Tests can also propagate an `Error` with `try`. See [Results](../core-language/errors/results.md).
 
 ## Select and repeat
@@ -90,6 +119,14 @@ import expect_equal from "@std/test/test.ms"
 
 test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))
+```
+
+Test output:
+
+```text
+RUN test.ms::reversing twice restores a list
+PASS test.ms::reversing twice restores a list
+1 tests, 0 failed
 ```
 
 When a case fails, `check` shrinks the input to a small counterexample and fails the test with it and the case seed:
@@ -195,6 +232,16 @@ test "increments":
 
 test "starts fresh":
     try expect_equal(fixture.count, 0)
+```
+
+Test output:
+
+```text
+RUN test.ms::increments
+PASS test.ms::increments
+RUN test.ms::starts fresh
+PASS test.ms::starts fresh
+2 tests, 0 failed
 ```
 
 `ms test` starts a separate process for each selected test. Each process creates its own fixture and runs its hooks, so the second test starts from a fresh `Counter`. The same isolation applies to repetitions.
