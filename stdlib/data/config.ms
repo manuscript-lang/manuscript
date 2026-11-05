@@ -11,7 +11,7 @@ To load a file straight into the environment use `load_environment` from `@std/o
 
 - Blank lines and `#` comment lines are skipped; a leading byte-order mark is ignored.
 - `export NAME=value` is accepted, and a name is letters, digits and `_`, not starting with a digit.
-- A bare value ends at an inline ` # comment` and is trimmed. A single-, double- or backtick-quoted value is literal, may span lines, and keeps any `#`.
+- A bare value ends at an inline ` # comment` (a `#` after a space or tab, or first) and is trimmed, so `a#b` is the value `a#b`. A single-, double- or backtick-quoted value is literal, may span lines, and keeps any `#`.
 - Only text after a closing quote may be a comment. A later duplicate name replaces the earlier value and keeps its first position.
 
 Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"8080"` and `NAME` as `"my app"`.
@@ -41,7 +41,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
         let quote = value.take(1)
 
         if quote != "'" and quote != "\"" and quote != "`":
-            out.add(name, value.split("#", 2)[0].trim())
+            out.add(name, bare_value(value))
             continue
 
         // Only the newest line is searched for the closing quote, so a long value stays linear.
@@ -112,6 +112,19 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
             section.add(key, ini_value(entry.drop(at + 1).trim()))
 
     return ok(sections)
+
+// The text before an inline comment: a `#` at the start or after a space or tab. Other `#` characters belong to the value.
+fn bare_value(value: String) String:
+    let chars = value.chars()
+    var previous = " "
+
+    for index in 0..chars.length():
+        if chars[index] == "#" and (previous == " " or previous == "\t"):
+            return value.take(index).trim()
+
+        previous = chars[index].clone()
+
+    return value.trim()
 
 fn valid_name(name: String) Bool:
     if name.is_empty(): return false

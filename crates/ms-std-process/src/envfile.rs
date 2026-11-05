@@ -46,7 +46,7 @@ pub fn parse(text: &str) -> Option<Vec<(String, String)>> {
             text = rest;
         } else {
             let (line, rest) = text.split_once('\n').unwrap_or((text, ""));
-            value = line.split_once('#').map_or(line, |(v, _)| v).trim();
+            value = strip_inline_comment(line).trim();
             text = rest;
         }
         if value.contains('\0') {
@@ -55,6 +55,18 @@ pub fn parse(text: &str) -> Option<Vec<(String, String)>> {
         entries.push((String::from(key), String::from(value)));
     }
     Some(entries)
+}
+
+/// The part of a bare value before a `#` that starts it or follows a space or tab.
+fn strip_inline_comment(line: &str) -> &str {
+    let mut previous = ' ';
+    for (at, c) in line.char_indices() {
+        if c == '#' && matches!(previous, ' ' | '\t') {
+            return &line[..at];
+        }
+        previous = c;
+    }
+    line
 }
 
 #[cfg(test)]
@@ -88,6 +100,20 @@ mod tests {
             ])
         );
         assert_eq!(pairs(text), None);
+    }
+
+    #[test]
+    fn hash_without_leading_space_belongs_to_the_value() {
+        assert_eq!(
+            pairs("A=ab#cd\nB=https://x/#top\nC=1\t# c\nD=#only\nE=x #y\n"),
+            Some(vec![
+                ("A", "ab#cd"),
+                ("B", "https://x/#top"),
+                ("C", "1"),
+                ("D", ""),
+                ("E", "x")
+            ])
+        );
     }
 
     #[test]
