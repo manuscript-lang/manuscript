@@ -776,7 +776,7 @@ impl<'a> FnLower<'a> {
                 .and_then(|p| self.hir.pattern_binding(p))
                 .is_some_and(|b| self.cx.exclusive(b.uid));
             let found = if exclusive {
-                let (alias, found) = self.alias_accessor(cond)?;
+                let (alias, found) = self.alias_accessor(cond, Some(body))?;
                 accessor_alias = Some(alias);
                 crate::alias::Found::Present(found)
             } else if let Some((b, shape)) = self.borrowable(binding, cond)? {
