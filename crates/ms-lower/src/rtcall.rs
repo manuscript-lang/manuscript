@@ -545,7 +545,7 @@ impl FnLower<'_> {
                             let v = self.borrow(x);
                             self.b.emit(Op::Store, &[slot, v], Imm::None, None);
                         } else if self.needs_drop(t) {
-                            let o = self.owned(x);
+                            let o = self.owned_arg(x);
                             self.b.emit(Op::Put, &[slot, o], Imm::None, None);
                         } else {
                             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);

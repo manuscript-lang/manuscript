@@ -133,6 +133,9 @@ pub(crate) struct FnLower<'a> {
     pub converting: Option<*const ms_syntax::ast::Expr>,
     /// The scanned `for` iterable came from `String.scalar_values`: it yields scalar values.
     pub scalars_scan: bool,
+    /// Lowering a function value's thunk: its arguments are borrowed by the language's call
+    /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
+    pub in_thunk: bool,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
@@ -596,6 +599,7 @@ impl<'a> FnLower<'a> {
             chars_iter_for: None,
             converting: None,
             scalars_scan: false,
+            in_thunk: false,
             aliases: HashMap::new(),
             scope_override: None,
         }
@@ -696,6 +700,15 @@ impl<'a> FnLower<'a> {
             TyKind::Alt(a) => *a,
             _ => plain,
         }
+    }
+
+    /// An argument a native consumes: in a function value's thunk the argument is borrowed by
+    /// the call rule, so the declared copy is made here; elsewhere a borrowed one is a gap.
+    pub fn owned_arg(&mut self, x: Val) -> Value {
+        if self.in_thunk && !x.own {
+            return self.clone_value(x.v);
+        }
+        self.owned(x)
     }
 
     /// The payload `field` of the active `case` of the alternative `obj`, owned by the caller,
