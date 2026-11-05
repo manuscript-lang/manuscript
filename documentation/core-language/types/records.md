@@ -153,9 +153,11 @@ export fn main() Int:
 
 Field writes keep the declared type; the receiver evaluates once, before the new value. Records follow the move and borrow rules of every container; only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
 
-`.clone()` is a deep copy of nested records and collections; changing a clone never affects the original. Resource handles are never copied.
+For clonable data, `.clone()` is a deep copy of nested records and collections; changing the copy never affects the original. Resources are not copied implicitly and do not satisfy the generic `Clonable` bound.
 
-Records, alternatives, `List`, `Map`, `Set`, and `Bytes` have `.clone()`. Files, sockets, queues, synchronization objects, guards, and other service handles do not, and neither does a function value: it owns its captures and has one owner. A record, alternative or collection that holds a resource or a function value is not `Clonable`, so it has no `.clone()` and the copying collection operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
+Records, enums, `List`, `Map`, `Set`, and `Bytes` support data cloning when their contents permit it. Owned collections such as `Queue` can also be cloned when their element type is clonable. A function value has no clone: it owns its captures and has one owner. A record, enum, or collection holding a resource or a function value is not `Clonable`, so generic copying operations (`concat`, `take`, `sorted`) do not apply to it; move it, or build it again (a `Router` is moved into `mount` and into its `handler`).
+
+An API can separately offer explicit resource duplication. `FileHandle.clone()` returns `FileHandle!`: it duplicates an operating-system descriptor and can fail. The new handle closes independently, but shares the original file position; this is not an independent copy of the file or generic data cloning. See [cloning a resource](../cleanup/closeable.md#cloning-a-resource). Other handles may offer no duplication operation; check the type's API rather than assuming that every resource has a `clone` method.
 
 ## Moving a field out
 

@@ -115,7 +115,7 @@ Ada, Lin: Ada, ada@example.com
 - Every local needs an initial value. The name is visible only after its initializer.
 - Locals are visible in source order; module declaration signatures may refer forward.
 - A `var` keeps the type from its annotation or initializer; later values must fit it.
-- Assignment targets a `var` binding or a field reached through mutable storage. `let` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Unit.
+- Assignment targets a `var` binding or a field reached through mutable storage. `let` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver. Their result depends on the operation: `List.append` returns `Unit`, `Queue.enqueue` reports acceptance as `Bool`, and `Queue.dequeue` returns the removed value as `T?`.
 
 This complete negative example is intentionally rejected. Save it as `example.ms` and run `ms check example.ms`:
 

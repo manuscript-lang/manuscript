@@ -5,9 +5,53 @@ weight = 1
 
 # Imports and exports
 
-Each `.ms` file is a module with its own boundary. `export` makes a declaration available; `import` brings in one exported declaration. Resolved file paths identify modules. There is no `module` declaration, wildcard import, or cyclic dependency.
+Each `.ms` file is a module with its own boundary. Use `export` to share declarations and `import` to use them in another file. Start with two files, then use the rules below as your program grows.
+
+## A visible contract
+
+Suppose several parts of a program need to identify a customer. Give the identifier one definition, then import that definition wherever it is needed. This keeps every caller using the same nominal type rather than creating a separate, incompatible type in each file.
+
+Create a `src/domain` directory. Save this complete supporting module as `src/domain/customers.ms`:
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+export type CustomerId:
+    value: String
+```
+
+`export` makes `CustomerId` available to other modules. This file defines data; it does not need a `main` function because it is not the program's entry point.
+
+Save the caller as `src/main.ms`. Its import names both the declaration it needs and the file that owns it:
+
+<!-- manuscript-example: {"mode":"run","build_files":{"domain/customers.ms":"export type CustomerId:\n    value: String"},"stdout":"C-100\n"} -->
+```manuscript
+import CustomerId from "./domain/customers.ms"
+
+export fn main() Int:
+    let customer = CustomerId("C-100")
+    print(customer.value)
+    return 0
+```
+
+From the directory containing `src`, run:
+
+```sh
+ms run src/main.ms
+```
+
+```text
+C-100
+```
+
+The compiler follows the import to `customers.ms`, checks that it exports `CustomerId`, and makes that type available in `main.ms`. The caller then constructs a customer identifier and prints its field. It does not need to import `String` or `print`, because those names are in the prelude.
+
+Change `"C-100"` to `"C-101"` in the caller and run the same command: the output changes while the shared type definition stays in its own file. Remove `export` from the type declaration and the import fails checking; a file boundary keeps declarations private until they are exported. Keep unrelated helpers private, and export the data and operations callers actually use. The [pricing example](boundaries.md) extends this idea to a module that owns a calculation.
+
+Relative imports resolve from the importing file's directory. Paths include `.ms` and name a file exactly; there is no directory or extension lookup.
 
 ## Names and declaration order
+
+Resolved file paths identify modules. There is no `module` declaration, wildcard import, or cyclic dependency.
 
 Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` wraps a bare list wider than 88 columns into the parenthesized form, one name per line, and leaves parenthesized lists that fit on their line as written. Braces are rejected. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
 
@@ -62,30 +106,6 @@ export fn main() Int:
 ```
 
 A constant has no storage or initialization order; each use evaluates the initializer in place, so a list constant is always fresh. Locals and parameters shadow it. Constants cannot be assigned, and `main` must be a function.
-
-## A visible contract
-
-`src/domain/customers.ms` exports a nominal identifier type:
-
-<!-- manuscript-example: {"mode":"check"} -->
-```manuscript
-export type CustomerId:
-    value: String
-```
-
-`src/main.ms` imports it and constructs a value. Save both files at the shown paths, then run `ms run src/main.ms`; it prints `C-100`:
-
-<!-- manuscript-example: {"mode":"run","build_files":{"domain/customers.ms":"export type CustomerId:\n    value: String"},"stdout":"C-100\n"} -->
-```manuscript
-import CustomerId from "./domain/customers.ms"
-
-export fn main() Int:
-    let customer = CustomerId("C-100")
-    print(customer.value)
-    return 0
-```
-
-Relative imports resolve from the importing file's directory. Paths include `.ms` and name a file exactly; there is no directory or extension lookup.
 
 ## Public signature closure
 

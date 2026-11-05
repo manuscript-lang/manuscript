@@ -31,6 +31,14 @@ Use this built binary when reproducing a compiler issue, so the result reflects 
 
 ## Checks
 
+Install the `cargo-nextest` test runner before running the workspace checks. It is a separate Cargo subcommand, not part of the pinned Rust toolchain:
+
+```sh
+cargo install cargo-nextest --locked
+```
+
+The repository doctor checks for this prerequisite; CI installs it before its unit-test job. Then run:
+
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings

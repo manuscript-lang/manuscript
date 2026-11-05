@@ -5,6 +5,35 @@ weight = 8
 
 # Equality and hashing
 
+Suppose a contact list contains the same address twice. Comparing addresses tells you whether two entries name the same recipient. A set uses that equality to keep one entry per recipient; a map uses it to find the value associated with a key. Hashing helps those lookups find a candidate quickly, then equality decides whether it is the right key.
+
+## Find an entry and remove duplicates
+
+Save this complete program as `recipients.ms` and run `ms run recipients.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"2 recipients\n2 deliveries\n0 deliveries\n"} -->
+```manuscript
+export fn main() Int:
+    let addresses = ["ada@example.com", "lin@example.com", "ada@example.com"]
+    let recipients = Set(addresses)
+    print("{recipients.length()} recipients")
+
+    let delivered = {"ada@example.com": 2}
+    print("{delivered.get_or("ada@example.com", 0)} deliveries")
+    print("{delivered.get_or("new@example.com", 0)} deliveries")
+    return 0
+```
+
+```text
+2 recipients
+2 deliveries
+0 deliveries
+```
+
+The repeated address occupies one set entry. Map lookup finds the existing address and returns its count. For an absent address, `get_or` returns the chosen fallback `0`; it does not insert a new entry. Strings already have equality and hashing, so this program needs no custom implementation. If keys are application records, decide which fields define identity before using them in a map or set; [domain identity](#domain-identity) develops that choice below.
+
+## Equality and hashing contracts
+
 - `Equal`: values can be compared with `==` and `!=`. Records of the same type are equal when all fields are equal, not only when they are the same object.
 - `Hashable`: a lookup code for map keys and set elements, which also require `Equal`. The hash finds the entry; equality resolves collisions.
 
@@ -51,11 +80,11 @@ Equality reads both collections. The ownership rules prevent mutating a collecti
 
 ## Domain identity
 
-An explicit implementation can select identity instead of every field:
+A customer can change their display label without becoming a different customer. If the identifier is the stable identity, compare and hash that identifier. An explicit implementation can select identity instead of every field:
 
 Save this complete example as `example.ms` and run `ms run example.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":"true\n1\n"} -->
+<!-- manuscript-example: {"mode":"run","stdout":"true\n12\n1\n"} -->
 ```manuscript
 type CustomerKey:
     id: Int
@@ -72,6 +101,8 @@ export fn main() Int:
     let first = CustomerKey(1, "Ada")
     let renamed = CustomerKey(1, "Ada Lovelace")
     print(first == renamed)
+    let totals = {first.clone(): 12}
+    print(totals.get_or(renamed, 0))
     let values = Set([first, renamed])
     print(values.length())
     return 0
@@ -79,10 +110,13 @@ export fn main() Int:
 
 ```text
 true
+12
 1
 ```
 
-These apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).
+The records compare equal despite their different labels. The renamed key finds the same map entry, and the set keeps one customer. The map owns a clone of `first` because the original is still needed to construct the set; equality does not imply shared ownership. `equals` and `hash` both use `id`, so equal keys have equal hashes.
+
+These implementations apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).
 
 ## Key consistency
 

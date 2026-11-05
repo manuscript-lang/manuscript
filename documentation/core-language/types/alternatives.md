@@ -5,7 +5,7 @@ weight = 2
 
 # Enums
 
-Use an enum (a tagged union) when a value is exactly one of several declared cases, each with its own data.
+Use an enum (a tagged union) when a value is exactly one of several declared cases, each with its own data. A payment can be paid, declined, or pending. A paid payment needs a receipt; a declined payment needs a reason. Putting the data inside each case keeps those possibilities together, so the program cannot accidentally pair a paid status with only a decline reason.
 
 Save this complete example as `example.ms` and run `ms run example.ms`:
 
@@ -26,7 +26,48 @@ export fn main() Int:
 Payment.Paid(receipt-42)
 ```
 
-Enums are tagged and exhaustively matched.
+## Handling a case
+
+Constructing `Paid("receipt-42")` selects the `Paid` case and stores its receipt. To turn that value into a message, use `match`: each arm handles one case and gives its payload a local name. The message can use that case's data without checking whether an unrelated field happens to be present.
+
+Save this complete program as `payment.ms` and run `ms run payment.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\nDeclined: Card rejected\nPending: order-3\n"} -->
+```manuscript
+enum Payment:
+    Paid(receipt: String)
+    Declined(reason: String)
+    Pending(reference: String)
+
+fn describe(payment: Payment) String:
+    match payment:
+        Paid(receipt):
+            return "Paid: {receipt}"
+        Declined(reason):
+            return "Declined: {reason}"
+        Pending(reference):
+            return "Pending: {reference}"
+
+export fn main() Int:
+    print(describe(Paid("receipt-42")))
+    print(describe(Declined("Card rejected")))
+    print(describe(Pending("order-3")))
+    return 0
+```
+
+```text
+Paid: receipt-42
+Declined: Card rejected
+Pending: order-3
+```
+
+`describe` returns a message for every case, and only the selected arm runs. The receipt binding belongs to the `Paid` arm; it does not exist in the other arms. Patterns resolve against the value being matched, so the arm names do not need a `Payment.` prefix.
+
+If you add `Refunded(receipt: String)` to `Payment`, `describe` stops passing `ms check` until it handles the new case. That is useful when every new state needs a deliberate behavior. A final wildcard can cover remaining cases when they truly share one action; see [exhaustive matching](../control-flow/pattern-matching.md#exhaustiveness) for that choice and its tradeoffs.
+
+There are no implicit unions or nullable references. Declare an enum for distinct states, or use [Optional](optionals.md) for absence.
+
+## Declaration rules
 
 - At least one case; case names are unique, and payload field names are unique within a case.
 - A case may have no payload: `Missing`.
@@ -94,12 +135,6 @@ After `let Ready = LeftState.Ready`, `Ready` refers to that binding, not case lo
 Type arguments attach to the enum, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. This also holds for standard Optional/Result cases.
 
 Exporting an enum exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
-
-## Handling a case
-
-A [match](../control-flow/pattern-matching.md) selects the case and binds its payload; it must cover every case. Patterns resolve against the scrutinee's enum type.
-
-There are no implicit unions or nullable references. Declare an enum, or use [Optional](optionals.md) for absence.
 
 ## Resource payloads
 

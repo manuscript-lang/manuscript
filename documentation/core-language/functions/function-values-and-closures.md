@@ -107,11 +107,63 @@ export fn main() Int:
 
 The value travels by address, so a value with one owner (a list, a record holding one) is changed where it lives and never copied. A function with both a `var` parameter and a parameter default cannot be a function value; call it from a closure that supplies the default.
 
-A `var` parameter is the caller's value, so the function cannot move it out (`let old = values` is an error). The one exception is the right side of an assignment to the parameter itself, which refills it before the caller sees it: `values = rebuilt(values)`, or `exchange = Tap(inner: exchange, ...)` to replace an interface value with a wrapper that owns it. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) recovers the wrapper afterwards.
+A `var` parameter still belongs to the caller. A local `let old = values` is a
+read-only reborrow, not a move or a snapshot. Read through that borrow before
+changing the original; once the borrow's last use has passed, mutation can resume.
+Save as `reborrow.ms` and run `ms run reborrow.ms`:
+
+<!-- manuscript-example: {"mode":"run","stdout":"Before: 2\n[1, 2, 3]\n"} -->
+```manuscript
+fn append_after_reading(var values: List[Int]) Unit:
+    let old = values
+    print("Before: {old.length()}")
+    values.append(3)
+
+export fn main() Int:
+    var values = [1, 2]
+    append_after_reading(var values)
+    print(values)
+    return 0
+```
+
+```text
+Before: 2
+[1, 2, 3]
+```
+
+An owning destination is different. A record field must own the value stored in
+it, so this negative example tries to take the caller's list. Save as `invalid.ms`
+and run `ms check invalid.ms`; the checker reports that the caller keeps ownership
+of a `var` parameter:
+
+<!-- manuscript-example: {"mode":"reject","stderr_contains":["cannot move `values` out of the function: the caller keeps ownership of a var parameter"]} -->
+```manuscript
+type Snapshot:
+    values: List[Int]
+
+fn steal(var values: List[Int]) Snapshot:
+    return Snapshot(values)
+
+export fn main() Int:
+    var values = [1, 2]
+    let snapshot = steal(var values)
+    print(snapshot.values)
+    return 0
+```
+
+Use `Snapshot(values.clone())` when the record needs an independent list. The
+exception to moving out of a `var` parameter is the right side of an assignment
+to that parameter itself: the assignment refills it before the caller sees it.
+For example, `values = rebuilt(values)` replaces the list, and
+`exchange = Tap(inner: exchange, ...)` can replace an interface value with an
+owning wrapper. A [contract type match](../control-flow/pattern-matching.md#contract-type-patterns)
+recovers the wrapper afterwards.
 
 ## Closure captures
 
 Captures follow ownership rules. A non-escaping closure borrows its captures; an escaping closure owns them. The checker infers escape and parameter modes.
+
+### Local callbacks read captures
 
 A closure that is only called in the function that made it borrows what it captures, so the captured variable cannot change while the closure is still used. Make the changes first, then create the closure:
 
@@ -136,6 +188,8 @@ export fn main() Int:
 2
 ```
 
+### Local callbacks change captures
+
 A closure that only the function that made it calls (including a callback such as `for_each`) may change what it captures. It shares the captured variable, so the change lands in the original, and the variable cannot be used elsewhere while the closure is still used:
 
 Save this complete example as `example.ms` and run `ms run example.ms`:
@@ -158,7 +212,17 @@ export fn main() Int:
 6
 ```
 
-A function value has one owner and no `.clone()`, and a record or list that holds one is not `Clonable`: pass it where it is only read, move it at its last use, or make it again from a named `fn`. A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a loop variable, a `let` that borrows another value), bind a `.clone()` before the closure and capture that. A parameter the closure takes is moved by the function, so the caller gives the value up; pass `.clone()` to keep it. A returned or stored closure cannot capture a `var` that is used again after the closure is made, because it would keep a stale copy; bind a `let` copy first (`let base = offset`) and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure. The parameter case, with the caller keeping its list:
+### Returned callbacks own captures
+
+A callback that is returned or stored can outlive the function that created it.
+It owns its captures instead of borrowing the creator's locals, and cannot change
+a captured variable. A captured value moves in at its last use. If the source is
+still needed, or is only borrowed (for example a loop variable), create an owned
+`.clone()` before creating the callback and capture that copy.
+
+A parameter captured by an owning closure is moved by the function. In the next
+example, `counter` stores a callback in a record. The caller passes a clone so it
+can still use its original list after constructing the counter:
 
 Save this complete example as `example.ms` and run `ms run example.ms`:
 
@@ -183,6 +247,24 @@ export fn main() Int:
 ```text
 4
 ```
+
+The stored callback reads the two-element copy, and the caller reads the original,
+so their lengths add to `4`. The clone makes that independence explicit.
+
+A returned or stored closure cannot capture a `var` that is used again after the
+closure is made: it would keep a stale copy. Bind a `let` copy first and capture
+that. For a scalar this can be `let base = offset`; for independently owned data,
+use `.clone()`. A function value itself has one owner and no `.clone()`, and a
+record or list holding one is not `Clonable`. Read it through a borrow, move it at
+its last use, or create another function value from a named `fn`.
+
+### Bound methods follow the receiver
+
+Taking a method as a value also captures its receiver. A method that changes its
+receiver, such as `let add = xs.append`, shares that variable like a mutating local
+closure. `xs` must be a `var`, cannot be used elsewhere while `add` is still used,
+and `add` cannot be returned or stored. Taking a mutating method from a field,
+such as `bag.items.append`, is rejected; call it directly or write a closure.
 
 ## Resource captures
 

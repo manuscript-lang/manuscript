@@ -106,7 +106,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Data copies
 
-`.clone()` is a deep copy of nested values. Opaque handles and function values have no clone and are never copied, and a value that holds one is not `Clonable` either. See [mutation and cloning](records.md#mutation-and-cloning).
+The generic `.clone()` operation makes a deep copy of nested `Clonable` values. Resources and function values do not satisfy that bound, nor do containers holding them. This does not prohibit an explicit duplication API: `FileHandle.clone()` returns `FileHandle!`, duplicates an operating-system descriptor, and must have its failure handled. It is separate from generic deep cloning; the two handles close independently but share a file position. See [resource handles](../cleanup/closeable.md#cloning-a-resource) and [mutation and cloning](records.md#mutation-and-cloning).
 
 ## Sharing a value
 

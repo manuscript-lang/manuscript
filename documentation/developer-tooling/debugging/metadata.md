@@ -33,7 +33,8 @@ Use the entity ID to follow `calls`: the call owned by `hello.ms#fn#main` target
 ## Read positions and identities
 
 - `sources` records source paths and hashes; `build_id` identifies the checked source set. Keep the source snapshot with an inspection if you plan to revisit its positions later.
-- Entities have deterministic IDs, checked types, visibility and conservative effects. Local bindings also carry generated checker identities and types.
+- Entities have deterministic IDs and visibility. Entity `type`, `checker_id`, and `effects` fields are omitted when their corresponding value is empty; consumers must accept their absence. Local bindings carry generated checker identities and types.
+- IDs identify rows within the checked snapshot. Method, implementation, and call IDs include source offsets, so inserting text can change them even when behavior is unchanged. Do not use them as durable identities across edits; retain the snapshot and its `build_id` when storing links between rows.
 - `calls` includes explicit calls and implicit cleanup. `statements` gives statement-header spans for navigation.
 - Spans use half-open `start`/`end` byte offsets in the original source, with one-based line and UTF-8 byte column. Statement-header ranges exclude line terminators. These are source positions, not machine-code addresses; CRLF files retain their original byte offsets.
 
