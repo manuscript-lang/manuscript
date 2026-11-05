@@ -107,7 +107,11 @@ impl<'a> FnLower<'a> {
 
     /// The place `if var name = recv[key]?` (or `if var name = map.get(key)`) names, and the
     /// test for whether it exists.
-    pub(crate) fn alias_accessor(&mut self, cond: &Expr) -> Result<(Alias, Value), Error> {
+    pub(crate) fn alias_accessor(
+        &mut self,
+        cond: &Expr,
+        body: &[Stmt],
+    ) -> Result<(Alias, Value), Error> {
         let (left, index) = match &cond.kind {
             ExprKind::Probe(target) => {
                 crate::mutation::index_parts(self.syms, &self.hir, target)
@@ -153,6 +157,14 @@ impl<'a> FnLower<'a> {
                     && matches!(
                         self.hir.resolution(index),
                         Resolution::Local(b) if !b.mutable
+                            || !crate::mutation::mutated_locals(
+                                self.syms,
+                                &self.hir,
+                                ms_check::hir::Body::Block(body),
+                                &self.cx.callables,
+                                &self.cx.mutated,
+                            )
+                            .contains(&b.uid)
                     );
                 let key = if unchanging {
                     let var = self
@@ -160,8 +172,13 @@ impl<'a> FnLower<'a> {
                         .declare_var(self.ty_of(k.v), ms_mir::ir::Mode::Borrow);
                     self.b.def_var(var, k.v);
                     var
-                } else {
+                } else if k.own {
                     self.bind_hidden(k)
+                } else {
+                    // The body changes the key's variable: the borrow keeps the key it found the
+                    // entry by, a declared copy.
+                    let copy = self.clone_value(k.v);
+                    self.bind_hidden(Val { v: copy, own: true })
                 };
                 let ptr = self.map_entry_ptr(whole.v, key)?;
                 let missing = self
