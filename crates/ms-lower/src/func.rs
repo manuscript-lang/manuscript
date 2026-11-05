@@ -696,6 +696,8 @@ impl<'a> FnLower<'a> {
         }
         if self.cx.strict_copies
             && !self.boundary_reads.contains(&x.v)
+            // A `trim` view kept as a value is the allocation `trim` would have made.
+            && !self.views.contains(&x.v)
             && !matches!(
                 self.b.defining_op_anywhere(x.v),
                 Some(Op::StrLit | Op::OptNone)
@@ -1436,10 +1438,19 @@ impl<'a> FnLower<'a> {
             ),
             ms_check::hir::Body::Expr(_) => Default::default(),
         };
+        // The borrowed instance (reached through an interface or a function value) of a function
+        // that moves a parameter copies it where the body moves it: the borrowed signature's
+        // declared adaptation, not a hidden copy.
+        let moving = (!self.variant.owned)
+            .then(|| self.cx.owned_mask(c))
+            .flatten();
         for (i, (b, v)) in bindings.iter().zip(params).enumerate() {
             if vars.contains(&i) {
                 self.bind_var_parameter(b, v)?;
                 continue;
+            }
+            if moving.as_ref().is_some_and(|mask| mask[i]) {
+                self.boundary_reads.insert(v);
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
                 // The caller handed the value over: the callee owns it and drops it at scope end.

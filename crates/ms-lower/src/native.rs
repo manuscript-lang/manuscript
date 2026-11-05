@@ -2525,7 +2525,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned(Val { v: p, own: false });
+                        let po = s.owned_boundary(Val { v: p, own: false });
                         let v = s.b.alt_new(oa, out_ok, &[po]);
                         s.finish(recv);
                         s.finish(f.val);
@@ -2610,7 +2610,7 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned(Val { v: p, own: false });
+                        let po = s.owned_boundary(Val { v: p, own: false });
                         let v = s.b.opt_some(po);
                         s.finish(recv);
                         Ok(Some(v))
@@ -2975,7 +2975,7 @@ impl<'a> FnLower<'a> {
                     s.b.seal_block(keep);
                     s.b.seal_block(skip);
                     s.b.switch_to(keep);
-                    let xo = s.owned(Val { v: x, own: false });
+                    let xo = s.owned_boundary(Val { v: x, own: false });
                     let cur = s.b.use_var(acc);
                     let next = s.b.list_push(cur, xo);
                     s.b.def_var(acc, next);
@@ -3008,7 +3008,7 @@ impl<'a> FnLower<'a> {
                     s.b.seal_block(miss);
                     for (blk, acc) in [(hit, yes), (miss, no)] {
                         s.b.switch_to(blk);
-                        let xo = s.owned(Val { v: x, own: false });
+                        let xo = s.owned_boundary(Val { v: x, own: false });
                         let cur = s.b.use_var(acc);
                         let next = s.b.list_push(cur, xo);
                         s.b.def_var(acc, next);
@@ -3096,7 +3096,7 @@ impl<'a> FnLower<'a> {
                             out,
                             &mut |s| {
                                 let empty = s.b.list_lit(group_elem, &[]);
-                                let xo = s.owned(Val { v: x, own: false });
+                                let xo = s.owned_boundary(Val { v: x, own: false });
                                 let grown = s.b.list_push(empty, xo);
                                 let next = s.map_insert(cur, k, grown)?;
                                 Ok(Some(next))
@@ -3110,7 +3110,7 @@ impl<'a> FnLower<'a> {
                                         Some(group_ty),
                                     )
                                     .expect("take");
-                                let xo = s.owned(Val { v: x, own: false });
+                                let xo = s.owned_boundary(Val { v: x, own: false });
                                 let grown = s.b.list_push(taken, xo);
                                 s.b.emit(
                                     ms_mir::ir::Op::Put,

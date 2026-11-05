@@ -9,11 +9,13 @@ type InputFailure:
     case MissingKey(value: Int)
 
 fn read_number(data: Bytes) UInt64!InputFailure:
-    let decoded = try data.uvarint(0).map_error(fn cause: InputFailure.Binary(cause))
+    let decoded = try data.uvarint(0).map_error(
+        fn cause: InputFailure.Binary(cause.clone())
+    )
     return ok(decoded.value)
 
 fn read_duration(text: String) Duration!InputFailure:
-    return parse_duration(text).map_error(fn cause: InputFailure.Time(cause))
+    return parse_duration(text).map_error(fn cause: InputFailure.Time(cause.clone()))
 
 fn read_prefixed(text: String) String!InputFailure:
     return text.cut_prefix("name=").ok_or(InputFailure.MissingPrefix)

@@ -19,7 +19,7 @@ impl Commands for Capture:
         cwd: String?,
         env: Map[String, String]
     ) CommandOutput!:
-        return ok(CommandOutput(0, input, "".to_bytes(), 0))
+        return ok(CommandOutput(0, input.clone(), "".to_bytes(), 0))
 
     fn spawn(
         program: String,
@@ -50,7 +50,7 @@ impl Commands for Override:
         cwd: String?,
         env: Map[String, String]
     ) CommandOutput!:
-        return ok(CommandOutput(0, input, "".to_bytes(), 0))
+        return ok(CommandOutput(0, input.clone(), "".to_bytes(), 0))
 
     fn spawn(
         program: String,

@@ -260,7 +260,7 @@ test "Set filter and map copy snapshots and deduplicate in first-result order":
     var first = keys.clone().filter(fn unused: true).values().get(0).clone()
     first.label = "changed"
 
-    var second = keys.clone().map(fn value: value).values().get(0).clone()
+    var second = keys.clone().map(fn value: value.clone()).values().get(0).clone()
     second.label = "again"
     try expect_equal(key.label, "shared")
     try expect_equal(keys.values().get(0).label, "shared")

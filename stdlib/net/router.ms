@@ -796,7 +796,7 @@ fn usable_id(id: String) Bool:
 
 fn new_id() String!:
     let made = uuid_v4()
-    if made.is_error(): return error(Error(made.err().message, kind: "EIO"))
+    if made.is_error(): return error(Error(made.err().message.clone(), kind: "EIO"))
 
     return ok(made.get().clone())
 

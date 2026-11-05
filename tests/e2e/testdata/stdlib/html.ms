@@ -22,7 +22,7 @@ fn text_content(node: HtmlNode) String:
         _: return ""
 
 fn body_nodes(node: HtmlNode) List[HtmlNode]:
-    let html = children(node).get(0)
+    let html = children(node).get(0).clone()
     return children(children(html).get(1))
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
@@ -34,7 +34,7 @@ test "HTML parses nested elements attributes entities and comments":
     let doc = try parse(
         "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
     )
-    let div = body_nodes(doc.clone()).get(0)
+    let div = body_nodes(doc.clone()).get(0).clone()
 
     match div:
         Element(tag, namespace, attributes, items):
@@ -78,7 +78,7 @@ test "HTML recovers unclosed tags and inserts document and table structure":
         )
     )
 
-    match children(nodes.get(1).clone()).get(0):
+    match children(nodes.get(1).clone()).get(0).clone():
         Element(tag, _, _, _):
             try expect_equal(tag, "tbody")
         _: return fail("expected tbody")

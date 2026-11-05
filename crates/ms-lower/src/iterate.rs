@@ -333,7 +333,10 @@ impl FnLower<'_> {
                         s.b.def_var(acc, next);
                         Ok::<(), Error>(())
                     };
-                    let own = |s: &mut FnLower<'_>, x: Value| s.owned(Val { v: x, own: false });
+                    // The result is a new independent collection: the keys and values it keeps are the
+                    // copies the method's contract declares.
+                    let own =
+                        |s: &mut FnLower<'_>, x: Value| s.owned_boundary(Val { v: x, own: false });
                     if name == "filter" {
                         let (keep, skip) = (s.b.new_block(), s.b.new_block());
                         s.b.br_if(r, keep, &[], skip, &[]);

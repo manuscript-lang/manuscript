@@ -484,7 +484,7 @@ export fn text(status: Int, body: String) HttpResponse:
 // A value `stringify` cannot encode returns EIO with its diagnostic.
 export fn json[T: Data](status: Int, value: T) HttpResponse!:
     let body = stringify(value)
-    if body.is_error(): return error(Error(body.err().message, kind: "EIO"))
+    if body.is_error(): return error(Error(body.err().message.clone(), kind: "EIO"))
 
     var sent = headers()
     try sent.append("Content-Type", "application/json")
