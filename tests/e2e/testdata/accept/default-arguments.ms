@@ -48,11 +48,11 @@ impl Add for Offset:
 interface Read[T]:
     fn read(value: T) T
 
-type Box[T]:
+type Box[T: Clonable]:
     value: T
 
 impl Read[T] for Box[T]:
-    fn read(value: T = self.value) T:
+    fn read(value: T = self.value.clone()) T:
         return value
 
 test "omitted and explicit defaults":

@@ -523,6 +523,22 @@ impl<'a> FnLower<'a> {
                 own: self.holds(self.ty_of(o)),
             });
         }
+        if self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::ownership::Fact::PartialMove,
+        ) && !self.is_resource(self.ty_of(f))
+            && self.needs_drop(self.ty_of(f))
+        {
+            // The checker moves this field out of its owner at its last use. The record still
+            // drops whole at scope end, so the moved value is a copy here until a field-level
+            // release replaces it (`copyelim`, `rec.release`); the move is the checker's
+            // recorded fact, not a hidden copy.
+            return Ok(Val {
+                v: self.clone_value(f),
+                own: true,
+            });
+        }
         Ok(Val { v: f, own: false })
     }
 

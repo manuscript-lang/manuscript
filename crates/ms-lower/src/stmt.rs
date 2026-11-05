@@ -849,6 +849,10 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.success_payload(o.v)?
                 };
+                if self.boundary_reads.contains(&o.v) {
+                    // A part of a payload an `Optional`/`Result` read borrows is the same declared read.
+                    self.boundary_reads.insert(payload);
+                }
                 let closing = self
                     .cx
                     .binding_facts

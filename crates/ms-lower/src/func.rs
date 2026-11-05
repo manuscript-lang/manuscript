@@ -136,8 +136,11 @@ pub(crate) struct FnLower<'a> {
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
     /// rule, so one a native consumes is copied, and that copy is declared (`owned_arg`).
     pub in_thunk: bool,
-    /// Payloads an `Optional`/`Result` read (`get()`, `err()`) borrows: storing one copies it by the
-    /// language's rule for these two types, so that copy is declared (`owned` does not report it).
+    /// The scrutinee `hold` just evaluated is a declared read (see `boundary_reads`).
+    pub hold_declared: bool,
+    /// Values whose copy on storing is declared: the payload an `Optional`/`Result` read (`get()`,
+    /// `err()`) borrows, which these types copy by rule, and a payload of a last-use scrutinee the
+    /// checker moves out (`owned` does not report it).
     pub boundary_reads: std::collections::HashSet<Value>,
     /// Exclusive borrows in scope: the place each names.
     pub aliases: HashMap<usize, crate::alias::Alias>,
@@ -603,6 +606,7 @@ impl<'a> FnLower<'a> {
             converting: None,
             scalars_scan: false,
             in_thunk: false,
+            hold_declared: false,
             boundary_reads: Default::default(),
             aliases: HashMap::new(),
             scope_override: None,
@@ -699,11 +703,19 @@ impl<'a> FnLower<'a> {
         {
             let at = std::panic::Location::caller();
             let loc = self.b.loc();
+            let file = self
+                .b
+                .m
+                .files
+                .get(loc.file as usize)
+                .map(|f| f.rsplit('/').next().unwrap_or("?"))
+                .unwrap_or("?");
             let site = format!(
-                "{}:{} ({:?}) @{}:{}",
+                "{}:{} ({:?}) @{}:{}:{}",
                 at.file().rsplit('/').next().unwrap_or("?"),
                 at.line(),
                 self.b.defining_op_anywhere(x.v),
+                file,
                 loc.line,
                 loc.col
             );
