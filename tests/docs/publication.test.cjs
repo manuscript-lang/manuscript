@@ -52,8 +52,8 @@ test('the published browser bundle highlights the landing example and current sy
   }
   assert.ok(rendered.some(node => node.className === 's' && node.textContent === '":8080"'),
     'The listen address must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 1,
-    'The entrypoint return retains keyword styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
+    'The handler and entrypoint returns retains keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }

@@ -9,10 +9,13 @@ description = "Agents write it and people understand it. A small typed language 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript {filename="server.ms"}
 import serve from "@std/net/net.ms"
-import buffered, text from "@std/net/http.ms"
+import buffered, text, HttpRequest, HttpResponse from "@std/net/http.ms"
+
+fn hello(request: HttpRequest) HttpResponse:
+    return text(200, "Hello from {request.path}")
 
 export fn main() Int:
-    let server = serve(":8080", buffered(fn request: text(200, "Hello from {request.path}\n"))).get()
+    let server = serve(":8080", buffered(hello)).get()
     return if server.wait().is_ok(): 0 else: 1
 ```
 {{< /docs-home >}}
