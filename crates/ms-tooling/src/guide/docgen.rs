@@ -120,10 +120,10 @@ pub fn site_files(syms: ms_syntax::Names) -> BTreeMap<String, Vec<u8>> {
     let mut files = BTreeMap::new();
     files.insert(
         "documentation/standard-library/_index.md".to_string(),
-        "+++\ntitle = \"Standard library\"\n+++\n\n# Batteries-included standard library\n\nReview agent-written imports against bundled APIs; Manuscript is in alpha; APIs may change.\n\n[Task recipes](../learn/common-tasks.md) · [API reference](reference/_index.md)\n\nNext: [language tour](../learn/tour.md).\n".as_bytes().to_vec(),
+        "+++\ntitle = \"Standard library\"\n+++\n\n# Batteries-included standard library\n\nReview agent-written imports against bundled APIs; Manuscript is in alpha; APIs may change.\n\n[Library examples](examples/_index.md) · [Task recipes](../learn/common-tasks.md) · [API reference](reference/_index.md)\n\nNext: [language tour](../learn/tour.md).\n".as_bytes().to_vec(),
     );
     let mut index = String::from(
-        "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nReview agent-written calls against the standard library’s signatures and runnable examples. Manuscript is in alpha; APIs may change.\n\n[Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
+        "+++\ntitle = \"API reference\"\nweight = 2\n+++\n\n# Standard library API reference\n\nReview agent-written calls against the standard library’s signatures and runnable examples. Manuscript is in alpha; APIs may change.\n\n[Runnable library examples](../examples/_index.md) · [Plain Markdown](/stdlib.md) · [Structured JSON](/stdlib.json) · [LLM index](/llms.txt)\n\n",
     );
     let full = standard_library_markdown(syms);
     let mut directories: BTreeMap<String, String> = BTreeMap::new();

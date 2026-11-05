@@ -51,31 +51,7 @@ type JwtHeader:
 /*
 Sign typed claims and verify them against an explicit clock.
 
-<!-- manuscript-example: {"mode":"test","filename":"signed-token.ms","stdout":"RUN signed-token.ms::signed-token\nPASS signed-token.ms::signed-token\n1 tests, 0 failed\n"} -->
-```manuscript {filename="signed-token.ms"}
-import sign_token, verify_token, JwtCheck from "@std/data/jwt.ms"
-
-type Session:
-    sub: String
-    exp: Int
-import expect_equal from "@std/test/test.ms"
-
-test "signed-token":
-    let secret = "example-only-secret-use-random-keys".to_bytes()
-    let token = try sign_token(Session(sub: "42", exp: 1900000000), secret)
-    let session = try verify_token[Session](token, secret, JwtCheck(at: 1800000000))
-    try expect_equal(session.sub, "42")
-```
-
-```sh
-ms test signed-token.ms
-```
-
-```text
-RUN signed-token.ms::signed-token
-PASS signed-token.ms::signed-token
-1 tests, 0 failed
-```
+See [verify a signed token](../../examples/data-jwt.md#verify-a-signed-token) for a complete example and its output.
 
 - The example key is public test data; use random secret bytes for HMAC or the algorithm's documented private key. Unsuitable keys return `EINVAL`.
 - The compact token is `header.claims.signature`; claims are ordinary fields and none are added automatically. Verification accepts only the chosen algorithm.

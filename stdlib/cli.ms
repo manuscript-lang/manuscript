@@ -122,32 +122,7 @@ impl Matches:
 /*
 Review subcommands and typed arguments together with their handlers.
 
-<!-- manuscript-example: {"mode":"run","filename":"greet.ms","stdout":"Hello, Ada!\n","args":["greet","Ada"]} -->
-```manuscript {filename="greet.ms"}
-import Arg, Command, command from "@std/cli.ms"
-import arguments from "@std/os/process.ms"
-
-type Greeting:
-    name: String
-
-fn greet(options: Greeting) Int!:
-    print("Hello, {options.name}!")
-    return ok(0)
-
-export fn main() Int:
-    let greeting = command[Greeting](
-        name: "greet", args: [Arg("name")], run: fn options: greet(options)
-    )
-    return Command(name: "tool", children: [greeting]).execute(arguments())
-```
-
-```sh
-ms run greet.ms -- greet Ada
-```
-
-```text
-Hello, Ada!
-```
+See [greet a named user](../examples/cli.md#greet-a-named-user) for a complete example and its output.
 
 - `command[T]` decodes named flags and arguments into fields of `T`; dashes become underscores.
 - Each field needs a matching flag or argument; parsed flags or arguments without a matching record field are ignored during decoding. See the [CLI recipe](../../learn/common-tasks.md#parse-subcommands-and-flags).

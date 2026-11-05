@@ -35,25 +35,13 @@ fn source_files(dir: &Path, extension: &str, out: &mut Vec<PathBuf>) {
 
 fn examples() -> Vec<Example> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut files = vec![root.join("README.md"), root.join("VISION.md")];
+    let mut files = Vec::new();
     source_files(&root.join("documentation"), "md", &mut files);
-    source_files(&root.join("stdlib"), "ms", &mut files);
     files.sort();
     let mut found = Vec::new();
     for file in files {
         let text = fs::read_to_string(&file).unwrap();
-        let lines: Vec<&str> = text
-            .lines()
-            .map(|line| {
-                if file.extension().is_some_and(|e| e == "ms") {
-                    line.trim_start()
-                        .strip_prefix("//")
-                        .map_or(line, |s| s.strip_prefix(' ').unwrap_or(s))
-                } else {
-                    line
-                }
-            })
-            .collect();
+        let lines: Vec<&str> = text.lines().collect();
         for (i, line) in lines.iter().enumerate() {
             assert!(
                 !line.trim_start().starts_with("```manuscript")

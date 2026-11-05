@@ -17,26 +17,7 @@ export type JsonLimits:
 /*
 Read unstructured JSON through checked optional member lookups.
 
-<!-- manuscript-example: {"mode":"test","filename":"json-members.ms","stdout":"RUN json-members.ms::json-members\nPASS json-members.ms::json-members\n1 tests, 0 failed\n"} -->
-```manuscript {filename="json-members.ms"}
-import JsonValue, parse from "@std/data/json.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "json-members":
-    let doc = try parse[JsonValue]("\{\"user\":\{\"name\":\"Ada\"\}\}")
-    let name = try doc.get_in(["user", "name"]).ok_or(Error("missing name"))
-    try expect_equal(name.as_string(), "Ada")
-```
-
-```sh
-ms test json-members.ms
-```
-
-```text
-RUN json-members.ms::json-members
-PASS json-members.ms::json-members
-1 tests, 0 failed
-```
+See [read object members](../../examples/data-json.md#read-object-members) for a complete example and its output.
 
 - `get`, `at` and `get_in` borrow; keep the document unchanged while using their results.
 - Number text preserves precision; `as_string`, `as_list` and `as_map` explicitly clone their payloads.
@@ -158,32 +139,7 @@ export fn parse[T: Data = JsonValue](
 /*
 Choose a JSON representation by implementing `JsonEncode` in the type's defining module.
 
-<!-- manuscript-example: {"mode":"test","filename":"custom-json.ms","stdout":"RUN custom-json.ms::custom-json\nPASS custom-json.ms::custom-json\n1 tests, 0 failed\n"} -->
-```manuscript {filename="custom-json.ms"}
-import JsonEncode, JsonValue, stringify from "@std/data/json.ms"
-
-type Status:
-    ready: Bool
-
-impl JsonEncode for Status:
-    fn to_json() JsonValue:
-        return JsonValue.StringValue(if self.ready: "ready" else: "waiting")
-import expect_equal from "@std/test/test.ms"
-
-test "custom-json":
-    let text = try stringify(Status(ready: true))
-    try expect_equal(text, "\"ready\"")
-```
-
-```sh
-ms test custom-json.ms
-```
-
-```text
-RUN custom-json.ms::custom-json
-PASS custom-json.ms::custom-json
-1 tests, 0 failed
-```
+See [customize json encoding](../../examples/data-json.md#customize-json-encoding) for a complete example and its output.
 
 - Custom encoding applies at every nesting level; its returned `JsonValue` is written as stored.
 - For custom decoding, parse `JsonValue` and handle its shape explicitly.
@@ -196,30 +152,7 @@ export interface JsonEncode:
 /*
 Encode typed data: absent record fields are omitted, string-keyed maps become objects, and enum payloads use variant tags.
 
-<!-- manuscript-example: {"mode":"test","filename":"json-record.ms","stdout":"RUN json-record.ms::json-record\nPASS json-record.ms::json-record\n1 tests, 0 failed\n"} -->
-```manuscript {filename="json-record.ms"}
-import stringify from "@std/data/json.ms"
-
-type Request:
-    model: String
-    stream: Bool
-    user: String?
-import expect_equal from "@std/test/test.ms"
-
-test "json-record":
-    let text = try stringify(Request(model: "example", stream: true, user: none))
-    try expect_equal(text, "\{\"model\":\"example\",\"stream\":true\}")
-```
-
-```sh
-ms test json-record.ms
-```
-
-```text
-RUN json-record.ms::json-record
-PASS json-record.ms::json-record
-1 tests, 0 failed
-```
+See [decode a typed record](../../examples/data-json.md#decode-a-typed-record) for a complete example and its output.
 
 - `max_bytes` includes indentation (`EOVERFLOW`); negative limits/indent return `EINVAL`. Indent is capped at 10; none/0 is compact.
 - `strict` rejects `Unit` (`EBADMSG`); otherwise fields omit it and lists emit null. Root `Unit` always fails; absent fields stay omitted.

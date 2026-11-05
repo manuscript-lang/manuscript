@@ -7,26 +7,7 @@ import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 /*
 Parse a sender before inspecting its display name and mailbox.
 
-<!-- manuscript-example: {"mode":"test","filename":"mail-address.ms","stdout":"RUN mail-address.ms::mail-address\nPASS mail-address.ms::mail-address\n1 tests, 0 failed\n"} -->
-```manuscript {filename="mail-address.ms"}
-import parse_address from "@std/net/mail.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "mail-address":
-    let sender = try parse_address("Ada Lovelace <ada@example.com>")
-    try expect_equal(sender.name, "Ada Lovelace")
-    try expect_equal(sender.address, "ada@example.com")
-```
-
-```sh
-ms test mail-address.ms
-```
-
-```text
-RUN mail-address.ms::mail-address
-PASS mail-address.ms::mail-address
-1 tests, 0 failed
-```
+See [parse a mailbox](../../examples/net-mail.md#parse-a-mailbox) for a complete example and its output.
 */
 export type Address:
     // Display name with quotes removed; empty when none was given.

@@ -81,29 +81,7 @@ export opaque enum TemplateNode:
 /*
 Review a template alongside its typed input and rendered result.
 
-<!-- manuscript-example: {"mode":"test","filename":"render-template.ms","stdout":"RUN render-template.ms::render-template\nPASS render-template.ms::render-template\n1 tests, 0 failed\n"} -->
-```manuscript {filename="render-template.ms"}
-import compile, to_data from "@std/text/template.ms"
-
-type User:
-    name: String
-import expect_equal from "@std/test/test.ms"
-
-test "render-template":
-    let page = try compile("Hello \{\{ name | title \}\}!")
-    let data = try to_data(User(name: "ada"))
-    try expect_equal(try page.render(data), "Hello Ada!")
-```
-
-```sh
-ms test render-template.ms
-```
-
-```text
-RUN render-template.ms::render-template
-PASS render-template.ms::render-template
-1 tests, 0 failed
-```
+See [render typed data](../../examples/text-template.md#render-typed-data) for a complete example and its output.
 
 - Actions use `{{ ... }}` for paths, filters, conditions, loops and includes; missing output paths fail unless a default or `strict: false` handles them; missing conditions are false.
 - Use [compile](#compile) with `html: true` for escaping; only trusted markup should use `raw`. [render](#templaterender) bounds output with `max_output`.

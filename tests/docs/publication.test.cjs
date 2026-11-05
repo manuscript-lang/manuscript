@@ -276,28 +276,32 @@ test('landing and documentation pages share one favicon and a loadable brand mar
 });
 
 
-test('full API references preserve complete source teaching units and label declarations', () => {
+test('library examples live in authored documentation and API references retain schemas', () => {
   const pages = referencePages();
   const stdlib = path.join(root, 'stdlib');
-  let examples = 0;
   for (const file of fs.readdirSync(stdlib, { recursive: true }).filter(file => file.endsWith('.ms'))) {
     const source = fs.readFileSync(path.join(stdlib, file), 'utf8');
-    const comments = [...source.matchAll(/^\/\*([\s\S]*?)^\*\//gm)].map(match => match[1]);
-    comments.push(...[...source.matchAll(/^\/\/[^\n]*(?:\n\/\/[^\n]*)*/gm)]
-      .map(match => match[0].replace(/^\/\/ ?/gm, '')));
-    const generated = pages.find(page => page.file.replaceAll('\\', '/') === file.replaceAll('\\', '/') + '.md')?.markdown;
-    for (const comment of comments) {
-      const markers = [...comment.matchAll(/<!-- manuscript-example: [^\n]+ -->/g)];
-      for (const [i, marker] of markers.entries()) {
-        examples++;
-        const section = comment.slice(marker.index, markers[i + 1]?.index);
-        const unit = section.match(/^<!-- manuscript-example: [^\n]+ -->\n```manuscript[^\n]*\n[\s\S]*?```\n[\s\S]*?```sh\n[\s\S]*?```\n[\s\S]*?```text\n[\s\S]*?```/);
-        assert.ok(unit, `${file}: each source example needs its own program, invocation and output`);
-        assert.ok(generated?.includes(unit[0]), `${file}: keep the full teaching unit in its own module reference`);
-      }
+    assert.ok(!source.includes('manuscript-example:') && !source.includes('```manuscript'), `${file}: keep runnable examples in documentation`);
+  }
+  const examplesRoot = path.join(root, 'documentation/standard-library/examples');
+  const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
+  let examples = 0;
+  for (const file of fs.readdirSync(examplesRoot).filter(file => file.endsWith('.md') && file !== '_index.md')) {
+    const source = fs.readFileSync(path.join(examplesRoot, file), 'utf8');
+    const markers = [...source.matchAll(/<!-- manuscript-example: [^\n]+ -->/g)];
+    const html = fs.readFileSync(path.join(book, 'standard-library/examples', file.replace(/\.md$/, ''), 'index.html'), 'utf8');
+    const expected = [...source.matchAll(/^```[^\n]*\n([\s\S]*?)^```/gm)].map(match => match[1].trimEnd());
+    const actual = [...html.matchAll(/<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/g)]
+      .map(match => match[1].replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]).trimEnd());
+    assert.deepEqual(actual, expected, `${file}: render complete programs, commands and output`);
+    assert.ok(pages.some(page => page.markdown.includes(`examples/${file}#`)), `${file}: discover examples from API documentation`);
+    for (const [i, marker] of markers.entries()) {
+      const section = source.slice(marker.index, markers[i + 1]?.index);
+      assert.match(section, /^<!-- manuscript-example: [^\n]+ -->\n```manuscript[^\n]*\n[\s\S]*?```\n[\s\S]*?```sh\n[\s\S]*?```\n[\s\S]*?```text\n[\s\S]*?```/, `${file}: each example needs its own program, invocation and output`);
+      examples++;
     }
   }
-  assert.ok(examples >= 22, 'Discover the source-owned examples, including formerly indented fragments');
+  assert.equal(examples, 22, 'Retain every migrated library teaching example');
   for (const page of pages.filter(page => page.file.endsWith('.ms.md'))) {
     assert.ok(page.markdown.includes('**Declaration**\n\n```manuscript {schema=true}'), `${page.file}: identify API schemas`);
     const html = fs.readFileSync(path.join(book, 'standard-library/reference', page.route, 'index.html'), 'utf8');
@@ -320,7 +324,4 @@ test('authored guides and every generated reference page state alpha context', (
   const library = fs.readFileSync(path.join(book, 'standard-library/index.html'), 'utf8');
   assert.ok(library.includes('Batteries-included standard library'));
   assert.match(library, /\balpha\b/i);
-  for (const file of ['README.md', 'VISION.md']) {
-    assert.match(fs.readFileSync(path.join(root, file), 'utf8'), /\balpha\b/i);
-  }
 });

@@ -591,27 +591,7 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
 returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
-<!-- manuscript-example: {"mode":"test","filename":"glob-limit.ms","stdout":"RUN glob-limit.ms::glob-limit\nPASS glob-limit.ms::glob-limit\n1 tests, 0 failed\n"} -->
-```manuscript {filename="glob-limit.ms"}
-import glob, GlobOptions from "@std/os/fs.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "glob-limit":
-    let result = glob(".", GlobOptions(patterns: ["*.ms"], max_entries: -1))
-    match result:
-        ok(_): return error(Error("expected an invalid limit"))
-        error(cause): try expect_equal(cause.kind, "EINVAL")
-```
-
-```sh
-ms test glob-limit.ms
-```
-
-```text
-RUN glob-limit.ms::glob-limit
-PASS glob-limit.ms::glob-limit
-1 tests, 0 failed
-```
+See [handle an invalid glob limit](../../examples/os-fs.md#handle-an-invalid-glob-limit) for a complete example and its output.
 */
 export fn glob(
     path: String,
@@ -626,27 +606,7 @@ By default an existing destination returns EEXIST; set `replace` to overwrite it
 source and destination path and skips the entry when it returns False.
 Entry and byte limits apply cumulatively across the whole copy.
 
-<!-- manuscript-example: {"mode":"test","filename":"copy-file.ms","stdout":"RUN copy-file.ms::copy-file\nPASS copy-file.ms::copy-file\n1 tests, 0 failed\n"} -->
-```manuscript {filename="copy-file.ms"}
-import CopyOptions, copy, read_file, write_file from "@std/os/fs.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "copy-file":
-    try write_file("a.txt", "hello", replace: true).wait()
-    try copy("a.txt", "b.txt", CopyOptions(replace: true))
-    let contents = try read_file("b.txt").wait()
-    try expect_equal(contents.decode_utf8(), "hello")
-```
-
-```sh
-ms test copy-file.ms
-```
-
-```text
-RUN copy-file.ms::copy-file
-PASS copy-file.ms::copy-file
-1 tests, 0 failed
-```
+See [copy a file repeatedly](../../examples/os-fs.md#copy-a-file-repeatedly) for a complete example and its output.
 */
 export fn copy(
     source: String,
@@ -900,26 +860,7 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 /*
 Start a watcher and close it explicitly when monitoring is no longer needed.
 
-<!-- manuscript-example: {"mode":"test","filename":"watch-files.ms","stdout":"RUN watch-files.ms::watch-files\nPASS watch-files.ms::watch-files\n1 tests, 0 failed\n"} -->
-```manuscript {filename="watch-files.ms"}
-import watch, WatchOptions from "@std/os/fs.ms"
-import seconds from "@std/os/time.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "watch-files":
-    var watcher = try watch(".", options: WatchOptions(interval: seconds(1)))
-    try watcher.close()
-```
-
-```sh
-ms test watch-files.ms
-```
-
-```text
-RUN watch-files.ms::watch-files
-PASS watch-files.ms::watch-files
-1 tests, 0 failed
-```
+See [observe a filesystem change](../../examples/os-fs.md#observe-a-filesystem-change) for a complete example and its output.
 
 - Dropping the stream also stops it; native events use inotify, kqueue or ReadDirectoryChangesW by platform.
 - Polling needs a positive interval and may miss transient changes; combining it with native-only `max_events`/`overflow` is `EINVAL`. `max_entries` counts the root and descendants and reports `EOVERFLOW` at startup.

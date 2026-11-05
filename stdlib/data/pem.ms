@@ -5,28 +5,7 @@ import base64_decode, base64_encode from "@std/data/encoding.ms"
 /*
 Review PEM labels and decoded bytes separately.
 
-<!-- manuscript-example: {"mode":"test","filename":"pem-blocks.ms","stdout":"RUN pem-blocks.ms::pem-blocks\nPASS pem-blocks.ms::pem-blocks\n1 tests, 0 failed\n"} -->
-```manuscript {filename="pem-blocks.ms"}
-import PemBlock, parse, encode_all from "@std/data/pem.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "pem-blocks":
-    let text = encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())])
-    let blocks = try parse(text)
-    try expect_equal(blocks.length(), 1)
-    try expect_equal(blocks[0].label, "NOTE")
-    try expect_equal(blocks[0].data.decode_utf8(), "hi")
-```
-
-```sh
-ms test pem-blocks.ms
-```
-
-```text
-RUN pem-blocks.ms::pem-blocks
-PASS pem-blocks.ms::pem-blocks
-1 tests, 0 failed
-```
+See [decode a pem block](../../examples/data-pem.md#decode-a-pem-block) for a complete example and its output.
 */
 export type PemBlock:
     // Text between `BEGIN ` and the closing dashes, such as `CERTIFICATE`.

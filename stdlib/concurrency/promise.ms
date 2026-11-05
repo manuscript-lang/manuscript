@@ -24,26 +24,7 @@ import (
 /*
 Take a result once with `wait()`; dropping unfinished work cancels it and waits for cleanup.
 
-<!-- manuscript-example: {"mode":"test","filename":"promise-result.ms","stdout":"RUN promise-result.ms::promise-result\nPASS promise-result.ms::promise-result\n1 tests, 0 failed\n"} -->
-```manuscript {filename="promise-result.ms"}
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import seconds from "@std/os/time.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "promise-result":
-    let result = promise(fn: ok(6 * 7), options: PromiseOptions(timeout: seconds(5)))
-    try expect_equal(try result.wait(), 42)
-```
-
-```sh
-ms test promise-result.ms
-```
-
-```text
-RUN promise-result.ms::promise-result
-PASS promise-result.ms::promise-result
-1 tests, 0 failed
-```
+See [handle a promise result](../../examples/concurrency-promise.md#handle-a-promise-result) for a complete example and its output.
 
 - `promise` starts eagerly; stream reads may defer work until `wait`.
 - Borrowed captures stay read-only; captured resources move into the work and take their cleanup duties with them.

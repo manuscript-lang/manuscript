@@ -479,8 +479,8 @@ mod bounded_docs_tests {
     }
 
     #[test]
-    fn complete_source_comment_units_below_at_and_above_budget() {
-        let source = include_str!("../../../../stdlib/core.ms");
+    fn complete_documentation_units_below_at_and_above_budget() {
+        let source = include_str!("../../../../documentation/standard-library/examples/core.md");
         let start = source.find("<!-- manuscript-example:").unwrap();
         let output = source[start..].find("```text\n").unwrap() + start;
         let end = source[output + 8..].find("\n```").unwrap() + output + 8 + 4;

@@ -4,28 +4,7 @@ import DirectoryEntry, list, read_file from "@std/os/fs.ms"
 /*
 Test file-reading code with an in-memory tree instead of temporary files.
 
-<!-- manuscript-example: {"mode":"test","filename":"memory-files.ms","stdout":"RUN memory-files.ms::memory-files\nPASS memory-files.ms::memory-files\n1 tests, 0 failed\n"} -->
-```manuscript {filename="memory-files.ms"}
-import memory_tree, walk from "@std/os/tree.ms"
-import expect_equal from "@std/test/test.ms"
-
-test "memory-files":
-    var tree = memory_tree()
-    try tree.write_file("hello.txt", "hello".to_bytes())
-    let entries = try walk(tree)
-    try expect_equal(entries.length(), 1)
-    try expect_equal(entries[0].path, "hello.txt")
-```
-
-```sh
-ms test memory-files.ms
-```
-
-```text
-RUN memory-files.ms::memory-files
-PASS memory-files.ms::memory-files
-1 tests, 0 failed
-```
+See [read an in-memory file](../../examples/os-tree.md#read-an-in-memory-file) for a complete example and its output.
 
 - `FileTree` also accepts `host_tree(root)` for disk files; `walk` visits entries beneath the root.
 - Paths use `/`; `.` and empty parts are ignored, `..` walks up, and escaping the root returns `EINVAL`.
