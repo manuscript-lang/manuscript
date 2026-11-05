@@ -1318,9 +1318,14 @@ impl<'a> Parser<'a> {
                 }
                 if token.kind == Tok::Name && self.text(token) == "opaque" {
                     let advice = if self.ahead(1).kind == Tok::Export {
-                        "write 'export opaque type Name:', with export first"
+                        let keyword = if self.ahead(2).kind == Tok::Enum {
+                            "enum"
+                        } else {
+                            "type"
+                        };
+                        format!("write 'export opaque {keyword} Name:', with export first")
                     } else {
-                        "'opaque' applies only to a record or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'"
+                        "'opaque' applies only to a record or enum; write 'opaque type Name:' or 'opaque enum Name:', optionally after 'export'".into()
                     };
                     return self.fail(token, format!("misplaced 'opaque'; {advice}"));
                 }

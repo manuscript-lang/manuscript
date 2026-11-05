@@ -102,3 +102,14 @@ fn foreign_union_remedy_uses_enum_and_enum_is_reserved() {
         ms_syntax::parser::parse(&file, include_str!("data/enums/reserved.ms")).unwrap_err();
     assert!(diagnostic.message.contains("'enum' is a reserved word"));
 }
+
+#[test]
+fn misplaced_opaque_enum_keeps_enum_in_the_remedy() {
+    let file = Arc::from("modifiers.ms");
+    let diagnostic =
+        ms_syntax::parser::parse(&file, include_str!("data/enums/modifier-order.ms")).unwrap_err();
+    assert_eq!(
+        diagnostic.message,
+        "misplaced 'opaque'; write 'export opaque enum Name:', with export first"
+    );
+}
