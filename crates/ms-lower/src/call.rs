@@ -644,7 +644,10 @@ impl<'a> FnLower<'a> {
                         Ok(new.take().expect("single use"))
                     })?;
                 }
-                _ => self.drop_value(new),
+                // A changed copy of a place nobody owns is only dropped; a computed value
+                // (`open().advance()`) is a temporary that nothing else closes.
+                Some(place) if self.is_place(&place) => self.drop_value(new),
+                _ => self.drop_temp(new),
             }
         }
         Ok(())
