@@ -57,7 +57,6 @@ import (
     msstd_system_os_release,
     msstd_system_os_version,
     msstd_system_set_priority,
-    msstd_system_working_directory,
     msstd_process_replace,
     msstd_process_info_pid,
     msstd_process_info_parent_pid,

@@ -50,11 +50,6 @@ export extern fn msrt_promise_drop(id: Int) Unit
 // A promise that finishes after `ns` nanoseconds; it has no task. Wait with code 0.
 export extern fn msrt_promise_sleep(ns: Int) Int
 
-// A promise for the readiness of a descriptor (events: 1 read, 2 write) that finishes with an
-// Int of the ready bits (8 for a timeout; `timeout_ns` negative means none). -1 when the
-// descriptor cannot be waited on.
-export extern fn msrt_promise_ready(fd: Int, events: Int, timeout_ns: Int) Int
-
 // In-memory pipes (crates/ms-rt/src/pipes.rs). A pipe starts with one writer, the Pipe value itself.
 export extern fn msrt_pipe_new(capacity: Int) Int
 
@@ -109,14 +104,8 @@ export extern fn msrt_cells_put[T](id: Int, value: T) Unit
 
 export extern fn msrt_cells_drop(id: Int) Unit
 
-// Whether the cell holds a value now.
-export extern fn msrt_cells_full(id: Int) Bool
-
 // Whether the cell is live with its value out, so a holder can put it back; false once it is dropped.
 export extern fn msrt_cells_out(id: Int) Bool
-
-// Moves the value out; EBADF when the cell is empty or gone. A plain `try` binds it without a copy.
-export extern fn msrt_cells_take_result[T](id: Int) T!
 
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int

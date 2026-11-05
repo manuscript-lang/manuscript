@@ -95,11 +95,6 @@ fn duration_arithmetic_and_faults() {
         "Duration.abs: value (nanoseconds) must be between -9223372036854775807 and 9223372036854775807, found -9223372036854775808",
         || msstd_time_duration_abs(i64::MIN),
     );
-    assert_fault(
-        "sleep: duration (nanoseconds) must be between 0 and 9223372036854775807, found -1",
-        || msstd_time_sleep(-1),
-    );
-    msstd_time_sleep(1_000_000);
 }
 
 #[test]

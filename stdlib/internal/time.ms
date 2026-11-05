@@ -24,8 +24,6 @@ export extern fn msstd_time_duration_to_hours(value: Int) Float
 
 export extern fn msstd_time_local_zone() String
 
-export extern fn msstd_time_sleep(duration: Int) Unit
-
 export extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 
 export extern fn msstd_time_instant_unshift(value: Instant, duration: Int) Instant
