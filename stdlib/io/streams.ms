@@ -99,6 +99,8 @@ type BytesSource:
 
 impl Source[Bytes] for BytesSource:
     var fn next() Bytes?!:
+        if self.chunk < 1:
+            return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
         if self.at >= self.data.length():
             return ok(none)
 
@@ -113,7 +115,7 @@ impl Source[Bytes] for BytesSource:
     var fn close() Unit!:
         return ok(unit)
 
-// A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends.
+// A stream that yields `data` in chunks of at most `chunk_bytes` bytes and then ends. A `chunk_bytes` below 1 makes the first read fail with `EINVAL`.
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
     return stream[Bytes](BytesSource(data, 0, chunk_bytes))
 
