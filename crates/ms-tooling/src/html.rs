@@ -30,13 +30,17 @@ fn indices(ix: &Index, keys: &[String]) -> Json {
     )
 }
 
-fn slot_json(ix: &Index, s: &Slot) -> Json {
-    Json::Arr(vec![
+fn slot_json(ix: &Index, s: &Slot, parameter: bool) -> Json {
+    let mut fields = vec![
         Json::str(&s.name),
         Json::str(&s.ty),
         Json::from(usize::from(s.var)),
         indices(ix, &s.refs),
-    ])
+    ];
+    if parameter {
+        fields.push(Json::str(s.passing_mode()));
+    }
+    Json::Arr(fields)
 }
 
 fn flow_json(ix: &Index, nodes: &[Node]) -> Json {
@@ -62,6 +66,7 @@ fn flow_json(ix: &Index, nodes: &[Node]) -> Json {
 
 fn entity_json(facts: &Facts, ix: &Index, f: &Fact) -> Json {
     let flow = facts.flows.get(&f.key).map_or(&[][..], Vec::as_slice);
+    let callable = matches!(f.kind.as_str(), "fn" | "method");
     Json::Arr(vec![
         Json::from(ix.file_ix[f.file.as_str()]),
         Json::str(&f.kind),
@@ -73,9 +78,13 @@ fn entity_json(facts: &Facts, ix: &Index, f: &Fact) -> Json {
         Json::from(f.scopes),
         indices(ix, &f.calls),
         Json::strings(&f.external),
-        Json::Arr(f.slots.iter().map(|s| slot_json(ix, s)).collect()),
+        Json::Arr(f.slots.iter().map(|s| slot_json(ix, s, callable)).collect()),
         f.result.as_ref().map_or(Json::from(0usize), |r| {
-            Json::Arr(vec![Json::str(&r.ty), indices(ix, &r.refs)])
+            Json::Arr(vec![
+                Json::str(&r.ty),
+                indices(ix, &r.refs),
+                Json::str(f.result_ownership.label()),
+            ])
         }),
         flow_json(ix, flow),
         Json::from(f.first),
