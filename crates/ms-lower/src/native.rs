@@ -1038,7 +1038,8 @@ impl<'a> FnLower<'a> {
                     .emit(Op::Load, &[slot], Imm::Ty(MTy::BYTES), Some(MTy::BYTES))
                     .expect("load");
                 if recv.own {
-                    let o = self.owned(Val { v, own: false });
+                    // The view of a temporary cannot outlive it: the result is the copy.
+                    let o = self.clone_value(v);
                     return Ok(Val { v: o, own: true });
                 }
                 Ok(Val { v, own: false })

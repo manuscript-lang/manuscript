@@ -434,7 +434,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
             map.any(
                 fn k,
                 v:
-                    map_visits.append(k)
+                    map_visits.append(k.clone())
                     return false
             )
             or map_visits != ["b", "a", "c"]
@@ -447,7 +447,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
                 map.all(
                     fn k,
                     v:
-                        map_visits.append(k)
+                        map_visits.append(k.clone())
                         return true
                 )
             )
@@ -462,7 +462,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
                 .find(
                     fn k,
                     v:
-                        map_visits.append(k)
+                        map_visits.append(k.clone())
                         return false
                 )
                 .is_none()
