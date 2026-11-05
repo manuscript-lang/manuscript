@@ -72,11 +72,25 @@ test('published API downloads match the current generated reference', () => {
   }
 });
 
+function referenceRoute(file, markdown) {
+  const urlPath = file.replaceAll('\\', '/');
+  return markdown.match(/url = "\/standard-library\/reference\/([^"]+)"/)?.[1]
+    || urlPath.replace(/_index\.md$/, '').replace(/(?:\.ms)?\.md$/, '/');
+}
+
+test('reference routes normalize Windows filenames without changing source paths', () => {
+  assert.equal(referenceRoute('concurrency\\promise.ms.md', ''), 'concurrency/promise/');
+  assert.equal(referenceRoute('concurrency/promise.ms.md', ''), 'concurrency/promise/');
+  assert.equal(referenceRoute('concurrency\\_index.md', 'url = "/standard-library/reference/tree/concurrency/"'), 'tree/concurrency/');
+  assert.equal(referenceRoute('crypto.ms.md', ''), 'crypto/');
+  assert.equal(referenceRoute('_index.md', ''), '');
+});
+
 function referencePages() {
   const source = path.join(root, '.artifacts/docs/documentation/standard-library/reference');
   return fs.readdirSync(source, { recursive: true }).filter(file => file.endsWith('.md')).map(file => {
     const markdown = fs.readFileSync(path.join(source, file), 'utf8');
-    const route = markdown.match(/url = "\/standard-library\/reference\/([^"]+)"/)?.[1] || file.replace(/_index\.md$/, '').replace(/(?:\.ms)?\.md$/, '/');
+    const route = referenceRoute(file, markdown);
     const aliases = [...markdown.matchAll(/aliases = \["([^"\n]+)"\]/g)].map(match => match[1]);
     return { file, markdown, route, aliases };
   });
