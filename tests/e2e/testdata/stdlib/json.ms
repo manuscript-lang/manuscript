@@ -6,7 +6,14 @@ import (
     expect_not_equal,
     fail
 ) from "@std/test/test.ms"
-import (parse, stringify, JsonValue, JsonLimits, JsonEncode) from "@std/data/json.ms"
+import (
+    parse,
+    stringify,
+    JsonValue,
+    JsonOptions,
+    StringifyOptions,
+    JsonEncode
+) from "@std/data/json.ms"
 import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/os/time.ms"
 import Url from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
@@ -18,7 +25,9 @@ test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
     try expect_equal((try parse(text) | try stringify), text)
     try expect_equal((try parse("\"\\uD83D\\uDE00\"")), JsonValue.StringValue("😀"))
-    try expect_equal((try parse("null") | try stringify(4)), "null")
+    try expect_equal(
+        (try parse("null") | try stringify(StringifyOptions(max_bytes: 4))), "null"
+    )
 
 fn expect_syntax_error[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
@@ -52,12 +61,12 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
 
 test "JSON independently enforces byte depth and value budgets":
     let limited: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
-    try expect_equal(parse("null", JsonLimits(3)), limited)
-    try expect_equal(parse("[[[]]]", JsonLimits(max_depth: 2)), limited)
-    try expect_equal(parse("[1,2]", JsonLimits(max_values: 2)), limited)
+    try expect_equal(parse("null", JsonOptions(max_bytes: 3)), limited)
+    try expect_equal(parse("[[[]]]", JsonOptions(max_depth: 2)), limited)
+    try expect_equal(parse("[1,2]", JsonOptions(max_values: 2)), limited)
 
     let invalid: JsonValue! = error(Error("JSON: invalid input", kind: "EINVAL"))
-    try expect_equal(parse("null", JsonLimits(-1)), invalid)
+    try expect_equal(parse("null", JsonOptions(max_bytes: -1)), invalid)
 
 test "JSON untyped parse keeps document shape and releases partial trees on failure":
     let long = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -171,10 +180,10 @@ test "JSON stringify reports non-finite numbers and budgets as errors":
     try expect_equal((try encoded(1e308 * 10.0 - 1e308 * 10.0)), "null")
 
     let limited: String! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
-    try expect_equal(stringify("abcdef", 4), limited)
+    try expect_equal(stringify("abcdef", StringifyOptions(max_bytes: 4)), limited)
 
     let negative: String! = error(Error("JSON: invalid input", kind: "EINVAL"))
-    try expect_equal(stringify(1, -1), negative)
+    try expect_equal(stringify(1, StringifyOptions(max_bytes: -1)), negative)
 
 test "JSON stringify repeats shared acyclic values and reads current field values":
     let shared = Node("s", none)
@@ -248,19 +257,19 @@ test "JSON stringify honors JsonEncode wherever the value appears":
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
     let request = Request("m", stream: true, none, 0.5, ["a"])
-    let pretty = try stringify(request, indent: 2)
+    let pretty = try stringify(request, StringifyOptions(indent: 2))
     let expected = "\{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n\}"
     try expect_equal(pretty, expected)
 
     let empty: List[Int] = []
-    try expect_equal((try stringify(empty, indent: 4)), "[]")
-    try expect_equal((try stringify([1], indent: 0)), "[1]")
+    try expect_equal((try stringify(empty, StringifyOptions(indent: 4))), "[]")
+    try expect_equal((try stringify([1], StringifyOptions(indent: 0))), "[1]")
 
-    let wide = try stringify([1], indent: 99)
+    let wide = try stringify([1], StringifyOptions(indent: 99))
     try expect_equal(wide, "[\n          1\n]")
 
     let negative: String! = error(Error("JSON: invalid input", kind: "EINVAL"))
-    try expect_equal(stringify(1, indent: -1), negative)
+    try expect_equal(stringify(1, StringifyOptions(indent: -1)), negative)
 
 type Holder:
     done: Unit
@@ -355,7 +364,9 @@ test "JSON parse rejects shape mismatches as InvalidData":
     try expect_invalid_data(parse[Profile](missing))
 
     let unknown = "\{\"name\":\"A\",\"scores\":[],\"extra\":1\}"
-    try expect_invalid_data(parse[Profile](unknown, ignore_unknown_fields: false))
+    try expect_invalid_data(
+        parse[Profile](unknown, JsonOptions(ignore_unknown_fields: false))
+    )
 
     let lenient: Profile = try parse[Profile](unknown)
     try expect_equal(lenient.name, "A")
@@ -372,7 +383,7 @@ test "JSON parse rejects shape mismatches as InvalidData":
     try expect_syntax_error(parse[Profile]("\{"))
 
     let limited: Profile! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
-    try expect_equal(parse[Profile](missing, JsonLimits(2)), limited)
+    try expect_equal(parse[Profile](missing, JsonOptions(max_bytes: 2)), limited)
 
 test "JSON parse decodes alternatives and generic records":
     let shape: Shape = try parse[Shape]("\"Dot\"")

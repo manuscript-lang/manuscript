@@ -7,6 +7,7 @@ use crate::hints::arity_mismatch_hint;
 use crate::syntax::*;
 use crate::types::Param;
 use crate::types::*;
+use ms_syntax::Phase;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 
@@ -425,6 +426,15 @@ impl Checker {
         let checkpoint = self.p.diagnostics.len();
         let info = self.expression(e, None);
         if self.p.diagnostics.len() != checkpoint {
+            // An unresolved name is a fault of the argument itself, not of missing context: the
+            // type variable it should fix stays unknown only because of that error, which the
+            // final check reports, so the call must not also ask for explicit types.
+            if self.p.diagnostics[checkpoint..]
+                .iter()
+                .any(|d| d.phase == Phase::Resolution)
+            {
+                self.label_mismatch = true;
+            }
             self.p.diagnostics.truncate(checkpoint);
             return None;
         }

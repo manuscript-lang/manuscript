@@ -128,6 +128,16 @@ pub fn native_inputs(build: &BuildOptions) -> Vec<PathBuf> {
     inputs
 }
 
+/// The code generator that builds an executable at `profile`: `"llvm"` when release builds
+/// optimize through LLVM, else `"cranelift"`.
+pub fn backend_name(profile: Profile, build: &BuildOptions) -> &'static str {
+    let llvm = match profile {
+        Profile::Debug => None,
+        Profile::Release | Profile::MinSizeRel => llvm_level(build, "3"),
+    };
+    if llvm.is_some() { "llvm" } else { "cranelift" }
+}
+
 /// The runtime archive named by `build.runtime` (`MS_RT_LIB`), which replaces the one embedded in `ms`.
 pub fn runtime_override(build: &BuildOptions) -> Result<Option<PathBuf>, String> {
     let Some(path) = &build.runtime else {
@@ -187,6 +197,21 @@ pub fn build_executable(
     runtime: &Path,
     extra: &[PathBuf],
     build: &BuildOptions,
+) -> Result<(), String> {
+    build_executable_pinned(module, output, profile, runtime, extra, build, None)
+}
+
+/// `build_executable` that also leaves this build's own executable at `pin` before it
+/// replaces `output`. Another build can replace `output` at any moment afterwards, so a
+/// caller that must read back exactly what this build produced reads `pin`.
+pub fn build_executable_pinned(
+    module: &mut Module,
+    output: &Path,
+    profile: Profile,
+    runtime: &Path,
+    extra: &[PathBuf],
+    build: &BuildOptions,
+    pin: Option<&Path>,
 ) -> Result<(), String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
@@ -281,6 +306,15 @@ pub fn build_executable(
     if let Err(error) = linked {
         cleanup();
         return Err(error.to_string());
+    }
+    if let Some(pin) = pin {
+        let _ = std::fs::remove_file(pin);
+        let pinned =
+            std::fs::hard_link(&staged, pin).or_else(|_| std::fs::copy(&staged, pin).map(|_| ()));
+        if let Err(error) = pinned {
+            cleanup();
+            return Err(format!("cannot write {}: {error}", pin.display()));
+        }
     }
     publish(&staged, output).map_err(|error| {
         cleanup();
