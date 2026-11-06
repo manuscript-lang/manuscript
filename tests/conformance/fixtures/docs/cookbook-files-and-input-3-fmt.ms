@@ -1,7 +1,7 @@
 // conform: tags=control-flow,faults,formatter,interpolation,modules,parser,stdlib-io,stdlib-process,tier-io,try-result
 // conform: phase=parse
 // conform: origin=documentation/learn/common-tasks.md:150
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:

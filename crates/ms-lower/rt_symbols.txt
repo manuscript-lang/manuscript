@@ -695,17 +695,7 @@ msstd_process_elapsed(out: *mut i64) -> u8
 msstd_process_environment(out: *mut VecVal, out2: *mut VecVal, err: ErrSlot) -> u8
 msstd_process_environment_map(out: *mut MapVal, err: ErrSlot) -> u8
 msstd_process_groups(out: *mut VecVal, err: ErrSlot) -> u8
-msstd_process_info(out: *mut InfoOut, err: ErrSlot) -> u8
-msstd_process_info_architecture(out: *mut StrVal)
-msstd_process_info_arguments(out: *mut VecVal)
-msstd_process_info_effective_gid() -> i64
-msstd_process_info_effective_uid() -> i64
-msstd_process_info_executable(out: *mut StrVal)
-msstd_process_info_gid() -> i64
-msstd_process_info_os(out: *mut StrVal)
-msstd_process_info_parent_pid() -> i64
-msstd_process_info_pid() -> i64
-msstd_process_info_uid() -> i64
+msstd_process_info(out: *mut ProcessInfoOut, err: ErrSlot) -> u8
 msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: ErrSlot) -> u8
 msstd_process_load_environment(path: *const StrVal, has_max: HasRaw, max: i64, err: ErrSlot) -> u8
 msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8
@@ -745,51 +735,22 @@ msstd_regex_replace_all(handle re: *const ObjCell<Regex>, text: *const StrVal, r
 msstd_regex_replace_template(handle re: *const ObjCell<Regex>, text: *const StrVal, template: *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf
 msstd_regex_split(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8 @leaf
 msstd_system_constants(out: *mut MapVal)
-msstd_system_cpus_count() -> i64
-msstd_system_cpus_idle(i: i64) -> i64
-msstd_system_cpus_irq(i: i64) -> i64
-msstd_system_cpus_model(i: i64, out: *mut StrVal)
-msstd_system_cpus_nice(i: i64) -> i64
-msstd_system_cpus_speed_mhz(i: i64) -> i64
-msstd_system_cpus_status(err: ErrSlot) -> u8
-msstd_system_cpus_system(i: i64) -> i64
-msstd_system_cpus_user(i: i64) -> i64
+msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8
 msstd_system_dev_null(out: *mut StrVal)
 msstd_system_end_of_line(out: *mut StrVal)
 msstd_system_endianness(out: *mut StrVal)
 msstd_system_get_priority(pid: i64, out: *mut i64, err: ErrSlot) -> u8
 msstd_system_home_directory(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_hostname(out: *mut StrVal, err: ErrSlot) -> u8
-msstd_system_info_architecture(out: *mut StrVal)
-msstd_system_info_cpu_count() -> i64
-msstd_system_info_os(out: *mut StrVal)
+msstd_system_info(out: *mut SystemInfoOut)
 msstd_system_machine(out: *mut StrVal, err: ErrSlot) -> u8
-msstd_system_metrics_available_memory() -> i64
-msstd_system_metrics_available_parallelism() -> i64
-msstd_system_metrics_free_memory() -> i64
-msstd_system_metrics_load_average(window: i64) -> f64
-msstd_system_metrics_status(err: ErrSlot) -> u8
-msstd_system_metrics_total_memory() -> i64
-msstd_system_metrics_uptime() -> i64
-msstd_system_network_interfaces_address(i: i64, out: *mut StrVal)
-msstd_system_network_interfaces_count() -> i64
-msstd_system_network_interfaces_family(i: i64) -> i64
-msstd_system_network_interfaces_internal(i: i64) -> u8
-msstd_system_network_interfaces_mac(i: i64, out: *mut StrVal)
-msstd_system_network_interfaces_name(i: i64, out: *mut StrVal)
-msstd_system_network_interfaces_netmask(i: i64, out: *mut StrVal)
-msstd_system_network_interfaces_scope_id(i: i64) -> i64
-msstd_system_network_interfaces_status(err: ErrSlot) -> u8
+msstd_system_metrics(out: *mut MetricsOut, err: ErrSlot) -> u8
+msstd_system_network_interfaces(out: *mut VecVal, err: ErrSlot) -> u8
+msstd_system_os() -> i64
 msstd_system_os_release(out: *mut StrVal, err: ErrSlot) -> u8
-msstd_system_os_type(out: *mut StrVal)
 msstd_system_os_version(out: *mut StrVal, err: ErrSlot) -> u8
 msstd_system_set_priority(pid: i64, priority: i64, err: ErrSlot) -> u8
-msstd_system_user_info_gid() -> i64
-msstd_system_user_info_home(out: *mut StrVal)
-msstd_system_user_info_shell(out: *mut StrVal)
-msstd_system_user_info_status(err: ErrSlot) -> u8
-msstd_system_user_info_uid() -> i64
-msstd_system_user_info_username(out: *mut StrVal)
+msstd_system_user_info(out: *mut UserInfoOut, err: ErrSlot) -> u8
 msstd_terminal_capabilities_colors() -> i64
 msstd_terminal_capabilities_error_is_terminal() -> u8
 msstd_terminal_capabilities_input_is_terminal() -> u8

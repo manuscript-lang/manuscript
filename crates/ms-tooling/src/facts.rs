@@ -57,6 +57,8 @@ pub enum ParameterOwnership {
     Borrow,
     Copy,
     Move,
+    /// An interface operation: the interface fixes no passing mode for its own signature.
+    Unspecified,
 }
 
 impl Slot {
@@ -69,6 +71,7 @@ impl Slot {
                 ParameterOwnership::Copy => "copy",
                 ParameterOwnership::Move => "move",
                 ParameterOwnership::Borrow => "borrow",
+                ParameterOwnership::Unspecified => "",
             }
         }
     }

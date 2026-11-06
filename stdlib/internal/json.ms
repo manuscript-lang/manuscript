@@ -1,9 +1,13 @@
-import JsonLimits from "@std/data/json.ms"
+// Native parse bounds; `parse` and `json_reader` build them from `JsonOptions`.
+export type JsonLimits:
+    max_bytes: Int?
+    max_depth: Int?
+    max_values: Int?
 
 // The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
 export extern fn msstd_json_parse[T](
     text: String,
-    limits: JsonLimits?,
+    limits: JsonLimits,
     ignore_unknown_fields: Bool
 ) T!
 

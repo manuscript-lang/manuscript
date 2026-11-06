@@ -18,17 +18,6 @@
         }
       },
       {
-        "code": "MS3080",
-        "phase": "type",
-        "message": "cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-        "position": {
-          "file": "testresultargumentinferencerejects-8.ms",
-          "line": 12,
-          "column": 18,
-          "offset": 346
-        }
-      },
-      {
         "code": "MS2001",
         "phase": "resolution",
         "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module",
@@ -43,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresultargumentinferencerejects-8.ms:7:15: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 7 | impl Read for E1:\n   |               ^\n<DIR>/testresultargumentinferencerejects-8.ms:12:18: type: cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n    |\n 12 | fn first() Unit: read(f())\n    |                  ^\n<DIR>/testresultargumentinferencerejects-8.ms:12:23: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n    |\n 12 | fn first() Unit: read(f())\n    |                       ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresultargumentinferencerejects-8.ms:7:15: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 7 | impl Read for E1:\n   |               ^\n<DIR>/testresultargumentinferencerejects-8.ms:12:23: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n    |\n 12 | fn first() Unit: read(f())\n    |                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

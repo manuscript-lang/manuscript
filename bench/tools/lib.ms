@@ -1,21 +1,13 @@
 // Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
-import (
-    Stdio,
-    os_type,
-    environment,
-    monotonic_time,
-    set_environment,
-    working_directory,
-    run,
-    spawn,
-    system_info
-) from "@std/os/process.ms"
+import RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms"
+import (environment, set_environment, working_directory) from "@std/os/env.ms"
+import (os, monotonic_time, system_info, Os) from "@std/os/system.ms"
 import access, create_directory, read_file, remove, write_file from "@std/os/fs.ms"
 import is_absolute, join from "@std/os/path.ms"
 import stderr, stdin, stdout from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
-import JsonValue, stringify from "@std/data/json.ms"
+import JsonValue, StringifyOptions, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 
@@ -30,9 +22,9 @@ export fn fail(message: String) Int:
 
 // `linux`, `macos` or `windows`.
 export fn host() String:
-    let os = os_type()
-    if os == "Darwin": return "macos"
-    if os == "Windows_NT": return "windows"
+    let family = os()
+    if family == Os.Macos: return "macos"
+    if family == Os.Windows: return "windows"
 
     return "linux"
 
@@ -63,7 +55,7 @@ export fn capture(
     input: String = "",
     cwd: String? = none
 ) Ran:
-    if let out = run(program, arguments, input: input.to_bytes(), cwd: cwd).wait():
+    if let out = run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
         return Ran(
             true, out.exit_code, out.stdout.decode_utf8().get(""),
             out.stderr.decode_utf8().get(""), out.max_resident_bytes
@@ -160,7 +152,7 @@ export fn absolute(path: String) String:
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
-    return capture(program, arguments, cwd: dir)
+    return capture(program, arguments, cwd: dir.clone())
 
 // Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) String!:
@@ -318,15 +310,18 @@ export fn jlist(items: List[JsonValue]) JsonValue:
 
 // `value` as indented JSON followed by a newline.
 export fn dump(value: JsonValue) String:
-    return stringify(value, none, 2).get("") + "\n"
+    return stringify(value, StringifyOptions(indent: 2)).get("") + "\n"
 
 // Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
     var code = 125
 
     if let child = spawn(
-        program, arguments, stdin: Stdio.Null, stdout: Stdio.Inherit,
-        stderr: Stdio.Inherit, cwd: dir
+        program,
+        arguments,
+        SpawnOptions(
+            stdin: Stdio.Null, stdout: Stdio.Inherit, stderr: Stdio.Inherit, cwd: dir
+        )
     ):
         code = child.wait().get(125)
         if code < 0 or code > 125: code = 125

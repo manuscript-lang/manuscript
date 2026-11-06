@@ -1,5 +1,5 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
-import parse, JsonLimits from "@std/data/json.ms"
+import parse, JsonOptions from "@std/data/json.ms"
 import hex_decode from "@std/data/encoding.ms"
 
 // Library failures are plain Error values: callers branch on `kind`, not on a domain type.
@@ -20,9 +20,9 @@ fn propagate_generic() Unit!:
     return ok(unit)
 
 test "library errors carry a kind callers can branch on":
-    let limits = JsonLimits(max_bytes: 100, max_depth: 8, max_values: 32)
+    let limits = JsonOptions(max_bytes: 100, max_depth: 8, max_values: 32)
 
-    match parse(text: "[", limits: limits):
+    match parse(text: "[", options: limits):
         ok(_):
             return fail(message: "malformed JSON succeeded")
         error(cause):

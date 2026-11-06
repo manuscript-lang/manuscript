@@ -99,7 +99,12 @@ pub(super) fn build<L: Lower>(
         && let Some(entry) = cache.lookup()
         && artifact_source_collision(&output, &request.filename, entry.inputs()).is_none()
         && entry.restore_to(&output).is_ok()
-        && write_metadata(Path::new(&output), request.build_type).is_ok()
+        && write_metadata(
+            Path::new(&output),
+            request.build_type,
+            &backend.build_options(),
+        )
+        .is_ok()
     {
         if structured {
             return Ok(emit_json(
@@ -119,10 +124,19 @@ pub(super) fn build<L: Lower>(
     if let Some(error) = path_error {
         return Ok(fail(io, &compiled.source_root, "build", &error));
     }
-    let sources = match build_inputs(&compiled) {
+    let mut sources = match build_inputs(&compiled) {
         Ok(sources) => sources,
         Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
     };
+    // The native inputs the linker reads are preserved like sources: publication must not
+    // replace a `--link` file, the selected runtime archive or the runtime helper IR.
+    sources.extend(request.link.iter().map(std::path::PathBuf::from));
+    let options = backend.build_options();
+    let runtime = match backend.runtime_path() {
+        Ok(runtime) => runtime,
+        Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
+    };
+    sources.extend(ms_build::native_inputs(&options, &runtime));
     if std::fs::metadata(&output).is_ok_and(|m| m.is_dir()) {
         let _ = writeln!(
             io.stderr,
@@ -160,17 +174,34 @@ pub(super) fn build<L: Lower>(
         let message = format!("cannot create {}: {error}", parent.display());
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
-    if let Err(message) = backend.link(
+    // The cache stores this build's own executable, not whatever a concurrent build has since
+    // put at the shared output path.
+    let pin = if cache.is_some() {
+        match ArtifactPin::create(Path::new(&output)) {
+            Ok(pin) => Some(pin),
+            Err(error) => return Ok(fail(io, &compiled.source_root, "build", &error.to_string())),
+        }
+    } else {
+        None
+    };
+    let linked = backend.link_pinned(
         &mut compiled,
         Path::new(&output),
         request.build_type,
         &request.link,
-    ) {
-        return Ok(fail(io, &compiled.source_root, "build", &message));
-    }
-    if let Some(cache) = &cache
-        && let Err(message) = cache.record(&compiled, &sources, &output)
-    {
+        pin.as_ref().map(ArtifactPin::path),
+    );
+    let recorded = match (&cache, linked) {
+        (_, Err(message)) => Err(message),
+        (Some(cache), Ok(())) => cache.record(
+            &compiled,
+            &sources,
+            pin.as_ref().map_or(Path::new(&output), ArtifactPin::path),
+        ),
+        (None, Ok(())) => Ok(()),
+    };
+    drop(pin);
+    if let Err(message) = recorded {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
     if structured {
@@ -402,9 +433,8 @@ impl BuildCache {
         let source_dir = pathops::eval_symlinks(&pathops::dir(&filename)).ok()?;
         inputs
             .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
-        inputs.extend(backend.runtime.clone());
+        inputs.push(backend.runtime_path().ok()?);
         let options = backend.build_options();
-        inputs.extend(ms_build::runtime_override(&options).ok()?);
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
         let inputs: Vec<&Path> = inputs.iter().map(std::path::PathBuf::as_path).collect();
         let build_type = request.build_type.as_str();
@@ -423,31 +453,30 @@ impl BuildCache {
         ms_build::cache::lookup(&self.directory, &self.key).map(Hit)
     }
 
-    /// Stores the finished build at `output` for the next one (or, under `MS_CACHE=verify`,
+    /// Stores this producer's pinned build for the next one (or, under `MS_CACHE=verify`,
     /// compares it with the stored build).
     fn record(
         &self,
         compiled: &super::Compiled,
         sources: &[std::path::PathBuf],
-        output: &str,
+        artifact: &Path,
     ) -> Result<(), String> {
-        let output = Path::new(output);
         if self.mode == ms_build::cache::Mode::Verify {
             let Some(hit) = self.lookup() else {
                 return Ok(());
             };
-            if hit.0.matches(output) {
+            if hit.0.matches(artifact) {
                 return Ok(());
             }
             return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
         }
-        let companion = ms_clif_companion(output);
+        let companion = ms_clif_companion(artifact);
         ms_build::cache::store(
             &self.directory,
             &self.key,
             &compiled.source_root,
             sources,
-            output,
+            artifact,
             companion.as_deref(),
         );
         Ok(())
@@ -482,6 +511,36 @@ impl Hit {
             }
         }
         published
+    }
+}
+
+/// Own both pins until recording has finished, including on link or metadata failure.
+struct ArtifactPin {
+    _stage: ms_build::native::BuildStage,
+    executable: std::path::PathBuf,
+}
+
+impl ArtifactPin {
+    fn create(output: &Path) -> std::io::Result<Self> {
+        let stage = ms_build::native::BuildStage::for_output(output)?;
+        let executable = stage.path().join("program.exe");
+        Ok(Self {
+            _stage: stage,
+            executable,
+        })
+    }
+
+    fn path(&self) -> &Path {
+        &self.executable
+    }
+}
+
+impl Drop for ArtifactPin {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(self.path());
+        if let Some(companion) = ms_clif_companion(self.path()) {
+            let _ = std::fs::remove_dir_all(companion);
+        }
     }
 }
 
@@ -733,3 +792,6 @@ mod tests {
         assert_eq!(actual, expected);
     }
 }
+
+#[cfg(test)]
+mod cache_provenance;

@@ -41,8 +41,8 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
             (
                 "machine",
                 3,
-                "fn() Result[String, Error] — @std/os/process.ms",
-                "@std/os/process.ms",
+                "fn() Result[String, Error] — @std/os/system.ms",
+                "@std/os/system.ms",
             ),
             (
                 "max_int",
@@ -209,14 +209,14 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
             (
                 "base32_encode",
                 3,
-                "fn(Bytes, Bool, Bool) String — @std/data/encoding.ms",
+                "fn(Bytes, Base32Options) String — @std/data/encoding.ms",
                 Some("@std/data/encoding.ms"),
                 Some("data: ${1:data}"),
             ),
             (
                 "base32_decode",
                 3,
-                "fn(String, Bool, Bool, Int?) Result[Bytes, Error] — @std/data/encoding.ms",
+                "fn(String, Base32Options, Int?) Result[Bytes, Error] — @std/data/encoding.ms",
                 Some("@std/data/encoding.ms"),
                 Some("text: ${1:text}"),
             ),

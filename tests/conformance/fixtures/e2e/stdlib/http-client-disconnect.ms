@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
 import stdout from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn send(var conn: Connection, text: String) Unit!:
     try conn.output.write(text.to_bytes())

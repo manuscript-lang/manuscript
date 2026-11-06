@@ -567,8 +567,12 @@ fn ownership_node(
         } else {
             s.passing_mode()
         };
-        node.children
-            .push(Node::new(format!("{}: {}  {mode}", s.name, s.ty)));
+        let text = if mode.is_empty() {
+            format!("{}: {}", s.name, s.ty)
+        } else {
+            format!("{}: {}  {mode}", s.name, s.ty)
+        };
+        node.children.push(Node::new(text));
     }
     if let Some(r) = &f.result {
         node.children.push(Node::new(format!(
@@ -848,7 +852,11 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
                     _ => "stroke:#37b",
                 };
                 let tid = flow_type_node(&mut out, &mut declared, &s.ty);
-                let _ = writeln!(out, "    {tid} -->|\"{} {mode}\"| {fid}", s.name);
+                let _ = writeln!(
+                    out,
+                    "    {tid} -->|\"{}\"| {fid}",
+                    format!("{} {mode}", s.name).trim_end()
+                );
                 styles.push(style);
             }
             if let Some(r) = &f.result {

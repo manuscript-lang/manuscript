@@ -76,6 +76,18 @@ impl<L: Lower> Engine<L> {
         self
     }
 
+    /// The archive selected for linking and for build-input publication protection.
+    pub(crate) fn runtime_path(&self) -> Result<PathBuf, String> {
+        if let Some(runtime) = &self.runtime {
+            return Ok(runtime.clone());
+        }
+        let build = self.build_options();
+        if let Some(runtime) = ms_build::runtime_override(&build)? {
+            return Ok(runtime);
+        }
+        runtime::embedded(build.static_musl)
+    }
+
     /// Compile the lowered module into the executable `output`.
     pub(crate) fn link(
         &self,
@@ -84,24 +96,31 @@ impl<L: Lower> Engine<L> {
         kind: BuildType,
         link: &[String],
     ) -> Result<(), String> {
+        self.link_pinned(compiled, output, kind, link, None)
+    }
+
+    /// `link` that also leaves this build's own executable at `pin`.
+    pub(crate) fn link_pinned(
+        &self,
+        compiled: &mut Compiled,
+        output: &Path,
+        kind: BuildType,
+        link: &[String],
+        pin: Option<&Path>,
+    ) -> Result<(), String> {
         let build = self.build_options();
-        let runtime = match &self.runtime {
-            Some(runtime) => runtime.clone(),
-            None => match ms_build::runtime_override(&build)? {
-                Some(runtime) => runtime,
-                None => runtime::embedded(build.static_musl)?,
-            },
-        };
+        let runtime = self.runtime_path()?;
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
-        ms_build::build_executable(
+        ms_build::build_executable_pinned(
             &mut compiled.module,
             output,
             profile(kind),
             &runtime,
             &extra,
             &build,
+            pin,
         )?;
-        write_metadata(output, kind)
+        write_metadata(output, kind, &build)
     }
 }
 
@@ -423,21 +442,32 @@ pub(crate) fn profile(kind: BuildType) -> ms_build::Profile {
 }
 
 /// `<executable>.ms-build.json`: what built the executable.
-fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
+fn write_metadata(
+    output: &Path,
+    kind: BuildType,
+    build: &ms_build::BuildOptions,
+) -> Result<(), String> {
     static STAGED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-    write_metadata_with(output, kind, &STAGED)
+    write_metadata_with(
+        output,
+        kind,
+        ms_build::backend_name(profile(kind), build),
+        &STAGED,
+    )
 }
 
 fn write_metadata_with(
     output: &Path,
     kind: BuildType,
+    backend: &str,
     next: &std::sync::atomic::AtomicUsize,
 ) -> Result<(), String> {
     let mut name = output.as_os_str().to_owned();
     name.push(".ms-build.json");
     let document = format!(
-        "{{\n  \"format\": 1,\n  \"version\": {},\n  \"backend\": \"cranelift\",\n  \"build_type\": \"{}\"\n}}\n",
+        "{{\n  \"format\": 1,\n  \"version\": {},\n  \"backend\": \"{}\",\n  \"build_type\": \"{}\"\n}}\n",
         crate::quote(crate::VERSION),
+        backend,
         kind.as_str()
     );
     let path = PathBuf::from(name);
@@ -538,7 +568,7 @@ mod staging_file_tests {
         std::fs::create_dir(&occupied).unwrap();
         std::fs::write(occupied.join("sentinel"), b"preserve this directory").unwrap();
         let next = AtomicUsize::new(0);
-        write_metadata_with(&output, BuildType::Debug, &next).unwrap();
+        write_metadata_with(&output, BuildType::Debug, "cranelift", &next).unwrap();
         assert_eq!(next.load(Ordering::Relaxed), 2);
         assert_eq!(
             std::fs::read(occupied.join("sentinel")).unwrap(),

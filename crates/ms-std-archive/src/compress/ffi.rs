@@ -1,5 +1,5 @@
 //! C ABI shims for `@std/io/archive.ms` (`msstd_compress_*`). The format is passed by name
-//! (`"gzip"`, `"zlib"`, `"deflate"`); `CompressionFormat` methods pass the matching constant.
+//! (`"gzip"`, `"zlib"`, `"deflate"`); `compress` and `decompress` pass the case name.
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
 

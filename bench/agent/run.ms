@@ -1,6 +1,6 @@
 // Agent-effectiveness benchmark runner. See README.md.
 // Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
-import Command, Flag, FlagKind, command from "@std/cli.ms"
+import Command, Flag, FlagKind, command from "@std/cli/cli.ms"
 import (
     append_file,
     copy,
@@ -11,10 +11,10 @@ import (
     create_directory
 ) from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
-import uuid_v4 from "@std/os/random.ms"
+import arguments from "@std/os/env.ms"
+import uuid_v4 from "@std/random.ms"
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import now from "@std/os/time.ms"
+import now from "@std/time.ms"
 import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
 import Grade, grade, make_workspace, read_log from "./core/workspace.ms"
 import Harness, AgentRun, Usage, run_agent from "./harnesses/harness.ms"

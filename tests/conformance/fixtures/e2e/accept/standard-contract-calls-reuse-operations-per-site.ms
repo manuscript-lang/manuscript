@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
 import expect_true from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 
 type Boom:
     code: Int

@@ -1,15 +1,15 @@
-# `@std/cli.ms`: command trees, flags, positionals, generated help
+# `@std/cli/cli.ms`: command trees, flags, positionals, generated help
 
 ## Summary
 
 - Today a program gets `process.arguments() -> List[String]` and nothing else; every CLI hand-rolls parsing, usage text, and subcommand dispatch (for example `tests/conformance/fixtures/repo/scripts-conformance.ms`).
-- Add `@std/cli.ms`, written entirely in Manuscript (no new Rust, no syntax change): a declarative `Command` tree with nested subcommands, typed flags, positional arguments, and generated help and usage.
+- Add `@std/cli/cli.ms`, written entirely in Manuscript (no new Rust, no syntax change): a declarative `Command` tree with nested subcommands, typed flags, positional arguments, and generated help and usage.
 - Modeled on Go's cobra (command tree, persistent flags, per-command handler) and JS yargs (typed options, defaults, choices, required, generated help).
 - Cost: one stdlib module plus docs and tests. Decision requested: approve the API shape below before implementation.
 
 ## Status
 
-Implemented in the first PR (parse, help, `execute`), 2026-10-26, checked against `main` (no `@std/cli.ms`; `grep -n args stdlib/process.ms` shows only `arguments()`). Direction: "do we a good cli arg parsing api? we should make it easy to build applications that have deep arg hierarchies and structures, cobra from go or yargs in js seems like a good reference".
+Implemented in the first PR (parse, help, `execute`), 2026-10-26, checked against `main` (no `@std/cli/cli.ms`; `grep -n args stdlib/process.ms` shows only `arguments()`). Direction: "do we a good cli arg parsing api? we should make it easy to build applications that have deep arg hierarchies and structures, cobra from go or yargs in js seems like a good reference".
 
 ## Problem
 
@@ -47,7 +47,7 @@ fn main() Int:
 
 Ceremony choices: `Flag` fields are positional-friendly (`name, kind = String, short, default, help`); `Arg(name, help, required, rest)`; the tree is one expression; handlers are plain functions of `T`.
 
-Surface (`stdlib/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli.ms`, recipe in `documentation/learn/common-tasks.md`):
+Surface (`stdlib/cli/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli/cli.ms`, recipe in `documentation/learn/common-tasks.md`):
 
 - `FlagKind` names the language type of the record field, one to one: `Bool` is `Bool`, `String` is `String`, `Int` is `Int`, `Float` is `Float`, `List` is `List[String]`. `Flag.choices` restricts the accepted texts without a separate kind. A flag with neither a default nor `required`, and an optional `Arg`, maps to `Optional[...]`; a `rest` `Arg` maps to `List[String]`. Values are validated at parse time.
 - `Command(name, about, flags, args, children, exec)`; `exec` is the raw `Callable[[Matches], Result[Int, Error]]` for handlers that read `Matches` themselves.
@@ -55,16 +55,16 @@ Surface (`stdlib/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli.ms`, recipe in 
 - `execute` writes help to stdout (0), usage errors plus a hint to stderr (2), and handler errors to stderr (1). `main() -> Int` returns it.
 - Flags: `--name value`, `--name=value`, `-p value`, `--no-name`, `--`. Persistent flags apply to descendants. Clustered shorts and suggestions are deferred.
 - `parse` validates the schema first (`CliError.InvalidSchema`): duplicates, reserved `help`/`-h`, misplaced `rest`/required args, defaults that do not fit their kind.
-- `wiki/stdlib-design/index.md` records that an old `cli` module was merged into `process` (#659). That module only returned argv, which stays `process.arguments()`; `@std/cli.ms` parses a list it is given.
+- `wiki/stdlib-design/index.md` records that an old `cli` module was merged into `process` (#659). That module only returned argv, which stays `process.arguments()`; `@std/cli/cli.ms` parses a list it is given.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `stdlib/cli.ms` | new source-only module with guide comment and per-member doc examples | `tests/e2e/testdata/stdlib/cli.ms` fixture: parsing, errors, help goldens |
+| `stdlib/cli/cli.ms` | new source-only module with guide comment and per-member doc examples | `tests/e2e/testdata/stdlib/cli/cli.ms` fixture: parsing, errors, help goldens |
 | `stdlib/bindings.json`, `ms-rt` | unchanged (no natives) | n/a |
 | `crates/ms-check` build embed | picks up new `.ms` automatically | stdlib check in `make verify` |
-| `documentation/` | tutorial page; reference generated from `stdlib/cli.ms` comments | `make docs-check` |
+| `documentation/` | tutorial page; reference generated from `stdlib/cli/cli.ms` comments | `make docs-check` |
 | `examples/` | one multi-level example app | e2e run |
 | Parser, checker, lowering, runtime, formatter, LSP | unchanged | n/a |
 
@@ -84,7 +84,7 @@ Surface (`stdlib/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli.ms`, recipe in 
 
 One PR: module, fixture, recipe. Follow-ups on demand: clustered shorts, suggestions, typed `Flag[T]` handles.
 
-Checks: `ms test tests/e2e/testdata/stdlib/cli.ms`, `make docs-check`, `make repo-check`, `cargo test --workspace` (runs the documentation example).
+Checks: `ms test tests/e2e/testdata/stdlib/cli/cli.ms`, `make docs-check`, `make repo-check`, `cargo test --workspace` (runs the documentation example).
 
 ## Open questions
 

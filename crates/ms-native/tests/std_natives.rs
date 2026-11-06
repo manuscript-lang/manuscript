@@ -838,7 +838,7 @@ mod process {
                 ),
                 STATUS_INVALID_INPUT
             );
-            let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
+            let mut info = std::mem::MaybeUninit::<ProcessInfoOut>::uninit();
             assert_eq!(
                 msstd_process_info(info.as_mut_ptr(), ErrSlot(core::ptr::null_mut())),
                 STATUS_OK

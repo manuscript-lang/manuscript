@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import environment from "@std/os/process.ms"
+import environment from "@std/os/env.ms"
 import create_directory, read_file, write_file, write_file_bytes from "@std/os/fs.ms"
 import dirname, join from "@std/os/path.ms"
 import fail from "@std/test/test.ms"
@@ -39,7 +39,7 @@ export fn expect_golden(path: String, actual: String) Unit!:
         try write_file(path, actual, replace: true).wait()
         return ok(unit)
 
-    let stored = read_file(path, none).wait()
+    let stored = read_file(path).wait()
     if stored.is_error():
         return fail(
             "golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"
@@ -62,7 +62,7 @@ export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
         try write_file_bytes(path, actual, true).wait()
         return ok(unit)
 
-    let stored = read_file(path, none).wait()
+    let stored = read_file(path).wait()
     if stored.is_error():
         return fail(
             "golden file {path} is missing or unreadable; run with MS_UPDATE_GOLDEN=1 to create it"

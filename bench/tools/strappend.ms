@@ -5,7 +5,7 @@
 import build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms"
 import summarize from "./strappend_table.ms"
 import copy, CopyOptions, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
     try copy(

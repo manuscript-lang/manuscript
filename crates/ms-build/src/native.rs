@@ -118,6 +118,26 @@ fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str>
     ms_clif::llvm_available(build).then_some(level)
 }
 
+/// Native inputs beyond the explicit link files: the selected runtime archive and helper IR.
+/// The caller resolves runtime precedence before forming this inventory.
+pub fn native_inputs(build: &BuildOptions, runtime: &Path) -> Vec<PathBuf> {
+    let mut inputs = vec![runtime.to_path_buf()];
+    if let ms_clif::RtHot::File(path) = &build.rt_hot {
+        inputs.push(path.clone());
+    }
+    inputs
+}
+
+/// The code generator that builds an executable at `profile`: `"llvm"` when release builds
+/// optimize through LLVM, else `"cranelift"`.
+pub fn backend_name(profile: Profile, build: &BuildOptions) -> &'static str {
+    let llvm = match profile {
+        Profile::Debug => None,
+        Profile::Release | Profile::MinSizeRel => llvm_level(build, "3"),
+    };
+    if llvm.is_some() { "llvm" } else { "cranelift" }
+}
+
 /// The runtime archive named by `build.runtime` (`MS_RT_LIB`), which replaces the one embedded in `ms`.
 pub fn runtime_override(build: &BuildOptions) -> Result<Option<PathBuf>, String> {
     let Some(path) = &build.runtime else {
@@ -177,6 +197,24 @@ pub fn build_executable(
     runtime: &Path,
     extra: &[PathBuf],
     build: &BuildOptions,
+) -> Result<(), String> {
+    build_executable_pinned(module, output, profile, runtime, extra, build, None)
+}
+
+/// `build_executable` that also leaves this build's own executable at `pin` before it
+/// replaces `output`. Another build can replace `output` at any moment afterwards, so a
+/// caller that must read back exactly what this build produced reads `pin`.
+/// On macOS the matching debug companion is copied beside `pin` before publication.
+/// The caller owns `pin` and its companion; a reused pin replaces both, including
+/// removing a previous companion when this build has none.
+pub fn build_executable_pinned(
+    module: &mut Module,
+    output: &Path,
+    profile: Profile,
+    runtime: &Path,
+    extra: &[PathBuf],
+    build: &BuildOptions,
+    pin: Option<&Path>,
 ) -> Result<(), String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
@@ -272,10 +310,175 @@ pub fn build_executable(
         cleanup();
         return Err(error.to_string());
     }
+    if let Some(pin) = pin
+        && let Err(error) = pin_artifacts(&staged, pin)
+    {
+        cleanup();
+        return Err(format!("cannot write {}: {error}", pin.display()));
+    }
     publish(&staged, output).map_err(|error| {
         cleanup();
         format!("cannot write {}: {error}", output.display())
     })
+}
+
+/// Capture from the exclusively owned producer, never from the public output.
+fn pin_artifacts(staged: &Path, pin: &Path) -> std::io::Result<()> {
+    let companion = ms_clif::link::debug_companion_path(staged);
+    let destination = ms_clif::link::debug_companion_path(pin);
+    pin_artifacts_with(staged, pin, companion.as_deref(), destination.as_deref())
+}
+
+fn pin_artifacts_with(
+    staged: &Path,
+    pin: &Path,
+    companion: Option<&Path>,
+    destination: Option<&Path>,
+) -> std::io::Result<()> {
+    let _ = std::fs::remove_file(pin);
+    // A caller can reuse a pin after a build with debug information. Absence in
+    // this producer must not leave the previous producer's companion attached.
+    if let Some(destination) = destination
+        && destination.try_exists()?
+    {
+        std::fs::remove_dir_all(destination)?;
+    }
+    let captured = (|| {
+        std::fs::hard_link(staged, pin).or_else(|_| std::fs::copy(staged, pin).map(|_| ()))?;
+        if let (Some(companion), Some(destination)) = (companion, destination)
+            && companion.try_exists()?
+        {
+            crate::cache::copy_tree(companion, destination)?;
+            normalize_debug_resource(destination, staged, pin)?;
+        }
+        Ok(())
+    })();
+    if captured.is_err() {
+        let _ = std::fs::remove_file(pin);
+        if let Some(destination) = destination {
+            let _ = std::fs::remove_dir_all(destination);
+        }
+    }
+    captured
+}
+
+/// Adjacent dSYM lookup checks the executable basename before checking UUIDs.
+fn normalize_debug_resource(companion: &Path, staged: &Path, output: &Path) -> std::io::Result<()> {
+    let resources = companion.join("Contents/Resources/DWARF");
+    let resource = resources.join(staged.file_name().expect("staged filename"));
+    let name = output.file_name().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "executable needs a filename",
+        )
+    })?;
+    let final_resource = resources.join(name);
+    // A previous failed publication may already have normalized this file.
+    if resource != final_resource && resource.exists() {
+        std::fs::rename(resource, &final_resource)?;
+    }
+    if !final_resource.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("missing DWARF resource {}", final_resource.display()),
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod pin_tests {
+    use super::*;
+
+    struct Fixture(PathBuf);
+    impl Fixture {
+        fn new(name: &str) -> Self {
+            let root = std::env::temp_dir().join(format!("ms-pin-{name}-{}", std::process::id()));
+            std::fs::create_dir(&root).unwrap();
+            Self(root)
+        }
+        fn bundle(&self, name: &str, resource: &str, bytes: &[u8]) -> PathBuf {
+            let bundle = self.0.join(name);
+            let dwarf = bundle.join("Contents/Resources/DWARF");
+            std::fs::create_dir_all(&dwarf).unwrap();
+            std::fs::write(dwarf.join(resource), bytes).unwrap();
+            bundle
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn pinned_companion_keeps_producer_bytes_and_normalizes_resource_name() {
+        let fixture = Fixture::new("identity");
+        let staged = fixture.0.join("producer");
+        let pin = fixture.0.join("pinned");
+        std::fs::write(&staged, b"executable A").unwrap();
+        let companion = fixture.bundle("producer.dSYM", "producer", b"debug A UUID A");
+        let destination = fixture.0.join("pinned.dSYM");
+        pin_artifacts_with(&staged, &pin, Some(&companion), Some(&destination)).unwrap();
+        // A later producer replaces the public bundle; the pin is a deep copy.
+        std::fs::write(
+            companion.join("Contents/Resources/DWARF/producer"),
+            b"debug B UUID B",
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read(destination.join("Contents/Resources/DWARF/pinned")).unwrap(),
+            b"debug A UUID A"
+        );
+        assert!(
+            !destination
+                .join("Contents/Resources/DWARF/producer")
+                .exists()
+        );
+        assert_eq!(std::fs::read(pin).unwrap(), b"executable A");
+    }
+
+    #[test]
+    fn reused_pin_replaces_companion_and_represents_absence() {
+        let fixture = Fixture::new("reuse");
+        let staged = fixture.0.join("producer");
+        let pin = fixture.0.join("pinned");
+        let companion = fixture.bundle("producer.dSYM", "producer", b"debug A");
+        let destination = fixture.0.join("pinned.dSYM");
+        std::fs::write(&staged, b"A").unwrap();
+        pin_artifacts_with(&staged, &pin, Some(&companion), Some(&destination)).unwrap();
+        // Replacement changes the inode, as a completed native build does.
+        std::fs::remove_file(&staged).unwrap();
+        std::fs::write(&staged, b"B").unwrap();
+        std::fs::remove_dir_all(&companion).unwrap();
+        pin_artifacts_with(&staged, &pin, Some(&companion), Some(&destination)).unwrap();
+        assert_eq!(std::fs::read(&pin).unwrap(), b"B");
+        assert!(!destination.exists());
+        fixture.bundle("producer.dSYM", "producer", b"debug C");
+        pin_artifacts_with(&staged, &pin, Some(&companion), Some(&destination)).unwrap();
+        assert_eq!(
+            std::fs::read(destination.join("Contents/Resources/DWARF/pinned")).unwrap(),
+            b"debug C"
+        );
+    }
+
+    #[test]
+    fn malformed_companion_removes_partial_pin_without_touching_producer() {
+        let fixture = Fixture::new("capture-error");
+        let staged = fixture.0.join("producer");
+        let pin = fixture.0.join("pinned");
+        std::fs::write(&staged, b"new executable").unwrap();
+        let companion = fixture.bundle("producer.dSYM", "wrong", b"new debug");
+        let destination = fixture.0.join("pinned.dSYM");
+        assert!(pin_artifacts_with(&staged, &pin, Some(&companion), Some(&destination)).is_err());
+        assert!(!pin.exists());
+        assert!(!destination.exists());
+        assert_eq!(std::fs::read(staged).unwrap(), b"new executable");
+        assert_eq!(
+            std::fs::read(companion.join("Contents/Resources/DWARF/wrong")).unwrap(),
+            b"new debug"
+        );
+    }
 }
 
 /// Publish the native debug companion together with the staged executable. If
@@ -287,27 +490,7 @@ pub fn publish(staged: &Path, output: &Path) -> std::io::Result<()> {
     let companion = ms_clif::link::debug_companion_path(staged).expect("same native platform");
     let has_new = companion.exists();
     if has_new {
-        // Adjacent dSYM lookup opens the final executable's basename before
-        // checking UUIDs. dsymutil named this resource after the staged file.
-        let resources = companion.join("Contents/Resources/DWARF");
-        let resource = resources.join(staged.file_name().expect("staged filename"));
-        let name = output.file_name().ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "executable needs a filename",
-            )
-        })?;
-        let final_resource = resources.join(name);
-        // A previous failed publication may already have normalized this file.
-        if resource != final_resource && resource.exists() {
-            std::fs::rename(resource, &final_resource)?;
-        }
-        if !final_resource.is_file() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("missing DWARF resource {}", final_resource.display()),
-            ));
-        }
+        normalize_debug_resource(&companion, staged, output)?;
     }
     let backup = companion.with_extension("previous.dSYM");
     let previous = destination.exists();

@@ -422,13 +422,13 @@ pub struct RecordDef {
 /// A native record type known by identity: the runtime implements its ordering and text.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum NativeRec {
-    /// `Timestamp` of `@std/os/time.ms`.
+    /// `Timestamp` of `@std/time.ms`.
     Timestamp,
-    /// `Instant` of `@std/os/time.ms`.
+    /// `Instant` of `@std/time.ms`.
     Instant,
     /// `Decimal` of `@std/math/decimal.ms`.
     Decimal,
-    /// `Duration` of `@std/os/time.ms`.
+    /// `Duration` of `@std/time.ms`.
     Duration,
 }
 

@@ -1,7 +1,7 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Promise, complete, adopt from "@std/concurrency/promise.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import (
     msrt_promise_new,
     msrt_promise_defer,
@@ -161,8 +161,8 @@ impl Closeable for Waiting[T]:
         return ok(unit)
 
 // A stream's source, moved out so a stage pulls it with a plain call. When a read already holds the source, the
-// stage reads through the stream instead, as before.
-fn source_of[T](input: ReadStream[T]) Source[T]:
+// stage reads through the stream instead, as before. For stream steps that must stop pulling early, such as `take`.
+export fn source_of[T](input: ReadStream[T]) Source[T]:
     var owned = input
     if let source = msrt_cells_take[Source[T]](owned.cell):
         return source

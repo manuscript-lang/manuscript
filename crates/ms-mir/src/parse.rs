@@ -451,6 +451,48 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                 }
                 m.files.push(path);
             }
+            "blob" | "consts" => {
+                let idx: usize = c.num()?.parse().map_err(|_| ParseError {
+                    line: *n,
+                    message: format!("bad {kw} index"),
+                })?;
+                let have = if kw == "blob" {
+                    m.blobs.len()
+                } else {
+                    m.list_consts.len()
+                };
+                if idx != have {
+                    return c.err(format!(
+                        "{kw} entries must be numbered consecutively from 0"
+                    ));
+                }
+                if kw == "blob" {
+                    let hex = c.string()?;
+                    let bytes = (0..hex.len())
+                        .step_by(2)
+                        .map(|i| {
+                            hex.get(i..i + 2)
+                                .and_then(|h| u8::from_str_radix(h, 16).ok())
+                        })
+                        .collect::<Option<Vec<u8>>>();
+                    match bytes {
+                        Some(b) if hex.len() % 2 == 0 => m.blobs.push(b),
+                        _ => return c.err("blob payload must be an even number of hex digits"),
+                    }
+                } else {
+                    c.expect_p('[')?;
+                    let mut items = Vec::new();
+                    while !c.eat_p(']') {
+                        let v = c.num()?.parse().map_err(|_| ParseError {
+                            line: *n,
+                            message: "bad consts element".into(),
+                        })?;
+                        items.push(v);
+                        c.eat_p(',');
+                    }
+                    m.list_consts.push(items);
+                }
+            }
             "extern" => {
                 let name = c.at()?;
                 c.expect_p('(')?;

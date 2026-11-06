@@ -4,10 +4,10 @@
 import stdout from "@std/io/io.ms"
 import stat from "@std/os/fs.ms"
 import run from "@std/os/process.ms"
-import secure_int from "@std/os/random.ms"
+import secure_int from "@std/random.ms"
 import exp, hypot, log, pow from "@std/math/math.ms"
 import lookup from "@std/net/net.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 import promise from "@std/concurrency/promise.ms"
 
 fn square(n: Int) Int:

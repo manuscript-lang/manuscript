@@ -1,0 +1,7 @@
+// Parameters that predate the optional-defaults rule, as `path owner.function parameter`. Each is removed with the
+// change that gives the parameter a default; the list only shrinks.
+stdlib/net/net.ms Network.http_client options
+stdlib/net/net.ms Network.listen_tls options
+stdlib/net/net.ms http_client options
+stdlib/net/net.ms listen_tls options
+stdlib/os/fs.ms glob options

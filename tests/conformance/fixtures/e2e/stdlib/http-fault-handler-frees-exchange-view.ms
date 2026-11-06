@@ -3,7 +3,7 @@
 import FetchOptions, fetch from "@std/net/fetch.ms"
 import HttpExchange from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 
 fn faulting(var exchange: HttpExchange) Unit!:
     let xs: List[Int] = []

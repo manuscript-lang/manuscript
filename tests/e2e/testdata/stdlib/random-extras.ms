@@ -14,7 +14,7 @@ import (
     seeded,
     shuffle,
     weighted_choice
-) from "@std/os/random.ms"
+) from "@std/random.ms"
 
 test "seeded sample picks distinct items":
     var rng = seeded(7)

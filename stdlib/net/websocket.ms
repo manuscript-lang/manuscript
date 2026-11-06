@@ -1,7 +1,7 @@
 import Closeable from "@std/core.ms"
 import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import Promise, deferred, complete from "@std/concurrency/promise.ms"
 import HttpHeaders, headers from "@std/net/http.ms"
 import TlsOptions from "@std/net/tls.ms"

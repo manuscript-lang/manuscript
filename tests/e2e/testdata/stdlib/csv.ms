@@ -42,15 +42,21 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         )
         try expect_equal(stringify(rows, options, bytes - 1), limited_text)
         try expect_equal(stringify([[""]], options, 0), limited_text)
-        try expect_equal((try parse(text, options, 3, 3)), rows)
+        try expect_equal((try parse(text, CsvOptions(",", ending.clone(), 3, 3))), rows)
 
         let limited_rows: List[List[String]]! = error(
             Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
-        try expect_equal(parse(text, options, 2), limited_rows)
-        try expect_equal(parse(text, options, max_cells: 2), limited_rows)
-        try expect_equal(parse("\"\"", options, 0), limited_rows)
-        try expect_equal(parse("\"\"", options, max_cells: 0), limited_rows)
+        try expect_equal(parse(text, CsvOptions(",", ending.clone(), 2)), limited_rows)
+        try expect_equal(
+            parse(text, CsvOptions(",", ending.clone(), max_cells: 2)), limited_rows
+        )
+        try expect_equal(
+            parse("\"\"", CsvOptions(",", ending.clone(), 0)), limited_rows
+        )
+        try expect_equal(
+            parse("\"\"", CsvOptions(",", ending.clone(), max_cells: 0)), limited_rows
+        )
 
 test "CSV preserves whitespace and normalizes quoted CRLF":
     let options = CsvOptions(",", "\n")
@@ -66,7 +72,7 @@ test "CSV quotes delimiters multiline cells and line endings":
     let options = CsvOptions(",", "\n")
     let rows = [["a,b", "say \"hi\"", "line\nbreak"], ["", "é", "last"]]
     let text = try stringify(rows, options)
-    try expect_equal((try parse(text, options, 2, 6)), rows)
+    try expect_equal((try parse(text, CsvOptions(",", "\n", 2, 6))), rows)
 
     let windows = CsvOptions(";", "\r\n")
     try expect_equal((try stringify([["a", "b"]], windows)), "a;b\r\n")
@@ -113,8 +119,8 @@ test "CSV rejects malformed records invalid options and limits":
     let limited: List[List[String]]! = error(
         Error("CSV: limit exceeded", kind: "EOVERFLOW")
     )
-    try expect_equal(parse("a,b\n", options, max_cells: 1), limited)
-    try expect_equal(parse("a\nb\n", options, 1), limited)
+    try expect_equal(parse("a,b\n", CsvOptions(max_cells: 1)), limited)
+    try expect_equal(parse("a\nb\n", CsvOptions(max_rows: 1)), limited)
 
     let invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
     try expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)

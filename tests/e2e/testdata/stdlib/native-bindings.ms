@@ -3,13 +3,13 @@ import PromiseOptions from "@std/concurrency/promise.ms"
 import (
     cpu_usage,
     groups,
-    memory_usage,
     process_info,
     replace,
     resource_usage,
     set_groups,
     set_identity
 ) from "@std/os/process.ms"
+import (memory_usage) from "@std/os/system.ms"
 import (
     FileEvent,
     WatchOptions,
@@ -20,7 +20,7 @@ import (
     write_file
 ) from "@std/os/fs.ms"
 import join from "@std/os/path.ms"
-import milliseconds from "@std/os/time.ms"
+import milliseconds from "@std/time.ms"
 import ReadStream from "@std/io/io.ms"
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:

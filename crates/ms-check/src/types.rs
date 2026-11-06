@@ -283,14 +283,27 @@ impl Type {
     }
 }
 
+/// The most type nodes one rendered type shows. A shared type graph can expand to an
+/// exponentially larger tree, so a deeper or wider remainder prints as `…`.
+const DISPLAY_NODE_BUDGET: usize = 64;
+
 impl fmt::Display for TypeDisplay<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.ty.write_to(self.syms, f)
+        self.ty.write_to(self.syms, f, &mut { DISPLAY_NODE_BUDGET })
     }
 }
 
 impl Type {
-    fn write_to(&self, syms: ms_syntax::Names, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn write_to(
+        &self,
+        syms: ms_syntax::Names,
+        f: &mut fmt::Formatter<'_>,
+        budget: &mut usize,
+    ) -> fmt::Result {
+        if *budget == 0 {
+            return f.write_char('…');
+        }
+        *budget -= 1;
         if self.kind == Kind::Function {
             f.write_str("fn(")?;
             for (i, a) in self.params.iter().enumerate() {
@@ -300,20 +313,23 @@ impl Type {
                 if a.mutable {
                     f.write_str("var ")?;
                 }
-                write!(f, "{}", a.ty.display(syms))?;
+                a.ty.write_to(syms, f, budget)?;
             }
             f.write_str(") ")?;
             return match &self.result {
-                Some(r) => write!(f, "{}", r.display(syms)),
+                Some(r) => r.write_to(syms, f, budget),
                 None => f.write_str("<unknown>"),
             };
         }
         if self.is(Builtin::Optional) && self.args.len() == 1 {
             let inner = &self.args[0];
             return if inner.kind == Kind::Function {
-                write!(f, "({})?", inner.display(syms))
+                f.write_char('(')?;
+                inner.write_to(syms, f, budget)?;
+                f.write_str(")?")
             } else {
-                write!(f, "{}?", inner.display(syms))
+                inner.write_to(syms, f, budget)?;
+                f.write_char('?')
             };
         }
         f.write_str(syms.str(self.name))?;
@@ -323,7 +339,7 @@ impl Type {
                 if i > 0 {
                     f.write_str(", ")?;
                 }
-                write!(f, "{}", a.display(syms))?;
+                a.write_to(syms, f, budget)?;
             }
             f.write_char(']')?;
         }
@@ -428,9 +444,9 @@ impl Type {
         self.is_source_type(syms, "@std/test/test.ms", "TestHooks")
     }
 
-    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
+    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
     pub fn is_time(&self, syms: ms_syntax::Names, name: &str) -> bool {
-        self.is_source_type(syms, "@std/os/time.ms", name)
+        self.is_source_type(syms, "@std/time.ms", name)
     }
 
     /// Whether this is the type `name` declared by the bundled source module `module`.

@@ -8,7 +8,7 @@ A violated precondition (a percentile outside 0 to 100, mismatched list lengths,
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
-// Equal-width counts over a range of values, from `bin_counts`. (`@std/os/metrics.ms` has the recording `Histogram`.)
+// Equal-width counts over a range of values, from `bin_counts`. (`@std/data/histogram.ms` has the recording `Histogram`.)
 export type BinCounts:
     // The least value counted, which is the lower edge of the first bin.
     low: Float

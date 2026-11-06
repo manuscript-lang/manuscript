@@ -12,7 +12,7 @@ import (
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
 import Bytes from "@std/bytes.ms"
 import connect, http_client, listen, listen_tls, serve from "@std/net/net.ms"
-import timestamp from "@std/os/time.ms"
+import timestamp from "@std/time.ms"
 import promise, wait_all from "@std/concurrency/promise.ms"
 import Listener, Connection from "@std/net/net.ms"
 import certificate, private_key from "./support/certificates.ms"

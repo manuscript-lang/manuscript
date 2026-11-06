@@ -1485,3 +1485,45 @@ fn cached_file_build_notices_entry_symlink_retargeting() {
 fn cached_project_build_notices_entry_symlink_retargeting() {
     entry_symlink_build(true);
 }
+
+#[test]
+fn build_output_must_not_replace_an_explicit_link_input() {
+    let dir = scratch("output-is-link-input");
+    let source = write(&dir, "main.ms", MAIN);
+    let object = write(&dir, "support.o", "native object");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let (status, stdout, stderr) = ms(
+        &backend,
+        &["build", &source, "--link", &object, "-o", &object],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(stderr.contains("executable would overwrite"), "{stderr}");
+    assert_eq!(std::fs::read_to_string(&object).unwrap(), "native object");
+}
+
+#[test]
+fn build_metadata_must_not_replace_an_explicit_link_input() {
+    let dir = scratch("metadata-is-link-input");
+    let source = write(&dir, "main.ms", MAIN);
+    let object = write(&dir, "program.ms-build.json", "native object");
+    let output = dir.join("program");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let (status, stdout, stderr) = ms(
+        &backend,
+        &[
+            "build",
+            &source,
+            "--link",
+            &object,
+            "-o",
+            output.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    assert!(
+        stderr.contains("build metadata would overwrite"),
+        "{stderr}"
+    );
+    assert_eq!(std::fs::read_to_string(&object).unwrap(), "native object");
+    assert!(!output.exists());
+}

@@ -8,8 +8,8 @@ and a matching type; flags and arguments without a field, such as inherited pers
 `process.arguments()` from `main`.
 
 ```manuscript
-import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-import arguments from "@std/os/process.ms"
+import Arg, Command, Flag, FlagKind, command from "@std/cli/cli.ms"
+import arguments from "@std/os/env.ms"
 
 type Greeting:
     name: String
@@ -154,7 +154,7 @@ impl Matches:
 /*
 A command or command group: its schema, subcommands and handler.
 
-A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../cookbook/command-line.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
+A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../../cookbook/command-line.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
 */
 export type Command:
     // The word that selects this node; the program name for the root.

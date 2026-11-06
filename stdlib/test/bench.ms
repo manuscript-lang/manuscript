@@ -1,8 +1,8 @@
 import max, min, sqrt from "@std/math/math.ms"
 import stdout from "@std/io/io.ms"
-import environment, set_environment from "@std/os/process.ms"
+import environment, set_environment from "@std/os/env.ms"
 import fail from "@std/test/test.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 
 /*
 Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,

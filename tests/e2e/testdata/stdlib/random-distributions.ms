@@ -1,4 +1,4 @@
-import seeded from "@std/os/random.ms"
+import seeded from "@std/random.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
 
 test "seeded distributions repeat for equal seeds":

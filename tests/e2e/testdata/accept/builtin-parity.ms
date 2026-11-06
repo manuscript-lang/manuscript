@@ -1,7 +1,12 @@
 import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
 import from_int from "@std/math/math.ms"
 import compile from "@std/string.ms"
-import filled, range_by, map_from_entries from "@std/collections/collections.ms"
+import (
+    filled,
+    range_by,
+    RangeOptions,
+    map_from_entries
+) from "@std/collections/collections.ms"
 import Bytes from "@std/bytes.ms"
 
 fn positive(value: Int) Bool:
@@ -49,7 +54,7 @@ fn checked_expansion() Unit!:
         not (
             try common_result(
                 result: range_by(
-                    start: 0, end: 6, step: 2, max_items: 3
+                    start: 0, end: 6, step: 2, options: RangeOptions(max_items: 3)
                 )
             ) == [0, 2, 4]
         )
@@ -58,7 +63,7 @@ fn checked_expansion() Unit!:
         not (
             try common_result(
                 result: range_by(
-                    start: 3, end: -1, step: -1, max_items: 4
+                    start: 3, end: -1, step: -1, options: RangeOptions(max_items: 4)
                 )
             ) == [3, 2, 1, 0]
         )
@@ -344,8 +349,12 @@ test "growth limits and invalid inputs return values":
     let list_invalid: List[Int]! = error(
         Error("collection: invalid input", kind: "EINVAL")
     )
-    range_by(start: 0, end: 4, step: 1, max_items: 3) | try expect_equal(list_limit)
-    range_by(start: 0, end: 4, step: 0, max_items: 3) | try expect_equal(list_invalid)
+    range_by(start: 0, end: 4, step: 1, options: RangeOptions(max_items: 3)) | try expect_equal(
+        list_limit
+    )
+    range_by(start: 0, end: 4, step: 0, options: RangeOptions(max_items: 3)) | try expect_equal(
+        list_invalid
+    )
     filled(value: 1, count: 2, max_items: 1) | try expect_equal(list_limit)
 
 fn parity(value: Int) Int:
