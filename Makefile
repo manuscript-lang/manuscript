@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check unit test build conform e2e leak-check count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -58,6 +58,12 @@ build: runtime
 # CONFORM_SHARD=i/n splits the run.
 conform: build
 	$(MS) run tools/conform.ms
+
+# Backend drift: the run and test phases of the corpus under LLVM (Release default) and under Cranelift
+# (MS_BACKEND=cranelift), compared directly; any differing stdout, stderr or exit status fails.
+drift-check: build
+	cargo build --release --locked -q -p ms-conform
+	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
 
 # Every `tests/e2e/testdata` fixture: accept fixtures pass `ms test`, reject fixtures fail `ms check`.
 # E2E_BUILD_TYPE picks the build type (default Release).
