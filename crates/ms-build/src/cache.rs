@@ -334,6 +334,10 @@ impl Entry {
         restored.is_ok()
     }
 
+    pub fn debug_cached_bytes(&self) -> Vec<u8> {
+        std::fs::read(executable(&self.dir, self.backend)).unwrap_or_default()
+    }
+
     /// Whether the stored executable has the same bytes as `built`.
     pub fn matches(&self, built: &Path) -> bool {
         matches!(

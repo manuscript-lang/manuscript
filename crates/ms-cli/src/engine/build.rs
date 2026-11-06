@@ -465,7 +465,38 @@ impl BuildCache {
             if hit.0.matches(artifact) {
                 return Ok(());
             }
-            return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
+            let detail = {
+                let built = std::fs::read(artifact).unwrap_or_default();
+                let cached = hit.0.debug_cached_bytes();
+                let mut spans: Vec<(usize, usize)> = Vec::new();
+                for (i, (x, y)) in built.iter().zip(cached.iter()).enumerate() {
+                    if x != y {
+                        match spans.last_mut() {
+                            Some((_, end)) if i - *end < 16 => *end = i + 1,
+                            _ => spans.push((i, i + 1)),
+                        }
+                    }
+                }
+                let ctx = |v: &[u8], at: usize, end: usize| {
+                    let lo = at.saturating_sub(40);
+                    let hi = (end + 40).min(v.len()).min(at + 200);
+                    String::from_utf8_lossy(&v[lo..hi]).into_owned()
+                };
+                let shown: Vec<String> = spans
+                    .iter()
+                    .filter(|(at, _)| *at > 256)
+                    .take(6)
+                    .map(|&(at, end)| {
+                        format!(
+                            "@{at}..{end} built={:?} cached={:?}",
+                            ctx(&built, at, end),
+                            ctx(&cached, at, end)
+                        )
+                    })
+                    .collect();
+                format!(" [DEBUGDIFF spans={} {}]", spans.len(), shown.join(" | "))
+            };
+            return Err(format!("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug){detail}"));
         }
         let companion = ms_clif_companion(artifact);
         ms_build::cache::store(
