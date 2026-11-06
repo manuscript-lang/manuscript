@@ -363,6 +363,16 @@ fn macos_arguments(
     };
     if let Some(stage) = &stage {
         command.current_dir(stage);
+        // The debug map also records each object's modification time; fix it for the objects
+        // this build wrote (they are rewritten per build) so it is the same every time.
+        for path in std::iter::once(object).chain(inputs.iter().copied()) {
+            if let Ok(absolute) = std::fs::canonicalize(path)
+                && absolute.starts_with(stage)
+                && let Ok(file) = std::fs::OpenOptions::new().write(true).open(&absolute)
+            {
+                let _ = file.set_modified(std::time::SystemTime::UNIX_EPOCH);
+            }
+        }
     }
     command
         .args(["-flavor", "darwin", "-arch", arch])
