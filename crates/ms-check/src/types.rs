@@ -388,11 +388,6 @@ impl Type {
         self.is_default(name)
     }
 
-    /// The id as text.
-    pub fn id_str(&self, syms: ms_syntax::Names) -> &'static str {
-        syms.str(self.id)
-    }
-
     /// The result of a function type (panics if absent: function types always have one).
     pub fn result_ty(&self) -> Ty {
         self.result.clone().unwrap_or_else(invalid)
@@ -411,11 +406,6 @@ impl Type {
     /// The `<invalid>` marker.
     pub fn is_invalid(&self) -> bool {
         self.kind == Kind::Invalid
-    }
-
-    /// The `<inferred>` placeholder.
-    pub fn is_inferred(&self) -> bool {
-        self.kind == Kind::Inferred
     }
 
     /// The `Never` primitive.
@@ -469,11 +459,6 @@ impl Type {
         };
         opaque.then_some(symbol.module)
     }
-}
-
-/// `std(t, name)` for an optional type.
-pub fn std_is(syms: ms_syntax::Names, t: &Option<Ty>, name: &str) -> bool {
-    t.as_ref().is_some_and(|t| t.is_std(syms, name))
 }
 
 /// A named type slot of a case.
@@ -1135,11 +1120,6 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
         defaults: t.defaults.clone(),
         builtin: t.builtin,
     })
-}
-
-/// `Sub` over an optional type.
-pub fn sub_opt(t: &Option<Ty>, bindings: &Subst) -> Option<Ty> {
-    t.as_ref().map(|t| sub(t, bindings))
 }
 
 /// Erases omission permissions and selects the ordinary required-argument form

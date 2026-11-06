@@ -113,11 +113,6 @@ fn verify_decls(m: &Module, errs: &mut Vec<VerifyError>) {
 }
 
 /// Verifies one function.
-pub fn verify_func(m: &Module, f: &Func) -> Result<(), Vec<VerifyError>> {
-    verify_func_with(m, f, VerifyOptions::default())
-}
-
-/// Verifies one function.
 pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(), Vec<VerifyError>> {
     verify_func_in(m, f, opts, &drop_table(m))
 }
