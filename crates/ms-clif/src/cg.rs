@@ -880,9 +880,9 @@ fn compile_with_isa(
         if !anchored {
             g.anchor = None;
         }
-        let irs = llvm.finish_units(&triple, &pinned, anchored, units);
-        let objects = crate::llvm_obj::compile_all(&irs, opts.llvm.unwrap_or("3"), &opts.build)?;
-        drop(irs);
+        let ir = llvm.finish(&triple, &pinned, anchored);
+        let objects = crate::llvm_obj::compile(&ir, units, opts.llvm.unwrap_or("3"), &opts.build)?;
+        drop(ir);
         let mut dbg = Vec::new();
         let mut scopes: Vec<ms_mir::ir::Scope> = Vec::new();
         for obj in &objects {

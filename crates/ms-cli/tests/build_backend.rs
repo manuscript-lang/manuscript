@@ -179,7 +179,7 @@ fn discovery_state(root: &Path, available: bool) {
     if let Some(tools) = tools().filter(|_| available) {
         let directory = cache.join(pin("llvm-tools"));
         std::fs::create_dir_all(&directory).unwrap();
-        for name in ["opt", "llc", "llvm-link"] {
+        for name in ["opt", "llc", "llvm-link", "llvm-split"] {
             let name = format!("{name}{}", std::env::consts::EXE_SUFFIX);
             common::symlink_file(&tools.join(&name), &directory.join(&name)).unwrap();
         }

@@ -72,7 +72,7 @@ Native builds use `lld` to link the executable. Optimized builds also use LLVM t
 | Tool | Local setting | Cache |
 | --- | --- | --- |
 | Linker | `MS_LLD`: path to a compatible `lld` executable | `<cache>/ms/lld/` |
-| LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc` and `llvm-link` | `<cache>/ms/llvm/` |
+| LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc`, `llvm-link` and `llvm-split` | `<cache>/ms/llvm/` |
 
 To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. `MS_BACKEND=cranelift` skips LLVM optimization; a working linker is still required. If the LLVM download fails, the build falls back to Cranelift. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
 

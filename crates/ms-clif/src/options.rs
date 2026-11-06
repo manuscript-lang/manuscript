@@ -42,7 +42,7 @@ pub struct BuildOptions {
     pub keep_ll: bool,
     /// The runtime helper IR linked into release programs.
     pub rt_hot: RtHot,
-    /// A directory holding `opt`, `llc` and `llvm-link`, instead of the pinned release.
+    /// A directory holding `opt`, `llc`, `llvm-link` and `llvm-split`, instead of the pinned release.
     pub llvm_tools: Option<PathBuf>,
     /// An `lld` to link with, instead of the pinned release.
     pub lld: Option<PathBuf>,

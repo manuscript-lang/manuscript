@@ -1,9 +1,18 @@
-//! Compiles LLVM IR text to an object file.
+//! Compiles LLVM IR text to object files with the bundled `opt`, `llc` and `llvm-link`.
+//!
+//! A small module is one object: link the runtime helpers, optimize, generate code. A large one
+//! is compiled in parallel without giving up cross-function optimization: a single whole-program
+//! inlining pass runs first, `llvm-split` then cuts the result into parts, and each part is
+//! optimized and assembled on its own thread.
 
 use crate::link::llvm_tools;
 use crate::{BuildOptions, Error, RtHot};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// The pass that runs over the whole program before it is split, so a function can be inlined
+/// into callers that end up in other parts. Everything else runs per part.
+const WHOLE_PROGRAM_PASSES: &str = "cgscc(inline)";
 
 /// Whether release builds can use LLVM: the tools are fetched or named by `build.llvm_tools`.
 pub fn available(build: &BuildOptions) -> bool {
@@ -26,6 +35,19 @@ fn run(mut c: Command, what: &str) -> Result<(), Error> {
     )))
 }
 
+/// A fresh scratch directory under the system temp directory.
+fn scratch_dir(label: &str) -> Result<PathBuf, Error> {
+    let dir = std::env::temp_dir().join(format!(
+        "ms-llvm-{}-{}-{label}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos())
+    ));
+    std::fs::create_dir_all(&dir).map_err(|e| Error(format!("create {}: {e}", dir.display())))?;
+    Ok(dir)
+}
+
 /// An optimized object in a scratch directory, removed on drop.
 pub struct LlvmObject {
     dir: PathBuf,
@@ -38,45 +60,46 @@ impl Drop for LlvmObject {
     }
 }
 
-/// Optimizes and assembles each of `irs` at `-O<level>`, one thread per module.
-pub fn compile_all(
-    irs: &[String],
+/// The intermediate files of one compilation; removed on drop.
+struct Workspace(PathBuf);
+
+impl Drop for Workspace {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// The directory of LLVM tools, with a constructor for each command.
+struct Tools(PathBuf);
+
+impl Tools {
+    fn locate(build: &BuildOptions) -> Result<Tools, Error> {
+        let dir = llvm_tools(build)?.ok_or_else(|| {
+            Error(
+                "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt, llc, llvm-link and llvm-split".into(),
+            )
+        })?;
+        Ok(Tools(dir))
+    }
+
+    fn command(&self, name: &str) -> Command {
+        Command::new(
+            self.0
+                .join(format!("{name}{}", std::env::consts::EXE_SUFFIX)),
+        )
+    }
+}
+
+/// Optimizes and assembles `ir` at `-O<level>` into `parts` objects, one per thread. One part is
+/// the whole module; more are cut from it after a whole-program inlining pass.
+pub fn compile(
+    ir: &str,
+    parts: usize,
     level: &str,
     build: &BuildOptions,
 ) -> Result<Vec<LlvmObject>, Error> {
-    if let [ir] = irs {
-        return Ok(vec![compile(ir, level, build, 0)?]);
-    }
-    std::thread::scope(|scope| {
-        let jobs: Vec<_> = irs
-            .iter()
-            .enumerate()
-            .map(|(k, ir)| scope.spawn(move || compile(ir, level, build, k)))
-            .collect();
-        jobs.into_iter()
-            .map(|job| {
-                job.join()
-                    .unwrap_or_else(|_| Err(Error("LLVM compile thread panicked".into())))
-            })
-            .collect()
-    })
-}
-
-/// Optimizes and assembles `ir`, unit number `unit` of the program, at `-O<level>`.
-fn compile(ir: &str, level: &str, build: &BuildOptions, unit: usize) -> Result<LlvmObject, Error> {
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "ms-llvm-{}-{}-{unit}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos())
-    ));
-    std::fs::create_dir_all(&dir).map_err(|e| Error(format!("create {}: {e}", dir.display())))?;
-    let (ll, obj) = (dir.join("m.ll"), dir.join("llvm.o"));
-    let this = LlvmObject {
-        dir: dir.clone(),
-        obj: obj.clone(),
-    };
+    let tools = Tools::locate(build)?;
+    let workspace = Workspace(scratch_dir("work")?);
     // LLVM 20 and later dropped the `Os` pipeline: it is `O2` with `optsize` on every function.
     let sized;
     let ir = if level == "s" {
@@ -87,55 +110,103 @@ fn compile(ir: &str, level: &str, build: &BuildOptions, unit: usize) -> Result<L
     } else {
         ir
     };
-    std::fs::write(&ll, ir).map_err(|e| Error(e.to_string()))?;
+    let source = workspace.0.join("m.ll");
+    std::fs::write(&source, ir).map_err(|e| Error(e.to_string()))?;
     if build.keep_ll {
-        let _ = std::fs::copy(
-            &ll,
-            if unit == 0 {
-                "ms-keep.ll".to_string()
-            } else {
-                format!("ms-keep-{unit}.ll")
-            },
-        );
+        let _ = std::fs::copy(&source, "ms-keep.ll");
     }
-    let tools = llvm_tools(build)?.ok_or_else(|| {
-        Error(
-            "no LLVM tools are available for this platform; set MS_LLVM_TOOLS to a directory with opt, llc and llvm-link".into(),
-        )
-    })?;
+    let program = link_runtime_helpers(&tools, build, &workspace.0, source, ir)?;
+    if parts <= 1 {
+        return Ok(vec![assemble(&tools, level, build, &program)?]);
+    }
+    let pieces = split(&tools, &workspace.0, &program, parts)?;
+    std::thread::scope(|scope| {
+        let jobs: Vec<_> = pieces
+            .iter()
+            .map(|piece| scope.spawn(|| assemble(&tools, level, build, piece)))
+            .collect();
+        jobs.into_iter()
+            .map(|job| {
+                job.join()
+                    .unwrap_or_else(|_| Err(Error("LLVM compile thread panicked".into())))
+            })
+            .collect()
+    })
+}
+
+/// Links the runtime's pure helpers (`ms-rt-hot`) into `program`: only the definitions it calls
+/// are linked, internalized so the archive's copies stay the only exported ones, and LLVM inlines
+/// them. Returns the module to optimize, which is `program` itself when nothing is linked.
+fn link_runtime_helpers(
+    tools: &Tools,
+    build: &BuildOptions,
+    dir: &Path,
+    program: PathBuf,
+    ir: &str,
+) -> Result<PathBuf, Error> {
+    let Some(hot) = hot_library(build, dir, &tools.0, ir) else {
+        return Ok(program);
+    };
+    let linked = dir.join("linked.bc");
+    let mut link = tools.command("llvm-link");
+    link.args(["--only-needed", "--internalize"])
+        .arg(&program)
+        .arg(&hot)
+        .arg("-o")
+        .arg(&linked);
+    run(link, "llvm-link (runtime helpers)")?;
+    Ok(linked)
+}
+
+/// Runs the whole-program pass over `program` and cuts it into `parts` modules of similar size.
+/// Symbols that parts share are made external and renamed by `llvm-split`.
+fn split(tools: &Tools, dir: &Path, program: &Path, parts: usize) -> Result<Vec<PathBuf>, Error> {
+    let inlined = dir.join("inlined.bc");
+    let mut opt = tools.command("opt");
+    opt.arg(format!("-passes={WHOLE_PROGRAM_PASSES}"))
+        .arg(program)
+        .arg("-o")
+        .arg(&inlined);
+    run(opt, "opt (whole-program inlining)")?;
+    let prefix = dir.join("part");
+    let mut split = tools.command("llvm-split");
+    split
+        .arg(format!("-j{parts}"))
+        .arg("-o")
+        .arg(&prefix)
+        .arg(&inlined);
+    run(split, "llvm-split")?;
+    Ok((0..parts).map(|k| dir.join(format!("part{k}"))).collect())
+}
+
+/// Optimizes `input` at `-O<level>` and generates its object.
+fn assemble(
+    tools: &Tools,
+    level: &str,
+    build: &BuildOptions,
+    input: &Path,
+) -> Result<LlvmObject, Error> {
+    let dir = scratch_dir("object")?;
+    let (bitcode, obj) = (dir.join("m.bc"), dir.join("llvm.o"));
+    let this = LlvmObject {
+        dir,
+        obj: obj.clone(),
+    };
     // What `clang -O<level>` does for IR input: the default pipeline, then code generation.
     let (pipeline, codegen) = match level {
         "s" => ("default<O2>", "-O2"),
         _ => (&*format!("default<O{level}>"), &*format!("-O{level}")),
     };
-    let bitcode = dir.join("m.bc");
-    let tool =
-        |name: &str| Command::new(tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)));
-    let mut input = ll;
-    if let Some(hot) = hot_library(build, &dir, &tools, ir) {
-        // The runtime's pure helpers (`ms-rt-hot`): only the definitions the program calls are
-        // linked, internalized so the archive's copies stay the only exported ones, and LLVM
-        // inlines them.
-        let linked = dir.join("linked.bc");
-        let mut link = tool("llvm-link");
-        link.args(["--only-needed", "--internalize"])
-            .arg(&input)
-            .arg(&hot)
-            .arg("-o")
-            .arg(&linked);
-        run(link, "llvm-link (runtime helpers)")?;
-        input = linked;
-    }
-    let mut opt = tool("opt");
+    let mut opt = tools.command("opt");
     if !build.vectorize {
         opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
     }
     opt.arg(format!("-passes={pipeline}"))
-        .arg(&input)
+        .arg(input)
         .arg("-o")
         .arg(&bitcode);
     run(opt, "opt (LLVM optimizer)")?;
-    let mut llc = tool("llc");
+    let mut llc = tools.command("llc");
     // The line tables address every function from one anchor, so code must stay in a single section; without this
     // LLVM 20 and later move functions that only reach a noreturn call into `.text.unlikely.`.
     llc.args([

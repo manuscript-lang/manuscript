@@ -78,7 +78,7 @@ The following details describe the compiler's generated artifacts and platform i
 
 `ms-clif` translates each Cranelift function to LLVM IR (`llvm_ir.rs`) and the pinned `opt` and `llc` (`default<O3>` and `-O3`, `Os` and `-O2` for MinSizeRel) optimize it, then the pinned `lld` links the objects side by side (no `clang` or `cc`); Cranelift still emits data, descriptors and `main`, and Debug builds stay on Cranelift. Fault traces and profiles keep their source frames because the runtime tables are rebuilt from LLVM's DWARF (`llvm_tables.rs`). A function with a loop over list elements, no calls in it and a single way out (no early `return` or `break`, which LLVM cannot vectorize) is also built for x86-64-v3 (AVX2, FMA) on x86-64, and a small dispatcher picks the copy by `msrt_cpu_level`; `MS_CPU_LEVEL=baseline` forces the baseline copy. `llc` aligns loops to 32 bytes on x86-64, so a small loop does not straddle a cache line depending on where the linker places the function. `MS_VECTORIZE=off` disables the loop and SLP vectorizers and the AVX2 copies.
 
-`MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc` and `llvm-link`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
+`MS_BACKEND=cranelift` opts out; `MS_LLVM_TOOLS` names a directory holding `opt`, `llc`, `llvm-link` and `llvm-split`. See [build tools and local setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup) for downloads, caches and fallback behavior. On Windows the IR targets the mingw-w64 triple.
 
 ### Platform linking
 

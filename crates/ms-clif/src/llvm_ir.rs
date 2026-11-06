@@ -1802,13 +1802,9 @@ mod tests {
         m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
         let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
         let text = m.finish(&triple, &HashSet::new(), false);
-        let object = crate::llvm_obj::compile_all(
-            std::slice::from_ref(&text),
-            "3",
-            &crate::BuildOptions::default(),
-        )
-        .unwrap()
-        .remove(0);
+        let object = crate::llvm_obj::compile(&text, 1, "3", &crate::BuildOptions::default())
+            .unwrap()
+            .remove(0);
         let funcs = [crate::cg::LlvmFn {
             id: cranelift_module::FuncId::from_u32(0),
             symbol: "metadata".into(),

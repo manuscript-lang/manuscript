@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::bundled::{FILES, LINKER_ID};
 
-/// The directory holding `opt`, `llc` and `llvm-link`: `build.llvm_tools`, else the pinned release
+/// The directory holding `opt`, `llc`, `llvm-link` and `llvm-split`: `build.llvm_tools`, else the pinned release
 /// fetched into the cache on first use. `None` when there is no such release for this target or it
 /// could not be fetched; release builds then use Cranelift.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
@@ -34,7 +34,7 @@ fn fetch_llvm_tools() -> Result<Option<PathBuf>, String> {
         "llvm",
         super::bundled::LLVM_TOOLS_URL,
         super::bundled::LLVM_TOOLS_SHA256,
-        &["opt", "llc", "llvm-link"],
+        &["opt", "llc", "llvm-link", "llvm-split"],
     )
 }
 
