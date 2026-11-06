@@ -59,3 +59,30 @@ b0:
     let m2 = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert_eq!(text, print_module(&m2));
 }
+
+const CONST_POOLS: &str = r#"module "pools"
+blob 0 "00ff80"
+blob 1 ""
+consts 0 [1, -2, 9223372036854775807]
+entry @main
+fn @main() -> int {
+b0:
+  %data: bytes = bytes 0
+  %n: int = list.len %data
+  ret %n
+}
+"#;
+
+#[test]
+fn constant_pools_survive_text_roundtrip() {
+    let m = parse_module(CONST_POOLS).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(m.blobs, vec![vec![0, 255, 128], vec![]]);
+    assert_eq!(m.list_consts, vec![vec![1, -2, i64::MAX]]);
+    let text = print_module(&m);
+    let m2 = parse_module(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+    verify_module(&m2).unwrap_or_else(|e| panic!("{e:?}"));
+    assert_eq!(m.blobs, m2.blobs);
+    assert_eq!(m.list_consts, m2.list_consts);
+    assert_eq!(text, print_module(&m2));
+}
