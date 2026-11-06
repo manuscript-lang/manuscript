@@ -57,3 +57,33 @@ test "smaller integer conversions preserve their value":
     try expect_equal(small.to_float32().to_float(), -128.0)
     try expect_equal(medium.to_float32().to_float(), 32767.0)
     try expect_equal(large.to_float32().to_float(), 2147483648.0)
+
+type UnsignedRoundingCase:
+    input: UInt64
+    expected: Float
+
+fn convert_unsigned(value: UInt64) Float32:
+    return value.to_float32()
+
+test "unsigned integer to Float32 rounds once at binary32 midpoints":
+    let cases = [
+        UnsignedRoundingCase(4611686293305294849, 4611686568183201792.0),
+        UnsignedRoundingCase(9223372586610589695, 9223372036854775808.0),
+        UnsignedRoundingCase(9223372586610589696, 9223372036854775808.0),
+        UnsignedRoundingCase(9223372586610589697, 9223373136366403584.0),
+        UnsignedRoundingCase(9223373686122217471, 9223373136366403584.0),
+        UnsignedRoundingCase(9223373686122217472, 9223374235878031360.0),
+        UnsignedRoundingCase(9223373686122217473, 9223374235878031360.0),
+        UnsignedRoundingCase(0, 0.0), UnsignedRoundingCase(16777217, 16777216.0),
+        UnsignedRoundingCase(18446744073709551615, 18446744073709551616.0)
+    ]
+
+    for item in cases:
+        try expect_equal(convert_unsigned(item.input).to_float(), item.expected)
+
+        let bound = item.input.to_float32
+        try expect_equal(bound().to_float(), item.expected)
+
+test "constant unsigned integer to Float32 rounds directly":
+    let input: UInt64 = 9223372586610589697
+    try expect_equal(input.to_float32().to_float(), 9223373136366403584.0)
