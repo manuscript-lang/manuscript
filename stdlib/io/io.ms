@@ -182,10 +182,12 @@ impl Sink[Bytes] for DescriptorSink:
     var fn flush() Unit!:
         return adopt[Unit](msrt_streams_flush(self.id)).wait()
 
-    // Hands queued writes to the runtime and releases the descriptor without waiting for delivery.
+    // Waits until the queued bytes have been handed to the descriptor, then releases it. The descriptor is released
+    // even when the wait fails or is cancelled, and that failure is returned.
     var fn close() Unit!:
+        let drained = adopt[Unit](msrt_streams_flush(self.id)).wait()
         msrt_streams_close(self.id)
-        return ok(unit)
+        return drained
 
 // Returns the process standard-input stream.
 export fn stdin() ReadStream[Bytes]:

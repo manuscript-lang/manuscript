@@ -7,7 +7,7 @@ weight = 2
 
 A stream is anything that produces or accepts values over time and can wait. `ReadStream[T]` produces values and `WriteStream[T]` accepts them. Files, sockets, standard input and output, processes, pipes and decoded formats are all one of these with a concrete `T`. Files, sockets and stdio carry `Bytes`; `stdout()` and `stderr()` accept `String`.
 
-There is one stream type for memory and for waiting sources. A source that touches the system waits inside its own `next`, and only the task that called it sleeps, so no item type says "async" and no promise is made per item. Both types are `Closeable`: scope end closes them, and a stream owns what is behind it. Built-in descriptor and pipe ends close without waiting for delivery; a custom source or sink controls its own close behavior and may wait.
+There is one stream type for memory and for waiting sources. A source that touches the system waits inside its own `next`, and only the task that called it sleeps, so no item type says "async" and no promise is made per item. Both types are `Closeable`: scope end closes them, and a stream owns what is behind it. A descriptor write end waits until its queued bytes are delivered before it closes; a custom source or sink controls its own close behavior.
 
 ## Reading
 
