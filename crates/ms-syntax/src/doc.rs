@@ -21,7 +21,10 @@ pub fn comments_above(source: &str, line_start: usize, indent: Option<usize>) ->
             break;
         }
         let text = line.trim();
-        if let Some(rest) = text.strip_prefix("//") {
+        if text.starts_with("// ms:") {
+            // A directive for the tools (`// ms: effect ...`), not documentation.
+            end -= 1;
+        } else if let Some(rest) = text.strip_prefix("//") {
             blocks.push(
                 rest.strip_prefix(' ')
                     .unwrap_or(rest)

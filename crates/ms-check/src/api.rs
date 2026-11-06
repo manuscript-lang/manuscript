@@ -44,6 +44,7 @@ pub mod checker {
 }
 
 pub mod effects {
+    pub use crate::effect_reach::Violation;
     pub use crate::effects::{collection_mutation, is_text_builder};
 }
 

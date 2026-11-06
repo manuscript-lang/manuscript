@@ -195,6 +195,7 @@ impl RawTerminal:
             LineStart: return msstd_terminal_raw_terminal_erase(self.handle.native, 3)
 
 // Reports terminal availability and color support without changing terminal state.
+// ms: effect std.console.read
 export fn terminal_capabilities() TerminalCapabilities:
     return TerminalCapabilities(
         input_is_terminal: msstd_terminal_capabilities_input_is_terminal(),
@@ -206,6 +207,7 @@ export fn terminal_capabilities() TerminalCapabilities:
     )
 
 // Returns the terminal size, or `ENOTTY` when output is redirected.
+// ms: effect std.console.read
 export fn terminal_size() TerminalSize!:
     try msstd_terminal_size_status()
     return ok(
@@ -215,6 +217,8 @@ export fn terminal_size() TerminalSize!:
     )
 
 // Acquires raw input with an optional alternate screen; returns `EBUSY` while another raw terminal is open and `ENOTTY` when streams are redirected.
+// ms: effect std.console.read
+// ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool) RawTerminal!:
     let native = try msstd_terminal_raw_mode(alternate_screen)
     return ok(RawTerminal(handle: RawHandle(native)))

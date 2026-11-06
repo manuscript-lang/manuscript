@@ -2,6 +2,7 @@
 //! semantic errors; lint never changes behavior.
 
 mod bindings;
+mod effects;
 mod faults;
 mod flush;
 mod matches;
@@ -147,6 +148,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "bind the promise and call `wait()` on it, or pass it to `wait_all`; dropping a promise cancels it",
     },
+    Rule {
+        code: "MSL116",
+        family: "Undeclared effect",
+        severity: Severity::Warning,
+        repair: "permit it with `// ms: allow_effect <effect>` above the function or in the file header, or move the call to the caller, or take a capability parameter",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
@@ -210,6 +217,7 @@ pub fn lint_program(syms: ms_syntax::Names, program: &Program) -> Vec<Finding> {
         tasks::lint(syms, module, &mut findings);
         promises::lint(syms, module, &mut findings);
     }
+    effects::lint(syms, program, &mut findings);
     findings.sort_by(|a, b| {
         (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))
     });

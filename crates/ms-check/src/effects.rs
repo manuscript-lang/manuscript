@@ -1,9 +1,12 @@
 //! Conservative potential effects of callables.
 
 use crate::checker::Checker;
+use crate::effect_directives::Lines;
+use crate::effect_reach::{ReachNode, resolve};
 use crate::syntax::*;
 use crate::types::Method;
 use crate::types::*;
+use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -39,6 +42,8 @@ struct EffectNode {
     target: Target,
     effects: BTreeSet<&'static str>,
     edges: HashSet<Name>,
+    /// Position of the first reference to each callee, in source order.
+    edge_pos: Vec<(Name, Pos)>,
 }
 
 struct Scan<'a> {
@@ -47,9 +52,22 @@ struct Scan<'a> {
     ids: &'a HashSet<Name>,
     effects: BTreeSet<&'static str>,
     edges: HashSet<Name>,
+    edge_pos: Vec<(Name, Pos)>,
+    /// Impl method ids per (interface id, concrete type id): what converting a value to the
+    /// interface hands out.
+    conversions: &'a HashMap<(Name, Name), Vec<Name>>,
+    /// Interface-implementing method ids per concrete type id.
+    by_receiver: &'a HashMap<Name, Vec<Name>>,
 }
 
 impl Scan<'_> {
+    /// Records a reference to callable `id`; the first one keeps its position.
+    fn edge(&mut self, id: Name, pos: Pos) {
+        if self.edges.insert(id) {
+            self.edge_pos.push((id, pos));
+        }
+    }
+
     fn info(&self, e: &Expr) -> Option<Info> {
         self.module.facts().info(e.id).cloned()
     }
@@ -63,7 +81,7 @@ impl Scan<'_> {
             if let Some(s) = constructor.symbol()
                 && self.ids.contains(&s.id)
             {
-                self.edges.insert(s.id);
+                self.edge(s.id, e.pos);
             }
             return;
         }
@@ -73,7 +91,7 @@ impl Scan<'_> {
         }
         if let Some(s) = &info.symbol {
             if self.syms.str(s.native).is_empty() {
-                self.edges.insert(s.id);
+                self.edge(s.id, e.pos);
                 return;
             }
             match self.syms.str(s.native) {
@@ -85,7 +103,7 @@ impl Scan<'_> {
             return;
         }
         if let Some(m) = &info.method {
-            self.scan_method_call(m);
+            self.scan_method_call(m, e.pos);
             return;
         }
         self.effects.insert("unknown");
@@ -93,9 +111,9 @@ impl Scan<'_> {
 
     /// Adds the effects of a method call: an edge for source methods, or the
     /// known effects of the native receiver.
-    fn scan_method_call(&mut self, method: &Method) {
+    fn scan_method_call(&mut self, method: &Method, pos: Pos) {
         if !self.syms.str(method.id).is_empty() {
-            self.edges.insert(method.id);
+            self.edge(method.id, pos);
             return;
         }
         let mut receiver = method.receiver.clone();
@@ -140,6 +158,31 @@ impl Visitor for Scan<'_> {
         {
             self.effects.insert("read");
         }
+        // Converting a record to an interface hands out its methods: charge the converter.
+        if let Some(info) = self.info(e)
+            && let (Some(source), Some(target)) = (&info.interface_source, &info.ty)
+            && let Some(ids) = self.conversions.get(&(target.id, source.id))
+        {
+            for id in ids.clone() {
+                if self.ids.contains(&id) {
+                    self.edge(id, e.pos);
+                }
+            }
+        }
+        // A generic call instantiated at a concrete type hands out that type's interface methods.
+        if let Some(info) = self.info(e) {
+            for arg in info.type_args.iter().flatten() {
+                if matches!(arg.kind, Kind::Record | Kind::Alternative)
+                    && let Some(ids) = self.by_receiver.get(&arg.id)
+                {
+                    for id in ids.clone() {
+                        if self.ids.contains(&id) {
+                            self.edge(id, e.pos);
+                        }
+                    }
+                }
+            }
+        }
         // A constant is a nullary function here: each use is a call to it.
         if self.module.facts().const_use.contains(&e.id) {
             self.scan_call(e);
@@ -159,6 +202,16 @@ impl Visitor for Scan<'_> {
                 self.effects.insert("unknown");
             }
             ExprKind::Call { .. } => self.scan_call(e),
+            // A function named as a value, or called by name: authority is charged where it is referenced.
+            ExprKind::Name(_) => {
+                let reference = self
+                    .info(e)
+                    .and_then(|i| i.symbol)
+                    .filter(|s| self.syms.str(s.native).is_empty() && self.ids.contains(&s.id));
+                if let Some(s) = reference {
+                    self.edge(s.id, e.pos);
+                }
+            }
             _ => {}
         }
     }
@@ -184,6 +237,7 @@ impl Checker {
                     target,
                     effects: BTreeSet::new(),
                     edges: HashSet::new(),
+                    edge_pos: Vec::new(),
                 },
             );
         };
@@ -213,6 +267,19 @@ impl Checker {
             }
         }
         let ids: HashSet<Name> = nodes.keys().copied().collect();
+        let mut conversions: HashMap<(Name, Name), Vec<Name>> = HashMap::new();
+        let mut by_receiver: HashMap<Name, Vec<Name>> = HashMap::new();
+        for m in &self.p.methods {
+            if let Some(contract) = &m.contract
+                && !ms_syntax::Names::global().str(m.id).is_empty()
+            {
+                conversions
+                    .entry((contract.id, m.receiver.id))
+                    .or_default()
+                    .push(m.id);
+                by_receiver.entry(m.receiver.id).or_default().push(m.id);
+            }
+        }
         for node in nodes.values_mut() {
             let Some(module) = node.module.clone() else {
                 continue;
@@ -223,6 +290,9 @@ impl Checker {
                 ids: &ids,
                 effects: BTreeSet::new(),
                 edges: HashSet::new(),
+                edge_pos: Vec::new(),
+                conversions: &conversions,
+                by_receiver: &by_receiver,
             };
             match &node.target {
                 Target::Decl(d) => {
@@ -239,12 +309,61 @@ impl Checker {
             }
             node.effects = scan.effects;
             node.edges = scan.edges;
+            node.edge_pos = scan.edge_pos;
         }
+        self.declared_effects(&order, &nodes);
         propagate_effects(&order, &mut nodes);
         self.p.effects = nodes
             .into_iter()
             .map(|(id, node)| (id, node.effects.into_iter().collect()))
             .collect();
+    }
+}
+
+impl Checker {
+    /// Declared effects (`// ms: effect`) per callable and the project callables that reach an
+    /// effect no `// ms: allow_effect` scope permits.
+    fn declared_effects(&mut self, order: &[Name], nodes: &HashMap<Name, EffectNode>) {
+        let mut lines: HashMap<Name, Lines> = HashMap::new();
+        let mut reach: Vec<ReachNode> = Vec::with_capacity(order.len());
+        for id in order {
+            let node = &nodes[id];
+            let Some(module) = &node.module else {
+                continue;
+            };
+            let lines = lines
+                .entry(module.file)
+                .or_insert_with(|| Lines::new(&module.source));
+            let func = match &node.target {
+                Target::Decl(d) => FuncRef::of_decl(d.clone()),
+                Target::Method(f) => f.clone(),
+            };
+            let at = lines.above(func.pos().line);
+            let syms = ms_syntax::Names::global();
+            let file = syms.str(module.file);
+            let name = syms.str(func.name());
+            let label = match &func.decl.decl().kind {
+                DeclKind::Impl(i) if func.method().is_some() => {
+                    format!("{}.{name}", i.receiver.name(syms))
+                }
+                _ => name.to_string(),
+            };
+            reach.push(ReachNode {
+                id: *id,
+                file: module.file,
+                label,
+                pos: func.pos(),
+                project: !crate::stdlib::is_bundled_source(file),
+                entry: name == "main" && func.method().is_none(),
+                declared: at.declared,
+                allow_fn: at.allow,
+                allow_file: lines.header().allow,
+                edges: node.edge_pos.clone(),
+            });
+        }
+        let resolved = resolve(&reach);
+        self.p.declared_effects = resolved.declared;
+        self.p.effect_violations = resolved.violations;
     }
 }
 

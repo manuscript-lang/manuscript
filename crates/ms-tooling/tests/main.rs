@@ -7,6 +7,7 @@ mod guide_pages;
 mod guide_type_display;
 mod labels;
 mod lint_bindings;
+mod lint_effects;
 mod lint_flush;
 mod lint_promises;
 mod lint_rules;

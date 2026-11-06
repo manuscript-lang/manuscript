@@ -13,6 +13,8 @@ mod constants;
 mod constfaults;
 mod contracts;
 mod editor;
+mod effect_directives;
+mod effect_reach;
 mod effects;
 mod exprs;
 mod hints;

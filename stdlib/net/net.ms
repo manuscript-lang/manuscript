@@ -453,12 +453,14 @@ fn host_network() Network:
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 // A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.
+// ms: effect std.net.listen
 export fn bind_datagram(address: String) DatagramSocket!:
     return host_network().bind_datagram(address)
 
 // Starts resolving `address` (`host:port`) and opening a TCP connection to the first reachable permitted address, and returns its promise. With `tls`, it then completes a TLS handshake.
 // `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses or the handshake or verification fails.
 // `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options give EINVAL. `timeout` bounds the whole attempt.
+// ms: effect std.net.connect
 export fn connect(
     address: String,
     tls: TlsOptions? = none,
@@ -473,6 +475,7 @@ export fn connect(
 
 // Starts connecting to the Unix domain socket at `path` and returns its promise.
 // Any restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and an empty path gives EINVAL. `timeout` bounds the attempt.
+// ms: effect std.net.connect
 export fn connect_unix(path: String, timeout: Duration? = none) Promise[Connection]:
     return owned_promise[ConnectArgs, Connection](
         ConnectArgs(address: path.clone(), tls: none, timeout: timeout), connected_unix
@@ -494,16 +497,19 @@ fn connected_unix(args: ConnectArgs) Connection!:
 
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
+// ms: effect std.net.connect
 export fn http_client(options: HttpClientOptions) HttpClient!:
     return host_network().http_client(options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
 // A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
+// ms: effect std.net.listen
 export fn listen(address: String) Listener!:
     return host_network().listen(address)
 
 // Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `timeout` when supplied.
 // `options` must hold a certificate and key, otherwise EINVAL is returned.
+// ms: effect std.net.listen
 export fn listen_tls(
     address: String,
     options: TlsOptions,
@@ -513,6 +519,7 @@ export fn listen_tls(
 
 // Listens on a Unix domain socket at `path`.
 // Any restricted network returns EACCES, and an empty path returns EINVAL.
+// ms: effect std.net.listen
 export fn listen_unix(path: String) Listener!:
     return host_network().listen_unix(path)
 
@@ -521,11 +528,13 @@ Resolves a host name to its IPv4 and IPv6 address strings through the network's 
 More than `options.max_records` addresses returns EOVERFLOW, `options.timeout` bounds the lookup, and a failed lookup returns EIO.
 System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
 */
+// ms: effect std.net.connect
 export fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
     return host_network().lookup(name, options)
 
 // Performs one buffered HTTP request and returns the status, headers, and complete body.
 // Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses.
+// ms: effect std.net.connect
 export fn request(
     method: HttpMethod,
     url: String,
@@ -535,6 +544,7 @@ export fn request(
     return host_network().request(method, url, body, options)
 
 // Performs the same buffered request with a raw bytes body.
+// ms: effect std.net.connect
 export fn request_bytes(
     method: HttpMethod,
     url: String,
@@ -544,6 +554,7 @@ export fn request_bytes(
     return host_network().request_bytes(method, url, body, options)
 
 // Resolves the selected supported category, retaining it in each record.
+// ms: effect std.net.connect
 export fn resolve_dns(
     name: String,
     kind: DnsKind,
@@ -566,6 +577,7 @@ export fn restrict(
 // `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
 // A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its resource cleanup runs. A client that half-closes its end after sending the request counts as disconnected.
 // A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+// ms: effect std.net.listen
 export fn serve(
     address: String,
     handler: fn(var HttpExchange) Unit!,
@@ -677,6 +689,7 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
 // Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
+// ms: effect std.net.connect
 export fn web_socket(
     url: String,
     options: WebSocketOptions = WebSocketOptions()
@@ -685,5 +698,6 @@ export fn web_socket(
 
 // Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
 // The address must be allowed by this network's restrictions, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
+// ms: effect std.net.connect
 export fn with_resolver(address: String) Network!:
     return host_network().with_resolver(address)
