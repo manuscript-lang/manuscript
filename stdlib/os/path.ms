@@ -11,7 +11,7 @@ let name = basename(config)
 ```
 */
 import msstd_path_matches_glob from "@std/internal/path.ms"
-import msstd_system_os_type from "@std/internal/process.ms"
+import Os, os from "@std/os/system.ms"
 
 // Parsed path components using the familiar root, directory, base, extension, and name fields.
 export type PathParts:
@@ -111,7 +111,7 @@ impl PathOperations for Dialect:
         return glob_in(self.windows, path, pattern)
 
 fn host_windows() Bool:
-    return msstd_system_os_type() == "Windows_NT"
+    return os() == Os.Windows
 
 fn invalid_input() Error:
     return Error("path: invalid input", kind: "EINVAL")
