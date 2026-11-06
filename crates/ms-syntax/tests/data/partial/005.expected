@@ -1,4 +1,4 @@
-diag parse 30:8:916 end=- fix=- "unterminated delimiter '(' opened at line 29:72; add the matching ')' before the end of the file"
+diag parse 30:8:913 end=- fix=- "unterminated delimiter '(' opened at line 29:72; add the matching ')' before the end of the file"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
 import 1:1:0 1:22:21 "expect_false" "@std/test/test.ms"
 import 2:1:59 2:8:66 "duration" "@std/time.ms"
