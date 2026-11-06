@@ -20,7 +20,7 @@ import (
     Connection
 ) from "@std/net/net.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import sleep, monotonic from "@std/time.ms"
+import monotonic from "@std/time.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -184,7 +184,6 @@ test "a promise accepts on a listener it owns":
     let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     let a = promise(fn: ok(accept_one(listener)))
-    let _ = sleep(50.milliseconds()).wait()
     var client = try connect(address, 2.seconds()).wait()
     try expect_equal(try a.wait(), 1)
     try client.close()

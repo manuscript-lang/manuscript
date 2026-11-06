@@ -1004,9 +1004,8 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
     let mut line = String::new();
-    BufReader::new(child.stdout.take().unwrap())
-        .read_line(&mut line)
-        .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    stdout.read_line(&mut line).unwrap();
     let address = line.trim().to_string();
     let get = move |path: &'static str| {
         let address = address.clone();
@@ -1024,7 +1023,12 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     };
     let started = Instant::now();
     let slow: Vec<_> = (0..4).map(|_| get("/slow")).collect();
-    std::thread::sleep(Duration::from_millis(100));
+    // Each slow handler reports once it is running, so the quick request arrives while all four wait.
+    for _ in 0..4 {
+        line.clear();
+        stdout.read_line(&mut line).unwrap();
+        assert_eq!(line, "started\n");
+    }
     let quick_started = Instant::now();
     let quick = get("/quick").join().unwrap();
     let quick_took = quick_started.elapsed();
@@ -1063,9 +1067,8 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
     let mut line = String::new();
-    BufReader::new(child.stdout.take().unwrap())
-        .read_line(&mut line)
-        .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    stdout.read_line(&mut line).unwrap();
     let address = line.trim().to_string();
     let get = move |path: &'static str| {
         let address = address.clone();
@@ -1083,7 +1086,12 @@ fn native_http_handlers_run_commands_without_blocking_other_requests() {
     };
     let started = Instant::now();
     let slow: Vec<_> = (0..4).map(|_| get("/slow")).collect();
-    std::thread::sleep(Duration::from_millis(100));
+    // Each slow handler reports once it is running, so the quick request arrives while all four wait.
+    for _ in 0..4 {
+        line.clear();
+        stdout.read_line(&mut line).unwrap();
+        assert_eq!(line, "started\n");
+    }
     let quick_started = Instant::now();
     let quick = get("/quick").join().unwrap();
     let quick_took = quick_started.elapsed();
@@ -1126,9 +1134,8 @@ fn native_http_handler_faults_do_not_leak_per_request() {
         .spawn()
         .unwrap();
     let mut line = String::new();
-    BufReader::new(child.stdout.take().unwrap())
-        .read_line(&mut line)
-        .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    stdout.read_line(&mut line).unwrap();
     let address = line.trim().to_string();
     let rss_kib = |pid: u32| -> u64 {
         let status = std::fs::read_to_string(format!("/proc/{pid}/status")).unwrap();
@@ -1219,7 +1226,6 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     use std::net::TcpStream;
     use std::os::unix::process::ExitStatusExt;
     use std::process::Stdio;
-    use std::time::Duration;
 
     let dir = scratch("native-sigterm-grace");
     let source = write(
@@ -1233,16 +1239,18 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     assert_eq!(status, 0, "{err}");
     let mut child = Command::new(&exe).stdout(Stdio::piped()).spawn().unwrap();
     let mut line = String::new();
-    BufReader::new(child.stdout.take().unwrap())
-        .read_line(&mut line)
-        .unwrap();
+    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    stdout.read_line(&mut line).unwrap();
     let mut stream = TcpStream::connect(line.trim()).unwrap();
     write!(
         stream,
         "GET / HTTP/1.1\r\nHost: a\r\nConnection: close\r\n\r\n"
     )
     .unwrap();
-    std::thread::sleep(Duration::from_millis(200));
+    // The handler announces itself, so the signal arrives while the request is in flight.
+    line.clear();
+    stdout.read_line(&mut line).unwrap();
+    assert_eq!(line, "started\n");
     let killed = Command::new("kill")
         .args(["-TERM", &child.id().to_string()])
         .status()
