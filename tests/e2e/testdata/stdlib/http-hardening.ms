@@ -12,7 +12,7 @@ import (
 ) from "@std/net/http.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
-import read_file, temporary, write_file_bytes from "@std/os/fs.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
 import sleep from "@std/os/time.ms"
 
 fn ok_route(request: HttpRequest) HttpResponse:
@@ -84,7 +84,7 @@ test "serve answers requests while handlers read and write files":
 
     fn io_route(request: HttpRequest) HttpResponse:
         let path = "{root}/slot{request.query}.bin"
-        let wrote = write_file_bytes(path, payload.clone(), replace: true).wait()
+        let wrote = write_file(path, payload.clone(), replace: true).wait()
         if wrote.is_error():
             return HttpResponse(500, headers(), "write".to_bytes())
 

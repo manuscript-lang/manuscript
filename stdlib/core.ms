@@ -1,3 +1,5 @@
+import Bytes from "@std/bytes.ms"
+
 // An expected failure as a plain value: a message, a short code callers can branch on, and string details.
 // Build one like any record: `Error("no such file", kind: "ENOENT", details: {"path": path})`. `T!` is `Result[T, Error]`.
 export type Error:
@@ -54,6 +56,15 @@ print(order)
 export fn print[T](value: T) Unit:
     msrt_io_write_stdout(value.to_string())
     msrt_io_write_stdout("\n")
+
+/*
+Data that a write accepts as either text or raw bytes: `String` and `Bytes` both implement it, so
+`write_file(path, "text")` and `write_file(path, bytes)` use the same function.
+Text is written as its UTF-8 encoding.
+*/
+export interface Writable:
+    // The bytes to write, as a new value the writer may keep.
+    fn as_bytes() Bytes
 
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.

@@ -3,4 +3,4 @@
 stdlib/collections/bitset.ms BitSet.next
 stdlib/log.ms Transport.write_bytes
 stdlib/net/http.ms HttpExchange.write_bytes
-stdlib/os/fs.ms FileHandle.write_bytes
+stdlib/os/fs.ms Directory.next

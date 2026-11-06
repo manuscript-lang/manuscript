@@ -92,7 +92,7 @@ fn export_one(
 
     let reference = "{ch.solution(lang.template)}/{lang.reference()}"
 
-    if stat(reference, true).is_ok():
+    if stat(reference).is_ok():
         put(reference, "{d}/solution/reference")
         write_text(
             "{d}/solution/solve.sh",

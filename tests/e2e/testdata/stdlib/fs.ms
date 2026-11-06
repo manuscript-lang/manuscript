@@ -1,7 +1,10 @@
 import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
 import (
     GlobOptions,
+    OpenMode,
+    OpenOptions,
     PathEntry,
+    Seek,
     copy,
     create_directory,
     glob,
@@ -80,17 +83,14 @@ test "ordinary filesystem misuse retains typed cases":
         Error("filesystem: already exists", kind: "EEXIST")
     )
 
-    var reader = open(path: file, flags: "r", mode: 384) | try expect_ok
+    var reader = open(file, OpenMode.Read, OpenOptions(permissions: 384)) | try expect_ok
     reader.write("x") | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
     reader.seek(
-        offset: -1, origin: 0
-    ) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
-    reader.seek(
-        offset: 0, origin: 3
+        offset: -1, origin: Seek.Start
     ) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
     try reader.close()
 
-    let writer = open(path: file, flags: "a", mode: 384) | try expect_ok
+    let writer = open(file, OpenMode.Append, OpenOptions(permissions: 384)) | try expect_ok
     writer.read(1) | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
     writer.read_file() | try expect_fs_error(
         Error("filesystem: invalid input", kind: "EINVAL")
@@ -112,14 +112,14 @@ test "filesystem scoped temporary directories and bounded file reads":
     write_file(path: path, data: "changed", replace: false).wait() | try expect_fs_error(
         Error("filesystem: already exists", kind: "EEXIST")
     )
-    (stat(path: path, follow_links: true) | try expect_ok).size | try expect_equal(5)
+    (stat(path: path) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
 
-    let opened = open(path: path, flags: "r", mode: 0) | try expect_ok
+    let opened = open(path, OpenMode.Read) | try expect_ok
     var input = opened.reader() | try expect_ok
     (input.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
-    stat(path: directory, follow_links: true) | try expect_fs_error(
+    stat(path: directory) | try expect_fs_error(
         Error("filesystem: file or directory not found", kind: "ENOENT")
     )
 
@@ -127,7 +127,7 @@ test "file handles positional I/O stream adapters and closed errors":
     let temporary = temporary("manuscript-handles-") | try expect_ok
     let path = "{temporary.path()}/data.txt"
     let _written = write_file(path: path, data: "abcdef", replace: false).wait() | try expect_ok
-    var handle = open(path: path, flags: "r+", mode: 384) | try expect_ok
+    var handle = open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384)) | try expect_ok
     handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
         "cd".to_bytes()
     )
@@ -136,7 +136,7 @@ test "file handles positional I/O stream adapters and closed errors":
     let _resized = handle.truncate(4) | try expect_ok
     (handle.stat() | try expect_ok).size | try expect_equal(4)
 
-    let _sought = handle.seek(offset: 0, origin: 0) | try expect_ok
+    let _sought = handle.seek(offset: 0, origin: Seek.Start) | try expect_ok
     let contents = read_all(input: try handle.reader(), max_bytes: none) | try expect_ok
     contents | try expect_equal("aXYd".to_bytes())
     try handle.close()
@@ -153,7 +153,7 @@ test "empty paths are rejected instead of resolving to the working directory":
     create_directory(path: "", recursive: true) | try expect_equal(invalid)
     write_file(path: "", data: "x", replace: true).wait() | try expect_equal(invalid)
 
-    match stat(path: "", follow_links: true):
+    match stat(path: ""):
         ok(_): return fail("stat empty path")
         error(cause):
             try expect_equal(cause, Error("filesystem: invalid input", kind: "EINVAL"))

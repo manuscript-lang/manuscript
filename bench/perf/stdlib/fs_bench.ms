@@ -1,6 +1,6 @@
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import list, read_file, stat, temporary, write_file_bytes from "@std/os/fs.ms"
+import list, read_file, stat, temporary, write_file from "@std/os/fs.ms"
 import create, file_transport from "@std/log.ms"
 
 fn block() Bytes:
@@ -10,7 +10,7 @@ fn block() Bytes:
 fn populate(root: String) Unit:
     let data = block()
     for i in 0..200:
-        let _written = write_file_bytes("{root}/f{i}.bin", data, replace: true).wait()
+        let _written = write_file("{root}/f{i}.bin", data, replace: true).wait()
 
 bench "fs.write_file_64k":
     let data = block()
@@ -21,7 +21,7 @@ bench "fs.write_file_64k":
         fn work() Result[Unit, Error]:
             var n = 0
             for i in 0..200:
-                if write_file_bytes("{root}/f{i}.bin", data, replace: true).wait().is_ok():
+                if write_file("{root}/f{i}.bin", data, replace: true).wait().is_ok():
                     n += 1
             return keep(n)
 

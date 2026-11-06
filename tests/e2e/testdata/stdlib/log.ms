@@ -18,8 +18,9 @@ import (
 import promise from "@std/concurrency/promise.ms"
 import JsonValue from "@std/data/json.ms"
 import (
+    OpenMode,
+    OpenOptions,
     append_file,
-    append_file_bytes,
     open,
     read_file,
     temporary,
@@ -59,7 +60,7 @@ test "logger writes typed escaped records and protects metadata":
 test "non-object values are written under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
-    let file = try open(path: path, flags: "w", mode: 420)
+    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
     let logger = try create(handle_transport(file), timestamp: false)
     try logger.info("n", 7)
     try logger.warn("l", ["a", "b"])
@@ -70,7 +71,7 @@ test "non-object values are written under data":
 test "levels filter methods and function values":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
-    let file = try open(path: path, flags: "w", mode: 420)
+    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
     var logger = try create(handle_transport(file), LogLevel.Warn, false)
     try expect_false(
         (logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn))
@@ -113,7 +114,7 @@ type Request:
 test "child bindings snapshot values and merge without mutating inputs":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
-    let file = try open(path: path, flags: "w", mode: 420)
+    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
     let root = try create(handle_transport(file), timestamp: false)
     var logger = try root.child(Service("api"))
     let child = try logger.child(Request(7))
@@ -216,7 +217,7 @@ impl Transport for CaptureTransport:
             Error("logging: resource is closed", kind: "EBADF")
         )
 
-        match append_file_bytes(self.path, data):
+        match append_file(self.path, data).wait():
             ok(_): return ok(unit)
             error(cause): return error(cause)
 
@@ -265,7 +266,7 @@ test "a logger scope closes its transport and a dropped child closes only its ow
 test "unencodable fields are rejected and fields keep their shape under data":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/out.ndjson"
-    let file = try open(path: path, flags: "w", mode: 420)
+    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
     let logger = try create(handle_transport(file), timestamp: false)
     let invalid: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
     let nan = JsonValue.NumberValue("NaN")
@@ -313,7 +314,7 @@ type Memory:
 
 impl Transport for Memory:
     fn write(data: String) Unit!:
-        return append_file(self.path, data)
+        return append_file(self.path, data).wait()
 
     fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))

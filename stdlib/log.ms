@@ -1,6 +1,14 @@
 import Closeable, Data from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
-import FileHandle, open, remove, rename, stat from "@std/os/fs.ms"
+import (
+    FileHandle,
+    OpenMode,
+    OpenOptions,
+    open,
+    remove,
+    rename,
+    stat
+) from "@std/os/fs.ms"
 import stdout, stdout_bytes from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
@@ -117,7 +125,7 @@ impl Transport for FileTransport:
     fn write_bytes(data: Bytes) Unit!:
         if self.closed: return error(log_closed())
 
-        return self.file.write_bytes(data)
+        return self.file.write(data)
 
     fn flush() Unit!:
         if self.closed: return error(log_closed())
@@ -303,7 +311,7 @@ export fn handle_transport(file: FileHandle) Transport:
 
 // Appends log records to a file at `path`.
 export fn file_transport(path: String) Transport!:
-    match open(path, "a", 420):
+    match open(path, OpenMode.Append, OpenOptions(permissions: 420)):
         ok(file): return ok(handle_transport(file))
         error(cause): return error(cause)
 
@@ -336,12 +344,12 @@ impl Transport for RotatingTransport:
         if self.closed: return error(log_closed())
 
         var size = 0
-        if let existing = stat(self.path, true): size = existing.size
+        if let existing = stat(self.path): size = existing.size
         if size > 0 and size + data.length() > self.max_bytes:
             rotate(self.path, self.keep)
 
-        var file = try open(self.path, "a", 420)
-        let written = file.write_bytes(data)
+        var file = try open(self.path, OpenMode.Append, OpenOptions(permissions: 420))
+        let written = file.write(data)
         file.close().get(none)
         return written
 
@@ -373,7 +381,7 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
         Error("logging: invalid input", kind: "EINVAL")
     )
 
-    match open(path, "a", 420):
+    match open(path, OpenMode.Append, OpenOptions(permissions: 420)):
         ok(file):
             var probe = file
             probe.close().get(none)

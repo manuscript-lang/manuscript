@@ -10,7 +10,7 @@ fn use(path: String) Int:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return 1
         ok(_): return 0
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	11	75	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
@@ -568,8 +568,8 @@ fn f() Int:
 parse	4	13	62	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'fn check() Unit: ...
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'fn check() Unit: ...
     import filesystem from "@std/os/fs.ms"
 fn explicit() Unit:
     let fs = filesystem()
@@ -578,7 +578,7 @@ fn explicit() Unit:
     fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
     fs.create_directory("", true)
     fs.remove("", false)
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	6	46	194	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
 type Override:
@@ -5465,7 +5465,7 @@ fn classify(path: String) String:
     match filesystem().stat(path: path, follow_links: true):
         error(NotFound): return "missing"
         ok(_): return "exists"
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	11	83	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Point:
     x: Int
     y: Int
@@ -5616,7 +5616,7 @@ test "source":
     else:
         return panic("library fixture cwd changed")
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	5	29	149	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	6	19	186	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 resolution	7	39	286	unknown binding panic; add: import panic from "@std/core.ms"
@@ -6283,8 +6283,8 @@ export fn main() Int:
     if fs.rename(source: "sentinel", destination: "") != invalid: return 6
     if fs.remove(path: "child", recursive: true).is_error(): return 7
     return 0
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 resolution	5	31	135	unknown type FileSystemError; declare it with 'type FileSystemError:' / 'enum FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it
 resolution	5	56	160	unknown binding FileSystemError; declare it with 'let FileSystemError = ...' before use, define 'fn FileSystemError(...) T:', or import it from a moduletype Counter:
@@ -6690,7 +6690,7 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         error(_):
             return fail("fixture not found")
-resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
+resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	5	11	137	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"

@@ -10,7 +10,7 @@ type Counter:
 
 impl Closeable for Counter:
     var fn close() Unit!:
-        let _ = append_file(self.log, "{self.value},")
+        let _ = append_file(self.log, "{self.value},").wait()
         return ok(unit)
 
 fn logged(path: String) String:

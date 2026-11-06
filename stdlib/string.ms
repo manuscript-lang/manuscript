@@ -1,3 +1,5 @@
+import Bytes from "@std/bytes.ms"
+import Writable from "@std/core.ms"
 import msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms"
 import msstd_unicode_display_width, msstd_unicode_fields from "@std/internal/unicode.ms"
 import msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms"
@@ -6,6 +8,11 @@ import (
     msstd_regex_capture_spans,
     msstd_regex_capture_all_spans
 ) from "@std/internal/string.ms"
+
+impl Writable for String:
+    // The UTF-8 encoding of the text.
+    fn as_bytes() Bytes:
+        return self.to_bytes()
 
 interface StringAffixCuts:
     fn cut_prefix(prefix: String) String?

@@ -219,7 +219,7 @@ fn collect(dirs: List[String]) Int:
             let path = entry.path.clone()
             let dir = "{jobs}/{path}"
             let leaf = path.split("/").last().get("")
-            let is_dir = stat(dir, true).to_optional().map(fn s: s.directory).get(false)
+            let is_dir = stat(dir).to_optional().map(fn s: s.is_directory()).get(false)
 
             if is_dir and leaf.split("__").length() == 2:
                 if let t = read_trial(dir):

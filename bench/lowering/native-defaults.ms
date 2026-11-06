@@ -4,7 +4,8 @@ import CsvOptions from "@std/data/csv.ms"
 import Bytes from "@std/bytes.ms"
 import CommandOutput, RunOptions, run from "@std/os/process.ms"
 import Duration from "@std/os/time.ms"
-import write_file_bytes from "@std/os/fs.ms"
+import Writable from "@std/core.ms"
+import write_file from "@std/os/fs.ms"
 
 fn direct_explicit(data: Bytes) String: base64_encode(data, false)
 
@@ -34,10 +35,10 @@ fn command_bind() fn(String, List[String], RunOptions) Promise[CommandOutput]:
     return run
 
 fn filesystem_explicit(data: Bytes) Result[Unit, Error]:
-    return write_file_bytes("", data, false).wait()
+    return write_file("", data, false).wait()
 
 fn filesystem_omitted(data: Bytes) Result[Unit, Error]:
-    return write_file_bytes("", data).wait()
+    return write_file("", data).wait()
 
-fn filesystem_bind() fn(String, Bytes, Bool) Promise[Unit]:
-    return write_file_bytes
+fn filesystem_bind() fn(String, Writable, Bool) Promise[Unit]:
+    return write_file

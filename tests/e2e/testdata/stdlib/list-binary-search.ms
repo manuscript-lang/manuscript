@@ -32,7 +32,7 @@ type Counted:
 
 impl Comparable for Counted:
     fn compare(other: Counted) Int:
-        let _ = append_file(self.comparisons, "x")
+        let _ = append_file(self.comparisons, "x").wait()
         return self.value.compare(other.value)
 
 test "binary search reports the first duplicate or insertion position":

@@ -1,4 +1,4 @@
-import Data from "@std/core.ms"
+import Data, Writable from "@std/core.ms"
 import (
     msrt_bytes_join,
     msrt_bytes_values,
@@ -16,6 +16,11 @@ import msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms"
 export extern type Bytes
 
 impl Data for Bytes:
+
+impl Writable for Bytes:
+    // The bytes themselves, copied.
+    fn as_bytes() Bytes:
+        return self.clone()
 
 impl Bytes:
     // Copies byte storage without changing the receiver.

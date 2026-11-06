@@ -14,14 +14,14 @@ impl Closeable for Token:
     var fn close() Unit!:
         if not self.closed:
             self.closed = true
-            try append_file(self.log, "close {self.id}\n")
+            try append_file(self.log, "close {self.id}\n").wait()
             if self.fail:
                 return error(Error("close failed", kind: "ECLOSE"))
 
         return ok(unit)
 
 fn token(log: String, id: Int, fail: Bool = false) Token:
-    append_file(log, "acquire {id}\n").get()
+    append_file(log, "acquire {id}\n").wait().get()
     return Token(log.clone(), id, fail: fail)
 
 fn events(log: String) String:
@@ -31,7 +31,7 @@ fn events(log: String) String:
     return ""
 
 fn check(log: String, action: Int) Int!:
-    try append_file(log, "check\n")
+    try append_file(log, "check\n").wait()
     if action == 1: return error(Error("field failed", kind: "EBODY"))
 
     if action == 2: panic("field fault")
@@ -45,14 +45,14 @@ type Pair:
 
 fn direct(log: String, action: Int) Unit!:
     let value = Pair(token(log, 1), token(log, 2), try check(log, action))
-    try append_file(log, "body {value.code}\n")
+    try append_file(log, "body {value.code}\n").wait()
     return ok(unit)
 
 fn labeled(log: String, action: Int) Unit!:
     let value = Pair(
         second: token(log, 2), first: token(log, 1), code: try check(log, action)
     )
-    try append_file(log, "body {value.code}\n")
+    try append_file(log, "body {value.code}\n").wait()
     return ok(unit)
 
 type Wrapped:
@@ -62,11 +62,11 @@ type Wrapped:
 
 fn wrapped(log: String, action: Int) Unit!:
     let value = Wrapped(token(log, 1), ok(token(log, 2)), try check(log, action))
-    try append_file(log, "body {value.code}\n")
+    try append_file(log, "body {value.code}\n").wait()
     return ok(unit)
 
 fn default_code(log: String, action: Int) Int:
-    append_file(log, "default\n").get()
+    append_file(log, "default\n").wait().get()
     if action == 2: panic("default fault")
     return 42
 
@@ -79,7 +79,7 @@ type Defaulted:
 
 fn defaulted(log: String, action: Int) Unit!:
     let value = Defaulted(log.clone(), token(log, 1), action)
-    try append_file(log, "body {value.code}\n")
+    try append_file(log, "body {value.code}\n").wait()
     return ok(unit)
 
 type Nested:
@@ -91,14 +91,14 @@ fn nested(log: String, action: Int) Unit!:
     let value = Nested(
         Pair(token(log, 1), token(log, 2), 0), token(log, 3), try check(log, action)
     )
-    try append_file(log, "body {value.code}\n")
+    try append_file(log, "body {value.code}\n").wait()
     return ok(unit)
 
 fn moved_binding(log: String, action: Int) Unit!:
     let _outer = token(log, 0)
     let first = token(log, 1)
     let value = Pair(first, token(log, 2), try check(log, action))
-    try append_file(log, "body {value.code}\n")
+    try append_file(log, "body {value.code}\n").wait()
     return ok(unit)
 
 fn inspect(first: Token, value: Pair) Int:

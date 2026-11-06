@@ -12,7 +12,7 @@ impl Source[Int] for Counted:
         return ok(none)
 
     var fn close() Unit!:
-        let _ = append_file(self.log, "r")
+        let _ = append_file(self.log, "r").wait()
         return ok(unit)
 
 impl Sink[Int] for Counted:
@@ -26,7 +26,7 @@ impl Sink[Int] for Counted:
         return 0
 
     var fn close() Unit!:
-        let _ = append_file(self.log, "w")
+        let _ = append_file(self.log, "w").wait()
         return ok(unit)
 
 fn closes(log: String) String:
@@ -38,7 +38,7 @@ fn closes(log: String) String:
 test "a read stream closes its source once":
     let dir = temporary("stream-close-") | try expect_ok
     let log = "{dir.path()}/r.log"
-    let _ = append_file(log, "")
+    let _ = append_file(log, "").wait()
     var by_hand = stream[Int](Counted(log.clone()))
     try by_hand.close()
     try expect_equal(closes(log), "r")
@@ -46,7 +46,7 @@ test "a read stream closes its source once":
 test "a write stream closes its sink once":
     let dir = temporary("stream-close-") | try expect_ok
     let log = "{dir.path()}/w.log"
-    let _ = append_file(log, "")
+    let _ = append_file(log, "").wait()
     var out = writer[Int](Counted(log.clone()))
     try out.close()
     try expect_equal(closes(log), "w")

@@ -7,13 +7,15 @@ import memory_usage from "@std/os/system.ms"
 import arguments from "@std/os/env.ms"
 import random_bytes from "@std/os/random.ms"
 import (
+    OpenMode,
+    OpenOptions,
+    WatchOptions,
     append_file,
     open,
     read_file,
     remove,
     stat,
     watch,
-    WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
 import system_info from "@std/os/system.ms"
@@ -38,7 +40,7 @@ fn exercise(path: String) Unit!:
         )
     )
 
-    let info = try common_result(result: stat(path: path, follow_links: true))
+    let info = try common_result(result: stat(path: path))
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
 
@@ -57,7 +59,7 @@ fn exercise(path: String) Unit!:
     )
     (system_info().cpu_count > 0) | try expect_true
 
-    var file = try common_result(result: open(path: path, flags: "r+", mode: 384))
+    var file = try common_result(result: open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384)))
     let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
     try expect_false(
         not (
@@ -81,7 +83,7 @@ fn exercise(path: String) Unit!:
             )
         )
     )
-    let _appended = try common_result(result: append_file(path: path, data: "!"))
+    let _appended = try common_result(result: append_file(path: path, data: "!").wait())
     let events = try watcher.read().wait()
     events.is_some() | try expect_true
     try watcher.close()

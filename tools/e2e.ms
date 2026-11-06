@@ -250,7 +250,7 @@ export fn main() Int:
 
         for dir in projects.sorted(fn(a: String, b: String) Int: a.compare(b)):
             fixtures.append(dir.clone())
-            if stat(dir.clone(), true).get().directory:
+            if stat(dir.clone()).get().is_directory():
                 for f in ms_files(dir):
                     if base(f).starts_with("reject_"): fixtures.append(f.clone())
 

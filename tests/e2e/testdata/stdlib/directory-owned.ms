@@ -10,7 +10,7 @@ fn leaves_a_temporary() String!:
 
 test "a temporary directory binding is removed when its scope ends":
     let path = leaves_a_temporary() | try expect_ok
-    try expect_false(stat(path, true).is_ok())
+    try expect_false(stat(path).is_ok())
 
 fn counts_entries(path: String) Int!:
     let cursor = try open_directory(path)

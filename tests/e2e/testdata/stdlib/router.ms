@@ -422,7 +422,7 @@ type Sink:
 
 impl Transport for Sink:
     fn write(data: String) Unit!:
-        return append_file(self.path, data)
+        return append_file(self.path, data).wait()
 
     fn write_bytes(data: Bytes) Unit!:
         return self.write(data.decode_utf8().get(""))

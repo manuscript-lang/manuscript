@@ -31,16 +31,10 @@ const WORDS: [&str; 21] = [
     "gid",
 ];
 
-/// `FileInfo` flags and the `KIND_*` bit of `InfoOut.kinds` each reads.
-const KINDS: [(&str, i64); 7] = [
-    ("directory", 1),
-    ("symlink", 2),
-    ("regular", 4),
-    ("fifo", 8),
-    ("socket", 16),
-    ("block_device", 32),
-    ("char_device", 64),
-];
+/// The `KIND_*` bit of `InfoOut.kinds` and the `FileKind` case (declaration order in `fs.ms`:
+/// File, Directory, Symlink, Fifo, Socket, BlockDevice, CharDevice) each selects. The first set bit
+/// wins and an entry with none set is a `File`.
+const KIND_CASES: [(i64, u32); 7] = [(1, 1), (2, 2), (8, 3), (16, 4), (32, 5), (64, 6), (4, 0)];
 
 /// Entries of `FileInfo.exact` backed by an unsigned host counter, in `InfoOut` order.
 const COUNTERS: [&str; 8] = [
@@ -147,18 +141,9 @@ impl FnLower<'_> {
                         .emit(Op::Clone, &[n], Imm::None, Some(MTy::STR))
                         .expect("copy")
                 }
-                "directory" | "symlink" | "regular" | "fifo" | "socket" | "block_device"
-                | "char_device" => {
-                    let bit = KINDS
-                        .iter()
-                        .find(|(n, _)| *n == name)
-                        .map(|(_, b)| *b)
-                        .expect("kind bit");
+                "kind" => {
                     let kinds = word(self, "kinds");
-                    let mask = self.b.iconst(bit);
-                    let hit = self.b.binop(Op::And, kinds, mask);
-                    let zero = self.b.iconst(0);
-                    self.b.icmp(Cc::Ne, hit, zero)
+                    self.file_kind(*ty, kinds)?
                 }
                 "modified" | "accessed" | "changed" => self.timestamp(raw_id, raw, *ty, name)?,
                 "created" => self.created(raw_id, raw, *ty)?,
@@ -168,6 +153,33 @@ impl FnLower<'_> {
             values.push(v);
         }
         Ok(self.b.rec_new(info_id, &values))
+    }
+
+    /// The `FileKind` selected by the `kinds` bit set.
+    fn file_kind(&mut self, ty: MTy, kinds: Value) -> Result<Value, Error> {
+        let TyKind::Alt(a) = self.b.m.types.kind(ty).clone() else {
+            return Err(Error::new("`kind` is not an enum"));
+        };
+        self.kind_from(ty, a, kinds, 0)
+    }
+
+    /// The case for the first of `KIND_CASES[at..]` whose bit is set; the last one is the default.
+    fn kind_from(&mut self, ty: MTy, a: AltId, kinds: Value, at: usize) -> Result<Value, Error> {
+        let (bit, case) = KIND_CASES[at];
+        if at + 1 == KIND_CASES.len() {
+            return Ok(self.b.alt_new(a, case, &[]));
+        }
+        let mask = self.b.iconst(bit);
+        let hit = self.b.binop(Op::And, kinds, mask);
+        let zero = self.b.iconst(0);
+        let set = self.b.icmp(Cc::Ne, hit, zero);
+        let made = self.two_ways(
+            set,
+            ty,
+            &mut |s| Ok(Some(s.b.alt_new(a, case, &[]))),
+            &mut |s| Ok(Some(s.kind_from(ty, a, kinds, at + 1)?)),
+        )?;
+        Ok(made.v)
     }
 
     /// The `Timestamp` of the `<prefix>_seconds` and `<prefix>_nanos` words.

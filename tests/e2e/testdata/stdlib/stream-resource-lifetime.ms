@@ -14,7 +14,7 @@ impl Closeable for Token:
     var fn close() Unit!:
         if not self.closed:
             self.closed = true
-            try append_file(self.log, "close {self.id}\n")
+            try append_file(self.log, "close {self.id}\n").wait()
 
         return ok(unit)
 
@@ -75,7 +75,7 @@ test "iterator keeps resource open through the body and closes once":
 fn use_token(token: Token) Unit!:
     try expect_equal(token.closed, false)
     try expect_equal(events(token.log).contains("close {token.id}\n"), false)
-    try append_file(token.log, "body {token.id}\n")
+    try append_file(token.log, "body {token.id}\n").wait()
     return ok(unit)
 
 fn close_item(input: Token!) Unit!:
@@ -298,7 +298,7 @@ type PendingTokens:
 impl Source[Token] for PendingTokens:
     var fn next() Token?!:
         let token = Token(1, self.log.clone())
-        try append_file(self.log, "ready\n")
+        try append_file(self.log, "ready\n").wait()
 
         let _ = sleep(milliseconds(60000)).wait()
         return ok(token)

@@ -84,7 +84,7 @@ export fn distribution(values: List[Float]) JsonValue:
 
 // One JSON line appended to `path`.
 export fn append_json_line(path: String, value: JsonValue) Unit:
-    append_file(path, stringify(value, none, none).get("") + "\n").get()
+    append_file(path, stringify(value, none, none).get("") + "\n").wait().get()
 
 export fn write_json(path: String, value: JsonValue) Unit:
     write_text(path, dump(value))

@@ -13,7 +13,7 @@ import lines, collect from "@std/io/streams.ms"
 
 fn render() Unit!:
     let template = read_file("template.txt")
-    let file = try open("changes.txt", "r", 0)
+    let file = try open("changes.txt")
     let source = try file.reader() | lines
     let highlights = try collect(source)
         | .filter(fn line: line.starts_with("+ "))

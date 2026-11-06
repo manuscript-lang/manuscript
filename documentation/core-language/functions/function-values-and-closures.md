@@ -126,7 +126,7 @@ import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Bytes!:
     return fn:
-        let file = try open(path: path, flags: "r", mode: 0)
+        let file = try open(path: path)
         return file.read_file(max_bytes: 1048576)
 ```
 

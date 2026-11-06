@@ -1,6 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import environment from "@std/os/env.ms"
-import create_directory, read_file, write_file, write_file_bytes from "@std/os/fs.ms"
+import create_directory, read_file, write_file from "@std/os/fs.ms"
 import dirname, join from "@std/os/path.ms"
 import fail from "@std/test/test.ms"
 
@@ -35,7 +35,7 @@ fn first_difference(expected: String, actual: String) String:
 // The failure names the file and the first differing line.
 export fn expect_golden(path: String, actual: String) Unit!:
     if updating():
-        try create_directory(dirname(path), recursive: true)
+        try create_directory(dirname(path), true)
         try write_file(path, actual, replace: true).wait()
         return ok(unit)
 
@@ -58,8 +58,8 @@ export fn expect_golden(path: String, actual: String) Unit!:
 // Byte-for-byte version of `expect_golden`; the failure names the first differing offset.
 export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
     if updating():
-        try create_directory(dirname(path), recursive: true)
-        try write_file_bytes(path, actual, true).wait()
+        try create_directory(dirname(path), true)
+        try write_file(path, actual, replace: true).wait()
         return ok(unit)
 
     let stored = read_file(path, none).wait()
