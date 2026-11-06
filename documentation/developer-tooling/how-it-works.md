@@ -43,7 +43,7 @@ On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. Bu
 
 Share the executable for the platform you built on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
 
-The adjacent `my-app.ms-build.json` holds build identity and source information; it is not needed to run the executable. Keep source and debug artifacts when you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
+The adjacent `my-app.ms-build.json` holds the compiler version, build level and backend; it is not needed to run the executable. Its `backend` is `llvm` when LLVM compiled the program's functions, or `cranelift` otherwise. A cached build retains the backend that produced the stored executable. Keep source and debug artifacts when you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
 
 ## Check a change before sharing it {#one-binary}
 

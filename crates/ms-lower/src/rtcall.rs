@@ -9,7 +9,7 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
-use ms_check::types as ct;
+use ms_check::api::types as ct;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -445,7 +445,7 @@ impl FnLower<'_> {
                     // The handler's type names the exchange interface: `fn(var HttpExchange) Unit!`.
                     let exchange = decl
                         .iter()
-                        .find(|d| d.ty.kind == ms_check::types::Kind::Function)
+                        .find(|d| d.ty.kind == ms_check::api::types::Kind::Function)
                         .and_then(|d| d.ty.params.first().map(|q| q.ty.clone()))
                         .ok_or_else(|| Error::new(format!("{sym}: handler without an exchange")))?;
                     let exchange = self.mty(&exchange)?;
@@ -1390,7 +1390,7 @@ mod tests {
     fn kept_callbacks_have_a_closure_parameter() {
         for (sym, params, ..) in SYMBOLS {
             let marked = params.iter().any(|p| p.3);
-            let listed = ms_check::stdlib::keeps_callbacks(&format!("extern:{sym}"));
+            let listed = ms_check::api::stdlib::keeps_callbacks(&format!("extern:{sym}"));
             assert_eq!(marked, listed, "{sym}");
         }
     }

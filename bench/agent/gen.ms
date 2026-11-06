@@ -2,7 +2,7 @@
 // Usage (from the repository root): ms run bench/agent/gen.ms -- <c03|c05|...|all>
 // Large challenges (c51 to c60) need `go` on PATH: their expected outputs come from the Go oracle in oracle/*.ref.
 import stderr from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import gen_c03 from "./challenges/c03-csv-group-sum/gen.ms"
 import gen_c05 from "./challenges/c05-calculator/gen.ms"
 import gen_c09 from "./challenges/c09-ciphers/gen.ms"

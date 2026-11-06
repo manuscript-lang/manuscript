@@ -161,11 +161,6 @@ impl<'a> ForwardPositions<'a> {
     }
 }
 
-/// The position just past the last byte.
-pub fn end_position(source: &str) -> Position {
-    position(source, source.len())
-}
-
 /// Resolves an LSP position to a byte offset, rejecting positions that split a
 /// surrogate pair or fall outside the document.
 pub fn offset(source: &str, p: Position) -> Result<usize, &'static str> {

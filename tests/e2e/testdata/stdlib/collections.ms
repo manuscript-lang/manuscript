@@ -1,6 +1,7 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 import (
     range_by,
+    RangeOptions,
     filled,
     map_from_entries,
     flatten
@@ -95,7 +96,9 @@ test "set algebra removes duplicates and preserves values":
     try expect_false(not left.is_disjoint_from(([3]).to_set()))
 
 test "collection constructors validate bounds and exact limits":
-    try expect_equal((try range_by(3, -1, -1, 4)), [3, 2, 1, 0])
+    try expect_equal(
+        (try range_by(3, -1, -1, RangeOptions(max_items: 4))), [3, 2, 1, 0]
+    )
     try expect_equal((try filled("x", 2)), ["x", "x"])
 
     let invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
@@ -104,21 +107,29 @@ test "collection constructors validate bounds and exact limits":
     let limited: List[Int]! = error(
         Error("collection: limit exceeded", kind: "EOVERFLOW")
     )
-    try expect_equal(range_by(0, 3, 1, 2), limited)
+    try expect_equal(range_by(0, 3, 1, RangeOptions(max_items: 2)), limited)
 
 test "stepped ranges handle full-width spans and minimum negative steps":
     let minimum = -9223372036854775808
     let maximum = 9223372036854775807
     try expect_equal(
-        (try range_by(minimum, maximum, maximum, 3)), [minimum, -1, (maximum - 1)]
+        (try range_by(minimum, maximum, maximum, RangeOptions(max_items: 3))),
+        [minimum, -1, (maximum - 1)]
     )
-    try expect_equal((try range_by(maximum, minimum, minimum, 2)), [maximum, -1])
-    try expect_equal((try range_by(0, minimum, minimum, 1)), [0])
+    try expect_equal(
+        (try range_by(maximum, minimum, minimum, RangeOptions(max_items: 2))),
+        [maximum, -1]
+    )
+    try expect_equal(
+        (try range_by(0, minimum, minimum, RangeOptions(max_items: 1))), [0]
+    )
 
     let limited: List[Int]! = error(
         Error("collection: limit exceeded", kind: "EOVERFLOW")
     )
-    try expect_equal(range_by(minimum, maximum, maximum, 2), limited)
+    try expect_equal(
+        range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)), limited
+    )
 
 test "range counts up by one":
     try expect_equal((0..4), [0, 1, 2, 3])

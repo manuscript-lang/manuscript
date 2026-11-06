@@ -4,31 +4,32 @@
 //! (see [`syntax::Facts`]). Types are [`types::Ty`], reference-counted and
 //! immutable apart from a type variable's bounds and default.
 
+pub mod api;
 mod bundled;
-pub mod callbacks;
-pub mod calls;
-pub mod checker;
-pub mod constants;
-pub mod constfaults;
-pub mod contracts;
-pub mod editor;
-pub mod effects;
-pub mod exprs;
-pub mod hints;
-pub mod hir;
-pub mod inference;
-pub mod native;
-pub mod native_defaults;
-pub mod ownership;
-pub mod passes;
-pub mod prelude_imports;
-pub mod recursion;
-pub mod stdlib;
-pub mod stmts;
-pub mod suggestions;
-pub mod syntax;
-pub mod types;
-pub mod tytable;
+mod callbacks;
+mod calls;
+mod checker;
+mod constants;
+mod constfaults;
+mod contracts;
+mod editor;
+mod effects;
+mod exprs;
+mod hints;
+mod hir;
+mod inference;
+mod native;
+mod native_defaults;
+mod ownership;
+mod passes;
+mod prelude_imports;
+mod recursion;
+mod stdlib;
+mod stmts;
+mod suggestions;
+mod syntax;
+mod types;
+mod tytable;
 mod unused;
 
 #[cfg(test)]
@@ -38,7 +39,13 @@ mod record_fields_tests;
 #[cfg(test)]
 mod type_argument_defaults_tests;
 #[cfg(test)]
+mod type_classification_tests;
+#[cfg(test)]
 mod type_graph_tests;
+#[cfg(test)]
+mod type_keys;
+#[cfg(test)]
+mod type_substitution_tests;
 #[cfg(test)]
 mod tytable_tests;
 

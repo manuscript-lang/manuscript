@@ -3,7 +3,7 @@
 // conform: timeout=120
 import expect_equal from "@std/test/test.ms"
 import owned_promise, Promise, wait_all from "@std/concurrency/promise.ms"
-import sleep, seconds, milliseconds from "@std/os/time.ms"
+import sleep, seconds, milliseconds from "@std/time.ms"
 import Bytes from "@std/bytes.ms"
 import read_file, remove, temporary_directory, write_file from "@std/os/fs.ms"
 

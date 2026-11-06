@@ -1,6 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import Sink, WriteStream, stdout, writer from "@std/io/io.ms"
-import Promise from "@std/concurrency/promise.ms"
+import Sink, WriteStream, stdout from "@std/io/io.ms"
 import json_writer from "@std/data/json.ms"
 import csv_writer, CsvOptions from "@std/data/csv.ms"
 import compile, render_to, to_data from "@std/text/template.ms"
@@ -14,20 +13,17 @@ type Echo:
     out: WriteStream[String]
 
 impl Sink[Bytes] for Echo:
-    var fn put(value: Bytes) Unit!:
+    var fn write(value: Bytes) Unit!:
         return self.out.write(value.decode_utf8().get(""))
 
-    var fn drain() Promise[Unit]:
+    var fn flush() Unit!:
         return self.out.flush()
-
-    fn buffered() Int:
-        return self.out.buffered()
 
     var fn close() Unit!:
         return ok(unit)
 
 fn echo() WriteStream[Bytes]:
-    return writer[Bytes](Echo(stdout()))
+    return WriteStream[Bytes](Echo(stdout()))
 
 fn run() Unit!:
     var points = json_writer[Point](echo())

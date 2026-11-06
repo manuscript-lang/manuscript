@@ -12,20 +12,22 @@ type Base64Encoding:
     tail: Bytes
 
 impl Transform[Bytes, String] for Base64Encoding:
-    var fn step(value: Bytes, var out: WriteStream[String]) Unit!:
+    var fn step(value: Bytes, var out: List[String]) Unit!:
         let data = self.tail.concat(value)
         let whole = data.length() - data.length() % 3
         self.tail = try data.slice(whole, data.length())
         if whole == 0: return ok(unit)
 
-        return out.write(base64_encode(try data.slice(0, whole), self.url_safe))
+        out.append(base64_encode(try data.slice(0, whole), self.url_safe))
+        return ok(unit)
 
-    var fn finish(var out: WriteStream[String]) Unit!:
+    var fn finish(var out: List[String]) Unit!:
         if self.tail.is_empty(): return ok(unit)
 
         let last = self.tail.clone()
         self.tail = join([])
-        return out.write(base64_encode(last, self.url_safe))
+        out.append(base64_encode(last, self.url_safe))
+        return ok(unit)
 
 // Encodes a byte stream as Base64 text chunks that concatenate to the whole encoding, with padding at the end.
 // Set `url_safe: true` for the URL-safe alphabet. Closing the result closes `input`.
@@ -44,7 +46,7 @@ type Base64Decoding:
     ended: Bool = false
 
 impl Transform[String, Bytes] for Base64Decoding:
-    var fn step(value: String, var out: WriteStream[Bytes]) Unit!:
+    var fn step(value: String, var out: List[Bytes]) Unit!:
         if self.ended and not value.is_empty(): return error(
             Error("encoding: invalid data", kind: "EBADMSG")
         )
@@ -55,7 +57,7 @@ impl Transform[String, Bytes] for Base64Decoding:
         if whole == 0: return ok(unit)
 
         let part = text.slice(0, whole).get("")
-        let decoded = try base64_decode(part, self.url_safe, none)
+        let decoded = try base64_decode(part, self.url_safe)
 
         // Every complete group decodes to three bytes unless the last group has padding.
         if decoded.length() != whole / 4 * 3:
@@ -65,14 +67,16 @@ impl Transform[String, Bytes] for Base64Decoding:
                 self.tail = ""
                 return error(Error("encoding: invalid data", kind: "EBADMSG"))
 
-        return out.write(decoded)
+        out.append(decoded)
+        return ok(unit)
 
-    var fn finish(var out: WriteStream[Bytes]) Unit!:
+    var fn finish(var out: List[Bytes]) Unit!:
         let last = self.tail.clone()
         self.tail = ""
         if last == "": return ok(unit)
 
-        return out.write(try base64_decode(last, self.url_safe, none))
+        out.append(try base64_decode(last, self.url_safe))
+        return ok(unit)
 
 // Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`; text that ends
 // inside a group fails at the end of the stream. Closing the result closes `input`.
@@ -86,10 +90,11 @@ type HexEncoding:
     unused: Int
 
 impl Transform[Bytes, String] for HexEncoding:
-    var fn step(value: Bytes, var out: WriteStream[String]) Unit!:
-        return out.write(hex_encode(value))
+    var fn step(value: Bytes, var out: List[String]) Unit!:
+        out.append(hex_encode(value))
+        return ok(unit)
 
-    var fn finish(var out: WriteStream[String]) Unit!:
+    var fn finish(var out: List[String]) Unit!:
         return ok(unit)
 
 // Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes `input`.
@@ -101,20 +106,22 @@ type HexDecoding:
     tail: String
 
 impl Transform[String, Bytes] for HexDecoding:
-    var fn step(value: String, var out: WriteStream[Bytes]) Unit!:
+    var fn step(value: String, var out: List[Bytes]) Unit!:
         let text = self.tail.concat(value)
         let whole = text.length() - text.length() % 2
         self.tail = text.slice(whole, text.length()).get("")
         if whole == 0: return ok(unit)
 
-        return out.write(try hex_decode(text.slice(0, whole).get(""), none))
+        out.append(try hex_decode(text.slice(0, whole).get("")))
+        return ok(unit)
 
-    var fn finish(var out: WriteStream[Bytes]) Unit!:
+    var fn finish(var out: List[Bytes]) Unit!:
         let last = self.tail.clone()
         self.tail = ""
         if last == "": return ok(unit)
 
-        return out.write(try hex_decode(last, none))
+        out.append(try hex_decode(last))
+        return ok(unit)
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside a pair, fails the
 // read with `EBADMSG`. Closing the result closes `input`.

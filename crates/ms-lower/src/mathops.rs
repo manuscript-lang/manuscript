@@ -5,9 +5,9 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_check::hir::CallView;
-use ms_check::types as ct;
-use ms_check::types::Builtin;
+use ms_check::api::hir::CallView;
+use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};

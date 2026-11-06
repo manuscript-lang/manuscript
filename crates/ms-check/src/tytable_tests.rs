@@ -1,4 +1,5 @@
 //! Interned type ids agree with the rendered keys they replace.
+use crate::type_keys::{lowering_key, type_key};
 use crate::types::*;
 use crate::tytable::TyTable;
 use std::collections::HashSet;

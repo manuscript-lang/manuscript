@@ -1,7 +1,7 @@
 // conform: tags=control-flow,diagnostics,modules,stdlib-http,stdlib-io,stdlib-net,stdlib-process,tier-io,try-result
 // conform: phase=check
 // conform: origin=documentation/learn/common-tasks.md:240
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import HttpMethod, headers from "@std/net/http.ms"
 import request from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
@@ -20,7 +20,7 @@ fn run() Result[Unit, Error]:
         Error("HTTP: invalid data", kind: "EBADMSG")
     )
     try stdout().write(text)
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():

@@ -3,7 +3,7 @@
 
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
-use ms_check::types::n;
+use ms_check::api::types::n;
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;

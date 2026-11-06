@@ -12,7 +12,7 @@ import (
     write_text
 ) from "./lib.ms"
 import summarize from "./programs_table.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn lines_of(version: String, content: String) List[String]:
     return content.split("\n").filter(fn l: l != "").map(fn l: "{version} {l}")

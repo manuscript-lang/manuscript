@@ -13,7 +13,7 @@ Save as `get.ms`. `fetch` buffers the body, `check_status()` rejects statuses ou
 
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import fetch, FetchOptions from "@std/net/fetch.ms"
 import stdout from "@std/io/io.ms"
 
@@ -23,7 +23,7 @@ fn run() Result[Unit, Error]:
     try response.check_status()
     let text = try response.text()
     try stdout().write(text)
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():

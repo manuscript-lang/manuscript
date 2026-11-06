@@ -9,7 +9,7 @@ import (
     change_directory,
     set_environment,
     working_directory
-) from "@std/os/process.ms"
+) from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn supported(target_os: String, target_arch: String) Bool:

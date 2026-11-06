@@ -48,7 +48,7 @@ let _ = file.close()
 slow_work(head)
 ```
 
-`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush().wait()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.
+`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.
 
 ## Close a resource explicitly
 
@@ -63,11 +63,11 @@ Flush before closing when you need the destination to catch up or need to handle
 import WriteStream from "@std/io/io.ms"
 
 fn finish(var output: WriteStream[String]) Unit!:
-    try output.flush().wait()
+    try output.flush()
     return output.close()
 ```
 
-`flush().wait()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.
+`flush()` follows the destination’s backpressure rule. File and socket streams wait for queued bytes to drain; a pipe waits until its queue is at or below `capacity`, which need not be empty. Closing a built-in pipe writer releases that writing end without waiting for the reader. A custom sink supplies its own close behavior and may wait. The owner still performs its scope-end close, which is harmless because close is idempotent.
 
 Choose the operation that confirms your work: `close()` returns a `Result` and a failed scope-end close is returned or faults; explicit commit, finish, or flush operations report expected errors with `Result`. A value that is not a resource, such as a `List[Int]` or a closure that captures none, adds no close behavior.
 

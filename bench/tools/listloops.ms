@@ -4,7 +4,7 @@
 // Usage: ms run bench/tools/listloops.ms [-- repeats]; MS and CC pick the tools.
 import build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms"
 import copy, CopyOptions, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
     try copy(

@@ -45,7 +45,7 @@ fn small() String:
     doc.add("params", jobject(params))
     doc.add("tags", jlist([jstr("a"), jstr("b"), jstr("c")]))
     doc.add("user", jobject(user))
-    return stringify(jobject(doc), none, none).get("") + "\n"
+    return stringify(jobject(doc)).get("") + "\n"
 
 fn fetch_corpora() Unit!:
     let _dir = create_directory(DATA, recursive: true)

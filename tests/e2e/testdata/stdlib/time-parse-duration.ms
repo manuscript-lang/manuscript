@@ -1,5 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import Duration, parse_duration, nanoseconds from "@std/os/time.ms"
+import Duration, parse_duration, nanoseconds from "@std/time.ms"
 
 test "duration parser accepts units, signs, components and Unicode microseconds":
     let examples = [

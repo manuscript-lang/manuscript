@@ -1,8 +1,8 @@
 //! Analysis reuse is checked by semantic lint invocations, not wall time.
+use crate::support;
 use ms_lsp::json::{Json, obj};
 use ms_lsp::lint::{Lint, LintFinding, Tooling};
 use std::cell::Cell;
-mod support;
 use support::{Script, Workspace};
 
 #[derive(Default)]

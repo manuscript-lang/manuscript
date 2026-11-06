@@ -1,6 +1,6 @@
 //! Workspace scan failures retain the same reference order as successful scans.
 
-mod support;
+use crate::support;
 
 use ms_lsp::analysis::{Document, Documents, Options, compile_source};
 use ms_lsp::json::Json;
@@ -129,12 +129,12 @@ fn batched_reference_ranges_match_individual_locations() {
             ms_lsp::nav::occurrence_at(syms, &analysis, &d, at, analysis.occurrence_index(syms))
                 .unwrap();
         let mut standard = selected.clone();
-        standard.file = ms_check::types::n("@std/intrinsics.ms");
+        standard.file = ms_check::api::types::n("@std/intrinsics.ms");
         standard.offset = 0;
         standard.end = 1;
         standard.declaration = false;
         let mut missing = standard.clone();
-        missing.file = ms_check::types::n("absent.ms");
+        missing.file = ms_check::api::types::n("absent.ms");
         let mut clipped = selected.clone();
         clipped.offset = source.len() + 10;
         clipped.end = source.len() + 20;

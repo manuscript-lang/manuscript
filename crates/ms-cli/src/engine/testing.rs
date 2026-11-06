@@ -311,18 +311,19 @@ fn run<L: Lower>(
     } else {
         Target::Tests
     };
-    let mut compiled = match compile_target(syms, backend, &request.filename, target) {
-        Ok(compiled) => compiled,
-        Err(failure) => {
-            if !structured {
-                return Ok(failure.report(io));
+    let mut compiled =
+        match compile_target(syms, backend, &request.filename, &request.extra, target) {
+            Ok(compiled) => compiled,
+            Err(failure) => {
+                if !structured {
+                    return Ok(failure.report(io));
+                }
+                let mut document = Document::new(&failure.source_root, bench);
+                document.reason = Some("compile_error".into());
+                document.diagnostics = failure.command_diagnostics();
+                return Ok(emit_json(io, &document.to_json(), 1));
             }
-            let mut document = Document::new(&failure.source_root, bench);
-            document.reason = Some("compile_error".into());
-            document.diagnostics = failure.command_diagnostics();
-            return Ok(emit_json(io, &document.to_json(), 1));
-        }
-    };
+        };
     let mut document = Document::new(&compiled.source_root, bench);
     let failed_early = |io: &mut Io, document: &mut Document, phase: &str, message: &str| {
         let _ = writeln!(io.stderr, "{message}");

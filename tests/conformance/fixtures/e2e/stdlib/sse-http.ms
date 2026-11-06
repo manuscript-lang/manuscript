@@ -32,13 +32,13 @@ test "HTTP response bodies decode as SSE and close with the reader":
     let {metadata: head, body: payload} = response
     let status = head.status
     var events = sse_events(payload)
-    let first = (try events.read().wait()).get()
-    let second = (try events.read().wait()).get()
+    let first = (try events.next()).get()
+    let second = (try events.next()).get()
     if first.event != "greet" or first.data != "h\u{e9}!": return fail(
         "first event {first.data}"
     )
 
     try expect_false(second.event != "message" or second.data != "second")
-    try expect_false((try events.read().wait()).is_some())
+    try expect_false((try events.next()).is_some())
     try events.close()
     try expect_equal(status, 200)

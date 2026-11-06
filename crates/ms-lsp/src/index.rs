@@ -3,8 +3,8 @@
 //! across files .
 
 use crate::analysis::Analysis;
-use ms_check::syntax::{DeclRef, FuncRef, Info, ModRef};
-use ms_check::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields, n};
+use ms_check::api::syntax::{DeclRef, FuncRef, Info, ModRef};
+use ms_check::api::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields, n};
 use ms_syntax::Symbol;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -1047,7 +1047,7 @@ impl Visitor for UseWalker<'_> {
                     && self
                         .info_of(scrutinee)
                         .and_then(|info| info.ty)
-                        .is_some_and(|ty| ty.is(ms_check::types::Builtin::Optional));
+                        .is_some_and(|ty| ty.is(ms_check::api::types::Builtin::Optional));
                 if !optional_binding && !arm.chain && !arm.from_if {
                     self.match_case(syms, scrutinee, &arm.path);
                 }

@@ -13,7 +13,7 @@ import (
 ) from "./lib.ms"
 import summarize from "./programs_table.ms"
 import copy, CopyOptions, create_directory, temporary, write_file from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn orders() List[List[String]]:
     return [

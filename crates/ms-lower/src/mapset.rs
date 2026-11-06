@@ -7,9 +7,9 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use crate::rtcall::Input;
-use ms_check::hir::{CallView, Resolution};
-use ms_check::types as ct;
-use ms_check::types::Builtin;
+use ms_check::api::hir::{CallView, Resolution};
+use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::Native;
@@ -472,7 +472,7 @@ impl<'a> FnLower<'a> {
     /// `List[T]()`, `Map[K, V]()`, `Set[T]()` and `Set(values)`.
     pub(crate) fn construct_collection(
         &mut self,
-        view: &ms_check::hir::CallView<'_>,
+        view: &ms_check::api::hir::CallView<'_>,
         ty: MTy,
     ) -> Result<Val, Error> {
         let arg = match view.arguments.as_slice() {

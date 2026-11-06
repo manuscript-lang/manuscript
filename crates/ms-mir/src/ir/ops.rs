@@ -1,0 +1,184 @@
+//! The opcode table: mnemonics, immediate kinds and effects of every [`Op`].
+
+use super::*;
+
+impl Op {
+    /// Every opcode, for tables and the text parser.
+    #[rustfmt::skip]
+    pub const ALL: &'static [Op] = &[
+        Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit, Op::BytesLit,
+        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
+        Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
+        Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Ushr, Op::Rotl, Op::Rotr, Op::Clz, Op::Ctz, Op::Popcnt, Op::Not,
+        Op::ICmp, Op::UICmp, Op::FCmp,
+        Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
+        Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltView, Op::AltPlain, Op::AltOwn, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease, Op::RecRelease,
+        Op::ListNew, Op::ListLit, Op::ListConst, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU, Op::ListTake,
+        Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
+        Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
+        Op::StrLen, Op::StrByte, Op::StrAscii,
+        Op::ClosureNew, Op::ClosureCap, Op::ClosureCapAddr, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
+        Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
+        Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
+        Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
+        Op::GlobalGet, Op::GlobalSet,
+    ];
+
+    /// The static description of this opcode.
+    #[rustfmt::skip]
+    #[allow(clippy::needless_update)]
+    pub fn info(self) -> OpInfo {
+        use ImmKind as K;
+        let (name, imm, has_result, effects) = match self {
+            Op::IConst => ("iconst", K::Int, true, effects!()),
+            Op::FConst => ("fconst", K::Float, true, effects!()),
+            Op::BConst => ("bconst", K::Bool, true, effects!()),
+            Op::UnitConst => ("unit", K::None, true, effects!()),
+            Op::StrLit => ("str", K::Str, true, effects!()),
+            Op::BytesLit => ("bytes", K::Int, true, effects!()),
+            Op::IAdd => ("iadd", K::None, true, effects!()),
+            Op::ISub => ("isub", K::None, true, effects!()),
+            Op::IMul => ("imul", K::None, true, effects!()),
+            Op::INeg => ("ineg", K::None, true, effects!()),
+            Op::IAddOverflow => ("iadd.overflow", K::None, true, effects!()),
+            Op::IMulOverflow => ("imul.overflow", K::None, true, effects!()),
+            Op::IntOverflowIf => ("int_overflow.if", K::None, false, effects!(faults)),
+            Op::NarrowChk => ("narrow.chk", K::None, true, effects!(faults)),
+            Op::F32Round => ("f32.round", K::None, true, effects!()),
+            Op::Conv => ("conv", K::None, true, effects!()),
+            Op::INarrowOpt => ("inarrow.opt", K::None, true, effects!()),
+            Op::IAddChk => ("iadd.chk", K::None, true, effects!(faults)),
+            Op::ISubChk => ("isub.chk", K::None, true, effects!(faults)),
+            Op::IMulChk => ("imul.chk", K::None, true, effects!(faults)),
+            Op::UAddChk => ("uadd.chk", K::None, true, effects!(faults)),
+            Op::USubChk => ("usub.chk", K::None, true, effects!(faults)),
+            Op::UMulChk => ("umul.chk", K::None, true, effects!(faults)),
+            Op::INegChk => ("ineg.chk", K::None, true, effects!(faults)),
+            Op::SDivChk => ("sdiv.chk", K::None, true, effects!(faults)),
+            Op::SRemChk => ("srem.chk", K::None, true, effects!(faults)),
+            Op::SDiv => ("sdiv", K::None, true, effects!()),
+            Op::SRem => ("srem", K::None, true, effects!()),
+            Op::And => ("and", K::None, true, effects!()),
+            Op::Or => ("or", K::None, true, effects!()),
+            Op::Xor => ("xor", K::None, true, effects!()),
+            Op::Shl => ("shl", K::None, true, effects!()),
+            Op::Sshr => ("sshr", K::None, true, effects!()),
+            Op::Ushr => ("ushr", K::None, true, effects!()),
+            Op::Rotl => ("rotl", K::None, true, effects!()),
+            Op::Rotr => ("rotr", K::None, true, effects!()),
+            Op::Clz => ("clz", K::None, true, effects!()),
+            Op::Ctz => ("ctz", K::None, true, effects!()),
+            Op::Popcnt => ("popcnt", K::None, true, effects!()),
+            Op::Not => ("not", K::None, true, effects!()),
+            Op::ICmp => ("icmp", K::Cc, true, effects!()),
+            Op::UICmp => ("uicmp", K::Cc, true, effects!()),
+            Op::FCmp => ("fcmp", K::Cc, true, effects!()),
+            Op::FAdd => ("fadd", K::None, true, effects!()),
+            Op::FSub => ("fsub", K::None, true, effects!()),
+            Op::FMul => ("fmul", K::None, true, effects!()),
+            Op::FDiv => ("fdiv", K::None, true, effects!()),
+            Op::FNeg => ("fneg", K::None, true, effects!()),
+            Op::FSqrt => ("fsqrt", K::None, true, effects!()),
+            Op::FFloor => ("ffloor", K::None, true, effects!()),
+            Op::FCeil => ("fceil", K::None, true, effects!()),
+            Op::FTrunc => ("ftrunc", K::None, true, effects!()),
+            Op::FAbs => ("fabs", K::None, true, effects!()),
+            Op::I2F => ("i2f", K::None, true, effects!()),
+            Op::F2IOpt => ("f2i.opt", K::None, true, effects!()),
+            Op::B2I => ("b2i", K::None, true, effects!()),
+            Op::Select => ("select", K::None, true, effects!()),
+            Op::RecNew => ("rec.new", K::Rec, true, effects!()),
+            Op::RecGet => ("rec.get", K::Field, true, effects!()),
+            Op::RecSet => ("rec.set", K::Field, true, effects!(ownership)),
+            Op::RecFill => ("rec.fill", K::Field, true, effects!()),
+            Op::AltNew => ("alt.new", K::Case, true, effects!(alloc)),
+            Op::AltView => ("alt.view", K::Case, true, effects!()),
+            Op::AltPlain => ("alt.plain", K::None, true, effects!()),
+            Op::AltOwn => ("alt.own", K::None, true, effects!(alloc)),
+            Op::AltTag => ("alt.tag", K::None, true, effects!(reads)),
+            Op::AltGet => ("alt.get", K::AltField, true, effects!(reads)),
+            Op::AltUnbox => ("alt.unbox", K::AltField, true, effects!(writes, ownership)),
+            Op::AltTake => ("alt.take", K::AltField, true, effects!(writes, ownership)),
+            Op::AltRelease => ("alt.release", K::AltMask, false, effects!(writes, ownership)),
+            Op::RecRelease => ("rec.release", K::RecMask, false, effects!(writes, ownership)),
+            Op::ListNew => ("list.new", K::None, true, effects!(alloc)),
+            Op::ListLit => ("list.lit", K::None, true, effects!(alloc)),
+            Op::ListConst => ("list.const", K::Int, true, effects!(alloc)),
+            Op::ListLen => ("list.len", K::None, true, effects!()),
+            Op::ListGet => ("list.get", K::None, true, effects!(reads, faults)),
+            Op::ListGetNn => ("list.get.nn", K::None, true, effects!(reads, faults)),
+            Op::ListGetU => ("list.get.u", K::None, true, effects!(reads)),
+            Op::ListTake => ("list.take", K::None, true, effects!(reads)),
+            Op::ListSet => ("list.set", K::None, true, effects!(reads, writes, faults, ownership)),
+            Op::ListSetNn => ("list.set.nn", K::None, true, effects!(reads, writes, faults, ownership)),
+            Op::ListSetU => ("list.set.u", K::None, true, effects!(reads, writes, ownership)),
+            Op::ListFill => ("list.fill", K::None, true, effects!(reads, writes, faults)),
+            Op::ListPush => ("list.push", K::None, true, effects!(reads, writes, alloc, faults)),
+            Op::ListDropLast => ("list.droplast", K::Int, true, effects!(reads, writes, ownership)),
+            Op::ListRelease => ("list.release", K::None, false, effects!(reads, writes, ownership)),
+            Op::OptSome => ("opt.some", K::None, true, effects!()),
+            Op::OptView => ("opt.view", K::None, true, effects!()),
+            Op::OptNone => ("opt.none", K::None, true, effects!()),
+            Op::OptIsSome => ("opt.is_some", K::None, true, effects!()),
+            Op::OptGet => ("opt.get", K::None, true, effects!()),
+            Op::OptUnwrap => ("opt.unwrap", K::None, true, effects!(faults)),
+            Op::OptUnbox => ("opt.unbox", K::None, true, effects!(writes, ownership)),
+            Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
+            Op::StrByte => ("str.byte", K::None, true, effects!(reads)),
+            Op::StrAscii => ("str.ascii", K::None, true, effects!()),
+            Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
+            Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
+            Op::ClosureCapAddr => ("closure.cap_addr", K::Idx, true, effects!()),
+            Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
+            Op::IfaceBorrow => ("iface.borrow", K::Vtable, true, effects!(alloc)),
+            Op::IfaceView => ("iface.view", K::None, true, effects!()),
+            Op::IfaceData => ("iface.data", K::None, true, effects!()),
+            Op::IfaceIs => ("iface.is", K::Vtable, true, effects!()),
+            // `clone 1` is the copy a written `.clone()` lowers to; a bare `clone` is implicit.
+            Op::Clone => ("clone", K::None, true, effects!(reads, alloc, ownership)),
+            Op::Drop => ("drop", K::None, false, effects!(writes, ownership)),
+            Op::MoveOut => ("move.out", K::None, true, effects!(writes)),
+            Op::DropIf => ("drop.if", K::None, false, effects!(writes, ownership)),
+            Op::Slot => ("slot", K::Ty, true, effects!()),
+            Op::Load => ("load", K::Ty, true, effects!(reads)),
+            Op::Take => ("take", K::Ty, true, effects!(reads, writes)),
+            Op::Store => ("store", K::None, false, effects!(writes)),
+            Op::Put => ("put", K::None, false, effects!(writes)),
+            Op::ListAddr => ("list.addr", K::None, true, effects!(faults)),
+            Op::ListAddrU => ("list.addr.u", K::None, true, effects!()),
+            Op::PtrField => ("ptr.field", K::Field, true, effects!()),
+            Op::PtrIsNull => ("ptr.is_null", K::None, true, effects!()),
+            Op::Call => ("call", K::Func, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::CallInd => ("call.ind", K::None, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::CallRt => ("call.rt", K::Ext, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::CallMethod => ("call.method", K::Method, true, effects!(reads, writes, faults, ownership, alloc, io)),
+            Op::TypeDesc => ("typedesc", K::Ty, true, effects!()),
+            Op::FuncAddr => ("func.addr", K::Func, true, effects!()),
+            Op::Poll => ("poll", K::None, false, effects!(faults, io)),
+            Op::DepthEnter => ("depth.enter", K::None, false, effects!(faults, io)),
+            Op::DepthLeave => ("depth.leave", K::None, false, effects!(io)),
+            Op::CleanupPush => ("cleanup.push", K::Func, true, effects!(io)),
+            Op::CleanupRun => ("cleanup.run", K::None, false, effects!(io)),
+            Op::GlobalGet => ("global.get", K::Global, true, effects!(reads)),
+            Op::GlobalSet => ("global.set", K::Global, false, effects!(writes, ownership)),
+        };
+        OpInfo { name, imm, has_result, effects }
+    }
+
+    /// Looks an opcode up by mnemonic.
+    pub fn from_name(name: &str) -> Option<Op> {
+        Op::ALL.iter().copied().find(|op| op.info().name == name)
+    }
+
+    /// Whether the instruction is a call of any kind.
+    pub fn is_call(self) -> bool {
+        matches!(self, Op::Call | Op::CallInd | Op::CallRt | Op::CallMethod)
+    }
+
+    /// Whether two instructions with this opcode, operands and immediate always
+    /// produce equal results and can be merged (value numbering).
+    pub fn is_numberable(self) -> bool {
+        let e = self.info().effects;
+        e.is_pure() && self.info().has_result && !matches!(self, Op::Slot | Op::Clone)
+    }
+}

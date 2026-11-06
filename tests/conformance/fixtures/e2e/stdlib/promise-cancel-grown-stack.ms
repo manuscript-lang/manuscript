@@ -2,7 +2,7 @@
 // conform: phase=run
 import stdout from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
-import milliseconds, seconds, sleep from "@std/os/time.ms"
+import milliseconds, seconds, sleep from "@std/time.ms"
 
 // Parks at the bottom of a recursion deep enough to leave the task's first stack slot, with a
 // heap value in every frame, so cancelling it unwinds across grown segments (`make leak-check`

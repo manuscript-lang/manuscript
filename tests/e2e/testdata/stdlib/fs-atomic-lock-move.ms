@@ -12,8 +12,9 @@ import (
     write_atomic_bytes,
     write_file
 ) from "@std/os/fs.ms"
-import milliseconds from "@std/os/time.ms"
-import os_type, which from "@std/os/process.ms"
+import milliseconds from "@std/time.ms"
+import which from "@std/os/env.ms"
+import os, Os from "@std/os/system.ms"
 
 fn text_of(path: String) String!:
     let data = try read_file(path).wait()
@@ -29,7 +30,7 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
     try chmod("{root}/mode.txt", 384)
 
     let before = (try stat("{root}/mode.txt", true)).permissions
-    let expected = if os_type() == "Windows_NT": 438 else: 384
+    let expected = if os() == Os.Windows: 438 else: 384
     try expect_equal(before, expected)
     try write_atomic("{root}/mode.txt", "y")
     try expect_equal((try stat("{root}/mode.txt", true)).permissions, before)

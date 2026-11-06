@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 import watch_signals from "@std/os/process.ms"
-import sleep from "@std/os/time.ms"
+import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
     let _written = stdout().write(text)
@@ -13,7 +13,7 @@ export fn main() Int:
         var signals = watched
         say("waiting\n")
 
-        let _observed = signals.read().wait()
+        let _observed = signals.next()
         say("got signal\n")
         let _ = sleep(100.milliseconds()).wait()
         say("after sleep\n")

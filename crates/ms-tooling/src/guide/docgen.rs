@@ -4,7 +4,7 @@
 
 use crate::guide::api::{ApiDeclaration, ApiMember, ApiModule, standard_library};
 use crate::guide::json::{self, Json};
-use ms_check::stdlib;
+use ms_check::api::stdlib;
 use std::collections::{BTreeMap, BTreeSet};
 
 fn declaration_kind(kind: &str) -> &str {

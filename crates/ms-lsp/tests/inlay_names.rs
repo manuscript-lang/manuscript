@@ -6,7 +6,7 @@ use ms_lsp::json::Json;
 use ms_lsp::text::{Position, Range};
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 #[test]

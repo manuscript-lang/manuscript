@@ -57,6 +57,21 @@ pub const PRIMITIVE_NAMES: [&str; 16] = [
     "UInt64", "Float32", "Float64", "String", "Unit", "Never",
 ];
 
+/// Generic interfaces in `intrinsics.ms` that primitives share, with the primitives that have them.
+/// `T` is the receiver, so a family states each of its operations once.
+const SHARED_OPERATIONS: [(&str, &[&str]); 2] = [
+    (
+        "IntegerOperations",
+        &[
+            "Int", "Int8", "Int16", "Int32", "UInt8", "UInt16", "UInt32", "UInt64",
+        ],
+    ),
+    (
+        "SignedIntegerOperations",
+        &["Int", "Int8", "Int16", "Int32"],
+    ),
+];
+
 /// The result of checking one bundled source module.
 pub struct StdResult {
     /// Module-level symbols visible in the module.
@@ -82,7 +97,7 @@ pub(crate) struct World {
     source_modules: HashMap<Name, ModRef>,
     /// Pure source modules not yet parsed; each loads when first looked up.
     deferred: HashMap<Name, &'static str>,
-    intrinsic: HashMap<Name, Ty>,
+    intrinsic: HashMap<Name, Vec<Ty>>,
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
     receiver_natives: HashSet<String>,
@@ -129,12 +144,7 @@ const KEPT_CALLBACKS: &[&str] = &[
 ];
 
 /// Externs that take ownership of the generic value argument (it moves into the runtime).
-const OWNING_VALUES: &[&str] = &[
-    "extern:msrt_cells_new",
-    "extern:msrt_cells_put",
-    "extern:msrt_pipe_write",
-    "extern:msrt_promise_put",
-];
+const OWNING_VALUES: &[&str] = &["extern:msrt_pipe_write", "extern:msrt_promise_put"];
 
 /// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
 pub fn owns_value(native: &str) -> bool {
@@ -215,6 +225,16 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
     t.def = Some(def);
     *s.ty.borrow_mut() = Some(Rc::new(t));
     s
+}
+
+/// Whether a module file is standard-library source: a bundled `@std/` module, or a checkout's
+/// `stdlib/` file opened from disk (an editor on the repository).
+pub fn is_bundled_source(file: &str) -> bool {
+    file.starts_with("@std/")
+        || std::path::Path::new(file).ancestors().any(|dir| {
+            dir.file_name().is_some_and(|n| n == "stdlib")
+                && dir.join("internal/promises.ms").is_file()
+        })
 }
 
 /// Whether a bundled module is internal: it holds the native declarations of the public modules and is not importable by programs.
@@ -1001,13 +1021,34 @@ impl Loader<'_> {
                 text.join("; ")
             ));
         }
-        // A primitive type's operations are the `<Type>Operations` interface `intrinsics.ms` declares.
+        // A primitive type's operations are the `<Type>Operations` interface `intrinsics.ms` declares,
+        // followed by the generic interfaces shared by its family, applied to the primitive itself.
         for receiver in PRIMITIVE_NAMES {
-            let name = format!("{receiver}Operations");
-            if let Some(typ) = self.c.session.world(|w| w.symbols.get(&n(&name)).cloned()) {
+            let mut interfaces = Vec::new();
+            let shared = SHARED_OPERATIONS
+                .iter()
+                .filter(|(_, members)| members.contains(&receiver))
+                .map(|(name, _)| (*name).to_string());
+            let own = std::iter::once(format!("{receiver}Operations"));
+            for name in own.chain(shared) {
+                let Some(typ) = self.c.session.world(|w| w.symbols.get(&n(&name)).cloned()) else {
+                    continue;
+                };
+                let ty = typ.ty(syms);
+                if ty
+                    .def
+                    .as_ref()
+                    .is_some_and(|d| !d.variables.borrow().is_empty())
+                {
+                    interfaces.push(with_args(&ty, vec![primitive(primitive_id(receiver))]));
+                } else {
+                    interfaces.push(ty);
+                }
+            }
+            if !interfaces.is_empty() {
                 self.c
                     .session
-                    .world(|w| w.intrinsic.insert(n(receiver), typ.ty(syms)));
+                    .world(|w| w.intrinsic.insert(n(receiver), interfaces));
             }
         }
         Ok(())
@@ -1171,9 +1212,9 @@ impl Session {
     }
 
     /// The intrinsic declaration for a primitive receiver id.
-    pub fn intrinsic_operations(self: &Rc<Self>, id: Name) -> Option<Ty> {
+    pub fn intrinsic_operations(self: &Rc<Self>, id: Name) -> Vec<Ty> {
         self.ensure_standard();
-        self.world(|w| w.intrinsic.get(&id).cloned())
+        self.world(|w| w.intrinsic.get(&id).cloned().unwrap_or_default())
     }
 
     /// Whether `Receiver id/name` is a native operation of a standard receiver: an inherent method the
@@ -1679,12 +1720,12 @@ impl Session {
         with_args(&sym.ty(self.syms), args)
     }
 
-    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
+    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
     pub fn time_type(self: &Rc<Self>, name: &str) -> Ty {
         // The module is checked on first use; its records have no fields before that.
-        self.standard_exports("@std/os/time.ms");
+        self.standard_exports("@std/time.ms");
         let sym = self
-            .source_type(n("@std/os/time.ms"), n(name))
+            .source_type(n("@std/time.ms"), n(name))
             .unwrap_or_else(|| panic!("standard time type {name}"));
         sym.ty(self.syms)
     }
@@ -1704,6 +1745,28 @@ impl Session {
     }
 }
 
+/// A definition's fields, cases and operations hold types that name the definition again, so
+/// dropping the world alone leaves each cycle allocated. The session owns every definition it
+/// loaded, and a `Program` keeps the session alive for as long as its types are used, so the
+/// contents are released when the last owner of the session goes.
+impl Drop for Session {
+    fn drop(&mut self) {
+        let world = self.world.borrow();
+        let tables = world.modules.values().flat_map(HashMap::values);
+        let defs: Vec<Rc<Definition>> = tables
+            .chain(world.symbols.values())
+            .filter_map(|sym| sym.ty.borrow().as_ref().and_then(|t| t.def.clone()))
+            .collect();
+        drop(world);
+        for d in defs {
+            d.variables.borrow_mut().clear();
+            d.fields.borrow_mut().clear();
+            d.cases.borrow_mut().clear();
+            d.operations.borrow_mut().clear();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1720,6 +1783,19 @@ mod tests {
     fn every_embedded_module_type_checks() {
         let errors = Session::new().check_all_sources();
         assert!(errors.is_empty(), "{}", errors.join("\n"));
+    }
+
+    #[test]
+    fn dropping_a_session_releases_its_definitions() {
+        let session = Session::new();
+        let list = session.standard_symbol("List").unwrap();
+        let def = Rc::downgrade(list.ty.borrow().as_ref().unwrap().def.as_ref().unwrap());
+        drop(list);
+        drop(session);
+        assert!(
+            def.upgrade().is_none(),
+            "the definition cycle outlived its session"
+        );
     }
 
     #[test]

@@ -81,7 +81,7 @@ pub fn unknown_command(io: &mut Io, name: &str) {
     let mut best: Option<&str> = None;
     let mut best_distance = 3;
     for candidate in help::COMMAND_NAMES {
-        let d = ms_check::hints::edit_distance(name, candidate);
+        let d = ms_check::api::hints::edit_distance(name, candidate);
         if d < best_distance {
             best = Some(candidate);
             best_distance = d;
@@ -178,6 +178,7 @@ fn run_source_command<L: Lower>(
             syms,
             &TestRequest {
                 filename: inv.filename.clone(),
+                extra: inv.targets.iter().skip(1).cloned().collect(),
                 build_type: plan.build_type,
                 link: inv.link.clone(),
                 json: inv.structured,
@@ -190,6 +191,7 @@ fn run_source_command<L: Lower>(
             syms,
             &TestRequest {
                 filename: inv.filename.clone(),
+                extra: Vec::new(),
                 build_type: plan.build_type,
                 link: inv.link.clone(),
                 json: inv.structured,

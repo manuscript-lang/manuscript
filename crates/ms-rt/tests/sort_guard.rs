@@ -325,7 +325,7 @@ fn unguarded_sort_restores_owners_before_explicit_cleanup() {
             let output = std::process::Command::new(std::env::current_exe().unwrap())
                 .args([
                     "--exact",
-                    "unguarded_sort_restores_owners_before_explicit_cleanup",
+                    "sort_guard::unguarded_sort_restores_owners_before_explicit_cleanup",
                     "--nocapture",
                 ])
                 .env(CASE, format!("{count}:{exit}"))

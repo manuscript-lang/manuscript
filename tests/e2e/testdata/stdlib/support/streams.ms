@@ -1,4 +1,4 @@
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import from_bytes from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -18,4 +18,4 @@ impl Source[Bytes] for ClosedSource:
         return ok(unit)
 
 export fn closed_reader() ReadStream[Bytes]:
-    return stream[Bytes](ClosedSource(0))
+    return ReadStream[Bytes](ClosedSource(0))

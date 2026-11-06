@@ -1,7 +1,16 @@
 import stdout, Source from "@std/io/io.ms"
-import from_list, from_bytes, map, lines, collect from "@std/io/streams.ms"
+import (
+    from_list,
+    from_bytes,
+    map,
+    lines,
+    collect,
+    filter,
+    take,
+    fold
+) from "@std/io/streams.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import monotonic, Instant from "@std/os/time.ms"
+import monotonic, Instant from "@std/time.ms"
 
 // ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
 
@@ -67,19 +76,54 @@ fn drain(source: Source[Int]) Int!:
 
 fn stdlib_map(xs: List[Int]) Int!:
     var total = 0
-    for item in (from_list(xs) | map(fn x: x + 1)).wait():
-        total += try item
+    for item in from_list(xs) | map(fn x: x + 1):
+        total += item
     return ok(total)
 
 fn stdlib_map3(xs: List[Int]) Int!:
     var total = 0
-    for item in (from_list(xs) | map(fn x: x + 1) | map(fn x: x * 3) | map(fn x: x - 2)).wait():
-        total += try item
+    for item in from_list(xs) | map(fn x: x + 1) | map(fn x: x * 3) | map(fn x: x - 2):
+        total += item
     return ok(total)
 
 fn stdlib_collect(xs: List[Int]) Int!:
     let all = try collect(from_list(xs) | map(fn x: x + 1), none)
     return ok(all.length())
+
+fn plain_filter(xs: List[Int]) Int:
+    var total = 0
+    for x in xs:
+        if x % 2 == 0:
+            total += x
+    return total
+
+fn stdlib_filter(xs: List[Int]) Int!:
+    var total = 0
+    for item in from_list(xs) | filter(fn x: x % 2 == 0):
+        total += item
+    return ok(total)
+
+fn plain_take(xs: List[Int], count: Int) Int:
+    var total = 0
+    var seen = 0
+
+    for x in xs:
+        if seen >= count:
+            break
+
+        total += x
+        seen += 1
+
+    return total
+
+fn stdlib_take(xs: List[Int], count: Int) Int!:
+    var total = 0
+    for item in from_list(xs) | take(count):
+        total += item
+    return ok(total)
+
+fn stdlib_fold(xs: List[Int]) Int!:
+    return fold(from_list(xs), 0, fn total, x: total + x)
 
 fn hand_lines(data: Bytes) Int!:
     var count = 0
@@ -100,8 +144,8 @@ fn hand_lines(data: Bytes) Int!:
 
 fn stdlib_lines(data: Bytes) Int!:
     var count = 0
-    for line in (from_bytes(data) | lines).wait():
-        count += (try line).length()
+    for line in from_bytes(data) | lines:
+        count += line.length()
     return ok(count)
 
 export fn main() Int:
@@ -132,6 +176,22 @@ export fn main() Int:
     let e = xs.clone()
     t = monotonic()
     report("stream-collect", n, t, stdlib_collect(e).get(-1))
+    t = monotonic()
+    report("for-filter", n, t, plain_filter(xs))
+
+    let g = xs.clone()
+    t = monotonic()
+    report("stream-filter", n, t, stdlib_filter(g).get(-1))
+    t = monotonic()
+    report("for-take", n, t, plain_take(xs, n / 2))
+
+    let h = xs.clone()
+    t = monotonic()
+    report("stream-take", n / 2, t, stdlib_take(h, n / 2).get(-1))
+
+    let k = xs.clone()
+    t = monotonic()
+    report("stream-fold", n, t, stdlib_fold(k).get(-1))
 
     var builder = BytesBuilder()
     let rows = 1000000

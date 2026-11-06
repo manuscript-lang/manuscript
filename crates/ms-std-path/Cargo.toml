@@ -3,7 +3,8 @@ name = "ms-std-path"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Native implementation of @std/os/fs.ms and the glob matcher shared with @std/os/fs.ms"
+description = "Native glob matcher for @std/os/path.ms and @std/os/fs.ms"
+autotests = false
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
@@ -12,3 +13,7 @@ ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

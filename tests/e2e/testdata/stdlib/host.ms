@@ -1,15 +1,16 @@
 import expect_equal, expect_false, expect_not_equal from "@std/test/test.ms"
-import arguments from "@std/os/process.ms"
-import endianness, end_of_line, os_type, dev_null, system_info from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
+import endianness, end_of_line, os, dev_null, system_info, Os from "@std/os/system.ms"
 import (
     CommandOutput,
+    RunOptions,
+    SpawnOptions,
     Stdio,
-    run,
-    spawn,
-    environment,
     process_info,
-    set_environment
+    run,
+    spawn
 ) from "@std/os/process.ms"
+import (environment, set_environment) from "@std/os/env.ms"
 import lines from "@std/io/streams.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
@@ -34,7 +35,7 @@ test "CLI test roots have empty arguments and host metadata agrees":
     )
     try expect_false(endianness() != "LE" and endianness() != "BE")
     try expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")
-    try expect_not_equal(os_type().byte_length(), 0)
+    try expect_not_equal(os(), Os.Other)
     try expect_not_equal(dev_null().byte_length(), 0)
 
 test "process environment reflects live changes":
@@ -46,9 +47,11 @@ test "process environment reflects live changes":
 
 test "subprocess validation returns expected domain errors":
     let invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
-    try expect_equal(run("", [], "".to_bytes()).wait(), invalid)
+    try expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)
 
-    let missing = run("manuscript-nonexistent-command-stdlib", [], "".to_bytes()).wait()
+    let missing = run(
+        "manuscript-nonexistent-command-stdlib", [], RunOptions(input: "".to_bytes())
+    ).wait()
     try expect_equal(missing.err().kind, "EAGAIN")
     try expect_equal(
         missing.err().message,
@@ -56,55 +59,51 @@ test "subprocess validation returns expected domain errors":
     )
 
 test "subprocess streams that are not piped are closed":
-    if os_type() == "windows": return
-
     let child = try spawn(
-        "sh", ["-c", "cat; echo done >&2"], stdin: Stdio.Null, stdout: Stdio.Null
+        "sh", ["-c", "cat; echo done >&2"],
+        SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null)
     )
     try expect_equal((try child.wait()), 0)
 
     var errors = lines(child.stderr())
-    let line = try errors.read().wait()
+    let line = try errors.next()
     try expect_equal(line.get(""), "done")
 
     var silent = child.stdout()
-    try expect_false((try silent.read().wait()).is_some())
+    try expect_false((try silent.next()).is_some())
 
     var input = child.stdin()
     try expect_false(input.write("x".to_bytes()).is_ok())
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
-    if os_type() == "windows": return
-
     let child = try spawn("cat", [])
     var input = child.stdin()
     try input.write("ping\n".to_bytes())
-    try input.flush().wait()
+    try input.flush()
 
     var output = lines(child.stdout())
-    let line = try output.read().wait()
+    let line = try output.next()
     try expect_equal(line.get(""), "ping")
     try input.close()
     try expect_equal((try child.wait()), 0)
-    try expect_false((try output.read().wait()).is_some())
+    try expect_false((try output.next()).is_some())
 
 test "run and spawn pass the environment to the child":
-    if os_type() == "windows": return
-
     var env: Map[String, String] = Map[String, String]()
     env.add("MS_CHILD_VALUE", "from-parent")
 
     let output = try run(
-        "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\""], "".to_bytes(), env: env.clone()
+        "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\""],
+        RunOptions(input: "".to_bytes(), env: env.clone())
     ).wait()
     try expect_equal(output.stdout, "from-parent".to_bytes())
 
     let child = try spawn(
-        "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"], stdin: Stdio.Null,
-        stdout: Stdio.Null, env: env
+        "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"],
+        SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, env: env)
     )
     try expect_equal((try child.wait()), 0)
 
     var errors = child.stderr()
-    let text = try errors.read().wait()
+    let text = try errors.next()
     try expect_equal(text.get("".to_bytes()), "from-parent".to_bytes())

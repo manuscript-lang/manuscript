@@ -4,10 +4,12 @@
 
 use crate::guide::render;
 use crate::guide::source::{Source, leading_comment};
-use ms_check::checker::Names;
-use ms_check::stdlib;
-use ms_check::syntax::{DeclRef, FuncRef};
-use ms_check::types::{Definition, MethodRef, Name, SymKind, SymRef, Ty, n, same};
+use ms_check::api::checker::Names;
+use ms_check::api::stdlib;
+use ms_check::api::syntax::{DeclRef, FuncRef};
+use ms_check::api::types::{
+    Definition, MethodRef, Name, SymKind, SymRef, Ty, n, same, sub, substitution,
+};
 use ms_check::{Program, Session};
 use ms_syntax::{DeclKind, Func};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -188,14 +190,14 @@ fn compute_standard_library(syms: ms_syntax::Names) -> Vec<ApiModule> {
 
 fn primitive_symbol(name: &str) -> SymRef {
     let nm = n(name);
-    Rc::new(ms_check::types::Sym {
+    Rc::new(ms_check::api::types::Sym {
         name: nm,
         id: nm,
         kind: SymKind::Type,
         module: n(""),
         native: n(""),
         export: true,
-        ty: std::cell::RefCell::new(Some(ms_check::types::primitive(name))),
+        ty: std::cell::RefCell::new(Some(ms_check::api::types::primitive(name))),
         variables: std::cell::RefCell::new(Vec::new()),
         decl: None,
     })
@@ -485,17 +487,34 @@ fn document_symbol(
         }
         d.doc = leading_comment(source.map_or("", Source::text), decl.pos().offset as usize);
         d.members = document_members(syms, session, decl, source, &ty);
-    } else if let Some(decl) = intrinsic
-        .as_ref()
-        .and_then(|t| t.def.as_ref())
-        .and_then(|def| def.symbol())
-        .and_then(|s| s.decl.clone().map(|decl| (decl, s.module)))
-    {
-        let (decl, module) = decl;
-        d.declaration = document_declaration(syms, &decl, "type", syms.str(symbol.name), None);
-        d.members = document_members(syms, session, &decl, sources.of(module), &ty);
     } else {
         d.declaration = format!("type {}:\n", syms.str(symbol.name));
+        // The primitive's own interface gives the declaration; shared interfaces add their members with
+        // `T`, the receiver, spelled as this type.
+        for (index, interface) in intrinsic.iter().enumerate() {
+            let Some((decl, module)) = interface
+                .def
+                .as_ref()
+                .and_then(|def| def.symbol())
+                .and_then(|s| s.decl.clone().map(|decl| (decl, s.module)))
+            else {
+                continue;
+            };
+            if index == 0 {
+                d.declaration =
+                    document_declaration(syms, &decl, "type", syms.str(symbol.name), None);
+            }
+            let mut members = document_members(syms, session, &decl, sources.of(module), &ty);
+            if !interface.args.is_empty() {
+                for member in &mut members {
+                    member.signature = member
+                        .signature
+                        .replace("(other: T)", &format!("(other: {})", syms.str(symbol.name)))
+                        .replace(") T", &format!(") {}", syms.str(symbol.name)));
+                }
+            }
+            d.members.extend(members);
+        }
     }
     d.parameters = symbol
         .variables()
@@ -531,13 +550,15 @@ fn document_symbol(
             );
         }
     }
-    if let Some(intrinsic) = &intrinsic
-        && let Some(def) = &intrinsic.def
-    {
+    for interface in &intrinsic {
+        let Some(def) = &interface.def else {
+            continue;
+        };
+        let bindings = substitution(interface);
         for op in def.operations.borrow().iter() {
             operations.insert(
                 syms.str(op.name).to_string(),
-                op.ty.display(syms).to_string(),
+                sub(&op.ty, &bindings).display(syms).to_string(),
             );
         }
     }

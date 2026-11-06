@@ -1,6 +1,12 @@
-import Logger, create, stdout_transport, file_transport from "@std/log.ms"
+import (
+    Logger,
+    LoggerOptions,
+    create,
+    stdout_transport,
+    file_transport
+) from "@std/log.ms"
 import JsonValue from "@std/data/json.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stderr from "@std/io/io.ms"
 import emit from "./records.ms"
 
@@ -9,7 +15,7 @@ type Service:
 
 fn exercise(mode: String, path: String) Unit!:
     if (mode == "file" or mode == "missing"):
-        var root = try create(try file_transport(path), timestamp: false)
+        var root = try create(try file_transport(path), LoggerOptions(timestamp: false))
         let logger = try root.child(Service("api"))
         try emit(logger)
         try logger.flush()
@@ -17,7 +23,7 @@ fn exercise(mode: String, path: String) Unit!:
         return ok(unit)
 
     if mode == "limit":
-        let logger = try create(stdout_transport(), max_bytes: 1)
+        let logger = try create(stdout_transport(), LoggerOptions(max_bytes: 1))
         try logger.info("too large")
     else if mode == "closed":
         var root = try create(stdout_transport())
@@ -34,7 +40,7 @@ fn exercise(mode: String, path: String) Unit!:
             try emit(logger)
             try logger.flush()
 
-    var logger = try create(stdout_transport(), timestamp: false)
+    var logger = try create(stdout_transport(), LoggerOptions(timestamp: false))
     try logger.info("still open")
     try logger.close()
     return ok(unit)

@@ -1,10 +1,16 @@
-import HtmlLimits, HtmlTree from "@std/data/html.ms"
+import HtmlTree from "@std/data/html.ms"
+
+// Native parse bounds; `parse` builds them from `HtmlOptions`.
+export type HtmlLimits:
+    max_bytes: Int?
+    max_depth: Int?
+    max_nodes: Int?
 
 export extern fn msstd_html_escape(text: String) String
 
 export extern fn msstd_html_unescape(text: String) String
 
-export extern fn msstd_html_parse(text: String, limits: HtmlLimits?) HtmlTree!
+export extern fn msstd_html_parse(text: String, limits: HtmlLimits) HtmlTree!
 
 export extern fn msstd_html_root(tree: HtmlTree) Int
 

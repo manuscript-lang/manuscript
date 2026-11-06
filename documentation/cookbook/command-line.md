@@ -26,7 +26,7 @@ ms run hello.ms
 Hello, Manuscript!
 ```
 
-`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush().wait()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
+`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
 ## Read command-line arguments
 
@@ -34,13 +34,13 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 
 <!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     for name in arguments():
         try stdout().write("Hello, {name}!\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
@@ -59,13 +59,13 @@ Hello, Ada!
 
 ## Parse subcommands and flags
 
-Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and positional arguments, writes `--help`, and hands your handler a value of a type you define: each field is filled from the flag or argument with the same name (`dry-run` fills `dry_run`). Usage errors print a message and exit with status 2.
+Save as `tool.ms`. `@std/cli/command.ms` resolves nested commands, typed flags and positional arguments, writes `--help`, and hands your handler a value of a type you define: each field is filled from the flag or argument with the same name (`dry-run` fills `dry_run`). Usage errors print a message and exit with status 2.
 
 <!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n"} -->
 ```manuscript
-import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
+import Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 type Greeting:
     name: String
@@ -74,7 +74,7 @@ type Greeting:
 fn greet(options: Greeting) Result[Int, Error]:
     for round in 0..options.times:
         try stdout().write("Hello, {options.name}!\n")
-    try stdout().flush().wait()
+    try stdout().flush()
     return ok(0)
 
 export fn main() Int:

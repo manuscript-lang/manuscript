@@ -352,7 +352,7 @@ fn parse_options(
             }
             _ => {
                 if !args[i].starts_with('-') {
-                    if inv.analysis {
+                    if inv.analysis || inv.command == "test" {
                         if args[i].is_empty() {
                             return Err(usage_error(
                                 io,

@@ -1,18 +1,30 @@
 import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, WriteStream, Sink, Transform, through, writer from "@std/io/io.ms"
+import ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms"
 import Promise from "@std/concurrency/promise.ms"
-import msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
+import JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
 
-// Optional bounds for JSON input bytes, nesting depth, and parsed values.
-export type JsonLimits:
+// Settings for `parse` and `json_reader`: optional bounds on input bytes, nesting depth and parsed
+// values, and how object members that are not fields are treated.
+export type JsonOptions:
     // Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-    max_bytes: Int?
+    max_bytes: Int? = none
     // Maximum container nesting; a root scalar has depth zero, and a root container depth one.
-    max_depth: Int?
+    max_depth: Int? = none
     // Maximum parsed containers and scalar values, excluding object keys; none adds no count budget.
-    max_values: Int?
+    max_values: Int? = none
+    // True ignores object members that are not fields of `T`; false makes them return `EBADMSG`.
+    ignore_unknown_fields: Bool = true
+
+// Settings for `stringify`: an output byte budget, pretty-print indentation, and strict rejection of values without a JSON form.
+export type StringifyOptions:
+    // Maximum encoded UTF-8 bytes; none adds no output budget.
+    max_bytes: Int? = none
+    // Spaces per indentation level; none writes compact JSON.
+    indent: Int? = none
+    // True makes any value without a JSON form, anywhere in the document, return `EBADMSG`.
+    strict: Bool = false
 
 /*
 A JSON value. Number text is retained to avoid losing precision during parsing.
@@ -160,10 +172,13 @@ record and `parse[JsonValue]` keeps it as a document.
 */
 export fn parse[T: Data = JsonValue](
     text: String,
-    limits: JsonLimits?,
-    ignore_unknown_fields: Bool = true
+    options: JsonOptions = JsonOptions()
 ) T!:
-    return msstd_json_parse[T](text, limits, ignore_unknown_fields)
+    let limits = JsonLimits(
+        max_bytes: options.max_bytes, max_depth: options.max_depth,
+        max_values: options.max_values
+    )
+    return msstd_json_parse[T](text, limits, options.ignore_unknown_fields)
 
 /*
 Customizes how `stringify` encodes a type. It takes precedence over the
@@ -245,11 +260,11 @@ let text = try stringify(Request(model: "example", stream: true, user: none))
 */
 export fn stringify[T: Data](
     value: T,
-    max_bytes: Int?,
-    indent: Int?,
-    strict: Bool = false
+    options: StringifyOptions = StringifyOptions()
 ) String!:
-    return msstd_json_stringify(value, max_bytes, indent, strict)
+    return msstd_json_stringify(
+        value, options.max_bytes, options.indent, options.strict
+    )
 
 // The member of `value` at `keys[from:]`, read one object level at a time.
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
@@ -263,7 +278,7 @@ fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
 // Scanner modes: between values, inside a container, inside a top-level string, and
 // inside a top-level scalar token.
 type JsonReading[T: Data]:
-    limits: JsonLimits
+    options: JsonOptions
     pending: BytesBuilder
     size: Int
     depth: Int
@@ -309,7 +324,7 @@ impl JsonReading[T]:
         let bytes = self.pending.drain()
         self.reset()
         if let text = bytes.decode_utf8():
-            return parse[T](text, self.limits)
+            return parse[T](text, self.options)
 
         return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
@@ -328,7 +343,7 @@ impl JsonReading[T]:
             else if byte == 34:
                 self.mode = 2
 
-        let limit = self.limits.max_bytes.get(-1)
+        let limit = self.options.max_bytes.get(-1)
         if self.mode == 3 and is_space(byte): return ok(true)
 
         self.size += 1
@@ -355,7 +370,7 @@ impl JsonReading[T]:
 
         if byte == 123 or byte == 91:
             self.depth += 1
-            if self.depth > self.limits.max_depth.get(self.depth): return error(
+            if self.depth > self.options.max_depth.get(self.depth): return error(
                 Error("JSON: limit exceeded", kind: "EOVERFLOW")
             )
 
@@ -376,7 +391,7 @@ impl JsonReading[T]:
         return ok(value)
 
 impl Transform[Bytes, T] for JsonReading[T]:
-    var fn step(value: Bytes, var out: WriteStream[T]) Unit!:
+    var fn step(value: Bytes, var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
@@ -384,11 +399,11 @@ impl Transform[Bytes, T] for JsonReading[T]:
             let stepped = self.advance(byte)
             if stepped.is_error(): return self.fail(stepped.err())
 
-            if let found = stepped.get(): try out.write(found)
+            if let found = stepped.get(): out.append(found)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[T]) Unit!:
+    var fn finish(var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
@@ -401,7 +416,7 @@ impl Transform[Bytes, T] for JsonReading[T]:
         let completed = self.complete()
         if completed.is_error(): return self.fail(completed.err())
 
-        try out.write(try completed)
+        out.append(try completed)
         return ok(unit)
 
 /*
@@ -411,21 +426,20 @@ Values may be separated by JSON whitespace or directly adjacent when they are st
 Top-level numbers, `true`, `false`, and `null` end at whitespace or at the end of the stream. Chunk
 boundaries may fall anywhere, including inside a token, an escape, or a UTF-8 scalar, and only the value
 being read is buffered. `T` decodes as in `parse`; the default `JsonValue` keeps each value as a document.
-`limits` applies to each value separately: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and
-`max_values` its parsed values; an exceeded limit fails the read with `EOVERFLOW`. Omit limits only for
+`options` applies to each value separately: `max_bytes` counts its UTF-8 bytes, `max_depth` its nesting, and
+`max_values` its parsed values; an exceeded limit fails the read with `EOVERFLOW`. Leave the bounds unset only for
 trusted input, because an unterminated value is otherwise buffered without bound. Malformed or truncated
 input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing the result closes
 `input`.
 */
 export fn json_reader[T: Data = JsonValue](
     input: ReadStream[Bytes],
-    limits: JsonLimits? = none
+    options: JsonOptions = JsonOptions()
 ) ReadStream[T]:
-    let bounds = limits.get(JsonLimits())
     return through[Bytes, T](
         input,
         JsonReading[T](
-            limits: bounds, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
+            options: options, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
             in_string: false, escaped: false, finished: false, failure: none
         )
     )
@@ -436,15 +450,12 @@ type JsonLines[T: Data]:
     max_bytes: Int?
 
 impl Sink[T] for JsonLines[T]:
-    var fn put(value: T) Unit!:
-        let text = try stringify[T](value, self.max_bytes, none)
+    var fn write(value: T) Unit!:
+        let text = try stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))
         return self.output.write("{text}\n".to_bytes())
 
-    var fn drain() Promise[Unit]:
+    var fn flush() Unit!:
         return self.output.flush()
-
-    fn buffered() Int:
-        return self.output.buffered()
 
     var fn close() Unit!:
         return self.output.close()
@@ -458,4 +469,4 @@ export fn json_writer[T: Data](
     output: WriteStream[Bytes],
     max_bytes: Int? = none
 ) WriteStream[T]:
-    return writer[T](JsonLines[T](output: output, max_bytes: max_bytes))
+    return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

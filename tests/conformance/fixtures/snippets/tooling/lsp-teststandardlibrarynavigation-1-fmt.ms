@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/lsp/navigation_test.go:53 TestStandardLibraryNavigation
 import ListEntry from "@std/collections/collections.ms"
-import system_info from "@std/os/process.ms"
+import system_info from "@std/os/system.ms"
 
 fn length(values: List[Int]) Int:
     return values.length()

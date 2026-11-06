@@ -1,5 +1,5 @@
 import Data, panic from "@std/core.ms"
-import random_bytes from "@std/os/random.ms"
+import random_bytes from "@std/random.ms"
 import (
     msstd_math_acos,
     msstd_math_asin,

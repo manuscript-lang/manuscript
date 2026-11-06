@@ -4,6 +4,7 @@ version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
 description = "Manuscript back end: lowering seam, optimization, native codegen and linking"
+autotests = false
 
 [lints]
 workspace = true
@@ -18,3 +19,7 @@ ms-lower = { path = "../ms-lower" }
 ms-rt = { path = "../ms-rt" }
 ms-driver = { path = "../ms-driver" }
 ms-syntax = { path = "../ms-syntax" }
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

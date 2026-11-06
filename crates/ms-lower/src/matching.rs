@@ -2,7 +2,7 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_check::hir::Resolution;
+use ms_check::api::hir::Resolution;
 use ms_mir::ir::{Block, Cc, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -98,7 +98,7 @@ impl FnLower<'_> {
         if hidden {
             let ty = self.b.var_ty(sv);
             let uid = self.adopt_hidden(sv, ty);
-            let cty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
+            let cty = ms_check::api::types::sub(&self.hir.ty(scrutinee), &self.subst);
             if let Some(kind) = self.part_closer(&cty)? {
                 self.hidden_closers.insert(uid, kind);
             }
@@ -125,7 +125,7 @@ impl FnLower<'_> {
         let borrowed = self.cx.fact(
             self.hir.data.file,
             e.id,
-            ms_check::ownership::Fact::BorrowedMatch,
+            ms_check::api::ownership::Fact::BorrowedMatch,
         );
         let owned = self.needs_drop(rty) && !borrowed;
         let res = self
@@ -379,7 +379,7 @@ impl FnLower<'_> {
         kind: &TyKind,
         k: usize,
         cur: Value,
-        bindings: &[Option<ms_check::types::BindingRef>],
+        bindings: &[Option<ms_check::api::types::BindingRef>],
     ) -> Result<(), Error> {
         match kind {
             TyKind::Alt(a) => {
@@ -416,7 +416,7 @@ impl FnLower<'_> {
     /// resource nothing takes on; an unnamed payload closes and drops now.
     pub(crate) fn bind_payload(
         &mut self,
-        b: Option<&ms_check::types::BindingRef>,
+        b: Option<&ms_check::api::types::BindingRef>,
         v: Value,
     ) -> Result<(), Error> {
         let x = Val { v, own: true };
@@ -434,9 +434,9 @@ impl FnLower<'_> {
         if self
             .cx
             .binding_facts
-            .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+            .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
         {
-            let cty = ms_check::types::sub(&b.ty, &self.subst);
+            let cty = ms_check::api::types::sub(&b.ty, &self.subst);
             if let Some(kind) = self.part_closer(&cty)? {
                 return self.bind_closing_kind(b, x, kind);
             }
@@ -461,7 +461,7 @@ impl FnLower<'_> {
                 self.b.br(*blk, &[]);
                 return Ok(());
             };
-            let concrete = ms_check::types::sub(&concrete, &self.subst);
+            let concrete = ms_check::api::types::sub(&concrete, &self.subst);
             let vt = self
                 .cx
                 .vtable_id(self.b.m, &concrete, iface, self.evidence())?;
@@ -565,7 +565,7 @@ impl FnLower<'_> {
             && self.cx.fact(
                 self.hir.data.file,
                 e.id,
-                ms_check::ownership::Fact::ViewWrap,
+                ms_check::api::ownership::Fact::ViewWrap,
             )
         {
             // The operand returns a borrow of its error from this function's arguments: hand the reference on.

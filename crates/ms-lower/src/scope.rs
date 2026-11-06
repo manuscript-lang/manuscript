@@ -2,7 +2,7 @@
 //! anything keyed by a type that has one is also keyed by the module that asks.
 
 use crate::cx::Cx;
-use ms_check::types::{self as ct, Name};
+use ms_check::api::types::{self as ct, Name};
 use ms_mir::ir::Module;
 use ms_mir::types::{Ty as MTy, TyKind};
 
@@ -43,7 +43,7 @@ impl crate::func::FnLower<'_> {
     /// The instance of `c` under `subst`, created for the current evidence scope.
     pub(crate) fn instance(
         &mut self,
-        c: &std::rc::Rc<ms_check::hir::Callable>,
+        c: &std::rc::Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
     ) -> Result<ms_mir::ir::FuncId, crate::Error> {
         let scope = self.evidence();
@@ -57,7 +57,7 @@ impl Cx {
     pub(crate) fn function_in(
         &mut self,
         m: &mut Module,
-        c: &std::rc::Rc<ms_check::hir::Callable>,
+        c: &std::rc::Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
         scope: Name,
     ) -> Result<ms_mir::ir::FuncId, crate::Error> {
@@ -68,7 +68,7 @@ impl Cx {
     pub(crate) fn function_in_as(
         &mut self,
         m: &mut Module,
-        c: &std::rc::Rc<ms_check::hir::Callable>,
+        c: &std::rc::Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
         scope: Name,
         owned: bool,

@@ -1582,12 +1582,33 @@ pub(crate) fn native_method(
         let decl = stdlib::standard_method_declaration(&owner, name);
         return Some(native_of(name, t, ty, Vec::new(), decl));
     }
-    let mut receiver = t.clone();
-    if let Some(intrinsic) = session.intrinsic_operations(t.id) {
-        receiver = intrinsic;
+    let intrinsic = session.intrinsic_operations(t.id);
+    if intrinsic.len() > 1 {
+        // A primitive has its own interface and the shared ones for its family; the first with the
+        // operation answers.
+        return intrinsic
+            .iter()
+            .find_map(|interface| native_method_of(syms, session, t, name, interface, &native_of));
     }
+    let receiver = intrinsic.into_iter().next().unwrap_or_else(|| t.clone());
+    native_method_of(syms, session, t, name, &receiver, &native_of)
+}
+
+type NativeOf<'a> = dyn Fn(Name, &Ty, Ty, Vec<Ty>, Option<FuncRef>) -> Method + 'a;
+
+/// The operation `name` of the standard `receiver` interface (or type) as a method of `t`.
+fn native_method_of(
+    syms: ms_syntax::Names,
+    session: &Rc<crate::stdlib::Session>,
+    t: &Ty,
+    name: Name,
+    receiver: &Ty,
+    native_of: &NativeOf,
+) -> Option<Method> {
+    let receiver = receiver.clone();
     let key = format!("{}/{}", syms.str(receiver.id), syms.str(name));
     let binding = session.is_receiver_native(&key);
+    let bindings = substitution(&receiver);
     let opaque_alternative = receiver.kind == Kind::Alternative
         && receiver
             .symbol()
@@ -1601,11 +1622,8 @@ pub(crate) fn native_method(
                 return Some(native_of(
                     native,
                     t,
-                    sub(&operation.ty, &substitution(t)),
-                    instantiate_operation_variables(
-                        &session.operation_variables(&key),
-                        &substitution(t),
-                    ),
+                    sub(&operation.ty, &bindings),
+                    instantiate_operation_variables(&session.operation_variables(&key), &bindings),
                     operation.decl.clone(),
                 ));
             }

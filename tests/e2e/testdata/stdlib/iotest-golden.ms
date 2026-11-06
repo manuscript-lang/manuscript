@@ -1,7 +1,8 @@
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import from_bytes, read_all from "@std/io/streams.ms"
-import join, open, read_file, temporary, write_file from "@std/os/fs.ms"
+import open, read_file, temporary, write_file from "@std/os/fs.ms"
+import join from "@std/os/path.ms"
 import (
     expect_equal,
     expect_error,
@@ -24,7 +25,7 @@ test "a wrong expectation fails the reader check":
 
 test "one_byte returns single bytes":
     var input = one_byte(source())
-    let chunk = try input.read().wait()
+    let chunk = try input.next()
     try expect_equal(chunk.get().length(), 1)
 
 test "fail_after delivers a prefix and then fails":

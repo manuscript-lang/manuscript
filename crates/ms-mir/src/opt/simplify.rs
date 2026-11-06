@@ -419,6 +419,49 @@ fn zero_of(is_bool: bool) -> K {
 }
 
 fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
+    match inst.op {
+        Op::IAdd
+        | Op::ISub
+        | Op::IMul
+        | Op::IAddChk
+        | Op::ISubChk
+        | Op::IMulChk
+        | Op::INeg
+        | Op::INegChk
+        | Op::SDiv
+        | Op::SRem
+        | Op::SDivChk
+        | Op::SRemChk
+        | Op::And
+        | Op::Or
+        | Op::Xor
+        | Op::Shl
+        | Op::Sshr
+        | Op::Ushr
+        | Op::Rotl
+        | Op::Rotr => integer_rule(f, env, out, inst),
+        Op::Not | Op::ICmp | Op::FCmp | Op::Select => comparison_rule(f, env, out, inst),
+        Op::FAdd
+        | Op::FSub
+        | Op::FMul
+        | Op::FDiv
+        | Op::FNeg
+        | Op::FSqrt
+        | Op::FAbs
+        | Op::FFloor
+        | Op::FCeil
+        | Op::FTrunc
+        | Op::I2F
+        | Op::B2I
+        | Op::OptIsSome
+        | Op::OptGet
+        | Op::OptUnwrap => float_and_optional_rule(f, env, inst),
+        _ => Act::Keep,
+    }
+}
+
+/// Integer arithmetic, negation, division, bit and shift identities.
+fn integer_rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
     let a = |i: usize| inst.args[i];
     let is_bool = inst.res.is_some_and(|r| f.ty(r) == Ty::BOOL);
     match inst.op {
@@ -543,6 +586,15 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             }
             Act::Keep
         }
+        _ => Act::Keep,
+    }
+}
+
+/// Boolean negation, comparisons and `select`.
+fn comparison_rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
+    let a = |i: usize| inst.args[i];
+    let is_bool = inst.res.is_some_and(|r| f.ty(r) == Ty::BOOL);
+    match inst.op {
         Op::Not => {
             let x = a(0);
             if let Some(p) = env.ci(x) {
@@ -595,6 +647,30 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
                 _ => Act::Keep,
             }
         }
+        Op::Select => {
+            let (c, t, e) = (a(0), a(1), a(2));
+            if let Some(p) = env.ci(c) {
+                return Act::Alias(if p != 0 { t } else { e });
+            }
+            if t == e {
+                return Act::Alias(t);
+            }
+            if is_bool && env.ci(t) == Some(1) && env.ci(e) == Some(0) {
+                return Act::Alias(c);
+            }
+            if is_bool && env.ci(t) == Some(0) && env.ci(e) == Some(1) {
+                return Act::Rewrite(Op::Not, vec![c], Imm::None);
+            }
+            Act::Keep
+        }
+        _ => Act::Keep,
+    }
+}
+
+/// Float arithmetic, numeric conversions and optionals.
+fn float_and_optional_rule(f: &mut Func, env: &mut Env, inst: &Inst) -> Act {
+    let a = |i: usize| inst.args[i];
+    match inst.op {
         Op::FAdd | Op::FSub | Op::FMul | Op::FDiv => match (env.cf(a(0)), env.cf(a(1))) {
             (Some(p), Some(q)) => {
                 let r = match inst.op {
@@ -655,22 +731,6 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             } else {
                 Act::Keep
             }
-        }
-        Op::Select => {
-            let (c, t, e) = (a(0), a(1), a(2));
-            if let Some(p) = env.ci(c) {
-                return Act::Alias(if p != 0 { t } else { e });
-            }
-            if t == e {
-                return Act::Alias(t);
-            }
-            if is_bool && env.ci(t) == Some(1) && env.ci(e) == Some(0) {
-                return Act::Alias(c);
-            }
-            if is_bool && env.ci(t) == Some(0) && env.ci(e) == Some(1) {
-                return Act::Rewrite(Op::Not, vec![c], Imm::None);
-            }
-            Act::Keep
         }
         _ => Act::Keep,
     }

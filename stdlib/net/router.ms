@@ -12,8 +12,8 @@ import (
 ) from "@std/net/http.ms"
 import RawWebSocket from "@std/net/net.ms"
 import Logger from "@std/log.ms"
-import uuid_v4 from "@std/os/random.ms"
-import monotonic from "@std/os/time.ms"
+import uuid_v4 from "@std/random.ms"
+import monotonic from "@std/time.ms"
 import Closeable from "@std/core.ms"
 import (
     msrt_promise_drop,

@@ -1,9 +1,9 @@
 import expect_equal, fail from "@std/test/test.ms"
 import crc32, crc32_of, adler32, adler32_of from "@std/data/checksum.ms"
-import crc64, crc64_of, Crc64Polynomial from "@std/data/hash.ms"
+import crc64, crc64_of, Crc64Polynomial from "@std/crypto/hash.ms"
 import digest, HashAlgorithm from "@std/crypto.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -26,7 +26,7 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(data, size, 0))
+    return ReadStream[Bytes](Chunks(data, size, 0))
 
 test "stream checksums match the whole-value functions under every chunk size":
     let data = "123456789 and some more bytes to cross chunk boundaries".to_bytes()

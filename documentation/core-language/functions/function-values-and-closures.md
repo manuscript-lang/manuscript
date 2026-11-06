@@ -53,7 +53,7 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 ## Changing parameters
 
-A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Unit` has type `fn(var List[Int]) Unit`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Unit` and `fn(var List[Int]) Unit` are different types.
+A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Unit` has type `fn(var List[Int]) Unit`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Unit` and `fn(var List[Int]) Unit` are different types, but a function that only reads a parameter may be used where one that may change it is expected: `apply(fn(xs: List[Int]): unit, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read. The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
 
 ```manuscript
 fn push_one(var values: List[Int]) Unit:

@@ -6,7 +6,7 @@ use ms_lsp::nav::{self, Navigate};
 use ms_lsp::text::{self, Range};
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 #[test]

@@ -3,7 +3,7 @@
 use crate::analysis::{Analysis, Document};
 use crate::json::{Json, obj};
 use crate::text::{self, Range, SourcePositions};
-use ms_check::types::BindingRef;
+use ms_check::api::types::BindingRef;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
 
@@ -43,7 +43,7 @@ pub fn folding_ranges(d: &Document) -> Json {
 
 struct Hints<'a> {
     syms: ms_syntax::Names,
-    module: ms_check::syntax::ModRef,
+    module: ms_check::api::syntax::ModRef,
     positions: SourcePositions<'a>,
     requested: Range,
     hints: Vec<(text::Position, Json)>,

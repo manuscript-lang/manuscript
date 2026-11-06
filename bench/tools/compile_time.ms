@@ -14,8 +14,8 @@ import (
     write_text
 ) from "./lib.ms"
 import create_directory, remove, temporary from "@std/os/fs.ms"
-import arguments, set_environment from "@std/os/process.ms"
-import SeededRandom, seeded from "@std/os/random.ms"
+import arguments, set_environment from "@std/os/env.ms"
+import SeededRandom, seeded from "@std/random.ms"
 import stdout from "@std/io/io.ms"
 
 fn q(text: String) String:

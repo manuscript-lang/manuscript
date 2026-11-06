@@ -1,22 +1,12 @@
 import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
-import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
-import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import Duration, milliseconds, monotonic, now, sleep from "@std/time.ms"
+import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import Promise, adopt, owned_promise from "@std/concurrency/promise.ms"
 import msrt_promise_finished from "@std/internal/promises.ms"
-import Timestamp from "@std/os/time.ms"
+import Timestamp from "@std/time.ms"
 import Closeable from "@std/core.ms"
 import (
-    msstd_path_basename,
-    msstd_path_dirname,
-    msstd_path_extension,
-    msstd_path_is_absolute,
-    msstd_path_join,
-    msstd_path_normalize,
-    msstd_path_basename_without,
-    msstd_path_separator,
-    msstd_path_delimiter,
-    msstd_path_to_namespaced_path,
     msstd_fs_filesystem,
     msstd_fs_canonicalize,
     msstd_fs_create_directory,
@@ -45,13 +35,6 @@ import (
     msstd_fs_stat_filesystem,
     msstd_fs_watch,
     msstd_fs_watch_native,
-    msstd_path_relative,
-    msstd_fs_posix,
-    msstd_fs_win32,
-    msstd_path_resolve,
-    msstd_path_parse,
-    msstd_path_format,
-    msstd_path_matches_glob,
     msstd_io_close,
     msstd_fs_file_clone,
     msstd_io_read,
@@ -266,19 +249,16 @@ impl Source[Bytes] for FileSource:
     var fn close() Unit!:
         return self.file.close()
 
-// Complete writes to a file; `drain` synchronizes it.
+// Complete writes to a file; `flush` synchronizes it.
 type FileSink:
     file: FileHandle
 
 impl Sink[Bytes] for FileSink:
-    var fn put(value: Bytes) Unit!:
+    var fn write(value: Bytes) Unit!:
         return self.file.write_bytes(value)
 
-    var fn drain() Promise[Unit]:
-        return adopt[Unit](msrt_promise_finished())
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     var fn close() Unit!:
         return self.file.close()
@@ -302,12 +282,12 @@ impl FileHandle:
     // Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
     fn reader() ReadStream[Bytes]!:
         let own = try self.clone()
-        return ok(stream[Bytes](FileSource(own)))
+        return ok(ReadStream[Bytes](FileSource(own)))
 
     // Adapts complete writes to `Error`/Unit; flush synchronizes the file.
     fn writer() WriteStream[Bytes]!:
         let own = try self.clone()
-        return ok(writer[Bytes](FileSink(own)))
+        return ok(WriteStream[Bytes](FileSink(own)))
 
     // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Int?) Bytes?!:
@@ -478,7 +458,7 @@ impl Source[FileEvent] for WatchSource:
         return ok(unit)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
-    return stream[FileEvent](WatchSource(watcher, []))
+    return ReadStream[FileEvent](WatchSource(watcher, []))
 
 // The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
@@ -913,118 +893,3 @@ export fn stat_filesystem(path: String) FileSystemInfo!:
 // Changes the link itself without following it; ENOTSUP on hosts lacking this operation.
 export fn chmod_link(path: String, mode: Int) Unit!:
     return msstd_fs_chmod(path, mode, false)
-
-// Returns the final path component, excluding trailing separators.
-export fn basename(path: String) String:
-    return msstd_path_basename(path)
-
-// Returns the directory portion of a path.
-export fn dirname(path: String) String:
-    return msstd_path_dirname(path)
-
-// Returns the final extension, including its leading dot, or an empty string.
-export fn extension(path: String) String:
-    return msstd_path_extension(path)
-
-// Reports whether a path is absolute according to the host path rules.
-export fn is_absolute(path: String) Bool:
-    return msstd_path_is_absolute(path)
-
-// Joins path parts using the host separator and normalizes the result.
-export fn join(parts: List[String]) String:
-    return msstd_path_join(parts)
-
-// Normalizes separators and dot segments without accessing the filesystem.
-export fn normalize(path: String) String:
-    return msstd_path_normalize(path)
-
-// Computes a relative path from `base` to `target` using host path rules.
-export fn relative(base: String, target: String) String!:
-    return msstd_path_relative(base, target)
-
-// Parsed path components using the familiar root, directory, base, extension, and name fields.
-export type PathParts:
-    // Root prefix under the chosen path rules, including a POSIX slash or Windows drive/UNC root.
-    root: String
-    // Directory portion, including the root when present; it takes precedence over root during format.
-    directory: String
-    // Final component with extension; it takes precedence over name/extension during format.
-    base: String
-    // Final extension including its dot; simple dotfiles and dot/dot-dot components have no extension.
-    extension: String
-    // Final component with its extension removed, retaining the original spelling.
-    name: String
-
-// Path operations using either POSIX or Windows path conventions.
-export interface PathOperations:
-    // Returns the last component after ignoring trailing separators under this view's path rules.
-    fn basename(path: String) String
-    // Removes an exact suffix under basename compatibility rules; it does not strip arbitrary extensions.
-    fn basename_without(path: String, suffix: String) String
-    // Returns the directory component using the selected POSIX or Windows convention.
-    fn dirname(path: String) String
-    // Returns the final dot extension, or empty text for extensionless names and simple dotfiles.
-    fn extension(path: String) String
-    // Tests absolute-root syntax; a Windows drive-relative spelling is not absolute.
-    fn is_absolute(path: String) Bool
-    // Joins nonempty parts and normalizes separators/dot segments without filesystem access.
-    fn join(parts: List[String]) String
-    // Cleans repeated separators and dot segments lexically; it does not resolve symlinks.
-    fn normalize(path: String) String
-    // Computes a lexical relative path from absolute anchors; different roots return the original target.
-    // Nonabsolute anchors or invalid NUL input return EINVAL.
-    fn relative(base: String, target: String) String!
-    // Resolves parts against an explicit absolute base; no process working directory is consulted.
-    fn resolve(base: String, parts: List[String]) String!
-    // Splits the original spelling into root, directory, base, extension and name without filesystem access.
-    fn parse(path: String) PathParts
-    // Builds a path with directory preferred over root, and base preferred over name plus extension.
-    fn format(parts: PathParts) String
-    // Returns slash for POSIX or backslash for Windows path components.
-    fn separator() String
-    // Returns colon for POSIX or semicolon for Windows path-list entries.
-    fn delimiter() String
-    // Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged.
-    fn to_namespaced_path(path: String) String
-    // Tests one lexical path against the supported glob syntax; malformed patterns return EINVAL.
-    fn matches_glob(path: String, pattern: String) Bool!
-
-// Returns path operations using POSIX separators and parsing rules.
-export fn posix() PathOperations:
-    return msstd_fs_posix()
-
-// Returns path operations using Windows separators and parsing rules.
-export fn win32() PathOperations:
-    return msstd_fs_win32()
-
-// Returns the basename with the supplied suffix removed when it matches.
-export fn basename_without(path: String, suffix: String) String:
-    return msstd_path_basename_without(path, suffix)
-
-// Resolves path parts against a base using host path conventions.
-export fn resolve(base: String, parts: List[String]) String!:
-    return msstd_path_resolve(base, parts)
-
-// Splits a path into its root, directory, base, extension, and name.
-export fn parse(path: String) PathParts:
-    return msstd_path_parse(path)
-
-// Formats parsed path components as a path string.
-export fn format(parts: PathParts) String:
-    return msstd_path_format(parts)
-
-// Returns the host's path separator.
-export fn separator() String:
-    return msstd_path_separator()
-
-// Returns the host's path-list delimiter.
-export fn delimiter() String:
-    return msstd_path_delimiter()
-
-// Converts a path to the host's namespaced representation when applicable.
-export fn to_namespaced_path(path: String) String:
-    return msstd_path_to_namespaced_path(path)
-
-// Tests a path against a glob pattern.
-export fn matches_glob(path: String, pattern: String) Bool!:
-    return msstd_path_matches_glob(path, pattern)

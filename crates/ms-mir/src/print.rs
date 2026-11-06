@@ -123,6 +123,14 @@ pub fn print_module(m: &Module) -> String {
     for (i, f) in m.files.iter().enumerate() {
         let _ = writeln!(o, "file {i} {}", quote(f));
     }
+    for (i, b) in m.blobs.iter().enumerate() {
+        let hex: String = b.iter().map(|x| format!("{x:02x}")).collect();
+        let _ = writeln!(o, "blob {i} \"{hex}\"");
+    }
+    for (i, l) in m.list_consts.iter().enumerate() {
+        let items: Vec<String> = l.iter().map(|x| x.to_string()).collect();
+        let _ = writeln!(o, "consts {i} [{}]", items.join(", "));
+    }
     for r in &m.records {
         let fields: Vec<String> = r
             .fields

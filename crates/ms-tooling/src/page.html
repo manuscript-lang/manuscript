@@ -399,7 +399,7 @@ function calls(){
 }
 function types(){
   const nodes={},edges=[];let n=0;const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod)).slice(0,30);
-  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'?'type ':x.kind==='alternative'?'enum ':'')+x.name,cls:'cls',kind:'type',
+  const seen={};const add=x=>{if(seen[x.key]||n>=40)return;seen[x.key]=1;n++;if(!nodes[x.key])nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'?'type ':x.kind==='alternative'?'enum ':'')+x.name,cls:'cls',kind:'type',
     lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
     x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:s.name})}}));
     if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:'returns'})}})};

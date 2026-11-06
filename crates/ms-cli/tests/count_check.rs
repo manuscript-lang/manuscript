@@ -1,6 +1,6 @@
 //! The ownership-count gate must fail when its fixture fails, even when cleanup is complete.
 
-mod common;
+use crate::common;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

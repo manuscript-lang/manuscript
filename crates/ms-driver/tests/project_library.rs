@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::project::read_project;
