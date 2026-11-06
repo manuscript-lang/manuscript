@@ -161,8 +161,8 @@ impl Closeable for Waiting[T]:
         return ok(unit)
 
 // A stream's source, moved out so a stage pulls it with a plain call. When a read already holds the source, the
-// stage reads through the stream instead, as before.
-fn source_of[T](input: ReadStream[T]) Source[T]:
+// stage reads through the stream instead, as before. Stages that map items one to one are a `Source` over this, with no `through` layer.
+export fn source_of[T](input: ReadStream[T]) Source[T]:
     var owned = input
     if let source = msrt_cells_take[Source[T]](owned.cell):
         return source

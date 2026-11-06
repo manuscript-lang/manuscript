@@ -47,3 +47,17 @@ Same machine and method. `c9446bfc` is main; the second column has `Transform.st
 
 - The per-item allocation is gone (callgrind on `stream-map`: 860 to 300 instructions per item, no `malloc`), but `map` time is unchanged: what remains is two interface calls per item, each returning a `Result` through memory.
 - `lines` is 10% faster: it no longer builds a `List` per chunk, and `List.reverse` now swaps in place instead of copying every element.
+
+## 2026-11-06: Linux x86_64, `map` as a direct `Source`
+
+Same machine and method (7 alternating runs, medians, all checksums equal). `map` is now a `Source` over its input's source, with no `Transform` or collecting buffer between stages. `main` is the base column.
+
+| case | main | direct map |
+| --- | ---: | ---: |
+| `source-map` | 2.6 | 2.6 |
+| `stream-map` | 21.6 | 14.7 |
+| `stream-map3` | 40.3 | 18.8 |
+| `stream-collect` | 18.8 | 11.2 |
+| `stream-lines` | 57.7 | 54.7 |
+
+- Each extra `map` stage now costs about 2 ns (was about 9). The remaining one-stage gap to `source-map` is the `for` loop's `Waiting.next` and `from_list`'s clone and reverse, not the stage.

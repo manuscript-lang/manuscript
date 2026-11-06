@@ -1,5 +1,13 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, WriteStream, Transform, through, stream, Source from "@std/io/io.ms"
+import (
+    ReadStream,
+    WriteStream,
+    Transform,
+    through,
+    stream,
+    Source,
+    source_of
+) from "@std/io/io.ms"
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator.
 
@@ -119,19 +127,25 @@ impl Source[Bytes] for BytesSource:
 export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
     return stream[Bytes](BytesSource(data, 0, chunk_bytes))
 
-type Mapper[T, U]:
+// `f` over each item of another source: one pull per item, with no buffering between stages.
+type Mapped[T, U]:
+    up: Source[T]
     f: fn(T) U
 
-impl Transform[T, U] for Mapper[T, U]:
-    var fn step(value: T, var out: WriteStream[U]) Unit!:
-        return out.write(self.f(value))
+impl Source[U] for Mapped[T, U]:
+    var fn next() U?!:
+        let step = try self.up.next()
+        if let value = step:
+            return ok(self.f(value))
 
-    var fn finish(var out: WriteStream[U]) Unit!:
-        return ok(unit)
+        return ok(none)
+
+    var fn close() Unit!:
+        return self.up.close()
 
 // A stream of `f` applied to each item of `input`; closing it closes `input`.
 export fn map[T, U](input: ReadStream[T], f: fn(T) U) ReadStream[U]:
-    return through[T, U](input, Mapper[T, U](f))
+    return stream[U](Mapped[T, U](source_of[T](input), f))
 
 // Every item of `input`, in order; more than `max_items` items is an error.
 export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
