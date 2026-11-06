@@ -61,6 +61,18 @@ Base `a460b7ef`, 4-core Linux VM, `ms build --build-type Release`, cold `.ms-cac
 
 Same program output. `opt -time-trace` on the 122k-line IR (142 s of `opt`) showed `ms_entry`, a 33k-line generated `main`, taking 60 s alone, so the serial part now bounds the large case. Programs under 2 MiB of function text per unit are unchanged. See `wiki/benchmarks-and-performance/release-llvm-builds-split-into-parallel-units.md`.
 
+## Split after whole-program inlining (2026-11-06)
+
+Base `2e15933d` plus the change, 4-core Linux VM, LLVM 23.1.1 bundle, `MS_TIMINGS` "codegen done" on `tests/e2e/testdata/stdlib/yaml-regressions.ms` (9.6 MB of IR), warm tool cache.
+
+| Build | codegen done |
+| --- | --- |
+| one module (`MS_LLVM_UNITS=1`) | 7.8 s |
+| four independent units (before) | 2.8 s |
+| whole-program inline, split into four parts (after) | 4.1 s, 4.2 s |
+
+Kernel runtime (`bench/perf/kernels`, min of 5, microseconds, forced to four parts): one module / four independent units / four split parts. collatz 194k / 211k / 202k; matmul 8.0k / 7.8k / 7.7k; nbody 7.8k / 7.6k / 7.6k; sieve 29.0k / 28.8k / 27.9k; trees 26.9k / 27.1k / 26.9k; life 4.35k / 4.33k / 4.31k; map_count 15.0k / 15.2k / 15.4k. Noise on this VM is about 3%.
+
 ## Pipelined Cranelift codegen (2026-11-03)
 
 Base `1ef45ec5`, 4-core Linux VM, `ms build --build-type Debug`, cold cache, workload `40 25 10` (122k lines), `MS_TIMINGS` "codegen done" (includes 0.25 s of MIR optimize), four alternating runs each.

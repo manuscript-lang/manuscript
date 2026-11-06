@@ -951,11 +951,11 @@ fn compile_with_isa(
     })
 }
 
-/// Bytes of function text per LLVM unit below which splitting costs more than it saves: each
-/// unit parses the debug metadata and cannot inline functions of another.
+/// Bytes of function text per LLVM part below which splitting costs more than it saves: each
+/// part parses the debug metadata and the whole-program stage is serial.
 const UNIT_BYTES: usize = 2 << 20;
 
-/// How many objects LLVM compiles the program into: `requested`, else one per core up to the
+/// How many parts LLVM compiles the program into: `requested`, else one per core up to the
 /// size that gives each [`UNIT_BYTES`] of code.
 fn llvm_units(requested: Option<usize>, bytes: usize) -> usize {
     if let Some(n) = requested {
