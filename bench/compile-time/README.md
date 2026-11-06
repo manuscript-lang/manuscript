@@ -71,3 +71,23 @@ Base `1ef45ec5`, 4-core Linux VM, `ms build --build-type Debug`, cold cache, wor
 | after (pipeline) | 3.04, 3.19, 2.88, 2.66 s (median 2.96) |
 
 Before the change the loop (2.36 s) was lower 0.49 s, Cranelift compile 1.41 s wall in batches (5.6 CPU-s), define 0.44 s; lowering and defining left the cores idle each batch. Now they overlap; the object is byte-identical to the batched build's. The loop is CPU-bound on 4 cores, so the gain is small here (about 6%) and grows with cores. Forcing the single-pass register allocator for all Debug builds would save another 0.57 s but grows the binary 40% (14.8 to 20.6 MB) and slows code, so it is not done.
+
+## Rust added (2026-11-06)
+
+Base `f3a09110` plus the Rust generator in `bench/tools/compile_time.ms`, 4-core Linux VM, `ms` Release build (`make build`), cold builds, one run each (noisy VM). Command: `ms run bench/tools/compile_time.ms` (122k lines of Manuscript, 156k lines of Go, 151k lines of Rust; `SKIP_RUST=1` skips the Rust steps). All three binaries print the same result (15467800). Go 1.24.7, rustc 1.97.0.
+
+The Rust program is one crate with 40 modules of 25 files, the closest match for Go's 40 packages. Each Rust step starts with `target/` removed.
+
+| step | time |
+| --- | --- |
+| go build (cold) | 10.52 s |
+| ms check | 1.60 s |
+| ms emit | 2.40 s |
+| ms build Debug (Cranelift) | 4.82 s |
+| ms build Cranelift release | 7.20 s |
+| ms build Release (LLVM) | 43.81 s |
+| cargo check | 16.80 s |
+| cargo build (debug) | 17.96 s |
+| cargo build --release | 30.48 s |
+
+Manuscript check is 10.5 times faster than `cargo check`, and Manuscript Debug is 2.2 times faster than Go and 3.7 times faster than `cargo build`. Manuscript Release (LLVM) is 1.4 times slower than `cargo build --release`. A single crate gives Rust less parallelism than 40 crates would; a workspace of 40 crates was not measured.
