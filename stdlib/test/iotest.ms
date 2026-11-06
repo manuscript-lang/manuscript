@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import Promise from "@std/concurrency/promise.ms"
 import read_all, from_bytes from "@std/io/streams.ms"
 import fail from "@std/test/test.ms"
@@ -20,7 +20,7 @@ impl Source[Bytes] for OneByte:
         if let held = self.held:
             data = held.clone()
         else:
-            let fresh = try self.input.read().wait()
+            let fresh = try self.input.next()
             if fresh.is_none():
                 return ok(none)
 
@@ -38,7 +38,7 @@ impl Source[Bytes] for OneByte:
 
 // Returns `input` limited to one byte per read, which exposes code that assumes a read fills its buffer.
 export fn one_byte(input: ReadStream[Bytes]) ReadStream[Bytes]:
-    return stream[Bytes](OneByte(input, none))
+    return ReadStream[Bytes](OneByte(input, none))
 
 type FailAfter:
     input: ReadStream[Bytes]
@@ -50,7 +50,7 @@ impl Source[Bytes] for FailAfter:
         if self.remaining <= 0:
             return error(self.cause.clone())
 
-        let chunk = try self.input.read().wait()
+        let chunk = try self.input.next()
 
         if let data = chunk:
             if data.length() > self.remaining:
@@ -72,7 +72,7 @@ export fn fail_after(
     after: Int,
     cause: Error
 ) ReadStream[Bytes]:
-    return stream[Bytes](FailAfter(input, after, cause))
+    return ReadStream[Bytes](FailAfter(input, after, cause))
 
 type FailingSink:
     output: WriteStream[Bytes]
@@ -80,7 +80,7 @@ type FailingSink:
     cause: Error
 
 impl Sink[Bytes] for FailingSink:
-    var fn put(value: Bytes) Unit!:
+    var fn write(value: Bytes) Unit!:
         let size = value.length()
 
         if size <= self.remaining:
@@ -94,11 +94,8 @@ impl Sink[Bytes] for FailingSink:
             try self.output.write(try value.slice(0, prefix))
         return error(self.cause.clone())
 
-    var fn drain() Promise[Unit]:
+    var fn flush() Unit!:
         return self.output.flush()
-
-    fn buffered() Int:
-        return self.output.buffered()
 
     var fn close() Unit!:
         return self.output.close()
@@ -110,7 +107,7 @@ export fn fail_writer_after(
     after: Int,
     cause: Error
 ) WriteStream[Bytes]:
-    return writer[Bytes](FailingSink(output, after, cause))
+    return WriteStream[Bytes](FailingSink(output, after, cause))
 
 // Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`: whole reads, one-byte reads, and
 // an end of input that stays ended. `make` is called once per check so each starts from the beginning.
@@ -133,7 +130,7 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
     var total = 0
 
     while true:
-        let chunk = again.read().wait()
+        let chunk = again.next()
         if chunk.is_error():
             return fail("check_reader: a read failed")
 
@@ -143,7 +140,7 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
 
         total += piece.get().length()
 
-    let after_end = again.read().wait()
+    let after_end = again.next()
     if after_end.is_error() or after_end.get().is_some():
         return fail("check_reader: a read after end of input must return none again")
     if total != expected.length():

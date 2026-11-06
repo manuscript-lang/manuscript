@@ -94,19 +94,6 @@ export extern fn msrt_streams_close(stream: Int) Unit
 // Makes the new promise `id` one whose work runs in the first task that waits on it.
 export extern fn msrt_promise_defer(id: Int, work: fn() Unit) Unit
 
-// Cells (crates/ms-rt/src/cells.rs): one owned value parked in the runtime, so a closure carries only the id.
-export extern fn msrt_cells_new[T](value: T) Int
-
-// Moves the value out; none when the cell is empty (a user has it) or gone.
-export extern fn msrt_cells_take[T](id: Int) T?
-
-export extern fn msrt_cells_put[T](id: Int, value: T) Unit
-
-export extern fn msrt_cells_drop(id: Int) Unit
-
-// Whether the cell is live with its value out, so a holder can put it back; false once it is dropped.
-export extern fn msrt_cells_out(id: Int) Bool
-
 // An already finished promise with no value.
 export extern fn msrt_promise_finished() Int
 

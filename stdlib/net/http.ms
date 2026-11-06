@@ -9,7 +9,7 @@ import (
     set_options
 ) from "@std/concurrency/promise.ms"
 import stringify from "@std/data/json.ms"
-import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 import TlsOptions from "@std/net/net.ms"
 import WebSocket, RawWebSocket, web_socket_from from "@std/net/net.ms"
@@ -408,7 +408,7 @@ impl Source[Bytes] for ResponseSource:
 fn response(raw: RawResponse) StreamingResponse:
     let metadata = raw.metadata()
     return StreamingResponse(
-        metadata: metadata, body: stream[Bytes](ResponseSource(raw))
+        metadata: metadata, body: ReadStream[Bytes](ResponseSource(raw))
     )
 
 // Reads the rest of the request body into one value.

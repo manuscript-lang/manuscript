@@ -142,8 +142,8 @@ hand. Retains no input bytes, and consumes and closes the stream. A failed read 
 export fn digest(input: ReadStream[Bytes], algorithm: HashAlgorithm) Bytes!:
     var hasher = algorithm.hasher()
     var source = input
-    for chunk in source.wait():
-        hasher.update(try chunk)
+    for chunk in source:
+        hasher.update(chunk)
     try source.close()
     return ok(hasher.finish())
 

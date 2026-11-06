@@ -470,14 +470,16 @@ impl Checker {
                 element = self.session.standard("MapEntry", t.args.clone());
             }
         } else if self.iterator_item(&t).is_some() {
-            return self.check_iterator_for(s, name, iter, body, Vec::new());
+            return self.check_iterator_for(s, name, iter, body, Vec::new(), false);
+        } else if self.stream_item(&t).is_some() {
+            return self.check_iterator_for(s, name, iter, body, Vec::new(), true);
         } else if self.is_iterable(&t) {
             return self.check_iterable_for(s, name, iter, body);
         } else {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
+                    "for requires List, Set, Map, a ReadStream, an Iterator, or an Iterable, found {t_t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement ReadStream with 'var fn next() T?!' and 'var fn close() Unit!', Iterator with 'var fn next() T?', or Iterable with 'fn length() Int' and 'fn at(index: Int) T?'"
                 , t_t = t.display(self.syms)),
             );
         }
@@ -510,6 +512,17 @@ impl Checker {
         })
     }
 
+    /// The item type of `t` when it is a `ReadStream[T]`.
+    fn stream_item(&self, t: &Ty) -> Option<Ty> {
+        let std_stream = self.syms.str(t.name) == "ReadStream"
+            && t.symbol()
+                .is_some_and(|s| self.syms.str(s.module) == "@std/io/io.ms");
+        if std_stream {
+            return t.args.first().cloned();
+        }
+        None
+    }
+
     /// `for name in iterator:` is checked, lowered and analysed as
     /// `while True: if let name = iterator.next(): body else: break`. A variable or field path
     /// is advanced in place, so it keeps the iterator's final state (`error()` of a reader);
@@ -521,6 +534,7 @@ impl Checker {
         iter: &Expr,
         body: &[Stmt],
         mut expansion: Vec<Stmt>,
+        fallible: bool,
     ) -> (bool, bool) {
         let pos = s.pos;
         let id = |c: &Self| c.m().facts_mut().fresh_id();
@@ -569,6 +583,21 @@ impl Checker {
                 callee: Box::new(callee),
                 args: Vec::new(),
             },
+        };
+        // A stream's `next` returns `T?!`: the loop takes `try call`, so a failed read leaves the
+        // enclosing function with its error and the item is a plain `T`.
+        let call = if fallible {
+            Expr {
+                id: id(self),
+                pos: iter.pos,
+                end: iter.pos,
+                kind: ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    operand: Box::new(call),
+                },
+            }
+        } else {
+            call
         };
         let binding = Pattern {
             id: id(self),

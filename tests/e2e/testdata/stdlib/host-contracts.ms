@@ -89,7 +89,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 
     var writer = try handle.writer()
     try writer.write("AB".to_bytes())
-    try writer.flush().wait()
+    try writer.flush()
     try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
 
     var reader = try handle.reader()

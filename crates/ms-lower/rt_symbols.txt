@@ -52,12 +52,6 @@ msrt_cancel_fired(id: i64) -> u8
 msrt_cancel_free(id: i64)
 msrt_cancel_new() -> i64
 msrt_cancelled() -> !
-msrt_cells_drop(id: i64)
-msrt_cells_full(id: i64) -> u8
-msrt_cells_new(value: *mut u8, d: ValueDesc) -> i64
-msrt_cells_out(id: i64) -> u8
-msrt_cells_put(id: i64, value: *mut u8, d: ValueDesc)
-msrt_cells_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_cleanup_cancel(handle: usize) @leaf
 msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf

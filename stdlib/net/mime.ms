@@ -307,7 +307,7 @@ type MultipartParts:
     done: Bool
 
 impl Transform[Bytes, Part] for MultipartParts:
-    var fn step(value: Bytes, var out: WriteStream[Part]) Unit!:
+    var fn step(value: Bytes, var out: List[Part]) Unit!:
         if self.done: return ok(unit)
 
         self.buffer = self.buffer.concat(value)
@@ -341,7 +341,7 @@ impl Transform[Bytes, Part] for MultipartParts:
                             "MIME: limit exceeded", kind: "EOVERFLOW"
                         )
                     )
-                try out.write(try make_part(try self.buffer.slice(0, end)))
+                out.append(try make_part(try self.buffer.slice(0, end)))
 
             self.buffer = try self.buffer.slice(
                 end + self.delimiter.length(), self.buffer.length()
@@ -350,7 +350,7 @@ impl Transform[Bytes, Part] for MultipartParts:
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[Part]) Unit!:
+    var fn finish(var out: List[Part]) Unit!:
         if self.done: return ok(unit)
 
         return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))

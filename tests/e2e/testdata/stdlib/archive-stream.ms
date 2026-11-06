@@ -13,7 +13,7 @@ import (
     CompressionFormat
 ) from "@std/io/archive.ms"
 import Bytes, join from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
 
 // Hands out the chunks in order, then ends.
@@ -37,14 +37,14 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(data, size, 0))
+    return ReadStream[Bytes](Chunks(data, size, 0))
 
 fn read_all(input: ReadStream[Bytes]) Bytes!:
     var source = input
     var out: List[Bytes] = []
 
     while true:
-        let next = try source.read().wait()
+        let next = try source.next()
 
         if let data = next:
             out.append(data)
@@ -81,7 +81,7 @@ test "decompressed streams preserve lines across decoder output batches":
         var count = 0
 
         while true:
-            let next = try rows.read().wait()
+            let next = try rows.next()
 
             if let line = next:
                 try expect_equal(line, "archive line input")
@@ -130,7 +130,7 @@ fn read_entries(
     var out: List[ArchiveEntry] = []
 
     while true:
-        let next = try entries.read().wait()
+        let next = try entries.next()
 
         if let entry = next:
             out.append(entry)

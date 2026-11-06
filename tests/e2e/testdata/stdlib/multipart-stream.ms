@@ -7,7 +7,7 @@ import (
     Part
 ) from "@std/net/mime.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -30,14 +30,14 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(data, size, 0))
+    return ReadStream[Bytes](Chunks(data, size, 0))
 
 fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = none) List[Part]!:
     var parts = multipart_parts(chunked(body, size), "XyZ", max_part_bytes)
     var out: List[Part] = []
 
     while true:
-        let next = try parts.read().wait()
+        let next = try parts.next()
 
         if let part = next:
             out.append(part)

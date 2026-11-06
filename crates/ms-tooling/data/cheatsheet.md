@@ -57,5 +57,5 @@ export fn main() Int:
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
 - Waiting: `read(path)`, `fetch`, `sleep` return a `Promise[T]`; `p.wait()` gives `T!`. Limits: `promise(fn: f(), options: PromiseOptions(timeout: d, cancel: stop.signal()))` or `p.with(options: ...)`; `stop = cancel_switch()`; `stop.cancel()`, `p.cancel()` act at the next wait. `wait_all(ps)`, `wait_first(ps)`. Dropping cancels. Share state via one owner and `pipe[T](cap)`.
-- Streams: `for x in s.wait():` (`x` is `T!`; bare `for x in s` is an error); `w.write(v)` never waits, `w.flush().wait()` drains; steps `input | lines | map(f) | collect(none)`. `serve(":8080", h)` uses every core; `server.wait()`.
+- Streams: `for x in s:` binds `T`, a failed read leaves with its error; `w.write(v)` waits when full; steps `input | lines | map(f) | collect(none)`. `serve(":8080", h)` uses every core; `server.wait()`.
 - Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

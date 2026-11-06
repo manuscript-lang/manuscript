@@ -1,5 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import Source, stream from "@std/io/io.ms"
+import Source, ReadStream from "@std/io/io.ms"
 import from_list, filter, take, fold, collect, map from "@std/io/streams.ms"
 
 // An endless source that counts how many items were pulled.
@@ -26,7 +26,7 @@ test "filter keeps matching items in order":
     )
 
 test "take stops after count items and never reads past them":
-    let first = try collect(stream[Int](Counting(0, 0)) | take(3), none)
+    let first = try collect(ReadStream[Int](Counting(0, 0)) | take(3), none)
     try expect_equal(first, [1, 2, 3])
     try expect_equal(try collect(from_list([1, 2]) | take(5), none), [1, 2])
     try expect_equal(try collect(from_list([1, 2]) | take(0), none), List[Int]())
@@ -38,7 +38,7 @@ test "fold combines items from a start value":
 
 test "stages compose over an endless stream":
     let out = try collect(
-        stream[Int](Counting(0, 0)) | filter(fn x: x > 2) | map(
+        ReadStream[Int](Counting(0, 0)) | filter(fn x: x > 2) | map(
             fn x: x * 10
         ) | take(3),
         none
