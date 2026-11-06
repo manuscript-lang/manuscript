@@ -14,7 +14,7 @@
           "file": "lowering-native-defaults.ms",
           "line": 36,
           "column": 12,
-          "offset": 1328
+          "offset": 1240
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "lowering-native-defaults.ms",
           "line": 45,
           "column": 12,
-          "offset": 1568
+          "offset": 1480
         }
       }
     ],

@@ -12,16 +12,16 @@
         "message": "unknown or ambiguous member directory on FileInfo; did you mean 'is_directory'?; available: accessed, block_size, blocks, changed, created, device, exact, gid, inode, is_directory, is_file, is_symlink, kind, links, mode, modified, name, permissions, rdev, size, uid",
         "position": {
           "file": "library-main.ms",
-          "line": 44,
+          "line": 45,
           "column": 15,
-          "offset": 1464
+          "offset": 1490
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/library-main.ms:44:15: resolution: unknown or ambiguous member directory on FileInfo; did you mean 'is_directory'?; available: accessed, block_size, blocks, changed, created, device, exact, gid, inode, is_directory, is_file, is_symlink, kind, links, mode, modified, name, permissions, rdev, size, uid\n    |\n 44 |     (not info.directory) | try expect_true\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/library-main.ms:45:15: resolution: unknown or ambiguous member directory on FileInfo; did you mean 'is_directory'?; available: accessed, block_size, blocks, changed, created, device, exact, gid, inode, is_directory, is_file, is_symlink, kind, links, mode, modified, name, permissions, rdev, size, uid\n    |\n 45 |     (not info.directory) | try expect_true\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
