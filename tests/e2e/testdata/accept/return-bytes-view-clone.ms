@@ -1,0 +1,13 @@
+import Bytes from "@std/bytes.ms"
+import expect_equal from "@std/test/test.ms"
+
+fn middle(bytes: Bytes) Bytes:
+    return bytes.view(1, 3).clone()
+
+fn local_middle() Bytes:
+    let bytes = Bytes([10, 20, 30])
+    return bytes.view(1, 3).clone()
+
+test "a cloned view of a parameter or a local can be returned":
+    try expect_equal(middle(Bytes([1, 2, 3, 4])), Bytes([2, 3]))
+    try expect_equal(local_middle(), Bytes([20, 30]))
