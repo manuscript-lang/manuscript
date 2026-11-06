@@ -255,21 +255,6 @@ pub fn raise_cancel(slot: usize, sig: u8) {
     }
 }
 
-/// Counts a worker isolate before its thread starts, so the main isolate does not look alone
-/// while the worker is still being set up.
-pub fn count_worker() {
-    IDLE.lock().unwrap_or_else(|e| e.into_inner()).live += 1;
-}
-
-/// Ends the count of a worker isolate (also when its thread never started). Its last posts
-/// were made first, so a parked isolate is already awake by now; if the rest are all parked,
-/// nothing is left to wake them.
-pub fn retire_worker() {
-    let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
-    idle.live -= 1;
-    declare_if_stuck(&idle);
-}
-
 /// Flags a deadlock when every isolate is parked, and wakes the main isolate to report it. A
 /// stop request in flight (a signal handler cannot take the lock) is not a deadlock.
 fn declare_if_stuck(idle: &IdleCount) {

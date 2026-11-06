@@ -4,8 +4,7 @@
 use alloc::string::String;
 use ms_decimal::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use ms_rt::ffi::{
-    Has, Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, fault_kind,
-    native,
+    Has, Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault_kind, native,
 };
 
 abi_record! {
@@ -85,12 +84,6 @@ binary!(msstd_decimal_subtract, subtract, "-");
 binary!(msstd_decimal_multiply, multiply, "*");
 
 native! {
-    // ms: leaf
-    fn msstd_decimal_literal(text: &str) -> out DecRec {
-        Dec::parse(text)
-            .unwrap_or_else(|| fault("invalid or inexact Decimal literal"))
-            .into()
-    }
 
     /// The Decimal of runtime text, or `InvalidInput` when it is malformed or not exactly representable.
     // ms: leaf

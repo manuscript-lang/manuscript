@@ -303,23 +303,9 @@ impl StringTable {
         self.data.push_str(text);
     }
 
-    /// Closes the cell being built.
-    pub fn end_cell(&mut self) {
-        self.ends.push(self.data.len());
-    }
-
-    /// Closes the row of cells closed since the previous row.
-    pub fn end_row(&mut self) {
-        self.rows.push(self.ends.len());
-    }
-
     /// Cells closed so far.
     pub fn cells(&self) -> usize {
         self.ends.len()
-    }
-
-    pub fn row_count(&self) -> usize {
-        self.rows.len()
     }
 
     /// The rows as lists of cell text.
@@ -333,10 +319,6 @@ impl StringTable {
                 &self.data[from..self.ends[i]]
             })
         })
-    }
-
-    pub fn into_rows(self) -> Vec<Vec<String>> {
-        self.rows().map(|r| r.map(String::from).collect()).collect()
     }
 }
 

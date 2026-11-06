@@ -569,11 +569,6 @@ impl Op {
         let e = self.info().effects;
         e.is_pure() && self.info().has_result && !matches!(self, Op::Slot | Op::Clone)
     }
-
-    /// Whether the instruction is a call of any kind.
-    pub fn is_call_kind(self) -> bool {
-        self.is_call()
-    }
 }
 
 /// An immediate operand.
@@ -1007,24 +1002,6 @@ impl Func {
             b.term
                 .for_each_target_mut(|t| t.block = Block(map[t.block.index()]));
             self.blocks.push(b);
-        }
-    }
-
-    /// Replaces every use of `from` by `to` (instruction operands and terminators).
-    pub fn replace_uses(&mut self, from: Value, to: Value) {
-        for b in &mut self.blocks {
-            for i in &mut b.insts {
-                for a in &mut i.args {
-                    if *a == from {
-                        *a = to;
-                    }
-                }
-            }
-            b.term.for_each_use_mut(|v| {
-                if *v == from {
-                    *v = to;
-                }
-            });
         }
     }
 

@@ -156,15 +156,6 @@ impl Network {
             .is_some_and(|p| p.is_within(other))
     }
 
-    /// Registers a server (closed before other resources).
-    pub fn own_server(&self, r: &Rc<dyn Resource>) -> bool {
-        if self.closed.get() {
-            return false;
-        }
-        self.servers.borrow_mut().push(Rc::downgrade(r));
-        true
-    }
-
     /// Closes everything this network opened, innermost first. Idempotent.
     pub fn close(&self) {
         if self.closed.replace(true) {

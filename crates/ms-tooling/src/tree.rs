@@ -43,14 +43,6 @@ impl Node {
         }
     }
 
-    pub fn with_children(label: impl Into<String>, children: Vec<Node>) -> Node {
-        Node {
-            label: label.into(),
-            children,
-            ..Node::default()
-        }
-    }
-
     /// Prints the tree with fixed connectors.
     pub fn ascii(&self) -> String {
         let mut out = String::new();

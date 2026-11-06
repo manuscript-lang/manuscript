@@ -173,10 +173,3 @@ pub unsafe extern "C-unwind" fn msrt_io_write_bytes_stderr(v: *const VecVal) {
 pub extern "C-unwind" fn msrt_io_flush() {
     flush_stdout();
 }
-
-/// Closing a standard stream only flushes it: the descriptors belong to the process, so the
-/// stream stays usable (`which` is 0 for output, 1 for error).
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_io_close(_which: i64) {
-    flush_stdout();
-}

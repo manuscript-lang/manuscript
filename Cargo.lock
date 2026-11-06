@@ -1089,6 +1089,9 @@ dependencies = [
 [[package]]
 name = "ms-mir"
 version = "0.0.0"
+dependencies = [
+ "ms-mir",
+]
 
 [[package]]
 name = "ms-native"
