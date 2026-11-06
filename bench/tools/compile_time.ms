@@ -1,6 +1,6 @@
-// Generates the same program in Manuscript and Go and times each build.
+// Generates the same program in Manuscript, Go and Rust and times each build.
 // Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
-// OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build.
+// OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build; SKIP_RUST=1 skips the Rust builds (CARGO picks cargo).
 // Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
 import (
     absolute,
@@ -140,15 +140,75 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     b.append("›")
     return q(b.join("\n")) + "\n"
 
+fn rs_call(d: List[Dep], k: Int) String:
+    if d.length() == 0: return "0"
+
+    let dep = d[k % d.length()]
+    return "crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
+
+fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
+    let call = rs_call(d, k)
+    let shape = k % 4
+    var b = [q("pub fn w_{p}_{f}_{k}(x: i64) -> i64 ‹")]
+
+    if shape == 0:
+        b = b.concat(
+            [
+                "    let mut acc = x;", q("    for i in 0..10 ‹"),
+                q("        if i % 2 == 0 ‹"), "            acc += i * 3;",
+                q("        › else ‹"), "            acc -= 1;", "        ›", "    ›",
+                "    acc % 100000 + {call}"
+            ]
+        )
+    else if shape == 1:
+        b = b.concat(
+            [
+                "    let mut xs: Vec<i64> = Vec::new();", q("    for i in 0..8 ‹"),
+                "        xs.push(i + x);", "    ›", "    let mut t = 0;",
+                q("    for v in &xs ‹"), "        t += v % 7;", "    ›",
+                "    let acc = t + xs.len() as i64;", "    acc + {call}"
+            ]
+        )
+    else if shape == 2:
+        b = b.concat(
+            [
+                q(
+                    "    let r = R_{p}_{f} ‹ a: x, b: format!(\"n‹›\", x), c: vec![x, 1, 2] ›;"
+                ),
+                "    let mut acc = r.score();",
+                q("    while acc > 1000 ‹"),
+                "        acc = acc / 2;",
+                "    ›",
+                "    acc + {call}"
+            ]
+        )
+    else:
+        b = b.concat(
+            [
+                q("    let s = format!(\"v‹›\", x);"),
+                "    let mut acc = s.len() as i64;", q("    if x > 50 ‹"),
+                "        acc += x / 3;", q("    › else if x > 10 ‹"),
+                "        acc += x * 2;", q("    › else ‹"), "        acc += 1;",
+                "    ›", "    acc + {call}"
+            ]
+        )
+
+    b.append("›")
+    return q(b.join("\n")) + "\n"
+
 fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
     var rng = seeded(1)
     create_directory("{out}/ms/src", recursive: true).get()
     create_directory("{out}/go", recursive: true).get()
+    create_directory("{out}/rs/src", recursive: true).get()
     write_text("{out}/go/go.mod", "module bigprog\n\ngo 1.21\n")
 
     for p in 0..packages:
         create_directory("{out}/ms/src/pkg{p}", recursive: true).get()
         create_directory("{out}/go/p{p}", recursive: true).get()
+        create_directory("{out}/rs/src/p{p}", recursive: true).get()
+
+        var modrs = List[String]()
 
         for f in 0..files:
             let d = deps(var rng, files, p, f)
@@ -188,6 +248,23 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
             g.append(q("\treturn t % 100000\n›\n"))
             write_text("{out}/go/p{p}/f{f}.go", g.join(""))
 
+            var r = ["#![allow(warnings)]\n\n"]
+            r.append(
+                q(
+                    "pub struct R_{p}_{f} ‹\n    pub a: i64,\n    pub b: String,\n    pub c: Vec<i64>,\n›\n\nimpl R_{p}_{f} ‹\n    pub fn score(&self) -> i64 ‹\n        let mut t = self.a + self.b.len() as i64;\n        for v in &self.c ‹\n            t += v;\n        ›\n        t\n    ›\n›\n\n"
+                )
+            )
+            for k in 0..fns:
+                r.append(rs_fn(p, f, k, d) + "\n")
+            r.append(q("pub fn all_{p}_{f}(x: i64) -> i64 ‹\n    let mut t = 0;\n"))
+            for k in 0..fns:
+                r.append("    t += w_{p}_{f}_{k}(x);\n")
+            r.append(q("    t % 100000\n›\n"))
+            write_text("{out}/rs/src/p{p}/f{f}.rs", r.join(""))
+            modrs.append("pub mod f{f};\n")
+
+        write_text("{out}/rs/src/p{p}/mod.rs", modrs.join(""))
+
     var ms = ["import stdout from \"@std/io/io.ms\"\n"]
     for p in 0..packages:
         for f in 0..files:
@@ -212,6 +289,20 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
             go.append("\tt += p{p}.All_{p}_{f}(7)\n")
     go.append("\tfmt.Println(t)\n" + q("›\n"))
     write_text("{out}/go/main.go", go.join(""))
+
+    var rs = List[String]()
+    for p in 0..packages:
+        rs.append("mod p{p};\n")
+    rs.append(q("\nfn main() ‹\n    let mut t: i64 = 0;\n"))
+    for p in 0..packages:
+        for f in 0..files:
+            rs.append("    t += p{p}::f{f}::all_{p}_{f}(7);\n")
+    rs.append(q("    println!(\"‹›\", t);\n›\n"))
+    write_text("{out}/rs/src/main.rs", rs.join(""))
+    write_text(
+        "{out}/rs/Cargo.toml",
+        "[package]\nname = \"big\"\nversion = \"0.1.0\"\nedition = \"2021\"\n"
+    )
 
 // Runs a build and prints its label with the elapsed seconds.
 fn timed(
@@ -252,7 +343,23 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
         drop_cache("{out}/ms")
         try timed("ms release:", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])
 
+    if env("SKIP_RUST", "") == "":
+        let cargo = env("CARGO", "cargo")
+        try rust_timed("rust check:  ", out, cargo, ["check"])
+        try rust_timed("rust debug:  ", out, cargo, ["build"])
+        try rust_timed("rust release:", out, cargo, ["build", "--release"])
+
     return ok(unit)
+
+// Times one cargo build from a cold target directory.
+fn rust_timed(
+    label: String,
+    out: String,
+    cargo: String,
+    args: List[String]
+) Result[Unit, Error]:
+    remove("{out}/rs/target", recursive: true).get(unit)
+    return timed(label, "{out}/rs", cargo, args)
 
 export fn main() Int:
     let args = arguments()
