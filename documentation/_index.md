@@ -15,7 +15,7 @@ fn hello(request: HttpRequest) HttpResponse:
     return text(200, "Hello from {request.path}")
 
 export fn main() Int:
-    let server = serve(":8080", buffered(hello)).get()
-    return if server.wait().is_ok(): 0 else: 1
+    serve(":8080", buffered(hello)).get().wait().get()
+    return 0
 ```
 {{< /docs-home >}}
