@@ -38,10 +38,10 @@ impl RetryPolicy:
 
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
-`operation` receives the attempt number, starting at 1. `retryable` defaults to retrying every error.
+`operation` receives the attempt number, starting at 1. `E` must be `Clonable`, because the error is lent to `retryable` and then returned. `retryable` defaults to retrying every error.
 Waiting uses `sleep`, so cancelling the task ends the wait. A policy with fewer than one attempt faults.
 */
-export fn retry[T, E](
+export fn retry[T, E: Clonable](
     policy: RetryPolicy,
     operation: fn(Int) T!E,
     retryable: (fn(E) Bool)? = none

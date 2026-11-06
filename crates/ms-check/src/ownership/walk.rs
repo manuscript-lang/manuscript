@@ -1132,6 +1132,13 @@ impl Walker<'_> {
         !unify(&p.ty, &self.cx.m.ty(arg), &vars, &mut bound)
     }
 
+    /// Whether `r` is an `Optional` or `Result`: a payload of unbounded type read out of one
+    /// is the wrapper's one owner handing it over, since a copy would need `Clonable`.
+    fn wrapper_receiver(&self, r: &Expr) -> bool {
+        let t = self.cx.m.ty(r);
+        t.is(Builtin::Optional) || t.is(Builtin::Result)
+    }
+
     /// The label of the parameter written at argument `i` of call `e`.
     fn argument_label(&self, e: &Expr, i: usize) -> Option<Name> {
         self.cx.m.info(e).arguments.as_ref()?.get(i).map(|s| s.name)
@@ -4062,7 +4069,7 @@ impl Walker<'_> {
             if mode == ParamMode::Borrow
                 && self.class_of(e) != Class::Copy
                 && !self.cx.classes.clonable(self.syms, &result_ty)
-                && unbounded_parameter(&result_ty).is_none()
+                && (unbounded_parameter(&result_ty).is_none() || self.wrapper_receiver(r))
                 && ty_contains(&self.cx.m.ty(r), &result_ty)
                 && self.native_borrow_receiver(e).is_none()
             {
