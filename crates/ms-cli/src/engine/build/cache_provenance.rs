@@ -75,7 +75,7 @@ fn link(
     backend: &Engine<ms_build::Native>,
     compiled: &mut super::super::Compiled,
     output: &Path,
-) -> (ArtifactPin, Result<(), String>) {
+) -> (ArtifactPin, Result<ms_build::Backend, String>) {
     let pin = ArtifactPin::create(output).unwrap();
     let result = backend.link_pinned(compiled, output, BuildType::Debug, &[], Some(pin.path()));
     (pin, result)
@@ -84,8 +84,14 @@ fn record(
     cache: &BuildCache,
     compiled: &super::super::Compiled,
     pin: &ArtifactPin,
+    backend: ms_build::Backend,
 ) -> Result<(), String> {
-    cache.record(compiled, &build_inputs(compiled).unwrap(), pin.path())
+    cache.record(
+        compiled,
+        &build_inputs(compiled).unwrap(),
+        pin.path(),
+        backend,
+    )
 }
 fn status(path: &Path) -> i32 {
     Command::new(path).status().unwrap().code().unwrap()
@@ -133,18 +139,18 @@ fn concurrent_publication_records_each_producers_executable_and_companion() {
         let cache_a = fixture.cache("a", ms_build::cache::Mode::On);
         let cache_b = fixture.cache("b", ms_build::cache::Mode::On);
         let (pin_a, result) = link(&backend, &mut a, &output);
-        result.unwrap();
+        let backend_a = result.unwrap();
         let debug_a = companion_bytes(&output);
         assert_eq!(companion_bytes(pin_a.path()), debug_a);
         // B completes publication and recording before A records its source.
         let (pin_b, result) = link(&backend, &mut b, &output);
-        result.unwrap();
+        let backend_b = result.unwrap();
         let debug_b = companion_bytes(&output);
         if let (Some(a), Some(b)) = (&debug_a, &debug_b) {
             assert_ne!(a, b, "producer debug resources must distinguish A from B");
         }
-        record(&cache_b, &b, &pin_b).unwrap();
-        record(&cache_a, &a, &pin_a).unwrap();
+        record(&cache_b, &b, &pin_b, backend_b).unwrap();
+        record(&cache_a, &a, &pin_a, backend_a).unwrap();
         drop((pin_a, pin_b));
         restore(&cache_a, &output);
         assert_eq!(status(&output), if first_is_a { 7 } else { 11 });
@@ -164,15 +170,15 @@ fn verification_mismatch_keeps_current_postpublication_policy() {
     let mut previous = compiled(&backend, &fixture.source(false));
     let cache = fixture.cache("same", ms_build::cache::Mode::On);
     let (pin, result) = link(&backend, &mut previous, &output);
-    result.unwrap();
-    record(&cache, &previous, &pin).unwrap();
+    let selected = result.unwrap();
+    record(&cache, &previous, &pin, selected).unwrap();
     drop(pin);
     let mut rebuilt = compiled(&backend, &fixture.source(true));
     let (pin, result) = link(&backend, &mut rebuilt, &output);
-    result.unwrap();
+    let selected = result.unwrap();
     let verify = fixture.cache("same", ms_build::cache::Mode::Verify);
     assert!(
-        record(&verify, &rebuilt, &pin)
+        record(&verify, &rebuilt, &pin, selected)
             .unwrap_err()
             .contains("MS_CACHE=verify")
     );
@@ -194,7 +200,7 @@ fn publication_failure_does_not_record_and_cleans_owned_pin() {
     std::fs::write(metadata(&output), b"previous metadata").unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
     let (pin, linked) = link(&backend, &mut build, &output);
-    let result = linked.and_then(|()| record(&cache, &build, &pin));
+    let result = linked.and_then(|selected| record(&cache, &build, &pin, selected));
     assert!(result.is_err());
     drop(pin);
     assert!(output.is_dir());
@@ -215,7 +221,7 @@ fn metadata_failure_keeps_published_executable_without_recording() {
     std::fs::create_dir(metadata(&output)).unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
     let (pin, linked) = link(&backend, &mut build, &output);
-    let result = linked.and_then(|()| record(&cache, &build, &pin));
+    let result = linked.and_then(|selected| record(&cache, &build, &pin, selected));
     assert!(result.unwrap_err().contains("cannot write build metadata"));
     drop(pin);
     assert_eq!(status(&output), 7);
@@ -233,7 +239,9 @@ fn best_effort_cache_failure_does_not_fail_publication() {
     std::fs::write(fixture.root.join("cache"), b"unavailable cache directory").unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
     let (pin, linked) = link(&backend, &mut build, &output);
-    linked.and_then(|()| record(&cache, &build, &pin)).unwrap();
+    linked
+        .and_then(|selected| record(&cache, &build, &pin, selected))
+        .unwrap();
     drop(pin);
     assert_eq!(status(&output), 7);
     assert!(metadata(&output).is_file());

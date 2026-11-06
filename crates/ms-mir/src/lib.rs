@@ -3,6 +3,8 @@
 
 pub mod builder;
 pub mod copies;
+/// The reference interpreter, used by tests as an oracle; compiled only for them.
+#[cfg(feature = "test-support")]
 pub mod interp;
 pub mod ir;
 pub mod opt;

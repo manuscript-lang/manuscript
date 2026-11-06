@@ -388,11 +388,6 @@ impl Type {
         self.is_default(name)
     }
 
-    /// The id as text.
-    pub fn id_str(&self, syms: ms_syntax::Names) -> &'static str {
-        syms.str(self.id)
-    }
-
     /// The result of a function type (panics if absent: function types always have one).
     pub fn result_ty(&self) -> Ty {
         self.result.clone().unwrap_or_else(invalid)
@@ -411,11 +406,6 @@ impl Type {
     /// The `<invalid>` marker.
     pub fn is_invalid(&self) -> bool {
         self.kind == Kind::Invalid
-    }
-
-    /// The `<inferred>` placeholder.
-    pub fn is_inferred(&self) -> bool {
-        self.kind == Kind::Inferred
     }
 
     /// The `Never` primitive.
@@ -469,11 +459,6 @@ impl Type {
         };
         opaque.then_some(symbol.module)
     }
-}
-
-/// `std(t, name)` for an optional type.
-pub fn std_is(syms: ms_syntax::Names, t: &Option<Ty>, name: &str) -> bool {
-    t.as_ref().is_some_and(|t| t.is_std(syms, name))
 }
 
 /// A named type slot of a case.
@@ -1038,6 +1023,29 @@ pub fn compatible(syms: ms_syntax::Names, actual: &Option<Ty>, expected: &Ty) ->
     }
 }
 
+/// Whether `actual` is `expected` except that it reads some parameters `expected` may change:
+/// a function that takes `x` stands in where one that takes `var x` is expected, never the other
+/// way round.
+pub fn reads_where_var_expected(actual: &Ty, expected: &Ty) -> bool {
+    actual.kind == Kind::Function
+        && expected.kind == Kind::Function
+        && actual.params.len() == expected.params.len()
+        && actual
+            .params
+            .iter()
+            .zip(&expected.params)
+            .any(|(a, e)| !a.mutable && e.mutable)
+        && actual
+            .params
+            .iter()
+            .zip(&expected.params)
+            .all(|(a, e)| (a.mutable == e.mutable || e.mutable) && same(&a.ty, &e.ty))
+        && match (&actual.result, &expected.result) {
+            (Some(a), Some(e)) => same(a, e),
+            _ => false,
+        }
+}
+
 /// Substitutes type variables.
 pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
     sub_walk(t, bindings)
@@ -1112,11 +1120,6 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
         defaults: t.defaults.clone(),
         builtin: t.builtin,
     })
-}
-
-/// `Sub` over an optional type.
-pub fn sub_opt(t: &Option<Ty>, bindings: &Subst) -> Option<Ty> {
-    t.as_ref().map(|t| sub(t, bindings))
 }
 
 /// Erases omission permissions and selects the ordinary required-argument form
@@ -1351,47 +1354,6 @@ pub fn constructor_signature(
     function_with(syms, params, t.clone(), defaults)
 }
 
-/// A key identifying a type's structure.
-pub fn type_key(syms: ms_syntax::Names, t: &Ty) -> String {
-    let mut key = String::new();
-    write_type_key(syms, &mut key, t, false);
-    key
-}
-
-/// `type_key` plus which function parameters are represented as optionals.
-pub fn lowering_key(syms: ms_syntax::Names, t: &Ty) -> String {
-    let mut key = String::new();
-    write_type_key(syms, &mut key, t, true);
-    key
-}
-
-fn write_type_key(syms: ms_syntax::Names, key: &mut String, t: &Ty, lifted: bool) {
-    key.push_str(syms.str(t.id));
-    if t.kind == Kind::Function {
-        for p in &t.params {
-            key.push('[');
-            if p.mutable {
-                key.push_str("var ");
-            }
-            write_type_key(syms, key, &p.ty, lifted);
-            if lifted && t.is_lifted(p.name) {
-                key.push('=');
-            }
-            key.push(']');
-        }
-        key.push_str("[result:");
-        if let Some(r) = &t.result {
-            write_type_key(syms, key, r, lifted);
-        }
-        key.push(']');
-    }
-    for a in &t.args {
-        key.push('[');
-        write_type_key(syms, key, a, lifted);
-        key.push(']');
-    }
-}
-
 /// A set of type-variable ids.
 pub type VarSet = HashSet<Name>;
 
@@ -1422,7 +1384,8 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if p.mutable != q.mutable || !unify(&p.ty, &q.ty, vars, bindings) {
+            // A function that only reads a parameter stands in for one that may change it.
+            if (q.mutable && !p.mutable) || !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }
@@ -1576,9 +1539,4 @@ pub fn is_invalid_id(t: &Ty) -> bool {
 /// Whether `t` mentions a variable of `variables`.
 pub fn mentions_variable(t: &Ty, variables: &VarSet) -> bool {
     type_any::<true>(t, |t| variables.contains(&t.id))
-}
-
-/// Names of params.
-pub fn param_names(syms: ms_syntax::Names, params: &[Param]) -> Vec<&'static str> {
-    params.iter().map(|p| syms.str(p.name)).collect()
 }

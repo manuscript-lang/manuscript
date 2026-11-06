@@ -4,6 +4,7 @@ version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
 description = "Manuscript front-end driver: module graph loading and checking"
+autotests = false
 
 [lints]
 workspace = true
@@ -14,3 +15,7 @@ ms-check = { path = "../ms-check" }
 
 [dev-dependencies]
 ms-rt = { path = "../ms-rt" }
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

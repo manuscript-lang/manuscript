@@ -19,7 +19,8 @@ usage: ms-conform <command> [options]
 commands:
   run       run the corpus against --ms and compare with the recorded expectations
   record    regenerate expectations from the binary given by --ms
-  diff      run two binaries (--a, --b) on the corpus and compare them directly
+  diff      run two binaries (--a, --b) on the corpus and compare them directly;
+            --env-a/--env-b KEY=VALUE set the environment of one side (e.g. --env-b MS_BACKEND=cranelift)
   list      list fixtures (id, phase, tags)
   stats     count fixtures per phase and tag
   lint      validate fixture metadata and expectation files
@@ -104,6 +105,12 @@ fn context(args: &Args, flag: &str) -> Result<Ctx, String> {
     let mut ctx = Ctx::new(args.ms(flag));
     if let Some(scale) = args.number::<f64>("timeout-scale")? {
         ctx.timeout_scale = scale;
+    }
+    for pair in args.many(&format!("env-{flag}")) {
+        let (key, value) = pair
+            .split_once('=')
+            .ok_or_else(|| format!("--env-{flag} wants KEY=VALUE, got `{pair}`"))?;
+        ctx.env.push((key.to_string(), value.to_string()));
     }
     Ok(ctx)
 }

@@ -2114,13 +2114,6 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_strbuilder_drop(b: *mut VecVal) {
-    // SAFETY: caller contract.
-    unsafe { msrt_bytes_drop(b) }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: ElemDesc) -> i64 {
     // SAFETY: caller contract.
     unsafe {

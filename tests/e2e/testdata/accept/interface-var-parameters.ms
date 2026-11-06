@@ -56,15 +56,16 @@ type Words:
     count: Int
 
 impl Transform[String, String] for Words:
-    var fn step(value: String, var out: WriteStream[String]) Unit!:
+    var fn step(value: String, var out: List[String]) Unit!:
         for word in value.split(" "):
             self.count += 1
-            try out.write(word)
+            out.append(word)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[String]) Unit!:
-        return out.write("{self.count}")
+    var fn finish(var out: List[String]) Unit!:
+        out.append("{self.count}")
+        return ok(unit)
 
 test "a transform writes zero or more items per input and more at the end":
     let words = through[String, String](from_list(["a b", "", "c"]), Words(0))
@@ -75,13 +76,13 @@ type Checked:
     unused: Bool = false
 
 impl Transform[Int, Int] for Checked:
-    var fn step(value: Int, var out: WriteStream[Int]) Unit!:
-        try out.write(value)
+    var fn step(value: Int, var out: List[Int]) Unit!:
+        out.append(value)
         if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[Int]) Unit!:
+    var fn finish(var out: List[Int]) Unit!:
         return ok(unit)
 
 test "a failed step's partial output is dropped and the failure is the next item":
@@ -89,12 +90,17 @@ test "a failed step's partial output is dropped and the failure is the next item
     var seen: List[Int] = []
     var failed = false
 
-    for item in s.wait():
+    while true:
+        let item = s.next()
+
         if item.is_error():
             failed = true
             break
 
-        seen.append(item.get(0))
+        if item.get().is_none():
+            break
+
+        seen.append(item.get().get(0))
 
     try expect_equal(seen, [1])
     try expect_equal(failed, true)

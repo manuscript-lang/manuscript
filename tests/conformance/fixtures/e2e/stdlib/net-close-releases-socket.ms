@@ -18,12 +18,12 @@ fn accept_one(address: String) Int:
 
 fn read_one(address: String) Int:
     var client = connect(address, timeout: nanoseconds(2000000000)).wait().get()
-    let got = client.input.read().wait()
+    let got = client.input.next()
     return got.get(none).map(fn b: b.length()).get(-1)
 
 fn receive_one(address: String) Int:
     var socket = bind_datagram(address).get()
-    let got = socket.input.read().wait()
+    let got = socket.input.next()
     if got.is_ok():
         return 1
 

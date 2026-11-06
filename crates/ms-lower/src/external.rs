@@ -14,8 +14,8 @@
 use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
-use ms_check::hir::CallView;
-use ms_check::types as ct;
+use ms_check::api::hir::CallView;
+use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FaultKind, FuncId, FuncKind, Imm, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind};

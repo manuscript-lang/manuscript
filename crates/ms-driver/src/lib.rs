@@ -15,7 +15,7 @@ pub mod load;
 pub mod project;
 
 pub use compile::{CheckRequest, Checked, check_graph, check_graph_at, check_graph_in};
-pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file};
+pub use load::{EditorOptions, Graph, LoadOptions, load_editor_file, load_file, load_files};
 
 /// The syntax types diagnostics are made of.
 pub use ms_syntax::{Diagnostic, DiagnosticFix, Phase, Pos};

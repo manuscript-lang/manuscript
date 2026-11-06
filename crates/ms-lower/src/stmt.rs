@@ -91,7 +91,7 @@ impl<'a> FnLower<'a> {
         let StmtKind::For { iter, body, .. } = &second.kind else {
             return None;
         };
-        let ms_check::hir::Resolution::Local(used) = self.hir.resolution(iter) else {
+        let ms_check::api::hir::Resolution::Local(used) = self.hir.resolution(iter) else {
             return None;
         };
         let unused =
@@ -278,7 +278,7 @@ impl<'a> FnLower<'a> {
             && self
                 .cx
                 .binding_facts
-                .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+                .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
         {
             let cleanup = self.hir.stmt(s).cleanup;
             return self.bind_closing(&b, x, cleanup.as_ref());
@@ -292,7 +292,7 @@ impl<'a> FnLower<'a> {
         &mut self,
         pattern: Option<&Pattern>,
         value: &Expr,
-    ) -> Result<Option<(ms_check::types::BindingRef, crate::borrow_shape::Shape)>, Error> {
+    ) -> Result<Option<(ms_check::api::types::BindingRef, crate::borrow_shape::Shape)>, Error> {
         let Some(pattern) = pattern else {
             return Ok(None);
         };
@@ -321,7 +321,7 @@ impl<'a> FnLower<'a> {
                         if self
                             .cx
                             .binding_facts
-                            .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose) =>
+                            .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose) =>
                     {
                         return self.bind_closing(&b, x, None);
                     }
@@ -485,7 +485,7 @@ impl<'a> FnLower<'a> {
                 } else if self.var_slots.iter().any(|v| v.uid == b.uid) {
                     // A `var` parameter holds the caller's value, which the caller closes at
                     // the end, but a value this assignment replaces is the callee's to close.
-                    let ty = ms_check::types::sub(&b.ty, &self.subst);
+                    let ty = ms_check::api::types::sub(&b.ty, &self.subst);
                     old = self.close_discarded_ty(&ty, old)?;
                 }
                 self.refill_local(b.uid, &l, new);
@@ -563,7 +563,7 @@ impl<'a> FnLower<'a> {
             self.drop_value(updated);
             return Ok(());
         };
-        let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
+        let ms_check::api::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
             return Err(Error::new("assignment target is not a local variable"));
         };
         let _ = value;
@@ -584,7 +584,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// The field names of a chain of member selections.
-    fn field_names(path: &[&Expr]) -> Vec<ms_check::types::Name> {
+    fn field_names(path: &[&Expr]) -> Vec<ms_check::api::types::Name> {
         path.iter()
             .filter_map(|e| match &e.kind {
                 ExprKind::Member { name, .. } => Some(*name),
@@ -625,7 +625,7 @@ impl<'a> FnLower<'a> {
             self.drop_value(updated);
             return Ok(());
         }
-        let ms_check::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
+        let ms_check::api::hir::Resolution::Local(binding) = self.hir.resolution(cur) else {
             return Err(Error::new("mutation target is not a local variable"));
         };
         if let Some(a) = self.aliases.get(&binding.uid).cloned() {
@@ -895,7 +895,10 @@ impl<'a> FnLower<'a> {
                 let closing = self
                     .cx
                     .binding_facts
-                    .has(bnd.uid, ms_check::ownership::BindingFact::ImplicitClose)
+                    .has(
+                        bnd.uid,
+                        ms_check::api::ownership::BindingFact::ImplicitClose,
+                    )
                     .then(|| self.hir.stmt(s).cleanup);
                 let borrowed = closing.is_none()
                     && !o.own
@@ -1036,7 +1039,7 @@ impl<'a> FnLower<'a> {
         let Some(view) = self.hir.call(iter) else {
             return Ok(None);
         };
-        let ms_check::hir::Resolution::Function(sym) = &view.target else {
+        let ms_check::api::hir::Resolution::Function(sym) = &view.target else {
             return Ok(None);
         };
         if self.syms.str(sym.native) != "collections/range" || view.arguments.len() != 2 {
@@ -1059,7 +1062,7 @@ impl<'a> FnLower<'a> {
         matches!(&root.kind, ExprKind::Name(_))
             && matches!(
                 self.hir.resolution(root),
-                ms_check::hir::Resolution::Local(b) if self.borrowed_params.contains(&b.uid)
+                ms_check::api::hir::Resolution::Local(b) if self.borrowed_params.contains(&b.uid)
             )
     }
 
@@ -1087,7 +1090,7 @@ impl<'a> FnLower<'a> {
     /// the entry, so nothing is copied and no list is built.
     fn map_walk_loop(
         &mut self,
-        loop_var: &ms_check::types::BindingRef,
+        loop_var: &ms_check::api::types::BindingRef,
         it: Val,
         walk: Walk,
         body: &[Stmt],
@@ -1191,12 +1194,12 @@ impl<'a> FnLower<'a> {
         matches!(&root.kind, ExprKind::Name(_))
             && matches!(
                 self.hir.resolution(root),
-                ms_check::hir::Resolution::Local(b)
+                ms_check::api::hir::Resolution::Local(b)
                     if !b.mutable
                         || !crate::mutation::mutated_locals(
                             self.syms,
                             &self.hir,
-                            ms_check::hir::Body::Block(body),
+                            ms_check::api::hir::Body::Block(body),
                             &self.cx.callables,
                             &self.cx.mutated,
                         )
@@ -1208,7 +1211,7 @@ impl<'a> FnLower<'a> {
     /// holds is rewritten in place for the next one.
     fn split_loop(
         &mut self,
-        loop_var: &ms_check::types::BindingRef,
+        loop_var: &ms_check::api::types::BindingRef,
         it: Val,
         body: &[Stmt],
     ) -> Result<(), Error> {
@@ -1273,7 +1276,7 @@ impl<'a> FnLower<'a> {
     /// an ASCII byte is its own value, and the runtime decodes any other.
     fn chars_loop(
         &mut self,
-        loop_var: &ms_check::types::BindingRef,
+        loop_var: &ms_check::api::types::BindingRef,
         text: Val,
         scalars: bool,
         untouched: bool,
@@ -1532,7 +1535,7 @@ impl<'a> FnLower<'a> {
         let closing = if list_var.is_some()
             && self.cx.binding_facts.has(
                 loop_var.uid,
-                ms_check::ownership::BindingFact::ImplicitClose,
+                ms_check::api::ownership::BindingFact::ImplicitClose,
             ) {
             self.closer_opt(
                 self.hir.binding_cleanup(loop_var.uid).as_ref(),

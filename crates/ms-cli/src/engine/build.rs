@@ -99,12 +99,7 @@ pub(super) fn build<L: Lower>(
         && let Some(entry) = cache.lookup()
         && artifact_source_collision(&output, &request.filename, entry.inputs()).is_none()
         && entry.restore_to(&output).is_ok()
-        && write_metadata(
-            Path::new(&output),
-            request.build_type,
-            &backend.build_options(),
-        )
-        .is_ok()
+        && write_metadata(Path::new(&output), request.build_type, entry.backend).is_ok()
     {
         if structured {
             return Ok(emit_json(
@@ -193,12 +188,13 @@ pub(super) fn build<L: Lower>(
     );
     let recorded = match (&cache, linked) {
         (_, Err(message)) => Err(message),
-        (Some(cache), Ok(())) => cache.record(
+        (Some(cache), Ok(selected)) => cache.record(
             &compiled,
             &sources,
             pin.as_ref().map_or(Path::new(&output), ArtifactPin::path),
+            selected,
         ),
-        (None, Ok(())) => Ok(()),
+        (None, Ok(_)) => Ok(()),
     };
     drop(pin);
     if let Err(message) = recorded {
@@ -460,6 +456,7 @@ impl BuildCache {
         compiled: &super::Compiled,
         sources: &[std::path::PathBuf],
         artifact: &Path,
+        backend: ms_build::Backend,
     ) -> Result<(), String> {
         if self.mode == ms_build::cache::Mode::Verify {
             let Some(hit) = self.lookup() else {
@@ -475,6 +472,7 @@ impl BuildCache {
             &self.directory,
             &self.key,
             &compiled.source_root,
+            backend,
             sources,
             artifact,
             companion.as_deref(),
@@ -627,6 +625,7 @@ mod tests {
             &cache,
             key,
             "root",
+            ms_build::Backend::Cranelift,
             &[source],
             &executable,
             Some(&companion),

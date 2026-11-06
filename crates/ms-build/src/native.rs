@@ -81,6 +81,31 @@ pub enum Profile {
     MinSizeRel,
 }
 
+/// The backend selected for the program's functions. LLVM builds still use
+/// Cranelift for data, descriptors and the native entry point.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Backend {
+    Cranelift,
+    Llvm,
+}
+
+impl Backend {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cranelift => "cranelift",
+            Self::Llvm => "llvm",
+        }
+    }
+
+    pub(crate) fn parse(text: &str) -> Option<Self> {
+        match text {
+            "cranelift" => Some(Self::Cranelift),
+            "llvm" => Some(Self::Llvm),
+            _ => None,
+        }
+    }
+}
+
 impl Profile {
     fn options(self, build: &BuildOptions) -> (Level, Options) {
         let mut options = Options {
@@ -128,8 +153,8 @@ pub fn native_inputs(build: &BuildOptions, runtime: &Path) -> Vec<PathBuf> {
     inputs
 }
 
-/// The code generator that builds an executable at `profile`: `"llvm"` when release builds
-/// optimize through LLVM, else `"cranelift"`.
+/// The backend currently available for `profile`. For an existing artifact, use
+/// the backend returned by `build_executable` or retained in its cache entry.
 pub fn backend_name(profile: Profile, build: &BuildOptions) -> &'static str {
     let llvm = match profile {
         Profile::Debug => None,
@@ -197,7 +222,7 @@ pub fn build_executable(
     runtime: &Path,
     extra: &[PathBuf],
     build: &BuildOptions,
-) -> Result<(), String> {
+) -> Result<Backend, String> {
     build_executable_pinned(module, output, profile, runtime, extra, build, None)
 }
 
@@ -215,7 +240,7 @@ pub fn build_executable_pinned(
     extra: &[PathBuf],
     build: &BuildOptions,
     pin: Option<&Path>,
-) -> Result<(), String> {
+) -> Result<Backend, String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
             "--link {} does not name a file; pass an object (.o) or static library (.a)",
@@ -241,6 +266,11 @@ pub fn build_executable_pinned(
         }
     };
     let (level, options) = profile.options(build);
+    let backend = if options.llvm.is_some() {
+        Backend::Llvm
+    } else {
+        Backend::Cranelift
+    };
     optimize(module, level, cfg!(debug_assertions));
     // Not an optimization: it keeps cancellation from leaking, so every profile runs it.
     let unwound = ms_mir::unwind::run(module);
@@ -319,7 +349,8 @@ pub fn build_executable_pinned(
     publish(&staged, output).map_err(|error| {
         cleanup();
         format!("cannot write {}: {error}", output.display())
-    })
+    })?;
+    Ok(backend)
 }
 
 /// Capture from the exclusively owned producer, never from the public output.

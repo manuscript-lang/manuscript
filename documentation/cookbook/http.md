@@ -23,7 +23,7 @@ fn run() Result[Unit, Error]:
     try response.check_status()
     let text = try response.text()
     try stdout().write(text)
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():

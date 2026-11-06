@@ -4,7 +4,7 @@
 use crate::index::Occurrence;
 use crate::lint::LintFinding;
 use crate::uri;
-use ms_check::syntax::ModRef;
+use ms_check::api::syntax::ModRef;
 use ms_check::{Program, Session};
 use ms_driver::project::Overlay;
 use ms_driver::{CheckRequest, EditorOptions, Graph, LoadOptions};
@@ -320,10 +320,9 @@ fn check(syms: ms_syntax::Names, graph: Graph, options: &Options) -> Analysis {
             .filter(|d| {
                 let file: &str = &d.file;
                 file.starts_with("@std/")
-                    || !ms_check::stdlib::is_bundled_source(&ms_driver::project::pathops::join(&[
-                        &source_root,
-                        file,
-                    ]))
+                    || !ms_check::api::stdlib::is_bundled_source(
+                        &ms_driver::project::pathops::join(&[&source_root, file]),
+                    )
             })
             .collect(),
         session,

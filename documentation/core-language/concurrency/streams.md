@@ -7,9 +7,11 @@ weight = 2
 
 A stream is anything that produces or accepts values over time and can wait. `ReadStream[T]` produces values and `WriteStream[T]` accepts them. Files, sockets, standard input and output, processes, pipes and decoded formats are all one of these with a concrete `T`. Files, sockets and stdio carry `Bytes`; `stdout()` and `stderr()` accept `String`.
 
-Both types are opaque, own what is behind them, and are `Closeable`: scope end closes them. Built-in descriptor and pipe ends close without waiting for delivery; a custom source or sink controls its own close behavior and may wait.
+There is one stream type for memory and for waiting sources. A source that touches the system waits inside its own `next`, and only the task that called it sleeps, so no item type says "async" and no promise is made per item. Both types are `Closeable`: scope end closes them, and a stream owns what is behind it. Built-in descriptor and pipe ends close without waiting for delivery; a custom source or sink controls its own close behavior and may wait.
 
 ## Reading
+
+`for item in stream` binds `T`. A failed read leaves the loop with its error, as `try` would, so the enclosing function must return a `Result`; a function that does not calls `next()` itself.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -19,23 +21,22 @@ import lines from "@std/io/streams.ms"
 
 fn count_errors(input: ReadStream[Bytes]) Int!:
     var errors = 0
-    for line in (input | lines).wait():       // each step waits
-        if (try line).contains("ERROR"):
+    for line in input | lines:       // each step may wait for the source
+        if line.contains("ERROR"):
             errors += 1
     return ok(errors)
 ```
 
-- `read()` returns a `Promise[T?]` for one step and defers the read until a wait; `none` marks the end. See [Promises](promises.md) for waiting, timeouts and cancellation.
-- `wait()` returns the items for `for item in s.wait()`. Each item is `T!`, so a failure arrives in the loop and ends it.
-- The loop holds the stream's source until it ends, breaks or fails, then hands it back: after a `break`, `s.read()` or another loop continues from the next item. Inside the loop body, `s.read()` fails with `"EBADF"` ("a read is already waiting"), and `s.close()` closes the source when the loop ends.
-- A stream is not an `Iterator`, so a `for` over a stream without `.wait()` is a checker error that points at `.wait()`. `Iterator` is for sequences that never wait, such as `List` and `Map`.
+- `next()` returns `T?!`: `none` marks the end and an error is a failed read. A closed stream is at its end.
+- A loop over a variable advances it in place and leaves it usable after `break`; a loop over an expression holds the pipeline for the loop and closes it afterwards.
+- Cancellation and time limits are not stream API. Run the loop in a promise with `PromiseOptions(timeout: ...)` to limit a whole pipeline; a cancel or timeout lands at the next wait inside `next` and the loop leaves with an error. See [Promises](promises.md).
+- A stream is not an `Iterator`. `Iterator` is for sequences that never wait, such as `List` and `Map`.
 
 ## Writing
 
-- `write(value)` passes the value to the sink and returns a `Result` directly. Built-in descriptor and pipe writers buffer without waiting, so `stdout().write("text")` needs no `wait`. A custom sink may wait in its `put` implementation. A pipe write returns `"EBADF"` once the reader is gone.
-- `flush()` returns a promise for the destination’s backpressure or drain condition. File and socket streams wait for queued bytes to drain; a pipe waits until at most `capacity` values remain queued. Flush when `buffered()` says enough has piled up.
-- `buffered()` reports the items or bytes not yet drained.
-- The runtime drains buffered descriptor writes before the process ends. To handle a drain failure, call `flush().wait()` before closing. A pipe flush is not an acknowledgement that the reader has consumed every value; close the writers and let the reader reach the end when you need that guarantee.
+- `write(value)` passes the value to the sink and waits while the sink is full: back pressure. A pipe write waits once more than `capacity` values are queued and returns `"EBADF"` once the reader is gone; a custom sink may wait in its `write`.
+- `flush()` returns once everything written has drained. File and socket streams wait for queued bytes to drain; a pipe waits until at most `capacity` values remain queued.
+- The runtime drains buffered descriptor writes before the process ends. To handle a drain failure, call `flush()` before closing. A pipe flush is not an acknowledgement that the reader has consumed every value; close the writers and let the reader reach the end when you need that guarantee.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -44,15 +45,12 @@ import WriteStream from "@std/io/io.ms"
 fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
     for row in rows:
         try out.write("{row}\n")
-        if out.buffered() > 65536:
-            try out.flush().wait()
-    try out.flush().wait()
-    return ok(unit)
+    return out.flush()
 ```
 
 ## Pipelines
 
-Each step in `@std/io/streams.ms` takes its input first and by move, so a pipeline is the `|` operator and a reusable pipeline is an ordinary function:
+Each step in `@std/io/streams.ms` takes its input first and by move, so a pipeline is the `|` operator and a reusable pipeline is an ordinary function. A step pulls its input only inside its own `next`, so a slow consumer slows every step and the source, and nothing reads ahead:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -75,15 +73,15 @@ test "measure lines":
 | `from_list(items)`, `from_bytes(data)` | A stream over a list, or over bytes in chunks. |
 | `lines(input)` | UTF-8 lines, cut only at line breaks. |
 | `map(input, f)` | Transform each item. |
-| `filter(input, keep)` | The items for which `keep` is true; items are cloned, so `T` is `Clonable`. |
+| `filter(input, keep)` | The items for which `keep` is true. |
 | `take(input, count)` | At most the first `count` items, never reading past them, so it ends an endless stream. |
 | `collect(input, max_items)`, `read_all(input, max_bytes)` | Consume a stream into a list or `Bytes`. |
 | `fold(input, start, f)` | Combine all items into one value with `f(total, item)`. |
-| `copy(input, output)` | Move everything across and return the count. |
+| `copy(input, output)` | Move everything across, flush, and return the count. |
 
-Consumers such as `collect` wait internally and return a value directly. Pipelines are pulled lazily by the task that waits on them. Built-in stages pull the preceding stage with plain calls. A source may wait for input, and a custom source or transform may also wait inside its implementation; composing stages does not require starting separate work for each item.
+To make your own stream, implement `Source[T]` (`next` may wait, `close` releases what it holds) and wrap it with `ReadStream(source)`; implement `Sink[T]` (`write`, `flush`, `close`) and wrap it with `WriteStream(sink)`. Closing the stream closes the source or sink once.
 
-To make your own stream, implement `Source[T]` (`next` may wait) and wrap it with `stream`. To change a stream, implement `Transform[A, B]` and apply it with `through`: `step(value, var out)` writes the output items one input completes, possibly none, to `out`, and `finish(var out)` writes what was held back at the end. Built-in transforms process each item directly; a custom `step` or `finish` may wait. A step that fails drops what it wrote, and the failure is the stream's next item; chained transforms run as one fused stage per item.
+To change a stream item by item with a step that may emit zero or more outputs, implement `Transform[A, B]` and apply it with `through`: `step(value, var out)` appends the output items one input completes, possibly none, to the `List[B]` `out`, and `finish(var out)` appends what was held back at the end. A step that fails drops what it appended, and the failure is the stream's next item.
 
 ## Pipes
 
@@ -107,8 +105,8 @@ test "sum values from a producer":
     var out = p.writer()
     let producer = promise(fn: send_numbers(var out))
     var total = 0
-    for n in p.reader().wait():
-        total += try n
+    for n in p.reader():
+        total += n
     try producer.wait()
     try expect_equal(total, 6)
 ```
@@ -122,7 +120,7 @@ PASS pipe_test.ms::sum values from a producer
 The producer closes its writer after sending the values, allowing the reader's loop to finish. Waiting for the producer also checks its result.
 
 - `writer()` returns a new writing end each time, like `dup` on a file descriptor. `reader()` returns the one reading end.
-- `capacity` is the level above which a writer's `flush` waits.
+- `capacity` is the level above which a writer's `write` and `flush` wait.
 - The reader ends when every writer is closed, after it has read what was sent. Closing the reader makes writers fail with `"EBADF"`.
 - `write` is a `var fn`, so two promises cannot share one writer; each takes its own. Make one `var` writer per producer before starting the promises: the promise takes it over and may pass it on or write to it, so any number of producers can feed one reader.
 

@@ -156,7 +156,7 @@ impl Transport for StdoutTransport:
         if self.closed: return error(log_closed())
 
         var out = stdout()
-        return out.flush().wait()
+        return out.flush()
 
     fn duplicate() Transport!:
         if self.closed: return error(log_closed())

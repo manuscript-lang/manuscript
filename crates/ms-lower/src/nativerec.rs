@@ -3,8 +3,8 @@
 
 use crate::cx::Cx;
 use ms_check::Program;
-use ms_check::hir::Callable;
-use ms_check::types::Name;
+use ms_check::api::hir::Callable;
+use ms_check::api::types::Name;
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{NativeRec, Ty as MTy, TyKind};
 use ms_syntax::NodeId;
@@ -108,7 +108,7 @@ impl Cx {
         Ok(Some(self.function_for(
             m,
             &callable,
-            &ms_check::types::Subst::new(),
+            &ms_check::api::types::Subst::new(),
         )?))
     }
 }

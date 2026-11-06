@@ -147,7 +147,7 @@ test('Promise and stream guides teach separate topics', () => {
   const streams = read('streams');
   assert.ok(!promises.includes('ReadStream') && !promises.includes('pipe[Update]'));
   for (const text of ['PromiseOptions', 'wait_all', 'Cancellation']) assert.ok(promises.includes(text));
-  for (const text of ['ReadStream', 'Transform', 'Pipelines', 'Pipes', 'defers the read']) assert.ok(streams.includes(text));
+  for (const text of ['ReadStream', 'Transform', 'Pipelines', 'Pipes', 'waits inside its own']) assert.ok(streams.includes(text));
   assert.ok(promises.includes('/manuscript/core-language/concurrency/streams/'));
   assert.ok(streams.includes('/manuscript/core-language/concurrency/promises/'));
 });

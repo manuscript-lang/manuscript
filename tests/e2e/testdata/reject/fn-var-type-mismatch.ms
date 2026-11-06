@@ -1,8 +1,9 @@
-fn count(values: List[Int]) Int:
+fn append_one(var values: List[Int]) Int:
+    values.append(1)
     return values.length()
 
 export fn main() Int:
-    // `fn(List[Int]) Int` and `fn(var List[Int]) Int` are different types.
-    let change: fn(var List[Int]) Int = count
-    var values = [1]
-    return change(var values) - 1
+    // `fn(var List[Int]) Int` is not `fn(List[Int]) Int`: a function that changes its parameter
+    // cannot stand in for one that only reads it (the other direction is accepted).
+    let read: fn(List[Int]) Int = append_one
+    return read([1]) - 2

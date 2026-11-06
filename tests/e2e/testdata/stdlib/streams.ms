@@ -34,5 +34,5 @@ test "read_all joins chunks and enforces its limit":
 test "from_bytes rejects a chunk size below one instead of never ending":
     for size in [0, -1]:
         var source = from_bytes("abc".to_bytes(), size)
-        let first = try expect_error(source.read().wait())
+        let first = try expect_error(source.next())
         try expect_equal(first.kind, "EINVAL")

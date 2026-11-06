@@ -52,12 +52,6 @@ msrt_cancel_fired(id: i64) -> u8
 msrt_cancel_free(id: i64)
 msrt_cancel_new() -> i64
 msrt_cancelled() -> !
-msrt_cells_drop(id: i64)
-msrt_cells_full(id: i64) -> u8
-msrt_cells_new(value: *mut u8, d: ValueDesc) -> i64
-msrt_cells_out(id: i64) -> u8
-msrt_cells_put(id: i64, value: *mut u8, d: ValueDesc)
-msrt_cells_take(id: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_cleanup_cancel(handle: usize) @leaf
 msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
@@ -102,7 +96,6 @@ msrt_index_fault(index: i64, length: i64) -> ! @leaf
 msrt_int_compare(a: i64, b: i64) -> i64 @leaf
 msrt_int_to_string(v: i64, out: *mut StrVal) @leaf
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @leaf
-msrt_io_close(which: i64)
 msrt_io_flush()
 msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_write_bytes_stdout(v: *const VecVal)
@@ -222,7 +215,6 @@ msrt_promise_wait_any(ids: *const VecVal, timeout_ns: i64) -> i64
 msrt_realloc(p: *mut u8, size: usize) -> *mut u8
 msrt_runtime_limit() -> i64
 msrt_runtime_set_threads(n: i64)
-msrt_runtime_threads() -> i64
 msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @leaf
 msrt_set_difference(a: *const MapVal, b: *const MapVal, kd: KeyDesc, out: *mut MapVal) @leaf
 msrt_set_intersection(a: *const MapVal, b: *const MapVal, kd: KeyDesc, out: *mut MapVal) @leaf
@@ -248,7 +240,6 @@ msrt_strbuf_new() -> *mut StrBuf @leaf
 msrt_strbuf_push(buf: *mut StrBuf, s: *const StrVal) @leaf
 msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @leaf
 msrt_strbuilder_append_int(b: *mut VecVal, n: i64) @leaf
-msrt_strbuilder_drop(b: *mut VecVal) @leaf
 msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @leaf
 msrt_streams_buffered(stream: i64) -> i64
 msrt_streams_close(stream: i64)
@@ -424,7 +415,6 @@ msstd_decimal_compare(a: *const DecRec, b: *const DecRec) -> i64 @leaf
 msstd_decimal_divide(a: *const DecRec, b: *const DecRec, out: *mut DecRec) @leaf
 msstd_decimal_from_int(n: i64, out: *mut DecRec) @leaf
 msstd_decimal_from_uint(n: i64, out: *mut DecRec) @leaf
-msstd_decimal_literal(text: *const StrVal, out: *mut DecRec) @leaf
 msstd_decimal_multiply(a: *const DecRec, b: *const DecRec, out: *mut DecRec) @leaf
 msstd_decimal_negate(a: *const DecRec, out: *mut DecRec) @leaf
 msstd_decimal_parse(text: *const StrVal, out: *mut DecRec) -> u8 @leaf
@@ -459,7 +449,6 @@ msstd_fs_file_chmod(handle h: *mut ObjCell<Stream>, mode: i64, err: ErrSlot) -> 
 msstd_fs_file_chown(handle h: *mut ObjCell<Stream>, uid: i64, gid: i64, err: ErrSlot) -> u8
 msstd_fs_file_clone(handle h: *const ObjCell<Stream>, out: *mut *mut ObjCell<Stream>, err: ErrSlot) -> u8
 msstd_fs_file_data_sync(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8
-msstd_fs_file_path(handle h: *const ObjCell<Stream>, out: *mut StrVal)
 msstd_fs_file_read_at(handle h: *mut ObjCell<Stream>, offset: i64, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_fs_file_read_file(handle h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_fs_file_read_lines(handle h: *mut ObjCell<Stream>, max_bytes: i64, max_lines: i64, out: *mut VecVal, err: ErrSlot) -> u8
@@ -516,7 +505,6 @@ msstd_http_client_close(handle c: *const ObjCell<ClientH>)
 msstd_http_client_request(handle c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
 msstd_http_client_request_bytes(handle c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
 msstd_http_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle
-msstd_http_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
 msstd_http_exchange_close(handle x: *const ObjCell<ExchH>)
 msstd_http_exchange_headers(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH> @handle
 msstd_http_exchange_method(handle x: *const ObjCell<ExchH>, out: *mut StrVal)
@@ -835,7 +823,6 @@ msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRe
 msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(handle s: *const ObjCell<SocketH>)
 msstd_websocket_close_if_last(handle s: *const ObjCell<SocketH>)
-msstd_websocket_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
 msstd_websocket_ping(handle s: *const ObjCell<SocketH>, data: *const StrVal, err: ErrSlot) -> u8
 msstd_websocket_ping_bytes(handle s: *const ObjCell<SocketH>, data: *const VecVal, err: ErrSlot) -> u8
 msstd_websocket_receive(handle s: *const ObjCell<SocketH>, out: *mut WebSocketMessageRec, err: ErrSlot) -> u8

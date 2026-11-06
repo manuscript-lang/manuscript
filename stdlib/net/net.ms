@@ -1,14 +1,5 @@
 import Closeable from "@std/core.ms"
-import (
-    ReadStream,
-    WriteStream,
-    Source,
-    Sink,
-    stream,
-    writer,
-    pipe,
-    Pipe
-) from "@std/io/io.ms"
+import (ReadStream, WriteStream, Source, Sink, pipe, Pipe) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
 import Duration from "@std/time.ms"
@@ -108,14 +99,11 @@ type ConnectionSink:
     native: NativeConnection
 
 impl Sink[Bytes] for ConnectionSink:
-    var fn put(value: Bytes) Unit!:
+    var fn write(value: Bytes) Unit!:
         return msstd_net_connection_write_bytes(self.native, value, none)
 
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     // Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
     var fn close() Unit!:
@@ -172,8 +160,8 @@ fn connection(native: NativeConnection) Connection:
 
     let other = msstd_net_connection_share(native)
     return Connection(
-        input: stream[Bytes](ConnectionSource(native)),
-        output: writer[Bytes](ConnectionSink(other)),
+        input: ReadStream[Bytes](ConnectionSource(native)),
+        output: WriteStream[Bytes](ConnectionSink(other)),
         info: ConnectionInfo(local, peer, tls)
     )
 
@@ -204,16 +192,13 @@ type DatagramSink:
 
 impl Sink[Datagram] for DatagramSink:
     // Sends `value.data` as one datagram to `value.address`, resolving a host name with the network's resolver.
-    var fn put(value: Datagram) Unit!:
+    var fn write(value: Datagram) Unit!:
         return msstd_net_datagram_send_bytes(
             self.native, value.data, value.address, none
         )
 
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     var fn close() Unit!:
         msstd_net_datagram_close_if_last(self.native)
@@ -238,8 +223,8 @@ fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
     let address = msstd_net_datagram_address(native)
     let other = msstd_net_datagram_share(native)
     return DatagramSocket(
-        input: stream[Datagram](DatagramSource(native)),
-        output: writer[Datagram](DatagramSink(other)), address: address
+        input: ReadStream[Datagram](DatagramSource(native)),
+        output: WriteStream[Datagram](DatagramSink(other)), address: address
     )
 
 // The runtime handle behind a `Listener`.

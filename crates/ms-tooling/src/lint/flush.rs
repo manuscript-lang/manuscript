@@ -4,8 +4,8 @@
 
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
-use ms_check::editor::{MemberKind, members};
-use ms_check::types::{Builtin, Name, Ty, n};
+use ms_check::api::editor::{MemberKind, members};
+use ms_check::api::types::{Builtin, Name, Ty, n};
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
@@ -35,7 +35,7 @@ pub(super) fn lint(
         if scan.finished.contains(&uid)
             || !program
                 .binding_facts
-                .has(uid, ms_check::ownership::BindingFact::ImplicitClose)
+                .has(uid, ms_check::api::ownership::BindingFact::ImplicitClose)
             || !kept
         {
             continue;

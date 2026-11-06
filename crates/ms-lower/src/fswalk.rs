@@ -5,7 +5,7 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
-use ms_check::types as ct;
+use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncKind, Imm, Mode, Op, Param, Value};
 use ms_mir::types::{RecId, Ty as MTy, TyKind};

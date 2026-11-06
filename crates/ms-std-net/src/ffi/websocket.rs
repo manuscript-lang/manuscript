@@ -9,10 +9,7 @@ use ms_rt::ffi::{
     Bytes, ErrOut, Has, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record,
     native,
 };
-use ms_rt_abi::{
-    STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED, STATUS_NONE,
-    STATUS_PERMISSION_DENIED, STATUS_TIMEOUT,
-};
+use ms_rt_abi::STATUS_NONE;
 
 abi_record! {
     /// `WebSocketOptions` as the compiler lays it out for natives.
@@ -35,18 +32,6 @@ abi_record! {
     pub struct WebSocketMessageRec {
         pub data: Bytes,
         pub text: u8,
-    }
-}
-
-fn ws_from_code(status: u8, failed: String) -> WsErr {
-    match status {
-        STATUS_INVALID_INPUT => WsErr::InvalidInput,
-        STATUS_INVALID_DATA => WsErr::InvalidData,
-        STATUS_LIMIT_EXCEEDED => WsErr::LimitExceeded,
-        STATUS_PERMISSION_DENIED => WsErr::PermissionDenied,
-        STATUS_CLOSED => WsErr::Closed,
-        STATUS_TIMEOUT => WsErr::Timeout,
-        _ => WsErr::Failed(failed),
     }
 }
 
@@ -75,10 +60,6 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
 }
 
 native! {
-    /// `WebSocketError.message()` for a status and the `Failed` text (nullable).
-    fn msstd_websocket_error_message(status: u8, has_failed: Has, failed: &str) -> String {
-        ws_from_code(status, (if *has_failed { failed } else { "" }).to_string()).message()
-    }
 
     /// `Network.web_socket(address, headers, subprotocols, options)`.
     fn msstd_net_network_web_socket(

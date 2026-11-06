@@ -2,7 +2,7 @@
 //! or fault leaves the function before the recursive call, so it never finishes.
 
 use super::{Finding, finding, module_file};
-use ms_check::types::n;
+use ms_check::api::types::n;
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
 

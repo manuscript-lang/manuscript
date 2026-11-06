@@ -22,7 +22,8 @@ export fn main() Int:
         return 4
 
     var input = lines(stdin())
-    match input.read().wait():
+
+    match input.next():
         ok(line):
             if line.is_some():
                 return 5

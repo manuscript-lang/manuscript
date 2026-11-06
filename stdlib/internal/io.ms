@@ -1,4 +1,4 @@
-import NativeRawTerminal from "@std/io/io.ms"
+import NativeRawTerminal from "@std/cli/terminal.ms"
 import Duration from "@std/time.ms"
 
 export extern fn msstd_terminal_event_kind() Int

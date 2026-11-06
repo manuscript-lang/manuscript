@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import Promise, deferred, complete from "@std/concurrency/promise.ms"
@@ -65,17 +65,14 @@ type WebSocketSink:
 
 impl Sink[WebSocketMessage] for WebSocketSink:
     // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a payload over `max_message_bytes` returns EOVERFLOW.
-    var fn put(value: WebSocketMessage) Unit!:
+    var fn write(value: WebSocketMessage) Unit!:
         match value.kind:
             Text: return msstd_websocket_send_bytes(self.native, value.data, true)
             Binary: return msstd_websocket_send_bytes(self.native, value.data, false)
             Ping: return msstd_websocket_ping_bytes(self.native, value.data)
 
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     var fn close() Unit!:
         msstd_websocket_close_if_last(self.native)
@@ -105,8 +102,9 @@ export fn web_socket_from(native: NativeWebSocket) WebSocket:
     let subprotocol = msstd_websocket_subprotocol(native)
     let other = msstd_websocket_share(native)
     return WebSocket(
-        input: stream[WebSocketMessage](WebSocketSource(native)),
-        output: writer[WebSocketMessage](WebSocketSink(other)), subprotocol: subprotocol
+        input: ReadStream[WebSocketMessage](WebSocketSource(native)),
+        output: WriteStream[WebSocketMessage](WebSocketSink(other)),
+        subprotocol: subprotocol
     )
 
 // What a WebSocket client connection is opened with: headers, subprotocols, message bound, time budget, TLS settings and compression.

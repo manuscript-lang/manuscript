@@ -21,7 +21,7 @@ fn run() Result[Unit, Error]:
         Error("HTTP: invalid data", kind: "EBADMSG")
     )
     try stdout().write(text)
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():

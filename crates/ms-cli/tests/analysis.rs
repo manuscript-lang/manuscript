@@ -1,6 +1,6 @@
 //! Independent check/lint inputs keep their own results and share only reporting.
 
-mod common;
+use crate::common;
 
 use common::scratch;
 use std::path::Path;
