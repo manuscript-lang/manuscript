@@ -1,6 +1,8 @@
-// Scheduler mailbox traffic: starts N short promise tasks from the main thread, in rounds, and waits
-// for each. Every promise is a Start sent to a scheduler thread and an Ended event sent back, so the
-// run is dominated by cross-thread mail. `ms run bench/perf/mailbox/main.ms -- 200000 5`.
+// Scheduler mailbox traffic: starts short promise tasks from the main thread, `window` at a time, and
+// waits for each batch. Every promise is a Start sent to a scheduler thread and an Ended event sent
+// back, so the run is dominated by cross-thread mail and wake-ups. A small window keeps the stacks of
+// finished tasks in the pool, so stack setup does not hide the mail cost.
+// `ms run bench/perf/mailbox/main.ms -- 100000 5 [window]`: promises per round, rounds, window (default 64).
 import promise, Promise from "@std/concurrency/promise.ms"
 import arguments from "@std/os/env.ms"
 import monotonic_time from "@std/os/system.ms"
@@ -12,15 +14,23 @@ export fn main() Int:
     let args = arguments()
     let n = args[0].parse_int().get()
     let rounds = args[1].parse_int().get()
+    var window = 64
+    if args.length() > 2:
+        window = args[2].parse_int().get()
+
     var total = 0
     let t0 = monotonic_time()
 
     for r in 0..rounds:
-        var promises: List[Promise[Int]] = []
-        for i in 0..n:
-            promises.append(promise[Int](fn: work(i)))
-        for p in promises:
-            total = total + p.wait().get()
+        var done = 0
+
+        while done < n:
+            var promises: List[Promise[Int]] = []
+            for i in 0..window:
+                promises.append(promise[Int](fn: work(done + i)))
+            for p in promises:
+                total = total + p.wait().get()
+            done = done + window
 
     let t1 = monotonic_time()
     print("total " + total.to_string())
