@@ -348,13 +348,13 @@ fn macos_arguments(
         // lld turns `adrp x10, got; ...; ldr x8, [x10, got]` into `adr x8` at the adrp, clobbering
         // an x8 the code in between still uses (a list of string literals stored a shift result).
         // Workaround: remove once lld is fixed (#1748).
-        .arg("-ignore_optimization_hints")
-        .arg("-o")
-        .arg(out);
+        .arg("-ignore_optimization_hints");
     if strip {
         command.arg("-x");
     }
-    command.arg(object).args(inputs).args([
+    super::macos_debug_arguments(command, object, inputs, out)
+        .map_err(|e| Error(format!("cannot resolve native debug paths: {e}")))?;
+    command.args([
         "-lSystem",
         "-framework",
         "Security",
