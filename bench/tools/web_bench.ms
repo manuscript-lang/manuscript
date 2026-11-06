@@ -22,7 +22,7 @@ import SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms"
 import arguments from "@std/os/env.ms"
 import copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
     stdout().write(text + "\n").get()

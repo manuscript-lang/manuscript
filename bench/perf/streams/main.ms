@@ -10,7 +10,7 @@ import (
     fold
 ) from "@std/io/streams.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import monotonic, Instant from "@std/os/time.ms"
+import monotonic, Instant from "@std/time.ms"
 
 // ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
 

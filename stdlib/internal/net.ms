@@ -30,7 +30,7 @@ import (
     HttpHeaders,
     HttpMethod
 ) from "@std/net/http.ms"
-import Duration, Timestamp from "@std/os/time.ms"
+import Duration, Timestamp from "@std/time.ms"
 
 export extern fn msstd_url_encode_component(text: String) String
 

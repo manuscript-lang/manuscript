@@ -1,6 +1,6 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import base64_encode_unpadded from "@std/data/encoding.ms"
-import now from "@std/os/time.ms"
+import now from "@std/time.ms"
 import panic from "@std/core.ms"
 import (
     bit_and,

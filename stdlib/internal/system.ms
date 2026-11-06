@@ -1,4 +1,4 @@
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import (
     CpuInfo,
     MemoryUsage,

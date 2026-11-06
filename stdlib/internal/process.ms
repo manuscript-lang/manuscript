@@ -9,7 +9,7 @@ import (
     Stdio,
     Subprocess
 ) from "@std/os/process.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 
 export extern fn msstd_process_command_run(
     program: String,

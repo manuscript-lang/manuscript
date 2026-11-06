@@ -1,5 +1,5 @@
 import stdout from "@std/io/io.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 import StringBuilder from "@std/string.ms"
 import parse_int from "@std/math/math.ms"
 

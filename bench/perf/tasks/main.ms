@@ -4,7 +4,7 @@
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report
 // (it reads /proc/self/status); the tasks themselves are portable.
 import owned_promise, Promise from "@std/concurrency/promise.ms"
-import sleep, seconds from "@std/os/time.ms"
+import sleep, seconds from "@std/time.ms"
 import read_file from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 import monotonic_time from "@std/os/system.ms"

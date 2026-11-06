@@ -21,7 +21,7 @@ fn codes(source: &str) -> Vec<String> {
         .collect()
 }
 
-const HEAD: &str = "import promise from \"@std/concurrency/promise.ms\"\nimport nanoseconds, sleep from \"@std/os/time.ms\"\n";
+const HEAD: &str = "import promise from \"@std/concurrency/promise.ms\"\nimport nanoseconds, sleep from \"@std/time.ms\"\n";
 
 #[test]
 fn spinning_loop_is_reported() {

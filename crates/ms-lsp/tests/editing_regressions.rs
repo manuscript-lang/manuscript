@@ -497,3 +497,28 @@ fn checker_fixes_become_quick_fixes() {
         .expect("misspelling fix");
     assert_eq!(apply(source, action), source.replace("Strin ", "String "));
 }
+
+/// A checkout's `stdlib/` sources import the internal modules; opened from disk they report nothing.
+#[test]
+fn checkout_stdlib_sources_report_no_diagnostics() {
+    let syms = ms_syntax::Names::global();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
+    for file in ["io/io.ms", "net/router.ms"] {
+        let path = std::fs::canonicalize(root.join(file)).expect("stdlib file");
+        let source = std::fs::read_to_string(&path).expect("read");
+        let d = Document::new(ms_lsp::uri::file_uri(path.to_str().unwrap()), &source);
+        let result = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+        let messages: Vec<_> = result
+            .diagnostics
+            .iter()
+            .map(|d| {
+                format!(
+                    "{} {}",
+                    d.file,
+                    d.message.chars().take(40).collect::<String>()
+                )
+            })
+            .collect();
+        assert!(messages.is_empty(), "{file}: {messages:?}");
+    }
+}

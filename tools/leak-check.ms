@@ -11,7 +11,7 @@ import RunOptions, run from "@std/os/process.ms"
 import arguments, change_directory, working_directory from "@std/os/env.ms"
 import system_info from "@std/os/system.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
-import seconds from "@std/os/time.ms"
+import seconds from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
 // The live block counts the runtime printed on standard error; a program that starts child

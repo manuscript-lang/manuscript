@@ -119,10 +119,16 @@ pub(super) fn build<L: Lower>(
     if let Some(error) = path_error {
         return Ok(fail(io, &compiled.source_root, "build", &error));
     }
-    let sources = match build_inputs(&compiled) {
+    let mut sources = match build_inputs(&compiled) {
         Ok(sources) => sources,
         Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
     };
+    // The native inputs the linker reads are preserved like sources: publication must not
+    // replace a `--link` file, the selected runtime archive or the runtime helper IR.
+    sources.extend(request.link.iter().map(std::path::PathBuf::from));
+    let options = backend.build_options();
+    sources.extend(backend.runtime.clone());
+    sources.extend(ms_build::native_inputs(&options));
     if std::fs::metadata(&output).is_ok_and(|m| m.is_dir()) {
         let _ = writeln!(
             io.stderr,

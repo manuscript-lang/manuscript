@@ -2,7 +2,7 @@
 // conform: phase=run
 import stdout from "@std/io/io.ms"
 import promise, wait_first, PromiseOptions from "@std/concurrency/promise.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 
 // Holds heap values across waits so a cancelled promise has something to release.
 fn hold(label: String) Int:

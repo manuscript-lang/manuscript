@@ -2,7 +2,7 @@ import stringify, CsvOptions from "./csv.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
-import clock from "@std/os/time.ms"
+import clock from "@std/time.ms"
 
 export fn main() Int:
     let args = arguments()

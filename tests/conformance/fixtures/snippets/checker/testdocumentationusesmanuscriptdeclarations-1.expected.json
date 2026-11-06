@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
+        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 7,
@@ -29,7 +29,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Duration from \"@std/os/time.ms\"\n"
+          "replacement": "import Duration from \"@std/time.ms\"\n"
         }
       },
       {
@@ -61,7 +61,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
+        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 8,
@@ -81,7 +81,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Duration from \"@std/os/time.ms\"\n"
+          "replacement": "import Duration from \"@std/time.ms\"\n"
         }
       },
       {
@@ -113,7 +113,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Duration; add: import Duration from \"@std/os/time.ms\"",
+        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
         "position": {
           "file": "testdocumentationusesmanuscriptdeclarations-1.ms",
           "line": 9,
@@ -133,14 +133,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "import Duration from \"@std/os/time.ms\"\n"
+          "replacement": "import Duration from \"@std/time.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:7:42: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 7 |     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n   |                                          ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:7:53: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n   |\n 7 |     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n   |                                                     ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:8:53: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 8 |     fn send(data: String, address: String, timeout: Duration?) Unit!\n   |                                                     ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:25: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 9 |     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!\n   |                         ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:58: resolution: unknown type Duration; add: import Duration from \"@std/os/time.ms\"\n   |\n 9 |     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!\n   |                                                          ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:7:42: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 7 |     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n   |                                          ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:7:53: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n   |\n 7 |     fn receive(max_bytes: Int?, timeout: Duration?) Datagram!\n   |                                                     ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:8:53: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 8 |     fn send(data: String, address: String, timeout: Duration?) Unit!\n   |                                                     ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:25: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 9 |     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!\n   |                         ^\n<DIR>/testdocumentationusesmanuscriptdeclarations-1.ms:9:58: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 9 |     fn send_bytes(data: Bytes, address: String, timeout: Duration?) Unit!\n   |                                                          ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

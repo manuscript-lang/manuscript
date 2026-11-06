@@ -1,7 +1,7 @@
 import Closeable, Iterator from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Promise, complete, adopt from "@std/concurrency/promise.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import (
     msrt_promise_new,
     msrt_promise_defer,

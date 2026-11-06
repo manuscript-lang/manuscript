@@ -1,4 +1,4 @@
-//! C ABI shims for `@std/os/random.ms` (`msstd_random_*`): the operating-system `Entropy` source.
+//! C ABI shims for `@std/random.ms` (`msstd_random_*`): the operating-system `Entropy` source.
 use super::RandomFail;
 use alloc::vec::Vec;
 use ms_rt::ffi::{ErrOut, StatusCode, native};
