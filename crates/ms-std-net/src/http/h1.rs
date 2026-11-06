@@ -217,16 +217,17 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
     {
         return Ok(Framing::None);
     }
+    // Another coding would hand the caller still-encoded bytes as the body, whether
+    // chunked framing follows it or the connection closing delimits the message.
+    let coded = field(&head.fields, "Transfer-Encoding").any(|v| {
+        v.split(|&c| c == b',')
+            .map(<[u8]>::trim_ascii)
+            .any(|t| !t.eq_ignore_ascii_case(b"chunked") && !t.eq_ignore_ascii_case(b"identity"))
+    });
+    if coded {
+        return Err("unsupported Transfer-Encoding");
+    }
     if has_token(&head.fields, "Transfer-Encoding", "chunked") {
-        // Another coding would hand the caller still-encoded bytes as the body.
-        let coded = field(&head.fields, "Transfer-Encoding").any(|v| {
-            v.split(|&c| c == b',').map(<[u8]>::trim_ascii).any(|t| {
-                !t.eq_ignore_ascii_case(b"chunked") && !t.eq_ignore_ascii_case(b"identity")
-            })
-        });
-        if coded {
-            return Err("unsupported Transfer-Encoding");
-        }
         return Ok(Framing::Chunked);
     }
     if field(&head.fields, "Transfer-Encoding").next().is_some() {
@@ -791,6 +792,18 @@ mod tests {
             response_framing(&h, "GET"),
             Err("unsupported Transfer-Encoding")
         );
+        for coding in ["gzip", "compress", "unknown", "gzip, identity"] {
+            let h = parse(&format!(
+                "HTTP/1.1 200 OK\r\nTransfer-Encoding: {coding}\r\n\r\n"
+            ));
+            assert_eq!(
+                response_framing(&h, "GET"),
+                Err("unsupported Transfer-Encoding"),
+                "{coding} must not be returned as an undecoded body"
+            );
+        }
+        let h = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: identity\r\n\r\n");
+        assert_eq!(response_framing(&h, "GET"), Ok(Framing::UntilClose));
         let h = parse("HTTP/1.1 204 No Content\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::None));
         let h = parse("HTTP/1.1 200 OK\r\n\r\n");
