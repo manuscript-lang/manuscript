@@ -127,8 +127,11 @@ pub(super) fn build<L: Lower>(
     // replace a `--link` file, the selected runtime archive or the runtime helper IR.
     sources.extend(request.link.iter().map(std::path::PathBuf::from));
     let options = backend.build_options();
-    sources.extend(backend.runtime.clone());
-    sources.extend(ms_build::native_inputs(&options));
+    let runtime = match backend.runtime_path() {
+        Ok(runtime) => runtime,
+        Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
+    };
+    sources.extend(ms_build::native_inputs(&options, &runtime));
     if std::fs::metadata(&output).is_ok_and(|m| m.is_dir()) {
         let _ = writeln!(
             io.stderr,
@@ -168,28 +171,32 @@ pub(super) fn build<L: Lower>(
     }
     // The cache stores this build's own executable, not whatever a concurrent build has since
     // put at the shared output path.
-    let pin = cache.as_ref().map(|_| pin_path(Path::new(&output)));
+    let pin = if cache.is_some() {
+        match ArtifactPin::create(Path::new(&output)) {
+            Ok(pin) => Some(pin),
+            Err(error) => return Ok(fail(io, &compiled.source_root, "build", &error.to_string())),
+        }
+    } else {
+        None
+    };
     let linked = backend.link_pinned(
         &mut compiled,
         Path::new(&output),
         request.build_type,
         &request.link,
-        pin.as_deref(),
+        pin.as_ref().map(ArtifactPin::path),
     );
     let recorded = match (&cache, linked) {
         (_, Err(message)) => Err(message),
         (Some(cache), Ok(selected)) => cache.record(
             &compiled,
             &sources,
-            &output,
-            pin.as_deref().unwrap_or(Path::new(&output)),
+            pin.as_ref().map_or(Path::new(&output), ArtifactPin::path),
             selected,
         ),
         (None, Ok(_)) => Ok(()),
     };
-    if let Some(pin) = &pin {
-        let _ = std::fs::remove_file(pin);
-    }
+    drop(pin);
     if let Err(message) = recorded {
         return Ok(fail(io, &compiled.source_root, "build", &message));
     }
@@ -422,9 +429,8 @@ impl BuildCache {
         let source_dir = pathops::eval_symlinks(&pathops::dir(&filename)).ok()?;
         inputs
             .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
-        inputs.extend(backend.runtime.clone());
+        inputs.push(backend.runtime_path().ok()?);
         let options = backend.build_options();
-        inputs.extend(ms_build::runtime_override(&options).ok()?);
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
         let inputs: Vec<&Path> = inputs.iter().map(std::path::PathBuf::as_path).collect();
         let build_type = request.build_type.as_str();
@@ -443,17 +449,15 @@ impl BuildCache {
         ms_build::cache::lookup(&self.directory, &self.key).map(Hit)
     }
 
-    /// Stores the finished build at `output` for the next one (or, under `MS_CACHE=verify`,
+    /// Stores this producer's pinned build for the next one (or, under `MS_CACHE=verify`,
     /// compares it with the stored build).
     fn record(
         &self,
         compiled: &super::Compiled,
         sources: &[std::path::PathBuf],
-        output: &str,
         artifact: &Path,
         backend: ms_build::Backend,
     ) -> Result<(), String> {
-        let output = Path::new(output);
         if self.mode == ms_build::cache::Mode::Verify {
             let Some(hit) = self.lookup() else {
                 return Ok(());
@@ -463,7 +467,7 @@ impl BuildCache {
             }
             return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
         }
-        let companion = ms_clif_companion(output);
+        let companion = ms_clif_companion(artifact);
         ms_build::cache::store(
             &self.directory,
             &self.key,
@@ -508,16 +512,37 @@ impl Hit {
     }
 }
 
-/// The macOS `.dSYM` directory beside `executable`; none elsewhere.
-/// A private name beside `output` for this build's own copy of its executable.
-fn pin_path(output: &Path) -> std::path::PathBuf {
-    let name = output.file_name().and_then(|n| n.to_str()).unwrap_or("out");
-    let unique = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos());
-    output.with_file_name(format!(".{name}.ms-pin-{}-{unique}", std::process::id()))
+/// Own both pins until recording has finished, including on link or metadata failure.
+struct ArtifactPin {
+    _stage: ms_build::native::BuildStage,
+    executable: std::path::PathBuf,
 }
 
+impl ArtifactPin {
+    fn create(output: &Path) -> std::io::Result<Self> {
+        let stage = ms_build::native::BuildStage::for_output(output)?;
+        let executable = stage.path().join("program.exe");
+        Ok(Self {
+            _stage: stage,
+            executable,
+        })
+    }
+
+    fn path(&self) -> &Path {
+        &self.executable
+    }
+}
+
+impl Drop for ArtifactPin {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(self.path());
+        if let Some(companion) = ms_clif_companion(self.path()) {
+            let _ = std::fs::remove_dir_all(companion);
+        }
+    }
+}
+
+/// The macOS `.dSYM` directory beside `executable`; none elsewhere.
 fn ms_clif_companion(executable: &Path) -> Option<std::path::PathBuf> {
     ms_build::debug_companion_path(executable)
 }
@@ -766,3 +791,6 @@ mod tests {
         assert_eq!(actual, expected);
     }
 }
+
+#[cfg(test)]
+mod cache_provenance;
