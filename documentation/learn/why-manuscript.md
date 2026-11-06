@@ -53,18 +53,17 @@ The syntax is also cheap for a model to produce. Manuscript spells logic with pl
 
 ## A compiler that helps the agent
 
-Agents carry habits from other languages. They write `len(xs)`, `&&`, `null`, `xs.push(1)` or `i++`. The compiler is built to meet them there. Every diagnostic reads `cause; fix`, and it recognizes code that looks like it came from somewhere else:
+Every diagnostic is written for an agent and tuned against agents' real mistakes, so each one names the cause and the fix. Checks are fast enough to run after every edit.
+
+Agents also arrive with habits from other languages, and the compiler meets them where they are. It recognizes code that looks like it came from somewhere else and says how to write it here:
 
 ```text
 resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length()
 parse: '&&' is not an operator; write 'and' for logical and
 resolution: unknown binding null; Manuscript has no null: absence is an Optional, written none
-resolution: unknown or ambiguous member push on List[Int]; did you mean 'append'?
 ```
 
-The agent gets the repair, not just "syntax error". When the fix is mechanical, `ms check --fix` applies it: `null` becomes `none` and `push` becomes `append` without another round trip. An ownership slip is explained the same way, with the `.clone()` that keeps the original.
-
-Checking is fast, so the agent can ask after every edit: on a 122,000-line project, `ms check` takes under two seconds (see the numbers below). `ms guide` is a one-page cheat sheet, `ms search_symbol read file` answers one API question, and `ms verify` runs checks, formatting, lint and tests with a single exit code. When a program fails at run time, `ms test --json` hands back the fault as data: kind, values, position and trace. The agent loops until the exit code is zero.
+When the fix is mechanical, `ms check --fix` applies it.
 
 ## Easy to review and understand
 
