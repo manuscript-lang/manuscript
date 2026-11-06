@@ -1,4 +1,4 @@
-import TerminalEvent, EraseRegion, raw_mode from "@std/io/io.ms"
+import TerminalEvent, EraseRegion, raw_mode from "@std/cli/terminal.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
 import nanoseconds from "@std/time.ms"
