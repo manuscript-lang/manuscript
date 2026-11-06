@@ -288,6 +288,8 @@ fn windows_arguments(
     command
         .args(["-flavor", "gnu", "-m", machine, "--gc-sections"])
         .args(["--subsystem", "console"])
+        // Identical inputs must link to identical bytes (`MS_CACHE=verify` compares them).
+        .arg("--no-insert-timestamp")
         .arg("-o")
         .arg(out);
     if strip {
@@ -349,6 +351,11 @@ fn macos_arguments(
         .arg("-ignore_optimization_hints")
         .arg("-o")
         .arg(out);
+    // The debug map names each object; the staging directory's name varies per build,
+    // so strip it to keep the output (and its UUID) identical for identical inputs.
+    if let Some(stage) = object.parent() {
+        command.arg("-oso_prefix").arg(stage);
+    }
     if strip {
         command.arg("-x");
     }
