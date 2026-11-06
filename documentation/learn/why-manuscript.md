@@ -73,9 +73,7 @@ Reading the diff line by line does not scale when an agent writes the code. Manu
 ms diagram ms.toml --format html -o code-map.html
 ```
 
-You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted: `Changed (3)` in the sidebar below lists them, and the Behavior view lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye. The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters.
-
-![The code map for an inventory tool, with three changed declarations listed in the sidebar and the Behavior view of run_command beside its source](/images/code-map-behavior.png "Code map with a diff overlay: changed declarations are outlined in red, and the Behavior view shows each branch and early return.")
+You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted, and a Behavior view that lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye. The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters. See [working with an agent](../guide/working-with-an-agent.md) for the full review workflow.
 
 ## Test, benchmark and profile in one toolchain
 
