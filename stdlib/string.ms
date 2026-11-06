@@ -155,7 +155,9 @@ impl StringTextOperations for String:
             out.append(current.drain())
         return out
 
-    // Compares text ignoring case using Unicode full case mapping (no locale), so "Straße" equals "STRASSE".
+    // Compares text ignoring case: both sides are uppercased and then lowercased with Unicode full case mapping
+    // (no locale, no normalization), so "Straße" equals "STRASSE". This is not Unicode default case folding:
+    // the dotless "ı" (U+0131) uppercases to "I" and so compares equal to "i" and "I".
     fn equal_fold(other: String) Bool:
         return self.upper().lower() == other.upper().lower()
 
