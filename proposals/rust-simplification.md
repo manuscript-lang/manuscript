@@ -102,9 +102,40 @@ Every track has a deletion budget stated in lines removed; a track that deletes 
 
 **Not examined, to check before the plan is final:** `bench/` (71 MB), `tests/` (35 MB), `extensions/vscode`, and `tools/*.ms` for unused fixtures and scripts.
 
+## Addendum: track F, fewer locks in the runtime (2026-11-06, owner direction: remove locks and mutexes so the runtime is faster)
+
+Inventory (`ms-rt`, `ms-rt-hot` and `ms-std-*`, non-test code): no `RwLock`; `Mutex` statics or fields in `isolate.rs` (8), `sched.rs` (5), `alloc.rs` (5), `poller.rs` (4), `streams.rs` (3), `ms-std-net` (6); `Condvar` only in the blocking pool (`glue/pool.rs`). Atomics are already the main mechanism (`sched.rs` 18, `fault.rs` 16, `alloc.rs` 11). The single-thread hot paths are already lock-free: the allocator keeps per-thread heaps with an atomic page table and a remote-free stack (`wiki/runtime/one-process-heap-pages-name-their-owner.md`), and cancellation is one relaxed flag.
+
+Remaining locks are all on cross-thread paths:
+
+| Lock | Where | Used for | Cost model |
+| --- | --- | --- | --- |
+| per-thread `mail: Mutex<Mail>` | `sched.rs:137` | posting a wake or event to another thread's scheduler; the owner drains it every loop | taken by every cross-thread post and every poll of the owner |
+| `REGISTRY`, `IDLE`, `MAIN_INBOX`, per-inbox `posts`/`wake` | `isolate.rs` | isolate lifecycle and cross-isolate posts | one lock per post, plus a registry lock to find the target |
+| `POOL` + two `Condvar`s | `glue/pool.rs` | blocking thread pool job queue | a lock per job submit and take; a condvar wake per job |
+| `SHARED` | `alloc.rs:73` | freed large blocks for threads without an arena | a lock per large free or alloc by a pool thread |
+| `COMMIT_LOCK`, `IDLE` heaps | `alloc.rs:233,244` | growing the reservation, recycling heaps | only on thread start or heap growth (cold) |
+| `HANDLES` | `sched.rs:166` | join handles at shutdown | cold |
+| `ms-std-net` server/connection state | `http/server.rs` and others | listener and connection tables | measure |
+
+Honest expectation: an uncontended `std::sync::Mutex` is one atomic compare-exchange on Linux (futex based), so replacing a lock helps only where there is contention or a syscall (a `Condvar` wake). Single-threaded programs will not move. The likely wins are the multi-threaded cases: cross-thread promise wakes, the HTTP server across cores (`proposals/http-server-multicore.md`), and file work through the pool. This is a hypothesis; the first step measures it.
+
+Design (std only, no new crate):
+1. **Measure first.** Count lock acquisitions and contended waits per benchmark (a debug counter behind a cfg, not shipped) on `bench/perf` cases that cross threads and on the HTTP multicore bench; a perf lock-contention profile (`perf record` plus the futex wait symbols). Drop any lock that shows under 1% of the run.
+2. **Mailboxes (`sched.rs`, `isolate.rs`).** Replace `Mutex<Mail>` with a multi-producer single-consumer intrusive list: producers push with one `compare_exchange` on an `AtomicPtr` head, the owner swaps the head to null and reverses the list (the standard Treiber MPSC pattern, already how the allocator's remote-free stack works). Messages are fixed-size slots from the existing allocator. The `signalled` flag stays the wake gate.
+3. **Registry (`isolate.rs`).** The registry is read on every post and written on isolate start and end. Use a fixed array of atomic slot words (flat array indexed by isolate id, per the data-oriented rule) with a generation in the upper bits, so lookup is one load and no lock; creation and retirement use a compare-exchange on the slot.
+4. **Pool queue (`glue/pool.rs`).** Keep a parking primitive (futex or condvar) only for idle workers; move the job queue to a lock-free MPMC ring or per-worker deques so submit and take do not contend. Measure against the current single queue before keeping the added complexity (a cache must beat a redesign; here the redesign is the lock removal).
+5. **Large-block cache (`alloc.rs`).** Per-size atomic free stacks (the same remote-free stack type) replace `SHARED`.
+6. **Leave cold locks.** `COMMIT_LOCK`, `HANDLES` and heap recycling run once per thread or growth step; converting them adds risk and no speed.
+7. **Rule, enforced.** A `repo-check` rule lists the allowed lock sites (cold ones above); a new `Mutex` in `ms-rt` outside the list fails the check, with the reason recorded beside the entry.
+
+Gates: the `bench/perf` suite within the 2% rule on single-thread cases, a measured improvement (or the change is dropped) on the cross-thread cases; the existing concurrency tests (`model_tests.rs`) plus a stress test that posts from N threads and checks every message arrives once; the full OS matrix, since memory-ordering bugs are platform-sensitive (Windows and macOS in particular; weaker ordering is fine on x86 and fails on Apple silicon). Each lock-free structure carries its ordering argument in a comment, and every `Ordering::SeqCst` kept is justified.
+
+Risks: lock-free code is harder to read, which cuts against the goal of this proposal; mitigated by one shared MPSC type used in three places instead of three ad hoc versions, and by keeping the lock where measurement shows no contention. Overlaps the concurrency threads (`promises`, `http-server-multicore`); coordinate before editing `sched.rs`, `isolate.rs` or the pool.
+
 ## Open questions
 
-1. Order: E, A, B, C, D (E first, since it makes A easier), or start with D (highest readability, lowest risk)?
+1. Order: E, A, B, C, D, with F (locks) after its measurement step, which can run in parallel with E and does not edit shared files, (E first, since it makes A easier), or start with D (highest readability, lowest risk)?
    Is the 2% median threshold the right perf gate?
 2. Is a differential test between Cranelift and LLVM acceptable in CI time, and which platforms (LLVM is Linux and macOS only)?
 3. Accept dropping a track if its measurement does not pay for itself?
