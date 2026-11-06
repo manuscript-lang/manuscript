@@ -465,7 +465,24 @@ impl BuildCache {
             if hit.0.matches(artifact) {
                 return Ok(());
             }
-            return Err("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug)".into());
+            let detail = {
+                let a = std::fs::read(artifact).unwrap_or_default();
+                let cached = hit.0.debug_cached_bytes();
+                let first = a.iter().zip(cached.iter()).position(|(x, y)| x != y);
+                let ctx = |v: &[u8], at: usize| {
+                    let lo = at.saturating_sub(48);
+                    String::from_utf8_lossy(&v[lo..(at + 48).min(v.len())]).into_owned()
+                };
+                format!(
+                    " [DEBUGDIFF built={} cached={} first={:?} built_ctx={:?} cached_ctx={:?}]",
+                    a.len(),
+                    cached.len(),
+                    first,
+                    first.map(|f| ctx(&a, f)),
+                    first.map(|f| ctx(&cached, f))
+                )
+            };
+            return Err(format!("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug){detail}"));
         }
         let companion = ms_clif_companion(artifact);
         ms_build::cache::store(
