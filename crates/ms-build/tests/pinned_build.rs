@@ -25,7 +25,7 @@ fn fixture(name: &str) -> (PathBuf, PathBuf, PathBuf, ms_build::BuildOptions) {
         .unwrap()
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
-        "ms-pinned-build-{name}-{}-{nonce}",
+        "ms-build-debug-pinned-{name}-{}-{nonce}",
         std::process::id()
     ));
     std::fs::create_dir(&root).unwrap();
