@@ -6,7 +6,7 @@ use ms_lsp::text::Position;
 use ms_rt as _;
 use std::rc::Rc;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 #[test]

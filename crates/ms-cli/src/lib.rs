@@ -178,6 +178,7 @@ fn run_source_command<L: Lower>(
             syms,
             &TestRequest {
                 filename: inv.filename.clone(),
+                extra: inv.targets.iter().skip(1).cloned().collect(),
                 build_type: plan.build_type,
                 link: inv.link.clone(),
                 json: inv.structured,
@@ -190,6 +191,7 @@ fn run_source_command<L: Lower>(
             syms,
             &TestRequest {
                 filename: inv.filename.clone(),
+                extra: Vec::new(),
                 build_type: plan.build_type,
                 link: inv.link.clone(),
                 json: inv.structured,

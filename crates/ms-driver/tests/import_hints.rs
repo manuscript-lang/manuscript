@@ -1,6 +1,6 @@
 //! Import suggestions use the checked graph's source root, including their fixes.
 
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::{CheckRequest, LoadOptions, check_graph, load_file};

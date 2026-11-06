@@ -3,7 +3,7 @@
 //! the server example runs its cleanup before the synchronous farewell reaches the client.
 #![cfg(unix)]
 
-mod common;
+use crate::common;
 
 use common::scratch;
 use std::io::{BufRead, BufReader, Read};

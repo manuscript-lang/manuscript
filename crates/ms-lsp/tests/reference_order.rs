@@ -1,6 +1,6 @@
 //! Workspace scan failures retain the same reference order as successful scans.
 
-mod support;
+use crate::support;
 
 use ms_lsp::analysis::{Document, Documents, Options, compile_source};
 use ms_lsp::json::Json;

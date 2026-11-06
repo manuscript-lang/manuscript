@@ -4,8 +4,13 @@ version = "0.0.0"
 edition.workspace = true
 publish.workspace = true
 description = "Mid-level IR for the Manuscript compiler: types, builder, verifier, text format, optimizer and reference interpreter"
+autotests = false
 
 [lints]
 workspace = true
 
 [dependencies]
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

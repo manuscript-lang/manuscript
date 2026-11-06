@@ -25,7 +25,9 @@ pub use tooling::{
 use std::path::{Path, PathBuf};
 
 use ms_build::Lower;
-use ms_driver::{CheckRequest, Diagnostic, Graph, LoadOptions, Phase, Pos, check_graph, load_file};
+use ms_driver::{
+    CheckRequest, Diagnostic, Graph, LoadOptions, Phase, Pos, check_graph, load_files,
+};
 
 use crate::backend::{
     BackendError, BackendResult, BuildRequest, BuildType, Io, OutputRequest, RunRequest,
@@ -332,6 +334,7 @@ pub(crate) fn compile<L: Lower>(
         syms,
         backend,
         filename,
+        &[],
         if tests {
             Target::Tests
         } else {
@@ -345,10 +348,11 @@ pub(crate) fn compile_target<L: Lower>(
     syms: ms_syntax::Names,
     backend: &Engine<L>,
     filename: &str,
+    extra: &[String],
     target: Target,
 ) -> Result<Compiled, Failure> {
     let tests = target != Target::Program;
-    let graph = load_file(syms, filename, LoadOptions { tests });
+    let graph = load_files(syms, filename, extra, LoadOptions { tests });
     let library = graph.library;
     let project = !graph.project_root.is_empty();
     if project && library && !tests {

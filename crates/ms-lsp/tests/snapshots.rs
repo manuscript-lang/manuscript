@@ -2,8 +2,8 @@
 //! produce the recorded messages.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
+use crate::support;
 use ms_rt as _;
-mod support;
 
 use ms_lsp::json::obj;
 use support::{Script, Workspace, compare};

@@ -6,7 +6,7 @@ use ms_lsp::text::{Position, Range};
 use ms_rt as _;
 use std::cell::RefCell;
 
-mod support;
+use crate::support;
 use support::{Script, Workspace};
 
 const SOURCE: &str = include_str!("document_updates/unicode.ms");

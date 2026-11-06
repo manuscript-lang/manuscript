@@ -1,6 +1,6 @@
 //! Publication protects the runtime actually selected by the Engine, including embedded archives.
 
-mod common;
+use crate::common;
 
 // Links the runtime symbols referenced by the standard-library crates.
 use ms_rt as _;
@@ -389,7 +389,7 @@ fn engine_runtime_precedence_protects_only_the_selected_archive() {
                     let result = Command::new(std::env::current_exe().unwrap())
                         .args([
                             "--exact",
-                            "engine_runtime_precedence_protects_only_the_selected_archive",
+                            "runtime_input_publication::engine_runtime_precedence_protects_only_the_selected_archive",
                             "--nocapture",
                         ])
                         .env(CHILD, root)

@@ -106,7 +106,7 @@ runs:
     - name: Native Windows project paths
       if: env.UNIT == 'true' && runner.os == 'Windows'
       shell: bash
-      run: cargo test --locked -p ms-driver --test project_windows_paths -- --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
+      run: cargo test --locked -p ms-driver --test it -- project_windows_paths:: --nocapture 2>&1 | tee "$NATIVE_REPORTS/windows-paths.log"
     - name: Program map data and pure rendering
       if: env.UNIT == 'true'
       shell: bash

@@ -7,7 +7,7 @@ use ms_lsp::symbols::document_symbols;
 use ms_lsp::text::{self, Range};
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 const SOURCE: &str = include_str!("recovery_navigation/declarations.ms");

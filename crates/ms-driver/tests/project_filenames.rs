@@ -3,7 +3,7 @@
 // These fixtures create invalid UTF-8 names, which APFS does not permit.
 #![cfg(target_os = "linux")]
 
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::project::{Project, discover_modules};

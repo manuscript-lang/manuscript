@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::project::{Overlay, Project, discover_modules, discover_modules_with_overlay};
