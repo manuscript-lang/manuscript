@@ -88,11 +88,11 @@ You get one offline file that shows source, types, calls and ownership side by s
 
 Property tests draw inputs nobody thought of and shrink any failure to a small case. `ms test --fuzz 30s` turns the same tests into a fuzzer. The agent's code meets odd inputs before your users do.
 
-## Then the project gets hardened
+## Hardened with frontier models
 
-Manuscript is young, and it is hardened the way you will harden your own code: with agents, on purpose.
+Manuscript is young, and the project is hardened with frontier models. We use them to find edge cases, bugs, memory leaks and performance regressions, and to fix them.
 
-A **bug bash** points an agent at one area. It writes probe programs against new features and their edges, compares what happens with the documented rule, fixes real bugs with regression tests, and files an issue with a minimal repro for anything that needs a decision. A **perf bash** starts from a measured gap. The agent reproduces it, changes one thing, and shows before and after on the same machine. Results are added as dated sections, never edited, and a fix that costs more than it earns is closed with the numbers. For example, one bug bash found that the diagnostic for an empty block told users to write `unit`, which the parser then rejected ([#1914](https://github.com/manuscript-lang/manuscript/pull/1914)). Both workflows are written down as skills in the repository: [bug bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/bug-bash/SKILL.md) and [perf bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/perf-bash/SKILL.md).
+A **bug bash** points a model at one area. It writes probe programs against new features and their edges, compares what happens with the documented rule, fixes real bugs with regression tests, and files an issue with a minimal repro for anything that needs a decision. For example, one bug bash found that the diagnostic for an empty block told users to write `unit`, which the parser then rejected ([#1914](https://github.com/manuscript-lang/manuscript/pull/1914)). A **perf bash** starts from a measured gap: the model reproduces it, changes one thing, and shows before and after on the same machine. Results are added as dated sections, never edited, and a fix that costs more than it earns is closed with the numbers. Both workflows are written down as skills in the repository: [bug bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/bug-bash/SKILL.md) and [perf bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/perf-bash/SKILL.md).
 
 ## Speed is a priority, at compile time and at run time
 
