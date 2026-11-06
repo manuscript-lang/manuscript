@@ -16,4 +16,15 @@ Replacing the event list with a lock-free multi-producer inbox (an atomic-swap T
 
 ## Wake path (same day, window 64)
 
-`strace -f -c` over 100,000 promises: 136,000 eventfd `write`s (1.4 per promise, from `sched::wake` to `isolate::kick`), 111,000 `futex` calls (1.1 per promise), and only 10,600 `epoll_wait`s, so about 90% of the wake-ups hit a thread that was not sleeping. `kick` also takes three locks per call (the global `REGISTRY` and `IDLE` mutexes and the target's `wake` mutex). Skipping the wake when the target had not announced it was about to block in `reactor_wait` made the run slower (5.5 µs against 3.4 µs per promise), so some blocked threads are woken only by that kick: a safe version must also cover the idle-count bookkeeping `kick` does under `IDLE`. Not kept; the next try needs a design that keeps the deadlock count correct, not a gate.
+`strace -f -c` over 100,000 promises: 136,000 eventfd `write`s (1.4 per promise, from `sched::wake` to `isolate::kick`), 111,000 `futex` calls (1.1 per promise), and only 10,600 `epoll_wait`s. `kick` took three locks per call (the global `REGISTRY` and `IDLE` mutexes and the target's `wake` mutex), and those locks, contended, were what kept threads from sleeping.
+
+Three changes, measured together and apart (alternating runs of 100,000 promises, 4 cores):
+
+| Build | ns per promise |
+| --- | --- |
+| before | 3,300 to 3,800 |
+| locks removed (registry `RwLock`, atomic idle state, `RwLock` on the wake closure), kick always written | 3,200 to 3,500 |
+| plus no kick unless the target sleeps | 5,300 to 5,500 (worse) |
+| plus a 20 µs spin before sleeping (`spin_for_work`) | 1,900 to 2,200 |
+
+Removing the futex contention alone made threads sleep and wake through the poller on every promise; the spin keeps a thread that has just run out of work awake for the next promise. A program with one scheduler thread never spins, and an idle program with several threads spends under 20 µs per wake-up spinning (2 s of 100 timer waits across 8 promises: 37 ms of CPU against 27 ms before).

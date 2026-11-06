@@ -192,6 +192,11 @@ pub(crate) fn current() -> usize {
     *index
 }
 
+/// How many scheduler threads exist, the main thread included.
+pub(crate) fn started() -> usize {
+    STARTED.load(Ordering::Acquire)
+}
+
 /// The most scheduler threads the program may run.
 pub(crate) fn limit() -> usize {
     let n = LIMIT.load(Ordering::SeqCst);
