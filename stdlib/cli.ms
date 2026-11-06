@@ -9,7 +9,7 @@ and a matching type; flags and arguments without a field, such as inherited pers
 
 ```manuscript
 import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 type Greeting:
     name: String

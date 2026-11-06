@@ -286,7 +286,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
     let source = include_str!("llvm/long_literal.ms")
         .replace("[n + 0]", &format!("[{}]", items.join(", ")))
         .replace("    let n = arguments().length()\n", "")
-        .replace("import arguments from \"@std/os/process.ms\"\n", "");
+        .replace("import arguments from \"@std/os/env.ms\"\n", "");
     std::fs::write(dir.join("k.ms"), source).unwrap();
     for backend in ["cranelift", "llvm"] {
         if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {

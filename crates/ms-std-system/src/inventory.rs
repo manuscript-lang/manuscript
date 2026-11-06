@@ -1,6 +1,6 @@
 //! Host inventories behind `System.network_interfaces`, `cpus` and `metrics`.
 //!
-//! Each call takes a snapshot; the exports in `lib.rs` hand its parts out one field at a time.
+//! Each call takes a snapshot that `lib.rs` hands out as one record, or a list of them.
 //! Network interfaces work on every unix host; CPU and memory figures come from `/proc`, so
 //! `cpus` and `metrics` answer `Unsupported` off Linux.
 #![allow(unsafe_code)] // libc `getifaddrs` and friends
@@ -43,27 +43,6 @@ pub struct Metrics {
     pub uptime_ns: i64,
     pub load: [f64; 3],
     pub parallelism: i64,
-}
-
-/// Holder of the last snapshot taken on the calling thread. Each scheduler thread has its own, so a
-/// snapshot and the reads that follow it never see another thread's.
-pub struct Slot<T>(fn() -> *mut Option<T>);
-
-impl<T> Slot<T> {
-    pub const fn new(cell: fn() -> *mut Option<T>) -> Self {
-        Self(cell)
-    }
-
-    pub fn set(&self, value: T) {
-        // SAFETY: the cell belongs to this thread, and no reference to it outlives a call.
-        unsafe { *(self.0)() = Some(value) };
-    }
-
-    /// Reads the snapshot (`None` before the first one).
-    pub fn with<R>(&self, read: impl FnOnce(Option<&T>) -> R) -> R {
-        // SAFETY: as in `set`.
-        read(unsafe { (*(self.0)()).as_ref() })
-    }
 }
 
 #[cfg(unix)]

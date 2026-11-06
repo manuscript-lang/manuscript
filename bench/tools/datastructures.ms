@@ -12,7 +12,7 @@ import (
 ) from "./lib.ms"
 import summarize from "./datastructures_table.ms"
 import copy, CopyOptions, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
     let here = "bench/perf/datastructures"

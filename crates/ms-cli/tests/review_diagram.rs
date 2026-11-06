@@ -311,7 +311,7 @@ fn json_project_reports_are_complete_while_text_stays_bounded() {
 #[test]
 fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     let dir = scratch("boundaries");
-    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/os/process.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
+    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/os/env.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
     let report = json(&ms(&dir, &["review", "main.ms", "--json"]));
     assert_eq!(
         report.get("result").unwrap().as_str(),
@@ -335,7 +335,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     assert!(
         calls
             .pretty(ms_json::Escape::Plain)
-            .contains("@std/os/process.ms#fn#arguments")
+            .contains("@std/os/env.ms#fn#arguments")
     );
     let ascii = ms(&dir, &["diagram", "main.ms"]);
     let ascii = String::from_utf8_lossy(&ascii.stdout);
@@ -343,7 +343,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
         ascii.lines().filter(|line| line.ends_with("[fn]")).count(),
         1
     );
-    assert!(ascii.contains("@std/os/process.ms#fn#arguments"));
+    assert!(ascii.contains("@std/os/env.ms#fn#arguments"));
     let mermaid = ms(&dir, &["diagram", "main.ms", "--format", "mermaid"]);
     let mermaid = String::from_utf8_lossy(&mermaid.stdout);
     assert!(mermaid.contains("arguments"));

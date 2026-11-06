@@ -1,6 +1,6 @@
 import Logger, create, stdout_transport, file_transport from "@std/log.ms"
 import JsonValue from "@std/data/json.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stderr from "@std/io/io.ms"
 import emit from "./records.ms"
 

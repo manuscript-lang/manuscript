@@ -5,7 +5,7 @@
 // Usage: ms run bench/tools/copy_report.ms -- <project ms.toml|file.ms>...   (MS picks the compiler)
 import capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms"
 import temporary from "@std/os/fs.ms"
-import arguments, set_environment from "@std/os/process.ms"
+import arguments, set_environment from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 // The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed by `%N`.

@@ -18,7 +18,8 @@ import (
     write_text
 ) from "./lib.ms"
 import Ran, invalid from "./lib.ms"
-import Stdio, arguments, Subprocess, spawn from "@std/os/process.ms"
+import SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import milliseconds, sleep from "@std/os/time.ms"
@@ -45,7 +46,8 @@ fn background(argv: List[String], out: String) Subprocess!:
     let script = "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
     let args = ["-c", script, "sh", out.clone()].concat(argv)
     if let child = spawn(
-        "sh", args, stdin: Stdio.Null, stdout: Stdio.Null, stderr: Stdio.Null
+        "sh", args,
+        SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, stderr: Stdio.Null)
     ):
         return ok(child)
 
