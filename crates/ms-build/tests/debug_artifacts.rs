@@ -37,7 +37,7 @@ fn final_build_keeps_source_lines_after_staging_and_object_cleanup() {
     let runtime = root.join("start.o");
     assert!(
         support::cc()
-            .args(["-O1", "-c", "-o"])
+            .args(["-g", "-O1", "-c", "-o"])
             .arg(&runtime)
             .arg(&c)
             .status()
@@ -95,6 +95,35 @@ b0:
             String::from_utf8_lossy(&dump.stderr)
         );
         let dump = String::from_utf8(dump.stdout).unwrap();
+        // The external runtime object is outside the producer's stage. Recover
+        // its source rows as well; a matching UUID alone can hide missing DWARF.
+        let runtime_address = dump
+            .split("debug_line[")
+            .filter(|table| table.contains("start.c"))
+            .flat_map(str::lines)
+            .find_map(|row| {
+                let cells: Vec<_> = row.split_whitespace().collect();
+                (cells.len() >= 4
+                    && cells[0].starts_with("0x")
+                    && cells[1] != "0"
+                    && !cells.contains(&"end_sequence"))
+                .then(|| cells[0].to_string())
+            })
+            .expect("external runtime source row");
+        let runtime_location = Command::new(tool("llvm-symbolizer"))
+            .arg(format!("--obj={}", output.display()))
+            .args(["--functions=none", "--output-style=GNU"])
+            .arg(runtime_address)
+            .output()
+            .unwrap();
+        assert!(runtime_location.status.success());
+        assert!(
+            String::from_utf8(runtime_location.stdout)
+                .unwrap()
+                .replace('\\', "/")
+                .contains("/start.c:"),
+            "external runtime row must resolve to start.c"
+        );
         std::fs::write(root.join(format!("driver-{profile:?}-lines.txt")), &dump).unwrap();
         let address = dump
             .lines()
