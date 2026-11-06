@@ -34,6 +34,12 @@ pub trait Symbols {
 }
 
 /// Attributes of a call to a function that only reads memory.
+/// Runtime allocators: each returns a block no other pointer reaches, so the translation declares
+/// the result `noalias ptr` and keeps the pointer for the accesses that follow.
+fn returns_fresh_block(symbol: &str) -> bool {
+    matches!(symbol, "msrt_alloc" | "msrt_alloc_zeroed")
+}
+
 const READS_ONLY: &str = " nounwind willreturn memory(read)";
 
 /// An LLVM module under construction.
@@ -876,7 +882,18 @@ impl<'a> Tr<'a> {
                 let sigref = self.ext_func(func_ref).signature;
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
                 let exclusive = self.exclusive.get(&name).cloned().unwrap_or_default();
-                self.call(inst, sigref, &format!("@\"{name}\""), &vals, &exclusive);
+                if returns_fresh_block(&name) {
+                    // A fresh block: `noalias` tells LLVM nothing else reaches it, and keeping the
+                    // pointer lets later accesses address it without an `inttoptr`.
+                    let size = self.op(vals[0]);
+                    let p = self.def(format!("call noalias ptr @\"{name}\"(i64 {size}) nomerge"));
+                    let result = self.f.dfg.first_result(inst);
+                    self.bases.insert(result, (p.clone(), 0));
+                    let i = self.def(format!("ptrtoint ptr {p} to i64"));
+                    self.set(inst, 0, i);
+                } else {
+                    self.call(inst, sigref, &format!("@\"{name}\""), &vals, &exclusive);
+                }
             }
             InstructionData::CallIndirect { args, sig_ref, .. } => {
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
@@ -960,11 +977,12 @@ impl<'a> Tr<'a> {
         } else {
             ""
         };
-        let decl = format!(
-            "declare {} @\"{name}\"({}){attrs}",
-            ret_ty(&sig.returns),
-            sig_params(sig)
-        );
+        let ret = if returns_fresh_block(&name) {
+            "noalias ptr".to_string()
+        } else {
+            ret_ty(&sig.returns)
+        };
+        let decl = format!("declare {ret} @\"{name}\"({}){attrs}", sig_params(sig));
         self.decls.entry(name.clone()).or_insert(decl);
         name
     }
