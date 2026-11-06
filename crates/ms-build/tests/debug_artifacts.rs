@@ -71,6 +71,16 @@ b0:
     for profile in [Profile::Debug, Profile::Release] {
         let mut module = parse_module(&text).unwrap();
         build_executable(&mut module, &output, profile, &runtime, &[], &build).unwrap();
+        let first = std::fs::read(&output).unwrap();
+        // MS_CACHE=verify compares full executable bytes. Rebuilding unchanged
+        // inputs must not expose the new private stage through N_OSO or UUIDs.
+        let mut module = parse_module(&text).unwrap();
+        build_executable(&mut module, &output, profile, &runtime, &[], &build).unwrap();
+        assert_eq!(
+            std::fs::read(&output).unwrap(),
+            first,
+            "unchanged {profile:?} inputs must produce identical executable bytes"
+        );
         assert_eq!(Command::new(&output).status().unwrap().code(), Some(42));
         let companion = ms_clif::link::debug_companion_path(&output);
         let debug = if let Some(bundle) = &companion {
