@@ -243,6 +243,9 @@ impl Checker {
                 if self.interface_assignable(&actual, exp) {
                     i.interface_source = Some(actual.clone());
                     i.ty = Some(exp.clone());
+                } else if reads_where_var_expected(&actual, exp) {
+                    i.function_source = Some(actual.clone());
+                    i.ty = Some(exp.clone());
                 } else {
                     let mut msg = self.assignment_mismatch(&actual, exp);
                     if let Some(context) = context {
