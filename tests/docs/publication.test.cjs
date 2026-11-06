@@ -47,13 +47,13 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  for (const name of ['read_file', 'reader', 'filter', 'join', 'print']) {
+  for (const name of ['open', 'serve', 'write_bytes', 'reader', 'wait']) {
     assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
   }
-  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"changes.txt"'),
-    'The input filename must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Helper and entrypoint returns retain keyword styling');
+  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '":8080"'),
+    'The listen address must receive string styling');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 3,
+    'The handler, helper and entrypoint returns retains keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -194,6 +194,36 @@ test('published internal links and anchors resolve under the site prefix', () =>
   assert.deepEqual(failures, []);
 });
 
+test('documentation screenshots resolve, carry alt text, and switch with the theme', () => {
+  const prefix = '/manuscript/';
+  const failures = [];
+  let figures = 0;
+  function visit(directory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.name.endsWith('.html')) {
+        const text = fs.readFileSync(file, 'utf8');
+        for (const figure of text.matchAll(/<figure\b[^>]*docs-shot[^>]*>([\s\S]*?)<\/figure>/g)) {
+          figures += 1;
+          const images = [...figure[1].matchAll(/<img\b[^>]*>/g)].map(match => match[0]);
+          const where = path.relative(book, file);
+          if (!images.length) failures.push(`${where}: figure has no image`);
+          for (const image of images) {
+            const src = attribute(image, 'src');
+            if (!attribute(image, 'alt')) failures.push(`${where}: ${src} has no alt text`);
+            const target = path.join(book, decodeURIComponent((src || '').replace(prefix, '')));
+            if (!src || !fs.existsSync(target)) failures.push(`${where}: ${src} is missing from the book`);
+          }
+        }
+      }
+    }
+  }
+  visit(book);
+  assert.deepEqual(failures, []);
+  assert.ok(figures > 0, 'Show at least one screenshot');
+});
+
 test('previous and next links follow the rendered sidebar reading order', () => {
   const home = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
   const canonical = [...home.matchAll(/<link\b[^>]*>/g)]
@@ -205,15 +235,17 @@ test('previous and next links follow the rendered sidebar reading order', () => 
   const routes = groups.flatMap(group => [...group[1].matchAll(/<a\b[^>]*>/g)]
     .map(match => attribute(match[0], 'href')));
   assert.deepEqual(routes.slice(0, 6), [
-    'learn/', 'learn/getting-started/', 'learn/tour/', 'learn/testing/',
-    'learn/why-manuscript/', 'learn/common-tasks/',
-  ].map(route => prefix + route), 'Teach running, reading, and testing before task recipes');
+    'learn/', 'learn/getting-started/', 'learn/testing/',
+    'learn/why-manuscript/', 'guide/', 'guide/values-and-functions/',
+  ].map(route => prefix + route), 'Teach running, reading, and the guide before task recipes');
+  assert.ok(routes.indexOf(prefix + 'guide/cleaning-up/') < routes.indexOf(prefix + 'cookbook/'),
+    'The guide comes before task recipes');
   assert.deepEqual(routes.filter(route => route.startsWith(prefix + 'developer-tooling/')).slice(0, 3),
     ['developer-tooling/', 'developer-tooling/how-it-works/', 'developer-tooling/implementation/'].map(route => prefix + route),
     'Teach building and sharing before the tooling command reference');
   assert.equal(new Set(routes).size, routes.length, 'Each page belongs to one sidebar position');
   const retired = fs.readFileSync(path.join(book, 'learn/best-practices/index.html'), 'utf8');
-  assert.ok(retired.includes(prefix + 'learn/common-tasks/'), 'Retired advice page redirects to runnable recipes');
+  assert.ok(retired.includes(prefix + 'cookbook/'), 'Retired advice page redirects to runnable recipes');
 
   for (const [index, route] of routes.entries()) {
     const file = path.join(book, route.slice(prefix.length), 'index.html');
@@ -237,7 +269,7 @@ test('the landing page offers a trial while documentation keeps its reading navi
     .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
-  assert.ok(home.includes('ms run generate_release_notes.ms'), 'Show how to run the displayed program');
+  assert.ok(home.includes('ms run server.ms'), 'Show how to run the displayed program');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });

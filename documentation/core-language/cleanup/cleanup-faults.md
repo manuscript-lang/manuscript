@@ -20,6 +20,6 @@ For a request handler, return an expected error response before leaving the hand
 
 ## Cleanup can outlast a timeout
 
-A request timeout does not put a time limit on its cleanup. Keep cleanup bounded: shielding cannot force an operation that never finishes to return. After a process stop signal, the runtime applies a separate shutdown grace period and may use [process-level escalation](../../contributing/runtime-conventions.md#host-escalation) if work cannot finish.
+A request timeout does not put a time limit on its cleanup. Keep cleanup bounded: shielding cannot force an operation that never finishes to return. After a process stop signal, the runtime applies a separate shutdown grace period and may use [process-level escalation](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/runtime-conventions.md#host-escalation) if work cannot finish.
 
-A close that returns an error is not a fault where the function can return it: the error becomes the function's result (see [Closeable](closeable.md#a-close-returns-a-result)). Commit a transaction explicitly rather than relying on close when you need to react to its failure. See [Closeable](closeable.md) and [resource release](resource-release.md).
+A close that returns an error is not a fault where the function can return it: the error becomes the function's result (see [Closeable](closeable.md#a-close-returns-a-result)). Commit a transaction explicitly rather than relying on close when you need to react to its failure. See [Closeable](closeable.md) and [resource release](scopes.md#close-a-resource-explicitly).

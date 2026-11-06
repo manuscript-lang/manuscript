@@ -29,7 +29,7 @@ Hello, guest!
 
 `T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
 
-A parameter or record field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
+A parameter or field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
 
 `T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
 
@@ -136,7 +136,7 @@ fn city_length(user: User?) Int?:
     return user?.address?.city?.length()
 ```
 
-A chain cannot move a field out of the optional it reads, so end an owned `String` or record field with `.clone()`.
+A chain cannot move a field out of the optional it reads, so end an owned `String` or field with `.clone()`.
 
 A chain borrows the optional it starts from. When that place is a `var` (a `var` binding or parameter, or a field of one), the chain may call a `var fn` or change the payload, and the change lands in the optional itself, in place; on `none` nothing runs:
 
@@ -174,4 +174,4 @@ When fixing another error type, such as `Result[Int, ParseFailure]`, supply a ca
 
 ## Data modeling
 
-A [record](records.md) can have optional fields such as `email: String?`. Manuscript has no nullable references; absence always lives in the declared type.
+A [type](named-types.md) can have optional fields such as `email: String?`. Manuscript has no nullable references; absence always lives in the declared type.

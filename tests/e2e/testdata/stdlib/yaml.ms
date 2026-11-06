@@ -7,7 +7,7 @@ import (
     fail
 ) from "@std/test/test.ms"
 import from_scalars from "@std/string.ms"
-import parse, stringify, YamlValue, YamlLimits from "@std/data/yaml.ms"
+import parse, stringify, YamlValue, YamlOptions from "@std/data/yaml.ms"
 
 fn entries(value: YamlValue) Map[String, YamlValue]!:
     match value:
@@ -19,8 +19,8 @@ fn items(value: YamlValue) List[YamlValue]!:
         ArrayValue(values): return ok(values)
         _: return error(Error("expected YAML sequence"))
 
-fn limits(bytes: Int?, depth: Int?, values: Int?) YamlLimits?:
-    return YamlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
+fn limits(bytes: Int?, depth: Int?, values: Int?) YamlOptions:
+    return YamlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
 
 type ScalarCase:
     text: String
@@ -163,7 +163,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
             (
                 parse(
                     text: text,
-                    limits: limits(
+                    options: limits(
                         bytes: text.byte_length(), depth: 2, values: 2
                     )
                 ) | try expect_ok
@@ -176,7 +176,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         (
             parse(
                 text: text,
-                limits: limits(
+                options: limits(
                     bytes: text.byte_length() - 1, depth: none, values: none
                 )
             ) != limited
@@ -185,7 +185,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
     try expect_false(
         (
             parse(
-                text: text, limits: limits(bytes: none, depth: none, values: 1)
+                text: text, options: limits(bytes: none, depth: none, values: 1)
             ) != limited
         )
     )
@@ -422,28 +422,28 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
     try expect_false(
         (
             parse(
-                text: "é", limits: limits(bytes: 1, depth: none, values: none)
+                text: "é", options: limits(bytes: 1, depth: none, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "[[[]]]", limits: limits(bytes: none, depth: 2, values: none)
+                text: "[[[]]]", options: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a:\n  b: 1", limits: limits(bytes: none, depth: 2, values: none)
+                text: "a:\n  b: 1", options: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "[1,2]", limits: limits(bytes: none, depth: none, values: 2)
+                text: "[1,2]", options: limits(bytes: none, depth: none, values: 2)
             ) != limited
         )
     )
@@ -451,31 +451,31 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
         (
             parse(
                 text: "a: &a [1,2]\nb: *a",
-                limits: limits(bytes: none, depth: none, values: 6)
+                options: limits(bytes: none, depth: none, values: 6)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "", limits: limits(bytes: 0, depth: 1, values: 1)
+                text: "", options: limits(bytes: 0, depth: 1, values: 1)
             ) != parse(text: "")
         )
     )
-    parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
+    parse(text: "", options: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
         limited
     )
     try expect_false(
         (
             parse(
-                text: "", limits: limits(bytes: none, depth: -1, values: none)
+                text: "", options: limits(bytes: none, depth: -1, values: none)
             ) != invalid
         )
     )
     try expect_false(
         (
             parse(
-                text: "[1,2]", limits: limits(bytes: 5, depth: 2, values: 3)
+                text: "[1,2]", options: limits(bytes: 5, depth: 2, values: 3)
             ) != parse(text: "[1,2]")
         )
     )
@@ -506,10 +506,10 @@ test "YAML merge and block header errors name their own line":
         "YAML 2:5: invalid block scalar header"
     )
 
-test "YAML limits fields default to none":
+test "YAML option fields default to none or the depth and value guards":
     let limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
-    parse(text: "a: 1", limits: YamlLimits(max_bytes: 2)) | try expect_equal(limited)
-    parse(text: "a: 1", limits: YamlLimits()) | try expect_equal(parse(text: "a: 1"))
+    parse(text: "a: 1", options: YamlOptions(max_bytes: 2)) | try expect_equal(limited)
+    parse(text: "a: 1", options: YamlOptions()) | try expect_equal(parse(text: "a: 1"))
 
 test "YAML stringify round trips scalars sequences and mappings":
     let source = "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
@@ -693,7 +693,7 @@ test "YAML flow mapping keys without a colon map to null":
 
     let limited = limits(bytes: none, depth: none, values: 2)
 
-    match parse(text: "\{a, b, c\}", limits: limited):
+    match parse(text: "\{a, b, c\}", options: limited):
         ok(_): return fail("null keys count against the value limit")
         error(_): let _ignored = unit
 
@@ -757,7 +757,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 
     let depth = 3000
     var source = "{repeated(text: "- ", count: depth)}x\n"
-    var root = (parse(text: source, limits: YamlLimits()) | try expect_ok)
+    var root = (parse(text: source, options: YamlOptions()) | try expect_ok)
 
     for level in 1..depth:
         let inner = (try items(root))
@@ -774,7 +774,7 @@ test "YAML stringify escapes C1 control characters so output reparses":
         let encoded = try stringify(YamlValue.StringValue(text.clone()))
         try expect_equal((try parse(encoded)), YamlValue.StringValue(text))
 
-test "YAML parse without limits stops alias bombs and deep nesting":
+test "YAML parse without options stops alias bombs and deep nesting":
     var bomb = "l0: &l0 [x, x, x, x, x, x, x, x, x, x]\n"
     for i in 0..9:
         bomb = bomb + "l{i+1}: &l{i+1} [" + "*l{i}, ".repeat(9).get() + "*l{i}]\n"
@@ -788,7 +788,7 @@ test "YAML parse without limits stops alias bombs and deep nesting":
     let nested = parse(deep)
     if nested.is_ok(): return fail("nesting over the default depth was accepted")
 
-    let lifted = parse(deep, YamlLimits())
+    let lifted = parse(deep, YamlOptions(max_depth: none, max_values: none))
     try expect_true(lifted.is_ok())
 
 test "YAML plain scalars and keys keep Unicode spaces":

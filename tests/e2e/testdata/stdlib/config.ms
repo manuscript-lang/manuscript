@@ -12,6 +12,18 @@ test "dotenv reads names, quotes, comments and export":
     values.get("EMPTY").get("x") | try expect_equal("")
     values.get("TICK").get("") | try expect_equal("a b")
 
+test "dotenv ends a bare value only at a hash that starts it or follows a space":
+    let values = (
+        parse_dotenv(
+            "A=ab#cd\nB=https://x/#top\nC=1\t# c\nD=#only\nE=x #y\n"
+        ) | try expect_ok
+    )
+    values.get("A").get("x") | try expect_equal("ab#cd")
+    values.get("B").get("x") | try expect_equal("https://x/#top")
+    values.get("C").get("x") | try expect_equal("1")
+    values.get("D").get("x") | try expect_equal("")
+    values.get("E").get("x") | try expect_equal("x")
+
 test "dotenv later duplicates replace earlier values":
     let values = (parse_dotenv("A=1\nB=2\nA=3\n") | try expect_ok)
     values.keys() | try expect_equal(["A", "B"])

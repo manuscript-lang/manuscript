@@ -5,7 +5,7 @@ weight = 2
 
 # Commands and editor setup
 
-Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](../contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
+Use an `ms` binary from [Manuscript Releases](https://github.com/manuscript-lang/manuscript/releases), or [build current source](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md). `ms` brings formatting, lint, editor support, code maps, builds and profiling into one workflow. See [build setup](how-it-works.md) and [profiling](debugging/debugger-integration.md) for the tools each task uses.
 
 ## Choose the next command
 
@@ -97,14 +97,14 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
 | `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(fn: ...)` with the calls its work makes (needs `--entity`) |
-| `types` (alias `class`) | Records, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
-| `ownership` (alias `mutability`) | Per function: each parameter as `borrow` or `var (exclusive borrow)`, the result as `owned`, closed resource scopes; callees expand to `--depth`. Without `--entity`, functions with `var` parameters or resource scopes |
+| `types` (alias `class`) | Types, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
+| `ownership` (alias `mutability`) | Per function: checked `copy`, `borrow`, `move`, or `var (exclusive borrow)` parameters; owned, borrowed, or owned-view results, including borrowed `Result` cases; closed resource scopes. Callees expand to `--depth`. Without `--entity`, functions with `var` parameters or resource scopes |
 
-- `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
+- `--entity name`, `file::name`, or a full entity ID `file#kind#name` roots the tree at one declaration (a project-relative path for `modules`). An exact entity ID takes precedence over declaration names and qualified names. A missing or ambiguous name fails with a selection remedy. A type and its `impl` share the same `file::name`; use the distinct IDs offered by the diagnostic, such as `--entity 'src/main.ms#record#Box'` and `--entity 'src/main.ms#impl#Box'`. Without `--entity`, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope`, `tasks` and `ownership`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
 - `--diff <file|->` reads a unified diff like `ms review` and marks changed entities with `<- TIER #n` or `<- INTERNAL`, and changed flow lines with `<- changed`. ASCII and Mermaid overlays need `--view` or `--entity`; HTML includes the whole map.
 - `--format html` includes all views in one page and accepts `--diff`; omit `--view` and `--entity`. Type hints are capped at 200,000 identifiers. Individual views bound their display (about 40 overview nodes, 60 call nodes and 14 sequence lifelines); the map shows omitted counts and lets you navigate to a different part of the program.
-- `--json` emits a versioned document with `view`, `entity`, and `tree` (defaults to the `calls` view). Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted`, and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap. `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`; `var` may change the argument, the result is owned) (not the generic tree) unless `--diff` is given. Use `--format mermaid` to render a view for people (`types` becomes a class diagram with composition arrows; `ownership` a flow colored by borrow mode, unless `--diff` is given); `--json` and `--format` cannot be combined.
+- `--json` emits a versioned document with `view`, `entity`, and `tree` (defaults to the `calls` view). Each tree node has `label`, `kind`, `reference` (a stable entity ID or external call target when available), `file`, `line`, `omitted`, and `children`. Source positions are one-based; line zero means no precise source position. The root's `omitted` counts direct nodes skipped by the output cap. `types` and `ownership` print ASCII class boxes and one signature line per function (`add(var o: Order, i: Item) Order`; `var` may change the argument; use JSON or Mermaid for the checked ownership modes) (not the generic tree) unless `--diff` is given. Use `--format mermaid` to render a view for people (`types` becomes a class diagram with composition arrows; `ownership` a flow colored by borrow mode, unless `--diff` is given); `--json` and `--format` cannot be combined.
 
 ## Review report
 
@@ -245,9 +245,9 @@ Open a `.ms` file, hover over a name to see its type, use **Go to Definition** t
 
 The language server provides incremental sync with validated UTF-16 ranges, diagnostics and lint codes, document and workspace symbols, semantic tokens, folding, inferred-local type hints, hover, definition and type-definition navigation, highlights, references, signature help, formatting, import organization, code actions, and rename.
 
-- Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, record fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
+- Completion follows the checker's lexical scope and member rules: visible parameters and locals, generic-bound operations, fields, collection and service methods, variant cases, named arguments, snippets (if the client supports them), standard and project auto-imports, and import paths. Used arguments, inaccessible opaque fields, and sibling-scope locals are excluded. An accepted auto-import adds an ordinary import.
 - Completion keeps working while code is incomplete; checking, formatting, and builds never accept repaired source.
-- References and rename cover declarations, uses, assignments, type annotations, imports, parameter labels, record fields and constructors, and interface operations, including unopened modules. Rename checks the proposed snapshot, rejects identifiers that could capture, and cannot rename external declarations or malformed source.
+- References and rename cover declarations, uses, assignments, type annotations, imports, parameter labels, fields and constructors, and interface operations, including unopened modules. Rename checks the proposed snapshot, rejects identifiers that could capture, and cannot rename external declarations or malformed source.
 - Standard-library definitions open read-only in VS Code with hover and navigation.
 - VS Code hides inline type hints by default; hover still shows types. Set `editor.inlayHints.enabled` to `on` or `offUnlessPressed` under `[manuscript]` to show hints.
 
@@ -281,7 +281,7 @@ Implicit imports (such as `List` for list literals) count as uses. Unused-import
 
 Format code as paragraphs: keep related steps together and put space between new sections. Blank lines come only from these structural rules; authored ones are discarded. Rules also apply inside anonymous functions.
 
-- Separate top-level declarations from each other and from imports, and implementation methods from each other. Interface signatures, record fields, and alternative cases stay compact.
+- Separate top-level declarations from each other and from imports, and implementation methods from each other. Interface signatures, fields, and alternative cases stay compact.
 - Separate substantial conditionals, loops, resource scopes, and matches from neighbors. A single-step branch or loop without `else` stays with adjacent work.
 - Keep local bindings with the actions, checks, or simple return that follow them. Start a new paragraph when another binding follows completed work.
 - Start a paragraph before a leading comment between statements; keep the comment attached to the code it introduces.

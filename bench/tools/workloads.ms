@@ -30,7 +30,7 @@ import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 import JsonValue from "@std/data/json.ms"
 import copy, create_directory, list, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import parse from "@std/data/json.ms"
 
 type Case:

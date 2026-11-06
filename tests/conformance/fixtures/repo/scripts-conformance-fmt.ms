@@ -9,9 +9,9 @@ import (
     fail
 ) from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import glob, GlobOptions from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
+import RunOptions, run from "@std/os/process.ms"
 import parse from "@std/data/json.ms"
 
 // Run from the repository root: ms run scripts/conformance.ms -- /absolute/path/to/ms all 0 1.
@@ -146,8 +146,9 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
 
 fn run_file(ms: String, file: String) Result[Unit, Error]:
     let output = try run(
-        ms, ["test", file, "--json", "--timeout=30s"], timeout: 3.minutes(),
-        max_output_bytes: 16000000
+        ms,
+        ["test", file, "--json", "--timeout=30s"],
+        RunOptions(timeout: 3.minutes(), max_output_bytes: 16000000)
     ).wait()
     let text = output.stdout.decode_utf8() | try expect_some
     let stderr = output.stderr.decode_utf8() | try expect_some

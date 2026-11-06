@@ -2,7 +2,7 @@
 // conform: phase=test
 // conform: origin=perf thread: @std/log on the native backend
 import expect_equal, expect_error from "@std/test/test.ms"
-import LogLevel, create, file_transport from "@std/log.ms"
+import LogLevel, LoggerOptions, create, file_transport from "@std/log.ms"
 import read_file, temporary from "@std/os/fs.ms"
 
 type Service:
@@ -18,7 +18,9 @@ fn lines(path: String) String!:
 test "levels filter, fields nest under data, and bound fields merge":
     let directory = try temporary("manuscript-log-")
     let path = "{directory.path()}/events.ndjson"
-    var logger = try create(try file_transport(path), LogLevel.Warn, false)
+    var logger = try create(
+        try file_transport(path), LoggerOptions(level: LogLevel.Warn, timestamp: false)
+    )
     try expect_equal(logger.enabled(LogLevel.Info), false)
     try logger.info("filtered")
     try logger.warn("warn")
@@ -42,29 +44,26 @@ test "limits, invalid levels, and closed transports are errors":
     let path = "{directory.path()}/events.ndjson"
     let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
     var logger = try create(
-        try file_transport(path), timestamp: false, max_bytes: line.to_bytes().length()
+        try file_transport(path),
+        LoggerOptions(timestamp: false, max_bytes: line.to_bytes().length())
     )
     try logger.info("x")
 
-    let limited: Unit! = error(
-        Error("logging: limit exceeded", kind: "EOVERFLOW")
-    )
+    let limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(logger.info("xx"), limited)
 
-    let invalid: Unit! = error(
-        Error("logging: invalid input", kind: "EINVAL")
-    )
+    let invalid: Unit! = error(Error("logging: invalid input", kind: "EINVAL"))
     try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
     try expect_equal(
-        try expect_error(create(try file_transport(path), max_bytes: -1)),
+        try expect_error(
+            create(try file_transport(path), LoggerOptions(max_bytes: -1))
+        ),
         Error("logging: invalid input", kind: "EINVAL")
     )
     try logger.close()
     try logger.close()
 
-    let closed: Unit! = error(
-        Error("logging: resource is closed", kind: "EBADF")
-    )
+    let closed: Unit! = error(Error("logging: resource is closed", kind: "EBADF"))
     try expect_equal(logger.info("x"), closed)
     try expect_equal(logger.flush(), closed)
     try expect_equal(try lines(path), line)

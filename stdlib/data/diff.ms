@@ -71,17 +71,24 @@ type Scored:
     text: String
     score: Float
 
+// Settings for `close_matches`.
+export type CloseMatchesOptions:
+    // Maximum candidates returned; below 1 faults.
+    limit: Int = 3
+    // Minimum `similarity_ratio` from 0.0 to 1.0; outside that range faults.
+    cutoff: Float = 0.6
+
 /*
-Returns up to `limit` candidates whose `similarity_ratio` with `word` is at least `cutoff`, best match first; ties keep the candidates' order.
-A `limit` below 1 or a `cutoff` outside 0.0 to 1.0 faults.
-Example: `close_matches("appel", ["ape", "apple", "peach"], 2, 0.6)` is `["apple", "ape"]`.
+Returns up to `options.limit` candidates whose `similarity_ratio` with `word` is at least `options.cutoff`, best match first; ties keep the candidates' order.
+Example: `close_matches("appel", ["ape", "apple", "peach"], CloseMatchesOptions(limit: 2))` is `["apple", "ape"]`.
 */
 export fn close_matches(
     word: String,
     candidates: List[String],
-    limit: Int = 3,
-    cutoff: Float = 0.6
+    options: CloseMatchesOptions = CloseMatchesOptions()
 ) List[String]:
+    let limit = options.limit
+    let cutoff = options.cutoff
     if limit < 1:
         panic("close_matches: limit must be at least 1")
     if not (cutoff >= 0.0 and cutoff <= 1.0):
@@ -215,19 +222,28 @@ fn hunk_range(start: Int, length: Int) String:
 
     return "{start + 1},{length}"
 
+// Settings for `unified_diff`.
+export type UnifiedDiffOptions:
+    // Unchanged lines kept around each change; must not be negative.
+    context: Int = 3
+    // Label of the `---` header.
+    old_name: String = "a"
+    // Label of the `+++` header.
+    new_name: String = "b"
+
 /*
 Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
-Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline. `context` is the number of unchanged lines kept around each change (default 3) and must not be negative.
-`old_name` and `new_name` label the `---` and `+++` headers.
-Example: `unified_diff(["a", "b"], ["a", "c"], 1)` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
+Lines carry no trailing newline, and the result lines are joined with "\n" with a final newline.
+Example: `unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1))` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
 */
 export fn unified_diff(
     old: List[String],
     new: List[String],
-    context: Int = 3,
-    old_name: String = "a",
-    new_name: String = "b"
+    options: UnifiedDiffOptions = UnifiedDiffOptions()
 ) String:
+    let context = options.context
+    let old_name = options.old_name
+    let new_name = options.new_name
     if context < 0:
         panic("unified_diff: context must not be negative")
 

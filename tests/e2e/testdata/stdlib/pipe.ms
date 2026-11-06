@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
 import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
-import promise from "@std/concurrency/promise.ms"
+import Promise, promise from "@std/concurrency/promise.ms"
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
     var seen: List[Int] = []
@@ -114,3 +114,17 @@ test "several promises each move a writer of their own into a fan-in":
     try expect_equal(seen.length(), 15)
     try expect_equal(seen[0], 0)
     try expect_equal(seen[14], 204)
+
+fn start_sender(p: Pipe[Int]) Promise[Unit]:
+    var w = p.writer()
+    return promise(fn: send_range(var w, 0))
+
+// The promise owns the writer from the capture on: the function that made it returning does not close it.
+test "a promise keeps the writer it captured after its maker returns":
+    var p = pipe[Int](2)
+    var input = p.reader()
+    var gate = p.writer()
+    let sender = start_sender(p)
+    try gate.close()
+    try expect_equal(try drain(var input), [0, 1, 2, 3, 4])
+    try sender.wait()

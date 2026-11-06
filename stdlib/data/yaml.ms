@@ -2,6 +2,7 @@
 import Bytes from "@std/bytes.ms"
 import parse_int from "@std/math/math.ms"
 import from_scalars, StringBuilder from "@std/string.ms"
+import quote_text from "@std/data/quote.ms"
 
 // A YAML value represented as null, boolean, number text, string, array, or object.
 export enum YamlValue:
@@ -33,21 +34,22 @@ export enum YamlValue:
         values: Map[String, YamlValue]
     )
 
-// Optional input-byte, nesting-depth, and parsed-value limits for YAML parsing.
-// Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
-export type YamlLimits:
+// Input-byte, nesting-depth, and parsed-value limit settings for YAML parsing.
+// Fields set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard against deep nesting and alias expansion.
+export type YamlOptions:
     // Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
-    max_bytes: Int?
+    max_bytes: Int? = none
     // Maximum value depth, including scalar leaves, with the root at one.
-    max_depth: Int?
+    max_depth: Int? = 10000
     // Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
-    max_values: Int?
+    max_values: Int? = 1000000
 
 type Context:
     lines: List[String]
     final_break: Bool
     index: Int
-    limits: YamlLimits
+    max_depth: Int?
+    max_values: Int?
     values: Int
     anchors: Map[String, YamlValue]
     sizes: Map[String, Int]
@@ -109,11 +111,6 @@ fn blank_trim_end(text: String) String:
 fn blank_trim(text: String) String:
     return blank_trim_end(blank_trim_start(text))
 
-// Limits applied when `parse` is called without any: deep nesting and alias expansion are
-// the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
-fn default_limits() YamlLimits:
-    return YamlLimits(max_depth: 10000, max_values: 1000000)
-
 fn within(value: Int, limit: Int?) Bool:
     if let maximum = limit:
         return value <= maximum
@@ -142,19 +139,19 @@ fn define_anchor(var context: Context, name: String, value: YamlValue) Unit:
 // nested aliases cannot grow exponentially ahead of the limit.
 fn charge(var context: Context, size: Int) Unit!:
     context.values += size
-    if not within(context.values, context.limits.max_values): return error(
+    if not within(context.values, context.max_values): return error(
         Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     return ok(unit)
 
 fn count(var context: Context, depth: Int) Unit!:
-    if not within(depth, context.limits.max_depth): return error(
+    if not within(depth, context.max_depth): return error(
         Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
     context.values += 1
-    if not within(context.values, context.limits.max_values): return error(
+    if not within(context.values, context.max_values): return error(
         Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
@@ -1184,22 +1181,9 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 
         context.index += 1
 
-    // A flow value needs only the limits, counters and anchors, so it gets a context without
-    // the document lines (copying them for every value made parsing quadratic).
     var flow = Flow(
-        chars: joined.split(""),
-        codes: joined.scalar_values(),
-        pos: 0,
-        line: line,
-        column: column,
-        context: Context(
-            lines: [], final_break: context.final_break, index: context.index,
-            limits: context.limits.clone(), values: context.values,
-            anchors: context.anchors.clone(), sizes: context.sizes.clone(), simple: [],
-            blank: [], dash: [], ind: [], col: []
-        ),
-        delimited: false,
-        stops: stops
+        chars: joined.split(""), codes: joined.scalar_values(), pos: 0, line: line,
+        column: column, context: flow_context(context), delimited: false, stops: stops
     )
     let result = try flow_value(var flow, depth, key: false)
     flow_space(var flow)
@@ -1354,7 +1338,7 @@ fn block_value(
     if lead == 38:
         var flow = Flow(
             chars: remainder.split(""), codes: [], pos: 1, line: start_line,
-            column: origin, context: context.clone(), delimited: false
+            column: origin, context: flow_context(context), delimited: false
         )
         anchor = try anchor_name(var flow)
 
@@ -1462,14 +1446,7 @@ fn block_value(
     return ok(result)
 
 fn pad(width: Int) String:
-    var builder = StringBuilder()
-    var spaces = width
-
-    while spaces > 0:
-        builder.append(" ")
-        spaces -= 1
-
-    return builder.build()
+    return "".pad_start(width, " ")
 
 // Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
 fn nested_columns(line: String, base: Int) List[Int]:
@@ -1557,7 +1534,7 @@ fn sequence_items(
             )
             level = chain.length()
 
-            var nested = frames.get(level - 1).clone().clone()
+            var nested = frames.get(level - 1).clone()
             try sequence_items(
                 context: var context, values: var nested, base: innermost,
                 depth: (depth + level)
@@ -1720,7 +1697,7 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!:
                     column: source_column(
                         context, context.index, line_indent + 1
                     ),
-                    context: context.clone(),
+                    context: flow_context(context),
                     delimited: false
                 )
                 name = try quoted(var flow)
@@ -1793,6 +1770,16 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!:
         column: base + 1
     )
 
+// A flow value needs only the limits, counters and anchors, so it gets a context without the document
+// lines and per-line facts (copying them for every value made parsing quadratic).
+fn flow_context(context: Context) Context:
+    return Context(
+        lines: [], final_break: context.final_break, index: context.index,
+        max_depth: context.max_depth, max_values: context.max_values,
+        values: context.values, anchors: context.anchors.clone(),
+        sizes: context.sizes.clone(), simple: [], blank: [], dash: [], ind: [], col: []
+    )
+
 fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
     try count(var context, depth)
 
@@ -1806,10 +1793,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
     return ok(unit)
 
 // Parses a YAML document. Unsupported YAML features and invalid input include source locations.
-export fn parse(text: String, limits: YamlLimits?) YamlValue!:
-    var options = default_limits()
-    if let value = limits:
-        options = value
+export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
         if let value = limit:
             if value < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
@@ -1841,8 +1825,9 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!:
 
     var context = Context(
         lines: normalized.split("\n"), final_break: normalized.ends_with("\n"),
-        index: 0, limits: options.clone(), values: 0, anchors: Map[String, YamlValue](),
-        sizes: Map[String, Int](), simple: [], blank: [], dash: [], ind: [], col: []
+        index: 0, max_depth: options.max_depth, max_values: options.max_values,
+        values: 0, anchors: Map[String, YamlValue](), sizes: Map[String, Int](),
+        simple: [], blank: [], dash: [], ind: [], col: []
     )
 
     // split's synthetic terminal empty line is not scalar content.
@@ -1917,42 +1902,6 @@ export fn parse(text: String, limits: YamlLimits?) YamlValue!:
     try validate(var context, result, 1)
     return ok(result)
 
-fn hex4(code: Int) String:
-    var digits = code.to_string_radix(16)
-    while digits.length() < 4: digits = "0".concat(digits)
-    return digits
-
-fn quote_text(text: String) String:
-    var clean = true
-
-    for code in text.scalar_values():
-        if code < 32 or code == 34 or code == 92 or (code >= 127 and code <= 159):
-            clean = false
-            break
-
-    if clean: return "\"".concat(text).concat("\"")
-
-    var result = StringBuilder()
-    result.append("\"")
-
-    for c in text.chars():
-        let code = c.scalar_at(0)
-
-        if c == "\"": result.append("\\\"")
-        else if c == "\\": result.append("\\\\")
-        else if c == "\n": result.append("\\n")
-        else if c == "\t": result.append("\\t")
-        else if c == "\r": result.append("\\r")
-        else if code == 8: result.append("\\b")
-        else if code == 12: result.append("\\f")
-        else if code < 32 or (code >= 127 and code <= 159):
-            result.append("\\u")
-            result.append(hex4(code))
-        else: result.append(c)
-
-    result.append("\"")
-    return result.build()
-
 fn format_key(key: String) String:
     var plain = key != ""
     var first = true
@@ -1975,7 +1924,7 @@ fn format_key(key: String) String:
         ): plain = false
     if plain: return key.clone()
 
-    return quote_text(key)
+    return quote_text(key, escape_c1: true)
 
 // A number keeps its original token, so it must resolve back to a number.
 fn valid_number(text: String) Bool:
@@ -1999,7 +1948,7 @@ fn scalar_text(value: YamlValue) String!:
     match value:
         Null: return ok("null")
         BoolValue(flag): return ok(flag.to_string())
-        StringValue(text): return ok(quote_text(text))
+        StringValue(text): return ok(quote_text(text, escape_c1: true))
         NumberValue(text):
             if not valid_number(text.clone()): return error(
                 Error("invalid YAML input", kind: "EINVAL")
@@ -2057,7 +2006,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
         _: return ok(unit)
 
 // Serializes a YAML value in block style with double-quoted strings.
-export fn stringify(value: YamlValue, max_bytes: Int?) String!:
+export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
     if let limit = max_bytes:
         if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
 

@@ -1,5 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
+import min from "@std/math/math.ms"
 import msstd_utf8_is_valid from "@std/internal/utf8.ms"
 
 /*
@@ -84,7 +85,7 @@ fn scalar_width(value: Int) Int:
 fn decode_ending(data: Bytes, stop: Int) Int:
     var incomplete = stop == 0
 
-    for width in 1..(min_int(stop, 4) + 1):
+    for width in 1..(min(stop, 4) + 1):
         let value = decode_at(data, stop - width, stop)
         if value == INCOMPLETE:
             incomplete = true
@@ -92,9 +93,6 @@ fn decode_ending(data: Bytes, stop: Int) Int:
             return value
 
     return if incomplete: INCOMPLETE else: INVALID
-
-fn min_int(left: Int, right: Int) Int:
-    return if left < right: left else: right
 
 fn decoded(value: Int) Utf8Scalar!Utf8Error:
     if value == INCOMPLETE: return error(Utf8Error.Incomplete)

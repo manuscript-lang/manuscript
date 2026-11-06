@@ -46,6 +46,7 @@ repo-check:
 unit: runtime
 	cargo nextest run --workspace
 	cargo test --workspace --doc
+	node --test tests/diagram/*.test.cjs
 
 test: unit conform
 

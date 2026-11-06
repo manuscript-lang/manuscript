@@ -1,30 +1,7 @@
-//! C ABI shims for `@std/os/fs.ms` (`msstd_path_*`). Every function takes `windows: u8` first,
-//! selecting POSIX (0) or Windows (1) rules; the host-rule functions pass the host's flag.
-//! `PathParts` is a record of five strings (`root, directory, base, extension, name`) at its
-//! natural layout; the runtime writes owned strings into it.
-use crate::{InvalidInput, Parts, Rules};
-use alloc::string::String;
-use alloc::vec::Vec;
+//! C ABI shim for `@std/os/path.ms` (`msstd_path_matches_glob`). The function takes `windows: u8`
+//! first, selecting POSIX (0) or Windows (1) separators.
+use crate::{InvalidInput, matches_glob};
 use ms_rt::ffi::{Status, native};
-
-/// `PathParts` is a record of five strings in field order (`root, directory, base, extension,
-/// name`) at its natural layout.
-type PartsRec<T> = [T; 5];
-
-fn parts_from(r: PartsRec<&str>) -> Parts {
-    let [root, directory, base, extension, name] = r.map(String::from);
-    Parts {
-        root,
-        directory,
-        base,
-        extension,
-        name,
-    }
-}
-
-fn parts_to(p: Parts) -> PartsRec<String> {
-    [p.root, p.directory, p.base, p.extension, p.name]
-}
 
 /// `PathError.InvalidInput` is the only error case.
 impl Status for InvalidInput {
@@ -33,83 +10,9 @@ impl Status for InvalidInput {
     }
 }
 
-fn rules(windows: bool) -> Rules {
-    Rules { windows }
-}
-
 native! {
     // ms: leaf
-    fn msstd_path_basename(windows: bool, path: &str) -> String {
-        rules(windows).basename(path)
-    }
-
-    // ms: leaf
-    fn msstd_path_basename_without(windows: bool, path: &str, suffix: &str) -> String {
-        rules(windows).basename_without(path, suffix)
-    }
-
-    // ms: leaf
-    fn msstd_path_dirname(windows: bool, path: &str) -> String {
-        rules(windows).dirname(path)
-    }
-
-    // ms: leaf
-    fn msstd_path_extension(windows: bool, path: &str) -> String {
-        rules(windows).extension(path)
-    }
-
-    // ms: leaf
-    fn msstd_path_is_absolute(windows: bool, path: &str) -> bool {
-        rules(windows).is_absolute(path)
-    }
-
-    // ms: leaf
-    fn msstd_path_join(windows: bool, parts: Vec<&str>) -> String {
-        rules(windows).join(&parts)
-    }
-
-    // ms: leaf
-    fn msstd_path_normalize(windows: bool, path: &str) -> String {
-        rules(windows).normalize(path)
-    }
-
-    // ms: leaf
-    fn msstd_path_relative(windows: bool, base: &str, target: &str) -> Result<String, InvalidInput> {
-        rules(windows).relative(base, target)
-    }
-
-    // ms: leaf
-    fn msstd_path_resolve(windows: bool, base: &str, parts: Vec<&str>) -> Result<String, InvalidInput> {
-        rules(windows).resolve(base, &parts)
-    }
-
-    // ms: leaf
-    fn msstd_path_parse(windows: bool, path: &str) -> out PartsRec<String> {
-        parts_to(rules(windows).parse(path))
-    }
-
-    // ms: leaf
-    fn msstd_path_format(windows: bool, parts: PartsRec<&str>) -> String {
-        rules(windows).format(&parts_from(parts))
-    }
-
-    // ms: leaf
-    fn msstd_path_separator(windows: bool) -> &'static str {
-        rules(windows).separator()
-    }
-
-    // ms: leaf
-    fn msstd_path_delimiter(windows: bool) -> &'static str {
-        rules(windows).delimiter()
-    }
-
-    // ms: leaf
-    fn msstd_path_to_namespaced_path(windows: bool, path: &str) -> String {
-        rules(windows).to_namespaced_path(path)
-    }
-
-    // ms: leaf
     fn msstd_path_matches_glob(windows: bool, value: &str, pattern: &str) -> Result<bool, InvalidInput> {
-        rules(windows).matches_glob(value, pattern)
+        matches_glob(windows, value, pattern)
     }
 }

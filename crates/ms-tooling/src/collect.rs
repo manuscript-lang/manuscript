@@ -1,8 +1,10 @@
 //! Derives the review fact model from a checked program and its inspection.
 
-use crate::facts::{Fact, Facts, Slot, append_unique, error_type, fact_key};
+use crate::facts::{
+    Fact, Facts, ParameterOwnership, ResultOwnership, Slot, append_unique, error_type, fact_key,
+};
 use crate::flow::{FlowBuilder, Site, StmtView};
-use ms_check::syntax::DeclRef;
+use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::{ModRef, Program};
 use ms_syntax::visit::{Visitor, walk_callable, walk_expr};
 use ms_syntax::{
@@ -72,6 +74,14 @@ pub fn collect_facts(
         );
         id_to_key.insert(e.id.clone(), key);
     }
+    // A standard-library method has no fact, and its id embeds a source offset;
+    // name it by receiver and method so external edges stay readable.
+    let std_methods: HashMap<&str, &str> = inspection
+        .entities
+        .iter()
+        .filter(|e| e.file.starts_with("@std/") && e.kind == "method")
+        .map(|e| (e.id.as_str(), e.name.as_str()))
+        .collect();
     // Borrow identities for membership; allocate an owned target only once per
     // distinct edge, including when many sites call the same target.
     let mut edges = HashSet::new();
@@ -80,15 +90,20 @@ pub fn collect_facts(
             continue;
         };
         let target_key = id_to_key.get(&call.target);
-        let target = target_key.unwrap_or(&call.target);
+        let target = target_key.map(String::as_str).unwrap_or_else(|| {
+            std_methods
+                .get(call.target.as_str())
+                .copied()
+                .unwrap_or(&call.target)
+        });
         if !edges.insert((owner_key, target, target_key.is_some())) {
             continue;
         }
         let owner = facts.entities.get_mut(owner_key).expect("indexed owner");
         if target_key.is_some() {
-            owner.calls.push(target.clone());
+            owner.calls.push(target.to_string());
         } else {
-            owner.external.push(target.clone());
+            owner.external.push(target.to_string());
         }
     }
     let sites: HashMap<String, Site> = inspection
@@ -144,6 +159,7 @@ pub fn collect_facts(
         };
         collect_bodies(syms, &mut facts, module, &flow);
     }
+    collect_ownership(syms, &mut facts, program);
     resolve_type_refs(syms, &mut facts, program);
     for fact in facts.entities.values_mut() {
         fact.calls.sort();
@@ -154,6 +170,113 @@ pub fn collect_facts(
         list.sort();
     }
     facts
+}
+
+/// Reuse the checker contract instead of recognizing a short list of scalar spellings.
+fn collect_ownership(syms: ms_syntax::Names, facts: &mut Facts, program: &Program) {
+    let classes = ms_check::ownership::Classifier::new(program);
+    for module in program
+        .hir()
+        .modules()
+        .filter(|m| !m.data.is_standard(syms))
+    {
+        for decl in &module.data.decls {
+            let (kind, name) = kind_and_name(syms, decl);
+            if matches!(decl.decl().kind, DeclKind::Fn(_))
+                && let Some(fact) =
+                    facts
+                        .entities
+                        .get_mut(&fact_key(syms.str(module.data.file), kind, &name))
+            {
+                callable_ownership(
+                    syms,
+                    fact,
+                    program,
+                    &classes,
+                    &module,
+                    &FuncRef::of_decl(decl.clone()),
+                );
+            }
+            for (index, method) in decl.methods().iter().enumerate() {
+                let key = fact_key(
+                    syms.str(module.data.file),
+                    "method",
+                    &format!("{name}.{}", syms.str(method.func.name)),
+                );
+                if let Some(fact) = facts.entities.get_mut(&key) {
+                    callable_ownership(
+                        syms,
+                        fact,
+                        program,
+                        &classes,
+                        &module,
+                        &FuncRef {
+                            decl: decl.clone(),
+                            index: Some(index),
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn callable_ownership(
+    syms: ms_syntax::Names,
+    fact: &mut Fact,
+    program: &Program,
+    classes: &ms_check::ownership::Classifier,
+    module: &ms_check::hir::ModuleHir,
+    callable: &FuncRef,
+) {
+    use ms_check::ownership::{Class, Fact as OwnershipFact};
+    let Some(func) = callable.func() else {
+        return;
+    };
+    let node = callable.id();
+    let method = callable.index.is_some();
+    let file = module.data.file;
+    let moving = program.moving_params.get(&(file, node));
+    let checked = module.data.facts();
+    for (index, (slot, param)) in fact.slots.iter_mut().zip(&func.params).enumerate() {
+        let ty = param
+            .ty
+            .as_ref()
+            .and_then(|t| module.type_ref(t.id))
+            .or_else(|| {
+                checked
+                    .decls
+                    .get(&node)
+                    .and_then(|d| d.parameters.get(index))
+                    .map(|b| b.ty.clone())
+            });
+        slot.ownership = if ty
+            .as_ref()
+            .is_some_and(|ty| classes.class(syms, ty) == Class::Copy)
+        {
+            ParameterOwnership::Copy
+        } else if moving
+            .and_then(|m| m.get(index + usize::from(method)))
+            .copied()
+            .unwrap_or(false)
+        {
+            ParameterOwnership::Move
+        } else {
+            ParameterOwnership::Borrow
+        };
+    }
+    let has = |flag| program.node_facts.has(file, node, flag);
+    fact.result_ownership = match (
+        has(OwnershipFact::BorrowedOk),
+        has(OwnershipFact::BorrowedError),
+    ) {
+        (true, true) => ResultOwnership::BorrowedBoth,
+        (true, false) => ResultOwnership::BorrowedOk,
+        (false, true) => ResultOwnership::BorrowedError,
+        (false, false) if has(OwnershipFact::ReturnsBorrow) => ResultOwnership::Borrow,
+        (false, false) if has(OwnershipFact::ReturnsView) => ResultOwnership::View,
+        _ => ResultOwnership::Owned,
+    };
 }
 
 /// The entity kind and name Go gives a declaration.
@@ -241,6 +364,7 @@ fn type_slot(syms: ms_syntax::Names, name: &str, ty: &TypeRef) -> Slot {
         name: name.to_string(),
         ty: type_text(syms, ty),
         var: false,
+        ownership: ParameterOwnership::default(),
         refs: Vec::new(),
     }
 }
@@ -291,6 +415,7 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
                             format!("({})", text.join(", "))
                         },
                         var: false,
+                        ownership: ParameterOwnership::default(),
                         refs,
                     }
                 })
@@ -317,6 +442,7 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
                         name: syms.str(m.func.name).to_string(),
                         ty: format!("({}) {}", text.join(", "), result.ty),
                         var: m.mutating,
+                        ownership: ParameterOwnership::Unspecified,
                         refs,
                     }
                 })

@@ -1,4 +1,5 @@
 import (
+    HtmlLimits,
     msstd_html_escape,
     msstd_html_unescape,
     msstd_html_parse,
@@ -13,15 +14,15 @@ import (
     msstd_html_attr
 ) from "@std/internal/html.ms"
 
-// Optional bounds for HTML input bytes, tree depth, and node count.
-// Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 nodes; pass an `HtmlLimits` to change that.
-export type HtmlLimits:
+// Bounds for HTML input bytes, tree depth, and node count.
+// Fields set to none add no budget. The defaults are depth 10,000 and 1,000,000 nodes.
+export type HtmlOptions:
     // Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-    max_bytes: Int?
+    max_bytes: Int? = none
     // Maximum normalized node depth; the document is depth zero and direct children depth one.
-    max_depth: Int?
+    max_depth: Int? = 10000
     // Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
-    max_nodes: Int?
+    max_nodes: Int? = 1000000
 
 // An HTML attribute, including its namespace and decoded value.
 export type HtmlAttribute:
@@ -83,8 +84,12 @@ export fn unescape(text: String) String:
 // A parse tree owned by the runtime; node ids are valid only for the tree that issued them, and -1 is no node.
 export extern type HtmlTree
 
-// Parses HTML into a normalized tree and applies the supplied resource limits.
-export fn parse(text: String, limits: HtmlLimits?) HtmlNode!:
+// Parses HTML into a normalized tree and applies the resource limits in `options`.
+export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
+    let limits = HtmlLimits(
+        max_bytes: options.max_bytes, max_depth: options.max_depth,
+        max_nodes: options.max_nodes
+    )
     let tree = try msstd_html_parse(text, limits)
     return ok(node(tree, msstd_html_root(tree)))
 

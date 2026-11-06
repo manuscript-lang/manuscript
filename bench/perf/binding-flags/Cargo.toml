@@ -1,0 +1,25 @@
+[package]
+name = "ms-binding-flags-perf"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+ms-check = { path = "../../../crates/ms-check" }
+ms-syntax = { path = "../../../crates/ms-syntax" }
+
+[[bin]]
+name = "ms-binding-flags-perf"
+path = "main.rs"
+
+[[bin]]
+name = "ms-binding-flags-storage"
+path = "storage.rs"
+
+[features]
+count = []
+
+[profile.release]
+debug = 1

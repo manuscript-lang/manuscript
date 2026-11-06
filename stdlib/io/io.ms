@@ -161,8 +161,8 @@ impl Closeable for Waiting[T]:
         return ok(unit)
 
 // A stream's source, moved out so a stage pulls it with a plain call. When a read already holds the source, the
-// stage reads through the stream instead, as before.
-fn source_of[T](input: ReadStream[T]) Source[T]:
+// stage reads through the stream instead, as before. For stream steps that must stop pulling early, such as `take`.
+export fn source_of[T](input: ReadStream[T]) Source[T]:
     var owned = input
     if let source = msrt_cells_take[Source[T]](owned.cell):
         return source
@@ -351,6 +351,7 @@ impl Source[T] for PipeSource[T]:
 
     var fn close() Unit!:
         msrt_pipe_close_reader(self.id)
+        self.id = 0
         return ok(unit)
 
 // One writing end of a pipe; closing it releases that writer.
@@ -371,7 +372,9 @@ impl Sink[T] for PipeSink[T]:
         return msrt_pipe_buffered(self.id)
 
     var fn close() Unit!:
+        // Closing again releases nothing: an owner that closed the writer by hand is closed again at scope end.
         msrt_pipe_close_writer(self.id)
+        self.id = 0
         return ok(unit)
 
 // An in-memory stream of whole values, in order: any number of writers and one reader. A write hands the pipe a copy

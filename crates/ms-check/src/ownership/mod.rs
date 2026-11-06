@@ -167,6 +167,8 @@ pub struct CallableOwnership {
     /// Closed resource bindings the program also closes by an explicit `.close()` call: the
     /// scope end still releases them, but a result the program handled is not returned again.
     pub explicit_closes: HashSet<usize>,
+    /// Every lifetime transfers or has its scope-close result handled before scope exit.
+    pub handled_scope_closes: HashSet<usize>,
     /// For a closed resource binding that is also moved on some paths: the name expressions
     /// that move it. The close at scope end runs only on the paths with no move.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
@@ -378,6 +380,9 @@ impl Hir<'_> {
             }
             for u in &out.facts.explicit_closes {
                 binding_facts.set(*u, BindingFact::ExplicitClose);
+            }
+            for u in &out.facts.handled_scope_closes {
+                binding_facts.set(*u, BindingFact::CloseHandled);
             }
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             for u in &out.facts.moved_payloads {

@@ -42,6 +42,13 @@ fn llvm_release_matches_cranelift_fault_frames() {
     std::fs::create_dir_all(&dir).unwrap();
     let cranelift = build_and_run("cranelift", &dir.join("cranelift"));
     let llvm = build_and_run("llvm", &dir.join("llvm"));
+    for (name, backend) in [("cranelift", "cranelift"), ("llvm", "llvm")] {
+        let sidecar = std::fs::read_to_string(dir.join(format!("{name}.ms-build.json"))).unwrap();
+        assert!(
+            sidecar.contains(&format!("\"backend\": \"{backend}\"")),
+            "{sidecar}"
+        );
+    }
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(llvm.0, Some(67), "{}", llvm.1);
     assert_eq!(llvm, cranelift);
@@ -286,7 +293,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
     let source = include_str!("llvm/long_literal.ms")
         .replace("[n + 0]", &format!("[{}]", items.join(", ")))
         .replace("    let n = arguments().length()\n", "")
-        .replace("import arguments from \"@std/os/process.ms\"\n", "");
+        .replace("import arguments from \"@std/os/env.ms\"\n", "");
     std::fs::write(dir.join("k.ms"), source).unwrap();
     for backend in ["cranelift", "llvm"] {
         if backend == "llvm" && !cfg!(any(target_os = "linux", target_os = "macos")) {

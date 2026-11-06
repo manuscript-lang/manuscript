@@ -16,7 +16,7 @@ Result[Decimal, DiscountError]
 
 ## Bounds
 
-Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds (`T: Compare[T]` is valid, `T: T` is not). Don't name a parameter `Error`; use `E`. `Error` is a record, not an interface or a bound; use it directly when a helper needs its `message`, `kind`, or `details`.
+Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Closeable`. A bound must resolve to an interface. Parameters are in scope in their bounds (`T: Compare[T]` is valid, `T: T` is not). Don't name a parameter `Error`; use `E`. `Error` is a type, not an interface or a bound; use it directly when a helper needs its `message`, `kind`, or `details`.
 
 | Bound | Required property |
 | --- | --- |
@@ -24,7 +24,7 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
 | `Clonable` | `value.clone()` returns an independent copy, so a generic body can keep a value it only borrows. Every type qualifies except a resource (`Closeable`), a type holding one, a native type without a `clone` of its own (`Regex`, `Pipe`), a function value, and any type holding one of those. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable` |
-| `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and typed JSON stream codecs require it. Promises and pipes do not require this bound. Import it from `@std/core.ms`. Records and enums qualify when every part does; `Closeable` types never do; of the collections `List` qualifies, and a `Map[String, T]` when `T` does (it is a JSON object), never a `Set` or a `Map` with another key type; `JsonValue` is declared `Data`, so a dynamic JSON object travels as one. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
+| `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and typed JSON stream codecs require it. Promises and pipes do not require this bound. Import it from `@std/core.ms`. Types and enums qualify when every part does; `Closeable` types never do; of the collections `List` qualifies, and a `Map[String, T]` when `T` does (it is a JSON object), never a `Set` or a `Map` with another key type; `JsonValue` is declared `Data`, so a dynamic JSON object travels as one. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
 Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` and `Hashable` imply `Clonable`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
@@ -64,7 +64,7 @@ let inferred = identity(1)
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
-- Records, enums, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and implementations inherit the receiver's ([generic implementations](contracts.md#generic-implementations)).
+- Types, enums, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and implementations inherit the receiver's ([generic implementations](contracts.md#generic-implementations)).
 - Higher-kinded parameters, type aliases, and variadic parameters are unsupported.
 - Applications are invariant: `Box[Int]` is not `Box[Float]`.
 - A generic function used as a value must be specialized: `identity[Int]`.
@@ -143,7 +143,7 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 
 ## Finite recursive applications
 
-[Recursive data](records.md#recursive-data) may be generic only if each cycle passes the original parameters back in their original positions (composed around mutual cycles). `Tree[T]` with `Branch(left: Tree[T], right: Tree[T])` is allowed; substituting, reordering, or expanding arguments is rejected, so `Grow[T]` holding `List[Grow[List[T]]]` is an error. Nonrecursive nesting like `Box[Box[Int]]` is fine. The check covers every type reference, including function signatures and contracts.
+[Recursive data](named-types.md#recursive-data) may be generic only if each cycle passes the original parameters back in their original positions (composed around mutual cycles). `Tree[T]` with `Branch(left: Tree[T], right: Tree[T])` is allowed; substituting, reordering, or expanding arguments is rejected, so `Grow[T]` holding `List[Grow[List[T]]]` is an error. Nonrecursive nesting like `Box[Box[Int]]` is fine. The check covers every type reference, including function signatures and contracts.
 
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 

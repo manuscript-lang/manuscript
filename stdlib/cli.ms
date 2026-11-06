@@ -9,7 +9,7 @@ and a matching type; flags and arguments without a field, such as inherited pers
 
 ```manuscript
 import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 type Greeting:
     name: String
@@ -29,6 +29,7 @@ export fn main() Int:
     return Command(name: "tool", children: [greeting]).execute(arguments())
 ```
 */
+import Align, Table from "@std/cli/table.ms"
 import Data from "@std/core.ms"
 import stderr, stdout from "@std/io/io.ms"
 import parse, stringify from "@std/data/json.ms"
@@ -153,7 +154,7 @@ impl Matches:
 /*
 A command or command group: its schema, subcommands and handler.
 
-A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../learn/common-tasks.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
+A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../cookbook/command-line.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
 */
 export type Command:
     // The word that selects this node; the program name for the root.
@@ -663,34 +664,18 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
     out += "Usage:\n" + usage + "\n"
 
     if not node.children.is_empty():
-        out += "\nCommands:\n"
-
-        var width = 0
-        for child in node.children: width = max_int(width, child.name.length())
-        for child in node.children: out += (
-            (
-                "  "
-                + child.name.pad_end(width, " ")
-                + "  "
-                + child.about
-            ).trim_end()
-            + "\n"
+        var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
+        for child in node.children: help_row(
+            var commands, [child.name.clone(), child.about.clone()]
         )
+        out += "\nCommands:\n" + commands.render() + "\n"
 
     if not node.args.is_empty():
-        out += "\nArguments:\n"
-
-        var width = 0
-        for arg in node.args: width = max_int(width, arg.name.length())
-        for arg in node.args: out += (
-            (
-                "  "
-                + arg.name.pad_end(width, " ")
-                + "  "
-                + arg.help
-            ).trim_end()
-            + "\n"
+        var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
+        for arg in node.args: help_row(
+            var arguments, [arg.name.clone(), arg.help.clone()]
         )
+        out += "\nArguments:\n" + arguments.render() + "\n"
 
     out += flag_section("Flags", node.flags.concat([help_flag()]))
     out += flag_section("Global Flags", inherited)
@@ -704,27 +689,23 @@ fn help_flag() Flag:
 fn flag_section(title: String, flags: List[Flag]) String:
     if flags.is_empty(): return ""
 
-    var labels: List[String] = []
-    var width = 0
+    var table = Table(columns: [Align.Left, Align.Left], indent: 2)
 
     for flag in flags:
         var label = if not flag.short.is_empty(): "-{flag.short}, " else: "    "
         label += "--{flag.name}"
         if not is_bool(flag.kind): label += " <{value_hint(flag)}>"
-        labels.append(label.clone())
-        width = max_int(width, label.length())
 
-    var out = "\n{title}:\n"
-    var index = 0
+        var help = flag.help.clone()
+        if let text = flag.default: help += " (default {text})"
+        if flag.required: help += " (required)"
+        help_row(var table, [label, help])
 
-    for flag in flags:
-        var line = "  " + labels[index].pad_end(width, " ") + "  " + flag.help
-        if let text = flag.default: line += " (default {text})"
-        if flag.required: line += " (required)"
-        out += line.trim_end() + "\n"
-        index += 1
+    return "\n{title}:\n" + table.render() + "\n"
 
-    return out
-
-fn max_int(left: Int, right: Int) Int:
-    return if left > right: left else: right
+// Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row with other controls is omitted.
+fn help_row(var table: Table, row: List[String]) Unit:
+    var cells: List[String] = []
+    for cell in row:
+        cells.append(cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
+    if table.add(cells).is_error(): return

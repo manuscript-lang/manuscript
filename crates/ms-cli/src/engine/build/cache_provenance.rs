@@ -1,16 +1,14 @@
-//! Forces publication/cache interleavings with real native executables and distinct source keys.
+//! Current publication/metadata/record ordering with real native producer pins.
 
 use super::*;
 use crate::backend::BuildType;
-use ms_build::native::BuildStage;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard};
 
-// Another fixture's fork can inherit a writable executable descriptor until its exec.
-// Isolate independent fixture lifetimes; the forced A/B publication ordering stays inside
-// one fixture and the separate CLI controls still run concurrent compiler processes.
+// Isolate fixture writes from unrelated fixture forks (see engine/testing.rs).
+// The forced A/B interleaving itself remains inside one fixture.
 static NATIVE_FIXTURE: Mutex<()> = Mutex::new(());
 
 struct Fixture {
@@ -23,14 +21,14 @@ impl Fixture {
             .lock()
             .unwrap_or_else(|error| error.into_inner());
         static NEXT: AtomicUsize = AtomicUsize::new(0);
-        let dir = std::env::temp_dir().join(format!(
-            "ms-build-provenance-{name}-{}-{}",
+        let root = std::env::temp_dir().join(format!(
+            "ms-pinned-cache-{name}-{}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
-        std::fs::create_dir(&dir).unwrap();
+        std::fs::create_dir(&root).unwrap();
         Self {
-            root: dir,
+            root,
             _native: native,
         }
     }
@@ -51,6 +49,12 @@ impl Fixture {
             key: key.into(),
         }
     }
+    fn output(&self) -> PathBuf {
+        self.root.join(format!(
+            "renamed public program{}",
+            std::env::consts::EXE_SUFFIX
+        ))
+    }
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
@@ -58,64 +62,56 @@ impl Drop for Fixture {
     }
 }
 
-fn prepare(source: &Path, output: &Path) -> BuildStage {
-    let backend = Engine::new(ms_build::Native);
-    let mut compiled = compile(
+fn compiled(backend: &Engine<ms_build::Native>, source: &Path) -> super::super::Compiled {
+    compile(
         ms_syntax::Names::global(),
-        &backend,
+        backend,
         source.to_str().unwrap(),
         false,
     )
-    .unwrap_or_else(|_| panic!("fixture must compile: {}", source.display()));
-    let stage = BuildStage::for_output(output).unwrap();
-    backend
-        .build_executable(
-            &mut compiled,
-            &stage.path().join("program.exe"),
-            BuildType::Debug,
-            &[],
-        )
-        .unwrap();
-    stage
+    .unwrap_or_else(|_| panic!("fixture must compile: {}", source.display()))
 }
-
+fn link(
+    backend: &Engine<ms_build::Native>,
+    compiled: &mut super::super::Compiled,
+    output: &Path,
+) -> (ArtifactPin, Result<(), String>) {
+    let pin = ArtifactPin::create(output).unwrap();
+    let result = backend.link_pinned(compiled, output, BuildType::Debug, &[], Some(pin.path()));
+    (pin, result)
+}
+fn record(
+    cache: &BuildCache,
+    compiled: &super::super::Compiled,
+    pin: &ArtifactPin,
+) -> Result<(), String> {
+    cache.record(compiled, &build_inputs(compiled).unwrap(), pin.path())
+}
 fn status(path: &Path) -> i32 {
     Command::new(path).status().unwrap().code().unwrap()
 }
 fn metadata(path: &Path) -> PathBuf {
     PathBuf::from(format!("{}.ms-build.json", path.display()))
 }
-fn record(cache: &BuildCache, source: &Path, artifact: &Path) -> Result<(), String> {
-    cache.record(
-        source.parent().unwrap().to_str().unwrap(),
-        &[source.to_path_buf()],
-        artifact.to_str().unwrap(),
-    )
-}
 fn restore(cache: &BuildCache, output: &Path) {
     cache
         .lookup()
-        .expect("valid cache entry")
+        .expect("valid entry")
         .restore_to(output.to_str().unwrap())
         .unwrap();
-    write_metadata(output, BuildType::Debug).unwrap();
 }
-fn has_companion(output: &Path) -> bool {
-    ms_clif_companion(output).is_some_and(|path| path.is_dir())
-}
-fn companion_names_match(output: &Path, expected: bool) {
-    assert_eq!(has_companion(output), expected);
-    if expected {
-        let companion = ms_clif_companion(output).unwrap();
-        let files: Vec<_> = std::fs::read_dir(companion.join("Contents/Resources/DWARF"))
-            .unwrap()
-            .map(|file| file.unwrap().file_name())
-            .collect();
-        assert_eq!(files, vec![output.file_name().unwrap().to_os_string()]);
+fn companion_bytes(output: &Path) -> Option<Vec<u8>> {
+    let companion = ms_clif_companion(output)?;
+    if !companion.exists() {
+        return None;
     }
+    let resource = companion
+        .join("Contents/Resources/DWARF")
+        .join(output.file_name().unwrap());
+    Some(std::fs::read(resource).unwrap())
 }
-fn no_stages(dir: &Path) {
-    assert!(std::fs::read_dir(dir).unwrap().all(|entry| {
+fn no_stages(root: &Path) {
+    assert!(std::fs::read_dir(root).unwrap().all(|entry| {
         !entry
             .unwrap()
             .file_name()
@@ -125,143 +121,120 @@ fn no_stages(dir: &Path) {
 }
 
 #[test]
-fn concurrent_publication_keeps_each_cached_executable() {
+fn concurrent_publication_records_each_producers_executable_and_companion() {
     for first_is_a in [true, false] {
         let fixture = Fixture::new("interleave");
-        let first = fixture.source(first_is_a);
-        let second = fixture.source(!first_is_a);
-        let output = fixture.root.join("renamed public program");
-        let a = fixture.cache("a", ms_build::cache::Mode::On);
-        let b = fixture.cache("b", ms_build::cache::Mode::On);
-        let stage_a = prepare(&first, &output);
-        let stage_b = prepare(&second, &output);
-        let a_companion = has_companion(&stage_a.path().join("program.exe"));
-        let b_companion = has_companion(&stage_b.path().join("program.exe"));
-        finish_build(stage_a, &output, BuildType::Debug, |artifact_a| {
-            // Force another complete native publication before A copies its cache source.
-            finish_build(stage_b, &output, BuildType::Debug, |artifact_b| {
-                record(&b, &second, artifact_b)
-            })?;
-            record(&a, &first, artifact_a)
-        })
-        .unwrap();
-        restore(&a, &output);
+        let a_source = fixture.source(first_is_a);
+        let b_source = fixture.source(!first_is_a);
+        let output = fixture.output();
+        let backend = Engine::new(ms_build::Native);
+        let mut a = compiled(&backend, &a_source);
+        let mut b = compiled(&backend, &b_source);
+        let cache_a = fixture.cache("a", ms_build::cache::Mode::On);
+        let cache_b = fixture.cache("b", ms_build::cache::Mode::On);
+        let (pin_a, result) = link(&backend, &mut a, &output);
+        result.unwrap();
+        let debug_a = companion_bytes(&output);
+        assert_eq!(companion_bytes(pin_a.path()), debug_a);
+        // B completes publication and recording before A records its source.
+        let (pin_b, result) = link(&backend, &mut b, &output);
+        result.unwrap();
+        let debug_b = companion_bytes(&output);
+        if let (Some(a), Some(b)) = (&debug_a, &debug_b) {
+            assert_ne!(a, b, "producer debug resources must distinguish A from B");
+        }
+        record(&cache_b, &b, &pin_b).unwrap();
+        record(&cache_a, &a, &pin_a).unwrap();
+        drop((pin_a, pin_b));
+        restore(&cache_a, &output);
         assert_eq!(status(&output), if first_is_a { 7 } else { 11 });
-        companion_names_match(&output, a_companion);
-        restore(&b, &output);
+        assert_eq!(companion_bytes(&output), debug_a);
+        restore(&cache_b, &output);
         assert_eq!(status(&output), if first_is_a { 11 } else { 7 });
-        companion_names_match(&output, b_companion);
-        assert!(ms_json::parse(std::fs::read_to_string(metadata(&output)).unwrap()).is_ok());
+        assert_eq!(companion_bytes(&output), debug_b);
         no_stages(&fixture.root);
     }
 }
 
 #[test]
-fn record_failure_preserves_prior_public_artifacts_and_cleans_stage() {
-    let fixture = Fixture::new("record-error");
-    let first = fixture.source(true);
-    let output = fixture.root.join("program");
-    std::fs::write(&output, b"previous executable").unwrap();
-    std::fs::write(metadata(&output), b"previous metadata").unwrap();
-    let result = finish_build(prepare(&first, &output), &output, BuildType::Debug, |_| {
-        Err("forced recording failure".into())
-    });
-    assert_eq!(result.unwrap_err(), "forced recording failure");
-    assert!(std::fs::read(&output).unwrap() == b"previous executable");
-    assert_eq!(
-        std::fs::read(metadata(&output)).unwrap(),
-        b"previous metadata"
+fn verification_mismatch_keeps_current_postpublication_policy() {
+    let fixture = Fixture::new("verify");
+    let output = fixture.output();
+    let backend = Engine::new(ms_build::Native);
+    let mut previous = compiled(&backend, &fixture.source(false));
+    let cache = fixture.cache("same", ms_build::cache::Mode::On);
+    let (pin, result) = link(&backend, &mut previous, &output);
+    result.unwrap();
+    record(&cache, &previous, &pin).unwrap();
+    drop(pin);
+    let mut rebuilt = compiled(&backend, &fixture.source(true));
+    let (pin, result) = link(&backend, &mut rebuilt, &output);
+    result.unwrap();
+    let verify = fixture.cache("same", ms_build::cache::Mode::Verify);
+    assert!(
+        record(&verify, &rebuilt, &pin)
+            .unwrap_err()
+            .contains("MS_CACHE=verify")
     );
-    no_stages(&fixture.root);
-}
-
-#[test]
-fn cache_verification_rejects_before_replacing_public_artifacts() {
-    let fixture = Fixture::new("verify-error");
-    let first = fixture.source(true);
-    let second = fixture.source(false);
-    let output = fixture.root.join("program");
-    let prior = prepare(&second, &output);
-    let cache = fixture.cache("verify", ms_build::cache::Mode::On);
-    record(&cache, &first, &prior.path().join("program.exe")).unwrap();
-    finish_build(prior, &output, BuildType::Debug, |_| Ok(())).unwrap();
-    let old_executable = std::fs::read(&output).unwrap();
-    let old_metadata = std::fs::read(metadata(&output)).unwrap();
-    let verify = fixture.cache("verify", ms_build::cache::Mode::Verify);
-    let result = finish_build(
-        prepare(&first, &output),
-        &output,
-        BuildType::Debug,
-        |artifact| record(&verify, &first, artifact),
-    );
-    assert!(result.unwrap_err().contains("MS_CACHE=verify"));
-    assert!(std::fs::read(&output).unwrap() == old_executable);
-    assert_eq!(std::fs::read(metadata(&output)).unwrap(), old_metadata);
+    assert_eq!(status(&output), 7);
+    assert!(ms_json::parse(std::fs::read_to_string(metadata(&output)).unwrap()).is_ok());
+    drop(pin);
+    restore(&cache, &output);
     assert_eq!(status(&output), 11);
     no_stages(&fixture.root);
 }
 
 #[test]
-fn publication_failure_retains_valid_cache_for_retry() {
+fn publication_failure_does_not_record_and_cleans_owned_pin() {
     let fixture = Fixture::new("publish-error");
-    let source = fixture.source(true);
-    let output = fixture.root.join("program");
-    let stage = prepare(&source, &output);
-    let companion = has_companion(&stage.path().join("program.exe"));
-    // An output can become a directory after the command's initial destination check.
+    let output = fixture.output();
+    let backend = Engine::new(ms_build::Native);
+    let mut build = compiled(&backend, &fixture.source(true));
     std::fs::create_dir(&output).unwrap();
     std::fs::write(metadata(&output), b"previous metadata").unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
-    let result = finish_build(stage, &output, BuildType::Debug, |artifact| {
-        record(&cache, &source, artifact)
-    });
+    let (pin, linked) = link(&backend, &mut build, &output);
+    let result = linked.and_then(|()| record(&cache, &build, &pin));
     assert!(result.is_err());
+    drop(pin);
     assert!(output.is_dir());
     assert_eq!(
         std::fs::read(metadata(&output)).unwrap(),
         b"previous metadata"
     );
+    assert!(cache.lookup().is_none());
     no_stages(&fixture.root);
-    std::fs::remove_dir(&output).unwrap();
-    restore(&cache, &output);
-    assert_eq!(status(&output), 7);
-    companion_names_match(&output, companion);
 }
 
 #[test]
-fn metadata_failure_keeps_produced_executable_and_correct_cache() {
+fn metadata_failure_keeps_published_executable_without_recording() {
     let fixture = Fixture::new("metadata-error");
-    let source = fixture.source(true);
-    let output = fixture.root.join("program");
-    let stage = prepare(&source, &output);
-    let companion = has_companion(&stage.path().join("program.exe"));
+    let output = fixture.output();
+    let backend = Engine::new(ms_build::Native);
+    let mut build = compiled(&backend, &fixture.source(true));
     std::fs::create_dir(metadata(&output)).unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
-    let result = finish_build(stage, &output, BuildType::Debug, |artifact| {
-        record(&cache, &source, artifact)
-    });
+    let (pin, linked) = link(&backend, &mut build, &output);
+    let result = linked.and_then(|()| record(&cache, &build, &pin));
     assert!(result.unwrap_err().contains("cannot write build metadata"));
+    drop(pin);
     assert_eq!(status(&output), 7);
     assert!(metadata(&output).is_dir());
+    assert!(cache.lookup().is_none());
     no_stages(&fixture.root);
-    std::fs::remove_dir(metadata(&output)).unwrap();
-    restore(&cache, &output);
-    assert_eq!(status(&output), 7);
-    companion_names_match(&output, companion);
 }
 
 #[test]
 fn best_effort_cache_failure_does_not_fail_publication() {
     let fixture = Fixture::new("cache-error");
-    let source = fixture.source(true);
-    let output = fixture.root.join("program");
-    let stage = prepare(&source, &output);
-    std::fs::write(fixture.root.join("cache"), b"cache unavailable").unwrap();
+    let output = fixture.output();
+    let backend = Engine::new(ms_build::Native);
+    let mut build = compiled(&backend, &fixture.source(true));
+    std::fs::write(fixture.root.join("cache"), b"unavailable cache directory").unwrap();
     let cache = fixture.cache("a", ms_build::cache::Mode::On);
-    finish_build(stage, &output, BuildType::Debug, |artifact| {
-        record(&cache, &source, artifact)
-    })
-    .unwrap();
+    let (pin, linked) = link(&backend, &mut build, &output);
+    linked.and_then(|()| record(&cache, &build, &pin)).unwrap();
+    drop(pin);
     assert_eq!(status(&output), 7);
     assert!(metadata(&output).is_file());
     assert!(cache.lookup().is_none());
@@ -269,27 +242,24 @@ fn best_effort_cache_failure_does_not_fail_publication() {
 }
 
 #[test]
-fn failed_recording_preserves_retained_companion_recovery_files() {
-    let fixture = Fixture::new("retained-recovery");
-    let source = fixture.source(true);
-    let output = fixture.root.join("program");
-    let stage = prepare(&source, &output);
-    let private = stage.path().to_path_buf();
-    let recovery = private.join("program.exe.previous.dSYM");
+fn dropping_pin_preserves_unrelated_recovery_files() {
+    let fixture = Fixture::new("recovery");
+    let pin = ArtifactPin::create(&fixture.output()).unwrap();
+    let stage = pin.path().parent().unwrap().to_path_buf();
+    let recovery = stage.join("program.exe.previous.dSYM");
     std::fs::create_dir(&recovery).unwrap();
-    std::fs::write(recovery.join("retained"), b"previous debug resource").unwrap();
-    let result = finish_build(stage, &output, BuildType::Debug, |_| {
-        Err("record failed".into())
-    });
-    assert_eq!(result.unwrap_err(), "record failed");
-    assert!(!private.join("program.exe").exists());
+    std::fs::write(recovery.join("retained"), b"old debug").unwrap();
+    std::fs::write(pin.path(), b"candidate").unwrap();
+    if let Some(companion) = ms_clif_companion(pin.path()) {
+        std::fs::create_dir(companion).unwrap();
+    }
+    drop(pin);
+    assert!(!stage.join("program.exe").exists());
     assert_eq!(
         std::fs::read(recovery.join("retained")).unwrap(),
-        b"previous debug resource"
+        b"old debug"
     );
-    if let Some(companion) = ms_clif_companion(&private.join("program.exe")) {
+    if let Some(companion) = ms_clif_companion(&stage.join("program.exe")) {
         assert!(!companion.exists());
     }
-    assert!(!output.exists());
-    assert!(!metadata(&output).exists());
 }

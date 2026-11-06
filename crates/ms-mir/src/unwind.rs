@@ -56,6 +56,7 @@ pub fn run(m: &mut Module) -> bool {
         parks,
         faults,
         safe: slot_safe_params(m),
+        closure_targets: closure_targets(m),
         cells: BTreeMap::new(),
         discard,
         closers: HashMap::new(),
@@ -77,6 +78,8 @@ struct Cx {
     /// Per function and parameter: whether the parameter is a slot pointer whose contents the
     /// function only borrows while it runs, so the caller may keep covering them.
     safe: Vec<Vec<bool>>,
+    /// The functions a `closure.new` can make callable through `call.ind`.
+    closure_targets: Vec<FuncId>,
     /// The slots of the function being rewritten that hold an owned value between a `put` and a
     /// `take`, with the type held.
     cells: BTreeMap<u32, Ty>,
@@ -1033,6 +1036,11 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
                         full.contains(&a.0)
                             && cx.safe.get(g.index()).and_then(|p| p.get(k)).copied() == Some(true)
                     }
+                    // The callee is some closure of this arity; the slot stays covered when every
+                    // one that could receive it at this position only borrows it.
+                    (Op::CallInd, _) => {
+                        k > 0 && full.contains(&a.0) && closures_borrow(m, cx, inst.args.len(), k)
+                    }
                     _ => false,
                 };
                 if !ok {
@@ -1051,6 +1059,38 @@ fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
     }
     slots.retain(|s, _| !bad.contains(s));
     slots
+}
+
+/// The functions that `closure.new` instructions make callable.
+fn closure_targets(m: &Module) -> Vec<FuncId> {
+    let mut out = BTreeSet::new();
+    for inst in m
+        .funcs
+        .iter()
+        .flat_map(|f| f.blocks.iter().flat_map(|b| &b.insts))
+    {
+        if let (Op::ClosureNew, Imm::Func(g)) = (inst.op, inst.imm) {
+            out.insert(g.0);
+        }
+    }
+    out.into_iter().map(FuncId).collect()
+}
+
+/// Whether every closure that takes `arity` parameters (its environment first) and a pointer at
+/// position `k` only borrows what that pointer's slot holds. False when there is no such closure.
+fn closures_borrow(m: &Module, cx: &Cx, arity: usize, k: usize) -> bool {
+    let mut any = false;
+    for g in &cx.closure_targets {
+        let safe = &cx.safe[g.index()];
+        if safe.len() == arity && safe[k] {
+            any = true;
+        }
+    }
+    // A candidate whose parameter at `k` is a pointer that it may consume makes the call unsafe.
+    any && cx.closure_targets.iter().all(|g| {
+        let safe = &cx.safe[g.index()];
+        safe.len() != arity || safe[k] || m.funcs[g.index()].params[k].ty != Ty::PTR
+    })
 }
 
 /// Per function and parameter, whether the parameter is a pointer to a slot whose contents the

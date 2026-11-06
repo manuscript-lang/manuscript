@@ -9,7 +9,7 @@ use ms_check::types as ct;
 use ms_check::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
-use ms_mir::types::{AltId, IfaceId, Native, RecId, Ty as MTy, TyKind};
+use ms_mir::types::{AltId, IfaceId, Native, RecId, Std, Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
 /// How a binding is closed.
@@ -19,6 +19,14 @@ pub(crate) enum CloseKind {
     Iface(IfaceId, u32),
     /// A source instance, which may hand `self` back through a slot.
     Func { fid: FuncId, writes_back: bool },
+}
+
+/// A complete owned resource held as a pending operand, including intact wrapper payloads.
+#[derive(Clone)]
+pub(crate) struct ResourceTemp {
+    slot: Value,
+    handle: Value,
+    kind: CloseKind,
 }
 
 impl CloseKind {
@@ -352,9 +360,52 @@ fn close_at_result(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MT
 }
 
 impl FnLower<'_> {
+    /// Holds an intact owned resource until a later operand finishes. Its ordered temporary
+    /// entry handles source-level exits; the registered slot handles faults and cancellation.
+    pub(crate) fn hold_resource_temp(&mut self, v: Value) -> Result<Option<Value>, Error> {
+        let ty = self.ty_of(v);
+        let Some(kind) = self.part_closer_mir(ty)? else {
+            return Ok(None);
+        };
+        let slot = self
+            .b
+            .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+            .expect("resource temporary slot");
+        self.move_into(slot, v);
+        let thunk = self.close_thunk(&kind, ty, true);
+        let handle = self
+            .b
+            .emit(Op::CleanupPush, &[slot], Imm::Func(thunk), Some(MTy::INT))
+            .expect("resource temporary cleanup");
+        let key = self
+            .b
+            .emit(Op::Load, &[slot], Imm::Ty(ty), Some(ty))
+            .expect("resource temporary view");
+        self.resource_temps
+            .insert(key, ResourceTemp { slot, handle, kind });
+        self.temps.push(key);
+        Ok(Some(key))
+    }
+
+    /// Retires the resource's cleanup and takes its sole owned value. Call in reverse
+    /// registration order, with no further operand evaluation before the values are consumed.
+    /// Keep the metadata: emitting an early-return branch must not change the continuing path.
+    pub(crate) fn take_resource_temp(&mut self, key: Value) -> (Value, CloseKind) {
+        let owner = self.resource_temps[&key].clone();
+        let _ = self.call_runtime("msrt_cleanup_discard", &[owner.handle], MTy::UNIT);
+        let v = self.move_out(owner.slot, self.ty_of(key));
+        (v, owner.kind)
+    }
+
     /// Drops an owned temporary at the end of its statement, closing it first when it is a
     /// resource (`open().id()`).
     pub(crate) fn drop_temp(&mut self, v: Value) {
+        if self.resource_temps.contains_key(&v) {
+            let (v, kind) = self.take_resource_temp(v);
+            let v = self.close_discarded_kind(&kind, v);
+            self.drop_value(v);
+            return;
+        }
         let v = self.close_temp(v);
         self.drop_value(v);
     }
@@ -1254,6 +1305,18 @@ impl FnLower<'_> {
     /// The close at scope end: its failure is returned like `try`, unless the program already
     /// called `close()` on this path and handled the result, which is not returned a second time.
     fn scope_close(&mut self, uid: usize, closer: &Closer) {
+        if self
+            .cx
+            .binding_facts
+            .has(uid, ms_check::ownership::BindingFact::CloseHandled)
+        {
+            // The checker proved every lifetime transferred or explicitly handled its
+            // result. Keep cleanup, but do not generate an impossible owned error return.
+            if let Some(r) = self.emit_close(uid, closer) {
+                self.drop_value(r);
+            }
+            return;
+        }
         let Some(explicit) = closer.explicit else {
             if let Some(r) = self.emit_close(uid, closer) {
                 self.propagate_close_error(uid, r);
@@ -1397,25 +1460,49 @@ impl FnLower<'_> {
             self.drop_value(r);
             return;
         }
+        // Select the already-pending error before compatibility: even a custom domain
+        // error takes precedence over the Error returned by a scope close.
+        if let Some(pending) = self.pending_return
+            && matches!(self.b.m.types.kind(self.b.ty(pending.v)), TyKind::Alt(a)
+                if self.b.m.alts[a.index()].std == Std::Result)
+        {
+            let tag = self.b.alt_tag(pending.v);
+            let error = self.b.iconst(Std::ERROR as i64);
+            let is_error = self.b.icmp(Cc::Eq, tag, error);
+            let (keep, replace, join) =
+                (self.b.new_block(), self.b.new_block(), self.b.new_block());
+            self.b.br_if(is_error, keep, &[], replace, &[]);
+            self.b.seal_block(keep);
+            self.b.seal_block(replace);
+            self.enter(keep);
+            self.drop_value(r);
+            self.b.br(join, &[]);
+            self.enter(replace);
+            self.return_close_error(uid, r);
+            self.b.br(join, &[]);
+            self.b.seal_block(join);
+            self.enter(join);
+            return;
+        }
+        self.return_close_error(uid, r);
+    }
+
+    /// No domain error has been selected: a failed close can select this function's outcome.
+    fn return_close_error(&mut self, uid: usize, r: Value) {
         let rty = self.b.ty(r);
-        let case_of = |m: &ms_mir::ir::Module, alt: AltId, name: &str| {
-            m.alts[alt.index()]
-                .cases
-                .iter()
-                .position(|c| c.name == name)
-        };
         let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
             return;
         };
-        let err = case_of(self.b.m, a, "error").expect("a close returns a Result");
+        let err = Std::ERROR;
         // A function that cannot return the close's `Error` faults on a failed close instead.
         let returned = match self.b.m.types.kind(self.result_ty()).clone() {
-            TyKind::Alt(ra) => case_of(self.b.m, ra, "error")
-                .filter(|&e| {
-                    self.b.m.alts[ra.index()].cases[e].fields[0].1
-                        == self.b.m.alts[a.index()].cases[err].fields[0].1
-                })
-                .map(|e| (ra, e)),
+            TyKind::Alt(ra)
+                if self.b.m.alts[ra.index()].std == Std::Result
+                    && self.b.m.alts[ra.index()].cases[err].fields[0].1
+                        == self.b.m.alts[a.index()].cases[err].fields[0].1 =>
+            {
+                Some((ra, err))
+            }
             _ => None,
         };
         let Some((ra, ret_err)) = returned else {
@@ -1434,8 +1521,10 @@ impl FnLower<'_> {
         let po = self.b.alt_take(a, err as u32, 0, r);
         self.b.alt_release(a, err as u32, 1, r);
         let out = self.b.alt_new(ra, ret_err as u32, &[po]);
-        if let Some(pending) = self.pending_return {
-            self.drop_value(pending);
+        if let Some(pending) = self.pending_return
+            && pending.own
+        {
+            self.drop_value(pending.v);
         }
         // This binding is closed; release its value, then return through the enclosing scopes
         // without closing again what this path has already closed.

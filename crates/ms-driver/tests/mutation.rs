@@ -58,7 +58,11 @@ fn mutate(source: &str, rng: &mut Rng) -> String {
     text
 }
 
-fn sources() -> Vec<(PathBuf, String)> {
+/// The sources one shard mutates: every `SHARDS`th file, so the shards run as separate tests in
+/// parallel and together cover every file once.
+const SHARDS: usize = 4;
+
+fn sources(shard: usize) -> Vec<(PathBuf, String)> {
     // Single-file e2e fixtures live in the conformance corpus once the corpus replays them; the rest stay in testdata.
     let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests");
     let mut out = Vec::new();
@@ -85,7 +89,11 @@ fn sources() -> Vec<(PathBuf, String)> {
             }
         }
     }
-    out
+    assert!(out.len() > 100, "found {} sources", out.len());
+    out.into_iter()
+        .enumerate()
+        .filter_map(|(i, source)| (i % SHARDS == shard).then_some(source))
+        .collect()
 }
 
 fn diagnostics(path: &Path, source: &str) -> Vec<Diagnostic> {
@@ -139,18 +147,16 @@ fn check(path: &Path, source: &str) {
     }
 }
 
-#[test]
-fn mutated_programs_never_break_the_checker() {
+fn mutated_programs_never_break_the_checker(shard: usize) {
     std::thread::Builder::new()
         .stack_size(256 << 20)
-        .spawn(|| {
-            let dir =
-                std::env::temp_dir().join(format!("ms-driver-mutation-{}", std::process::id()));
+        .spawn(move || {
+            let dir = std::env::temp_dir()
+                .join(format!("ms-driver-mutation-{}-{shard}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             let path = dir.join("fuzz.ms");
-            let files = sources();
-            assert!(files.len() > 100, "found {} sources", files.len());
+            let files = sources(shard);
             for (origin, original) in files {
                 let mut cases = vec![original.clone()];
                 let mut rng = Rng(origin
@@ -169,4 +175,24 @@ fn mutated_programs_never_break_the_checker() {
         .unwrap()
         .join()
         .unwrap();
+}
+
+#[test]
+fn mutated_programs_never_break_the_checker_shard_0() {
+    mutated_programs_never_break_the_checker(0);
+}
+
+#[test]
+fn mutated_programs_never_break_the_checker_shard_1() {
+    mutated_programs_never_break_the_checker(1);
+}
+
+#[test]
+fn mutated_programs_never_break_the_checker_shard_2() {
+    mutated_programs_never_break_the_checker(2);
+}
+
+#[test]
+fn mutated_programs_never_break_the_checker_shard_3() {
+    mutated_programs_never_break_the_checker(3);
 }

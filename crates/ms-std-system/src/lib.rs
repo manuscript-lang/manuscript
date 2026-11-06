@@ -1,10 +1,10 @@
 //! `@std/process` natives. Symbols are `msstd_system_<name>`.
 //!
 //! Fallible functions return a `STATUS_*` code (`0` ok) and write results only on success; for
-//! `STATUS_FAILED` the text is written to the trailing `err` slot. A record result crosses as
-//! one getter per field (`msstd_system_info_os`, ...) so the generated code builds the record
-//! without sharing a layout. `os` and `architecture` report the target names `@std/process`
-//! uses (`linux`, `darwin`, `windows`; `amd64`, `arm64`).
+//! `STATUS_FAILED` the text is written to the trailing `err` slot. Record results
+//! (`SystemInfo`, `UserInfo`, `CpuInfo`, `NetworkInterface` and the metrics snapshot) cross as
+//! one record, or a list of them, per call. `os` and `architecture` report the target names
+//! `@std/system` uses (`linux`, `darwin`, `windows`; `amd64`, `arm64`).
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -17,37 +17,111 @@ extern crate std;
 mod inventory;
 
 use alloc::vec::Vec;
-use inventory::{Cpu, Interface, Metrics, Slot};
-use ms_rt::ffi::{ErrOut, Failure, IntMap, StatusCode, Text, native};
+use inventory::{Cpu, Interface, Metrics};
+use ms_rt::ffi::{ErrOut, Failure, IntMap, RecList, StatusCode, Str, Text, abi_record, native};
 use ms_rt_abi::STATUS_UNSUPPORTED;
 use ms_std_process::control;
 
-ms_rt::isolate_static! {
-    static INTERFACE_CELL: Option<Vec<Interface>> = None;
-    static CPU_CELL: Option<Vec<Cpu>> = None;
-    static METRIC_CELL: Option<Metrics> = None;
+abi_record! {
+    /// `SystemInfo`: `os`, `architecture`, `cpu_count`.
+    pub struct SystemInfoOut {
+        pub os: Str,
+        pub architecture: Str,
+        pub cpu_count: i64,
+    }
 }
 
-static INTERFACES: Slot<Vec<Interface>> = Slot::new(|| INTERFACE_CELL.ptr());
-static CPUS: Slot<Vec<Cpu>> = Slot::new(|| CPU_CELL.ptr());
-static METRICS: Slot<Metrics> = Slot::new(|| METRIC_CELL.ptr());
+abi_record! {
+    /// `UserInfo`: `username`, `uid`, `gid`, `home`, `shell`.
+    pub struct UserInfoOut {
+        pub username: Str,
+        pub uid: i64,
+        pub gid: i64,
+        pub home: Str,
+        pub shell: Str,
+    }
+}
+
+abi_record! {
+    /// `NetworkInterface`; `family` is the case index of `IpFamily`.
+    pub struct InterfaceOut {
+        pub name: Str,
+        pub address: Str,
+        pub netmask: Str,
+        pub family: i64,
+        pub mac: Str,
+        pub internal: u8,
+        pub scope_id: i64,
+    }
+}
+
+abi_record! {
+    /// `CpuInfo`.
+    pub struct CpuOut {
+        pub model: Str,
+        pub speed_mhz: i64,
+        pub user: i64,
+        pub nice: i64,
+        pub system: i64,
+        pub idle: i64,
+        pub irq: i64,
+    }
+}
+
+abi_record! {
+    /// `MetricsSnapshot`: the fields of `SystemMetrics` with the uptime in nanoseconds and the
+    /// three load averages flattened.
+    pub struct MetricsOut {
+        pub total_memory: i64,
+        pub free_memory: i64,
+        pub available_memory: i64,
+        pub uptime_nanos: i64,
+        pub load_1: f64,
+        pub load_5: f64,
+        pub load_15: f64,
+        pub available_parallelism: i64,
+    }
+}
 
 fn text(r: Result<Vec<u8>, Failure>, err: &ErrOut) -> Result<Text, StatusCode> {
     r.map(Text).map_err(|f| err.fail(f))
 }
 
-fn snapshot<T>(slot: &Slot<T>, taken: Result<T, Failure>, err: &ErrOut) -> Result<(), StatusCode> {
-    slot.set(taken.map_err(|f| err.fail(f))?);
-    Ok(())
+fn interface_out(i: &Interface) -> InterfaceOut {
+    InterfaceOut {
+        name: Str::from_bytes(&i.name),
+        address: Str::from_bytes(&i.address),
+        netmask: Str::from_bytes(&i.netmask),
+        family: i64::from(i.v6),
+        mac: Str::from_bytes(&i.mac),
+        internal: u8::from(i.internal),
+        scope_id: i.scope_id,
+    }
 }
 
-/// Reads field `read` of list element `i` (`None` when out of range).
-fn item<T, R>(slot: &Slot<Vec<T>>, i: i64, read: impl FnOnce(&T) -> R) -> Option<R> {
-    slot.with(|v| v?.get(usize::try_from(i).ok()?).map(read))
+fn cpu_out(c: &Cpu) -> CpuOut {
+    CpuOut {
+        model: Str::from_bytes(&c.model),
+        speed_mhz: c.speed_mhz,
+        user: c.user,
+        nice: c.nice,
+        system: c.system,
+        idle: c.idle,
+        irq: c.irq,
+    }
 }
 
-fn metric<T: Default>(read: impl FnOnce(&Metrics) -> T) -> T {
-    METRICS.with(|m| m.map(read)).unwrap_or_default()
+fn metrics_out(m: &Metrics) -> MetricsOut {
+    MetricsOut {
+        total_memory: m.total_memory,
+        free_memory: m.free_memory,
+        available_memory: m.available_memory,
+        uptime_nanos: m.uptime_ns,
+        load_1: m.load[0],
+        load_5: m.load[1],
+        load_15: m.load[2],
+        available_parallelism: m.parallelism,
+    }
 }
 
 native! {
@@ -63,30 +137,25 @@ native! {
         if cfg!(windows) { "\\\\.\\nul" } else { "/dev/null" }
     }
 
-    safe fn msstd_system_os_type() -> &'static str {
-        if cfg!(target_os = "macos") {
-            "Darwin"
+    // The case index of `Os`: 0 Linux, 1 Macos, 2 Windows, 3 Other.
+    safe fn msstd_system_os() -> i64 {
+        if cfg!(target_os = "linux") {
+            0
+        } else if cfg!(target_os = "macos") {
+            1
         } else if cfg!(windows) {
-            "Windows_NT"
+            2
         } else {
-            "Linux"
+            3
         }
     }
 
-    safe fn msstd_system_info_os() -> &'static str {
-        control::OS
-    }
-
-    safe fn msstd_system_info_architecture() -> &'static str {
-        control::ARCH
-    }
-
-    safe fn msstd_system_info_cpu_count() -> i64 {
-        imp::cpu_count()
-    }
-
-    safe fn msstd_system_working_directory() -> Text {
-        Text(control::working_directory().unwrap_or_default())
+    fn msstd_system_info() -> out SystemInfoOut {
+        SystemInfoOut {
+            os: Str::new(control::OS),
+            architecture: Str::new(control::ARCH),
+            cpu_count: imp::cpu_count(),
+        }
     }
 
     fn msstd_system_hostname(; err: ErrOut) -> Result<Text, StatusCode> {
@@ -126,134 +195,28 @@ native! {
         )
     }
 
-    // `user_info()` crosses as a status plus one getter per field.
-    fn msstd_system_user_info_status(; err: ErrOut) -> Result<(), StatusCode> {
-        imp::user().map(drop).map_err(|f| err.fail(f))
-    }
-
-    safe fn msstd_system_user_info_username() -> Text {
-        Text(imp::user().map(|u| u.name).unwrap_or_default())
-    }
-
-    safe fn msstd_system_user_info_uid() -> i64 {
-        imp::user().map(|u| u.uid).unwrap_or(-1)
-    }
-
-    safe fn msstd_system_user_info_gid() -> i64 {
-        imp::user().map(|u| u.gid).unwrap_or(-1)
-    }
-
-    safe fn msstd_system_user_info_home() -> Text {
-        Text(imp::user().map(|u| u.home).unwrap_or_default())
-    }
-
-    safe fn msstd_system_user_info_shell() -> Text {
-        Text(imp::user().map(|u| u.shell).unwrap_or_default())
-    }
-
-    // Lists and the metrics record cross as a status call that takes a snapshot, then getters
-    // (indexed for lists): `msstd_system_<call>_status`, `_count`, `_<field>`.
-    fn msstd_system_network_interfaces_status(; err: ErrOut) -> Result<(), StatusCode> {
-        snapshot(&INTERFACES, inventory::interfaces(), &err)
-    }
-
-    safe fn msstd_system_network_interfaces_count() -> i64 {
-        INTERFACES.with(|v| v.map_or(0, |v| v.len() as i64))
-    }
-
-    safe fn msstd_system_network_interfaces_name(i: i64) -> Text {
-        Text(item(&INTERFACES, i, |x| x.name.clone()).unwrap_or_default())
-    }
-
-    safe fn msstd_system_network_interfaces_address(i: i64) -> Text {
-        Text(item(&INTERFACES, i, |x| x.address.clone()).unwrap_or_default())
-    }
-
-    safe fn msstd_system_network_interfaces_netmask(i: i64) -> Text {
-        Text(item(&INTERFACES, i, |x| x.netmask.clone()).unwrap_or_default())
-    }
-
-    safe fn msstd_system_network_interfaces_mac(i: i64) -> Text {
-        Text(item(&INTERFACES, i, |x| x.mac.clone()).unwrap_or_default())
-    }
-
-    safe fn msstd_system_network_interfaces_scope_id(i: i64) -> i64 {
-        item(&INTERFACES, i, |x| x.scope_id).unwrap_or(0)
-    }
-
-    safe fn msstd_system_network_interfaces_family(i: i64) -> i64 {
-        item(&INTERFACES, i, |x| i64::from(x.v6)).unwrap_or(0)
-    }
-
-    safe fn msstd_system_network_interfaces_internal(i: i64) -> bool {
-        item(&INTERFACES, i, |x| x.internal).unwrap_or(false)
-    }
-
-    fn msstd_system_cpus_status(; err: ErrOut) -> Result<(), StatusCode> {
-        snapshot(&CPUS, inventory::cpus(), &err)
-    }
-
-    safe fn msstd_system_cpus_count() -> i64 {
-        CPUS.with(|v| v.map_or(0, |v| v.len() as i64))
-    }
-
-    safe fn msstd_system_cpus_model(i: i64) -> Text {
-        Text(item(&CPUS, i, |x| x.model.clone()).unwrap_or_default())
-    }
-
-    safe fn msstd_system_cpus_speed_mhz(i: i64) -> i64 {
-        item(&CPUS, i, |x| x.speed_mhz).unwrap_or(0)
-    }
-
-    safe fn msstd_system_cpus_user(i: i64) -> i64 {
-        item(&CPUS, i, |x| x.user).unwrap_or(0)
-    }
-
-    safe fn msstd_system_cpus_nice(i: i64) -> i64 {
-        item(&CPUS, i, |x| x.nice).unwrap_or(0)
-    }
-
-    safe fn msstd_system_cpus_system(i: i64) -> i64 {
-        item(&CPUS, i, |x| x.system).unwrap_or(0)
-    }
-
-    safe fn msstd_system_cpus_idle(i: i64) -> i64 {
-        item(&CPUS, i, |x| x.idle).unwrap_or(0)
-    }
-
-    safe fn msstd_system_cpus_irq(i: i64) -> i64 {
-        item(&CPUS, i, |x| x.irq).unwrap_or(0)
-    }
-
-    fn msstd_system_metrics_status(; err: ErrOut) -> Result<(), StatusCode> {
-        snapshot(&METRICS, inventory::metrics(), &err)
-    }
-
-    safe fn msstd_system_metrics_total_memory() -> i64 {
-        metric(|m| m.total_memory)
-    }
-
-    safe fn msstd_system_metrics_free_memory() -> i64 {
-        metric(|m| m.free_memory)
-    }
-
-    safe fn msstd_system_metrics_available_memory() -> i64 {
-        metric(|m| m.available_memory)
-    }
-
-    safe fn msstd_system_metrics_uptime() -> i64 {
-        metric(|m| m.uptime_ns)
-    }
-
-    safe fn msstd_system_metrics_available_parallelism() -> i64 {
-        metric(|m| m.parallelism)
-    }
-
-    safe fn msstd_system_metrics_load_average(window: i64) -> f64 {
-        metric(|m| {
-            let slot = usize::try_from(window).unwrap_or(usize::MAX);
-            m.load.get(slot).copied().unwrap_or(0.0)
+    fn msstd_system_user_info(; err: ErrOut) -> Result<UserInfoOut, StatusCode> {
+        imp::user().map_err(|f| err.fail(f)).map(|u| UserInfoOut {
+            username: Str::from_bytes(&u.name),
+            uid: u.uid,
+            gid: u.gid,
+            home: Str::from_bytes(&u.home),
+            shell: Str::from_bytes(&u.shell),
         })
+    }
+
+    fn msstd_system_network_interfaces(; err: ErrOut) -> Result<RecList<InterfaceOut>, StatusCode> {
+        let all = inventory::interfaces().map_err(|f| err.fail(f))?;
+        Ok(RecList::new(all.iter().map(interface_out)))
+    }
+
+    fn msstd_system_cpus(; err: ErrOut) -> Result<RecList<CpuOut>, StatusCode> {
+        let all = inventory::cpus().map_err(|f| err.fail(f))?;
+        Ok(RecList::new(all.iter().map(cpu_out)))
+    }
+
+    fn msstd_system_metrics(; err: ErrOut) -> Result<MetricsOut, StatusCode> {
+        inventory::metrics().map(|m| metrics_out(&m)).map_err(|f| err.fail(f))
     }
 }
 
@@ -480,18 +443,6 @@ mod tests {
 
     const NO_ERR: ErrSlot = ErrSlot(core::ptr::null_mut());
 
-    fn interfaces_status() -> u8 {
-        // SAFETY: a null `err` slot is allowed, and `out` is writable.
-        unsafe { msstd_system_network_interfaces_status(NO_ERR) }
-    }
-    fn cpus_status() -> u8 {
-        // SAFETY: a null `err` slot is allowed, and `out` is writable.
-        unsafe { msstd_system_cpus_status(NO_ERR) }
-    }
-    fn metrics_status() -> u8 {
-        // SAFETY: a null `err` slot is allowed, and `out` is writable.
-        unsafe { msstd_system_metrics_status(NO_ERR) }
-    }
     fn get_priority(pid: i64, out: &mut i64) -> u8 {
         // SAFETY: a null `err` slot is allowed, and `out` is writable.
         unsafe { msstd_system_get_priority(pid, out, NO_ERR) }
@@ -503,32 +454,24 @@ mod tests {
 
     #[test]
     fn interfaces_include_a_loopback_address() {
-        assert_eq!(interfaces_status(), STATUS_OK);
-        let n = msstd_system_network_interfaces_count();
-        assert!(n >= 1);
-        let loopback = (0..n).any(|i| msstd_system_network_interfaces_internal(i) == 1);
-        assert!(loopback);
-        assert!(msstd_system_network_interfaces_scope_id(0) >= 1);
+        let all = inventory::interfaces().expect("interfaces");
+        assert!(all.iter().any(|i| i.internal));
+        assert!(all[0].scope_id >= 1);
     }
 
     #[cfg(target_os = "linux")]
     #[test]
     fn cpus_and_metrics_read_proc() {
-        assert_eq!(cpus_status(), STATUS_OK);
-        assert!(msstd_system_cpus_count() >= 1);
-        assert!(msstd_system_cpus_idle(0) >= 0);
-        assert_eq!(metrics_status(), STATUS_OK);
-        assert!(msstd_system_metrics_total_memory() > 0);
-        assert!(msstd_system_metrics_available_memory() <= msstd_system_metrics_total_memory());
-        assert!(msstd_system_metrics_uptime() > 0);
-        assert!(msstd_system_metrics_available_parallelism() >= 1);
-        assert!(msstd_system_metrics_load_average(0) >= 0.0);
-        assert_eq!(msstd_system_metrics_load_average(3), 0.0);
+        let cpus = inventory::cpus().expect("cpus");
+        assert!(!cpus.is_empty() && cpus[0].idle >= 0);
+        let m = inventory::metrics().expect("metrics");
+        assert!(m.total_memory > 0 && m.available_memory <= m.total_memory);
+        assert!(m.uptime_ns > 0 && m.parallelism >= 1 && m.load[0] >= 0.0);
     }
 
     #[test]
     fn priorities_validate_and_read() {
-        assert!(msstd_system_info_cpu_count() >= 1);
+        assert!(imp::cpu_count() >= 1);
         let mut out = 0i64;
         // SAFETY: `out` is writable; pid 0 is the calling process.
         assert_eq!(get_priority(0, &mut out), STATUS_OK);

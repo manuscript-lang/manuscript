@@ -47,3 +47,17 @@ Same machine and method. `c9446bfc` is main; the second column has `Transform.st
 
 - The per-item allocation is gone (callgrind on `stream-map`: 860 to 300 instructions per item, no `malloc`), but `map` time is unchanged: what remains is two interface calls per item, each returning a `Result` through memory.
 - `lines` is 10% faster: it no longer builds a `List` per chunk, and `List.reverse` now swaps in place instead of copying every element.
+
+## 2026-11-05: Linux x86_64, `filter`, `take`, `fold`
+
+Same machine and method; `ms` built from the revision before and after adding the three steps. Medians of 7 alternating runs, all checksums equal. Existing cases are unchanged within noise (`stream-map` 23.0 to 22.3, `stream-map3` 45.1 to 45.4, `stream-collect` 20.9 to 22.2, `stream-lines` 66.4 to 67.2). New cases, ns per item:
+
+| case | ns |
+| --- | ---: |
+| `for-filter` | 1.5 |
+| `stream-filter` | 18.3 |
+| `for-take` | 0.7 |
+| `stream-take` (2.5 M items taken) | 21.5 |
+| `stream-fold` | 7.8 |
+
+Each stage costs about what `map` does (20 ns); `fold` is a plain consumer.

@@ -12,7 +12,7 @@ import (
     remove,
     temporary
 ) from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn same_bytes(a: String, b: String) Bool:

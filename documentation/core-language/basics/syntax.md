@@ -53,4 +53,4 @@ import Customer from "./greeting.ms"
 
 Relative imports resolve from the importing file's directory. `ms.toml` configures the source directory, entry file, and import aliases; see [modules and capabilities](../modules/_index.md) and [project configuration](../../developer-tooling/builds/project-configuration.md).
 
-Next: [bindings](bindings.md), [records](../types/records.md), [function declarations](../functions/declarations-and-calls.md). Exact syntax is in the [grammar](grammar.md); precedence is in [expressions](expressions.md).
+Next: [bindings](bindings.md), [types](../types/named-types.md), [function declarations](../functions/declarations-and-calls.md). Exact syntax is in the [grammar](grammar.md); precedence is in [expressions](expressions.md).

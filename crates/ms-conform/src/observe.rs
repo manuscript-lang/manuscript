@@ -19,6 +19,32 @@ pub struct Ctx {
     /// Multiplies every timeout (slow machines, debug builds).
     pub timeout_scale: f64,
     pub env: Vec<(String, String)>,
+    /// `CONFORM_LEAKS` is set: programs run against the runtime that counts live heap blocks
+    /// (`MS_RT_LIB`). Its count line is removed from stderr, and a program of the leak-checked
+    /// fixture directories that exits with live blocks records `leaked_blocks`, so it differs from
+    /// its expectation.
+    pub leaks: bool,
+}
+
+/// Fixture directories whose programs must free every block they allocate.
+const LEAK_CHECKED: [&str; 3] = ["fuzz/run/", "e2e/", "examples/"];
+
+const LIVE_BLOCKS: &str = "ms-rt live blocks at exit: ";
+const COUNTS: &str = "ms-rt counts: ";
+
+/// `text` without the counting runtime's lines (live blocks and counts), and the sum of their counts.
+fn split_live_blocks(text: &str) -> (String, i64) {
+    let mut kept = String::with_capacity(text.len());
+    let mut live = 0;
+    for line in text.split_inclusive('\n') {
+        let line_text = line.trim_end();
+        if let Some(count) = line_text.strip_prefix(LIVE_BLOCKS) {
+            live += count.trim().parse::<i64>().unwrap_or(0);
+        } else if !line_text.starts_with(COUNTS) {
+            kept.push_str(line);
+        }
+    }
+    (kept, live)
 }
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -40,6 +66,7 @@ impl Ctx {
             scratch: std::env::temp_dir().join(format!("ms-conform-{}", std::process::id())),
             timeout_scale: 1.0,
             env: Vec::new(),
+            leaks: std::env::var_os("CONFORM_LEAKS").is_some(),
         }
     }
 
@@ -162,11 +189,22 @@ fn run_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
         "stdout",
         Json::str(normalize_text(&out.stdout_text(), work)),
     );
-    o.set(
-        "stderr",
-        Json::str(normalize_text(&out.stderr_text(), work)),
-    );
+    set_stderr(ctx, fx, &out, &mut o, work);
     o
+}
+
+/// Records the process's stderr, without the runtime's live-block lines when `ctx.leaks`, and
+/// `leaked_blocks` when a leak-checked fixture left any.
+fn set_stderr(ctx: &Ctx, fx: &Fixture, out: &Output, o: &mut Json, work: &Path) {
+    let mut stderr = out.stderr_text();
+    if ctx.leaks {
+        let (kept, live) = split_live_blocks(&stderr);
+        stderr = kept;
+        if live != 0 && LEAK_CHECKED.iter().any(|dir| fx.id.starts_with(dir)) {
+            o.set("leaked_blocks", Json::int(live));
+        }
+    }
+    o.set("stderr", Json::str(normalize_text(&stderr, work)));
 }
 
 /// Keys added to the JSON output after the corpus was recorded. They are additive, so the
@@ -356,10 +394,7 @@ fn test_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
         "shape",
         Json::Arr(keys.into_iter().map(Json::Str).collect()),
     );
-    o.set(
-        "stderr",
-        Json::str(normalize_text(&out.stderr_text(), work)),
-    );
+    set_stderr(ctx, fx, &out, &mut o, work);
     o
 }
 
@@ -412,5 +447,18 @@ mod tests {
             j.compact(ms_json::Escape::Plain),
             r#"{"summary":{"x":1},"tests":[{}]}"#
         );
+    }
+}
+
+#[cfg(test)]
+mod live_block_tests {
+    use super::split_live_blocks;
+
+    #[test]
+    fn live_block_lines_are_removed_and_summed() {
+        let (kept, live) = split_live_blocks(
+            "a\nms-rt live blocks at exit: 2\nb\nms-rt counts: allocs=1\nms-rt live blocks at exit: 3\n",
+        );
+        assert_eq!((kept.as_str(), live), ("a\nb\n", 5));
     }
 }

@@ -1,6 +1,14 @@
 +++
 title = "Contributing"
 weight = 6
+
+[_build]
+render = "never"
+list = "never"
+
+[cascade._build]
+render = "never"
+list = "never"
 +++
 
 # Contributing

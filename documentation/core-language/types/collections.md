@@ -39,7 +39,7 @@ let scores = {"Ada": 3, "Lin": 5}
 let empty: Map[String, Int] = {}
 ```
 
-Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct records.
+Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct types.
 
 - A nonempty literal infers key and value types independently; an expected Map type propagates to both. An empty map needs an annotation or expected type.
 - Keys must be `Hashable`.
@@ -48,7 +48,7 @@ Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name:
 
 ## Element requirements
 
-Lists and map values accept functions, interface values, builders and resources. Moving a resource into a collection transfers its cleanup duty to that collection; [aggregate cleanup](../cleanup/closeable.md#records-and-collections-close-what-they-hold) closes owned resources at scope end. Map keys and set elements also require `Hashable`.
+Lists and map values accept functions, interface values, builders and resources. Moving a resource into a collection transfers its cleanup duty to that collection; [aggregate cleanup](../cleanup/closeable.md#types-and-collections-close-what-they-hold) closes owned resources at scope end. Map keys and set elements also require `Hashable`.
 
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
@@ -60,7 +60,7 @@ let mixed = [1, 2.0]
 let unknown = []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `let values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `let values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](named-types.md#recursive-data) but derive no hashing.
 
 ## Iteration
 
@@ -130,7 +130,7 @@ Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqu
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. For an independent map, bind `var copy = map.clone()` and call `copy.add_default(...)`.
 
-Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a record field, where `build` cannot move it out.
+Builder mutations return Unit; `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var`, pass them with `var`, and `build` takes ownership of them, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty, for a builder held in a field, where `build` cannot move it out.
 
 ## Other collections
 
@@ -149,7 +149,7 @@ Use `Map` and `Set` when order does not matter; their lookups are O(1) on averag
 
 On a 64-bit host a List reserves 8 bytes per `Int` or `Float`, 1 per `Bool`, and 16 per `String` reference (text storage is extra and may be shared), plus a small header. Append reserves spare capacity and growth can briefly keep old arrays alive, so heap and peak RSS exceed the element budget. Storage never narrows `Int` or `Float`.
 
-A List keeps its identity and backing kind through generics, records, Optional, Result, and closures; explicit copies get independent backing.
+A List keeps its identity and backing kind through generics, types, Optional, Result, and closures; explicit copies get independent backing.
 
 ## Lookup and updates
 
@@ -202,11 +202,11 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `any(predicate:)`, `all(predicate:)` | Whether some or every element satisfies the predicate; stops at the first deciding element. Empty lists give `false` and `true`. |
 | List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `none` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
-| List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
-| List `zip(other)` | A new list of `Pair[T, U]` records (`first` from the receiver, `second` from `other`), as long as the shorter list. |
+| List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` types containing `index` and `value`. |
+| List `zip(other)` | A new list of `Pair[T, U]` types (`first` from the receiver, `second` from `other`), as long as the shorter list. |
 | List `chunks(size)`, `windows(size)` | Lists of copies of `size` consecutive elements: `chunks` splits (the last may be shorter), `windows` overlaps (a list shorter than `size` gives none). A `size` of zero or less is a fault. |
-| List `partition(predicate)` | A `Partition[T]` record whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
-| Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
+| List `partition(predicate)` | A `Partition[T]` type whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
+| Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` types with `key` and `value`. |
 | Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |

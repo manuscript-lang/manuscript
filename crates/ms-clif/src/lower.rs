@@ -2503,6 +2503,27 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let env = self.a(inst, 0)[0];
                 self.load_leaves(env, found.0, &found.1)
             }
+            Op::ClosureCapAddr => {
+                let Imm::Idx(i) = inst.imm else {
+                    unreachable!()
+                };
+                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
+                    unreachable!()
+                };
+                let mut off = CLOSURE_CAPTURES as i64;
+                let mut found = 0;
+                for (k, c) in captures.iter().enumerate() {
+                    let leaves = self.g.lay.leaves(*c);
+                    let lay = mem_layout(&leaves);
+                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+                    if k == i as usize {
+                        found = off;
+                    }
+                    off += lay.size as i64;
+                }
+                let env = self.a(inst, 0)[0];
+                vec![self.b.ins().iadd_imm_s(env, found)]
+            }
             Op::IfaceNew => {
                 let Imm::Vtable(vt) = inst.imm else {
                     unreachable!()

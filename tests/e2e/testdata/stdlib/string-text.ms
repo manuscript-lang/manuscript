@@ -6,6 +6,7 @@ test "string text helpers":
     "xxabcxx".trim_chars("x") | try expect_equal("abc")
     "a,b,c".split_after(",") | try expect_equal(["a,", "b,", "c"])
     "Straße".equal_fold("STRASSE") | try expect_equal(true)
+    "ı".equal_fold("I") | try expect_equal(true)
     "banana".count("an") | try expect_equal(2)
     "a<b>".replace_each({"<": "&lt;", ">": "&gt;"}) | try expect_equal("a&lt;b&gt;")
     "".fields() | try expect_equal(List[String]())

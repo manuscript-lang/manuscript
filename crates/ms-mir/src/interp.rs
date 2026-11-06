@@ -925,6 +925,9 @@ impl<'m> Interp<'m> {
                 };
                 set!(c[i as usize].clone());
             }
+            Op::ClosureCapAddr => {
+                return Err(Raw::internal("closure.cap_addr is native only"));
+            }
             Op::IfaceNew => {
                 let Imm::Vtable(v) = inst.imm else {
                     return Err(Raw::internal("iface.new without vtable"));

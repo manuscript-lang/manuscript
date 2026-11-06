@@ -1,7 +1,8 @@
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import from_bytes, read_all from "@std/io/streams.ms"
-import join, open, read_file, temporary, write_file from "@std/os/fs.ms"
+import open, read_file, temporary, write_file from "@std/os/fs.ms"
+import join from "@std/os/path.ms"
 import (
     expect_equal,
     expect_error,

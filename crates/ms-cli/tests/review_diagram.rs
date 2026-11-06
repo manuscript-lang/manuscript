@@ -26,6 +26,110 @@ fn json(output: &Output) -> Json {
 }
 
 #[test]
+fn diagram_ambiguous_entity_remedies_are_usable() {
+    let dir = scratch("selectors");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_selectors/main.ms"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("other.ms"),
+        include_str!("diagram_selectors/other.ms"),
+    )
+    .unwrap();
+    for (name, expected) in [
+        ("Box", vec!["main.ms#impl#Box", "main.ms#record#Box"]),
+        (
+            "main.ms::Box",
+            vec!["main.ms#impl#Box", "main.ms#record#Box"],
+        ),
+        ("Item", vec!["main.ms#record#Item", "other.ms#record#Item"]),
+        (
+            "Named",
+            vec!["main.ms#record#Named", "other.ms#record#Named"],
+        ),
+    ] {
+        let args = [
+            "diagram", "main.ms", "--view", "types", "--entity", name, "--json",
+        ];
+        let output = ms(&dir, &args);
+        assert_eq!(output.status.code(), Some(2));
+        assert!(output.stdout.is_empty());
+        assert_eq!(output.stderr, ms(&dir, &args).stderr);
+        let error = std::str::from_utf8(&output.stderr).unwrap().trim();
+        let error = error.strip_prefix("ms diagram: ").unwrap();
+        let (_, remedies) = error.split_once(": ").unwrap();
+        let remedies = remedies.split("; ").next().unwrap();
+        let selected: Vec<_> = remedies
+            .split(", ")
+            .map(|selector| {
+                let doc = json(&ms(
+                    &dir,
+                    &[
+                        "diagram", "main.ms", "--view", "types", "--entity", selector, "--json",
+                    ],
+                ));
+                let children = doc
+                    .get("tree")
+                    .unwrap()
+                    .get("children")
+                    .unwrap()
+                    .as_array()
+                    .unwrap();
+                assert_eq!(children.len(), 1);
+                children[0]
+                    .get("reference")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect();
+        assert_eq!(selected, expected);
+        if name == "Item" {
+            assert_eq!(remedies, "main.ms::Item, other.ms::Item");
+        }
+    }
+    for selector in ["unique", "main.ms::unique", "main.ms#fn#unique"] {
+        let doc = json(&ms(
+            &dir,
+            &[
+                "diagram", "main.ms", "--view", "calls", "--entity", selector, "--json",
+            ],
+        ));
+        assert_eq!(
+            doc.get("tree")
+                .unwrap()
+                .get("children")
+                .unwrap()
+                .as_array()
+                .unwrap()[0]
+                .get("reference")
+                .unwrap()
+                .as_str(),
+            Some("main.ms#fn#unique")
+        );
+    }
+    let missing = ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--entity",
+            "main.ms#record#Missing",
+            "--json",
+        ],
+    );
+    assert_eq!(missing.status.code(), Some(2));
+    assert!(missing.stdout.is_empty());
+    let error = String::from_utf8_lossy(&missing.stderr);
+    assert!(error.contains("no entity named main.ms#record#Missing"));
+    assert!(error.contains("file#kind#name"), "{error}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn diagram_json_preserves_source_navigation_and_recursion() {
     let dir = scratch("json");
     std::fs::write(
@@ -207,7 +311,7 @@ fn json_project_reports_are_complete_while_text_stays_bounded() {
 #[test]
 fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     let dir = scratch("boundaries");
-    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/os/process.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
+    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/os/env.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
     let report = json(&ms(&dir, &["review", "main.ms", "--json"]));
     assert_eq!(
         report.get("result").unwrap().as_str(),
@@ -231,7 +335,7 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     assert!(
         calls
             .pretty(ms_json::Escape::Plain)
-            .contains("@std/os/process.ms#fn#arguments")
+            .contains("@std/os/env.ms#fn#arguments")
     );
     let ascii = ms(&dir, &["diagram", "main.ms"]);
     let ascii = String::from_utf8_lossy(&ascii.stdout);
@@ -239,11 +343,33 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
         ascii.lines().filter(|line| line.ends_with("[fn]")).count(),
         1
     );
-    assert!(ascii.contains("@std/os/process.ms#fn#arguments"));
+    assert!(ascii.contains("@std/os/env.ms#fn#arguments"));
     let mermaid = ms(&dir, &["diagram", "main.ms", "--format", "mermaid"]);
     let mermaid = String::from_utf8_lossy(&mermaid.stdout);
     assert!(mermaid.contains("arguments"));
     assert!(!mermaid.contains("HttpClient"));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn standard_methods_are_named_not_numbered() {
+    let dir = scratch("std-methods");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("diagram_std_methods/main.ms"),
+    )
+    .unwrap();
+    let outputs = [
+        vec!["diagram", "main.ms"],
+        vec!["diagram", "main.ms", "--format", "mermaid"],
+        vec!["diagram", "main.ms", "--view", "calls"],
+    ];
+    for args in outputs {
+        let output = ms(&dir, &args);
+        let text = String::from_utf8_lossy(&output.stdout);
+        assert!(text.contains("WriteStream.write"), "{args:?}: {text}");
+        assert!(!text.contains("#method#"), "{args:?}: {text}");
+    }
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -613,5 +739,155 @@ fn types_mermaid_keeps_same_named_module_types_and_their_edges_distinct() {
         !focused.contains("+Int count") && !focused.contains("BBox"),
         "{focused}"
     );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn ownership_labels_follow_checked_value_classes_and_return_borrows() {
+    let dir = scratch("checked-ownership");
+    std::fs::write(dir.join("main.ms"), include_str!("ownership_modes/main.ms")).unwrap();
+    for (entity, expected) in [
+        (
+            "inputs",
+            vec![
+                "a: Int8  copy",
+                "b: Int16  copy",
+                "c: Int32  copy",
+                "d: Int64  copy",
+                "e: Float32  copy",
+                "f: Float  copy",
+                "g: Int  copy",
+                "h: Bool  copy",
+                "i: Unit  copy",
+                "j: Flag  copy",
+                "k: Number  copy",
+                "item: Item  borrow",
+                "count: Count  borrow",
+                "changed: Int  var (exclusive borrow)",
+            ],
+        ),
+        ("item_name", vec!["returns String  borrow"]),
+        ("fresh_name", vec!["returns String  owned"]),
+        ("generic", vec!["value: T  borrow", "returns T  borrow"]),
+        (
+            "hold",
+            vec!["item: Item  move", "returns List[Item]  owned"],
+        ),
+        ("optional_name", vec!["returns Optional[String]  borrow"]),
+        ("result_name", vec!["returns Result[String, Error]  borrow"]),
+        (
+            "maybe_name",
+            vec!["returns Result[String, Error]  owned; borrowed ok"],
+        ),
+        ("either", vec!["returns Result[String, Error]  borrow"]),
+        ("mixed_both", vec!["returns Result[String, Error]  owned"]),
+        ("Item.borrowed", vec!["returns String  borrow"]),
+        (
+            "Item.copied",
+            vec!["value: Int8  copy", "returns Int8  owned"],
+        ),
+        ("named", vec!["returns Named  owned view"]),
+        // An interface operation fixes no passing mode, so none is claimed.
+        ("Named", vec!["name: () String"]),
+        (
+            "maybe_count",
+            vec!["returns Result[Int, Error]  owned; borrowed error"],
+        ),
+        (
+            "Item.boxed",
+            vec!["item: Item  move", "returns List[Item]  owned"],
+        ),
+        (
+            "ms_ownership_scalar",
+            vec!["value: Int8  copy", "returns Int8  owned"],
+        ),
+    ] {
+        let doc = json(&ms(
+            &dir,
+            &[
+                "diagram",
+                "main.ms",
+                "--view",
+                "ownership",
+                "--entity",
+                entity,
+                "--json",
+            ],
+        ));
+        let root = &doc
+            .get("tree")
+            .unwrap()
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()[0];
+        let labels: Vec<_> = root
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n.get("label").unwrap().as_str().unwrap())
+            .collect();
+        for expected in expected {
+            assert!(
+                labels.contains(&expected),
+                "{entity}: expected {expected:?}, got {labels:?}"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn ownership_mermaid_uses_the_same_checked_modes_as_json() {
+    let dir = scratch("ownership-mermaid");
+    std::fs::write(dir.join("main.ms"), include_str!("ownership_modes/main.ms")).unwrap();
+    for (entity, expected) in [
+        (
+            "inputs",
+            vec![
+                "|\"a copy\"|",
+                "|\"j copy\"|",
+                "|\"item borrow\"|",
+                "|\"changed var\"|",
+            ],
+        ),
+        ("hold", vec!["|\"item move\"|", "|\"owned\"|"]),
+        ("item_name", vec!["|\"borrow\"|"]),
+        ("fresh_name", vec!["|\"owned\"|"]),
+        ("named", vec!["|\"owned view\"|"]),
+        ("maybe_name", vec!["|\"owned; borrowed ok\"|"]),
+        ("maybe_count", vec!["|\"owned; borrowed error\"|"]),
+        ("either", vec!["|\"borrow\"|"]),
+        ("mixed_both", vec!["|\"owned\"|"]),
+        ("Item.boxed", vec!["|\"item move\"|"]),
+    ] {
+        let out = ms(
+            &dir,
+            &[
+                "diagram",
+                "main.ms",
+                "--view",
+                "ownership",
+                "--entity",
+                entity,
+                "--format",
+                "mermaid",
+            ],
+        );
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let diagram = String::from_utf8(out.stdout).unwrap();
+        for expected in expected {
+            assert!(
+                diagram.contains(expected),
+                "{entity}: expected {expected:?} in {diagram}"
+            );
+        }
+    }
     let _ = std::fs::remove_dir_all(dir);
 }

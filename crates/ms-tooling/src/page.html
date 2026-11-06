@@ -144,8 +144,8 @@ const keyOf=a=>R.f[a[0]]+'#'+a[1]+'#'+a[2];
 const KEYS=R.e.map(keyOf);
 const fl=ns=>ns.map(n=>({kind:n[0],label:n[1],reference:n[2]<0?'':KEYS[n[2]],children:fl(n[3])}));
 D.entities=R.e.map((a,i)=>({key:KEYS[i],file:R.f[a[0]],kind:a[1],name:a[15],line:a[3],exported:!!a[4],effects:a[5],error:a[6],scopes:a[7],
-  calls:a[8].map(j=>KEYS[j]),external:a[9],slots:a[10].map(s=>({name:s[0],ty:s[1],var:!!s[2],refs:s[3].map(j=>KEYS[j])})),
-  result:a[11]?{ty:a[11][0],refs:a[11][1].map(j=>KEYS[j])}:null,_flow:a[12],fi:a[0],first:a[13],last:a[14]}));
+  calls:a[8].map(j=>KEYS[j]),external:a[9],slots:a[10].map(s=>({name:s[0],ty:s[1],var:!!s[2],refs:s[3].map(j=>KEYS[j]),ownership:s[4]})),
+  result:a[11]?{ty:a[11][0],refs:a[11][1].map(j=>KEYS[j]),ownership:a[11][2]}:null,_flow:a[12],fi:a[0],first:a[13],last:a[14]}));
 const E=Object.fromEntries(D.entities.map(e=>[e.key,e]));
 const CH={},GONE=[],chFiles=new Set(),chDirs=new Set();
 for(const x of (R.x||[])){if(x[0]>=0){CH[KEYS[x[0]]]={tier:x[2],changes:x[3],name:x[1]};const f=R.f[R.e[x[0]][0]];chFiles.add(f);for(let i=f.indexOf('/');i>=0;i=f.indexOf('/',i+1))chDirs.add(f.slice(0,i+1))}else GONE.push({name:x[1],tier:x[2],changes:x[3]})}
@@ -162,7 +162,7 @@ const isType=e=>['record','alternative','interface'].includes(e.kind);
 const isFn=e=>['fn','method','test','bench'].includes(e.kind);
 const KI={fn:'ƒ',method:'ƒ',record:'T',alternative:'T',interface:'I',constant:'c',test:'✓',bench:'»',impl:'i'};
 const isCheck=e=>e.kind==='test'||e.kind==='bench';
-const KW=new Set('and break case continue else export extern false fixture fn for if impl import in interface let match not or ref return self test true try type unit var while'.split(' '));
+const KW=new Set('and break continue else enum export extern false fixture fn for if impl import in interface let match not or ref return self test true try type unit var while'.split(' '));
 const TK=/(\/\/.*)|("(?:\\.|[^"\\])*")|(\b\d[\d_.]*[a-zA-Z]*)|([A-Za-z_]\w*)|(\s+|.)/g;
 function hl(line,sym){let o='',m;TK.lastIndex=0;
   while((m=TK.exec(line))){const t=m[0];
@@ -181,12 +181,15 @@ if(R.t){const a=R.t[1];for(let i=0;i<a.length;i+=5){const f=HF[a[i]]||(HF[a[i]]=
 const base=f=>f.split('/').pop();
 const dirOf=f=>f.slice(0,f.lastIndexOf('/')+1);
 const fx=e=>e.effects.filter(x=>x!=='unknown');
-const byFile={};for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
+const byFile=Object.create(null);for(const e of D.entities)(byFile[e.file]=byFile[e.file]||[]).push(e);
 function sigOf(e){
-  if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='record'||e.kind==='alternative'?'type':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
-  const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': <span class="'+(s.var?'var':'brw')+'">'+esc(s.ty)+'</span>').join(', ');
-  return '<code>'+esc(e.name)+'('+ps+') '+(e.result?'<span class="own">'+esc(e.result.ty)+'</span>':'')+'</code>';
+  if(!isFn(e)){const kw=e.kind==='interface'?'interface':e.kind==='record'?'type':e.kind==='alternative'?'enum':e.kind;return '<code><span class="tk-kw">'+esc(kw)+'</span> '+esc(e.name)+'</code>'}
+  const ps=e.slots.map(s=>(s.var?'<span class="var">var </span>':'')+esc(s.name)+': '+ownershipSpan(s)).join(', ');
+  return '<code>'+esc(e.name)+'('+ps+') '+(e.result?ownershipSpan(e.result):'')+'</code>';
 }
+function ownershipSpan(s){const mode=s.ownership;
+  const cls=mode==='var'?'var':mode==='borrow'?'brw':mode==='copy'?'hint':['move','owned','owned view','owned; borrowed ok','owned; borrowed error','owned; borrowed ok and error'].includes(mode)?'own':'';
+  return '<span'+(cls?' class="'+cls+'"':'')+(mode?' data-ownership="'+esc(mode)+'" title="'+esc(mode)+'"':'')+'>'+esc(s.ty)+'</span>'}
 const fns=D.entities.filter(e=>e.kind==='fn'||e.kind==='method');
 const firstN=(l,n)=>l.slice(0,n);
 const LAND={
@@ -212,9 +215,9 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON
 const STAR=new Set(store.get('stars',[]).filter(k=>E[k]));
 const KF={fn:true,type:true,check:true};
 const kindOK=e=>isCheck(e)?KF.check:isType(e)?KF.type:isFn(e)?KF.fn:false;
-const TREE={dirs:{},files:[]};
+const TREE={dirs:Object.create(null),files:[]};
 for(const m of D.modules){let n=TREE,p='';const parts=m.file.split('/');
-  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:{},files:[]})}
+  for(let i=0;i<parts.length-1;i++){p+=parts[i]+'/';n=n.dirs[parts[i]]||(n.dirs[parts[i]]={name:parts[i],path:p,dirs:Object.create(null),files:[]})}
   n.files.push(m.file)}
 const OPEN=new Set(['#lm']),CAP=150;let revealed=null;
 for(const d of Object.values(TREE.dirs))OPEN.add(d.path);
@@ -351,7 +354,7 @@ const fcls=x=>x.name==='main'?'entry':fx(x).length?'effect':'pure';
 /* overview: the current folder's modules and subfolders, or one module's functions; capped and ranked */
 function overview(){
   normScope();
-  const open=S.mod,scope=S.scope,agg={},cnt={},weight={};
+  const open=S.mod,scope=S.scope,agg=Object.create(null),cnt=Object.create(null),weight=Object.create(null);
   const endpoint=e=>{
     if(open&&e.file===open)return {id:e.key,kind:'fn'};
     if(!e.file.startsWith(scope))return null;
@@ -395,8 +398,8 @@ function calls(){
 }
 function types(){
   const nodes={},edges=[];let n=0;const roots=S.sel&&E[S.sel]?[E[S.sel]]:D.entities.filter(e=>isType(e)&&(!S.mod||e.file===S.mod)).slice(0,30);
-  const add=x=>{if(nodes[x.key]||n>=40)return;n++;nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'||x.kind==='alternative'?'type ':'')+x.name,cls:'cls',kind:'type',
-    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?'case '+s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
+  const seen={};const add=x=>{if(seen[x.key]||n>=40)return;seen[x.key]=1;n++;if(!nodes[x.key])nodes[x.key]={code:1,id:x.key,title:(x.kind==='interface'?'interface ':x.kind==='record'?'type ':x.kind==='alternative'?'enum ':'')+x.name,cls:'cls',kind:'type',
+    lines:x.slots.map(s=>x.kind==='record'?s.name+': '+s.ty:x.kind==='alternative'?s.name+s.ty:'fn '+s.name+s.ty).slice(0,8)};
     x.slots.forEach(s=>s.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:s.name})}}));
     if(x.result)x.result.refs.forEach(r=>{const t=E[r];if(t){add(t);if(nodes[r])edges.push({from:x.key,to:r,label:'returns'})}})};
   roots.forEach(r=>{if(isFn(r)){nodes[r.key]={code:1,id:r.key,title:'fn '+r.name,cls:'cls',lines:r.slots.map(s=>(s.var?'var ':'')+s.name+': '+s.ty)}}add(r)});
@@ -516,7 +519,7 @@ help.innerHTML='<div class="box"><div style="padding:18px 22px"><h3>Reading the 
  '<tr><td><span class="sw" style="border-color:var(--effs)"></span>Effects</td><td>reads or writes data (a field, a List, Map, Set or builder)</td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--acc)"></span>Entry / selected</td><td>main, or what you picked</td></tr>'+
  '<tr><td><span class="sw" style="border-color:var(--var)"></span>Changed</td><td>differs from the base in a diff</td></tr>'+
- '<tr><td><span class="var">var</span> / <span class="brw">borrow</span> / <span class="own">owned</span></td><td>exclusive borrow, shared borrow, returned value</td></tr></table>'+
+ '<tr><td><span class="var">var</span> / <span class="brw">borrow</span> / <span class="hint">copy</span> / <span class="own">move / owned</span></td><td>checked passing and result modes; hover a signature type for the exact mode</td></tr></table>'+
  '<h3>Icons</h3><p>ƒ function · T type · I interface · ✓ test · » bench · c constant</p>'+
  '<h3>Keys</h3><table><tr><td><kbd>Ctrl K</kbd></td><td>go to any symbol or file</td></tr><tr><td><kbd>/</kbd></td><td>filter the explorer</td></tr>'+
  '<tr><td><kbd>Alt ←</kbd> <kbd>Alt →</kbd></td><td>back, forward</td></tr><tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> <kbd>Enter</kbd></td><td>move through the explorer</td></tr>'+

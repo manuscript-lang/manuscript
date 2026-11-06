@@ -9,6 +9,9 @@ import (
     msstd_encoding_base32_decode
 ) from "@std/internal/encoding.ms"
 
+fn encoding_invalid_data() Error:
+    return Error("encoding: invalid data", kind: "EBADMSG")
+
 // Encodes unframed ASCII85; complete groups of four zero bytes become `z`.
 // No Adobe `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is `"BOu!rDZ"`.
 export fn ascii85_encode(data: Bytes) String:
@@ -36,27 +39,31 @@ export fn base64_decode_unpadded(
 ) Bytes!:
     return msstd_encoding_base64_decode_unpadded(text, url_safe, max_bytes)
 
-// Encodes uppercase RFC 4648 Base32. `hex_alphabet` selects 0-9/A-V; `padded: false` omits `=`.
-// Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
-export fn base32_encode(
-    data: Bytes,
-    hex_alphabet: Bool = false,
+// Alphabet and padding for `base32_encode` and `base32_decode`.
+export type Base32Options:
+    // True selects the extended hex alphabet 0-9/A-V.
+    hex_alphabet: Bool = false
+    // False omits (or forbids) the `=` padding.
     padded: Bool = true
-) String:
-    return msstd_encoding_base32_encode(data, hex_alphabet, padded)
+
+// Encodes uppercase RFC 4648 Base32, using the alphabet and padding in `options`.
+// Example: `base32_encode("f".to_bytes())` returns `"MY======"`.
+export fn base32_encode(data: Bytes, options: Base32Options = Base32Options()) String:
+    return msstd_encoding_base32_encode(data, options.hex_alphabet, options.padded)
 
 /*
-Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `hex_alphabet` is true.
+Decodes uppercase RFC 4648 Base32, or 0-9/A-V when `options.hex_alphabet` is true.
 Padding must be exact and only at the end; `padded: false` forbids `=`. Whitespace and nonzero unused bits return EBADMSG.
 Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
 */
 export fn base32_decode(
     text: String,
-    hex_alphabet: Bool = false,
-    padded: Bool = true,
-    max_bytes: Int?
+    options: Base32Options = Base32Options(),
+    max_bytes: Int? = none
 ) Bytes!:
-    return msstd_encoding_base32_decode(text, hex_alphabet, padded, max_bytes)
+    return msstd_encoding_base32_decode(
+        text, options.hex_alphabet, options.padded, max_bytes
+    )
 
 // Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) Bytes!:
@@ -74,11 +81,9 @@ export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) B
 
     for byte in bytes:
         if byte == 9 or byte == 10 or byte == 13 or byte == 32: return error(
-            Error("encoding: invalid data", kind: "EBADMSG")
+            encoding_invalid_data()
         )
-    if padding > 2 or length % 4 != 0: return error(
-        Error("encoding: invalid data", kind: "EBADMSG")
-    )
+    if padding > 2 or length % 4 != 0: return error(encoding_invalid_data())
     if length / 4 * 3 - padding > limit: return error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
@@ -97,23 +102,15 @@ export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) B
             var digit = 0
 
             if offset >= 4 - pad:
-                if byte != 61: return error(
-                    Error("encoding: invalid data", kind: "EBADMSG")
-                )
+                if byte != 61: return error(encoding_invalid_data())
             else:
                 digit = base64_digit(byte.to_int(), url_safe)
-                if digit < 0: return error(
-                    Error("encoding: invalid data", kind: "EBADMSG")
-                )
+                if digit < 0: return error(encoding_invalid_data())
 
             value = value * 64 + digit
 
-        if pad == 1 and value % 256 != 0: return error(
-            Error("encoding: invalid data", kind: "EBADMSG")
-        )
-        if pad == 2 and value % 65536 != 0: return error(
-            Error("encoding: invalid data", kind: "EBADMSG")
-        )
+        if pad == 1 and value % 256 != 0: return error(encoding_invalid_data())
+        if pad == 2 and value % 65536 != 0: return error(encoding_invalid_data())
 
         out.append(byte_of(value / 65536 % 256))
         if pad < 2: out.append(byte_of(value / 256 % 256))
@@ -203,7 +200,7 @@ export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
     if length / 2 > limit: return error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
-    if length % 2 != 0: return error(Error("encoding: invalid data", kind: "EBADMSG"))
+    if length % 2 != 0: return error(encoding_invalid_data())
 
     let digits = text.to_bytes().values()
     var out = BytesBuilder()
@@ -211,9 +208,7 @@ export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
     for pair in 0..(length / 2):
         let high = hex_digit(digits[pair * 2].to_int())
         let low = hex_digit(digits[pair * 2 + 1].to_int())
-        if high < 0 or low < 0: return error(
-            Error("encoding: invalid data", kind: "EBADMSG")
-        )
+        if high < 0 or low < 0: return error(encoding_invalid_data())
 
         out.append(byte_of(high * 16 + low))
 
@@ -286,9 +281,7 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
     let bytes = data.values()
-    if bytes.length() % 2 != 0: return error(
-        Error("encoding: invalid data", kind: "EBADMSG")
-    )
+    if bytes.length() % 2 != 0: return error(encoding_invalid_data())
 
     var units = List[Int]()
 
@@ -307,19 +300,13 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
         let code = units[index]
         var scalar = code
         index += 1
-        if code >= 56320 and code < 57344: return error(
-            Error("encoding: invalid data", kind: "EBADMSG")
-        )
+        if code >= 56320 and code < 57344: return error(encoding_invalid_data())
 
         if code >= 55296 and code < 56320:
-            if index >= units.length(): return error(
-                Error("encoding: invalid data", kind: "EBADMSG")
-            )
+            if index >= units.length(): return error(encoding_invalid_data())
 
             let next = units[index]
-            if next < 56320 or next >= 57344: return error(
-                Error("encoding: invalid data", kind: "EBADMSG")
-            )
+            if next < 56320 or next >= 57344: return error(encoding_invalid_data())
 
             scalar = 65536 + (code - 55296) * 1024 + (next - 56320)
             index += 1
@@ -341,9 +328,7 @@ fn narrow(text: String, maximum: Int) Bytes!:
     var out = BytesBuilder()
 
     for scalar in text.scalar_values():
-        if scalar > maximum: return error(
-            Error("encoding: invalid data", kind: "EBADMSG")
-        )
+        if scalar > maximum: return error(encoding_invalid_data())
 
         out.append(byte_of(scalar))
 
@@ -361,5 +346,5 @@ export fn ascii_encode(text: String) Bytes!:
 export fn ascii_decode(data: Bytes) String!:
     let bytes = data.values()
     for byte in bytes:
-        if byte > 127: return error(Error("encoding: invalid data", kind: "EBADMSG"))
+        if byte > 127: return error(encoding_invalid_data())
     return ok(data.decode_utf8().get(""))

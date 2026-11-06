@@ -36,7 +36,7 @@ fn emit(var l: Ledger, text: String) Unit:
     l.out.append("\n")
 
 fn reject(var l: Ledger, id: String, msg: String) Unit:
-    var a = l.accounts.get(id).get()
+    var a = l.accounts.get(id).get().clone()
     a.rej = a.rej + 1
     l.accounts.add(key: id, value: a)
     emit(var l, msg)
@@ -55,7 +55,7 @@ fn report(var l: Ledger) Unit:
     var total = 0
 
     for id in ids:
-        var a = l.accounts.get(id).get()
+        var a = l.accounts.get(id).get().clone()
         total = total + a.bal
 
         var fz = "no"
@@ -101,7 +101,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
             return reject(var l, id.clone(), "error: account frozen {id}")
 
     let n = amount_text.parse_int().get()
-    var a = l.accounts.get(first).get()
+    var a = l.accounts.get(first).get().clone()
 
     if cmd == "deposit":
         a.bal = a.bal + n
@@ -131,7 +131,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) Unit:
     if cmd == "withdraw":
         return emit(var l, "ok {next}{sfx}")
 
-    var b = l.accounts.get(ids.get(1)).get()
+    var b = l.accounts.get(ids.get(1)).get().clone()
     b.bal = b.bal + n
     b.ops = b.ops + 1
     let bbal = b.bal
@@ -168,7 +168,7 @@ fn step(var l: Ledger, t: List[String]) Unit:
         if l.accounts.get(id).is_none():
             return emit(var l, "error: unknown account {id}")
 
-        var a = l.accounts.get(id).get()
+        var a = l.accounts.get(id).get().clone()
         a.frozen = cmd == "freeze"
         l.accounts.add(key: id.clone(), value: a)
         return emit(var l, "ok")

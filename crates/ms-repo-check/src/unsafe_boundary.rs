@@ -16,11 +16,26 @@ const ALLOWED: &[&str] = &[
     "crates/ms-cli/tests/terminal.rs", // libc pseudo-terminal to drive RawTerminal end to end; std has no pty API
 ];
 
+// These standalone measurement binaries forward System's unsafe GlobalAlloc API and count
+// requested bytes with atomics. They never inspect allocated contents or enter production builds.
+const ALLOCATION_BENCHMARKS: &[&str] = &[
+    "bench/perf/binding-flags/main.rs",
+    "bench/perf/binding-flags/storage.rs",
+];
+
+fn checked(path: &str) -> bool {
+    path.ends_with(".rs") && (path.starts_with("crates/") || path.starts_with("bench/"))
+}
+
+fn allowed(path: &str) -> bool {
+    ALLOWED.iter().any(|a| path.starts_with(a)) || ALLOCATION_BENCHMARKS.contains(&path)
+}
+
 pub fn check(files: &[String]) -> Vec<String> {
     files
         .iter()
-        .filter(|p| p.starts_with("crates/") && p.ends_with(".rs"))
-        .filter(|p| !ALLOWED.iter().any(|a| p.starts_with(a)))
+        .filter(|p| checked(p))
+        .filter(|p| !allowed(p))
         .filter_map(|path| {
             let source = fs::read_to_string(path).ok()?;
             let found = unsafe_use(&source)?;
@@ -65,7 +80,19 @@ pub(crate) fn unsafe_use(source: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::unsafe_use;
+    use super::{allowed, checked, unsafe_use};
+
+    #[test]
+    fn benchmark_allocators_have_exact_exceptions_and_other_benchmarks_are_checked() {
+        assert!(checked("bench/perf/binding-flags/main.rs"));
+        assert!(allowed("bench/perf/binding-flags/main.rs"));
+        assert!(allowed("bench/perf/binding-flags/storage.rs"));
+        assert!(checked("bench/perf/other/main.rs"));
+        assert!(!allowed("bench/perf/other/main.rs"));
+        assert!(!allowed("bench/perf/binding-flags/other.rs"));
+        assert!(!allowed("bench/perf/binding-flags/main.rs.extra.rs"));
+        assert!(!checked("bench/perf/binding-flags/README.md"));
+    }
 
     #[test]
     fn finds_unsafe_code_not_prose() {

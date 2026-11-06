@@ -13,7 +13,7 @@ Save this as `words.ms`. It splits a short line repeatedly and prints the number
 
 <!-- manuscript-example: {"mode":"run","args":["2"],"stdout":"12\n"} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn count_words(text: String) Int:
     return text.split(" ").length()

@@ -30,6 +30,8 @@ pub struct Fact {
     pub slots: Vec<Slot>,
     /// The declared result of a callable.
     pub result: Option<Slot>,
+    /// Ownership of the result established by the checker.
+    pub result_ownership: ResultOwnership,
     /// The entity's head-side line range, for mapping a diff.
     pub first: usize,
     pub last: usize,
@@ -42,8 +44,62 @@ pub struct Slot {
     pub ty: String,
     /// A `var` parameter: the callee may change the argument.
     pub var: bool,
+    /// How a plain parameter is passed, from checked value class and moving-parameter facts.
+    pub ownership: ParameterOwnership,
     /// Keys of the project types the written type names (resolved after collection).
     pub refs: Vec<String>,
+}
+
+/// Passing mode of a parameter without an explicit `var` annotation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ParameterOwnership {
+    #[default]
+    Borrow,
+    Copy,
+    Move,
+    /// An interface operation: the interface fixes no passing mode for its own signature.
+    Unspecified,
+}
+
+impl Slot {
+    /// The checked passing mode, with an explicit exclusive borrow taking priority.
+    pub fn passing_mode(&self) -> &'static str {
+        if self.var {
+            "var"
+        } else {
+            match self.ownership {
+                ParameterOwnership::Copy => "copy",
+                ParameterOwnership::Move => "move",
+                ParameterOwnership::Borrow => "borrow",
+                ParameterOwnership::Unspecified => "",
+            }
+        }
+    }
+}
+
+/// The checker's result flags distinguish an owned view/wrapper from a borrowed result.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ResultOwnership {
+    #[default]
+    Owned,
+    Borrow,
+    View,
+    BorrowedOk,
+    BorrowedError,
+    BorrowedBoth,
+}
+
+impl ResultOwnership {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Owned => "owned",
+            Self::Borrow => "borrow",
+            Self::View => "owned view",
+            Self::BorrowedOk => "owned; borrowed ok",
+            Self::BorrowedError => "owned; borrowed error",
+            Self::BorrowedBoth => "owned; borrowed ok and error",
+        }
+    }
 }
 
 /// The fact model of one checked program.
