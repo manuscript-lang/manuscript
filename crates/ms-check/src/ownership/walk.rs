@@ -658,6 +658,17 @@ impl Walker<'_> {
                 }
             }
         }
+        // A returned `Bytes` is owned, and a view only borrows its receiver.
+        if let Some(local) = self.returned_bytes_view(e) {
+            self.error(
+                e.pos,
+                format!(
+                    "cannot return a view of `{0}`: a returned `Bytes` is owned and a view only borrows `{0}`; copy it with `.{CLONE}()` after the view",
+                    self.syms.str(local)
+                ),
+            );
+            return;
+        }
         // A reference converted on the way out (a borrow-returning call widened to another error type or
         // an interface) is read: the conversion builds the new value from it.
         let converted = self.cx.m.info(e).interface_source.is_some()
@@ -1466,6 +1477,20 @@ impl Walker<'_> {
             _ => false,
         };
         returns_borrow.then_some(&**left)
+    }
+
+    /// The variable whose `Bytes.view` the call `e` is, when it is returned: a function returns
+    /// bytes it owns, so a view of a local or a parameter must be copied first.
+    fn returned_bytes_view(&self, e: &Expr) -> Option<Name> {
+        let recv = self.native_borrow_receiver(e)?;
+        if !self.cx.m.ty(e).is(Builtin::Bytes) {
+            return None;
+        }
+        let root = self.root_name(recv)?;
+        let Resolution::Local(b) = self.cx.m.resolution(root) else {
+            return None;
+        };
+        Some(b.name)
     }
 
     /// Whether `e` is `xs.get(i)` on a `List`, without a default: the element read in place.
