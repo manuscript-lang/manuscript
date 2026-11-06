@@ -353,7 +353,7 @@ fn macos_arguments(
         .arg(out);
     // The debug map names each object; the staging directory's name varies per build,
     // so strip it to keep the output (and its UUID) identical for identical inputs.
-    if let Some(stage) = object.parent() {
+    if let Some(stage) = object.parent().filter(|p| !p.as_os_str().is_empty()) {
         command.arg("-oso_prefix").arg(stage);
     }
     if strip {
