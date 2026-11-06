@@ -21,7 +21,9 @@ impl Source[Token] for Tokens:
         self.at += 1
         if self.at <= 2:
             return ok(Token(self.log.clone(), self.at))
+
         return ok(none)
+
     var fn close() Unit!:
         return ok(unit)
 
@@ -35,6 +37,7 @@ impl Iterator[T!] for Forward[T]:
             return error(result.err())
         if let item = result.get():
             return ok(item)
+
         return none
 
 fn first_body(log: String) Unit!:
@@ -42,6 +45,7 @@ fn first_body(log: String) Unit!:
         let token = try item
         try append_file(log, "body {token.id}\n")
         break
+
     return ok(unit)
 
 fn events(log: String) String:
