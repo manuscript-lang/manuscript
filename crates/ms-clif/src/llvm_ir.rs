@@ -242,19 +242,6 @@ impl DebugInfo {
 /// type list and the subroutine type; file `i` is `FIRST_FILE + i`.
 const FIRST_FILE: usize = 5;
 
-/// The symbol names `text` mentions as `@"name"`.
-fn referenced(text: &str) -> HashSet<String> {
-    let mut names = HashSet::new();
-    let mut rest = text;
-    while let Some(at) = rest.find("@\"") {
-        rest = &rest[at + 2..];
-        let Some(end) = rest.find('"') else { break };
-        names.insert(rest[..end].to_string());
-        rest = &rest[end..];
-    }
-    names
-}
-
 /// LLVM quoted byte strings use hexadecimal escapes. Keep each metadata node on one
 /// physical line, including names and paths that contain line breaks or line markers.
 fn metadata_string(text: &str) -> Cow<'_, str> {
@@ -1415,14 +1402,6 @@ impl LlvmModule {
             .collect()
     }
 
-    /// The finished module text. When `anchored`, functions are `internal` unless they are public
-    /// or named in `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and
-    /// specialize them; otherwise every function keeps a symbol.
-    pub fn finish(&self, triple: &str, pinned: &HashSet<String>, anchored: bool) -> String {
-        self.finish_units(triple, pinned, anchored, 1)
-            .swap_remove(0)
-    }
-
     /// Records the function symbols in the vtable `name`, slot by slot.
     pub fn set_vtable(&mut self, name: String, slots: Vec<String>) {
         self.vtables.insert(name, slots);
@@ -1441,33 +1420,12 @@ impl LlvmModule {
             .sum()
     }
 
-    /// The module as `units` texts of about equal size, each a complete module: the functions
-    /// are cut into consecutive runs, and a function another unit defines is only declared. With
-    /// more than one unit every function keeps a symbol (`anchored` is ignored), because the
-    /// units are compiled to separate objects and link together.
-    pub fn finish_units(
-        &self,
-        triple: &str,
-        pinned: &HashSet<String>,
-        anchored: bool,
-        units: usize,
-    ) -> Vec<String> {
-        let units = units.clamp(1, self.defs.len().max(1));
-        let anchored = anchored && units == 1;
+    /// The finished module text. When `anchored`, functions are `internal` unless they are public
+    /// or named in `pinned` (symbols the Cranelift object refers to), which lets LLVM drop and
+    /// specialize them; otherwise every function keeps a symbol, as it must when the module is
+    /// later cut into several objects.
+    pub fn finish(&self, triple: &str, pinned: &HashSet<String>, anchored: bool) -> String {
         let deep = self.deep_glue();
-        // Unit k holds defs[cuts[k]..cuts[k + 1]].
-        let mut cuts = vec![0usize];
-        if units > 1 {
-            let total = self.code_bytes();
-            let mut seen = 0usize;
-            for (i, d) in self.defs.iter().enumerate() {
-                if seen * units >= total * cuts.len() {
-                    cuts.push(i);
-                }
-                seen += d.body.len() * if d.avx2.is_some() { 3 } else { 1 };
-            }
-        }
-        cuts.push(self.defs.len());
         let mut tail = String::new();
         tail.push_str(
             "declare void @llvm.trap() cold noreturn nounwind\n\
@@ -1536,84 +1494,47 @@ impl LlvmModule {
         {
             let _ = writeln!(tail, "!{i} = {n}");
         }
-        let mut out = Vec::with_capacity(units);
-        for k in 0..cuts.len() - 1 {
-            let mut s = String::new();
-            let _ = writeln!(s, "target triple = \"{triple}\"");
-            if anchored {
+        let mut s = String::new();
+        let _ = writeln!(s, "target triple = \"{triple}\"");
+        if anchored {
+            let _ = writeln!(
+                s,
+                "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
+            );
+        }
+        let mut uses_level = false;
+        for d in &self.defs {
+            uses_level |= self.write_def(&mut s, d, &deep, anchored, pinned);
+        }
+        // A vtable is written with its slots; the functions they name are defined above.
+        for name in self.data.keys() {
+            if let Some(slots) = self.vtables.get(name) {
+                let list: Vec<String> = slots.iter().map(|f| format!("ptr @\"{f}\"")).collect();
                 let _ = writeln!(
                     s,
-                    "define void @\"{TEXT_ANCHOR}\"() #0 {{\n  ret void\n}}\n"
+                    "@\"{name}\" = available_externally constant [{} x ptr] [{}], align 8",
+                    slots.len(),
+                    list.join(", ")
                 );
             }
-            let mut uses_level = false;
-            for d in &self.defs[cuts[k]..cuts[k + 1]] {
-                uses_level |= self.write_def(&mut s, d, &deep, anchored, pinned);
-            }
-            // References can precede definitions, and with several units point into another:
-            // declare what this unit calls and does not define, found in one scan of its text.
-            let local: HashSet<&str> = self.defs[cuts[k]..cuts[k + 1]]
-                .iter()
-                .map(|d| d.name.as_str())
-                .collect();
-            let mut used = referenced(&s);
-            // A vtable this unit names is written with its slots; the functions they name are
-            // then referenced too, so the scan below declares the ones another unit defines.
-            let mut tables = String::new();
-            for name in self.data.keys() {
-                if let Some(slots) = self.vtables.get(name)
-                    && (units == 1 || used.contains(name))
-                {
-                    let list: Vec<String> = slots.iter().map(|f| format!("ptr @\"{f}\"")).collect();
-                    let _ = writeln!(
-                        tables,
-                        "@\"{name}\" = available_externally constant [{} x ptr] [{}], align 8",
-                        slots.len(),
-                        list.join(", ")
-                    );
-                }
-            }
-            s.push_str(&tables);
-            used.extend(referenced(&tables));
-            if units > 1 {
-                for d in self
-                    .defs
-                    .iter()
-                    .filter(|d| !local.contains(d.name.as_str()))
-                {
-                    if used.contains(&d.name)
-                        && let Some(at) = d.header.find(" #")
-                    {
-                        let _ = writeln!(s, "declare {}", &d.header[..at]);
-                    }
-                }
-            }
-            let defined: HashSet<&str> = if units > 1 {
-                self.defs.iter().map(|d| d.name.as_str()).collect()
-            } else {
-                local
-            };
-            for (name, decl) in &self.decls {
-                if !defined.contains(name.as_str()) && (units == 1 || used.contains(name)) {
-                    s.push_str(decl);
-                    s.push('\n');
-                }
-            }
-            for name in self.data.keys() {
-                if !defined.contains(name.as_str())
-                    && !self.vtables.contains_key(name)
-                    && (units == 1 || used.contains(name))
-                {
-                    let _ = writeln!(s, "@\"{name}\" = external global i8");
-                }
-            }
-            if uses_level {
-                s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
-            }
-            s.push_str(&tail);
-            out.push(s);
         }
-        out
+        let defined: HashSet<&str> = self.defs.iter().map(|d| d.name.as_str()).collect();
+        for (name, decl) in &self.decls {
+            if !defined.contains(name.as_str()) {
+                s.push_str(decl);
+                s.push('\n');
+            }
+        }
+        for name in self.data.keys() {
+            if !defined.contains(name.as_str()) && !self.vtables.contains_key(name) {
+                let _ = writeln!(s, "@\"{name}\" = external global i8");
+            }
+        }
+        if uses_level {
+            s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
+        }
+        s.push_str(&tail);
+        s
     }
 
     /// Writes `d` as a definition and says whether it needs the CPU-level query.
