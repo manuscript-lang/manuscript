@@ -2323,11 +2323,6 @@ unsafe fn msrt_string_quote_val(s: *const StrVal) -> StrVal {
 }
 
 crate::isolate_static! {
-/// Dynamic string copies and drops, `[drop static, drop owned, copy static, copy owned]`, counted when
-/// the program was compiled with `MS_COUNT_STR` set (see `ms-clif`); printed at exit by the `stats` runtime.
-    pub static STR_COUNTS: [u64; 4] = [0; 4];
-}
-crate::isolate_static! {
 /// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (the `stats` runtime).
     pub static COPY_COUNTS: [u64; 4] = [0; 4];
 }
@@ -2340,13 +2335,6 @@ pub fn count_copy(kind: usize, bytes: usize) {
         c[kind * 2] += 1;
         c[kind * 2 + 1] += bytes as u64;
     }
-}
-/// Records one executed string drop (`kind` 0) or copy (1) of a string whose capacity word is `cap`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {
-    // SAFETY: single threaded access to the counters.
-    unsafe { (*STR_COUNTS.ptr())[(kind as usize) * 2 + (cap >= 0) as usize] += 1 };
 }
 
 #[cfg(test)]

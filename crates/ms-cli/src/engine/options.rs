@@ -11,7 +11,6 @@ pub fn from_env() -> BuildOptions {
     let text = |name: &str| var(name).and_then(|v| v.into_string().ok());
     BuildOptions {
         cranelift_only: text("MS_BACKEND").is_some_and(|b| b == "cranelift"),
-        count_str: var("MS_COUNT_STR").is_some(),
         llvm_units: text("MS_LLVM_UNITS").and_then(|v| v.parse().ok()),
         vectorize: !text("MS_VECTORIZE").is_some_and(|v| v == "off" || v == "0"),
         keep_ll: var("MS_KEEP_LL").is_some(),
