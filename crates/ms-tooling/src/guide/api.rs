@@ -4,10 +4,10 @@
 
 use crate::guide::render;
 use crate::guide::source::{Source, leading_comment};
-use ms_check::checker::Names;
-use ms_check::stdlib;
-use ms_check::syntax::{DeclRef, FuncRef};
-use ms_check::types::{
+use ms_check::api::checker::Names;
+use ms_check::api::stdlib;
+use ms_check::api::syntax::{DeclRef, FuncRef};
+use ms_check::api::types::{
     Definition, MethodRef, Name, SymKind, SymRef, Ty, n, same, sub, substitution,
 };
 use ms_check::{Program, Session};
@@ -190,14 +190,14 @@ fn compute_standard_library(syms: ms_syntax::Names) -> Vec<ApiModule> {
 
 fn primitive_symbol(name: &str) -> SymRef {
     let nm = n(name);
-    Rc::new(ms_check::types::Sym {
+    Rc::new(ms_check::api::types::Sym {
         name: nm,
         id: nm,
         kind: SymKind::Type,
         module: n(""),
         native: n(""),
         export: true,
-        ty: std::cell::RefCell::new(Some(ms_check::types::primitive(name))),
+        ty: std::cell::RefCell::new(Some(ms_check::api::types::primitive(name))),
         variables: std::cell::RefCell::new(Vec::new()),
         decl: None,
     })

@@ -17,6 +17,4 @@ mod optional_result_return;
 mod ownership;
 mod promise_fixes;
 mod subcodes;
-mod type_classification;
 mod type_display;
-mod type_substitution;

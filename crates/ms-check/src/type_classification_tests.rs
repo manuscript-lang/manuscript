@@ -1,5 +1,5 @@
 //! Nominal recursion uses declaration identity and preserves resource payloads.
-use ms_check::{
+use crate::{
     CheckOptions, ImportMap, Program,
     ownership::{Class, Classifier},
     types::*,
@@ -95,10 +95,10 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
                     imports.insert(n(&file), import.id, n(target));
                 }
             }
-            ms_check::load_module(syms, &parsed)
+            crate::load_module(syms, &parsed)
         })
         .collect();
-    let p = ms_check::check(syms, modules, imports, CheckOptions::default());
+    let p = crate::check(syms, modules, imports, CheckOptions::default());
     assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
     let classifier = Classifier::new(&p);
     let inner = p.symbols[&n("inner.ms")].borrow()[&n("Node")].ty(syms);
@@ -117,7 +117,7 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
         .unwrap();
     assert!(
         p.binding_facts
-            .has(held.uid, ms_check::ownership::BindingFact::ImplicitClose)
+            .has(held.uid, crate::ownership::BindingFact::ImplicitClose)
     );
 }
 #[test]
@@ -431,7 +431,7 @@ fn trait_fact(receiver: &Ty, contract: Option<Ty>, clone_decl: bool) -> MethodRe
         let parsed =
             ms_syntax::parser::parse(&file, include_str!("type_classification/clone_decl.ms"))
                 .expect("clone declaration parses");
-        ms_check::syntax::FuncRef::of_decl(ms_check::syntax::DeclRef::new(
+        crate::syntax::FuncRef::of_decl(crate::syntax::DeclRef::new(
             parsed.decls.into_iter().next().unwrap(),
         ))
     });
@@ -640,7 +640,7 @@ fn named_native_clone_facts_keep_name_kind_and_result_guards() {
     let file: Arc<str> = Arc::from("clone_decl.ms");
     let parsed =
         ms_syntax::parser::parse(&file, include_str!("type_classification/clone_decl.ms")).unwrap();
-    let decl = ms_check::syntax::FuncRef::of_decl(ms_check::syntax::DeclRef::new(
+    let decl = crate::syntax::FuncRef::of_decl(crate::syntax::DeclRef::new(
         parsed.decls.into_iter().nth(1).unwrap(),
     ));
     let mut named_other = trait_fact(&ordinary, None, true);

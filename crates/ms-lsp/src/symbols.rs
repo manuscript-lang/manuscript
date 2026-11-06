@@ -3,7 +3,7 @@
 use crate::analysis::{Analysis, Document};
 use crate::json::{Json, obj};
 use crate::text::{Range, SourcePositions};
-use ms_check::syntax::DeclRef;
+use ms_check::api::syntax::DeclRef;
 use ms_syntax::ast::*;
 
 const FUNCTION: i64 = 12;
@@ -18,7 +18,7 @@ const ENUM_MEMBER: i64 = 22;
 struct Outline<'a> {
     analysis: &'a Analysis,
     d: &'a Document,
-    file: ms_check::types::Name,
+    file: ms_check::api::types::Name,
     positions: SourcePositions<'a>,
 }
 
@@ -154,7 +154,7 @@ impl Outline<'_> {
     }
 
     /// The module symbol a declaration introduced, if it is this declaration.
-    fn symbol(&self, d: &DeclRef) -> Option<ms_check::types::SymRef> {
+    fn symbol(&self, d: &DeclRef) -> Option<ms_check::api::types::SymRef> {
         let names = self.analysis.program.as_ref()?.symbols.get(&self.file)?;
         let symbol = names.borrow().get(&d.name())?.clone();
         symbol

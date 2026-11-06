@@ -4,7 +4,7 @@ use crate::Error;
 use crate::cx::Cx;
 use crate::cx::VtableKey;
 use crate::func::{FnLower, Val};
-use ms_check::types as ct;
+use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, VtableId};
 use ms_mir::types::{IfaceId, Std, Ty as MTy, TyKind};
@@ -441,7 +441,7 @@ impl FnLower<'_> {
             .cx
             .contracts
             .get(&iface)
-            .is_some_and(ms_check::types::contract_mutates);
+            .is_some_and(ms_check::api::types::contract_mutates);
         if !x.own && !mutates {
             // A borrowed value becomes a view: a box of its leaves as they are, which owns only
             // the box. The checker holds the value's owner for as long as the view lives. An

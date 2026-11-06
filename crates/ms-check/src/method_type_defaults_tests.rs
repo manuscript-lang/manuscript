@@ -1,5 +1,6 @@
 //! Method type defaults complete inference and recorded specialization arguments.
 
+use crate::type_keys::{lowering_key, type_key};
 use crate::{CheckOptions, checker::Checker};
 use std::sync::Arc;
 

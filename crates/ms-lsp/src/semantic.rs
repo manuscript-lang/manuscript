@@ -4,7 +4,7 @@ use crate::analysis::{Analysis, Document};
 use crate::index::{Occurrence, expr_text};
 use crate::json::{Json, obj};
 use crate::text::{self, EditorKind, ForwardPositions};
-use ms_check::types::Kind;
+use ms_check::api::types::Kind;
 use ms_syntax::ast::*;
 use ms_syntax::token::{KEYWORDS, Tok};
 use ms_syntax::visit::{self, Visitor};
@@ -126,7 +126,7 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
 
 struct Kinds<'a> {
     syms: ms_syntax::Names,
-    module: &'a ms_check::syntax::ModRef,
+    module: &'a ms_check::api::syntax::ModRef,
     resolved: &'a mut HashMap<usize, i64>,
 }
 
@@ -139,7 +139,7 @@ impl Kinds<'_> {
             return;
         };
         if let Some(symbol) = &info.symbol
-            && symbol.kind == ms_check::types::SymKind::Type
+            && symbol.kind == ms_check::api::types::SymKind::Type
         {
             self.resolved.insert(e.pos.offset as usize, 6);
         } else if info.ty.as_ref().is_some_and(|t| t.kind == Kind::Function)
@@ -195,7 +195,7 @@ pub fn semantic_tokens(
             } else if info
                 .symbol
                 .as_ref()
-                .is_some_and(|s| s.kind == ms_check::types::SymKind::Type)
+                .is_some_and(|s| s.kind == ms_check::api::types::SymKind::Type)
             {
                 kind = 6;
             } else if info.ty.as_ref().is_some_and(|t| t.kind == Kind::Function)

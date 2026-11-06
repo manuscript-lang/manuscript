@@ -4,7 +4,7 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::text::{runtime_fn, ty_name};
-use ms_check::types as ct;
+use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::Native;

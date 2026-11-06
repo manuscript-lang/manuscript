@@ -2,9 +2,9 @@
 
 use crate::Error;
 use ms_check::Program;
-use ms_check::hir::{Callable, ModuleHir};
-use ms_check::ownership::BorrowKind;
-use ms_check::types::{self as ct, Builtin, Kind, Name, Subst};
+use ms_check::api::hir::{Callable, ModuleHir};
+use ms_check::api::ownership::BorrowKind;
+use ms_check::api::types::{self as ct, Builtin, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Std, Ty as MTy};
 use ms_mir::types::{Native, NativeRec};
@@ -18,7 +18,7 @@ pub struct Variant {
     /// The instance takes the parameters its body moving_params owned.
     pub owned: bool,
     /// The module whose local implementations the instance's type variables use.
-    pub evidence: Option<ms_check::types::Name>,
+    pub evidence: Option<ms_check::api::types::Name>,
 }
 
 /// A dense side column indexed by a MIR type or declaration number: a vector of slots, no hashing.
@@ -68,11 +68,11 @@ pub enum HelperKey {
     Fmt(MTy, bool),
     Json {
         encode: bool,
-        ty: ms_check::tytable::TyId,
+        ty: ms_check::api::tytable::TyId,
     },
-    JsonTree(ms_check::tytable::TyId),
-    JsonTreeView(ms_check::tytable::TyId),
-    CloseParts(ms_check::tytable::TyId, bool),
+    JsonTree(ms_check::api::tytable::TyId),
+    JsonTreeView(ms_check::api::tytable::TyId),
+    CloseParts(ms_check::api::tytable::TyId, bool),
     CloseIface {
         iface: u32,
         k: u32,
@@ -132,7 +132,7 @@ pub enum HelperKey {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum VtableKey {
     Impl {
-        ty: ms_check::tytable::TyId,
+        ty: ms_check::api::tytable::TyId,
         iface: u32,
         scope: Option<Name>,
     },
@@ -158,9 +158,9 @@ impl VtableKey {
 /// The key of a reserved instance: the callable, its type variables and its variant.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InstKey {
-    pub file: ms_check::types::Name,
+    pub file: ms_check::api::types::Name,
     pub node: NodeId,
-    pub subst: Vec<(ms_check::types::Name, ms_check::tytable::TyId)>,
+    pub subst: Vec<(ms_check::api::types::Name, ms_check::api::tytable::TyId)>,
     pub variant: Variant,
 }
 
@@ -332,9 +332,9 @@ pub struct Cx {
     /// The session whose standard library the program was checked against.
     pub session: Rc<ms_check::Session>,
     /// Boolean ownership facts per node (returners, view wraps, bound borrows, view moves, borrowed matches).
-    pub node_facts: Rc<ms_check::ownership::NodeFacts>,
+    pub node_facts: Rc<ms_check::api::ownership::NodeFacts>,
     /// Boolean ownership facts per binding (borrows, closes, conditional moves).
-    pub binding_facts: Rc<ms_check::ownership::BindingFlags>,
+    pub binding_facts: Rc<ms_check::api::ownership::BindingFlags>,
     /// Lowering sites that copied a borrow into an owning position, with the producer op.
     pub copy_gaps: Vec<String>,
     /// Module queries by file.
@@ -344,7 +344,7 @@ pub struct Cx {
     /// MIR types by checker type key.
     pub tycache: Vec<Option<MTy>>,
     /// Checker type identities, interned on demand while lowering.
-    pub tys: ms_check::tytable::TyTable,
+    pub tys: ms_check::api::tytable::TyTable,
     /// The runtime's raw `fs` info record, once built.
     pub fs_info_raw: Option<MTy>,
     /// Function instances by key.
@@ -383,7 +383,7 @@ pub struct Cx {
     pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
-        Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::types::Name>>>>,
+        Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::api::types::Name>>>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
     pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
     /// Parameters each callable moving_params, by module file and node.
@@ -393,10 +393,13 @@ pub struct Cx {
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_borrows: Rc<
-        std::collections::HashMap<(Name, ms_syntax::ast::NodeId), ms_check::ownership::OwnedBorrow>,
+        std::collections::HashMap<
+            (Name, ms_syntax::ast::NodeId),
+            ms_check::api::ownership::OwnedBorrow,
+        >,
     >,
     /// Which types are resources, for the closers of records and collections that hold them.
-    pub classes: ms_check::ownership::Classifier,
+    pub classes: ms_check::api::ownership::Classifier,
 }
 
 impl Cx {
@@ -475,7 +478,7 @@ impl Cx {
             moving_params: program.moving_params.clone(),
             getters: program.getter_borrows.clone(),
             owned_borrows: program.owned_borrows.clone(),
-            classes: ms_check::ownership::Classifier::new(program),
+            classes: ms_check::api::ownership::Classifier::new(program),
         }
     }
 
@@ -549,7 +552,7 @@ impl Cx {
         Ok(out)
     }
 
-    fn set_lowered(&mut self, key: ms_check::tytable::TyId, ty: MTy) {
+    fn set_lowered(&mut self, key: ms_check::api::tytable::TyId, ty: MTy) {
         if self.tycache.len() <= key.index() {
             self.tycache
                 .resize(self.tys.len().max(key.index() + 1), None);
@@ -561,7 +564,7 @@ impl Cx {
         &mut self,
         m: &mut Module,
         t: &ct::Ty,
-        key: ms_check::tytable::TyId,
+        key: ms_check::api::tytable::TyId,
     ) -> Result<MTy, Error> {
         match t.kind {
             Kind::Function => {
@@ -730,7 +733,7 @@ impl Cx {
             return Ok(m.types.native(native, args));
         }
         // Bytes is a growable byte buffer; the text and byte builders are owned values over one.
-        if t.is(Builtin::Bytes) || ms_check::effects::is_text_builder(self.syms, t) {
+        if t.is(Builtin::Bytes) || ms_check::api::effects::is_text_builder(self.syms, t) {
             return Ok(MTy::BYTES);
         }
         // Plain-data natives share the runtime's `repr(C)` layout.
@@ -760,7 +763,7 @@ impl Cx {
         &self,
         file: Name,
         id: ms_syntax::ast::NodeId,
-        fact: ms_check::ownership::Fact,
+        fact: ms_check::api::ownership::Fact,
     ) -> bool {
         self.node_facts.has(file, id, fact)
     }

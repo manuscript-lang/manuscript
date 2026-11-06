@@ -16,6 +16,7 @@ This describes the Rust and Cranelift implementation. Current ownership rules li
 ```text
 .ms -> ms-syntax (lex, parse, AST, format)
     -> ms-check  (resolve, types, generics, contracts, effects, cleanup; typed HIR; diagnostics)
+                 (public surface: `ms_check::api` only; every other module is private)
     -> ms-lower  (checked HIR and ownership facts to MIR, native standard calls)
     -> ms-mir    (representation, ownership elaboration, optimizer, verifier, text format, interpreter)
     -> ms-clif   (MIR -> Cranelift -> object file; line tables; perf map)

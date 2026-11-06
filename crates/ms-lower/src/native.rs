@@ -2,9 +2,9 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_check::hir::{CallView, Resolution};
-use ms_check::types as ct;
-use ms_check::types::Builtin;
+use ms_check::api::hir::{CallView, Resolution};
+use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use ms_mir::ir::{Imm, Mode, Op, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -82,7 +82,7 @@ fn is_higher_order(name: &str) -> bool {
 /// An evaluated argument of a native call.
 #[derive(Clone, Copy)]
 pub(crate) struct NArg {
-    pub name: ms_check::types::Name,
+    pub name: ms_check::api::types::Name,
     pub val: Val,
     pub wrapped: bool,
 }
@@ -700,7 +700,7 @@ impl<'a> FnLower<'a> {
             crate::mutation::mutated_locals(
                 self.syms,
                 &self.hir,
-                ms_check::hir::Body::Expr(a.expr),
+                ms_check::api::hir::Body::Expr(a.expr),
                 &self.cx.callables,
                 &self.cx.mutated,
             )
@@ -1388,7 +1388,7 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if ms_check::effects::collection_mutation(self.syms, m) {
+        if ms_check::api::effects::collection_mutation(self.syms, m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
             let old = self.owned_boundary(Val { v: b, own: false });

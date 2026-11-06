@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::project::{Overlay, Project, ProjectError, pathops};
-use ms_check::types::{Name, n};
+use ms_check::api::types::{Name, n};
 use ms_check::{ImportMap, ModRef};
 use ms_syntax::{Diagnostic, Phase, Pos};
 
