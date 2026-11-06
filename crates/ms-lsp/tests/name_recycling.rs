@@ -61,6 +61,10 @@ fn run(script: &Script, limit: Option<usize>) -> Vec<String> {
 #[test]
 fn a_server_over_its_limit_starts_over_and_answers_the_same() {
     let workspace = Workspace::new("name-recycling");
+    // A private table for this test: the process default is shared with every test running in
+    // parallel, so its growth cannot be measured there (it flaked under load).
+    let session = ms_syntax::Session::new();
+    let _entered = session.enter();
     let default = ms_syntax::Names::global();
     // Warm up: the standard library's own names enter the default table once.
     run(&script(&workspace, 1), None);
