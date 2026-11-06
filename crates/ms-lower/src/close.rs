@@ -5,12 +5,12 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::FnLower;
 use crate::text::runtime_fn;
+use ms_check::api::ast::*;
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, IfaceId, Native, RecId, Std, Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 /// How a binding is closed.
 #[derive(Clone)]
@@ -636,7 +636,7 @@ impl FnLower<'_> {
         &mut self,
         binding: &ct::BindingRef,
         kind: CloseKind,
-        places: std::collections::HashMap<ms_syntax::ast::NodeId, Vec<ct::Name>>,
+        places: std::collections::HashMap<ms_check::api::ast::NodeId, Vec<ct::Name>>,
     ) -> Result<(), Error> {
         let root = self.locals[&binding.uid]
             .slot

@@ -4,13 +4,13 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::*;
 use ms_check::api::types::Kind;
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value, VtableId};
 use ms_mir::print::ty_str;
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 /// A readable name of a MIR type for diagnostics.
 pub(crate) fn ty_name(m: &Module, t: MTy) -> String {

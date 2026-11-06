@@ -5,11 +5,11 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
 use crate::text::runtime_fn;
+use ms_check::api::ast::Expr;
 use ms_check::api::hir::CallView;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind};
-use ms_syntax::ast::Expr;
 
 impl FnLower<'_> {
     /// The `ok` and `error` case indexes of a Result alternative.

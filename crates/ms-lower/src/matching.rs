@@ -2,13 +2,13 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
 use ms_mir::ir::{Block, Cc, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 /// The case an arm names: `None` for the wildcard.
-fn arm_case(syms: ms_syntax::Names, path: &Expr) -> Option<String> {
+fn arm_case(syms: ms_check::api::Names, path: &Expr) -> Option<String> {
     match &path.kind {
         ExprKind::Name(n) if syms.str(n) == "_" => None,
         ExprKind::Name(n) => Some(syms.str(n).to_string()),

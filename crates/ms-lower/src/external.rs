@@ -14,6 +14,7 @@
 use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::Expr;
 use ms_check::api::hir::CallView;
 use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
@@ -24,7 +25,6 @@ use ms_rt_abi::{
     ELEM_INT32, ELEM_INT64, ELEM_OBJECT, ELEM_STRING, ELEM_UINT8, ELEM_UINT16, ELEM_UINT32,
     ELEM_UINT64,
 };
-use ms_syntax::ast::Expr;
 
 /// The trailing outputs of one call.
 struct Outputs {

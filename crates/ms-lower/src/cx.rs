@@ -2,13 +2,13 @@
 
 use crate::Error;
 use ms_check::Program;
+use ms_check::api::NodeId;
 use ms_check::api::hir::{Callable, ModuleHir};
 use ms_check::api::ownership::BorrowKind;
 use ms_check::api::types::{self as ct, Builtin, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Std, Ty as MTy};
 use ms_mir::types::{Native, NativeRec};
-use ms_syntax::NodeId;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -144,7 +144,7 @@ pub enum VtableKey {
 
 impl VtableKey {
     /// The table's name in the module, as before keys were typed.
-    pub fn name(&self, syms: ms_syntax::Names) -> String {
+    pub fn name(&self, syms: ms_check::api::Names) -> String {
         match self {
             VtableKey::Impl { ty, iface, scope } => match scope {
                 Some(s) => format!("impl:{}:{iface}@{}", ty.index(), syms.str(s)),
@@ -294,7 +294,7 @@ pub struct NativeThunkJob {
 /// A lambda waiting to be lowered.
 pub struct LambdaJob {
     /// The lambda expression.
-    pub expr: ms_syntax::ast::Expr,
+    pub expr: ms_check::api::ast::Expr,
     /// Module the lambda is written in.
     pub hir: Rc<ModuleHir>,
     /// Type variables of the enclosing instance.
@@ -328,7 +328,7 @@ pub struct Job {
 /// Whole-program lowering context.
 pub struct Cx {
     /// Reads and interns identifier text.
-    pub syms: ms_syntax::Names,
+    pub syms: ms_check::api::Names,
     /// The session whose standard library the program was checked against.
     pub session: Rc<ms_check::Session>,
     /// Boolean ownership facts per node (returners, view wraps, bound borrows, view moves, borrowed matches).
@@ -377,24 +377,24 @@ pub struct Cx {
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
-    pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
+    pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_check::api::ast::NodeId>>>,
     /// Every move of a whole binding, by binding: the name expressions (or lambdas) that take
     /// its value out of the local.
-    pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
+    pub moves: Rc<HashMap<usize, std::collections::HashSet<ms_check::api::ast::NodeId>>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
     pub resource_moves:
-        Rc<HashMap<usize, HashMap<ms_syntax::ast::NodeId, Vec<ms_check::api::types::Name>>>>,
+        Rc<HashMap<usize, HashMap<ms_check::api::ast::NodeId, Vec<ms_check::api::types::Name>>>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
-    pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
+    pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_check::api::ast::NodeId, usize)>>,
     /// Parameters each callable moving_params, by module file and node.
-    pub moving_params: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
+    pub moving_params: Rc<HashMap<(Name, ms_check::api::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
-    pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
+    pub getters: Rc<HashMap<(Name, ms_check::api::ast::NodeId), Vec<Name>>>,
     /// Lending calls whose result the caller owns because an argument is a temporary: the
     /// result is copied out before the temporary is dropped.
     pub owned_borrows: Rc<
         std::collections::HashMap<
-            (Name, ms_syntax::ast::NodeId),
+            (Name, ms_check::api::ast::NodeId),
             ms_check::api::ownership::OwnedBorrow,
         >,
     >,
@@ -429,7 +429,7 @@ impl Cx {
     }
 
     /// Indexes every module of the program.
-    pub fn new(syms: ms_syntax::Names, program: &Program) -> Cx {
+    pub fn new(syms: ms_check::api::Names, program: &Program) -> Cx {
         let mut mods = HashMap::new();
         let mut callables = HashMap::new();
         for m in program.hir().modules() {
@@ -762,7 +762,7 @@ impl Cx {
     pub fn fact(
         &self,
         file: Name,
-        id: ms_syntax::ast::NodeId,
+        id: ms_check::api::ast::NodeId,
         fact: ms_check::api::ownership::Fact,
     ) -> bool {
         self.node_facts.has(file, id, fact)

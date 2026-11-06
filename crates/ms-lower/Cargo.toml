@@ -6,7 +6,6 @@ publish.workspace = true
 description = "Manuscript HIR to MIR lowering: monomorphization and ownership elaboration"
 
 [dependencies]
-ms-syntax = { path = "../ms-syntax" }
 ms-check = { path = "../ms-check" }
 ms-mir = { path = "../ms-mir" }
 ms-rt-abi = { path = "../ms-rt-abi" }

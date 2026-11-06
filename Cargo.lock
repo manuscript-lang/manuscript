@@ -1071,7 +1071,6 @@ dependencies = [
  "ms-mir",
  "ms-rt",
  "ms-rt-abi",
- "ms-syntax",
 ]
 
 [[package]]

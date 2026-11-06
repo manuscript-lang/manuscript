@@ -7,6 +7,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use crate::rtcall::Input;
+use ms_check::api::ast::{BinaryOp, Expr, ExprKind, MapEntry};
 use ms_check::api::hir::{CallView, Resolution};
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
@@ -14,7 +15,6 @@ use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::{BinaryOp, Expr, ExprKind, MapEntry};
 
 /// Whether `t` is a `Map` or `Set`.
 pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
@@ -22,7 +22,7 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
 }
 
 /// `x` of `x.clone()`.
-fn clone_receiver(syms: ms_syntax::Names, e: &Expr) -> Option<&Expr> {
+fn clone_receiver(syms: ms_check::api::Names, e: &Expr) -> Option<&Expr> {
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
@@ -257,8 +257,8 @@ impl<'a> FnLower<'a> {
                 (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
             ),
             (ExprKind::Number(x), ExprKind::Number(y)) => {
-                ms_syntax::number::canonical(self.syms.str(x))
-                    == ms_syntax::number::canonical(self.syms.str(y))
+                ms_check::api::number::canonical(self.syms.str(x))
+                    == ms_check::api::number::canonical(self.syms.str(y))
             }
             _ => false,
         }
@@ -903,7 +903,7 @@ impl<'a> FnLower<'a> {
     /// `map.entries()`: a list of fresh `MapEntry` records.
     pub(crate) fn map_entries(
         &mut self,
-        recv_expr: Option<&ms_syntax::ast::Expr>,
+        recv_expr: Option<&ms_check::api::ast::Expr>,
         recv: Val,
         result: MTy,
     ) -> Result<Val, Error> {
@@ -936,7 +936,7 @@ impl<'a> FnLower<'a> {
     /// `list.entries()`: `ListEntry` records pairing each index with its element.
     pub(crate) fn list_entries(
         &mut self,
-        recv_expr: Option<&ms_syntax::ast::Expr>,
+        recv_expr: Option<&ms_check::api::ast::Expr>,
         recv: Val,
         result: MTy,
     ) -> Result<Val, Error> {

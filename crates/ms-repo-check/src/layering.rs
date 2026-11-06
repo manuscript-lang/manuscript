@@ -27,7 +27,7 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
     // `ms-decimal` is pure arithmetic: lowering folds Decimal literals with it.
     (
         "ms-lower",
-        &["ms-check", "ms-mir", "ms-rt-abi", "ms-decimal", "ms-syntax"],
+        &["ms-check", "ms-mir", "ms-rt-abi", "ms-decimal"],
     ),
     ("ms-clif", &["ms-mir", "ms-rt-abi"]),
     ("ms-build", &["ms-check", "ms-clif", "ms-lower", "ms-mir"]),
@@ -69,6 +69,31 @@ fn is_runtime(name: &str) -> bool {
 }
 
 pub fn check(files: &[String]) -> Vec<String> {
+    let mut issues = crates(files);
+    issues.extend(editor_is_a_leaf(files));
+    issues
+}
+
+/// Editor queries (`editor.rs`) sit on top of the checker; the checker never calls back into them.
+/// Only the public `api`, the module list and tests may name the module.
+fn editor_is_a_leaf(files: &[String]) -> Vec<String> {
+    let sources = files.iter().filter(|p| {
+        p.starts_with("crates/ms-check/src/") && p.ends_with(".rs") && !allowed_to_name_editor(p)
+    });
+    sources
+        .filter(|path| fs::read_to_string(path).is_ok_and(|text| text.contains("crate::editor")))
+        .map(|path| {
+            format!("{path}: checker code must not depend on `crate::editor` (editor queries are a leaf); see crates/ms-repo-check/src/layering.rs")
+        })
+        .collect()
+}
+
+fn allowed_to_name_editor(path: &str) -> bool {
+    let file = path.rsplit('/').next().unwrap_or(path);
+    matches!(file, "api.rs" | "editor.rs") || file.ends_with("_tests.rs")
+}
+
+fn crates(files: &[String]) -> Vec<String> {
     let manifests = files
         .iter()
         .filter(|p| p.starts_with("crates/") && p.ends_with("/Cargo.toml"));
@@ -142,5 +167,12 @@ mod tests {
     fn dev_dependencies_are_ignored() {
         let manifest = "[dependencies]\nms-check = { path = \"../ms-check\" }\n[dev-dependencies]\nms-rt = { path = \"../ms-rt\" }\n";
         assert_eq!(normal_dependencies(manifest), ["ms-check"]);
+    }
+
+    #[test]
+    fn only_the_api_editor_and_tests_may_name_the_editor_module() {
+        assert!(allowed_to_name_editor("crates/ms-check/src/api.rs"));
+        assert!(allowed_to_name_editor("crates/ms-check/src/x_tests.rs"));
+        assert!(!allowed_to_name_editor("crates/ms-check/src/calls.rs"));
     }
 }

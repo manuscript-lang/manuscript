@@ -3,13 +3,13 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::nativerec::native_rec;
+use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
 use ms_check::api::types::{self as ct, Builtin, Kind};
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::NativeRec;
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 /// Element count above which a list literal of constants is emitted as static data.
 const CONST_LIST_LITERAL: usize = 64;
@@ -237,7 +237,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = ms_syntax::number::canonical(text)
+                let f: f64 = ms_check::api::number::canonical(text)
                     .parse()
                     .map_err(|_| Error::new(format!("bad float literal {text}")))?;
                 let f = if negate { -f } else { f };
@@ -251,7 +251,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
-                let dec = ms_decimal::Dec::parse(&ms_syntax::number::canonical(text))
+                let dec = ms_decimal::Dec::parse(&ms_check::api::number::canonical(text))
                     .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let dec = if negate { dec.negate() } else { dec };
                 let ty = self.emty(e)?;
@@ -335,7 +335,7 @@ impl<'a> FnLower<'a> {
             }
             "UInt64" => Some(u64::try_from(parse_int(text)?).ok()? as i64),
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = ms_syntax::number::canonical(text).parse().ok()?;
+                let f: f64 = ms_check::api::number::canonical(text).parse().ok()?;
                 let f = if negate { -f } else { f };
                 let f = if ct::float_bits(self.syms, &t) == Some(32) {
                     f64::from(f as f32)
@@ -962,5 +962,5 @@ impl<'a> FnLower<'a> {
 
 /// Parses an integer literal spelling.
 fn parse_int(text: &str) -> Option<i128> {
-    ms_syntax::number::canonical(text).parse().ok()
+    ms_check::api::number::canonical(text).parse().ok()
 }

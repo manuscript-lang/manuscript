@@ -2,11 +2,11 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::*;
 use ms_check::api::hir::{CallView, Callable, Resolution};
 use ms_check::api::types::{self as ct, Builtin, Subst};
 use ms_mir::ir::{Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 use std::rc::Rc;
 
 /// Arguments evaluated in written order and placed by parameter position.
@@ -107,7 +107,7 @@ impl<'a> FnLower<'a> {
     pub fn callable_of_decl(
         &self,
         module: ct::Name,
-        id: Option<ms_syntax::NodeId>,
+        id: Option<ms_check::api::NodeId>,
     ) -> Result<Rc<Callable>, Error> {
         let id = id.ok_or_else(|| Error::new("symbol without declaration"))?;
         self.cx
@@ -148,7 +148,7 @@ impl<'a> FnLower<'a> {
         callee: &Callable,
         subst: &Subst,
         recv: Option<Val>,
-        call_pos: ms_syntax::Pos,
+        call_pos: ms_check::api::Pos,
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
@@ -286,7 +286,7 @@ impl<'a> FnLower<'a> {
         subst: &Subst,
         earlier: &mut [Option<Val>],
         recv: Option<Val>,
-        call_pos: Option<ms_syntax::Pos>,
+        call_pos: Option<ms_check::api::Pos>,
     ) -> Result<Val, Error> {
         let params = callee
             .func
@@ -1390,7 +1390,7 @@ impl<'a> FnLower<'a> {
                 Some(val(self.b.opt_none(mt)))
             }
             ExprKind::Number(n) if self.syms.str(t.id) == "Int" => {
-                ms_syntax::number::canonical(self.syms.str(n))
+                ms_check::api::number::canonical(self.syms.str(n))
                     .parse::<i64>()
                     .ok()
                     .map(|n| val(self.b.iconst(n)))
@@ -1476,14 +1476,14 @@ impl<'a> FnLower<'a> {
     fn bind_field_reads(&mut self, d: &Expr, earlier: &[(ct::Name, Value)]) {
         let mut found: Vec<Expr> = Vec::new();
         struct Collect<'f>(&'f mut Vec<Expr>);
-        impl ms_syntax::visit::Visitor for Collect<'_> {
+        impl ms_check::api::visit::Visitor for Collect<'_> {
             fn expr(&mut self, e: &Expr) {
                 if matches!(e.kind, ExprKind::Name(_)) {
                     self.0.push(e.clone());
                 }
             }
         }
-        ms_syntax::visit::walk_expr(&mut Collect(&mut found), d);
+        ms_check::api::visit::walk_expr(&mut Collect(&mut found), d);
         for e in &found {
             let Resolution::Local(b) = self.hir.resolution(e) else {
                 continue;
@@ -1496,7 +1496,7 @@ impl<'a> FnLower<'a> {
 }
 
 /// Whether a default is the call `caller_site()` of `@std/test/test.ms`.
-fn is_caller_site(syms: ms_syntax::Names, d: &Expr) -> bool {
+fn is_caller_site(syms: ms_check::api::Names, d: &Expr) -> bool {
     let ExprKind::Call { callee, args } = &d.kind else {
         return false;
     };
