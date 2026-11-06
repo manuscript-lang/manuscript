@@ -161,6 +161,11 @@ fn unknown_expected(expected: Option<&Ty>) -> bool {
     expected.is_some_and(|t| t.is_invalid())
 }
 
+/// Whether `name` is a source-location constant (`__LINE__`, `__FILE__`).
+pub(crate) fn is_source_location(syms: ms_syntax::Names, name: Name) -> bool {
+    matches!(syms.str(name), "__LINE__" | "__FILE__")
+}
+
 fn finish_info(syms: ms_syntax::Names, mut i: Info) -> Info {
     if i.ty.as_ref().is_some_and(|t| t.is_never(syms)) {
         i.no_return = true;
@@ -518,6 +523,16 @@ impl Checker {
                 }
             }
             return i;
+        }
+        // Source-location constants: the lowering fills them from the use site.
+        if is_source_location(self.syms, name) {
+            i.ty = Some(if self.syms.str(name) == "__LINE__" {
+                int()
+            } else {
+                string()
+            });
+            i.native = Some(name);
+            return finish_info(self.syms, i);
         }
         let (typ, cs, ambiguous) = self.find_case(name, e.pos);
         if ambiguous {

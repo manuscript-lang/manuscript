@@ -143,6 +143,16 @@ The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == pani
 
 See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `try`.
 
+## Source location
+
+`__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` instead.
+
+```ms
+export fn main() Int:
+    print("{__FILE__}:{__LINE__}")
+    return 0
+```
+
 ## Evaluation
 
 - Subexpressions evaluate left to right, each once. The right side of `false and ...` and `true or ...` is skipped but must still type-check.

@@ -1495,6 +1495,7 @@ impl Checker {
                 self.scope.binding(*name).is_none()
                     && self.sym(*name).is_none()
                     && !self.is_payloadless_case(*name)
+                    && !crate::exprs::is_source_location(self.syms, *name)
             }
             ExprKind::Call { callee, .. } => {
                 if let ExprKind::Name(name) = &callee.kind

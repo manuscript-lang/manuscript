@@ -448,6 +448,21 @@ impl<'a> FnLower<'a> {
                 self.function_value(e, &sym)
             }
             Resolution::Function(sym) => self.native_function_value(e, &sym),
+            Resolution::Native(n) if self.syms.str(n) == "__LINE__" => {
+                let v = self.b.iconst(i64::from(e.pos.line));
+                Ok(Val { v, own: false })
+            }
+            Resolution::Native(n) if self.syms.str(n) == "__FILE__" => {
+                let file = self
+                    .b
+                    .m
+                    .files
+                    .get(self.file as usize)
+                    .cloned()
+                    .unwrap_or_default();
+                let v = self.b.str_lit(&file);
+                Ok(Val { v, own: false })
+            }
             other => Err(Error::new(format!(
                 "unsupported name {}",
                 match other {
