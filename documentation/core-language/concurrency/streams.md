@@ -58,14 +58,14 @@ Each step in `@std/io/streams.ms` takes its input first and by move, so a pipeli
 ```manuscript
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
-import from_bytes, lines, map, collect from "@std/io/streams.ms"
+import from_bytes, lines, filter, map, collect from "@std/io/streams.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn line_lengths(input: ReadStream[Bytes]) ReadStream[Int]:
-    return input | lines | map(fn line: line.length())
+    return input | lines | filter(fn line: line != "") | map(fn line: line.length())
 
 test "measure lines":
-    let input = from_bytes("first\nok\n".to_bytes())
+    let input = from_bytes("first\n\nok\n".to_bytes())
     let lengths = try collect(line_lengths(input), max_items: 10)
     try expect_equal(lengths, [5, 2])
 ```
@@ -75,7 +75,10 @@ test "measure lines":
 | `from_list(items)`, `from_bytes(data)` | A stream over a list, or over bytes in chunks. |
 | `lines(input)` | UTF-8 lines, cut only at line breaks. |
 | `map(input, f)` | Transform each item. |
+| `filter(input, keep)` | The items for which `keep` is true; items are cloned, so `T` is `Clonable`. |
+| `take(input, count)` | At most the first `count` items, never reading past them, so it ends an endless stream. |
 | `collect(input, max_items)`, `read_all(input, max_bytes)` | Consume a stream into a list or `Bytes`. |
+| `fold(input, start, f)` | Combine all items into one value with `f(total, item)`. |
 | `copy(input, output)` | Move everything across and return the count. |
 
 Consumers such as `collect` wait internally and return a value directly. Pipelines are pulled lazily by the task that waits on them. Built-in stages pull the preceding stage with plain calls. A source may wait for input, and a custom source or transform may also wait inside its implementation; composing stages does not require starting separate work for each item.
