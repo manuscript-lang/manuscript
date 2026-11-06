@@ -55,6 +55,8 @@ An anonymous function may omit parameter types when context supplies them (argum
 
 A function that changes its caller's variable declares the parameter `var`, and its function type says so: `fn push_one(var values: List[Int]) Unit` has type `fn(var List[Int]) Unit`. A call through the value marks the argument `var`, exactly as a direct call does, and the argument must be a variable or a field of one. An anonymous function declares a `var` parameter the same way. `fn(List[Int]) Unit` and `fn(var List[Int]) Unit` are different types, but a function that only reads a parameter may be used where one that may change it is expected: `apply(fn(xs: List[Int]): unit, var values)` is accepted, and the callee's `var` argument is passed to it as a plain read. The other direction is an error: a function that changes its parameter cannot stand in for one that only reads it.
 
+`List.for_each` and `Map.for_each` take a callback whose element (a map's value) is `var`, so the callback can change elements in place: `scores.for_each(fn var s: s = s + 1)`. A callback that changes the parameter makes `scores` a changed receiver, so it must be a `var` and the callback must not touch it; a callback that only reads works on a `let` list. The rule is general: any method whose callback type has a `var` position of one of the receiver's type arguments behaves this way. Such a method cannot be taken as a value from a variable (`let each = scores.for_each`); call it, or write a closure.
+
 ```manuscript
 fn push_one(var values: List[Int]) Unit:
     values.append(1)

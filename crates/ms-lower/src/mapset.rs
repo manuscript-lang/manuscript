@@ -785,6 +785,7 @@ impl<'a> FnLower<'a> {
             name: self.syms.intern("value"),
             val: Val { v: made, own: true },
             wrapped: false,
+            reader: false,
         };
         let recv = Val { v: old, own: false };
         self.rt_method_at(

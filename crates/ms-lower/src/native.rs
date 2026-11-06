@@ -85,6 +85,9 @@ pub(crate) struct NArg {
     pub name: ms_check::api::types::Name,
     pub val: Val,
     pub wrapped: bool,
+    /// A function that only reads the parameters of the `var` function type it fills, passed as
+    /// written, without the adapter: the callee hands it values, not addresses.
+    pub reader: bool,
 }
 
 /// The native identity of `@std/data/json.ms`'s typed calls, which its source module declares as externs.
@@ -195,6 +198,7 @@ impl<'a> FnLower<'a> {
                         name,
                         val: Val { v, own: false },
                         wrapped: false,
+                        reader: false,
                     },
                 );
                 let mut decl = params.to_vec();
@@ -676,6 +680,7 @@ impl<'a> FnLower<'a> {
             name,
             val,
             wrapped: false,
+            reader: false,
         });
         let first =
             m.ty.params
@@ -1313,7 +1318,7 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new("missing function argument"))?;
         let (fvar, fhidden) = self.callback_var(f.val);
         let (lv, hidden) = self.list_source(recv_expr, recv)?;
-        let r = self.list_higher_order(name, lv, elem, fvar, out);
+        let r = self.list_higher_order(name, lv, elem, fvar, !f.reader, out);
         self.release_source(lv, hidden);
         self.release_source(fvar, fhidden);
         r
@@ -2904,6 +2909,17 @@ impl<'a> FnLower<'a> {
         lv: ms_mir::builder::Var,
         body: &mut ElementBody<'_, Self>,
     ) -> Result<(), Error> {
+        self.each_element_at(lv, false, body)
+    }
+
+    /// `each_element`, handing the body each element's address when `by_address` (a callback
+    /// that takes it as `var` changes it in place).
+    fn each_element_at(
+        &mut self,
+        lv: ms_mir::builder::Var,
+        by_address: bool,
+        body: &mut ElementBody<'_, Self>,
+    ) -> Result<(), Error> {
         let l = self.b.use_var(lv);
         let n = self.b.list_len(l);
         let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
@@ -2919,7 +2935,18 @@ impl<'a> FnLower<'a> {
         self.b.switch_to(step);
         let i = self.b.use_var(idx);
         let l = self.b.use_var(lv);
-        let x = self.b.list_get(l, i);
+        let x = if by_address {
+            self.b
+                .emit(
+                    ms_mir::ir::Op::ListAddrU,
+                    &[l, i],
+                    ms_mir::ir::Imm::None,
+                    Some(MTy::PTR),
+                )
+                .expect("element address")
+        } else {
+            self.b.list_get(l, i)
+        };
         let stop = body(self, i, x)?;
         let one = self.b.iconst(1);
         let i = self.b.use_var(idx);
@@ -2943,6 +2970,7 @@ impl<'a> FnLower<'a> {
         lv: ms_mir::builder::Var,
         elem: MTy,
         fvar: ms_mir::builder::Var,
+        by_address: bool,
         out: MTy,
     ) -> Result<Val, Error> {
         let l = self.b.use_var(lv);
@@ -3181,11 +3209,11 @@ impl<'a> FnLower<'a> {
                 })
             }
             "for_each" => {
-                self.each_element(lv, &mut |s, _, x| {
-                    {
-                        let f = s.b.use_var(fvar);
-                        s.b.call_ind(f, &[x])
-                    };
+                // The callback takes each element as `var`: it gets the element's address (the
+                // list is not copied), and a callback that changes it does so in place.
+                self.each_element_at(lv, by_address, &mut |s, _, p| {
+                    let f = s.b.use_var(fvar);
+                    s.b.call_ind(f, &[p]);
                     Ok(None)
                 })?;
                 let u = self.b.unit();
@@ -3317,6 +3345,7 @@ impl<'a> FnLower<'a> {
                 name: p.name,
                 val,
                 wrapped: false,
+                reader: false,
             });
         }
         Ok(())
@@ -3328,7 +3357,14 @@ impl<'a> FnLower<'a> {
         let mut read_at = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let at = self.b.current();
-            let val = self.expr(a.expr)?;
+            // A native takes a reading function for a `var` function parameter as written.
+            let reader = matches!(&view.target, Resolution::Method(m) if !self.syms.str(m.native).is_empty())
+                && self.hir.info(a.expr).function_source.is_some();
+            let val = if reader {
+                self.expr_unfit(a.expr)?
+            } else {
+                self.expr(a.expr)?
+            };
             if self.dead {
                 break;
             }
@@ -3341,6 +3377,7 @@ impl<'a> FnLower<'a> {
                 name: a.slot.name,
                 val,
                 wrapped: a.wrap_optional.is_some(),
+                reader,
             });
         }
         for (arg, (expr, at)) in out.iter_mut().zip(read_at) {

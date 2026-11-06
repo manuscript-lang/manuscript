@@ -146,8 +146,63 @@ pub struct CallModes {
     pub retained: Vec<bool>,
 }
 
+/// Whether the method takes a callback that may change a parameter holding one of the
+/// receiver's elements (`fn(var T)` on `List[T]`).
+pub fn takes_element_mutator(method: &MethodRef) -> bool {
+    method.ty.params.iter().any(|d| {
+        d.ty.kind == Kind::Function
+            && d.ty
+                .params
+                .iter()
+                .any(|p| p.mutable && method.receiver.args.iter().any(|t| same(t, &p.ty)))
+    })
+}
+
+/// Whether a callback argument of the method call changes a parameter that holds one of the
+/// receiver's elements: the callee's declared callback type has a `var` position whose type is a
+/// type argument of the receiver (`fn(var T)` on `List[T]`), and the argument itself takes that
+/// parameter as `var`. A function that only reads it was converted to the declared type
+/// (`Info.function_source`) and changes nothing.
+fn callback_changes_receiver(m: &ModuleHir, call: &Expr, args: &[Argument]) -> bool {
+    let Resolution::Method(method) = m.resolution(call) else {
+        return false;
+    };
+    let slots = m.info(call).arguments.clone().unwrap_or_default();
+    args.iter().enumerate().any(|(i, a)| {
+        let Some(declared) = slots
+            .get(i)
+            .and_then(|s| method.ty.params.iter().find(|p| p.name == s.name))
+        else {
+            return false;
+        };
+        if declared.ty.kind != Kind::Function || m.info(&a.value).function_source.is_some() {
+            return false;
+        }
+        let given = m.ty(&a.value);
+        declared.ty.params.iter().enumerate().any(|(j, p)| {
+            p.mutable
+                && given.params.get(j).is_some_and(|g| g.mutable)
+                && method.receiver.args.iter().any(|t| same(t, &p.ty))
+        })
+    })
+}
+
 /// Resolves the modes of a call from its callee.
 pub fn call_modes(
+    syms: ms_syntax::Names,
+    m: &ModuleHir,
+    call: &Expr,
+    args: &[Argument],
+    summaries: &Summaries,
+) -> CallModes {
+    let mut modes = call_modes_declared(syms, m, call, args, summaries);
+    if modes.receiver.is_some() && callback_changes_receiver(m, call, args) {
+        modes.receiver = Some(ParamMode::Mutate);
+    }
+    modes
+}
+
+fn call_modes_declared(
     syms: ms_syntax::Names,
     m: &ModuleHir,
     call: &Expr,
