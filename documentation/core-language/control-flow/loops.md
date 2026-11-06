@@ -34,7 +34,7 @@ test "sum indexes":
         return panic("Expected 10, got {total}")
 ```
 
-`end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
+`end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by` with `RangeOptions(max_items:)` for larger lists.
 
 Use `while` with a counter for other steps or computed exits:
 
@@ -56,7 +56,7 @@ Increment the counter before any `continue` that would skip its update.
 
 ## Stepped ranges
 
-`range_by(start, end, step, max_items)` returns `List[Int]!`. Negative steps count down: `range_by(start: 5, end: 0, step: -2)` is `[5, 3, 1]`. Equal endpoints or a step away from the end give an empty list. `step: 0` is `"EINVAL"`; exceeding `max_items` is `"EOVERFLOW"`. Unwrap the Result before looping:
+`range_by(start, end, step, RangeOptions(max_items: n))` returns `List[Int]!`. Negative steps count down: `range_by(start: 5, end: 0, step: -2)` is `[5, 3, 1]`. Equal endpoints or a step away from the end give an empty list. `step: 0` is `"EINVAL"`; exceeding `max_items` is `"EOVERFLOW"`. Unwrap the Result before looping:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript

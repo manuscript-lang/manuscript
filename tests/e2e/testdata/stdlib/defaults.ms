@@ -92,8 +92,8 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     )
     try expect_false(
         (
-            parse("a,b\n", max_cells: 1) != limited
-            or parse("a,b\n", max_rows: 0) != limited
+            parse("a,b\n", CsvOptions(max_cells: 1)) != limited
+            or parse("a,b\n", CsvOptions(max_rows: 0)) != limited
         )
     )
 

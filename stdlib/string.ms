@@ -166,7 +166,7 @@ impl StringTextOperations for String:
         if part.is_empty():
             return self.length() + 1
 
-        return self.split(part, none).length() - 1
+        return self.split(part).length() - 1
 
     // Removes every leading and trailing scalar that occurs in set.
     fn trim_chars(set: String) String:
@@ -202,7 +202,7 @@ impl StringTextOperations for String:
             return self.chars()
 
         var out = List[String]()
-        let parts = self.split(separator, none)
+        let parts = self.split(separator)
 
         for i in 0..parts.length():
             if i + 1 < parts.length():

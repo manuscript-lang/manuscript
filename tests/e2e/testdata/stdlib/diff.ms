@@ -1,6 +1,8 @@
 import expect_close, expect_equal from "@std/test/test.ms"
 import (
     close_matches,
+    CloseMatchesOptions,
+    UnifiedDiffOptions,
     edit_distance,
     similarity_ratio,
     unified_diff
@@ -19,14 +21,23 @@ test "similarity_ratio runs from 0 to 1":
 
 test "close_matches ranks candidates":
     try expect_equal(
-        close_matches("appel", ["ape", "apple", "peach"], 2, 0.6), ["apple", "ape"]
+        close_matches(
+            "appel", ["ape", "apple", "peach"],
+            CloseMatchesOptions(limit: 2, cutoff: 0.6)
+        ),
+        ["apple", "ape"]
     )
-    try expect_equal(close_matches("appel", ["ape", "apple", "peach"], 1), ["apple"])
+    try expect_equal(
+        close_matches(
+            "appel", ["ape", "apple", "peach"], CloseMatchesOptions(limit: 1)
+        ),
+        ["apple"]
+    )
     try expect_equal(close_matches("zzz", ["abc"]), List[String]())
 
 test "unified_diff formats hunks":
     try expect_equal(
-        unified_diff(["a", "b"], ["a", "c"], 1),
+        unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1)),
         "--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"
     )
     try expect_equal(unified_diff(["a"], ["a"]), "")
@@ -41,12 +52,27 @@ test "unified_diff splits distant changes and names headers":
     let old = ["1", "2", "3", "4", "5", "6", "7", "8"]
     let new = ["1", "X", "3", "4", "5", "6", "7", "Y"]
     let expected = "--- old.txt\n+++ new.txt\n@@ -1,3 +1,3 @@\n 1\n-2\n+X\n 3\n@@ -7,2 +7,2 @@\n 7\n-8\n+Y\n"
-    try expect_equal(unified_diff(old, new, 1, "old.txt", "new.txt"), expected)
+    try expect_equal(
+        unified_diff(
+            old,
+            new,
+            UnifiedDiffOptions(
+                context: 1, old_name: "old.txt", new_name: "new.txt"
+            )
+        ),
+        expected
+    )
 
 test "unified_diff keeps offsets across shared leading and trailing lines":
     try expect_equal(
-        unified_diff(["a", "b", "c", "d", "e"], ["a", "b", "x", "d", "e"], 1),
+        unified_diff(
+            ["a", "b", "c", "d", "e"], ["a", "b", "x", "d", "e"],
+            UnifiedDiffOptions(context: 1)
+        ),
         "--- a\n+++ b\n@@ -2,3 +2,3 @@\n b\n-c\n+x\n d\n"
     )
     try expect_equal(unified_diff(["a", "b"], ["a", "b"]), "")
-    try expect_equal(unified_diff([], ["a"], 0), "--- a\n+++ b\n@@ -0,0 +1 @@\n+a\n")
+    try expect_equal(
+        unified_diff([], ["a"], UnifiedDiffOptions(context: 0)),
+        "--- a\n+++ b\n@@ -0,0 +1 @@\n+a\n"
+    )

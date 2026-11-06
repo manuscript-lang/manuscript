@@ -124,7 +124,7 @@ export type MapHash:
 
 // Returns an unpredictable seed from the operating system.
 export fn random_seed() Int:
-    return secure_int(-9223372036854775807, none).get(0)
+    return secure_int(-9223372036854775807).get(0)
 
 impl MapHash:
     // Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.

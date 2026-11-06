@@ -115,7 +115,7 @@ export fn fail_writer_after(
 // Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`: whole reads, one-byte reads, and
 // an end of input that stays ended. `make` is called once per check so each starts from the beginning.
 export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
-    let all = read_all(make(), none)
+    let all = read_all(make())
     if all.is_error():
         return fail("check_reader: reading everything failed")
     if all.get() != expected:
@@ -123,7 +123,7 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
             "check_reader: read {all.get().length()} bytes, expected {expected.length()}; content differs"
         )
 
-    let slow = read_all(one_byte(make()), none)
+    let slow = read_all(one_byte(make()))
     if slow.is_error():
         return fail("check_reader: one-byte reads failed")
     if slow.get() != expected:

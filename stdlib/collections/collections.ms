@@ -280,9 +280,19 @@ export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!:
 // Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
 fn range(start: Int, end: Int) List[Int]: ...
 
+// Settings for `range_by`: an optional cap on the number of items.
+export type RangeOptions:
+    // Maximum list length; none adds no cap beyond the allocation limit.
+    max_items: Int? = none
+
 // Creates integers from `start` up to but excluding `end` using a nonzero `step`; a negative step counts down. Returns `EINVAL` for a zero step and `EOVERFLOW` when the list would exceed `max_items`.
-export fn range_by(start: Int, end: Int, step: Int, max_items: Int?) List[Int]!:
-    return msrt_list_range_by(start, end, step, max_items)
+export fn range_by(
+    start: Int,
+    end: Int,
+    step: Int,
+    options: RangeOptions = RangeOptions()
+) List[Int]!:
+    return msrt_list_range_by(start, end, step, options.max_items)
 
 // Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...

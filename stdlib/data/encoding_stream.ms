@@ -55,7 +55,7 @@ impl Transform[String, Bytes] for Base64Decoding:
         if whole == 0: return ok(unit)
 
         let part = text.slice(0, whole).get("")
-        let decoded = try base64_decode(part, self.url_safe, none)
+        let decoded = try base64_decode(part, self.url_safe)
 
         // Every complete group decodes to three bytes unless the last group has padding.
         if decoded.length() != whole / 4 * 3:
@@ -72,7 +72,7 @@ impl Transform[String, Bytes] for Base64Decoding:
         self.tail = ""
         if last == "": return ok(unit)
 
-        return out.write(try base64_decode(last, self.url_safe, none))
+        return out.write(try base64_decode(last, self.url_safe))
 
 // Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`; text that ends
 // inside a group fails at the end of the stream. Closing the result closes `input`.
@@ -107,14 +107,14 @@ impl Transform[String, Bytes] for HexDecoding:
         self.tail = text.slice(whole, text.length()).get("")
         if whole == 0: return ok(unit)
 
-        return out.write(try hex_decode(text.slice(0, whole).get(""), none))
+        return out.write(try hex_decode(text.slice(0, whole).get("")))
 
     var fn finish(var out: WriteStream[Bytes]) Unit!:
         let last = self.tail.clone()
         self.tail = ""
         if last == "": return ok(unit)
 
-        return out.write(try hex_decode(last, none))
+        return out.write(try hex_decode(last))
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside a pair, fails the
 // read with `EBADMSG`. Closing the result closes `input`.

@@ -590,7 +590,7 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: h, own: false })
     }
 
-    /// A method of a format enum (`ArchiveFormat.pack`): the runtime takes the format as a
+    /// A method of a format enum (`text.normalize(form)`): the runtime takes the format as a
     /// parameter after the first declared one, spelled as the lowercase case name or as its index.
     /// `map_from_entries(entries)`: later entries replace earlier values for a repeated key.
     fn map_from_entries(&mut self, entries: Val, map: MTy) -> Result<Val, Error> {
