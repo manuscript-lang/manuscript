@@ -9,8 +9,8 @@ impl<'a> FnLower<'a> {
     /// result, frozen into text without validation for a `StringBuilder`.
     pub(crate) fn text_builder_build(
         &mut self,
-        e: &ms_syntax::ast::Expr,
-        recv_expr: &ms_syntax::ast::Expr,
+        e: &ms_check::api::ast::Expr,
+        recv_expr: &ms_check::api::ast::Expr,
     ) -> Result<Val, Error> {
         let recv = self.expr(recv_expr)?;
         if self.dead {

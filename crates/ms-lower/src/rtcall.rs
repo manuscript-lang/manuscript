@@ -215,7 +215,7 @@ const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
 
 /// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
 pub(crate) fn typed_method_symbol(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     recv: &ct::Ty,
     method: &str,
 ) -> Option<String> {

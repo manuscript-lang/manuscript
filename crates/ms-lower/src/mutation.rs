@@ -5,15 +5,15 @@
 //! function sees the change in its own argument: the callee hands the updated value back and
 //! the call site stores it into the argument's place, the same way a `var` parameter works.
 
+use ms_check::api::ast::*;
 use ms_check::api::hir::{Body, Callable, ModuleHir, Resolution};
 use ms_check::api::types::{Kind, Name};
-use ms_syntax::ast::*;
-use ms_syntax::visit::Visitor;
+use ms_check::api::visit::Visitor;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// A source function or method: module file and declaration node.
-pub(crate) type FnKey = (Name, ms_syntax::NodeId);
+pub(crate) type FnKey = (Name, ms_check::api::NodeId);
 
 /// A parameter of a source function: position (receiver first).
 pub(crate) type ParamKey = (FnKey, usize);
@@ -34,7 +34,7 @@ struct Edge {
 /// The base and index of an element read `xs[i]`. The parser reads `xs[name]` as an `Apply`
 /// node that the checker resolves to an index, so both spellings count.
 pub(crate) fn index_parts<'e>(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     hir: &ModuleHir,
     e: &'e Expr,
 ) -> Option<(&'e Expr, &'e Expr)> {
@@ -50,13 +50,13 @@ pub(crate) fn index_parts<'e>(
 }
 
 /// Whether an `Apply` node is really an index read (`xs[i]`).
-pub(crate) fn is_index_apply(syms: ms_syntax::Names, hir: &ModuleHir, e: &Expr) -> bool {
+pub(crate) fn is_index_apply(syms: ms_check::api::Names, hir: &ModuleHir, e: &Expr) -> bool {
     hir.info(e).native_str(syms) == "index"
         || matches!(hir.resolution(e), Resolution::Native(n) if syms.str(n) == "index")
 }
 
 /// Peels field selections and element reads off a place expression down to its base.
-pub(crate) fn place_base<'e>(syms: ms_syntax::Names, hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
+pub(crate) fn place_base<'e>(syms: ms_check::api::Names, hir: &ModuleHir, e: &'e Expr) -> &'e Expr {
     let mut cur = e;
     loop {
         if let ExprKind::Member { left, .. } = &cur.kind {
@@ -70,7 +70,7 @@ pub(crate) fn place_base<'e>(syms: ms_syntax::Names, hir: &ModuleHir, e: &'e Exp
 }
 
 /// Finds the root local of a place expression (`a`, `a.b.c`, `a[i].c`).
-pub(crate) fn place_root(syms: ms_syntax::Names, hir: &ModuleHir, e: &Expr) -> Option<usize> {
+pub(crate) fn place_root(syms: ms_check::api::Names, hir: &ModuleHir, e: &Expr) -> Option<usize> {
     let cur = place_base(syms, hir, e);
     match hir.resolution(cur) {
         Resolution::Local(b) => Some(b.uid),
@@ -105,7 +105,7 @@ pub(crate) fn has_try(e: &Expr) -> bool {
         found: false,
         lambdas: 0,
     };
-    ms_syntax::visit::walk_expr(&mut v, e);
+    ms_check::api::visit::walk_expr(&mut v, e);
     v.found
 }
 
@@ -118,7 +118,7 @@ pub(crate) fn has_call(e: &Expr) -> bool {
         }
     }
     let mut v = Calls(false);
-    ms_syntax::visit::walk_expr(&mut v, e);
+    ms_check::api::visit::walk_expr(&mut v, e);
     v.0
 }
 
@@ -139,7 +139,7 @@ pub(crate) fn uses_of(hir: &ModuleHir, e: &Expr, uid: usize) -> usize {
         }
     }
     let mut v = Uses { hir, uid, count: 0 };
-    ms_syntax::visit::walk_expr(&mut v, e);
+    ms_check::api::visit::walk_expr(&mut v, e);
     v.count
 }
 
@@ -175,7 +175,7 @@ pub(crate) fn block_mentions(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool
         uid,
         found: false,
     };
-    ms_syntax::visit::walk_block(&mut v, body);
+    ms_check::api::visit::walk_block(&mut v, body);
     v.found
 }
 
@@ -183,13 +183,13 @@ pub(crate) fn block_mentions(hir: &ModuleHir, body: &[Stmt], uid: usize) -> bool
 /// `length`, `is_empty`) or as the iterable of a `for`, never inside a closure: nothing can keep
 /// the list or move it.
 pub(crate) fn only_read_in_place(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     hir: &ModuleHir,
     body: &[Stmt],
     uid: usize,
 ) -> bool {
     struct Reads<'h> {
-        syms: ms_syntax::Names,
+        syms: ms_check::api::Names,
         hir: &'h ModuleHir,
         uid: usize,
         mentions: usize,
@@ -250,13 +250,13 @@ pub(crate) fn only_read_in_place(
         lambdas: 0,
         captured: false,
     };
-    ms_syntax::visit::walk_block(&mut v, body);
+    ms_check::api::visit::walk_block(&mut v, body);
     !v.captured && v.mentions == v.reads
 }
 
 /// The locals a body assigns to or mutates in place, and the source calls they feed.
 struct Mutations<'h> {
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     hir: &'h ModuleHir,
     roots: HashSet<usize>,
     edges: Vec<Edge>,
@@ -320,7 +320,7 @@ impl Visitor for Mutations<'_> {
 impl Mutations<'_> {
     fn argument_edges(
         &mut self,
-        syms: ms_syntax::Names,
+        syms: ms_check::api::Names,
         view: &ms_check::api::hir::CallView<'_>,
         callee: FnKey,
     ) {
@@ -337,7 +337,7 @@ impl Mutations<'_> {
 }
 
 /// A body to scan.
-fn scan<'h>(syms: ms_syntax::Names, hir: &'h ModuleHir, body: Body<'_>) -> Mutations<'h> {
+fn scan<'h>(syms: ms_check::api::Names, hir: &'h ModuleHir, body: Body<'_>) -> Mutations<'h> {
     let mut v = Mutations {
         syms,
         hir,
@@ -345,8 +345,8 @@ fn scan<'h>(syms: ms_syntax::Names, hir: &'h ModuleHir, body: Body<'_>) -> Mutat
         edges: Vec::new(),
     };
     match body {
-        Body::Block(b) => ms_syntax::visit::walk_block(&mut v, b),
-        Body::Expr(e) => ms_syntax::visit::walk_expr(&mut v, e),
+        Body::Block(b) => ms_check::api::visit::walk_block(&mut v, b),
+        Body::Expr(e) => ms_check::api::visit::walk_expr(&mut v, e),
     }
     v
 }
@@ -372,7 +372,7 @@ fn target_position(callables: &HashMap<FnKey, Rc<Callable>>, edge: &Edge) -> Opt
 
 /// Whether a method changes its receiver, for a method used as a value.
 pub(crate) fn method_changes_receiver(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     m: &ms_check::api::types::MethodRef,
     mutated: &HashSet<ParamKey>,
 ) -> bool {
@@ -388,16 +388,16 @@ pub(crate) fn method_changes_receiver(
 /// The variables whose changing methods `body` takes as values (`xs.append` without a call):
 /// the value shares the variable, so it must live in memory.
 pub(crate) fn changing_method_roots(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     hir: &ModuleHir,
     body: Body<'_>,
     mutated: &HashSet<ParamKey>,
 ) -> HashSet<usize> {
     struct Values<'h> {
-        syms: ms_syntax::Names,
+        syms: ms_check::api::Names,
         hir: &'h ModuleHir,
         mutated: &'h HashSet<ParamKey>,
-        called: HashSet<ms_syntax::NodeId>,
+        called: HashSet<ms_check::api::NodeId>,
         roots: HashSet<usize>,
     }
     impl Visitor for Values<'_> {
@@ -433,15 +433,15 @@ pub(crate) fn changing_method_roots(
         roots: HashSet::new(),
     };
     match body {
-        Body::Block(b) => ms_syntax::visit::walk_block(&mut v, b),
-        Body::Expr(e) => ms_syntax::visit::walk_expr(&mut v, e),
+        Body::Block(b) => ms_check::api::visit::walk_block(&mut v, b),
+        Body::Expr(e) => ms_check::api::visit::walk_expr(&mut v, e),
     }
     v.roots
 }
 
 /// The locals of `body` that it changes, directly or through calls.
 pub(crate) fn mutated_locals(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     hir: &ModuleHir,
     body: Body<'_>,
     callables: &HashMap<FnKey, Rc<Callable>>,
@@ -467,7 +467,7 @@ pub(crate) fn mutated_locals(
 /// The parameters (receiver first) every source function changes: declared `var`, or changed
 /// by the body of a reference-shared type.
 pub(crate) fn infer_mutated(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     mods: &HashMap<Name, Rc<ModuleHir>>,
     callables: &HashMap<FnKey, Rc<Callable>>,
 ) -> HashSet<ParamKey> {

@@ -2,10 +2,10 @@
 
 use crate::Error;
 use crate::func::{FnLower, LoopCtx, Val};
+use ms_check::api::ast::*;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 impl<'a> FnLower<'a> {
     /// Lowers statements until the position becomes unreachable.
@@ -510,10 +510,10 @@ impl<'a> FnLower<'a> {
     /// Whether the expression `e` moves the binding `uid` out of its local.
     fn moved_within(&self, uid: usize, e: &Expr) -> bool {
         struct Scan<'a> {
-            moves: &'a std::collections::HashSet<ms_syntax::ast::NodeId>,
+            moves: &'a std::collections::HashSet<ms_check::api::ast::NodeId>,
             found: bool,
         }
-        impl ms_syntax::visit::Visitor for Scan<'_> {
+        impl ms_check::api::visit::Visitor for Scan<'_> {
             fn expr(&mut self, e: &Expr) {
                 self.found |= self.moves.contains(&e.id);
             }
@@ -525,7 +525,7 @@ impl<'a> FnLower<'a> {
             moves,
             found: false,
         };
-        ms_syntax::visit::walk_expr(&mut scan, e);
+        ms_check::api::visit::walk_expr(&mut scan, e);
         scan.found
     }
 
@@ -1707,7 +1707,7 @@ fn is_literal_bind(s: &Stmt) -> bool {
         ExprKind::Number(_) | ExprKind::Bool(_) => true,
         ExprKind::Text(parts) => parts
             .iter()
-            .all(|p| matches!(p, ms_syntax::ast::TextPart::Lit(_))),
+            .all(|p| matches!(p, ms_check::api::ast::TextPart::Lit(_))),
         _ => false,
     }
 }

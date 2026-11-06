@@ -61,3 +61,11 @@ pub mod hints {
 pub mod editor {
     pub use crate::editor::{MemberKind, members, prelude_type_names, standard_export_inventory};
 }
+
+// The syntax-tree vocabulary lowering walks. Re-exported so that a consumer of checked
+// programs names the tree through the checker's contract, not through `ms-syntax` directly.
+pub use ms_syntax::{Names, NodeId, Pos, number, visit};
+
+pub mod ast {
+    pub use ms_syntax::ast::*;
+}

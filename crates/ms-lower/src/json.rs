@@ -113,7 +113,7 @@ impl Cx {
 
 /// Lowers the body of a queued decoder or encoder.
 pub(crate) fn build_json(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1859,7 +1859,7 @@ fn null_cmp(fl: &mut FnLower<'_>, kind: Value, null: Value) -> Value {
     fl.b.icmp(Cc::Eq, kind, null)
 }
 
-fn jfields(syms: ms_syntax::Names, params: &[ct::Param]) -> Vec<JField> {
+fn jfields(syms: ms_check::api::Names, params: &[ct::Param]) -> Vec<JField> {
     params
         .iter()
         .map(|p| JField {

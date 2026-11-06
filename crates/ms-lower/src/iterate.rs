@@ -4,11 +4,11 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
+use ms_check::api::ast::Expr;
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::Expr;
 
 /// What a loop walks over.
 #[derive(Clone, Copy)]

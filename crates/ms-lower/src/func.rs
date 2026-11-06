@@ -3,12 +3,12 @@
 use crate::cx::{Cx, InstKey, Job, JobKind, Variant};
 use crate::{Error, Options};
 use ms_check::Program;
+use ms_check::api::Pos;
 use ms_check::api::hir::{Callable, CallableKind, ModuleHir};
 use ms_check::api::types::{self as ct, BindingRef, Subst};
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::Pos;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -56,7 +56,7 @@ pub(crate) struct LoopCtx {
 
 /// Per-function lowering state.
 pub(crate) struct FnLower<'a> {
-    pub syms: ms_syntax::Names,
+    pub syms: ms_check::api::Names,
     pub cx: &'a mut Cx,
     pub b: FuncBuilder<'a>,
     pub hir: Rc<ModuleHir>,
@@ -128,12 +128,12 @@ pub(crate) struct FnLower<'a> {
     /// The `err` slot of the runtime call whose `Failed` text the next status error reads.
     pub err_slot: Option<Value>,
     /// The `for` iterable whose `String.split` call may become a piece iterator (see `for_stmt`).
-    pub split_iter_for: Option<*const ms_syntax::ast::Expr>,
+    pub split_iter_for: Option<*const ms_check::api::ast::Expr>,
     /// The `for` iterable whose `String.chars` call becomes a byte scan (see `chars_loop`).
-    pub chars_iter_for: Option<*const ms_syntax::ast::Expr>,
+    pub chars_iter_for: Option<*const ms_check::api::ast::Expr>,
     /// The expression being lowered before its conversion to an interface: its own type, not the
     /// interface the checker recorded for it, is the type of its value.
-    pub converting: Option<*const ms_syntax::ast::Expr>,
+    pub converting: Option<*const ms_check::api::ast::Expr>,
     /// The scanned `for` iterable came from `String.scalar_values`: it yields scalar values.
     pub scalars_scan: bool,
     /// Lowering a function value's thunk: its arguments are borrowed by the language's call
@@ -166,14 +166,14 @@ pub(crate) struct FnLower<'a> {
     /// may hold one without a copy.
     pub stable_reads: HashSet<Value>,
     /// The iterable of the `for` being lowered when it may yield views of a map's keys.
-    pub keys_view_for: Option<*const ms_syntax::ast::Expr>,
+    pub keys_view_for: Option<*const ms_check::api::ast::Expr>,
     /// The iterable of the `for` being lowered when it may walk a map or set in place: the
     /// `entries()`, `values()` or `keys()` call that would otherwise build a list.
-    pub map_walk_for: Option<*const ms_syntax::ast::Expr>,
+    pub map_walk_for: Option<*const ms_check::api::ast::Expr>,
     /// Which part of each entry the in-place walk yields, set when `map_walk_for` was taken.
     pub map_walk: Option<crate::stmt::Walk>,
     /// The `split` call of a `let` whose list the rest of the block only reads in place.
-    pub split_view_for: Option<*const ms_syntax::ast::Expr>,
+    pub split_view_for: Option<*const ms_check::api::ast::Expr>,
     /// The module whose local implementations the expression being lowered uses, when it
     /// is the evidence of an enclosing generic instance's caller rather than this module.
     pub scope_override: Option<ct::Name>,
@@ -194,7 +194,7 @@ impl Cx {
 /// variable name, which is unique within a substitution, so the key does not depend on the order
 /// types were first interned.
 fn instance_key(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     tys: &mut ms_check::api::tytable::TyTable,
     c: &Callable,
     subst: &Subst,
@@ -321,11 +321,11 @@ impl Cx {
         let result = ct::sub(&self.callable_result(c)?, subst);
         let ret = self.lower_ty(m, &result)?;
         let ret = self.borrowing_result_ty(m, c, ret);
-        let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
+        let name = if let ms_check::api::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             format!("{} {}", if t.bench { "bench" } else { "test" }, t.name)
         } else if self.syms.str(c.name).is_empty() {
             "test".to_string()
-        } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
+        } else if let ms_check::api::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
             // Fault traces name a method after its receiver type.
             format!("{}.{}", i.receiver.name(self.syms), self.syms.str(c.name))
         } else {
@@ -366,7 +366,7 @@ impl Cx {
 
 /// Lowers the program rooted at `options.entry`.
 pub(crate) fn lower_program(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     program: &Program,
     options: &Options,
 ) -> Result<Module, Error> {
@@ -395,7 +395,7 @@ pub(crate) fn lower_program(
 /// Lowers the tests of every project module (not the bundled standard library) with a runner
 /// as the entry; returns each test's `module::name` identity.
 pub(crate) fn lower_tests(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     program: &Program,
     _options: &Options,
     bench: bool,
@@ -417,7 +417,7 @@ pub(crate) fn lower_tests(
     let mut ids = Vec::new();
     let mut names = Vec::new();
     for (file, c) in &tests {
-        if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
+        if let ms_check::api::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
             names.push(format!("{file_t}::{}", t.name, file_t = syms.str(file)));
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
@@ -437,7 +437,7 @@ pub(crate) fn lower_tests(
         let per: Vec<i64> = tests
             .iter()
             .map(|(_, c)| match &c.func.decl.decl().kind {
-                ms_syntax::ast::DeclKind::Test(t) => t.per,
+                ms_check::api::ast::DeclKind::Test(t) => t.per,
                 _ => 1,
             })
             .collect();
@@ -451,12 +451,12 @@ pub(crate) fn lower_tests(
 
 /// Whether a test callable is a `bench` block.
 fn is_bench(c: &Callable) -> bool {
-    matches!(&c.func.decl.decl().kind, ms_syntax::ast::DeclKind::Test(t) if t.bench)
+    matches!(&c.func.decl.decl().kind, ms_check::api::ast::DeclKind::Test(t) if t.bench)
 }
 
 /// Lowers queued jobs until none remain. The text of an interface value tests every table of
 /// the interface, so it waits until no other job can still add one.
-fn drain(syms: ms_syntax::Names, cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
+fn drain(syms: ms_check::api::Names, cx: &mut Cx, m: &mut Module) -> Result<(), Error> {
     let deferred = |m: &Module, j: &Job| matches!(&j.kind, JobKind::Format(t, _) if matches!(m.types.kind(*t), ms_mir::types::TyKind::Iface(_)));
     loop {
         let next = match cx.queue.iter().rposition(|j| !deferred(m, j)) {
@@ -470,7 +470,12 @@ fn drain(syms: ms_syntax::Names, cx: &mut Cx, m: &mut Module) -> Result<(), Erro
     }
 }
 
-fn lower_job(syms: ms_syntax::Names, cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
+fn lower_job(
+    syms: ms_check::api::Names,
+    cx: &mut Cx,
+    m: &mut Module,
+    job: Job,
+) -> Result<(), Error> {
     let (c, jsubst, variant) = match &job.kind {
         JobKind::Source {
             callable,
@@ -1070,7 +1075,7 @@ impl<'a> FnLower<'a> {
     /// Whether the name expression (or lambda) `node` moves the binding `uid` out of its local,
     /// which must own its value: a borrowed local (a function value's parameter, a loop variable
     /// reading a list in place) hands out a copy instead.
-    pub fn moves_at(&self, uid: usize, node: ms_syntax::ast::NodeId) -> bool {
+    pub fn moves_at(&self, uid: usize, node: ms_check::api::ast::NodeId) -> bool {
         self.cx.moves.get(&uid).is_some_and(|n| n.contains(&node))
             && !self.aliases.contains_key(&uid)
             && self.locals.get(&uid).is_some_and(|l| self.local_owned(l))

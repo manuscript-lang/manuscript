@@ -3,11 +3,11 @@
 
 use crate::cx::Cx;
 use ms_check::Program;
+use ms_check::api::NodeId;
 use ms_check::api::hir::Callable;
 use ms_check::api::types::Name;
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{NativeRec, Ty as MTy, TyKind};
-use ms_syntax::NodeId;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -59,7 +59,7 @@ pub struct NativeOps {
 
 impl NativeOps {
     pub(crate) fn new(
-        syms: ms_syntax::Names,
+        syms: ms_check::api::Names,
         program: &Program,
         callables: &HashMap<(Name, NodeId), Rc<Callable>>,
     ) -> NativeOps {

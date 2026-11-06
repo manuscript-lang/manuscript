@@ -6,13 +6,13 @@ use crate::cx::{
 };
 use crate::cx::{BoundTarget, HelperKey};
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::*;
 use ms_check::api::hir::CallView;
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 use std::rc::Rc;
 
 /// The receiver a method value's closure is built from.
@@ -1229,7 +1229,7 @@ fn call_changing_receiver(
 
 /// Lowers a thunk that fills the defaults of the parameters a function value takes as optionals.
 pub(crate) fn build_default_thunk(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1327,7 +1327,7 @@ fn lower_default_thunk(
 
 /// Lowers the body of a queued interface method value.
 pub(crate) fn build_iface_thunk(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1374,7 +1374,7 @@ fn lower_iface_thunk(
 
 /// Lowers the body of a queued native function value.
 pub(crate) fn build_native_thunk(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1394,7 +1394,7 @@ pub(crate) fn build_native_thunk(
 }
 
 fn lower_native_thunk(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     fl: &mut FnLower<'_>,
     job: &NativeThunkJob,
 ) -> Result<(), Error> {
@@ -1446,7 +1446,7 @@ impl FnLower<'_> {
     pub(crate) fn thunk_native_args(
         &mut self,
         module: ct::Name,
-        func: Option<&ms_syntax::ast::Func>,
+        func: Option<&ms_check::api::ast::Func>,
         params: &[ct::Param],
         vals: &[Value],
     ) -> Result<Vec<crate::native::NArg>, Error> {
@@ -1512,7 +1512,7 @@ impl FnLower<'_> {
 
 /// Lowers the body of a queued bound native method.
 pub(crate) fn build_bound_native(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1541,7 +1541,7 @@ pub(crate) fn build_bound_native(
 
 /// Lowers the body of a native method behind an interface table entry.
 pub(crate) fn build_iface_native(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1563,7 +1563,7 @@ pub(crate) fn build_iface_native(
 }
 
 fn lower_iface_native(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     fl: &mut FnLower<'_>,
     job: &IfaceNativeJob,
 ) -> Result<(), Error> {
@@ -1620,7 +1620,7 @@ fn lower_bound_native(
 
 /// Lowers the body of a queued lambda.
 pub(crate) fn build_lambda(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,
@@ -1698,7 +1698,7 @@ pub(crate) fn restore_alias_capture(
 }
 
 fn lower_lambda_body(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     fl: &mut FnLower<'_>,
     job: &LambdaJob,
     captures: &[MTy],
@@ -1818,7 +1818,7 @@ fn lower_lambda_body(
 
 /// The locals a lambda's body changes.
 fn lambda_mutated(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     fl: &FnLower<'_>,
     lam: &Lambda,
 ) -> std::collections::HashSet<usize> {
@@ -1835,7 +1835,7 @@ fn lambda_mutated(
 
 /// The captured locals the lambda `lam` changes: they are shared by reference.
 fn lambda_changes(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     fl: &FnLower<'_>,
     lam: &Lambda,
     captures: &[ct::BindingRef],
@@ -1850,7 +1850,7 @@ fn lambda_changes(
 
 /// The locals a closure written in `body` changes: they must live in memory.
 pub(crate) fn slotted_in(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     fl: &FnLower<'_>,
     body: &[Stmt],
 ) -> std::collections::HashSet<usize> {
@@ -1858,7 +1858,7 @@ pub(crate) fn slotted_in(
         fl: &'a FnLower<'b>,
         found: std::collections::HashSet<usize>,
     }
-    impl ms_syntax::visit::Visitor for Scan<'_, '_> {
+    impl ms_check::api::visit::Visitor for Scan<'_, '_> {
         fn expr(&mut self, e: &Expr) {
             let syms = self.fl.syms;
             if let ExprKind::Lambda(lam) = &e.kind {
@@ -1872,7 +1872,7 @@ pub(crate) fn slotted_in(
         fl,
         found: Default::default(),
     };
-    ms_syntax::visit::walk_block(&mut scan, body);
+    ms_check::api::visit::walk_block(&mut scan, body);
     scan.found.extend(crate::mutation::changing_method_roots(
         syms,
         &fl.hir,
@@ -1894,7 +1894,7 @@ fn with_alias_origins(
         fl: &'a FnLower<'b>,
         roots: std::collections::HashMap<usize, usize>,
     }
-    impl ms_syntax::visit::Visitor for Origins<'_, '_> {
+    impl ms_check::api::visit::Visitor for Origins<'_, '_> {
         fn expr(&mut self, e: &Expr) {
             let syms = self.fl.syms;
             // `c?.f()` borrows `c` for the payload binding of its chain.
@@ -1937,7 +1937,7 @@ fn with_alias_origins(
         fl,
         roots: Default::default(),
     };
-    ms_syntax::visit::walk_block(&mut origins, body);
+    ms_check::api::visit::walk_block(&mut origins, body);
     let mut pending: Vec<_> = changed.iter().copied().collect();
     while let Some(uid) = pending.pop() {
         if let Some(root) = origins.roots.get(&uid)
@@ -1949,7 +1949,7 @@ fn with_alias_origins(
     changed
 }
 
-fn alias_origin(syms: ms_syntax::Names, fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
+fn alias_origin(syms: ms_check::api::Names, fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
     match &e.kind {
         ExprKind::Name(_) => {
             let ms_check::api::hir::Resolution::Local(b) = fl.hir.resolution(e) else {
@@ -2088,7 +2088,7 @@ impl FnLower<'_> {
 /// Lowers the body of a function adapter: it calls the held value, wrapping plain arguments in
 /// the optionals the held value takes.
 pub(crate) fn build_fn_adapter(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,

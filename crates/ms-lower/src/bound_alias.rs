@@ -4,12 +4,12 @@ use crate::Error;
 use crate::closure::{LambdaCapture, restore_alias_capture};
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Local, Val};
+use ms_check::api::ast::Expr;
 use ms_check::api::hir::{ModuleHir, Resolution};
 use ms_check::api::types as ct;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::Expr;
 use std::rc::Rc;
 
 pub(crate) struct BoundAliasJob {
@@ -75,7 +75,7 @@ impl FnLower<'_> {
 }
 
 pub(crate) fn build_bound_alias(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     cx: &mut Cx,
     m: &mut Module,
     func: FuncId,

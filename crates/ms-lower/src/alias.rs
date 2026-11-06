@@ -7,12 +7,12 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::*;
 use ms_check::api::hir::Resolution;
 use ms_check::api::types::{BindingRef, Name};
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 /// One step from a local to the part a borrow names.
 #[derive(Clone)]

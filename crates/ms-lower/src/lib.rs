@@ -76,7 +76,7 @@ pub struct Options {
 
 /// Lowers the tests of the entry module under a runner entry; returns the module and test names.
 pub fn lower_tests(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     program: &Program,
     options: &Options,
 ) -> Result<(Module, Vec<String>), Error> {
@@ -86,7 +86,7 @@ pub fn lower_tests(
 /// Lowers the `bench` blocks of the entry module under a runner entry, like [`lower_tests`]; each
 /// block runs under the `@std/test/bench.ms` driver.
 pub fn lower_benches(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     program: &Program,
     options: &Options,
 ) -> Result<(Module, Vec<String>), Error> {
@@ -98,7 +98,7 @@ pub use runner::SKIP_MARKER;
 
 /// Lowers a checked program (no diagnostics) to a MIR module with `main` as the entry.
 pub fn lower_program(
-    syms: ms_syntax::Names,
+    syms: ms_check::api::Names,
     program: &Program,
     options: &Options,
 ) -> Result<Module, Error> {

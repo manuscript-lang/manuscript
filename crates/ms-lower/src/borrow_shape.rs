@@ -7,10 +7,10 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::{Expr, ExprKind};
 use ms_check::api::types::Builtin;
 use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::{Expr, ExprKind};
 
 /// A read whose result can be borrowed.
 #[derive(Clone, Copy, PartialEq, Eq)]

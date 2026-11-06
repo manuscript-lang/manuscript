@@ -2,13 +2,13 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
+use ms_check::api::ast::*;
 use ms_check::api::hir::{CallView, Resolution};
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::ir::{Imm, Mode, Op, Param, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
-use ms_syntax::ast::*;
 
 /// String operations `fn(String) -> String` and their runtime symbols.
 /// Methods of format enums: native, runtime symbol, the runtime's format parameter, and whether
@@ -302,7 +302,7 @@ impl<'a> FnLower<'a> {
                     .and_then(|a| match &a.expr.kind {
                         ExprKind::Text(parts) => match parts.as_slice() {
                             [] => Some(""),
-                            [ms_syntax::ast::TextPart::Lit(t)] => Some(&**t),
+                            [ms_check::api::ast::TextPart::Lit(t)] => Some(&**t),
                             _ => None,
                         },
                         _ => None,
@@ -942,7 +942,7 @@ impl<'a> FnLower<'a> {
         &mut self,
         m: &ct::MethodRef,
         recv_expr: Option<&Expr>,
-        pos: ms_syntax::Pos,
+        pos: ms_check::api::Pos,
         result: MTy,
         recv: Val,
         mut args: Vec<NArg>,
@@ -1434,7 +1434,7 @@ impl<'a> FnLower<'a> {
             return self.result_method(result, &name, recv, a, args.to_vec());
         }
         if let (TyKind::Opt(inner), true) = (self.b.m.types.kind(rty).clone(), opt_method(&name)) {
-            let at = ms_syntax::Pos::default();
+            let at = ms_check::api::Pos::default();
             return self.optional_method(result, at, &name, recv, inner, args.to_vec());
         }
         if let (TyKind::Obj(n, _), "get_or") = (self.b.m.types.kind(rty).clone(), name.as_str())
@@ -1481,7 +1481,7 @@ impl<'a> FnLower<'a> {
         self.native_method_tail(
             m,
             None,
-            ms_syntax::Pos::default(),
+            ms_check::api::Pos::default(),
             result,
             recv,
             args.to_vec(),
@@ -2152,7 +2152,7 @@ impl<'a> FnLower<'a> {
     fn optional_method(
         &mut self,
         out: MTy,
-        at: ms_syntax::Pos,
+        at: ms_check::api::Pos,
         name: &str,
         recv: Val,
         inner: MTy,
@@ -2299,7 +2299,7 @@ impl<'a> FnLower<'a> {
     fn optional_ok_or(
         &mut self,
         out: MTy,
-        at: ms_syntax::Pos,
+        at: ms_check::api::Pos,
         name: &str,
         recv: Val,
         args: Vec<NArg>,
@@ -2359,7 +2359,11 @@ impl<'a> FnLower<'a> {
     }
 
     /// Constructs the default `Error` (kind NotFound) naming the invoking source line.
-    pub(crate) fn missing_value_at(&mut self, ty: MTy, at: ms_syntax::Pos) -> Result<Val, Error> {
+    pub(crate) fn missing_value_at(
+        &mut self,
+        ty: MTy,
+        at: ms_check::api::Pos,
+    ) -> Result<Val, Error> {
         let TyKind::Rec(er) = self.b.m.types.kind(ty).clone() else {
             return Err(Error::new("ok_or without a cause needs Error"));
         };
@@ -3266,7 +3270,7 @@ impl<'a> FnLower<'a> {
     pub(crate) fn fill_native_defaults(
         &mut self,
         module: ct::Name,
-        func: Option<&ms_syntax::ast::Func>,
+        func: Option<&ms_check::api::ast::Func>,
         params: &[ct::Param],
         args: &mut Vec<NArg>,
     ) -> Result<(), Error> {
@@ -3291,7 +3295,7 @@ impl<'a> FnLower<'a> {
                     own: false,
                 }),
                 ExprKind::Number(t) if self.syms.str(p.ty.id) == "Int" => {
-                    match ms_syntax::number::canonical(self.syms.str(t)).parse::<i64>() {
+                    match ms_check::api::number::canonical(self.syms.str(t)).parse::<i64>() {
                         Ok(n) => Ok(Val {
                             v: self.b.iconst(n),
                             own: false,
