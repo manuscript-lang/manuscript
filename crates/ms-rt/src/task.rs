@@ -1453,20 +1453,55 @@ unsafe fn reactor_wait() {
                 fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
             }
             crate::sched::set_idle(true);
-            // Work may have arrived between the last look and now.
-            if crate::sched::work_available() || crate::sched::signalled() {
+            spin_for_work();
+            // Posters interrupt the poller only while this says it may block, so look for work
+            // once more after saying so.
+            crate::isolate::set_sleeping(true);
+            if crate::sched::work_available()
+                || crate::sched::signalled()
+                || crate::isolate::has_posts()
+                || crate::isolate::pending_cancel() != 0
+            {
+                crate::isolate::set_sleeping(false);
                 crate::sched::set_idle(false);
                 continue;
             }
             trim_idle_stacks();
             hibernate_idle();
             poll_ready(timeout_ns);
+            crate::isolate::set_sleeping(false);
             crate::sched::set_idle(false);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
                 fault::fault_kind(FaultKind::Deadlock, CROSS_ISOLATE_DEADLOCK);
             }
         }
+    }
+}
+
+/// How long a thread that has nothing to run waits for mail before it sleeps. A sleep costs the
+/// system calls of a wake-up on both sides (an eventfd write, an `epoll_wait` return), several
+/// microseconds, which is longer than a short promise's whole life; a promise that arrives
+/// within this window finds its thread awake.
+const SPIN_NS: i64 = 20_000;
+
+/// Spins briefly for work before the thread sleeps. Only a program with several scheduler threads
+/// has anyone to send mail, so a single-threaded program never spins.
+unsafe fn spin_for_work() {
+    if crate::sched::started() <= 1 {
+        return;
+    }
+    let end = clock_ns() + SPIN_NS;
+    loop {
+        if crate::sched::work_available()
+            || crate::sched::signalled()
+            || crate::isolate::has_posts()
+            || crate::isolate::pending_cancel() != 0
+            || clock_ns() >= end
+        {
+            return;
+        }
+        std::hint::spin_loop();
     }
 }
 
@@ -2939,6 +2974,34 @@ mod tests {
             assert_eq!(msrt_task_join(spinner, null_mut()), 0);
             msrt_token_free(token);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 2]);
+        }
+        teardown();
+    }
+
+    /// A thread that posts at every point of the waiter's path to sleep never loses the wake-up:
+    /// a lost one would leave the park below waiting forever.
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn remote_posts_never_miss_a_sleeping_scheduler() {
+        let _g = lock();
+        teardown();
+        for round in 0..2000u32 {
+            // SAFETY: tests hold the global lock; every handle is joined once.
+            unsafe {
+                *LOG_N.ptr() = 0;
+                let token = msrt_token_new(TOKEN_REMOTE);
+                let waiter = msrt_task_spawn(posted_token, token as *mut u8, 0, 0);
+                let poster = std::thread::spawn(move || {
+                    // Spread the posts over the waiter's spin, its last look and its sleep.
+                    for _ in 0..(round % 64) * 400 {
+                        std::hint::spin_loop();
+                    }
+                    msrt_token_post_remote(token, 42)
+                });
+                assert_eq!(msrt_task_join(waiter, null_mut()), 0);
+                poster.join().unwrap();
+                msrt_token_free(token);
+            }
         }
         teardown();
     }
