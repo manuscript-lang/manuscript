@@ -47,7 +47,7 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  for (const name of ['read_file', 'serve', 'send', 'wait', 'is_ok']) {
+  for (const name of ['open', 'serve', 'write_bytes', 'read', 'wait']) {
     assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
   }
   assert.ok(rendered.some(node => node.className === 's' && node.textContent === '":8080"'),
