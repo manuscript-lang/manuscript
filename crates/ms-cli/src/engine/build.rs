@@ -487,19 +487,14 @@ impl BuildCache {
                     .filter(|(at, _)| *at > 256)
                     .take(6)
                     .map(|&(at, end)| {
-                        format!("@{at}..{end} built={:?} cached={:?}", ctx(&built, at, end), ctx(&cached, at, end))
+                        format!(
+                            "@{at}..{end} built={:?} cached={:?}",
+                            ctx(&built, at, end),
+                            ctx(&cached, at, end)
+                        )
                     })
                     .collect();
                 format!(" [DEBUGDIFF spans={} {}]", spans.len(), shown.join(" | "))
-            };
-                format!(
-                    " [DEBUGDIFF built={} cached={} first={:?} built_ctx={:?} cached_ctx={:?}]",
-                    a.len(),
-                    cached.len(),
-                    first,
-                    first.map(|f| ctx(&a, f)),
-                    first.map(|f| ctx(&cached, f))
-                )
             };
             return Err(format!("MS_CACHE=verify: the rebuilt executable differs from the cached one (this is a Manuscript bug){detail}"));
         }
