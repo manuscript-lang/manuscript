@@ -232,6 +232,16 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
     s
 }
 
+/// Whether a module file is standard-library source: a bundled `@std/` module, or a checkout's
+/// `stdlib/` file opened from disk (an editor on the repository).
+pub fn is_bundled_source(file: &str) -> bool {
+    file.starts_with("@std/")
+        || std::path::Path::new(file).ancestors().any(|dir| {
+            dir.file_name().is_some_and(|n| n == "stdlib")
+                && dir.join("internal/promises.ms").is_file()
+        })
+}
+
 /// Whether a bundled module is internal: it holds the native declarations of the public modules and is not importable by programs.
 pub fn is_internal(path: &str) -> bool {
     path.starts_with("@std/internal/")
