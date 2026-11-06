@@ -1,6 +1,6 @@
 // Agent-effectiveness benchmark runner. See README.md.
 // Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
-import Command, Flag, FlagKind, command from "@std/cli/cli.ms"
+import Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import (
     append_file,
     copy,
