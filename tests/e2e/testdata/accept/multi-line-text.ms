@@ -39,6 +39,6 @@ type Person:
 test "raw text needs no escapes for JSON":
     let person = try parse[Person](text: r"""
     {"name": "ada", "n": 1}
-    """, limits: none)
+    """)
     try expect_equal(person.name, "ada")
     try expect_equal(person.n, 1)

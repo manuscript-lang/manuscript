@@ -394,6 +394,13 @@ fn shrink[T](
 
     return best
 
+// Settings for `check`: how many cases to generate (default 100) and an optional fixed seed that replays a failing run.
+export type PropertyOptions:
+    // Number of generated cases (default 100).
+    runs: Int = 100
+    // Fixes the random seed to replay a failure; none picks a fresh seed.
+    seed: Int? = none
+
 /*
 Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
 Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
@@ -403,11 +410,10 @@ export fn check[T](
     name: String,
     gen: Gen[T],
     property: fn(T) Unit!,
-    runs: Int = 100,
-    seed: Int?
+    options: PropertyOptions = PropertyOptions()
 ) Unit!:
-    let config = settings(runs)
-    var chosen = seed
+    let config = settings(options.runs)
+    var chosen = options.seed
     if chosen.is_none():
         chosen = config.seed
 

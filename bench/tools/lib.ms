@@ -7,7 +7,7 @@ import access, create_directory, read_file, remove, write_file from "@std/os/fs.
 import is_absolute, join from "@std/os/path.ms"
 import stderr, stdin, stdout from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
-import JsonValue, stringify from "@std/data/json.ms"
+import JsonValue, StringifyOptions, stringify from "@std/data/json.ms"
 import hex_encode from "@std/data/encoding.ms"
 import sha256 from "@std/crypto.ms"
 
@@ -152,7 +152,7 @@ export fn absolute(path: String) String:
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
-    return capture(program, arguments, cwd: dir)
+    return capture(program, arguments, cwd: dir.clone())
 
 // Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) String!:
@@ -310,7 +310,7 @@ export fn jlist(items: List[JsonValue]) JsonValue:
 
 // `value` as indented JSON followed by a newline.
 export fn dump(value: JsonValue) String:
-    return stringify(value, none, 2).get("") + "\n"
+    return stringify(value, StringifyOptions(indent: 2)).get("") + "\n"
 
 // Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:

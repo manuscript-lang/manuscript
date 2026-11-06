@@ -155,7 +155,9 @@ impl StringTextOperations for String:
             out.append(current.drain())
         return out
 
-    // Compares text ignoring case using Unicode full case mapping (no locale), so "Straße" equals "STRASSE".
+    // Compares text ignoring case: both sides are uppercased and then lowercased with Unicode full case mapping
+    // (no locale, no normalization), so "Straße" equals "STRASSE". This is not Unicode default case folding:
+    // the dotless "ı" (U+0131) uppercases to "I" and so compares equal to "i" and "I".
     fn equal_fold(other: String) Bool:
         return self.upper().lower() == other.upper().lower()
 
@@ -164,7 +166,7 @@ impl StringTextOperations for String:
         if part.is_empty():
             return self.length() + 1
 
-        return self.split(part, none).length() - 1
+        return self.split(part).length() - 1
 
     // Removes every leading and trailing scalar that occurs in set.
     fn trim_chars(set: String) String:
@@ -200,7 +202,7 @@ impl StringTextOperations for String:
             return self.chars()
 
         var out = List[String]()
-        let parts = self.split(separator, none)
+        let parts = self.split(separator)
 
         for i in 0..parts.length():
             if i + 1 < parts.length():

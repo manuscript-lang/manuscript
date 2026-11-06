@@ -1,6 +1,6 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 import parse, JsonValue from "@std/data/json.ms"
-import compile, render, to_data, Template from "@std/text/template.ms"
+import compile, render, to_data, Template, RenderOptions from "@std/text/template.ms"
 
 fn data(text: String) JsonValue:
     return parse(text).get()
@@ -95,7 +95,12 @@ test "partials":
     let page = compile("[\{\{ include \"row\" \}\}]").get()
     var partials = Map[String, Template]()
     partials.add("row", compile("\{\{ a \}\}").get())
-    try expect_equal(page.render(data("\{\"a\":7\}"), partials: partials).get(), "[7]")
+    try expect_equal(
+        page.render(
+            data("\{\"a\":7\}"), RenderOptions(partials: partials)
+        ).get(),
+        "[7]"
+    )
     try expect_true(page.render(data("\{\"a\":7\}")).is_error())
 
 test "strict missing values and limits":
@@ -103,10 +108,14 @@ test "strict missing values and limits":
     try expect_equal(render("[\{\{ nope \}\}]", data("\{\}")).get(""), "")
 
     let page = compile("\{\{ nope \}\}").get()
-    try expect_equal(page.render(data("\{\}"), strict: false).get(), "")
+    try expect_equal(page.render(data("\{\}"), RenderOptions(strict: false)).get(), "")
 
     let big = compile("\{\{ for i in xs \}\}abcdefgh\{\{ end \}\}").get()
-    try expect_true(big.render(data("\{\"xs\":[1,2,3,4]\}"), max_output: 10).is_error())
+    try expect_true(
+        big.render(
+            data("\{\"xs\":[1,2,3,4]\}"), RenderOptions(max_output: 10)
+        ).is_error()
+    )
 
 test "compile errors name the line":
     for bad in [

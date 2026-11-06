@@ -1740,6 +1740,28 @@ impl Session {
     }
 }
 
+/// A definition's fields, cases and operations hold types that name the definition again, so
+/// dropping the world alone leaves each cycle allocated. The session owns every definition it
+/// loaded, and a `Program` keeps the session alive for as long as its types are used, so the
+/// contents are released when the last owner of the session goes.
+impl Drop for Session {
+    fn drop(&mut self) {
+        let world = self.world.borrow();
+        let tables = world.modules.values().flat_map(HashMap::values);
+        let defs: Vec<Rc<Definition>> = tables
+            .chain(world.symbols.values())
+            .filter_map(|sym| sym.ty.borrow().as_ref().and_then(|t| t.def.clone()))
+            .collect();
+        drop(world);
+        for d in defs {
+            d.variables.borrow_mut().clear();
+            d.fields.borrow_mut().clear();
+            d.cases.borrow_mut().clear();
+            d.operations.borrow_mut().clear();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1756,6 +1778,19 @@ mod tests {
     fn every_embedded_module_type_checks() {
         let errors = Session::new().check_all_sources();
         assert!(errors.is_empty(), "{}", errors.join("\n"));
+    }
+
+    #[test]
+    fn dropping_a_session_releases_its_definitions() {
+        let session = Session::new();
+        let list = session.standard_symbol("List").unwrap();
+        let def = Rc::downgrade(list.ty.borrow().as_ref().unwrap().def.as_ref().unwrap());
+        drop(list);
+        drop(session);
+        assert!(
+            def.upgrade().is_none(),
+            "the definition cycle outlived its session"
+        );
     }
 
     #[test]

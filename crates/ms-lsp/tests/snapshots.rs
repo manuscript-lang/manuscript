@@ -658,13 +658,14 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("collections/collections.ms", 6),
         ("concurrency/promise.ms", 2),
         ("core.ms", 2),
+        ("data/encoding.ms", 1),
         ("io/io.ms", 9),
         ("internal/random.ms", 1),
         ("main.ms", 1),
         ("math/decimal.ms", 1),
         ("math/math.ms", 3),
         ("random.ms", 3),
-        ("string.ms", 7),
+        ("string.ms", 5),
     ]);
     for id in [first, second] {
         let locations = responses
