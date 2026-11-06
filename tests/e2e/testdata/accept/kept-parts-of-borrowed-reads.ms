@@ -6,6 +6,7 @@ fn failed() String!:
 
 fn names(suite: String) List[String]:
     if suite == "kernels": return ["sieve", "nbody"]
+
     return ["call"]
 
 test "a let keeps the message of a borrowed error":
