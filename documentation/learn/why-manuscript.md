@@ -49,26 +49,23 @@ export fn main() Int:
 1650 cents
 ```
 
-You can follow this without a manual. An `enum` lists the cases, an `interface` names what a type can do, `impl` connects them, and `match` covers every case. `var` marks the one thing that changes. Nothing is copied behind your back, because the only mark for that is `.clone()`. Each value has one owner, the compiler frees it at its last use, and there is no garbage collector and no lifetime annotation.
-
 The syntax is also cheap for a model to produce. Manuscript spells logic with plain English words, `and`, `or`, `not`, `fn`, `var`, `else if`, `none`, where other languages use symbols and punctuation. Plain words are common in a model's training text and tend to cost fewer tokens than strings of operators, so the same program takes less to write and less to read back.
 
 ## A compiler that helps the agent
 
-Agents carry habits from other languages. They write `len(xs)`, `&&`, `null`, `xs.push(1)` or `i++`. The compiler is built to meet them there. Every diagnostic reads `cause; fix`, and it recognizes code that looks like it came from somewhere else:
+Every diagnostic is written for an agent and tuned against agents' real mistakes, so each one names the cause and the fix. Checks are fast enough to run after every edit.
+
+Agents also arrive with habits from other languages, and the compiler meets them where they are. It recognizes code that looks like it came from somewhere else and says how to write it here:
 
 ```text
 resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length()
 parse: '&&' is not an operator; write 'and' for logical and
 resolution: unknown binding null; Manuscript has no null: absence is an Optional, written none
-resolution: unknown or ambiguous member push on List[Int]; did you mean 'append'?
 ```
 
-The agent gets the repair, not just "syntax error". When the fix is mechanical, `ms check --fix` applies it: `null` becomes `none` and `push` becomes `append` without another round trip. An ownership slip is explained the same way, with the `.clone()` that keeps the original.
+When the fix is mechanical, `ms check --fix` applies it.
 
-Checking is fast, so the agent can ask after every edit: on a 122,000-line project, `ms check` takes under two seconds (see the numbers below). `ms guide` is a one-page cheat sheet, `ms search_symbol read file` answers one API question, and `ms verify` runs checks, formatting, lint and tests with a single exit code. When a program fails at run time, `ms test --json` hands back the fault as data: kind, values, position and trace. The agent loops until the exit code is zero.
-
-## You review the result
+## Easy to review and understand
 
 Reading the diff line by line does not scale when an agent writes the code. Manuscript is simple enough that the code is easy to follow, and the tooling shows what a program does before you read any of it. You run:
 
@@ -76,9 +73,7 @@ Reading the diff line by line does not scale when an agent writes the code. Manu
 ms diagram ms.toml --format html -o code-map.html
 ```
 
-You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted: `Changed (3)` in the sidebar below lists them, and the Behavior view lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye. The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters.
-
-![The code map for an inventory tool, with three changed declarations listed in the sidebar and the Behavior view of run_command beside its source](/images/code-map-behavior.png "Code map with a diff overlay: changed declarations are outlined in red, and the Behavior view shows each branch and early return.")
+You get one offline file that shows source, types, calls and ownership side by side, with the declarations the change touched highlighted, and a Behavior view that lays out the control flow of the selected function. The actual code is one click away from any box in the picture. `ms review --diff` ranks what deserves your attention first: changed contracts, error flow and resource scopes. A file or connection opened in a scope closes when the scope exits, even on an early return, a fault or a cancellation, so there is less to check by eye. The language and the tools are shaped to keep the cognitive load low: you see the structure first and open the code only where it matters. See [working with an agent](../guide/working-with-an-agent.md) for the full review workflow.
 
 ## Test, benchmark and profile in one toolchain
 
@@ -113,8 +108,6 @@ On a generated 122,000-line project (40 packages, cold build, 4 vCPUs), the same
 | check only | 1.6 s | 11.6 s (`go vet`) | 16.8 s (`cargo check`) |
 | debug build | 4.8 s | 10.5 s (`go build`) | 18.0 s (`cargo build`) |
 | release build | 43.8 s (LLVM) | 10.5 s | 30.5 s (`cargo build --release`) |
-
-The loop an agent runs all day is check and debug build, and there Manuscript is the fastest: a check is about 7 times faster than Go's and 10 times faster than Rust's, and a debug build is 2.2 times faster than Go's and 3.7 times faster than Rust's. Release builds are the slow path on purpose, because LLVM spends the time on optimization. Today Manuscript's release build is slower than Rust's and Go's, and the numbers say so. Go has no separate release step, so its single time is repeated.
 
 The numbers come from the [compile-time benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/compile-time/README.md), which generates the same program in each language and names the machine and command. The Rust version is one crate with 40 modules, the closest match for Go's 40 packages.
 
