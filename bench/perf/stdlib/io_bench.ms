@@ -1,4 +1,4 @@
-import lines from "@std/io/streams.ms"
+import from_list, fold, lines, map from "@std/io/streams.ms"
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
 import Source, ReadStream from "@std/io/io.ms"
@@ -47,5 +47,24 @@ bench "io.lines":
             count += 1
 
         return keep(count)
+
+    try measure(10, work)
+
+fn counted(n: Int) List[Int]:
+    var xs: List[Int] = []
+    for i in 0..n:
+        xs.append(i)
+    return xs
+
+fn plus(x: Int) Int:
+    return x + 1
+
+bench "io.stages.map3_fold":
+    let xs = counted(200000)
+
+    fn work() Result[Unit, Error]:
+        let stream = map(map(map(from_list(xs.clone()), plus), plus), plus)
+        let total = try fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)
+        return keep(total)
 
     try measure(10, work)
