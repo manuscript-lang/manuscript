@@ -388,11 +388,6 @@ impl Type {
         self.is_default(name)
     }
 
-    /// The id as text.
-    pub fn id_str(&self, syms: ms_syntax::Names) -> &'static str {
-        syms.str(self.id)
-    }
-
     /// The result of a function type (panics if absent: function types always have one).
     pub fn result_ty(&self) -> Ty {
         self.result.clone().unwrap_or_else(invalid)
@@ -411,11 +406,6 @@ impl Type {
     /// The `<invalid>` marker.
     pub fn is_invalid(&self) -> bool {
         self.kind == Kind::Invalid
-    }
-
-    /// The `<inferred>` placeholder.
-    pub fn is_inferred(&self) -> bool {
-        self.kind == Kind::Inferred
     }
 
     /// The `Never` primitive.

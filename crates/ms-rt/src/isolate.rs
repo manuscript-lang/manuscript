@@ -276,20 +276,6 @@ pub fn raise_cancel(slot: usize, sig: u8) {
     wake_if_sleeping(&inbox);
 }
 
-/// Counts a worker isolate before its thread starts, so the main isolate does not look alone
-/// while the worker is still being set up.
-pub fn count_worker() {
-    LIVE_COUNT.fetch_add(1, Ordering::SeqCst);
-}
-
-/// Ends the count of a worker isolate (also when its thread never started). Its last posts
-/// were made first, so a parked isolate is already awake by now; if the rest are all parked,
-/// nothing is left to wake them.
-pub fn retire_worker() {
-    LIVE_COUNT.fetch_sub(1, Ordering::SeqCst);
-    declare_if_stuck();
-}
-
 /// Flags a deadlock when every isolate is parked, and wakes the main isolate to report it. A
 /// stop request in flight (a signal handler cannot take the lock) is not a deadlock.
 fn declare_if_stuck() {

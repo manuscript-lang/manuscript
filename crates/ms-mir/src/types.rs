@@ -388,20 +388,6 @@ impl TyTable {
             TyKind::UInt8 | TyKind::UInt16 | TyKind::UInt32 | TyKind::UInt64
         )
     }
-
-    /// Whether `ty` is a single-word heap reference (never null).
-    pub fn is_ref(&self, ty: Ty) -> bool {
-        matches!(
-            self.kind(ty),
-            TyKind::Str
-                | TyKind::Bytes
-                | TyKind::Rec(_)
-                | TyKind::Alt(_)
-                | TyKind::List(_)
-                | TyKind::Obj(..)
-                | TyKind::Fn(..)
-        )
-    }
 }
 
 /// A record declaration.

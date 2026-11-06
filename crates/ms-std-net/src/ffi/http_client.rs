@@ -244,11 +244,6 @@ fn one_shot(
 native! {
     // -------------------------------------------------------------------- errors
 
-    /// The error message for a status and the `Failed` text (nullable).
-    fn msstd_http_error_message(status: u8, has_failed: Has, failed: &str) -> String {
-        http_from_code(status, (if *has_failed { failed } else { "" }).to_string()).message()
-    }
-
     // ------------------------------------------------------------------- headers
 
     /// `HttpHeaders()`.
