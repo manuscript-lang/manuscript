@@ -1,6 +1,6 @@
 //! Sidecars describe the code generator that actually produced the artifact,
 //! including warm restores after the LLVM tools stop being available.
-mod common;
+use crate::common;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};

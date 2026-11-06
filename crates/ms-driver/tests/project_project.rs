@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::project::{Overlay, find_manifest, read_project, resolve_import, source_path};

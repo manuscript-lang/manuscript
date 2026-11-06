@@ -106,10 +106,31 @@ pub fn load_file(syms: ms_syntax::Names, filename: &str, options: LoadOptions) -
     load_editor_file(syms, filename, options, &EditorOptions::default())
 }
 
+/// [`load_file`] with more entry files loaded into the same graph, so `ms test a.ms b.ms` builds
+/// one executable. Without an enclosing `ms.toml` the root is the directory that holds every file.
+pub fn load_files(
+    syms: ms_syntax::Names,
+    filename: &str,
+    extra: &[String],
+    options: LoadOptions,
+) -> Graph {
+    load_entries(syms, filename, extra, options, &EditorOptions::default())
+}
+
 /// [`load_file`] over an editor's unsaved sources, with optional recovery.
 pub fn load_editor_file(
     syms: ms_syntax::Names,
     filename: &str,
+    options: LoadOptions,
+    editor: &EditorOptions,
+) -> Graph {
+    load_entries(syms, filename, &[], options, editor)
+}
+
+fn load_entries(
+    syms: ms_syntax::Names,
+    filename: &str,
+    extra: &[String],
     options: LoadOptions,
     editor: &EditorOptions,
 ) -> Graph {
@@ -137,6 +158,14 @@ pub fn load_editor_file(
     if let Some(module) = &editor.module {
         config.entry = module.clone();
     }
+    let extra_files = match absolute_extras(&mut config, manifest, extra) {
+        Ok(files) => files,
+        Err(error) => {
+            graph.diagnostics = vec![from_error(&Arc::from(filename), &error)];
+            return graph;
+        }
+    };
+    graph.source_root = config.root.clone();
     let overlay = match crate::project::canonical_overlay(&config.root, &editor.overlay) {
         Ok(overlay) => overlay,
         Err(error) => {
@@ -177,6 +206,7 @@ pub fn load_editor_file(
             }
         }
     }
+    loader.add_discovered(syms, &extra_files);
     if manifest && (library || options.tests || editor.project_sources) {
         match crate::project::discover_modules_with_overlay(
             &config,
@@ -190,6 +220,35 @@ pub fn load_editor_file(
         }
     }
     graph
+}
+
+/// The absolute paths of the extra entry files. With no manifest the project root moves up to the
+/// directory that holds the entry and every extra file, so each one has a logical path below it.
+fn absolute_extras(
+    config: &mut Project,
+    manifest: bool,
+    extra: &[String],
+) -> Result<Vec<String>, ProjectError> {
+    let mut files = Vec::new();
+    for file in extra {
+        files.push(pathops::eval_symlinks(&pathops::abs(file)?)?);
+    }
+    if manifest || files.is_empty() {
+        return Ok(files);
+    }
+    let mut root = config.root.clone();
+    for file in &files {
+        let dir = pathops::dir(file);
+        while !pathops::rel(&root, &dir).is_ok_and(|r| !pathops::escapes(&r)) {
+            let parent = pathops::dir(&root);
+            if parent == root {
+                break;
+            }
+            root = parent;
+        }
+    }
+    config.root = root;
+    Ok(files)
 }
 
 fn manifest_pos(config: &Project) -> Pos {

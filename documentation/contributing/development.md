@@ -43,6 +43,8 @@ CI does not run `make leak-check`: `CONFORM_LEAKS=1 make conform` runs the corpu
 
 `make count-check` runs `tests/ownership-counts/*.ms` in Debug and Release against the same counting runtime and compares the runtime's `ms-rt counts:` line (allocations, allocated bytes, runtime list copies and string clones) with each fixture's `# expect-debug:` / `# expect-release:` headers, and the program's stdout (cleanup order) with its `# expect-stdout:` lines. Lowering and optimizer passes legitimately change allocation counts, so the two builds carry separate expectations; a change that raises a count states why and updates the header in the same commit. Inline list clones allocate and copy without a runtime call, so `alloc_bytes` is the reliable copy signal.
 
+Each crate with several integration-test files links them as one binary: add a file under `tests/` and declare it as a module in that crate's `tests/main.rs` (run it with `cargo nextest run -p <crate> --test it <module>::`).
+
 Keep Manuscript source out of Rust strings. Diagnostics and run output belong in `tests/conformance/fixtures/snippets/` (`ms-conform record`) or `tests/e2e/testdata`; lowering expectations are `# expect-mir:` header comments on `crates/ms-build/tests/lower/*.ms`; a Rust test that drives a program (servers, signals, pipes) loads it with `include_str!` from a `.ms` file beside it. Rust tests keep to Rust internals.
 
 Write source assertions with `@std/test/test.ms` and propagate their Results: `operation() | try expect_ok | try expect_equal(value)`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.

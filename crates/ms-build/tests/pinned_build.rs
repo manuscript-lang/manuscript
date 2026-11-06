@@ -10,8 +10,7 @@ use std::sync::Mutex;
 // Keep fixture writes out of unrelated fixture forks (see engine/testing.rs).
 static NATIVE_FIXTURE: Mutex<()> = Mutex::new(());
 
-#[path = "../../ms-clif/tests/support/mod.rs"]
-mod support;
+use crate::support;
 
 fn program(code: i64) -> String {
     format!(

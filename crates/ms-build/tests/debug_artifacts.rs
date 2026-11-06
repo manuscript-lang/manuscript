@@ -6,8 +6,7 @@ use ms_rt as _;
 use std::path::Path;
 use std::process::Command;
 
-#[path = "../../ms-clif/tests/support/mod.rs"]
-mod support;
+use crate::support;
 
 fn tool(name: &str) -> String {
     let key = if name == "llvm-dwarfdump" {

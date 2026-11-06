@@ -2,7 +2,7 @@
 
 #![cfg(unix)]
 
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::project::{Project, discover_modules};

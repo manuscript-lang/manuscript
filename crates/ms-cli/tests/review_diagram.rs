@@ -1,6 +1,6 @@
 //! Review and diagram must be usable through the installed CLI surface.
 
-mod common;
+use crate::common;
 
 use common::scratch;
 use ms_json::Json;

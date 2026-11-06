@@ -7,4 +7,4 @@ Decision: `extern fn name(...) T` declares a bodiless function whose symbol is i
 
 Apply when: adding natives or user-facing FFI; do not document planned items as available.
 Evidence: [native functions](../../documentation/core-language/functions/native-functions.md), [ABI round trip](../../crates/ms-cli/tests/extern_link.rs).
-Verify: `cargo test -p ms-cli --test extern_link` round-trips every signature type and callback on both backends, and a stop hook ends a blocked shim with 130; a generic or method extern is rejected.
+Verify: `cargo test -p ms-cli --test it -- extern_link::` round-trips every signature type and callback on both backends, and a stop hook ends a blocked shim with 130; a generic or method extern is rejected.

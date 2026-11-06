@@ -4,6 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
 description = "Native implementation of @std/data/json.ms (strict parser and serializer over an arena tree)"
+autotests = false
 
 [dependencies]
 ms-rt-abi = { path = "../ms-rt-abi" }
@@ -12,3 +13,7 @@ ms-rt = { path = "../ms-rt" }
 
 [lints]
 workspace = true
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

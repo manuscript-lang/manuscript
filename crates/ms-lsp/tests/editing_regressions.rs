@@ -9,7 +9,7 @@ use ms_lsp::lint::Tooling;
 use ms_lsp::text::{self, Position, Range};
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 fn labels(source: &str, line: usize, character: usize) -> Vec<String> {

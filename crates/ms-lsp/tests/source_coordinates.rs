@@ -4,7 +4,7 @@ use ms_lsp::json::Json;
 use ms_lsp::text::{self, Range};
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::{Script, Workspace};
 
 const INVALID: &str = include_str!("source_coordinates/invalid-unicode.ms");

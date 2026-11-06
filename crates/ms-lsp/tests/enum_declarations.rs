@@ -5,7 +5,7 @@ use ms_lsp::symbols::document_symbols;
 use ms_lsp::text::Position;
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 #[test]

@@ -3,7 +3,7 @@
 //! tests supply the MIR the lowering would produce.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
-mod common;
+use crate::common;
 
 use common::scratch;
 use ms_rt as _;
