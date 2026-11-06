@@ -152,7 +152,7 @@ export fn absolute(path: String) String:
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
-    return capture(program, arguments, cwd: dir)
+    return capture(program, arguments, cwd: dir.clone())
 
 // Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) String!:
