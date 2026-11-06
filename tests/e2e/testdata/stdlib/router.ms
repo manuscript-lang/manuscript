@@ -14,7 +14,7 @@ import (
 ) from "@std/net/http.ms"
 import read_to_end from "./support/conn.ms"
 import http_client, serve from "@std/net/net.ms"
-import create, Transport from "@std/log.ms"
+import create, LoggerOptions, Transport from "@std/log.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 import (
@@ -446,7 +446,7 @@ fn logged(path: String) String:
 test "access_log writes one record per request":
     let dir = temporary("ms-router-log-") | try expect_ok
     let lines = "{dir.path()}/lines"
-    let logger = (create(Sink(path: lines.clone()), timestamp: false)).get()
+    let logger = (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()

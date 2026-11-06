@@ -1,7 +1,7 @@
 // conform: tags=control-flow,diagnostics,modules,stdlib-fs,stdlib-process,tier-io,try-result
 // conform: phase=check
 // conform: origin=documentation/learn/common-tasks.md:94
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:

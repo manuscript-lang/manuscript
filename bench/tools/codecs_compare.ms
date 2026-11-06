@@ -25,7 +25,7 @@ import (
     run_pinned,
     write_json
 ) from "./study.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import JsonValue from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 

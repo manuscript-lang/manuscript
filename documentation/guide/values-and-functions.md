@@ -5,7 +5,7 @@ weight = 1
 
 # Values and functions
 
-A shop needs an invoice: add up the line items, add shipping unless the order is big enough, and print money like a person would. Here is the whole program.
+A billing tool needs an invoice: add up the line items, add shipping unless the order is big enough, and print money like a person would. Here is the whole program.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Subtotal: 45.50\nShipping: 0.00\nTotal: 45.50\nItems under 10.00 after discount: 1\n"} -->
 ```manuscript {filename="invoice.ms"}

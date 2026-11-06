@@ -605,15 +605,15 @@ impl Checker {
                     .map(|o| self.syms.str(o.name).to_string()),
             );
         }
-        if let Some(intrinsic) = self.session.intrinsic_operations(receiver.id)
-            && let Some(def) = &intrinsic.def
-        {
-            names.extend(
-                def.operations
-                    .borrow()
-                    .iter()
-                    .map(|o| self.syms.str(o.name).to_string()),
-            );
+        for intrinsic in self.session.intrinsic_operations(receiver.id) {
+            if let Some(def) = &intrinsic.def {
+                names.extend(
+                    def.operations
+                        .borrow()
+                        .iter()
+                        .map(|o| self.syms.str(o.name).to_string()),
+                );
+            }
         }
         if receiver.kind == Kind::Variable {
             for b in receiver.bounds() {

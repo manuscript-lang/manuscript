@@ -3,7 +3,7 @@ name = "ms-std-table"
 version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
-description = "Pure, bounded table formatting for @std/io/table.ms"
+description = "Terminal display width for String.display_width"
 
 [dependencies]
 ms-rt = { path = "../ms-rt" }

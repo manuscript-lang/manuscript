@@ -1,3 +1,5 @@
+// Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They spread keys and detect accidental
+// damage; for SHA-2, HMAC and other secure digests, see `@std/crypto.ms`.
 import Bytes from "@std/bytes.ms"
 import ReadStream from "@std/io/io.ms"
 import (
@@ -122,7 +124,7 @@ export type MapHash:
 
 // Returns an unpredictable seed from the operating system.
 export fn random_seed() Int:
-    return secure_int(-9223372036854775807, none).get(0)
+    return secure_int(-9223372036854775807).get(0)
 
 impl MapHash:
     // Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.
@@ -154,14 +156,7 @@ bytes in hand. Retains no input bytes, and consumes and closes the stream. A fai
 export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64!:
     var sum = Crc64(polynomial: polynomial)
     var source = input
-
-    while true:
-        let chunk = try source.read().wait()
-
-        if let data = chunk:
-            sum.update(data)
-        else:
-            break
-
+    for chunk in source.wait():
+        sum.update(try chunk)
     try source.close()
     return ok(sum.value())

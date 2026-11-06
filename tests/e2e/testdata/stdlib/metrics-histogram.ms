@@ -1,5 +1,5 @@
 import expect_equal, expect_true from "@std/test/test.ms"
-import histogram from "@std/os/metrics.ms"
+import histogram from "@std/data/histogram.ms"
 import milliseconds from "@std/os/time.ms"
 
 test "histogram summarizes exact small values":

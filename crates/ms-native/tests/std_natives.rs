@@ -95,11 +95,6 @@ fn duration_arithmetic_and_faults() {
         "Duration.abs: value (nanoseconds) must be between -9223372036854775807 and 9223372036854775807, found -9223372036854775808",
         || msstd_time_duration_abs(i64::MIN),
     );
-    assert_fault(
-        "sleep: duration (nanoseconds) must be between 0 and 9223372036854775807, found -1",
-        || msstd_time_sleep(-1),
-    );
-    msstd_time_sleep(1_000_000);
 }
 
 #[test]
@@ -843,7 +838,7 @@ mod process {
                 ),
                 STATUS_INVALID_INPUT
             );
-            let mut info = std::mem::MaybeUninit::<InfoOut>::uninit();
+            let mut info = std::mem::MaybeUninit::<ProcessInfoOut>::uninit();
             assert_eq!(
                 msstd_process_info(info.as_mut_ptr(), ErrSlot(core::ptr::null_mut())),
                 STATUS_OK

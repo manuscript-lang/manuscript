@@ -5,6 +5,9 @@ import stdout, stdout_bytes from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/os/time.ms"
 
+fn log_closed() Error:
+    return Error("logging: resource is closed", kind: "EBADF")
+
 // Severity levels accepted by a logger, ordered from Trace through Fatal.
 export enum LogLevel:
     // Most detailed records, encoded with numeric level 10.
@@ -112,23 +115,17 @@ impl Transport for FileTransport:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         return self.file.write_bytes(data)
 
     fn flush() Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         return self.file.sync()
 
     fn duplicate() Transport!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         return ok(FileTransport(file: try self.file.clone(), closed: false))
 
@@ -144,33 +141,25 @@ type StdoutTransport:
 
 impl Transport for StdoutTransport:
     fn write(data: String) Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         var out = stdout()
         return out.write(data)
 
     fn write_bytes(data: Bytes) Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         var out = stdout_bytes()
         return out.write(data)
 
     fn flush() Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         var out = stdout()
         return out.flush().wait()
 
     fn duplicate() Transport!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         return ok(StdoutTransport(closed: false))
 
@@ -289,20 +278,25 @@ impl Closeable for Logger:
         self.transport.close()
         return ok(unit)
 
-// Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
-export fn create(
-    transport: Transport,
-    level: LogLevel?,
-    timestamp: Bool?,
-    max_bytes: Int?
-) Logger!:
-    if let max = max_bytes:
-        if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
+// Settings for `create`: the minimum level (default Info), whether records carry a timestamp (default true), and an optional per-record byte limit.
+export type LoggerOptions:
+    // Records below this level are dropped.
+    level: LogLevel = LogLevel.Info
+    // True adds a timestamp to every record.
+    timestamp: Bool = true
+    // Maximum encoded bytes of one record; none adds no limit.
+    max_bytes: Int? = none
 
-    var threshold = 30
-    if let chosen = level:
-        threshold = level_value(chosen)
-    return ok(Logger(threshold, timestamp.get(true), max_bytes, none, transport))
+// Creates a logger that owns `transport`, with the level, timestamp and record-size settings in `options`.
+export fn create(transport: Transport, options: LoggerOptions = LoggerOptions()) Logger!:
+    if let max = options.max_bytes:
+        if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
+    return ok(
+        Logger(
+            level_value(options.level), options.timestamp, options.max_bytes, none,
+            transport
+        )
+    )
 
 // Writes log records to the process standard-output stream.
 export fn stdout_transport() Transport:
@@ -327,7 +321,7 @@ type RotatingTransport:
 
 // Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to `path.1`.
 fn rotate(path: String, keep: Int) Unit:
-    let _oldest = remove("{path}.{keep}", false)
+    let _oldest = remove("{path}.{keep}", recursive: false)
     var index = keep - 1
 
     while index >= 1:
@@ -337,16 +331,14 @@ fn rotate(path: String, keep: Int) Unit:
     if keep >= 1:
         let _aside = rename(path, "{path}.1")
     else:
-        let _discarded = remove(path, false)
+        let _discarded = remove(path, recursive: false)
 
 impl Transport for RotatingTransport:
     fn write(data: String) Unit!:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         var size = 0
         if let existing = stat(self.path, true): size = existing.size
@@ -359,16 +351,12 @@ impl Transport for RotatingTransport:
         return written
 
     fn flush() Unit!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         return ok(unit)
 
     fn duplicate() Transport!:
-        if self.closed: return error(
-            Error("logging: resource is closed", kind: "EBADF")
-        )
+        if self.closed: return error(log_closed())
 
         return ok(
             RotatingTransport(
@@ -383,7 +371,7 @@ impl Transport for RotatingTransport:
 /*
 Appends log records to the file at `path` and rotates it by size.
 When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `EINVAL`. An existing file keeps being appended to, counting its current size.
-Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5), none, none, none)`.
+Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5))`.
 */
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
     if max_bytes <= 0 or keep < 0: return error(

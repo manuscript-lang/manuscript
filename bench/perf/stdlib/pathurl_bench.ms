@@ -1,5 +1,5 @@
 import keep, measure from "@std/test/bench.ms"
-import basename, join, normalize from "@std/os/fs.ms"
+import basename, join, normalize from "@std/os/path.ms"
 import parse, encode_component from "@std/net/net.ms"
 import sqrt, sin from "@std/math/math.ms"
 

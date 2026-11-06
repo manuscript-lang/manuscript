@@ -17,7 +17,7 @@ import (
     sample
 ) from "./lib.ms"
 import copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]:
     var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)

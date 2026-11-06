@@ -1,4 +1,4 @@
-import posix from "@std/os/fs.ms"
+import posix from "@std/os/path.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "POSIX extensions preserve basename and dotfile rules":

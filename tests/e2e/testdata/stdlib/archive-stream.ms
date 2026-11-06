@@ -6,8 +6,10 @@ import (
     pack,
     unpack,
     compress,
+    decompress,
     ArchiveEntry,
-    ArchiveLimits,
+    ArchiveFormat,
+    ArchiveOptions,
     CompressionFormat
 ) from "@std/io/archive.ms"
 import Bytes, join from "@std/bytes.ms"
@@ -59,14 +61,12 @@ test "compression streams round trip all formats under every chunk size":
     ]:
         for size in [1, 5, 64]:
             let packed = try read_all(compressed(chunked(text.clone(), size), format))
-            if (try format.decompress(packed.clone(), none)) != text: return fail(
+            if (try decompress(packed.clone(), format)) != text: return fail(
                 "whole decode, size {size}"
             )
 
             let restored = try read_all(
-                decompressed(
-                    chunked(packed.clone(), size), format, none
-                )
+                decompressed(chunked(packed.clone(), size), format)
             )
             if restored != text: return fail("stream round trip, size {size}")
 
@@ -76,8 +76,8 @@ test "decompressed streams preserve lines across decoder output batches":
     for format in [
         CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
     ]:
-        let packed = try format.compress(data.clone())
-        var rows = lines(decompressed(chunked(packed, 32768), format, none))
+        let packed = try compress(data.clone(), format)
+        var rows = lines(decompressed(chunked(packed, 32768), format))
         var count = 0
 
         while true:
@@ -100,15 +100,13 @@ test "decompression budget, garbage and level are errors":
     try expect_equal(limited.err().kind, "EOVERFLOW")
 
     let garbage = read_all(
-        decompressed(chunked(text.clone(), 7), CompressionFormat.Gzip, none)
+        decompressed(chunked(text.clone(), 7), CompressionFormat.Gzip)
     )
     try expect_equal(garbage.err().kind, "EBADMSG")
 
-    let whole = try compress(text.clone(), "gzip", 6)
+    let whole = try compress(text.clone(), CompressionFormat.Gzip)
     let head = try whole.slice(0, 12)
-    let truncated = read_all(
-        decompressed(chunked(head, 5), CompressionFormat.Gzip, none)
-    )
+    let truncated = read_all(decompressed(chunked(head, 5), CompressionFormat.Gzip))
     try expect_equal(truncated.err().kind, "EBADMSG")
 
     let level = read_all(compressed(chunked(text, 7), CompressionFormat.Gzip, 10))
@@ -126,9 +124,9 @@ fn sample() List[ArchiveEntry]:
 
 fn read_entries(
     input: ReadStream[Bytes],
-    limits: ArchiveLimits = ArchiveLimits()
+    options: ArchiveOptions = ArchiveOptions()
 ) List[ArchiveEntry]!:
-    var entries = tar_entries(input, limits)
+    var entries = tar_entries(input, options)
     var out: List[ArchiveEntry] = []
 
     while true:
@@ -142,25 +140,27 @@ fn read_entries(
     return ok(out)
 
 test "tar entries match unpack under every chunk size":
-    let archive = try pack(sample(), "tar")
-    let expected = try unpack(archive.clone(), "tar")
+    let archive = try pack(sample(), ArchiveFormat.Tar)
+    let expected = try unpack(archive.clone(), ArchiveFormat.Tar)
 
     for size in [1, 100, 511, 512, 513, 4096]:
         let got = try read_entries(chunked(archive.clone(), size))
         if got != expected: return fail("chunk size {size}")
 
 test "tar entries enforce limits and report truncation":
-    let archive = try pack(sample(), "tar")
-    let few = read_entries(chunked(archive.clone(), 700), ArchiveLimits(max_entries: 2))
+    let archive = try pack(sample(), ArchiveFormat.Tar)
+    let few = read_entries(
+        chunked(archive.clone(), 700), ArchiveOptions(max_entries: 2)
+    )
     try expect_equal(few.err().kind, "EOVERFLOW")
 
     let big = read_entries(
-        chunked(archive.clone(), 700), ArchiveLimits(max_entry_bytes: 100)
+        chunked(archive.clone(), 700), ArchiveOptions(max_entry_bytes: 100)
     )
     try expect_equal(big.err().kind, "EOVERFLOW")
 
     let total = read_entries(
-        chunked(archive.clone(), 700), ArchiveLimits(max_total_bytes: 1000)
+        chunked(archive.clone(), 700), ArchiveOptions(max_bytes: 1000)
     )
     try expect_equal(total.err().kind, "EOVERFLOW")
 

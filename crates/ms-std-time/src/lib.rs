@@ -20,7 +20,7 @@ pub use core_time as logic;
 use alloc::string::String;
 use core_time::Ts;
 use ms_rt::ffi::{StatusCode, Str, abi_record, native};
-use ms_rt::glue::{fault, fault_fmt, poll_cancel, task_sleep};
+use ms_rt::glue::{fault, fault_fmt};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE};
 
 abi_record! {
@@ -247,19 +247,6 @@ native! {
     fn msstd_time_wall_clock_now() -> out Timestamp {
         let (seconds, nanos) = sys::realtime();
         Timestamp { seconds, nanos }
-    }
-
-    /// `time.sleep(duration)`: parks the current task, so other tasks (server handlers) keep
-    /// running; wakes early only to unwind a stop request.
-    safe fn msstd_time_sleep(duration: i64) -> () {
-        if duration < 0 {
-            fault_fmt(format_args!(
-                "sleep: duration (nanoseconds) must be between 0 and {}, found {duration}",
-                i64::MAX
-            ));
-        }
-        poll_cancel();
-        task_sleep(duration);
     }
 
     // ---- Timestamp ----

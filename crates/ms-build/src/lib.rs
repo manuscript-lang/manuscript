@@ -18,4 +18,7 @@ pub use ms_clif::link::debug_companion_path;
 pub use ms_clif::{BuildOptions, CopyProbe, RtHot};
 pub use ms_lower::SKIP_MARKER;
 pub use ms_mir::ir::Module;
-pub use native::{Backend, Profile, build_executable, publish, runtime_override};
+pub use native::{
+    Backend, Profile, backend_name, build_executable, build_executable_pinned, publish,
+    runtime_override,
+};

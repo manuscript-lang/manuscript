@@ -658,6 +658,17 @@ impl Walker<'_> {
                 }
             }
         }
+        // A returned `Bytes` is owned, and a view only borrows its receiver.
+        if let Some(local) = self.returned_bytes_view(e) {
+            self.error(
+                e.pos,
+                format!(
+                    "cannot return a view of `{0}`: a returned `Bytes` is owned and a view only borrows `{0}`; copy it with `.{CLONE}()` after the view",
+                    self.syms.str(local)
+                ),
+            );
+            return;
+        }
         // A reference converted on the way out (a borrow-returning call widened to another error type or
         // an interface) is read: the conversion builds the new value from it.
         let converted = self.cx.m.info(e).interface_source.is_some()
@@ -1237,8 +1248,21 @@ impl Walker<'_> {
     fn borrow_source(&self, e: &Expr) -> Option<BorrowSource> {
         // `ok(x)` and `error(x)` are references when `x` is: the wrapper adds no storage. A
         // payload converted on the way in (`error(cause)` as `Error`) or copied is a new value.
-        if self.result_payload(e).is_some() {
-            return self.borrow_source(self.wrapped_borrow(e)?);
+        if let Some(payload) = self.result_payload(e) {
+            let wrapped = self.wrapped_borrow(e)?;
+            // `ok(x)` returned as an `Optional` of a `Result` is itself the wrapped value; its
+            // reference is `x`, which must be tested for conversion and copy the same way.
+            if std::ptr::eq(wrapped, e) {
+                let info = self.cx.m.info(payload);
+                if info.interface_source.is_some()
+                    || info.wrap_some.is_some()
+                    || self.class_of(payload) == Class::Copy
+                {
+                    return None;
+                }
+                return self.borrow_source(payload);
+            }
+            return self.borrow_source(wrapped);
         }
         // A field or element of what a borrow-returning call returns (`self.head().tags[0]`) is a part of
         // the same sources; a field chain extends the path, an element ends it.
@@ -1466,6 +1490,20 @@ impl Walker<'_> {
             _ => false,
         };
         returns_borrow.then_some(&**left)
+    }
+
+    /// The variable whose `Bytes.view` the call `e` is, when it is returned: a function returns
+    /// bytes it owns, so a view of a local or a parameter must be copied first.
+    fn returned_bytes_view(&self, e: &Expr) -> Option<Name> {
+        let recv = self.native_borrow_receiver(e)?;
+        if !self.cx.m.ty(e).is(Builtin::Bytes) {
+            return None;
+        }
+        let root = self.root_name(recv)?;
+        let Resolution::Local(b) = self.cx.m.resolution(root) else {
+            return None;
+        };
+        Some(b.name)
     }
 
     /// Whether `e` is `xs.get(i)` on a `List`, without a default: the element read in place.

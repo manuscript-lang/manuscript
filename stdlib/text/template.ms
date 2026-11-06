@@ -180,22 +180,25 @@ export fn to_data[T: Data](value: T) JsonValue!Error:
 
     return ok(parsed.get())
 
+// Settings for `render` and `render_to`.
+export type RenderOptions:
+    // Templates that `include` can name.
+    partials: Map[String, Template] = Map[String, Template]()
+    // True fails a render on a missing printed path; false prints it as empty.
+    strict: Bool = true
+    // Maximum text length in bytes (default 16 MiB).
+    max_output: Int = 16777216
+
 impl Template:
-    // Renders with `data` (an object supplies the root names). `partials` feeds `include`. A strict render
-    // fails on a missing printed path; `max_output` bounds the text length (default 16 MiB).
-    fn render(
-        data: JsonValue,
-        partials: Map[String, Template] = Map[String, Template](),
-        strict: Bool = true,
-        max_output: Int = 16777216
-    ) String!Error:
+    // Renders with `data` (an object supplies the root names) and the settings in `options`.
+    fn render(data: JsonValue, options: RenderOptions = RenderOptions()) String!Error:
         var frames = List[Map[String, JsonValue]]()
         frames.append(root_names(data))
 
         var run = Run(
             out: StringBuilder(), written: 0, frames: frames,
-            partials: partials.clone(), strict: strict, limit: max_output,
-            html: self.html
+            partials: options.partials.clone(), strict: options.strict,
+            limit: options.max_output, html: self.html
         )
         try run.nodes(self.nodes.clone(), 0)
         return ok(run.out.build())
@@ -206,11 +209,9 @@ export fn render_to(
     template: Template,
     data: JsonValue,
     var output: WriteStream[String],
-    partials: Map[String, Template] = Map[String, Template](),
-    strict: Bool = true,
-    max_output: Int = 16777216
+    options: RenderOptions = RenderOptions()
 ) Unit!Error:
-    let text = try template.render(data, partials, strict, max_output)
+    let text = try template.render(data, options)
     return output.write(text)
 
 fn root_names(data: JsonValue) Map[String, JsonValue]:

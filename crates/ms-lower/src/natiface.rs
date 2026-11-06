@@ -18,12 +18,7 @@ use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 use std::rc::Rc;
 
 /// Interfaces whose values carry no data.
-const UNIT_DATA: &[(&str, &str)] = &[
-    ("io", "Files"),
-    ("fs", "FileSystem"),
-    ("path", "PathOperations"),
-    ("path_win", "PathOperations"),
-];
+const UNIT_DATA: &[(&str, &str)] = &[("io", "Files"), ("fs", "FileSystem")];
 
 /// Interfaces whose handles belong to one runtime module whichever symbol returns them: streams are
 /// `@std/io` handles, and a WebSocket is the same handle from a client dial and a server upgrade.
@@ -32,12 +27,6 @@ const HANDLE_MODULE: &[(&str, &str)] = &[
     ("WriteStream", "io"),
     ("WebSocket", "websocket"),
 ];
-
-/// A constant argument the runtime symbol takes after the operation's own.
-#[derive(Clone, Copy)]
-enum Extra {
-    Bool(bool),
-}
 
 /// How an operation's runtime call is built, beyond calling its symbol with the operation's
 /// own arguments.
@@ -52,17 +41,14 @@ enum Shape {
     Records,
     /// A directory walk (`glob_entries`, `copy`) with a predicate closure.
     Walk,
-    /// A path entry point: the rules flag leads its arguments.
-    Rules,
 }
 
-/// One row of `METHODS`: module, interface, operation, runtime symbol, constant extras, call shape.
+/// One row of `METHODS`: module, interface, operation, runtime symbol, call shape.
 type MethodRow = (
     &'static str,
     &'static str,
     &'static str,
     &'static str,
-    &'static [(&'static str, Extra)],
     Shape,
 );
 
@@ -72,7 +58,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "close",
         "msstd_http_exchange_close",
-        &[],
         Shape::Plain,
     ),
     (
@@ -80,7 +65,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "headers",
         "msstd_http_exchange_headers",
-        &[],
         Shape::Plain,
     ),
     (
@@ -88,7 +72,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "method",
         "msstd_http_exchange_method",
-        &[],
         Shape::Plain,
     ),
     (
@@ -96,7 +79,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "path",
         "msstd_http_exchange_path",
-        &[],
         Shape::Plain,
     ),
     (
@@ -104,7 +86,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "protocol",
         "msstd_http_exchange_protocol",
-        &[],
         Shape::Plain,
     ),
     (
@@ -112,7 +93,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "query",
         "msstd_http_exchange_query",
-        &[],
         Shape::Plain,
     ),
     (
@@ -120,7 +100,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "read",
         "msstd_http_exchange_read",
-        &[],
         Shape::Plain,
     ),
     (
@@ -128,7 +107,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "send",
         "msstd_http_exchange_send",
-        &[],
         Shape::Plain,
     ),
     (
@@ -136,7 +114,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "send_headers",
         "msstd_http_exchange_send_headers",
-        &[],
         Shape::Plain,
     ),
     (
@@ -144,7 +121,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "write",
         "msstd_http_exchange_write",
-        &[],
         Shape::Plain,
     ),
     (
@@ -152,7 +128,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "write_bytes",
         "msstd_http_exchange_write_bytes",
-        &[],
         Shape::Plain,
     ),
     (
@@ -160,7 +135,6 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "upgrade",
         "msstd_http_exchange_upgrade",
-        &[],
         Shape::Plain,
     ),
     (
@@ -168,17 +142,9 @@ const METHODS: &[MethodRow] = &[
         "FileSystem",
         "glob",
         "msstd_fs_glob_entries",
-        &[],
         Shape::Walk,
     ),
-    (
-        "fs",
-        "FileSystem",
-        "copy",
-        "msstd_fs_copy",
-        &[],
-        Shape::Walk,
-    ),
+    ("fs", "FileSystem", "copy", "msstd_fs_copy", Shape::Walk),
 ];
 
 /// The MIR type of a runtime handle object.
@@ -196,7 +162,6 @@ pub(crate) struct MethodJob {
     shape: Shape,
     decl: Vec<ct::Param>,
     /// Constant `Bool` arguments after the operation's own.
-    extras: Vec<(&'static str, Extra)>,
     params: Vec<MTy>,
     ret: MTy,
     data_ty: MTy,
@@ -269,21 +234,10 @@ impl Cx {
             let row = METHODS
                 .iter()
                 .find(|(md, i, op, ..)| *md == module && *i == iface_name && *op == s.name);
-            let (sym, extras, shape) =
-                if let Some(windows) = module.strip_prefix("path").map(|r| r == "_win") {
-                    // Every operation is the `msstd_path_<operation>` entry point with the rules flag.
-                    (
-                        Some(format!("msstd_path_{}", s.name)),
-                        vec![("windows", Extra::Bool(windows))],
-                        Shape::Rules,
-                    )
-                } else {
-                    (
-                        row.map(|r| r.3.to_string()),
-                        row.map(|r| r.4.to_vec()).unwrap_or_default(),
-                        row.map_or(Shape::Plain, |r| r.5),
-                    )
-                };
+            let (sym, shape) = (
+                row.map(|r| r.3.to_string()),
+                row.map_or(Shape::Plain, |r| r.4),
+            );
             let mut ps = vec![Param {
                 ty: MTy::PTR,
                 mode: Mode::Borrow,
@@ -304,7 +258,6 @@ impl Cx {
                     sym,
                     shape,
                     decl,
-                    extras,
                     params: s.params.clone(),
                     ret: s.ret,
                     data_ty,
@@ -366,7 +319,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         v: load_handle(fl, job, args),
         own: false,
     });
-    let mut nargs: Vec<NArg> = job
+    let nargs: Vec<NArg> = job
         .decl
         .iter()
         .zip(&args[1..])
@@ -377,24 +330,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         })
         .collect();
     debug_assert_eq!(job.params.len(), nargs.len());
-    let mut decl = job.decl.clone();
-    for (name, extra) in &job.extras {
-        let name = ct::n(name);
-        let (ty, v) = match *extra {
-            Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
-        };
-        // The rules flag leads a path entry point's arguments.
-        let lead = job.shape == Shape::Rules;
-        decl.insert(if lead { 0 } else { decl.len() }, ct::Param::new(name, ty));
-        nargs.insert(
-            if lead { 0 } else { nargs.len() },
-            NArg {
-                name,
-                val: Val { v, own: false },
-                wrapped: false,
-            },
-        );
-    }
+    let decl = job.decl.clone();
     if job.shape == Shape::Walk {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
         fl.emit_return(Some(r));
@@ -705,7 +641,6 @@ mod tests {
             .iter()
             .map(|(module, iface, ..)| (*module, *iface))
             .chain(UNIT_DATA.iter().copied())
-            .filter(|(module, _)| !module.starts_with("path"))
             .collect();
         let bound: BTreeSet<(&str, &str, &str)> = METHODS
             .iter()

@@ -1,5 +1,5 @@
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse, stringify, TomlValue, TomlLimits from "@std/data/toml.ms"
+import parse, stringify, TomlValue, TomlOptions from "@std/data/toml.ms"
 import monotonic from "@std/os/time.ms"
 
 fn entries(value: TomlValue) Map[String, TomlValue]!:
@@ -12,8 +12,8 @@ fn items(value: TomlValue) List[TomlValue]!:
         ArrayValue(values): return ok(values)
         _: return error(Error("expected TOML array"))
 
-fn limits(bytes: Int?, depth: Int?, values: Int?) TomlLimits?:
-    return TomlLimits(max_bytes: bytes, max_depth: depth, max_values: values)
+fn limits(bytes: Int?, depth: Int?, values: Int?) TomlOptions:
+    return TomlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
 
 test "TOML scalars quoted keys comments exact integers and dates":
     let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
@@ -114,45 +114,45 @@ test "TOML optional limits include implicit tables and zero":
     try expect_false(
         (
             parse(
-                text: "a=1", limits: limits(bytes: 2, depth: none, values: none)
+                text: "a=1", options: limits(bytes: 2, depth: none, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1", limits: limits(bytes: none, depth: 2, values: none)
+                text: "a.b=1", options: limits(bytes: none, depth: 2, values: none)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "a.b=1", limits: limits(bytes: none, depth: none, values: 2)
+                text: "a.b=1", options: limits(bytes: none, depth: none, values: 2)
             ) != limited
         )
     )
     try expect_false(
         (
             parse(
-                text: "", limits: limits(bytes: 0, depth: 1, values: 1)
+                text: "", options: limits(bytes: 0, depth: 1, values: 1)
             ) != parse(text: "")
         )
     )
-    parse(text: "", limits: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
+    parse(text: "", options: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
         limited
     )
     try expect_false(
         (
             parse(
-                text: "", limits: limits(bytes: none, depth: -1, values: none)
+                text: "", options: limits(bytes: none, depth: -1, values: none)
             ) != invalid
         )
     )
     try expect_false(
         (
             parse(
-                text: "a=1", limits: limits(bytes: 3, depth: 2, values: 2)
+                text: "a=1", options: limits(bytes: 3, depth: 2, values: 2)
             ) != parse(text: "a=1")
         )
     )
@@ -202,10 +202,10 @@ test "TOML errors report the offending line and column":
     failure("y = abc") | try expect_equal("TOML 1:5: invalid value")
     failure("x = 1\ny = 1e") | try expect_equal("TOML 2:5: invalid exponent")
 
-test "TOML limits fields default to none":
+test "TOML option fields default to none or the depth and value guards":
     let limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
-    parse(text: "a=1", limits: TomlLimits(max_bytes: 2)) | try expect_equal(limited)
-    parse(text: "a=1", limits: TomlLimits()) | try expect_equal(parse(text: "a=1"))
+    parse(text: "a=1", options: TomlOptions(max_bytes: 2)) | try expect_equal(limited)
+    parse(text: "a=1", options: TomlOptions()) | try expect_equal(parse(text: "a=1"))
 
 test "TOML stringify round trips scalars tables and arrays of tables":
     let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
@@ -270,15 +270,15 @@ test "TOML deeply nested inline tables parse in linear time":
     let n = 6000
     let text = "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
     let started = monotonic()
-    let parsed = parse(text, TomlLimits())
+    let parsed = parse(text, TomlOptions())
     let elapsed = monotonic().difference(started).to_milliseconds()
     let value = try parsed
     try expect_true(entries(value).is_ok())
     if elapsed > 3000: return fail("nested inline tables took {elapsed} ms")
 
-test "TOML parse without limits stops deep nesting and an empty limits record lifts it":
+test "TOML parse without options stops deep nesting and none lifts it":
     let deep = "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()
     if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
 
-    let lifted = parse(deep, TomlLimits())
+    let lifted = parse(deep, TomlOptions(max_depth: none, max_values: none))
     try expect_true(lifted.is_ok())

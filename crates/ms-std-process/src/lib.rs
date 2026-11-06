@@ -100,7 +100,7 @@ abi_record! {
 
 abi_record! {
     /// Flattened `ProcessInfo`.
-    pub struct InfoOut {
+    pub struct ProcessInfoOut {
         pub pid: i64,
         pub parent_pid: i64,
         pub executable: Str,
@@ -190,20 +190,6 @@ impl Drop for Child {
             let _ = s.get_mut().close();
         }
     }
-}
-
-/// One field of `ProcessInfo` per getter, so the generated code builds the record without a
-/// shared layout. A host that cannot answer reads as an empty or zero field.
-fn info_or_default() -> control::Info {
-    control::info().unwrap_or(control::Info {
-        pid: 0,
-        parent_pid: 0,
-        executable: Vec::new(),
-        uid: -1,
-        gid: -1,
-        effective_uid: -1,
-        effective_gid: -1,
-    })
 }
 
 /// [`fs_status`], naming `program` when it could not be started (not found, not allowed, not
@@ -369,8 +355,8 @@ native! {
         })
     }
 
-    fn msstd_process_info(; err: ErrOut) -> Result<InfoOut, StatusCode> {
-        fs_status(control::info(), &err).map(|i| InfoOut {
+    fn msstd_process_info(; err: ErrOut) -> Result<ProcessInfoOut, StatusCode> {
+        fs_status(control::info(), &err).map(|i| ProcessInfoOut {
             pid: i.pid,
             parent_pid: i.parent_pid,
             executable: Str::from_bytes(&i.executable),
@@ -504,46 +490,6 @@ native! {
     /// The live environment as a `Map[String, String]`.
     fn msstd_process_environment_map(; err: ErrOut) -> Result<StrMap, StatusCode> {
         fs_status(control::environment(), &err).map(StrMap)
-    }
-
-    safe fn msstd_process_info_pid() -> i64 {
-        info_or_default().pid
-    }
-
-    safe fn msstd_process_info_parent_pid() -> i64 {
-        info_or_default().parent_pid
-    }
-
-    safe fn msstd_process_info_executable() -> Text {
-        Text(info_or_default().executable)
-    }
-
-    fn msstd_process_info_arguments() -> out StringList {
-        argv()
-    }
-
-    safe fn msstd_process_info_os() -> &'static str {
-        control::OS
-    }
-
-    safe fn msstd_process_info_architecture() -> &'static str {
-        control::ARCH
-    }
-
-    safe fn msstd_process_info_uid() -> i64 {
-        info_or_default().uid
-    }
-
-    safe fn msstd_process_info_gid() -> i64 {
-        info_or_default().gid
-    }
-
-    safe fn msstd_process_info_effective_uid() -> i64 {
-        info_or_default().effective_uid
-    }
-
-    safe fn msstd_process_info_effective_gid() -> i64 {
-        info_or_default().effective_gid
     }
 }
 

@@ -1,5 +1,5 @@
 import list, read_file from "@std/os/fs.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"

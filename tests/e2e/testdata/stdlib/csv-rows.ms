@@ -47,7 +47,7 @@ fn read_rows(
 
 test "rows match parse under every chunk size":
     let text = "a,b,c\r\n1,\"x,y\",3\n\n\"multi\nline \"\"q\"\"\",é,😀\n\"\"\nlast,,"
-    let expected = try parse(text, CsvOptions(), none, none)
+    let expected = try parse(text)
     for size in 1..text.to_bytes().length() + 1:
         if (try read_rows(text, size)) != expected: return fail("chunk size {size}")
 

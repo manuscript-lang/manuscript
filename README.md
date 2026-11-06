@@ -29,7 +29,6 @@ Save it as `config.ms` and run `ms test config.ms`.
 - [Install and run a first program](documentation/learn/getting-started.md)
 - [Why Manuscript](documentation/learn/why-manuscript.md): an agent builds a program, from first mistake to shipped executable
 - [Guide](documentation/guide/_index.md): one small program, chapter by chapter
-- [Coming from another language](documentation/coming-from/_index.md): TypeScript, Go and Python
 - [Performance](bench/perf/README.md) and [agent benchmark](bench/agent/README.md): methods, revisions and reproduction commands
 - [Vision](VISION.md)
 
