@@ -91,3 +91,5 @@ The Rust program is one crate with 40 modules of 25 files, the closest match for
 | cargo build --release | 30.48 s |
 
 Manuscript check is 10.5 times faster than `cargo check`, and Manuscript Debug is 2.2 times faster than Go and 3.7 times faster than `cargo build`. Manuscript Release (LLVM) is 1.4 times slower than `cargo build --release`. A single crate gives Rust less parallelism than 40 crates would; a workspace of 40 crates was not measured.
+
+`go vet ./...` (Go's type-check-only step, cold build cache) took 12.26 s and 10.94 s on two runs, 11.6 s on average; with a warm cache it took 2.01 s. Manuscript check is 7.2 times faster than the cold average.
