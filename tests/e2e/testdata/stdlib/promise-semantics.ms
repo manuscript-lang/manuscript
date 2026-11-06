@@ -8,7 +8,7 @@ import (
     cancel_switch
 ) from "@std/concurrency/promise.ms"
 import (expect_equal, expect_error, expect_ok, expect_true) from "@std/test/test.ms"
-import milliseconds, nanoseconds, sleep from "@std/os/time.ms"
+import milliseconds, nanoseconds, sleep from "@std/time.ms"
 
 fn report(reason: Error) String:
     if reason.kind == "EIO":

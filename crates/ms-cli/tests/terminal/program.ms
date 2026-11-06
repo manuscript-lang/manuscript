@@ -1,7 +1,7 @@
 import TerminalEvent, EraseRegion, raw_mode from "@std/io/io.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
-import nanoseconds from "@std/os/time.ms"
+import nanoseconds from "@std/time.ms"
 
 fn describe(e: TerminalEvent) String:
     match e:

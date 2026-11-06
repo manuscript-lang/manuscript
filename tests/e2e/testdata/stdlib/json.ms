@@ -7,7 +7,7 @@ import (
     fail
 ) from "@std/test/test.ms"
 import (parse, stringify, JsonValue, JsonLimits, JsonEncode) from "@std/data/json.ms"
-import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/os/time.ms"
+import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms"
 import Url from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"

@@ -10,7 +10,7 @@ import (
     sleep,
     microseconds,
     milliseconds
-) from "@std/os/time.ms"
+) from "@std/time.ms"
 
 test "timestamps preserve nanoseconds and shift across epoch":
     let epoch = try timestamp(0, 123)

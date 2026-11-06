@@ -16,7 +16,7 @@ import (
     NativeWatcher,
     TemporaryDirectory
 ) from "@std/os/fs.ms"
-import Duration, Timestamp from "@std/os/time.ms"
+import Duration, Timestamp from "@std/time.ms"
 
 export extern fn msstd_fs_filesystem() FileSystem
 

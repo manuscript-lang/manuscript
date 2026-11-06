@@ -1,5 +1,5 @@
 import stdout from "@std/io/io.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 import promise from "@std/concurrency/promise.ms"
 
 fn long() Int:

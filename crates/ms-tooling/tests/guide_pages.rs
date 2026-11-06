@@ -203,7 +203,7 @@ fn search_finds_apis_from_loose_queries() {
         ("JSON PARSE", "@std/data/json.ms", "parse"),
         ("http server", "@std/net/http.ms", "HttpServer"),
         ("parse_int", "@std/math/math.ms", "parse_int"),
-        ("sleep", "@std/os/time.ms", "sleep"),
+        ("sleep", "@std/time.ms", "sleep"),
         ("regex replace", "@std/string.ms", "Regex.replace_all"),
         ("base64 encode", "@std/data/encoding.ms", "base64_encode"),
         ("sorted", "prelude", "List.sorted"),

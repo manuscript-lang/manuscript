@@ -14,7 +14,7 @@ import (
 ) from "@std/net/http.ms"
 import parse, stringify from "@std/data/json.ms"
 import Network, TlsOptions, http_client from "@std/net/net.ms"
-import Duration, Instant, seconds, monotonic from "@std/os/time.ms"
+import Duration, Instant, seconds, monotonic from "@std/time.ms"
 import (
     msstd_http_client_request_bytes,
     msstd_http_client_share

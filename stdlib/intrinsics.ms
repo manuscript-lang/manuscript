@@ -2,7 +2,7 @@
 
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 
 // Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:

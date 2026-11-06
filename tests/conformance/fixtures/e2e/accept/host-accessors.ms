@@ -4,8 +4,8 @@
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import arguments, environment from "@std/os/env.ms"
 import stdin, stdout, stderr from "@std/io/io.ms"
-import monotonic, now from "@std/os/time.ms"
-import random_bytes from "@std/os/random.ms"
+import monotonic, now from "@std/time.ms"
+import random_bytes from "@std/random.ms"
 import system_info from "@std/os/system.ms"
 
 fn check_services() Unit!:

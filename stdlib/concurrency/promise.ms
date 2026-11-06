@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import (
     msrt_promise_new,
     msrt_promise_put,

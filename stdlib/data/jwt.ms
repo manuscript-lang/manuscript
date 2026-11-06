@@ -12,7 +12,7 @@ import (
 ) from "@std/crypto.ms"
 import base64_encode_unpadded, base64_decode_unpadded from "@std/data/encoding.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/os/time.ms"
+import now from "@std/time.ms"
 
 fn jwt_invalid_key() Error:
     return Error("jwt: invalid key", kind: "EINVAL")

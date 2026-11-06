@@ -8,7 +8,7 @@ import (
     expect_ok,
     expect_true
 ) from "@std/test/test.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 // The scope-end close of a binding runs on every exit and is shielded like any other close: cancellation and a
 // pending fault do not interrupt it, and a fault inside it follows the cleanup-failure table.
