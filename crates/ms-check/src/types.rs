@@ -1038,6 +1038,29 @@ pub fn compatible(syms: ms_syntax::Names, actual: &Option<Ty>, expected: &Ty) ->
     }
 }
 
+/// Whether `actual` is `expected` except that it reads some parameters `expected` may change:
+/// a function that takes `x` stands in where one that takes `var x` is expected, never the other
+/// way round.
+pub fn reads_where_var_expected(actual: &Ty, expected: &Ty) -> bool {
+    actual.kind == Kind::Function
+        && expected.kind == Kind::Function
+        && actual.params.len() == expected.params.len()
+        && actual
+            .params
+            .iter()
+            .zip(&expected.params)
+            .any(|(a, e)| !a.mutable && e.mutable)
+        && actual
+            .params
+            .iter()
+            .zip(&expected.params)
+            .all(|(a, e)| (a.mutable == e.mutable || e.mutable) && same(&a.ty, &e.ty))
+        && match (&actual.result, &expected.result) {
+            (Some(a), Some(e)) => same(a, e),
+            _ => false,
+        }
+}
+
 /// Substitutes type variables.
 pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
     sub_walk(t, bindings)
@@ -1422,7 +1445,8 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if p.mutable != q.mutable || !unify(&p.ty, &q.ty, vars, bindings) {
+            // A function that only reads a parameter stands in for one that may change it.
+            if (q.mutable && !p.mutable) || !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }

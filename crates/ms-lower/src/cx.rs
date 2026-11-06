@@ -248,6 +248,8 @@ pub struct FnAdaptJob {
     /// The held value points into its maker's frame, so the adapter reads it through a pointer
     /// and stays inside that frame too.
     pub scoped: bool,
+    /// Parameters the held value reads that the adapter receives as the address of a slot.
+    pub reads: Vec<bool>,
 }
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.

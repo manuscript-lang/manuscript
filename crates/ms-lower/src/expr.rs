@@ -37,7 +37,12 @@ impl<'a> FnLower<'a> {
     /// The type of the value an expression computes: while it is lowered ahead of a conversion
     /// to an interface, its own type rather than the interface.
     fn value_ty(&self, e: &Expr) -> ct::Ty {
-        match self.hir.info(e).interface_source.clone() {
+        let info = self.hir.info(e);
+        match info
+            .interface_source
+            .clone()
+            .or_else(|| info.function_source.clone())
+        {
             Some(src) if self.converting == Some(e as *const Expr) => src,
             _ => self.hir.ty(e),
         }
@@ -46,12 +51,19 @@ impl<'a> FnLower<'a> {
     /// Lowers an expression, converting to an interface where the checker marked it.
     pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
         let saved = self.converting;
-        if self.hir.info(e).interface_source.is_some() {
+        if self.hir.info(e).interface_source.is_some() || self.hir.info(e).function_source.is_some()
+        {
             self.converting = Some(e as *const Expr);
         }
         let x = self.expr_value(e);
         self.converting = saved;
-        let x = x?;
+        let mut x = x?;
+        let reader = self.hir.info(e).function_source.clone();
+        if let Some(src) = reader
+            && !self.dead
+        {
+            x = self.fit_reader_function(e, x, &src)?;
+        }
         let source = self.hir.info(e).interface_source.clone();
         let x = match source {
             Some(src) if !self.dead => {

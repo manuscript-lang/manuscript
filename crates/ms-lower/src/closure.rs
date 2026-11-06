@@ -1992,6 +1992,45 @@ impl FnLower<'_> {
         if !lifts {
             return Ok(x);
         }
+        self.make_fn_adapter(x, have, want, &wp, wr, Vec::new())
+    }
+
+    /// A function value that only reads a parameter, used where its type may change it
+    /// (`fn(P)` for `fn(var P)`): the adapter takes the address of the caller's slot and passes
+    /// the value there to the held function, which borrows it like any function value does.
+    pub(crate) fn fit_reader_function(
+        &mut self,
+        e: &Expr,
+        x: Val,
+        src: &ct::Ty,
+    ) -> Result<Val, Error> {
+        let want_ty = self.hir.ty(e);
+        let want = self.mty(&want_ty)?;
+        let have = self.ty_of(x.v);
+        let (TyKind::Fn(_, _), TyKind::Fn(wp, wr)) = (
+            self.b.m.types.kind(have).clone(),
+            self.b.m.types.kind(want).clone(),
+        ) else {
+            return Err(Error::new("a reader function without function types"));
+        };
+        let reads: Vec<bool> = want_ty
+            .params
+            .iter()
+            .zip(&src.params)
+            .map(|(w, s)| w.mutable && !s.mutable)
+            .collect();
+        self.make_fn_adapter(x, have, want, &wp, wr, reads)
+    }
+
+    fn make_fn_adapter(
+        &mut self,
+        x: Val,
+        have: MTy,
+        want: MTy,
+        wp: &[MTy],
+        wr: MTy,
+        reads: Vec<bool>,
+    ) -> Result<Val, Error> {
         let mut ps = vec![Param {
             ty: MTy::PTR,
             mode: Mode::Borrow,
@@ -2015,6 +2054,7 @@ impl FnLower<'_> {
                 hir: self.hir.clone(),
                 have,
                 scoped,
+                reads,
             })),
         });
         let held = if scoped {
@@ -2050,7 +2090,7 @@ pub(crate) fn build_fn_adapter(
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
-    let result = lower_fn_adapter(&mut fl, job.have, job.scoped);
+    let result = lower_fn_adapter(&mut fl, job.have, job.scoped, &job.reads);
     let mut f = fl.b.into_func();
     result?;
     f.compact_blocks();
@@ -2058,7 +2098,12 @@ pub(crate) fn build_fn_adapter(
     Ok(())
 }
 
-fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(), Error> {
+fn lower_fn_adapter(
+    fl: &mut FnLower<'_>,
+    have: MTy,
+    scoped: bool,
+    reads: &[bool],
+) -> Result<(), Error> {
     let params = fl.b.params();
     let cap_ty = if scoped { MTy::PTR } else { have };
     let mut held =
@@ -2075,6 +2120,14 @@ fn lower_fn_adapter(fl: &mut FnLower<'_>, have: MTy, scoped: bool) -> Result<(),
     let mut args = Vec::new();
     for (i, h) in hp.iter().enumerate() {
         let v = params[i + 1];
+        if reads.get(i).copied().unwrap_or(false) {
+            // The caller's slot holds the value; the held function only reads it.
+            let loaded =
+                fl.b.emit(Op::Load, &[v], Imm::Ty(*h), Some(*h))
+                    .expect("load");
+            args.push(loaded);
+            continue;
+        }
         if fl.ty_of(v) == *h {
             args.push(v);
             continue;
