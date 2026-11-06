@@ -233,7 +233,6 @@ msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 @leaf
 msrt_start(main_fn: extern "C-unwind" fn() -> i64, tables: *const Tables, argc: i32, argv: *const *const u8) -> i32
 msrt_start_nanos() -> i64
 msrt_str_copy(ptr: *const u8, tagged: usize, out: *mut StrVal) @leaf
-msrt_str_count(kind: i64, cap: i64) @leaf
 msrt_str_free(ptr: *mut u8) @leaf
 msrt_strbuf_finish(buf: *mut StrBuf, out: *mut StrVal) @leaf
 msrt_strbuf_new() -> *mut StrBuf @leaf

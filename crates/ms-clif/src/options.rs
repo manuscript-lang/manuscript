@@ -33,8 +33,6 @@ pub enum CopyProbe {
 pub struct BuildOptions {
     /// Release builds use Cranelift even when the LLVM tools are available.
     pub cranelift_only: bool,
-    /// Count string allocations in generated code.
-    pub count_str: bool,
     /// How many objects LLVM compiles a release program into, in parallel; `None` picks one per
     /// core for programs big enough to repay it, and 1 keeps the whole program in one module.
     pub llvm_units: Option<usize>,
@@ -62,7 +60,6 @@ impl Default for BuildOptions {
     fn default() -> Self {
         BuildOptions {
             cranelift_only: false,
-            count_str: false,
             llvm_units: None,
             vectorize: true,
             keep_ll: false,

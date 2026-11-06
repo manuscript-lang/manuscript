@@ -475,17 +475,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         self.rt_call("msrt_obj_drop", &[p]);
     }
 
-    /// With `MS_COUNT_STR` set at compile time, reports each executed string drop (`kind` 0) or copy
-    /// (1) with its capacity word to the counting runtime (`ms-rt` feature `stats`), which prints
-    /// the dynamic totals at exit. `bench/tools/copy_report.ms` counts the static sites.
-    fn count_str(&mut self, kind: i64, cap: Value) {
-        if !self.g.count_str {
-            return;
-        }
-        let kind = self.b.ins().iconst(types::I64, kind);
-        self.rt_call("msrt_str_count", &[kind, cap]);
-    }
-
     /// An independent copy of the object `p` through its header's clone entry (null stays null;
     /// a value with one owner faults).
     fn clone_obj(&mut self, p: Value) -> Value {
@@ -500,7 +489,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             _ if self.g.lay.is_str_like(ty) => {
-                self.count_str(0, vs[1]);
                 // A literal's capacity word is a known constant: nothing to free.
                 if self
                     .const_of(vs[1])
@@ -538,7 +526,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
         match m.types.kind(ty) {
             _ if self.g.lay.is_str_like(ty) => {
-                self.count_str(1, vs[1]);
                 // A literal's capacity word is a known constant, so its tag is too.
                 if let Some(cap) = self.const_of(vs[1])
                     && (cap as u64 >> 62).wrapping_sub(1) < 2
