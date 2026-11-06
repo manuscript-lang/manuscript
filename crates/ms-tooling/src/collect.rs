@@ -442,7 +442,7 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
                         name: syms.str(m.func.name).to_string(),
                         ty: format!("({}) {}", text.join(", "), result.ty),
                         var: m.mutating,
-                        ownership: ParameterOwnership::default(),
+                        ownership: ParameterOwnership::Unspecified,
                         refs,
                     }
                 })
