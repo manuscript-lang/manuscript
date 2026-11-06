@@ -491,6 +491,13 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             _ if self.g.lay.is_str_like(ty) => {
                 self.count_str(0, vs[1]);
+                // A literal's capacity word is a known constant: nothing to free.
+                if self
+                    .const_of(vs[1])
+                    .is_some_and(|cap| cap as u64 >= STR_INLINE as u64)
+                {
+                    return;
+                }
                 // Only an owned string (tag `00`) frees anything.
                 let owned =
                     self.b
@@ -522,6 +529,12 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty) {
             _ if self.g.lay.is_str_like(ty) => {
                 self.count_str(1, vs[1]);
+                // A literal's capacity word is a known constant, so its tag is too.
+                if let Some(cap) = self.const_of(vs[1])
+                    && (cap as u64 >> 62).wrapping_sub(1) < 2
+                {
+                    return vs.to_vec();
+                }
                 // A static (`10`) or inline (`01`) string copies bitwise; an owned one or a
                 // view is duplicated, inline when it is short.
                 let tag = self.b.ins().ushr_imm_u(vs[1], 62);
