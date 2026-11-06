@@ -94,20 +94,26 @@ Manuscript is young, and the project is hardened with frontier models. We use th
 
 The method is simple. For correctness, a model probes one area at a time: it writes programs against new features and their edges, compares what happens with the documented rule, and fixes real bugs with regression tests. For performance, it starts from a measured gap, reproduces it, changes one thing, and shows before and after on the same machine. A fix that costs more than it earns is dropped.
 
-## A pipeline built for fast iteration and fast binaries
+## Fast to iterate, fast to ship
 
-The compiler is a ladder of stages. Each stage lowers the program to a representation closer to the machine, and each costs more than the one before it:
+The compiler is a pipeline that gets slower and smarter at each step:
 
 ```text
-Manuscript source -> HIR -> MIR -> CLIF -> LLVM IR
+Manuscript source -> HIR -> MIR -> CLIF -> LLVM
 ```
 
-1. **Source to HIR.** `ms check` parses and type-checks the program into a typed high-level IR, and reports diagnostics, without building anything. It is the fastest stage, and an agent can run it after every edit.
-2. **HIR to MIR.** Lowering makes ownership, moves and drops explicit in a mid-level IR, where the optimizer and verifier run.
-3. **MIR to CLIF.** Debug builds hand MIR to Cranelift, which produces working native code quickly. This is the edit-check-run loop.
-4. **MIR to LLVM.** Release builds (`ms build --release`) hand the program to LLVM, which spends the most time and produces the fastest code.
+The early stages are far cheaper than the late ones, so you stop as early as the task allows. Check while you write, run a quick debug build to try it, and pay for LLVM only when you ship. As a program matures you can spend more of the pipeline on it, and the optimizations that earn their cost are the ones you keep. An agent that runs the compiler dozens of times per task lives in the cheap stages; the binary you deploy comes out of the expensive ones.
 
-The early stages are much faster than the later ones, so most iterations stop early: check while you write, run the Cranelift build to try it, and pay for LLVM only when you ship. As a program matures you can spend more of the pipeline on it, adding optimization where it earns its cost. The result is a compiler designed for fast iteration that still produces fast production binaries. `ms build --release` yields a native executable that runs without Manuscript installed.
+On a generated 122,000-line project (40 packages, cold build, 4 vCPUs):
+
+| step | time |
+|---|---:|
+| `ms check` (parse and type-check) | 2.2 s |
+| `ms build` debug (Cranelift) | 5.4 s |
+| `go build` | 9.0 s |
+| `ms build --release` (LLVM) | 43.6 s |
+
+A debug build is 1.7 times faster than Go's cold build, and a check is four times faster. The release build is the slow path on purpose: it spends the time on optimization, so compare it with other optimizing builds rather than with Go's. We have not yet measured the same project against Rust, so this page makes no compile-time claim about it. The numbers come from the [2026-11-05 results](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/results-2026-11-05.md), which name the revision, machine and command. Release builds produce a native executable that runs without Manuscript installed.
 
 ## We measure it with agents
 
