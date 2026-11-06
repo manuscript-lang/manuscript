@@ -14,12 +14,14 @@ export fn main() Int:
     let rounds = args[1].parse_int().get()
     var total = 0
     let t0 = monotonic_time()
+
     for r in 0..rounds:
         var promises: List[Promise[Int]] = []
         for i in 0..n:
             promises.append(promise[Int](fn: work(i)))
         for p in promises:
             total = total + p.wait().get()
+
     let t1 = monotonic_time()
     print("total " + total.to_string())
     print("ns/promise " + ((t1 - t0) / (n * rounds)).to_string())
