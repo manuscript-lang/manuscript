@@ -81,6 +81,27 @@ New track **E (boundaries)**, mostly mechanical and low risk to perf because it 
 4. Data layout: any new table (track B op descriptions) is a flat array indexed by the op discriminant, not a hash map, consistent with the data-oriented rule.
 5. Results go in a dated `bench/perf` section on the PR, not in prose.
 
+## Addendum: deletions (2026-11-06, owner direction: delete as part of the refactor, not only dead code)
+
+Every track has a deletion budget stated in lines removed; a track that deletes nothing is questioned.
+
+**Dead now (script-found, to be confirmed per symbol by removal plus a green build):**
+- 25 `pub`/`pub(crate)` Rust functions named nowhere else in the tree, e.g. `ms-check/types.rs` `id_str`, `is_inferred`, `std_is`, `sub_opt`; `hir.rs` `declaration_parameters`; `ownership/mod.rs` `use_at`; `ms-mir` `verify_func`, `replace_uses`, `is_call_kind`, `is_ref`, `f2i_opt`, `list_drop_last`; `ms-std-json` `object_entries`, `array_push`, `object_add` and two `*_with_capacity`; `ms-std-path/glob.rs` `matches_lenient`; `ms-lsp/text.rs` `end_position`; `ms-tooling/tree.rs` `with_children`.
+- About 109 exported `msrt_*`/`msstd_*` functions defined in Rust and referenced by no `.ms` file and no other Rust file: 84 in `ms-rt` (mostly `vec.rs`: `msrt_list_*` and `msrt_bytes_*` that lowering now inlines or builds, plus `string.rs`, `num.rs`, `streams.rs`), 8 in `ms-std-regex` (`split`, `replace_all`, `captures`, ...), 6 in `ms-std-time`, 6 in `ms-std-net` (`*_error_message`), and singles in `fs`, `bigint`, `decimal`. Caveat: names built with `format!` in lowering are invisible to this scan, and the `ms_*_v1` C ABI in `cabi.rs` is public and stays. Method: delete a batch, run `cargo xtask symbols`, the build and the e2e/conformance run; anything lowering still needs fails at compile time because `rt_sig` has no symbol.
+- 14 `#[allow(dead_code)]` sites: each is either removed with its code or justified.
+
+**Made obsolete by the design (deleted in the same PR as the track):**
+- A: the std-specific lowering files and name tables in `ms-lower` (`natiface`, `httpserve`, `fsinfo`, `fswalk`, most of `native.rs`'s string-keyed arms, the five duplicated identity arms in `closure.rs`). Budget: several thousand of the 11.5k lines.
+- B: the hand-written per-consumer `Op` matches that the op table replaces (print/parse name tables, verifier arity checks, effect queries); `lower_inst` and `check_types` shrink into family functions.
+- C: duplicated op semantics between `lower.rs` and `llvm_ir.rs` after the shared layer; `llvm_tables.rs` if the table can derive from the op table.
+- D: the `_windows` file pairs (`sys_windows`, `trap_windows`) folded behind one platform module; the thin `msrt_*` shims that only forward to a safe function.
+- E: the `pub mod` surface of `ms-check` (28 modules become `pub(crate)`, which also makes rustc report the unused items inside them), and the `ms-rt`/`ms-std-decimal` edges from compiler crates.
+- Test-only code in production crates: `ms-mir` `interp.rs` (1205 lines) is used only by tests (callers are all under `tests/`); move it behind a `test-support` feature or dev crate so the shipped compiler does not carry or compile it. Not a deletion of the oracle.
+
+**Workaround to remove:** `vendor/cranelift-codegen` (7.7 MB, a local patch for `sadd_overflow` flag fusion and an assertion fix). `PATCH.md` states the removal condition (a Cranelift release with the same rules) but I found no tracking issue; file one and check the current upstream release before anything else here. Not verified whether upstream now has the rules.
+
+**Not examined, to check before the plan is final:** `bench/` (71 MB), `tests/` (35 MB), `extensions/vscode`, and `tools/*.ms` for unused fixtures and scripts.
+
 ## Open questions
 
 1. Order: E, A, B, C, D (E first, since it makes A easier), or start with D (highest readability, lowest risk)?
