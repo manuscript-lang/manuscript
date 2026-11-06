@@ -133,6 +133,22 @@ Gates: the `bench/perf` suite within the 2% rule on single-thread cases, a measu
 
 Risks: lock-free code is harder to read, which cuts against the goal of this proposal; mitigated by one shared MPSC type used in three places instead of three ad hoc versions, and by keeping the lock where measurement shows no contention. Overlaps the concurrency threads (`promises`, `http-server-multicore`); coordinate before editing `sched.rs`, `isolate.rs` or the pool.
 
+## Addendum: readability standard (2026-11-06, owner direction: Rust must be extremely easy to follow)
+
+Every track's PR must leave the files it touches meeting these rules, and `ms-repo-check` enforces the measurable ones so they do not erode:
+
+1. **Size.** No file over 1500 lines; no function over 150 lines (hard cap 300 for generated or table-driven code, with a reason beside it). Today: 41 functions over 200 lines and 20+ files over 1500. Enforced by a repo-check budget list that only shrinks; clippy `too_many_lines` and `too_many_arguments` (limit 7) on the touched crates.
+2. **One reading order.** Each crate has a `lib.rs` header naming its domain, what it consumes, what it produces, and the three types to read first; each file starts with a `//!` comment saying its one job. A module is named for the domain concept (`ownership`, `layout`), never for a leftover (`misc`, `helpers`, `util`, `native2`).
+3. **Flat control flow.** Existing rule: no nested `match`; early returns and small helpers; add: nesting depth at most 3 in new code.
+4. **Names carry the domain.** Types and functions use the glossary terms (`documentation/glossary.md`); no abbreviations beyond the common ones; a boolean parameter becomes an enum or two functions.
+5. **Data over code.** Tables are flat, typed arrays indexed by a small integer (consistent with the data-oriented rule), not string-keyed arms; one table per concept, in one file.
+6. **`unsafe` is walled in.** In `ms-rt`, `unsafe` lives in small `raw`/`ffi` modules with `// SAFETY:` comments; the logic around them is safe Rust that is unit-testable. Target: the 2356 mentions concentrate in a few audited files.
+7. **Tests beside what they pin, named for the behavior.** Test files over 1000 lines are split by feature.
+8. **Public API is small and documented** (already in `DESIGN.md`); after track E nothing is `pub` that a sibling crate does not use.
+9. **Review gate.** The skeptic review each PR gets includes one question: could a new contributor find where this behavior lives in under a minute from the crate header? A "no" blocks.
+
+Cost: some PRs grow by pure splitting; split in a separate commit from logic changes so `git diff -M` stays readable.
+
 ## Open questions
 
 1. Order: E, A, B, C, D, with F (locks) after its measurement step, which can run in parallel with E and does not edit shared files, (E first, since it makes A easier), or start with D (highest readability, lowest risk)?
