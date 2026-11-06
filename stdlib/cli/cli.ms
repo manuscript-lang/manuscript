@@ -154,7 +154,7 @@ impl Matches:
 /*
 A command or command group: its schema, subcommands and handler.
 
-A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../cookbook/command-line.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
+A group is a Command with `children`. Build a leaf with `command[T]`, then call `execute(arguments())` from `main`. Start with the [complete CLI recipe](../../../cookbook/command-line.md#parse-subcommands-and-flags); use `exec` directly when you need `Matches`.
 */
 export type Command:
     // The word that selects this node; the program name for the root.
