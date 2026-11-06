@@ -4,7 +4,7 @@ import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import stdout, WriteStream from "@std/io/io.ms"
 import listen, Listener, Connection from "@std/net/net.ms"
 import watch_signals from "@std/os/process.ms"
-import Duration, sleep from "@std/os/time.ms"
+import Duration, sleep from "@std/time.ms"
 
 fn flush_within(var out: WriteStream[Bytes], limit: Duration) Unit!:
     return promise(fn: out.flush()).with(options: PromiseOptions(timeout: limit)).wait()

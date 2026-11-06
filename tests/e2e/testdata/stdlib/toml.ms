@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import parse, stringify, TomlValue, TomlOptions from "@std/data/toml.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 
 fn entries(value: TomlValue) Map[String, TomlValue]!:
     match value:

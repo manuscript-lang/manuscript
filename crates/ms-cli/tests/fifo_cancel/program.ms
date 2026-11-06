@@ -2,7 +2,7 @@ import open, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import milliseconds from "@std/os/time.ms"
+import milliseconds from "@std/time.ms"
 
 fn read_whole(path: String) Int:
     let read = read_file(path).wait()

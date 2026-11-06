@@ -1,6 +1,6 @@
 //! Substitution preserves concrete sharing and snapshots unresolved variables.
 
-use ms_check::types::*;
+use crate::types::*;
 use std::collections::HashSet;
 use std::rc::Rc;
 

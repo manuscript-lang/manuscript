@@ -9,8 +9,8 @@ use crate::analysis::{self, Analysis, Document, Documents, Options};
 use crate::index::{expr_text, hidden_structure};
 use crate::text::{self, EditorKind, EditorToken, Position};
 use crate::uri;
-use ms_check::syntax::{ModRef, ScopeState};
-use ms_check::types::{Kind, Name, Ty, n};
+use ms_check::api::syntax::{ModRef, ScopeState};
+use ms_check::api::types::{Kind, Name, Ty, n};
 use ms_syntax::Phase;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -631,7 +631,7 @@ pub fn type_expression(syms: ms_syntax::Names, e: &Expr, state: &ScopeState) -> 
                 return Some(t.clone());
             }
             let symbol = state.symbols.get(&n(syms.str(name)))?;
-            (symbol.kind == ms_check::types::SymKind::Type).then(|| symbol.ty(syms))
+            (symbol.kind == ms_check::api::types::SymKind::Type).then(|| symbol.ty(syms))
         }
         ExprKind::Apply { left, types, .. } => {
             let base = type_expression(syms, left, state)?;
@@ -655,7 +655,7 @@ fn resolve_editor_type(syms: ms_syntax::Names, t: &TypeRef, state: &ScopeState) 
         Some(t) => t.clone(),
         None => {
             let symbol = state.symbols.get(&name)?;
-            if symbol.kind != ms_check::types::SymKind::Type {
+            if symbol.kind != ms_check::api::types::SymKind::Type {
                 return None;
             }
             symbol.ty(syms)
@@ -733,7 +733,7 @@ pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, T
                 && ty.kind == Kind::Function
             {
                 let mut signature = ty.clone();
-                if ms_check::types::invalid_ty(ty)
+                if ms_check::api::types::invalid_ty(ty)
                     && let Some(symbol) = &info.symbol
                     && let Some(t) = symbol.ty_opt()
                 {
@@ -746,10 +746,13 @@ pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, T
                 && let (Some(constructor), Some(case)) =
                     (&constructed.constructor, constructed.case)
             {
-                for cs in ms_check::types::cases(constructor) {
+                for cs in ms_check::api::types::cases(constructor) {
                     if cs.name == case {
-                        let sig =
-                            ms_check::types::function(syms, cs.fields.clone(), constructor.clone());
+                        let sig = ms_check::api::types::function(
+                            syms,
+                            cs.fields.clone(),
+                            constructor.clone(),
+                        );
                         self.found = Some((e.clone(), sig));
                         return;
                     }
@@ -762,7 +765,7 @@ pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, T
                 {
                     return;
                 }
-                let sig = ms_check::types::constructor_signature(syms, self.session, &ty);
+                let sig = ms_check::api::types::constructor_signature(syms, self.session, &ty);
                 self.found = Some((e.clone(), sig));
             }
         }

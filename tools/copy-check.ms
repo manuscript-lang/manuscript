@@ -10,7 +10,7 @@ import tool_ms from "./lib.ms"
 import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
 import RunOptions, run from "@std/os/process.ms"
 import arguments, change_directory, working_directory from "@std/os/env.ms"
-import seconds from "@std/os/time.ms"
+import seconds from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
 // The probe lines the compiler printed on standard error, without their prefix.

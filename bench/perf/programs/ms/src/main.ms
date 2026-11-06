@@ -1,6 +1,6 @@
 import stdout, stdin, ReadStream from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
-import Instant, monotonic from "@std/os/time.ms"
+import Instant, monotonic from "@std/time.ms"
 import StringBuilder from "@std/string.ms"
 
 interface Counter:

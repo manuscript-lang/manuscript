@@ -11,9 +11,9 @@ use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use crate::rtcall::Input;
-use ms_check::hir::ModuleHir;
-use ms_check::types as ct;
-use ms_check::types::Builtin;
+use ms_check::api::hir::ModuleHir;
+use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Cc, FuncId, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -1187,7 +1187,7 @@ impl FnLower<'_> {
     }
 
     /// The `to_json` of the type's `JsonEncode` implementation, when it has one.
-    fn json_encode_impl(&mut self, t: &ct::Ty) -> Option<Rc<ms_check::hir::Callable>> {
+    fn json_encode_impl(&mut self, t: &ct::Ty) -> Option<Rc<ms_check::api::hir::Callable>> {
         let key = self.cx.tys.shape(t);
         let tys = &mut self.cx.tys;
         let m = self.cx.methods.iter().find(|m| {

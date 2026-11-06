@@ -5,8 +5,8 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::func::FnLower;
 use crate::text::runtime_fn;
-use ms_check::types as ct;
-use ms_check::types::Builtin;
+use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, IfaceId, Native, RecId, Std, Ty as MTy, TyKind};
@@ -419,7 +419,7 @@ impl FnLower<'_> {
         // A resource, or a record or list holding one (only read in place: the checker rejects
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
-        if self.cx.classes.class(self.syms, &ty) != ms_check::ownership::Class::Resource
+        if self.cx.classes.class(self.syms, &ty) != ms_check::api::ownership::Class::Resource
             || (self.closeable_impl(&ty).is_none()
                 && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
@@ -472,7 +472,7 @@ impl FnLower<'_> {
             self.drop_value(v);
             return Ok(());
         }
-        let ms_check::hir::Resolution::Local(b) = self.hir.resolution(recv_expr) else {
+        let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv_expr) else {
             return Err(Error::new(
                 "a part-wise close of a borrowed value that is not a local",
             ));
@@ -596,7 +596,10 @@ impl FnLower<'_> {
         let explicit = self
             .cx
             .binding_facts
-            .has(binding.uid, ms_check::ownership::BindingFact::ExplicitClose)
+            .has(
+                binding.uid,
+                ms_check::api::ownership::BindingFact::ExplicitClose,
+            )
             .then(|| {
                 let explicit = self.b.declare_var(MTy::BOOL, Mode::Borrow);
                 let no = self.b.bconst(false);
@@ -693,7 +696,8 @@ impl FnLower<'_> {
             return Err(Error::new("a moved field of a non-record"));
         };
         for (i, f) in ct::fields(ty).iter().enumerate() {
-            if self.cx.classes.class(self.syms, &f.ty) != ms_check::ownership::Class::Resource {
+            if self.cx.classes.class(self.syms, &f.ty) != ms_check::api::ownership::Class::Resource
+            {
                 continue;
             }
             let fty = self.b.m.records[r.index()].fields[i].1;
@@ -980,7 +984,7 @@ impl FnLower<'_> {
     /// The close of a resource held inside another: its own `close`, then what it holds in turn.
     /// `None` for a value that is not a resource.
     pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
-        if self.cx.classes.class(self.syms, ty) != ms_check::ownership::Class::Resource {
+        if self.cx.classes.class(self.syms, ty) != ms_check::api::ownership::Class::Resource {
             return Ok(None);
         }
         let mt = self.mty(ty)?;
@@ -1308,7 +1312,7 @@ impl FnLower<'_> {
         if self
             .cx
             .binding_facts
-            .has(uid, ms_check::ownership::BindingFact::CloseHandled)
+            .has(uid, ms_check::api::ownership::BindingFact::CloseHandled)
         {
             // The checker proved every lifetime transferred or explicitly handled its
             // result. Keep cleanup, but do not generate an impossible owned error return.
@@ -1344,7 +1348,7 @@ impl FnLower<'_> {
 
     /// Records that the program called `close()` on the closing binding `recv` named.
     pub(crate) fn note_explicit_close(&mut self, recv: &Expr) {
-        let ms_check::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
+        let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(recv) else {
             return;
         };
         let Some(explicit) = self.closers.get(&b.uid).and_then(|c| c.explicit) else {

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::OnceLock;
 
-mod support;
+use crate::support;
 use support::cc;
 
 fn dir() -> PathBuf {

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 publish.workspace = true
 description = "The static library compiled Manuscript programs link: ms-rt plus every ms-std-* native crate in one archive"
+autotests = false
 
 [lib]
 crate-type = ["staticlib"]
@@ -41,3 +42,7 @@ ms-rt-abi = { path = "../ms-rt-abi" }
 
 [lints]
 workspace = true
+
+[[test]]
+name = "it"
+path = "tests/main.rs"

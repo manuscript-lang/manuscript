@@ -251,6 +251,9 @@ pub struct Info {
     pub type_args: Vec<Option<Ty>>,
     /// Concrete type converted into the expected interface here.
     pub interface_source: Option<Ty>,
+    /// The function type of a value used where a function type taking `var` parameters is
+    /// expected here: a function that only reads a parameter stands in for one that may change it.
+    pub function_source: Option<Ty>,
     /// Arguments in written order with labels resolved.
     pub arguments: Option<Vec<ArgSlot>>,
     /// Wraps this supplied argument once into this Optional.

@@ -1,6 +1,6 @@
 //! Symbol search keeps checked identities, imports and uses while filtering files.
 
-mod support;
+use crate::support;
 
 use ms_lsp::analysis::{Document, Documents};
 use ms_lsp::query::search_symbols;

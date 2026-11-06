@@ -6,7 +6,7 @@ use ms_lsp::lint::Tooling;
 use ms_rt as _;
 use std::io::Cursor;
 
-mod support;
+use crate::support;
 use support::{Script, Workspace, canonical, decode};
 
 const EDITS: usize = 300;

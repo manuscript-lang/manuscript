@@ -3,7 +3,7 @@
 import stdout from "@std/io/io.ms"
 import bind_datagram, connect, listen from "@std/net/net.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import nanoseconds from "@std/os/time.ms"
+import nanoseconds from "@std/time.ms"
 
 // `close` frees the socket, so its port can be bound again while the handle is still held and
 // after a cancelled `accept` or `read` ran its `with` cleanup.

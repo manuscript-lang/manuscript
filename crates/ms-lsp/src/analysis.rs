@@ -4,7 +4,7 @@
 use crate::index::Occurrence;
 use crate::lint::LintFinding;
 use crate::uri;
-use ms_check::syntax::ModRef;
+use ms_check::api::syntax::ModRef;
 use ms_check::{Program, Session};
 use ms_driver::project::Overlay;
 use ms_driver::{CheckRequest, EditorOptions, Graph, LoadOptions};
@@ -307,11 +307,24 @@ fn check(syms: ms_syntax::Names, graph: Graph, options: &Options) -> Analysis {
         CheckRequest::default(),
         options.scope_marker.as_deref(),
     );
+    let source_root = checked.source_root.clone();
     Analysis {
         source_root: checked.source_root,
         project_root: checked.project_root,
         program: checked.program,
-        diagnostics: checked.diagnostics,
+        // A checkout's own `stdlib/` sources are checked as bundled modules at startup; read from disk
+        // they cannot see the internal modules they import, so their diagnostics would be spurious.
+        diagnostics: checked
+            .diagnostics
+            .into_iter()
+            .filter(|d| {
+                let file: &str = &d.file;
+                file.starts_with("@std/")
+                    || !ms_check::api::stdlib::is_bundled_source(
+                        &ms_driver::project::pathops::join(&[&source_root, file]),
+                    )
+            })
+            .collect(),
         session,
         ..Analysis::default()
     }

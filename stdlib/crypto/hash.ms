@@ -8,7 +8,7 @@ import (
     shift_right_unsigned,
     wrapping_multiply
 ) from "@std/math/math.ms"
-import secure_int from "@std/os/random.ms"
+import secure_int from "@std/random.ms"
 
 // 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
 fn unsigned(raw: Int) UInt64:

@@ -1,7 +1,7 @@
 import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
 import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
-import sleep, milliseconds from "@std/os/time.ms"
+import sleep, milliseconds from "@std/time.ms"
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
     var seen: List[Int] = []

@@ -1,7 +1,7 @@
 import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import open, temporary, write_file from "@std/os/fs.ms"
 import monotonic_time, uptime from "@std/os/system.ms"
-import nanoseconds from "@std/os/time.ms"
+import nanoseconds from "@std/time.ms"
 import (
     compress,
     decompress,

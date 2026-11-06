@@ -187,15 +187,8 @@ impl Watcher {
                 return Ok(b as i64);
             }
             poll_cancel();
-            let mut p = libc::pollfd {
-                fd: self.read,
-                events: libc::POLLIN,
-                revents: 0,
-            };
-            // SAFETY: one valid `pollfd`.
-            if unsafe { libc::poll(&mut p, 1, 0) } <= 0 {
-                ms_rt::glue::task_sleep(5_000_000);
-            }
+            // Parks until a signal byte arrives; closing the write end on `close` wakes it too.
+            ms_rt::glue::task_wait_fd(self.read, ms_rt::glue::WAIT_READ, -1);
         }
     }
 

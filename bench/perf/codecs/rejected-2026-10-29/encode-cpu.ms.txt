@@ -4,7 +4,7 @@ import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
-import clock from "@std/os/time.ms"
+import clock from "@std/time.ms"
 
 extern fn codec_bench_cpu_ns() Int
 

@@ -1,7 +1,7 @@
 import Closeable, Iterator from "@std/core.ms"
 import ReadStream, Source from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
 import expect_equal, expect_ok, expect_error from "@std/test/test.ms"
 

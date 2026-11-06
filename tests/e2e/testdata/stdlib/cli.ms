@@ -1,4 +1,4 @@
-import Arg, Command, Flag, FlagKind, Matches, command from "@std/cli.ms"
+import Arg, Command, Flag, FlagKind, Matches, command from "@std/cli/command.ms"
 import (
     expect_contains,
     expect_equal,

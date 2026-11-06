@@ -1,6 +1,6 @@
 //! Independent projects can contain identical logical module paths and offsets.
 
-mod support;
+use crate::support;
 
 use ms_lsp::analysis::{Document, Documents, analyze, workspace_analysis};
 use ms_lsp::json::{Json, obj};

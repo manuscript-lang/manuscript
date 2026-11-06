@@ -5,6 +5,8 @@ import run from "@std/os/process.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
+        stdout().write("started\n").get()
+        let _flushed = stdout().flush()
         let _out = run("sleep", ["0.5"]).wait()
     return HttpResponse(200, headers(), request.path.to_bytes())
 

@@ -430,7 +430,7 @@ fn reference_navigation_follows_source_paths_and_preserves_old_routes() {
         let text = String::from_utf8_lossy(page);
         let title = path.rsplit('/').next().unwrap();
         assert!(text.contains(&format!("title = {title:?}")));
-        let old = ms_check::stdlib::module_stem(&module.path).replace('/', "-");
+        let old = ms_check::api::stdlib::module_stem(&module.path).replace('/', "-");
         if old != stem {
             assert!(text.contains(&format!(
                 "aliases = [\"/standard-library/reference/{old}/\"]"

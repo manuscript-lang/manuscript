@@ -1,6 +1,6 @@
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import Promise, owned_promise from "@std/concurrency/promise.ms"
 import (
     ReadStream,

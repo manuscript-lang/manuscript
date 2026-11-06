@@ -118,6 +118,8 @@ pub struct RunRequest {
 #[derive(Clone, Debug)]
 pub struct TestRequest {
     pub filename: String,
+    /// More test files built into the same executable as `filename` (`ms test a.ms b.ms`).
+    pub extra: Vec<String>,
     pub build_type: BuildType,
     /// Extra objects and static libraries to link (`--link`).
     pub link: Vec<String>,

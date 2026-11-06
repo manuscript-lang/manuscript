@@ -2,7 +2,7 @@ import fetcher from "@std/net/fetch.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import nanoseconds, monotonic from "@std/os/time.ms"
+import nanoseconds, monotonic from "@std/time.ms"
 
 fn worker(url: String, nanos: Int) Int:
     var f = fetcher().get()

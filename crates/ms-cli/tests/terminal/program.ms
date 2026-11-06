@@ -1,7 +1,8 @@
-import TerminalEvent, EraseRegion, ReadStream, raw_mode from "@std/io/io.ms"
+import TerminalEvent, EraseRegion, raw_mode from "@std/cli/terminal.ms"
+import ReadStream from "@std/io/io.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
-import Duration, nanoseconds from "@std/os/time.ms"
+import Duration, nanoseconds from "@std/time.ms"
 
 fn describe(e: TerminalEvent) String:
     match e:

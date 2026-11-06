@@ -1,7 +1,7 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 import pipe, ReadStream from "@std/io/io.ms"
 import promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms"
-import sleep, milliseconds from "@std/os/time.ms"
+import sleep, milliseconds from "@std/time.ms"
 
 // Sums a stream that never delivers: the loop waits inside the source.
 fn sum(input: ReadStream[Int]) Int!:

@@ -2,8 +2,8 @@
 //! produce the recorded messages.
 
 // Links the msrt_* runtime symbols that the standard-library crates reference.
+use crate::support;
 use ms_rt as _;
-mod support;
 
 use ms_lsp::json::obj;
 use support::{Script, Workspace, compare};
@@ -659,12 +659,13 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("concurrency/promise.ms", 2),
         ("core.ms", 2),
         ("data/encoding.ms", 1),
-        ("io/io.ms", 7),
+        ("io/io.ms", 5),
+        ("cli/terminal.ms", 2),
         ("internal/random.ms", 1),
         ("main.ms", 1),
         ("math/decimal.ms", 1),
         ("math/math.ms", 3),
-        ("os/random.ms", 3),
+        ("random.ms", 3),
         ("string.ms", 5),
     ]);
     for id in [first, second] {

@@ -7,9 +7,11 @@ import (
 ) from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
-import sleep, nanoseconds from "@std/os/time.ms"
+import sleep, nanoseconds from "@std/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
+    stdout().write("started\n").get()
+    let _flushed = stdout().flush()
     let _ = sleep(nanoseconds(600000000)).wait()
     return HttpResponse(200, headers(), "done".to_bytes())
 

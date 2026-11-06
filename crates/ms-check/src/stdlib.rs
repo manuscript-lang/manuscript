@@ -227,6 +227,16 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
     s
 }
 
+/// Whether a module file is standard-library source: a bundled `@std/` module, or a checkout's
+/// `stdlib/` file opened from disk (an editor on the repository).
+pub fn is_bundled_source(file: &str) -> bool {
+    file.starts_with("@std/")
+        || std::path::Path::new(file).ancestors().any(|dir| {
+            dir.file_name().is_some_and(|n| n == "stdlib")
+                && dir.join("internal/promises.ms").is_file()
+        })
+}
+
 /// Whether a bundled module is internal: it holds the native declarations of the public modules and is not importable by programs.
 pub fn is_internal(path: &str) -> bool {
     path.starts_with("@std/internal/")
@@ -1710,12 +1720,12 @@ impl Session {
         with_args(&sym.ty(self.syms), args)
     }
 
-    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
+    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
     pub fn time_type(self: &Rc<Self>, name: &str) -> Ty {
         // The module is checked on first use; its records have no fields before that.
-        self.standard_exports("@std/os/time.ms");
+        self.standard_exports("@std/time.ms");
         let sym = self
-            .source_type(n("@std/os/time.ms"), n(name))
+            .source_type(n("@std/time.ms"), n(name))
             .unwrap_or_else(|| panic!("standard time type {name}"));
         sym.ty(self.syms)
     }
@@ -1735,6 +1745,28 @@ impl Session {
     }
 }
 
+/// A definition's fields, cases and operations hold types that name the definition again, so
+/// dropping the world alone leaves each cycle allocated. The session owns every definition it
+/// loaded, and a `Program` keeps the session alive for as long as its types are used, so the
+/// contents are released when the last owner of the session goes.
+impl Drop for Session {
+    fn drop(&mut self) {
+        let world = self.world.borrow();
+        let tables = world.modules.values().flat_map(HashMap::values);
+        let defs: Vec<Rc<Definition>> = tables
+            .chain(world.symbols.values())
+            .filter_map(|sym| sym.ty.borrow().as_ref().and_then(|t| t.def.clone()))
+            .collect();
+        drop(world);
+        for d in defs {
+            d.variables.borrow_mut().clear();
+            d.fields.borrow_mut().clear();
+            d.cases.borrow_mut().clear();
+            d.operations.borrow_mut().clear();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1751,6 +1783,19 @@ mod tests {
     fn every_embedded_module_type_checks() {
         let errors = Session::new().check_all_sources();
         assert!(errors.is_empty(), "{}", errors.join("\n"));
+    }
+
+    #[test]
+    fn dropping_a_session_releases_its_definitions() {
+        let session = Session::new();
+        let list = session.standard_symbol("List").unwrap();
+        let def = Rc::downgrade(list.ty.borrow().as_ref().unwrap().def.as_ref().unwrap());
+        drop(list);
+        drop(session);
+        assert!(
+            def.upgrade().is_none(),
+            "the definition cycle outlived its session"
+        );
     }
 
     #[test]

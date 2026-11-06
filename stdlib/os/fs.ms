@@ -1,10 +1,10 @@
 import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
-import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
+import Duration, milliseconds, monotonic, now, sleep from "@std/time.ms"
 import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import Promise, adopt, owned_promise from "@std/concurrency/promise.ms"
 import msrt_promise_finished from "@std/internal/promises.ms"
-import Timestamp from "@std/os/time.ms"
+import Timestamp from "@std/time.ms"
 import Closeable from "@std/core.ms"
 import (
     msstd_fs_filesystem,

@@ -45,7 +45,7 @@ fn run() -> i32 {
 struct Loader {
     root: PathBuf,
     active: HashSet<PathBuf>,
-    loaded: HashMap<PathBuf, ms_check::types::Name>,
+    loaded: HashMap<PathBuf, ms_check::api::types::Name>,
     modules: Vec<ModRef>,
     imports: ImportMap,
     diagnostics: Vec<Diagnostic>,
@@ -78,7 +78,7 @@ fn clean(path: &Path) -> PathBuf {
 }
 
 impl Loader {
-    fn visit(&mut self, canonical: &Path) -> Result<ms_check::types::Name, Box<Diagnostic>> {
+    fn visit(&mut self, canonical: &Path) -> Result<ms_check::api::types::Name, Box<Diagnostic>> {
         let logical = canonical
             .strip_prefix(&self.root)
             .unwrap_or(canonical)
@@ -107,7 +107,7 @@ impl Loader {
         &mut self,
         canonical: &Path,
         file: &Arc<str>,
-    ) -> Result<ms_check::types::Name, Box<Diagnostic>> {
+    ) -> Result<ms_check::api::types::Name, Box<Diagnostic>> {
         let bytes = std::fs::read(canonical)
             .map_err(|e| resolution(file, Pos::new(0, 1, 1), e.to_string()))?;
         let text = String::from_utf8(bytes).map_err(|_| {
@@ -118,8 +118,8 @@ impl Loader {
             ))
         })?;
         let module = ms_syntax::parser::parse(file, &text)?;
-        let key = ms_check::types::n(file);
-        let mut resolved: Vec<(ms_syntax::NodeId, ms_check::types::Name)> = Vec::new();
+        let key = ms_check::api::types::n(file);
+        let mut resolved: Vec<(ms_syntax::NodeId, ms_check::api::types::Name)> = Vec::new();
         for item in &module.imports {
             if item.path.starts_with("@std/") {
                 continue;

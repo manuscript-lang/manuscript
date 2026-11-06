@@ -25,7 +25,9 @@ pub use tooling::{
 use std::path::{Path, PathBuf};
 
 use ms_build::Lower;
-use ms_driver::{CheckRequest, Diagnostic, Graph, LoadOptions, Phase, Pos, check_graph, load_file};
+use ms_driver::{
+    CheckRequest, Diagnostic, Graph, LoadOptions, Phase, Pos, check_graph, load_files,
+};
 
 use crate::backend::{
     BackendError, BackendResult, BuildRequest, BuildType, Io, OutputRequest, RunRequest,
@@ -76,6 +78,18 @@ impl<L: Lower> Engine<L> {
         self
     }
 
+    /// The archive selected for linking and for build-input publication protection.
+    pub(crate) fn runtime_path(&self) -> Result<PathBuf, String> {
+        if let Some(runtime) = &self.runtime {
+            return Ok(runtime.clone());
+        }
+        let build = self.build_options();
+        if let Some(runtime) = ms_build::runtime_override(&build)? {
+            return Ok(runtime);
+        }
+        runtime::embedded(build.static_musl)
+    }
+
     /// Compile the lowered module into the executable `output`.
     pub(crate) fn link(
         &self,
@@ -83,7 +97,7 @@ impl<L: Lower> Engine<L> {
         output: &Path,
         kind: BuildType,
         link: &[String],
-    ) -> Result<(), String> {
+    ) -> Result<ms_build::Backend, String> {
         self.link_pinned(compiled, output, kind, link, None)
     }
 
@@ -95,17 +109,11 @@ impl<L: Lower> Engine<L> {
         kind: BuildType,
         link: &[String],
         pin: Option<&Path>,
-    ) -> Result<(), String> {
+    ) -> Result<ms_build::Backend, String> {
         let build = self.build_options();
-        let runtime = match &self.runtime {
-            Some(runtime) => runtime.clone(),
-            None => match ms_build::runtime_override(&build)? {
-                Some(runtime) => runtime,
-                None => runtime::embedded(build.static_musl)?,
-            },
-        };
+        let runtime = self.runtime_path()?;
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
-        ms_build::build_executable_pinned(
+        let backend = ms_build::build_executable_pinned(
             &mut compiled.module,
             output,
             profile(kind),
@@ -114,7 +122,8 @@ impl<L: Lower> Engine<L> {
             &build,
             pin,
         )?;
-        write_metadata(output, kind, &build)
+        write_metadata(output, kind, backend)?;
+        Ok(backend)
     }
 }
 
@@ -325,6 +334,7 @@ pub(crate) fn compile<L: Lower>(
         syms,
         backend,
         filename,
+        &[],
         if tests {
             Target::Tests
         } else {
@@ -338,10 +348,11 @@ pub(crate) fn compile_target<L: Lower>(
     syms: ms_syntax::Names,
     backend: &Engine<L>,
     filename: &str,
+    extra: &[String],
     target: Target,
 ) -> Result<Compiled, Failure> {
     let tests = target != Target::Program;
-    let graph = load_file(syms, filename, LoadOptions { tests });
+    let graph = load_files(syms, filename, extra, LoadOptions { tests });
     let library = graph.library;
     let project = !graph.project_root.is_empty();
     if project && library && !tests {
@@ -439,21 +450,16 @@ pub(crate) fn profile(kind: BuildType) -> ms_build::Profile {
 fn write_metadata(
     output: &Path,
     kind: BuildType,
-    build: &ms_build::BuildOptions,
+    backend: ms_build::Backend,
 ) -> Result<(), String> {
     static STAGED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-    write_metadata_with(
-        output,
-        kind,
-        ms_build::backend_name(profile(kind), build),
-        &STAGED,
-    )
+    write_metadata_with(output, kind, backend, &STAGED)
 }
 
 fn write_metadata_with(
     output: &Path,
     kind: BuildType,
-    backend: &str,
+    backend: ms_build::Backend,
     next: &std::sync::atomic::AtomicUsize,
 ) -> Result<(), String> {
     let mut name = output.as_os_str().to_owned();
@@ -461,7 +467,7 @@ fn write_metadata_with(
     let document = format!(
         "{{\n  \"format\": 1,\n  \"version\": {},\n  \"backend\": \"{}\",\n  \"build_type\": \"{}\"\n}}\n",
         crate::quote(crate::VERSION),
-        backend,
+        backend.as_str(),
         kind.as_str()
     );
     let path = PathBuf::from(name);
@@ -562,7 +568,13 @@ mod staging_file_tests {
         std::fs::create_dir(&occupied).unwrap();
         std::fs::write(occupied.join("sentinel"), b"preserve this directory").unwrap();
         let next = AtomicUsize::new(0);
-        write_metadata_with(&output, BuildType::Debug, "cranelift", &next).unwrap();
+        write_metadata_with(
+            &output,
+            BuildType::Debug,
+            ms_build::Backend::Cranelift,
+            &next,
+        )
+        .unwrap();
         assert_eq!(next.load(Ordering::Relaxed), 2);
         assert_eq!(
             std::fs::read(occupied.join("sentinel")).unwrap(),

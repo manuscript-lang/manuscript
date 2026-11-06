@@ -15,7 +15,7 @@ import (
 import stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/system.ms"
-import Duration, nanoseconds, sleep from "@std/os/time.ms"
+import Duration, nanoseconds, sleep from "@std/time.ms"
 
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()

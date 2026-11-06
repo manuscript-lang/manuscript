@@ -221,12 +221,6 @@ pub extern "C-unwind" fn msrt_runtime_limit() -> i64 {
     limit() as i64
 }
 
-/// The number of scheduler threads started so far.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_runtime_threads() -> i64 {
-    STARTED.load(Ordering::SeqCst) as i64
-}
-
 fn load_of(thread: usize) -> u32 {
     SLOTS[thread].live.load(Ordering::SeqCst) + SLOTS[thread].pending.load(Ordering::SeqCst)
 }

@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/stdlib/terminal.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
-import raw_mode, terminal_capabilities from "@std/io/io.ms"
+import raw_mode, terminal_capabilities from "@std/cli/terminal.ms"
 
 test "redirected streams report no terminal and refuse raw mode":
     let capabilities = terminal_capabilities()

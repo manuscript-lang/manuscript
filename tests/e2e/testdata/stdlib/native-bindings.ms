@@ -20,7 +20,7 @@ import (
     write_file
 ) from "@std/os/fs.ms"
 import join from "@std/os/path.ms"
-import milliseconds from "@std/os/time.ms"
+import milliseconds from "@std/time.ms"
 import ReadStream from "@std/io/io.ms"
 import within from "./support/conn.ms"
 

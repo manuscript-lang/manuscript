@@ -1,7 +1,7 @@
 import Bytes, join from "@std/bytes.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import Connection from "@std/net/net.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import ReadStream from "@std/io/io.ms"
 
 // Writes `text` to the connection and waits until it is handed to the socket.

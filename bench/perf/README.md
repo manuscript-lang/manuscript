@@ -14,8 +14,10 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`csv/`](csv) | `@std/csv` parse against the Rust `csv` crate on 5000 generated rows | `MS=./target/release/ms ms run bench/tools/cargo_vs_ms.ms -- csv` | [`csv/README.md`](csv/README.md) |
 | [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `ms run bench/tools/json_bench.ms` | [`json/results.md`](json/results.md) |
 | [`streams/`](streams) | stream pipelines (`map`, `lines`, `collect`) against the loops they replace, ns per item | see the [page](streams/README.md) | [`streams/README.md`](streams/README.md) |
+| [`iface/`](iface) | ns per interface call: local, returned and passed values against a direct loop | see the [page](iface/README.md) | [`iface/README.md`](iface/README.md) |
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 | [`tasks/`](tasks) | resident memory and page tables per parked promise task at 100k and 1M, spawn and cancel time | `ms run bench/perf/tasks/main.ms -- 1000000 sleep` | [`tasks/README.md`](tasks/README.md) |
+| [`mailbox/`](mailbox) | ns per promise through the scheduler mailboxes (cross-thread start and event traffic) | `ms run bench/perf/mailbox/main.ms -- 100000 5` | [`mailbox/README.md`](mailbox/README.md) |
 
 Latest refresh with Go and Rust comparisons for the docs: [`results-2026-11-05.md`](results-2026-11-05.md).
 

@@ -203,16 +203,6 @@ impl Doc {
         }
     }
 
-    /// The members of an object node as owned key and value pairs; none for another node.
-    pub fn object_entries(&self, id: NodeId) -> Option<Vec<(String, NodeId)>> {
-        matches!(self.node(id), Some(Node::Obj { .. } | Node::ObjB(_))).then(|| {
-            self.members(id)
-                .iter()
-                .map(|m| (String::from(self.slice(m.key)), m.val))
-                .collect()
-        })
-    }
-
     pub fn add(&mut self, node: Node) -> NodeId {
         self.nodes.push(node);
         (self.nodes.len() - 1) as NodeId
@@ -249,34 +239,6 @@ impl Doc {
         self.objects.push(Vec::new());
         let i = (self.objects.len() - 1) as u32;
         self.add(Node::ObjB(i))
-    }
-
-    /// An empty built array with room for `n` items.
-    pub fn add_array_with_capacity(&mut self, n: usize) -> NodeId {
-        self.add_array(Vec::with_capacity(n))
-    }
-
-    /// An empty built object with room for `n` members.
-    pub fn add_object_with_capacity(&mut self, n: usize) -> NodeId {
-        self.objects.push(Vec::with_capacity(n));
-        let i = (self.objects.len() - 1) as u32;
-        self.add(Node::ObjB(i))
-    }
-
-    /// Appends a member to a built object whose keys the caller keeps distinct.
-    pub fn object_add(&mut self, obj: NodeId, key: &str, item: NodeId) {
-        let Some(&Node::ObjB(i)) = self.node(obj) else {
-            return;
-        };
-        let key = self.put_text(key);
-        self.objects[i as usize].push(Member { key, val: item });
-    }
-
-    /// Appends an item to a built array; other nodes are left alone.
-    pub fn array_push(&mut self, arr: NodeId, item: NodeId) {
-        if let Some(&Node::ArrB(i)) = self.node(arr) {
-            self.arrays[i as usize].push(item);
-        }
     }
 
     /// Sets a member of a built object, replacing the value of an existing key.

@@ -3,7 +3,7 @@
 import FetchOptions, fetch from "@std/net/fetch.ms"
 import HttpRequest, HttpResponse, headers, buffered from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 
 fn route(request: HttpRequest) HttpResponse:
     let _ = sleep(milliseconds(2000)).wait()

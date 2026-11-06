@@ -61,7 +61,7 @@ ms test ms.toml --json
 ```
 
 - A manifest run discovers `test.ms` and `*_test.ms` files below the project root, plus tests in imports ([discovery rules](../developer-tooling/builds/project-configuration.md#commands-and-module-discovery)).
-- `ms test file.ms` runs that module and its imports only.
+- `ms test file.ms` runs that module and its imports only. `ms test a.ms b.ms` builds both into one executable and runs every test in one invocation.
 - Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
 - Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
 - `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
