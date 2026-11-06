@@ -2133,8 +2133,7 @@ resolution	10	30	443	unknown binding panic; add: import panic from "@std/core.ms
 resolution	2	42	58	unknown binding fail; add: import fail from "@std/test/test.ms"fn first() Unit:
     let callback: fn() Int? = fn: absent()resolution	2	35	51	unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a modulefn failed[T]() Result[T, Failure]: error(Failure("empty"))
 fn first() Result[Int, Error]: failed()resolution	1	26	25	unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import it
-resolution	1	42	41	unknown binding Failure; did you mean 'failed'?
-type	2	32	90	cannot infer type argument T for failed; write failed[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameterinterface Read:
+resolution	1	42	41	unknown binding Failure; did you mean 'failed'?interface Read:
     fn get() Int
 type Box:
     value: Int
@@ -2900,10 +2899,8 @@ resolution	23	26	589	unknown binding panic; did you mean 'pair'?fn first() Int:
     let r: Result[Int, Error] = f()
     return h(r)resolution	2	33	48	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	3	12	63	unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...) T:', or import it from a modulefn bounded[T: Equal](r: Result[T, Error]) Unit: return
-fn first() Unit: bounded(f())type	2	18	72	cannot infer type argument T for bounded; write bounded[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-resolution	2	26	80	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
+fn first() Unit: bounded(f())resolution	2	26	80	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
 fn first(cause: Error) Unit: both(cause: cause, r: f())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-type	2	30	90	cannot infer type argument T for both; write both[T, Error](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	52	112	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn both[T, E: Error](cause: E, r: Result[T, E]) Unit: return
 fn first(cause: Error) Unit: both[Int, Error](cause: cause, r: f())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 resolution	2	64	124	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Holder[T]:
@@ -2914,16 +2911,12 @@ fn first() Wrapped[Int]: Wrapped.value(f())resolution	3	40	87	unknown binding f
 fn first(r: parse	1	1	0	unmatched closing delimiter ']'; remove it or add the matching opener before itfn bounded[T: Equal](r: Result[T, Error]) Unit: return
 fn first(r: Result[Error, E1]) Unit: bounded(r)resolution	2	27	81	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import itfn domain[T](r: Result[T, E2]) Unit: return
 fn first() Unit: domain(f())resolution	1	27	26	unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it
-type	2	18	61	cannot infer type argument T for domain; write domain[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	2	25	68	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn same[T, E: Error](first: Result[T, E], second: Result[T, E]) Unit: return
 fn first() Unit: same(first: f(), second: other())type	1	15	14	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-type	2	18	94	cannot infer type arguments T, E for same; write same[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	2	30	106	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	2	43	119	unknown binding other; declare it with 'let other = ...' before use, define 'fn other(...) T:', or import it from a modulefn values[T](r: List[Result[T, Error]]) Unit: return
-fn first() Unit: values([f()])type	2	18	70	cannot infer type argument T for values; write values[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-resolution	2	26	78	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn twice[T](r: Result[T, Error]??) Unit: return
-fn first() Unit: twice(f())type	2	18	65	cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-resolution	2	24	71	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn nested[T](r: Result[Result[T, Error], Error]) Unit: return
+fn first() Unit: values([f()])resolution	2	26	78	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn twice[T](r: Result[T, Error]??) Unit: return
+fn first() Unit: twice(f())resolution	2	24	71	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a modulefn nested[T](r: Result[Result[T, Error], Error]) Unit: return
 fn first(r: Result[Result[Int, E1], E2]) Unit: nested(r)resolution	2	32	93	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it
 resolution	2	37	98	unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import itfn callback[T](r: Result[fn(T) Int, Error]) Unit: return
 fn first(r: Result[fn(Int) Int, E1]) Unit: callback(r)resolution	2	33	89	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import itinterface Read:
@@ -2932,7 +2925,6 @@ impl Read for E1:
     fn get() Int: self.code
 fn read[T](r: Result[T, Read]) Unit: return
 fn first() Unit: read(f())resolution	3	15	47	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it
-type	6	18	140	cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 resolution	6	23	145	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a moduletype Cause:
     text: String
 impl Error for Cause:
@@ -6744,9 +6736,7 @@ test "second request uses same server":
     try expect_equal(response.body, "shared".to_bytes())
 resolution	3	8	164	module does not export network; did you mean 'Network'?
 resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-type	14	24	618	cannot infer type arguments T, E for expect_ok; write expect_ok[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	14	34	628	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-type	17	24	861	cannot infer type arguments T, E for expect_ok; write expect_ok[T, E](...) with explicit types for T, E; call arguments and the expected result must determine every type parameter
 resolution	17	34	871	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
 type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
