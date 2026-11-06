@@ -1,8 +1,8 @@
 //! C ABI shims for `@std/math/decimal.ms`. A `Decimal` crosses as a pointer to [`Dec`] and results come
 //! back through a trailing `out` pointer.
 
-use crate::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use alloc::string::String;
+use ms_decimal::{Dec, Mode, Overflow, RoundFail, overflow_message};
 use ms_rt::ffi::{
     Has, Out, STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, Status, abi_record, fault, fault_kind,
     native,
@@ -47,20 +47,23 @@ fn checked(r: Result<Dec, Overflow>, operation: &str, left: Dec, right: Dec) -> 
     }
 }
 
-impl Status for RoundFail {
+/// A rounding or parsing failure, reported to Manuscript as a status byte.
+pub struct Failure(RoundFail);
+
+impl Status for Failure {
     fn status(self) -> u8 {
-        match self {
+        match self.0 {
             RoundFail::InvalidInput => STATUS_INVALID_INPUT,
             RoundFail::OutOfRange => STATUS_OUT_OF_RANGE,
         }
     }
 }
 
-fn mode_of(has: bool, index: i64) -> Result<Mode, RoundFail> {
+fn mode_of(has: bool, index: i64) -> Result<Mode, Failure> {
     if !has {
         return Ok(Mode::HalfEven);
     }
-    Mode::from_index(index).ok_or(RoundFail::InvalidInput)
+    Mode::from_index(index).ok_or(Failure(RoundFail::InvalidInput))
 }
 
 macro_rules! binary {
@@ -91,10 +94,10 @@ native! {
 
     /// The Decimal of runtime text, or `InvalidInput` when it is malformed or not exactly representable.
     // ms: leaf
-    fn msstd_decimal_parse(text: &str) -> Result<DecRec, RoundFail> {
+    fn msstd_decimal_parse(text: &str) -> Result<DecRec, Failure> {
         Dec::parse(text)
             .map(DecRec::from)
-            .ok_or(RoundFail::InvalidInput)
+            .ok_or(Failure(RoundFail::InvalidInput))
     }
 
     // ms: leaf
@@ -157,10 +160,11 @@ native! {
         places: i64,
         has_mode: Has,
         mode: i64,
-    ) -> Result<DecRec, RoundFail> {
+    ) -> Result<DecRec, Failure> {
         Dec::from(value)
             .round(places, mode_of(*has_mode, mode)?)
             .map(DecRec::from)
+            .map_err(Failure)
     }
 
     // ms: leaf
@@ -169,7 +173,9 @@ native! {
         digits: i64,
         has_mode: Has,
         mode: i64,
-    ) -> Result<String, RoundFail> {
-        Dec::from(value).to_fixed(digits, mode_of(*has_mode, mode)?)
+    ) -> Result<String, Failure> {
+        Dec::from(value)
+            .to_fixed(digits, mode_of(*has_mode, mode)?)
+            .map_err(Failure)
     }
 }

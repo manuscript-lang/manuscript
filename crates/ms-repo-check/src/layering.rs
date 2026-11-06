@@ -22,17 +22,12 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
     ("ms-syntax", &[]),
     ("ms-json", &[]),
     ("ms-mir", &[]),
+    ("ms-decimal", &[]),
     ("ms-check", &["ms-syntax"]),
-    // `ms-std-decimal` parses Decimal literals in `expr.rs`; removed when the checker folds them.
+    // `ms-decimal` is pure arithmetic: lowering folds Decimal literals with it.
     (
         "ms-lower",
-        &[
-            "ms-check",
-            "ms-mir",
-            "ms-rt-abi",
-            "ms-std-decimal",
-            "ms-syntax",
-        ],
+        &["ms-check", "ms-mir", "ms-rt-abi", "ms-decimal", "ms-syntax"],
     ),
     ("ms-clif", &["ms-mir", "ms-rt-abi"]),
     ("ms-build", &["ms-check", "ms-clif", "ms-lower", "ms-mir"]),
@@ -63,6 +58,9 @@ const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
         ],
     ),
 ];
+
+/// Pure arithmetic both worlds use: the compiler folds literals with it and the runtime wraps it.
+const SHARED: &str = "ms-decimal";
 
 const RUNTIME: &[&str] = &["ms-rt-abi", "ms-rt-hot", "ms-rt", "ms-std-", "ms-native"];
 
@@ -95,7 +93,7 @@ pub fn check(files: &[String]) -> Vec<String> {
 
 fn violation(name: &str, dep: &str) -> Option<&'static str> {
     if is_runtime(name) {
-        let compiler = COMPILER_AND_TOOLS.iter().any(|(c, _)| *c == dep);
+        let compiler = dep != SHARED && COMPILER_AND_TOOLS.iter().any(|(c, _)| *c == dep);
         return compiler.then_some("a runtime crate must not depend on a compiler crate");
     }
     let (_, allowed) = COMPILER_AND_TOOLS.iter().find(|(c, _)| *c == name)?;
