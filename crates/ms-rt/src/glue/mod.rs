@@ -13,15 +13,6 @@ use crate::fault::{cancel_flag, msrt_cancelled, msrt_fault};
 use crate::string::msrt_string_from_bytes;
 pub use ms_rt_abi::record::FaultKind;
 
-/// The bytes of a live string.
-///
-/// # Safety
-/// `s` must point to a live `StrVal` whose bytes outlive `'a`.
-pub unsafe fn str_bytes<'a>(s: *const StrVal) -> &'a [u8] {
-    // SAFETY: `ptr..ptr+len` holds the text.
-    unsafe { core::slice::from_raw_parts((*s).data(), (*s).len()) }
-}
-
 /// A new owned string holding `bytes`.
 pub fn new_string(bytes: &[u8]) -> StrVal {
     let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
@@ -78,14 +69,6 @@ pub fn cancelled() -> ! {
 }
 
 use crate::obj::{msrt_alloc, msrt_free};
-
-use crate::process::msrt_process_on_exit;
-
-/// Runs `hook` once when the program ends, after output is flushed, whether `main` returns or
-/// the program exits.
-pub fn on_exit(hook: extern "C" fn()) {
-    msrt_process_on_exit(hook)
-}
 
 use crate::task::msrt_task_sleep;
 #[cfg(unix)]
@@ -389,22 +372,6 @@ pub fn new_handle<T>(value: T) -> *mut Handle<T> {
             },
         );
         ptr
-    }
-}
-
-/// The elements of a list of plain values (`Int`, `Float`, pointers).
-///
-/// # Safety
-/// `v` must point to a live `VecVal` whose elements are `T`.
-pub unsafe fn list_slice<'a, T>(v: *const ms_rt_abi::VecVal) -> &'a [T] {
-    // SAFETY: a list is `len` initialised elements at `ptr` (null when empty).
-    unsafe {
-        let v = &*v;
-        if v.len == 0 {
-            &[]
-        } else {
-            core::slice::from_raw_parts(v.ptr as *const T, v.len)
-        }
     }
 }
 

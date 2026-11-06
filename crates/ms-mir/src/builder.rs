@@ -283,11 +283,6 @@ impl<'m> FuncBuilder<'m> {
     pub fn i2f(&mut self, a: Value, to: Ty) -> Value {
         self.val(Op::I2F, &[a], Imm::None, to)
     }
-    /// `f2i.opt`.
-    pub fn f2i_opt(&mut self, a: Value) -> Value {
-        let t = self.m.types.opt(Ty::INT);
-        self.val(Op::F2IOpt, &[a], Imm::None, t)
-    }
     /// `select`.
     pub fn select(&mut self, c: Value, a: Value, b: Value) -> Value {
         let ty = self.ty(a);
@@ -438,11 +433,6 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListPush, &[l, v], Imm::None, t)
     }
 
-    /// `list.droplast 0`: the list without its last element, which is dropped. The list must not be empty.
-    pub fn list_drop_last(&mut self, l: Value) -> Value {
-        let t = self.ty(l);
-        self.val(Op::ListDropLast, &[l], Imm::Int(0), t)
-    }
     /// `list.droplast 1`: the list without its last element, which `list.take` moved out, so
     /// nothing is dropped. The list must not be empty.
     pub fn list_drop_last_taken(&mut self, l: Value) -> Value {

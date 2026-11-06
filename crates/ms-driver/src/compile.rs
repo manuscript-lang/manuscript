@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use ms_check::types::{SymKind, n};
+use ms_check::api::types::{SymKind, n};
 use ms_check::{CheckOptions, Program};
 use ms_syntax::{Diagnostic, Phase, Pos};
 

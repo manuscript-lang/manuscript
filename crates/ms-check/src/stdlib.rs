@@ -144,12 +144,7 @@ const KEPT_CALLBACKS: &[&str] = &[
 ];
 
 /// Externs that take ownership of the generic value argument (it moves into the runtime).
-const OWNING_VALUES: &[&str] = &[
-    "extern:msrt_cells_new",
-    "extern:msrt_cells_put",
-    "extern:msrt_pipe_write",
-    "extern:msrt_promise_put",
-];
+const OWNING_VALUES: &[&str] = &["extern:msrt_pipe_write", "extern:msrt_promise_put"];
 
 /// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
 pub fn owns_value(native: &str) -> bool {

@@ -2,7 +2,7 @@ import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
 import pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms"
 import sse_events from "@std/net/sse.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import parse_timestamp from "@std/time.ms"
 import uuid_v4 from "@std/random.ms"
 
@@ -38,11 +38,11 @@ impl Source[Bytes] for Whole:
         return ok(unit)
 
 fn count_events(data: Bytes) Int:
-    var events = sse_events(stream[Bytes](Whole(data, false)))
+    var events = sse_events(ReadStream[Bytes](Whole(data, false)))
     var count = 0
 
     while true:
-        if let next = events.read().wait():
+        if let next = events.next():
             if next.is_none(): break
 
             count += 1

@@ -68,8 +68,8 @@ Retains no input bytes, and consumes and closes the stream. A failed read return
 export fn crc32_of(input: ReadStream[Bytes]) UInt32!:
     var sum = Crc32()
     var source = input
-    for chunk in source.wait():
-        sum.update(try chunk)
+    for chunk in source:
+        sum.update(chunk)
     try source.close()
     return ok(sum.value())
 
@@ -80,7 +80,7 @@ Retains no input bytes, and consumes and closes the stream. A failed read return
 export fn adler32_of(input: ReadStream[Bytes]) UInt32!:
     var sum = Adler32()
     var source = input
-    for chunk in source.wait():
-        sum.update(try chunk)
+    for chunk in source:
+        sum.update(chunk)
     try source.close()
     return ok(sum.value())

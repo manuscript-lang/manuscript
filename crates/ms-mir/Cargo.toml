@@ -9,7 +9,14 @@ autotests = false
 [lints]
 workspace = true
 
+[features]
+# The reference interpreter (`interp`), a test oracle the shipped compiler does not need.
+test-support = []
+
 [dependencies]
+
+[dev-dependencies]
+ms-mir = { path = ".", features = ["test-support"] }
 
 [[test]]
 name = "it"

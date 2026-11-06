@@ -19,7 +19,7 @@ For a type that implements `Closeable`, cleanup calls its declared operation:
 
 A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Unit!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
 
-The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are opaque types that implement `Closeable`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush().wait()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
+The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types that implement `Closeable`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
 
 ## Cloning a resource
 

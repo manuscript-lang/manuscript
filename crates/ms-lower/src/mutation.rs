@@ -5,8 +5,8 @@
 //! function sees the change in its own argument: the callee hands the updated value back and
 //! the call site stores it into the argument's place, the same way a `var` parameter works.
 
-use ms_check::hir::{Body, Callable, ModuleHir, Resolution};
-use ms_check::types::{Kind, Name};
+use ms_check::api::hir::{Body, Callable, ModuleHir, Resolution};
+use ms_check::api::types::{Kind, Name};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 use std::collections::{HashMap, HashSet};
@@ -289,7 +289,7 @@ impl Visitor for Mutations<'_> {
         match &view.target {
             Resolution::Method(m) if !syms.str(m.native).is_empty() => {
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && ms_check::effects::collection_mutation(syms, m)
+                    && ms_check::api::effects::collection_mutation(syms, m)
                 {
                     self.roots.extend(place_root(syms, self.hir, left));
                 }
@@ -321,7 +321,7 @@ impl Mutations<'_> {
     fn argument_edges(
         &mut self,
         syms: ms_syntax::Names,
-        view: &ms_check::hir::CallView<'_>,
+        view: &ms_check::api::hir::CallView<'_>,
         callee: FnKey,
     ) {
         for a in &view.arguments {
@@ -373,13 +373,13 @@ fn target_position(callables: &HashMap<FnKey, Rc<Callable>>, edge: &Edge) -> Opt
 /// Whether a method changes its receiver, for a method used as a value.
 pub(crate) fn method_changes_receiver(
     syms: ms_syntax::Names,
-    m: &ms_check::types::MethodRef,
+    m: &ms_check::api::types::MethodRef,
     mutated: &HashSet<ParamKey>,
 ) -> bool {
     match (&m.decl, syms.str(m.native)) {
         (Some(d), "contract") => d.method().is_some_and(|x| x.mutating),
         (_, "contract") => false,
-        (_, native) if !native.is_empty() => ms_check::effects::collection_mutation(syms, m),
+        (_, native) if !native.is_empty() => ms_check::api::effects::collection_mutation(syms, m),
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
         _ => false,
     }
@@ -475,7 +475,7 @@ pub(crate) fn infer_mutated(
     // (function, position) -> the (callee, callee position) it passes the parameter to.
     let mut feeds: Vec<(ParamKey, ParamKey)> = Vec::new();
     for (key, c) in callables {
-        let bindings: Vec<&ms_check::types::BindingRef> =
+        let bindings: Vec<&ms_check::api::types::BindingRef> =
             c.self_binding.iter().chain(c.parameters.iter()).collect();
         if bindings.is_empty() {
             continue;

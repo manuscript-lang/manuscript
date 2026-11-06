@@ -3,8 +3,8 @@
 use crate::cx::{Cx, InstKey, Job, JobKind, Variant};
 use crate::{Error, Options};
 use ms_check::Program;
-use ms_check::hir::{Callable, CallableKind, ModuleHir};
-use ms_check::types::{self as ct, BindingRef, Subst};
+use ms_check::api::hir::{Callable, CallableKind, ModuleHir};
+use ms_check::api::types::{self as ct, BindingRef, Subst};
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Block, FuncId, Linkage, Loc, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -195,7 +195,7 @@ impl Cx {
 /// types were first interned.
 fn instance_key(
     syms: ms_syntax::Names,
-    tys: &mut ms_check::tytable::TyTable,
+    tys: &mut ms_check::api::tytable::TyTable,
     c: &Callable,
     subst: &Subst,
     variant: Variant,
@@ -260,7 +260,7 @@ impl Cx {
     /// The result type of `c`: the borrowing variant of its `Result` when the checker found some
     /// cases borrowed from the arguments and the others owned (`Fact::BorrowedOk`, `Fact::BorrowedError`).
     fn borrowing_result_ty(&self, m: &mut Module, c: &Callable, ret: MTy) -> MTy {
-        use ms_check::ownership::Fact;
+        use ms_check::api::ownership::Fact;
         let (file, id) = (c.module.file, c.id());
         let TyKind::Alt(a) = m.types.kind(ret).clone() else {
             return ret;
@@ -338,14 +338,14 @@ impl Cx {
         f.ret_borrowed = self.fact(
             c.module.file,
             c.id(),
-            ms_check::ownership::Fact::ReturnsBorrow,
+            ms_check::api::ownership::Fact::ReturnsBorrow,
         );
         // The checker found the result an interface view of the arguments: owned, dropped by
         // the caller, held as a borrow of the arguments while it lives.
         f.ret_view = self.fact(
             c.module.file,
             c.id(),
-            ms_check::ownership::Fact::ReturnsView,
+            ms_check::api::ownership::Fact::ReturnsView,
         );
         // A function that returns a promise from a closure it is given keeps that closure alive.
         f.keeps_scoped = result.is_source_type(self.syms, "@std/concurrency/promise.ms", "Promise")
@@ -652,7 +652,7 @@ impl<'a> FnLower<'a> {
 
     pub fn is_resource(&self, t: MTy) -> bool {
         self.cx.source_tys.get(t.0 as usize).is_some_and(|ty| {
-            self.cx.classes.class(self.syms, ty) == ms_check::ownership::Class::Resource
+            self.cx.classes.class(self.syms, ty) == ms_check::api::ownership::Class::Resource
         })
     }
 
@@ -1021,7 +1021,7 @@ impl<'a> FnLower<'a> {
             && self
                 .cx
                 .binding_facts
-                .has(uid, ms_check::ownership::BindingFact::ConditionalMove);
+                .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove);
         if moved && !conditional {
             // Every path moves it: the move moving_params the local, and the scope drops nothing.
             self.must_move.insert(uid);
@@ -1498,19 +1498,19 @@ impl<'a> FnLower<'a> {
             .collect();
         let vars = self.cx.var_positions(c);
         let owned_mask = self.variant.owned.then(|| self.cx.owned_mask(c)).flatten();
-        if let ms_check::hir::Body::Block(stmts) = c.body() {
+        if let ms_check::api::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self.syms, self, stmts);
         }
         // Parameters the body changes are the callee's own copies.
         let mutated = match c.body() {
-            ms_check::hir::Body::Block(stmts) => crate::mutation::mutated_locals(
+            ms_check::api::hir::Body::Block(stmts) => crate::mutation::mutated_locals(
                 self.syms,
                 &self.hir,
-                ms_check::hir::Body::Block(stmts),
+                ms_check::api::hir::Body::Block(stmts),
                 &self.cx.callables,
                 &self.cx.mutated,
             ),
-            ms_check::hir::Body::Expr(_) => Default::default(),
+            ms_check::api::hir::Body::Expr(_) => Default::default(),
         };
         // The borrowed instance (reached through an interface or a function value) of a function
         // that moves a parameter is the copying adapter for the borrowed signature: its copies
@@ -1526,7 +1526,7 @@ impl<'a> FnLower<'a> {
                 if self
                     .cx
                     .binding_facts
-                    .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+                    .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
                 {
                     // A resource the callee keeps on some path closes on the others.
                     let cleanup = self.hir.binding_cleanup(b.uid);
@@ -1560,7 +1560,7 @@ impl<'a> FnLower<'a> {
             self.begin_fixture(c, f)?;
         }
         match c.body() {
-            ms_check::hir::Body::Block(stmts) => {
+            ms_check::api::hir::Body::Block(stmts) => {
                 if let Some(first) = stmts.first() {
                     self.at(first.pos);
                 }
@@ -1590,7 +1590,7 @@ impl<'a> FnLower<'a> {
                     self.emit_return(Some(Val { v: u, own: false }));
                 }
             }
-            ms_check::hir::Body::Expr(e) => {
+            ms_check::api::hir::Body::Expr(e) => {
                 let moved_before = self.closed_on_path.clone();
                 let x = self.expr(e)?;
                 self.emit_return(Some(x));

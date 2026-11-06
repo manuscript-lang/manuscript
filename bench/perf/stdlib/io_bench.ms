@@ -1,7 +1,7 @@
 import lines from "@std/io/streams.ms"
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
-import Source, stream from "@std/io/io.ms"
+import Source, ReadStream from "@std/io/io.ms"
 
 type MemorySource:
     data: Bytes
@@ -34,11 +34,11 @@ bench "io.lines":
     let bytes = source_text().to_bytes()
 
     fn work() Result[Unit, Error]:
-        var reader = lines(stream[Bytes](MemorySource(bytes.clone(), 0)))
+        var reader = lines(ReadStream[Bytes](MemorySource(bytes.clone(), 0)))
         var count = 0
 
         while true:
-            let next = reader.read().wait()
+            let next = reader.next()
             if next.is_error():
                 return keep(-1)
             if next.get().is_none():

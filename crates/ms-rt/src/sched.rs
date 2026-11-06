@@ -192,6 +192,11 @@ pub(crate) fn current() -> usize {
     *index
 }
 
+/// How many scheduler threads exist, the main thread included.
+pub(crate) fn started() -> usize {
+    STARTED.load(Ordering::Acquire)
+}
+
 /// The most scheduler threads the program may run.
 pub(crate) fn limit() -> usize {
     let n = LIMIT.load(Ordering::SeqCst);
@@ -219,12 +224,6 @@ pub extern "C-unwind" fn msrt_runtime_set_threads(n: i64) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_runtime_limit() -> i64 {
     limit() as i64
-}
-
-/// The number of scheduler threads started so far.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_runtime_threads() -> i64 {
-    STARTED.load(Ordering::SeqCst) as i64
 }
 
 fn load_of(thread: usize) -> u32 {

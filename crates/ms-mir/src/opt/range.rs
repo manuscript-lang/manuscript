@@ -959,6 +959,40 @@ impl<'a> Fa<'a> {
             return None;
         }
         let top = type_top(ty);
+        match inst.op {
+            Op::IConst
+            | Op::BConst
+            | Op::IAdd
+            | Op::IAddChk
+            | Op::ISub
+            | Op::ISubChk
+            | Op::IMul
+            | Op::IMulChk
+            | Op::INeg
+            | Op::INegChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
+            | Op::SDiv
+            | Op::SDivChk
+            | Op::SRem
+            | Op::SRemChk => self.arithmetic(inst, env, ty, top),
+            Op::And | Op::Or | Op::Xor | Op::Not | Op::Sshr => self.bitwise(inst, env, ty, top),
+            Op::ICmp
+            | Op::B2I
+            | Op::Select
+            | Op::ListLen
+            | Op::ListGet
+            | Op::ListGetNn
+            | Op::ListGetU
+            | Op::StrLen
+            | Op::AltTag => self.other_ops(inst, env, ty, top),
+            _ => Some(top),
+        }
+    }
+
+    /// Constants, additions, multiplications and divisions.
+    fn arithmetic(&self, inst: &Inst, env: &Env, _ty: Ty, top: Itv) -> Option<Itv> {
         let arg = |i: usize| self.get(inst.args[i], env);
         Some(match inst.op {
             Op::IConst => match inst.imm {
@@ -1043,6 +1077,14 @@ impl<'a> Fa<'a> {
                 }
                 Itv::clamp(lo, hi)
             }
+            _ => top,
+        })
+    }
+
+    /// Boolean and bitwise operations and shifts.
+    fn bitwise(&self, inst: &Inst, env: &Env, ty: Ty, top: Itv) -> Option<Itv> {
+        let arg = |i: usize| self.get(inst.args[i], env);
+        Some(match inst.op {
             Op::And if ty == Ty::BOOL => {
                 let (x, y) = (arg(0)?, arg(1)?);
                 if x.is_point() && y.is_point() {
@@ -1116,6 +1158,14 @@ impl<'a> Fa<'a> {
                     Itv::TOP
                 }
             }
+            _ => top,
+        })
+    }
+
+    /// Comparisons, `select`, lengths, bytes and alternative tags.
+    fn other_ops(&self, inst: &Inst, env: &Env, _ty: Ty, top: Itv) -> Option<Itv> {
+        let arg = |i: usize| self.get(inst.args[i], env);
+        Some(match inst.op {
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     return Some(top);

@@ -12,9 +12,9 @@ use crate::text::{self, EditorKind, Position, Range};
 use crate::uri;
 use crate::workspace::workspace_documents;
 use ms_check::Session;
-use ms_check::editor::{MemberKind, members, prelude_type_names, standard_export_inventory};
-use ms_check::syntax::{DeclRef, FuncRef};
-use ms_check::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
+use ms_check::api::editor::{MemberKind, members, prelude_type_names, standard_export_inventory};
+use ms_check::api::syntax::{DeclRef, FuncRef};
+use ms_check::api::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
 use ms_driver::project::pathops;
 use ms_syntax::ast::DeclKind;
 use std::collections::{HashMap, HashSet};
@@ -287,7 +287,8 @@ impl Completer<'_> {
                 return;
             }
             for case in cases(&ty) {
-                let signature = ms_check::types::function(syms, case.fields.clone(), ty.clone());
+                let signature =
+                    ms_check::api::types::function(syms, case.fields.clone(), ty.clone());
                 let insert = if case.fields.is_empty() {
                     syms.str(case.name).to_string()
                 } else {
@@ -532,7 +533,7 @@ impl Completer<'_> {
                 // An alternative's cases are in scope next to the type.
                 for case in cases(&ty) {
                     let signature =
-                        ms_check::types::function(syms, case.fields.clone(), ty.clone());
+                        ms_check::api::types::function(syms, case.fields.clone(), ty.clone());
                     let insert = if case.fields.is_empty() {
                         syms.str(case.name).to_string()
                     } else {

@@ -162,7 +162,7 @@ pub fn workspace_references(
         .info
         .as_ref()
         .and_then(|info| info.symbol.as_ref())
-        .is_some_and(|symbol| symbol.kind == ms_check::types::SymKind::Fn && !symbol.export)
+        .is_some_and(|symbol| symbol.kind == ms_check::api::types::SymKind::Fn && !symbol.export)
     {
         let mut locations = nav::references_with_index(syms, analysis, index, d, p, include);
         locations.sort_by_cached_key(location_sort_key);
@@ -314,8 +314,8 @@ pub(crate) fn workspace_symbols_matching(
                 continue;
             }
             let kind = match &info.symbol {
-                Some(s) if s.kind == ms_check::types::SymKind::Type => {
-                    if s.ty(syms).kind == ms_check::types::Kind::Alternative {
+                Some(s) if s.kind == ms_check::api::types::SymKind::Type => {
+                    if s.ty(syms).kind == ms_check::api::types::Kind::Alternative {
                         10
                     } else {
                         5

@@ -13,7 +13,7 @@ export fn main() Int:
         var signals = watched
         say("waiting\n")
 
-        let _observed = signals.read().wait()
+        let _observed = signals.next()
         say("got signal\n")
         let _ = sleep(100.milliseconds()).wait()
         say("after sleep\n")

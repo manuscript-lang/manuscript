@@ -1,5 +1,5 @@
 import Closeable, Iterator from "@std/core.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
@@ -44,15 +44,15 @@ fn events(log: String) String:
 
 fn read_one(input: ReadStream[Token]) Unit!:
     var owned = input
-    if let token = try owned.read().wait():
+    if let token = try owned.next():
         try use_token(token)
     return ok(unit)
 
 fn wait_one(input: ReadStream[Token]) Unit!:
     var owned = input
 
-    for item in owned.wait():
-        let token = try item
+    for item in owned:
+        let token = item
         try use_token(token)
         break
 
@@ -61,13 +61,13 @@ fn wait_one(input: ReadStream[Token]) Unit!:
 test "direct read keeps resource open through the body and closes once":
     let dir = temporary("resource-read-") | try expect_ok
     let log = "{dir.path()}/events"
-    try read_one(stream[Token](Tokens(log.clone())))
+    try read_one(ReadStream[Token](Tokens(log.clone())))
     try expect_equal(events(log), "body 1\nclose 1\n")
 
 test "iterator keeps resource open through the body and closes once":
     let dir = temporary("resource-wait-") | try expect_ok
     let log = "{dir.path()}/events"
-    try wait_one(stream[Token](Tokens(log.clone())))
+    try wait_one(ReadStream[Token](Tokens(log.clone())))
     try expect_equal(events(log), "body 1\nclose 1\n")
 
 // A body uses the external log as well as the value's state: a duplicated resource can
@@ -78,24 +78,20 @@ fn use_token(token: Token) Unit!:
     try append_file(token.log, "body {token.id}\n")
     return ok(unit)
 
-fn close_item(input: Token!) Unit!:
-    var owned = input
-
-    if var token = owned:
-        try use_token(token)
-        try token.close()
-
-    return ok(unit)
+fn close_item(input: Token) Unit!:
+    var token = input
+    try use_token(token)
+    return token.close()
 
 fn walk(log: String, action: Int) Unit!:
-    var input = stream[Token](Tokens(log.clone()))
+    var input = ReadStream[Token](Tokens(log.clone()))
 
-    for item in input.wait():
+    for item in input:
         if action == 5:
             try close_item(item)
             continue
 
-        let token = try item
+        let token = item
         try use_token(token)
         if action == 1:
             break
@@ -130,17 +126,20 @@ test "break return and error close the current item once":
 
 test "explicit item close and stream close preserve each item owner":
     let dir = temporary("resource-close-") | try expect_ok
+    let item_closed = "{dir.path()}/5"
+    try walk(item_closed, 5)
+    try expect_equal(events(item_closed), "body 1\nclose 1\nbody 2\nclose 2\n")
 
-    for action in [5, 6]:
-        let log = "{dir.path()}/{action}"
-        try walk(log, action)
-        try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+    // Closing the stream ends it: the loop reads no further item.
+    let stream_closed = "{dir.path()}/6"
+    try walk(stream_closed, 6)
+    try expect_equal(events(stream_closed), "body 1\nclose 1\n")
 
 fn source_error(log: String, fail_at: Int) Unit!:
-    var input = stream[Token](Tokens(log.clone(), fail_at: fail_at))
+    var input = ReadStream[Token](Tokens(log.clone(), fail_at: fail_at))
 
-    for item in input.wait():
-        let token = try item
+    for item in input:
+        let token = item
         try use_token(token)
 
     return ok(unit)
@@ -158,11 +157,10 @@ test "a source error relays through try after closing earlier items":
     try expect_equal(events(later), "body 1\nclose 1\n")
 
 fn direct_next(log: String) Unit!:
-    var input = stream[Token](Tokens(log.clone()))
-    var waiting = input.wait()
+    var input = ReadStream[Token](Tokens(log.clone()))
 
-    if let item = waiting.next():
-        let token = try item
+    if let item = try input.next():
+        let token = item
         try use_token(token)
 
     return ok(unit)
@@ -213,10 +211,10 @@ impl Source[Token?] for OptionalTokens:
         return ok(unit)
 
 fn optional_payload(log: String) Unit!:
-    var input = stream[Token?](OptionalTokens(log.clone()))
+    var input = ReadStream[Token?](OptionalTokens(log.clone()))
 
-    for item in input.wait():
-        let maybe = try item
+    for item in input:
+        let maybe = item
         if let token = maybe:
             try use_token(token)
 
@@ -245,11 +243,10 @@ impl Source[Token!] for ResultTokens:
         return ok(unit)
 
 fn result_payload(log: String) Unit!:
-    var input = stream[Token!](ResultTokens(log.clone()))
+    var input = ReadStream[Token!](ResultTokens(log.clone()))
 
-    for item in input.wait():
-        let inner = try item
-        let token = try inner
+    for item in input:
+        let token = try item
         try use_token(token)
 
     return ok(unit)
@@ -271,10 +268,10 @@ fn wait_for_event(log: String, expected: String) Unit!:
     return error(Error("resource handshake timed out", kind: "ETIMEDOUT"))
 
 fn wait_cancelled(log: String) Unit!:
-    var input = stream[Token](Tokens(log.clone()))
+    var input = ReadStream[Token](Tokens(log.clone()))
 
-    for item in input.wait():
-        let token = try item
+    for item in input:
+        let token = item
         try use_token(token)
 
         let _ = sleep(milliseconds(60000)).wait()
@@ -307,10 +304,10 @@ impl Source[Token] for PendingTokens:
         return ok(unit)
 
 fn next_cancelled(log: String) Unit!:
-    var input = stream[Token](PendingTokens(log.clone()))
+    var input = ReadStream[Token](PendingTokens(log.clone()))
 
-    for item in input.wait():
-        let token = try item
+    for item in input:
+        let token = item
         try use_token(token)
 
     return ok(unit)
@@ -327,14 +324,14 @@ test "cancelling a source step closes its undelivered item once":
     try expect_equal(events(log), "ready\nclose 1\n")
 
 fn resume_after_break(log: String) Unit!:
-    var input = stream[Token](Tokens(log.clone()))
+    var input = ReadStream[Token](Tokens(log.clone()))
 
-    for item in input.wait():
-        let token = try item
+    for item in input:
+        let token = item
         try use_token(token)
         break
 
-    if let token = try input.read().wait():
+    if let token = try input.next():
         try use_token(token)
     return ok(unit)
 

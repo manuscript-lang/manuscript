@@ -4,7 +4,7 @@ Terminal detection, size, and raw input with cursor control.
 `terminal_capabilities` reports whether the standard streams are terminals and how many colors they support. `raw_mode` acquires a `RawTerminal` whose `events()` stream yields keys, text and resizes.
 */
 import Closeable from "@std/core.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import (
     msstd_terminal_raw_terminal_next_event,
     msstd_terminal_event_kind,
@@ -154,7 +154,7 @@ impl RawTerminal:
     // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and promise timeouts.
     // The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
     fn events() ReadStream[TerminalEvent]:
-        return stream[TerminalEvent](
+        return ReadStream[TerminalEvent](
             TerminalEvents(
                 RawHandle(
                     msstd_terminal_raw_terminal_share(

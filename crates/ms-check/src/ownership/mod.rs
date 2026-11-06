@@ -17,8 +17,8 @@ pub(crate) mod places;
 mod walk;
 
 pub use classify::{Class, Classifier};
-pub use modes::{CallModes, ParamMode, callback_changes_receiver};
-pub use places::{Place, Step};
+pub use modes::{CallModes, ParamMode};
+pub use places::Place;
 
 /// How the caller comes to own the result of a borrow-returning call over a temporary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

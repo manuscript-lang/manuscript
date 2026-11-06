@@ -2,8 +2,8 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_check::hir::{CallView, Callable, Resolution};
-use ms_check::types::{self as ct, Builtin, Subst};
+use ms_check::api::hir::{CallView, Callable, Resolution};
+use ms_check::api::types::{self as ct, Builtin, Subst};
 use ms_mir::ir::{Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
@@ -419,6 +419,17 @@ impl<'a> FnLower<'a> {
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            // A temporary held across a later `try` in the same call is ours again once every
+            // argument is evaluated: a consumed parameter takes it instead of a copy.
+            let a = if !a.own
+                && owned_mask.as_ref().is_some_and(|mask| mask[i])
+                && self.temps.contains(&a.v)
+            {
+                self.unhold_temp(a.v);
+                Val { v: a.v, own: true }
+            } else {
+                a
+            };
             owned_args.push(a.own && !vars.contains(&i));
             if !vars.contains(&i) {
                 // A consumed parameter takes the value itself: a copy only when `a` is a borrow.
@@ -446,7 +457,7 @@ impl<'a> FnLower<'a> {
                     .flatten()
                     .filter(|p| matches!(p.kind, ExprKind::Name(_)))
                     .and_then(|p| match self.hir.resolution(&p) {
-                        ms_check::hir::Resolution::Local(b)
+                        ms_check::api::hir::Resolution::Local(b)
                             if !self.aliases.contains_key(&b.uid) =>
                         {
                             self.locals.get(&b.uid).and_then(|l| l.slot)
@@ -496,7 +507,7 @@ impl<'a> FnLower<'a> {
             let Some(how) = self.cx.owned_borrows.get(&(self.hir.data.file, e.id)) else {
                 return Ok(Val { v, own: false });
             };
-            if let ms_check::ownership::OwnedBorrow::Whole(source) = how {
+            if let ms_check::api::ownership::OwnedBorrow::Whole(source) = how {
                 let offset = usize::from(c.self_binding.is_some());
                 let slot = match source {
                     None => Some(0),
@@ -571,7 +582,9 @@ impl<'a> FnLower<'a> {
             && let Some(slot) = place
                 .filter(|p| matches!(p.kind, ExprKind::Name(_)))
                 .and_then(|p| match self.hir.resolution(p) {
-                    ms_check::hir::Resolution::Local(b) if !self.aliases.contains_key(&b.uid) => {
+                    ms_check::api::hir::Resolution::Local(b)
+                        if !self.aliases.contains_key(&b.uid) =>
+                    {
                         self.locals.get(&b.uid).and_then(|l| l.slot)
                     }
                     _ => None,
@@ -583,7 +596,7 @@ impl<'a> FnLower<'a> {
         // A variable in memory (a closure shares it) has no value to move.
         let moved = place
             .and_then(|p| match self.hir.resolution(p) {
-                ms_check::hir::Resolution::Local(b)
+                ms_check::api::hir::Resolution::Local(b)
                     if !a.own && matches!(p.kind, ExprKind::Name(_)) =>
                 {
                     Some(b.uid)
@@ -655,7 +668,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether `e` names an exclusive borrow of another place (`if var x = ...`, `c?.f()`).
     fn is_alias_name(&self, e: &Expr) -> bool {
-        matches!(self.hir.resolution(e), ms_check::hir::Resolution::Local(b) if self.aliases.contains_key(&b.uid))
+        matches!(self.hir.resolution(e), ms_check::api::hir::Resolution::Local(b) if self.aliases.contains_key(&b.uid))
     }
 
     // ------------------------------------------------------------- methods
@@ -695,10 +708,10 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| self.syms.str(n).to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if ms_check::effects::is_text_builder(self.syms, &m.receiver) && method == "build" {
+        if ms_check::api::effects::is_text_builder(self.syms, &m.receiver) && method == "build" {
             return self.text_builder_build(e, recv_expr);
         }
-        if ms_check::effects::collection_mutation(self.syms, m) {
+        if ms_check::api::effects::collection_mutation(self.syms, m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
@@ -1058,7 +1071,7 @@ impl<'a> FnLower<'a> {
     fn contract_operation(
         &self,
         callee: &Callable,
-    ) -> Option<(Option<ms_check::syntax::FuncRef>, ct::Ty)> {
+    ) -> Option<(Option<ms_check::api::syntax::FuncRef>, ct::Ty)> {
         // Node ids repeat across modules, so the module must match too.
         let im = self.cx.methods.iter().find(|m| {
             !self.syms.str(m.id).is_empty()
@@ -1083,7 +1096,7 @@ impl<'a> FnLower<'a> {
     /// number, a text literal, and `"".to_bytes()`.
     fn contract_default(
         &mut self,
-        decl: Option<&ms_check::syntax::FuncRef>,
+        decl: Option<&ms_check::api::syntax::FuncRef>,
         sig: &ct::Ty,
         i: usize,
     ) -> Result<Val, Error> {
@@ -1103,10 +1116,11 @@ impl<'a> FnLower<'a> {
     /// The alternative a constructor in return position builds: the borrowing variant this function
     /// returns when the checker marked the node (`Fact::RetCtor`), else `a`.
     fn ret_variant(&self, e: &Expr, a: ms_mir::types::AltId) -> ms_mir::types::AltId {
-        if !self
-            .cx
-            .fact(self.hir.data.file, e.id, ms_check::ownership::Fact::RetCtor)
-        {
+        if !self.cx.fact(
+            self.hir.data.file,
+            e.id,
+            ms_check::api::ownership::Fact::RetCtor,
+        ) {
             return a;
         }
         match self.b.m.types.kind(self.ret_ty) {
@@ -1132,7 +1146,7 @@ impl<'a> FnLower<'a> {
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is(Builtin::Bytes)
-            || ms_check::effects::is_text_builder(self.syms, &t)
+            || ms_check::api::effects::is_text_builder(self.syms, &t)
         {
             return self.construct_collection(view, mt);
         }
@@ -1144,7 +1158,7 @@ impl<'a> FnLower<'a> {
         ) && self.cx.fact(
             self.hir.data.file,
             e.id,
-            ms_check::ownership::Fact::ViewWrap,
+            ms_check::api::ownership::Fact::ViewWrap,
         ) {
             let x = self.expr(arg.expr)?;
             if self.dead {

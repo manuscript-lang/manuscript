@@ -163,7 +163,7 @@ pub fn takes_element_mutator(method: &MethodRef) -> bool {
 /// type argument of the receiver (`fn(var T)` on `List[T]`), and the argument itself takes that
 /// parameter as `var`. A function that only reads it was converted to the declared type
 /// (`Info.function_source`) and changes nothing.
-pub fn callback_changes_receiver(m: &ModuleHir, call: &Expr, args: &[Argument]) -> bool {
+fn callback_changes_receiver(m: &ModuleHir, call: &Expr, args: &[Argument]) -> bool {
     let Resolution::Method(method) = m.resolution(call) else {
         return false;
     };

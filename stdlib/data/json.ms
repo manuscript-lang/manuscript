@@ -1,7 +1,7 @@
 import Data from "@std/core.ms"
 import parse_float from "@std/math/math.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, WriteStream, Sink, Transform, through, writer from "@std/io/io.ms"
+import ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms"
 import Promise from "@std/concurrency/promise.ms"
 import JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
 
@@ -391,7 +391,7 @@ impl JsonReading[T]:
         return ok(value)
 
 impl Transform[Bytes, T] for JsonReading[T]:
-    var fn step(value: Bytes, var out: WriteStream[T]) Unit!:
+    var fn step(value: Bytes, var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
@@ -399,11 +399,11 @@ impl Transform[Bytes, T] for JsonReading[T]:
             let stepped = self.advance(byte)
             if stepped.is_error(): return self.fail(stepped.err())
 
-            if let found = stepped.get(): try out.write(found)
+            if let found = stepped.get(): out.append(found)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[T]) Unit!:
+    var fn finish(var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
 
@@ -416,7 +416,7 @@ impl Transform[Bytes, T] for JsonReading[T]:
         let completed = self.complete()
         if completed.is_error(): return self.fail(completed.err())
 
-        try out.write(try completed)
+        out.append(try completed)
         return ok(unit)
 
 /*
@@ -450,15 +450,12 @@ type JsonLines[T: Data]:
     max_bytes: Int?
 
 impl Sink[T] for JsonLines[T]:
-    var fn put(value: T) Unit!:
+    var fn write(value: T) Unit!:
         let text = try stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))
         return self.output.write("{text}\n".to_bytes())
 
-    var fn drain() Promise[Unit]:
+    var fn flush() Unit!:
         return self.output.flush()
-
-    fn buffered() Int:
-        return self.output.buffered()
 
     var fn close() Unit!:
         return self.output.close()
@@ -472,4 +469,4 @@ export fn json_writer[T: Data](
     output: WriteStream[Bytes],
     max_bytes: Int? = none
 ) WriteStream[T]:
-    return writer[T](JsonLines[T](output: output, max_bytes: max_bytes))
+    return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

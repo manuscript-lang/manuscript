@@ -15,8 +15,8 @@ import HttpExchange, headers from "@std/net/http.ms"
 fn notes(var exchange: HttpExchange) Unit!:
     var chunks = try (try open("notes.txt", "r", 0)).reader()
     try exchange.send_headers(200, headers())
-    for chunk in chunks.wait():
-        try exchange.write_bytes(try chunk)
+    for chunk in chunks:
+        try exchange.write_bytes(chunk)
     return ok(unit)
 
 fn run() Unit!:

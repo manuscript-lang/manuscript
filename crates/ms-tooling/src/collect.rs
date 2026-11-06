@@ -4,7 +4,7 @@ use crate::facts::{
     Fact, Facts, ParameterOwnership, ResultOwnership, Slot, append_unique, error_type, fact_key,
 };
 use crate::flow::{FlowBuilder, Site, StmtView};
-use ms_check::syntax::{DeclRef, FuncRef};
+use ms_check::api::syntax::{DeclRef, FuncRef};
 use ms_check::{ModRef, Program};
 use ms_syntax::visit::{Visitor, walk_callable, walk_expr};
 use ms_syntax::{
@@ -145,7 +145,7 @@ pub fn collect_facts(
             .filter(|(_, b)| {
                 program
                     .binding_facts
-                    .has(b.uid, ms_check::ownership::BindingFact::ImplicitClose)
+                    .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
             })
             .map(|(id, _)| *id)
             .collect();
@@ -174,7 +174,7 @@ pub fn collect_facts(
 
 /// Reuse the checker contract instead of recognizing a short list of scalar spellings.
 fn collect_ownership(syms: ms_syntax::Names, facts: &mut Facts, program: &Program) {
-    let classes = ms_check::ownership::Classifier::new(program);
+    let classes = ms_check::api::ownership::Classifier::new(program);
     for module in program
         .hir()
         .modules()
@@ -225,11 +225,11 @@ fn callable_ownership(
     syms: ms_syntax::Names,
     fact: &mut Fact,
     program: &Program,
-    classes: &ms_check::ownership::Classifier,
-    module: &ms_check::hir::ModuleHir,
+    classes: &ms_check::api::ownership::Classifier,
+    module: &ms_check::api::hir::ModuleHir,
     callable: &FuncRef,
 ) {
-    use ms_check::ownership::{Class, Fact as OwnershipFact};
+    use ms_check::api::ownership::{Class, Fact as OwnershipFact};
     let Some(func) = callable.func() else {
         return;
     };
@@ -460,7 +460,7 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
 /// Resolve relationships from checked type identities, including imported declarations and
 /// local type variables, rather than guessing from a project's globally repeated spellings.
 fn resolve_type_refs(syms: ms_syntax::Names, facts: &mut Facts, program: &Program) {
-    use ms_check::types::Ty;
+    use ms_check::api::types::Ty;
 
     let mut checked: HashMap<String, Ty> = HashMap::new();
     for module in program.modules.iter().filter(|m| !m.is_standard(syms)) {
@@ -540,7 +540,7 @@ fn resolve_type_refs(syms: ms_syntax::Names, facts: &mut Facts, program: &Progra
 
 /// Follow the components of the written type, never the fields of its definition: a
 /// recursive record remains one reference, while a function type includes its signature.
-fn checked_type_refs(syms: ms_syntax::Names, ty: &ms_check::types::Ty) -> Vec<String> {
+fn checked_type_refs(syms: ms_syntax::Names, ty: &ms_check::api::types::Ty) -> Vec<String> {
     let mut refs = Vec::new();
     let mut pending = vec![ty];
     let mut seen = HashSet::new();

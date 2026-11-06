@@ -1,6 +1,6 @@
 //! Unqualified alternative cases obey the same opaque boundary as qualified cases.
 
-use ms_check::types::n;
+use ms_check::api::types::n;
 use ms_check::{CheckOptions, ImportMap};
 use ms_syntax::{Diagnostic, Phase};
 use std::sync::Arc;

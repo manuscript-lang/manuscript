@@ -5,8 +5,8 @@ use crate::analysis::{Analysis, Document};
 use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text, hidden_structure};
 use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
-use ms_check::syntax::ModRef;
-use ms_check::types::{Name, SymRef};
+use ms_check::api::syntax::ModRef;
+use ms_check::api::types::{Name, SymRef};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -179,7 +179,7 @@ pub fn hover_type(syms: ms_syntax::Names, info: &OccInfo) -> Option<String> {
     {
         shown = value;
     }
-    (!ms_check::types::invalid_ty(&shown)).then(|| shown.display(syms).to_string())
+    (!ms_check::api::types::invalid_ty(&shown)).then(|| shown.display(syms).to_string())
 }
 
 /// The checked type of every identifier in the project's own modules, for the html map.

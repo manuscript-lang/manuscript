@@ -5,13 +5,13 @@ import open, temporary, write_file from "@std/os/fs.ms"
 
 // A line read answers `String?`: an empty line is present, and only the end of the stream is none.
 fn present(var input: ReadStream[String]) Bool!:
-    let line = try input.read().wait()
+    let line = try input.next()
     return ok(line.is_some())
 
 test "presence keeps empty CRLF lines and following text":
     var input = lines(from_bytes("\r\nλ\nlast".to_bytes(), 2))
     present(var input) | try expect_ok | try expect_true
-    (try input.read().wait()) | try expect_equal("λ")
+    (try input.next()) | try expect_equal("λ")
     present(var input) | try expect_ok | try expect_true
     present(var input) | try expect_ok | try expect_false
     present(var input) | try expect_ok | try expect_false
@@ -27,6 +27,6 @@ test "presence and text reads share buffered consumption":
     let handle = open(path, "r", 384) | try expect_ok
     var input = lines(try handle.reader())
     present(var input) | try expect_ok | try expect_true
-    (try input.read().wait()) | try expect_equal("λ")
+    (try input.next()) | try expect_equal("λ")
     present(var input) | try expect_ok | try expect_true
     present(var input) | try expect_ok | try expect_false

@@ -6,9 +6,9 @@ use crate::cx::{
 };
 use crate::cx::{BoundTarget, HelperKey};
 use crate::func::{FnLower, Val};
-use ms_check::hir::CallView;
-use ms_check::types as ct;
-use ms_check::types::Builtin;
+use ms_check::api::hir::CallView;
+use ms_check::api::types as ct;
+use ms_check::api::types::Builtin;
 use ms_mir::builder::FuncBuilder;
 use ms_mir::ir::{FuncId, FuncKind, Imm, Mode, Module, Op, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -296,7 +296,7 @@ impl FnLower<'_> {
         &mut self,
         e: &Expr,
         fid: FuncId,
-        callee: &Rc<ms_check::hir::Callable>,
+        callee: &Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
         recv: Option<MTy>,
         shared: Option<MTy>,
@@ -333,7 +333,7 @@ impl FnLower<'_> {
         fid: FuncId,
         ptys: &[MTy],
         ret: MTy,
-        callee: &Rc<ms_check::hir::Callable>,
+        callee: &Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
         recv: Option<MTy>,
         shared: Option<MTy>,
@@ -371,8 +371,8 @@ impl FnLower<'_> {
     /// frame, so the call goes through the default thunk. `None` for any other call.
     pub(crate) fn try_default_call(
         &mut self,
-        view: &ms_check::hir::CallView<'_>,
-        c: &Rc<ms_check::hir::Callable>,
+        view: &ms_check::api::hir::CallView<'_>,
+        c: &Rc<ms_check::api::hir::Callable>,
         subst: &ct::Subst,
         e: &Expr,
     ) -> Result<Option<Val>, Error> {
@@ -453,7 +453,7 @@ impl FnLower<'_> {
     /// The slot of the variable `left` names, and its type: a method value that changes its
     /// receiver shares that variable. `None` when `left` is not a whole variable in memory.
     fn shared_receiver(&self, left: &Expr) -> Option<(Value, MTy)> {
-        let ms_check::hir::Resolution::Local(b) = self.hir.resolution(left) else {
+        let ms_check::api::hir::Resolution::Local(b) = self.hir.resolution(left) else {
             return None;
         };
         let l = self.locals.get(&b.uid)?;
@@ -468,7 +468,7 @@ impl FnLower<'_> {
         let borrowed = self.cx.fact(
             self.hir.data.file,
             e.id,
-            ms_check::ownership::Fact::BoundBorrow,
+            ms_check::api::ownership::Fact::BoundBorrow,
         );
         // A variable converted to an interface on the way is read as a view of it below.
         let want = self.emty(left)?;
@@ -891,7 +891,7 @@ impl FnLower<'_> {
         if let Some(value) = self.bound_alias_method(e, left, m)? {
             return Ok(value);
         }
-        let changes = ms_check::effects::collection_mutation(self.syms, m);
+        let changes = ms_check::api::effects::collection_mutation(self.syms, m);
         let recv = self.method_receiver(e, left, changes)?;
         if let Receiver::Value(v) = recv
             && self.dead
@@ -1572,7 +1572,7 @@ fn lower_iface_native(
     let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let out = if ms_check::effects::collection_mutation(syms, &job.method) {
+    let out = if ms_check::api::effects::collection_mutation(syms, &job.method) {
         // The table entry receives the address of the value it changes.
         fl.shared_native_call(&job.method, params[0], job.data, &args, ret)?
     } else {
@@ -1825,10 +1825,10 @@ fn lambda_mutated(
     let scan = |body| {
         crate::mutation::mutated_locals(syms, &fl.hir, body, &fl.cx.callables, &fl.cx.mutated)
     };
-    let mut changed = scan(ms_check::hir::Body::Block(&lam.body));
+    let mut changed = scan(ms_check::api::hir::Body::Block(&lam.body));
     // A default runs in the lambda's frame, so what it changes counts too.
     for d in lam.params.iter().filter_map(|p| p.default.as_ref()) {
-        changed.extend(scan(ms_check::hir::Body::Expr(d)));
+        changed.extend(scan(ms_check::api::hir::Body::Expr(d)));
     }
     with_alias_origins(fl, &lam.body, changed)
 }
@@ -1876,7 +1876,7 @@ pub(crate) fn slotted_in(
     scan.found.extend(crate::mutation::changing_method_roots(
         syms,
         &fl.hir,
-        ms_check::hir::Body::Block(body),
+        ms_check::api::hir::Body::Block(body),
         &fl.cx.mutated,
     ));
     // Resolve reborrows before any branch is lowered: their owning roots must
@@ -1952,7 +1952,7 @@ fn with_alias_origins(
 fn alias_origin(syms: ms_syntax::Names, fl: &FnLower<'_>, e: &Expr) -> Option<usize> {
     match &e.kind {
         ExprKind::Name(_) => {
-            let ms_check::hir::Resolution::Local(b) = fl.hir.resolution(e) else {
+            let ms_check::api::hir::Resolution::Local(b) = fl.hir.resolution(e) else {
                 return None;
             };
             Some(b.uid)
@@ -1961,7 +1961,9 @@ fn alias_origin(syms: ms_syntax::Names, fl: &FnLower<'_>, e: &Expr) -> Option<us
         ExprKind::Probe(target) => alias_origin(syms, fl, target),
         ExprKind::Call { callee, args } => {
             let source = match (&callee.kind, fl.hir.resolution(e)) {
-                (ExprKind::Member { left, .. }, ms_check::hir::Resolution::Method(_)) => &**left,
+                (ExprKind::Member { left, .. }, ms_check::api::hir::Resolution::Method(_)) => {
+                    &**left
+                }
                 _ => &args.first()?.value,
             };
             alias_origin(syms, fl, source)

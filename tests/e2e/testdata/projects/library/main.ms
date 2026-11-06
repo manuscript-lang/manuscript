@@ -79,7 +79,7 @@ fn exercise(path: String) Unit!:
         )
     )
     let _appended = try common_result(result: append_file(path: path, data: "!"))
-    let events = try watcher.read().wait()
+    let events = try watcher.next()
     events.is_some() | try expect_true
     try watcher.close()
 

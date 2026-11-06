@@ -18,7 +18,7 @@ import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     let number = arguments().get(0, default: "42").parse_int()
@@ -51,7 +51,7 @@ import stdout from "@std/io/io.ms"
 fn run() Result[Unit, Error]:
     let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
@@ -90,7 +90,7 @@ fn run() Result[Unit, Error]:
     let config = try parse[Config](text)
     let encoded = try stringify(config, StringifyOptions(strict: true))
     try stdout().write("{encoded}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
