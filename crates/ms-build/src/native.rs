@@ -118,10 +118,10 @@ fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str>
     ms_clif::llvm_available(build).then_some(level)
 }
 
-/// The files `build` points the code generator and linker at beyond the ones passed explicitly:
-/// the runtime archive named by `MS_RT_LIB` and the runtime helper IR named by `MS_RT_HOT`.
-pub fn native_inputs(build: &BuildOptions) -> Vec<PathBuf> {
-    let mut inputs: Vec<PathBuf> = build.runtime.iter().cloned().collect();
+/// Native inputs beyond the explicit link files: the selected runtime archive and helper IR.
+/// The caller resolves runtime precedence before forming this inventory.
+pub fn native_inputs(build: &BuildOptions, runtime: &Path) -> Vec<PathBuf> {
+    let mut inputs = vec![runtime.to_path_buf()];
     if let ms_clif::RtHot::File(path) = &build.rt_hot {
         inputs.push(path.clone());
     }

@@ -132,8 +132,11 @@ pub(super) fn build<L: Lower>(
     // replace a `--link` file, the selected runtime archive or the runtime helper IR.
     sources.extend(request.link.iter().map(std::path::PathBuf::from));
     let options = backend.build_options();
-    sources.extend(backend.runtime.clone());
-    sources.extend(ms_build::native_inputs(&options));
+    let runtime = match backend.runtime_path() {
+        Ok(runtime) => runtime,
+        Err(message) => return Ok(fail(io, &compiled.source_root, "build", &message)),
+    };
+    sources.extend(ms_build::native_inputs(&options, &runtime));
     if std::fs::metadata(&output).is_ok_and(|m| m.is_dir()) {
         let _ = writeln!(
             io.stderr,
@@ -426,9 +429,8 @@ impl BuildCache {
         let source_dir = pathops::eval_symlinks(&pathops::dir(&filename)).ok()?;
         inputs
             .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
-        inputs.extend(backend.runtime.clone());
+        inputs.push(backend.runtime_path().ok()?);
         let options = backend.build_options();
-        inputs.extend(ms_build::runtime_override(&options).ok()?);
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
         let inputs: Vec<&Path> = inputs.iter().map(std::path::PathBuf::as_path).collect();
         let build_type = request.build_type.as_str();
