@@ -188,6 +188,21 @@ pub fn build_executable(
     extra: &[PathBuf],
     build: &BuildOptions,
 ) -> Result<(), String> {
+    build_executable_pinned(module, output, profile, runtime, extra, build, None)
+}
+
+/// `build_executable` that also leaves this build's own executable at `pin` before it
+/// replaces `output`. Another build can replace `output` at any moment afterwards, so a
+/// caller that must read back exactly what this build produced reads `pin`.
+pub fn build_executable_pinned(
+    module: &mut Module,
+    output: &Path,
+    profile: Profile,
+    runtime: &Path,
+    extra: &[PathBuf],
+    build: &BuildOptions,
+    pin: Option<&Path>,
+) -> Result<(), String> {
     if let Some(missing) = extra.iter().find(|p| !p.is_file()) {
         return Err(format!(
             "--link {} does not name a file; pass an object (.o) or static library (.a)",
@@ -281,6 +296,15 @@ pub fn build_executable(
     if let Err(error) = linked {
         cleanup();
         return Err(error.to_string());
+    }
+    if let Some(pin) = pin {
+        let _ = std::fs::remove_file(pin);
+        let pinned =
+            std::fs::hard_link(&staged, pin).or_else(|_| std::fs::copy(&staged, pin).map(|_| ()));
+        if let Err(error) = pinned {
+            cleanup();
+            return Err(format!("cannot write {}: {error}", pin.display()));
+        }
     }
     publish(&staged, output).map_err(|error| {
         cleanup();

@@ -84,6 +84,18 @@ impl<L: Lower> Engine<L> {
         kind: BuildType,
         link: &[String],
     ) -> Result<(), String> {
+        self.link_pinned(compiled, output, kind, link, None)
+    }
+
+    /// `link` that also leaves this build's own executable at `pin`.
+    pub(crate) fn link_pinned(
+        &self,
+        compiled: &mut Compiled,
+        output: &Path,
+        kind: BuildType,
+        link: &[String],
+        pin: Option<&Path>,
+    ) -> Result<(), String> {
         let build = self.build_options();
         let runtime = match &self.runtime {
             Some(runtime) => runtime.clone(),
@@ -93,13 +105,14 @@ impl<L: Lower> Engine<L> {
             },
         };
         let extra: Vec<PathBuf> = link.iter().map(PathBuf::from).collect();
-        ms_build::build_executable(
+        ms_build::build_executable_pinned(
             &mut compiled.module,
             output,
             profile(kind),
             &runtime,
             &extra,
             &build,
+            pin,
         )?;
         write_metadata(output, kind, &build)
     }
