@@ -251,7 +251,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
-                let dec = ms_std_decimal::Dec::parse(&ms_syntax::number::canonical(text))
+                let dec = ms_decimal::Dec::parse(&ms_syntax::number::canonical(text))
                     .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let dec = if negate { dec.negate() } else { dec };
                 let ty = self.emty(e)?;

@@ -1042,6 +1042,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-decimal"
+version = "0.1.0"
+dependencies = [
+ "num-bigint 0.5.1",
+ "num-traits",
+]
+
+[[package]]
 name = "ms-driver"
 version = "0.0.0"
 dependencies = [
@@ -1059,10 +1067,10 @@ name = "ms-lower"
 version = "0.0.0"
 dependencies = [
  "ms-check",
+ "ms-decimal",
  "ms-mir",
  "ms-rt",
  "ms-rt-abi",
- "ms-std-decimal",
  "ms-syntax",
 ]
 
@@ -1202,9 +1210,8 @@ dependencies = [
 name = "ms-std-decimal"
 version = "0.1.0"
 dependencies = [
+ "ms-decimal",
  "ms-rt",
- "num-bigint 0.5.1",
- "num-traits",
 ]
 
 [[package]]
