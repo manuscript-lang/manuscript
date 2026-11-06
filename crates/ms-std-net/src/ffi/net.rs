@@ -272,9 +272,11 @@ native! {
         Object(ConnH(c.0.0.clone()))
     }
 
-    /// One end of a `Connection` record closes; the socket closes with the second end.
-    fn msstd_net_connection_close_end(c: ObjRef<ConnH>) -> () {
-        c.close_end();
+    /// Closes the connection when `c` is its last handle; an end that closes first leaves it open for the other.
+    fn msstd_net_connection_close_if_last(c: ObjRef<ConnH>) -> () {
+        if std::rc::Rc::strong_count(&c.0.0) == 1 {
+            c.close();
+        }
     }
 
     /// `Connection.local_address()`.
@@ -389,9 +391,11 @@ native! {
         Object(DgramH(sock.0.0.clone()))
     }
 
-    /// One end of a `DatagramSocket` record closes; the socket closes with the second end.
-    fn msstd_net_datagram_close_end(sock: ObjRef<DgramH>) -> () {
-        sock.close_end();
+    /// Closes the socket when `sock` is its last handle.
+    fn msstd_net_datagram_close_if_last(sock: ObjRef<DgramH>) -> () {
+        if std::rc::Rc::strong_count(&sock.0.0) == 1 {
+            sock.close();
+        }
     }
 
     /// `DatagramSocket.receive(max, timeout)`.

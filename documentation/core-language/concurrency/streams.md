@@ -29,7 +29,7 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
 
 - `next()` returns `T?!`: `none` marks the end and an error is a failed read. A closed stream is at its end.
 - A loop over a variable advances it in place and leaves it usable after `break`; a loop over an expression holds the pipeline for the loop and closes it afterwards.
-- Cancellation and time limits are not stream API. Run the loop in a promise with `PromiseOptions(timeout: ...)` to limit a whole pipeline; a cancel or timeout lands at the next wait inside `next` and the loop leaves with an error. Use `timeout(input, limit)` to limit each wait for an item. See [Promises](promises.md).
+- Cancellation and time limits are not stream API. Run the loop in a promise with `PromiseOptions(timeout: ...)` to limit a whole pipeline; a cancel or timeout lands at the next wait inside `next` and the loop leaves with an error. See [Promises](promises.md).
 - A stream is not an `Iterator`. `Iterator` is for sequences that never wait, such as `List` and `Map`.
 
 ## Writing
@@ -75,7 +75,6 @@ test "measure lines":
 | `map(input, f)` | Transform each item. |
 | `filter(input, keep)` | The items for which `keep` is true. |
 | `take(input, count)` | At most the first `count` items, never reading past them, so it ends an endless stream. |
-| `timeout(input, limit)` | The same items; a wait for one longer than `limit` fails with `ETIMEDOUT` and closes the stream. |
 | `collect(input, max_items)`, `read_all(input, max_bytes)` | Consume a stream into a list or `Bytes`. |
 | `fold(input, start, f)` | Combine all items into one value with `f(total, item)`. |
 | `copy(input, output)` | Move everything across, flush, and return the count. |

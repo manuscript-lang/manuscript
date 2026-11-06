@@ -635,7 +635,7 @@ msstd_math_tanh(v: f64) -> f64 @leaf
 msstd_math_truncate(v: f64) -> f64 @leaf
 msstd_net_cidr_text(handle cidr: *const ObjCell<Cidr>, out: *mut StrVal)
 msstd_net_connection_close(handle c: *const ObjCell<ConnH>)
-msstd_net_connection_close_end(handle c: *const ObjCell<ConnH>)
+msstd_net_connection_close_if_last(handle c: *const ObjCell<ConnH>)
 msstd_net_connection_local_address(handle c: *const ObjCell<ConnH>, out: *mut StrVal)
 msstd_net_connection_peer_address(handle c: *const ObjCell<ConnH>, out: *mut StrVal)
 msstd_net_connection_read(handle c: *const ObjCell<ConnH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8
@@ -646,7 +646,7 @@ msstd_net_connection_write_bytes(handle c: *const ObjCell<ConnH>, data: *const V
 msstd_net_contains_ip(handle cidr: *const ObjCell<Cidr>, handle ip: *const ObjCell<IpH>, out: *mut u8) -> u8
 msstd_net_datagram_address(handle sock: *const ObjCell<DgramH>, out: *mut StrVal)
 msstd_net_datagram_close(handle sock: *const ObjCell<DgramH>)
-msstd_net_datagram_close_end(handle sock: *const ObjCell<DgramH>)
+msstd_net_datagram_close_if_last(handle sock: *const ObjCell<DgramH>)
 msstd_net_datagram_receive(handle sock: *const ObjCell<DgramH>, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut DatagramWire, err: ErrSlot) -> u8
 msstd_net_datagram_send_bytes(handle sock: *const ObjCell<DgramH>, data: *const VecVal, address: *const StrVal, has_timeout: HasRaw, timeout: i64, err: ErrSlot) -> u8
 msstd_net_datagram_share(handle sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle
@@ -832,7 +832,7 @@ msstd_url_parse_query(text: *const StrVal, has_max: HasRaw, max: i64, out: *mut 
 msstd_url_resolve(base: *const UrlRec, reference: *const StrVal, out: *mut UrlRec) -> u8 @leaf
 msstd_utf8_is_valid(data: *const VecVal) -> u8
 msstd_websocket_close(handle s: *const ObjCell<SocketH>)
-msstd_websocket_close_end(handle s: *const ObjCell<SocketH>)
+msstd_websocket_close_if_last(handle s: *const ObjCell<SocketH>)
 msstd_websocket_error_message(status: u8, has_failed: HasRaw, failed: *const StrVal, out: *mut StrVal)
 msstd_websocket_ping(handle s: *const ObjCell<SocketH>, data: *const StrVal, err: ErrSlot) -> u8
 msstd_websocket_ping_bytes(handle s: *const ObjCell<SocketH>, data: *const VecVal, err: ErrSlot) -> u8

@@ -296,8 +296,6 @@ pub struct Connection {
     owner: Rc<Network>,
     io: Box<dyn Io>,
     closed: Cell<bool>,
-    /// Halves (input, output) of a `Connection` record that have closed; the socket closes with the second.
-    ends: Cell<u8>,
     /// Operations parked on `io`; the descriptor is released once a closed connection has none.
     busy: Cell<u32>,
     local: String,
@@ -317,7 +315,6 @@ impl Connection {
             owner,
             io,
             closed: Cell::new(false),
-            ends: Cell::new(0),
             busy: Cell::new(0),
             local,
             peer,
@@ -347,15 +344,6 @@ impl Connection {
         if !self.closed.replace(true) {
             self.io.shutdown_both();
             self.release_if_idle();
-        }
-    }
-
-    /// One half of a `Connection` record closes: the socket closes with the second half.
-    pub fn close_end(&self) {
-        let ends = self.ends.get().saturating_add(1);
-        self.ends.set(ends);
-        if ends >= 2 {
-            self.close();
         }
     }
 
@@ -781,8 +769,6 @@ pub struct Datagrams {
     owner: Rc<Network>,
     sock: Owned<UdpSocket>,
     closed: Cell<bool>,
-    /// Halves of a `DatagramSocket` record that have closed; the socket closes with the second.
-    ends: Cell<u8>,
     /// Calls parked on `sock`; see `Connection::busy`.
     busy: Cell<u32>,
     address: String,
@@ -804,7 +790,6 @@ impl Datagrams {
             owner,
             sock: Owned::new(sock),
             closed: Cell::new(false),
-            ends: Cell::new(0),
             busy: Cell::new(0),
             address,
             scratch: Cell::new(Vec::new()),
@@ -814,15 +799,6 @@ impl Datagrams {
 
     pub fn address(&self) -> &str {
         &self.address
-    }
-
-    /// One half of a `DatagramSocket` record closes: the socket closes with the second half.
-    pub fn close_end(&self) {
-        let ends = self.ends.get().saturating_add(1);
-        self.ends.set(ends);
-        if ends >= 2 {
-            self.close();
-        }
     }
 
     pub fn close(&self) {

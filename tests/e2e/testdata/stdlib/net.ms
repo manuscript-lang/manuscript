@@ -1,7 +1,6 @@
 import expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import within from "./support/conn.ms"
-import timeout from "@std/io/streams.ms"
 import (
     bind_datagram,
     connect,
@@ -229,22 +228,3 @@ test "an empty host listens on every interface, with or without IPv6":
 
     let socket = try bind_datagram(":0")
     try expect_false(socket.address.is_empty())
-
-test "a read with a wait timeout ends on a silent connection":
-    let listener = try listen("127.0.0.1:0")
-    let client = try connect(listener.address(), 2.seconds()).wait()
-    var {input: input} = client
-    var timed = input | timeout(100.milliseconds())
-    let started = monotonic()
-    let silent = timed.next()
-    try expect_true(silent.is_error())
-    try expect_true(monotonic().difference(started).compare(2.seconds()) < 0)
-
-test "a datagram read with a wait timeout ends on a silent socket":
-    let socket = try bind_datagram("127.0.0.1:0")
-    var {input: input} = socket
-    var timed = input | timeout(100.milliseconds())
-    let started = monotonic()
-    let silent = timed.next()
-    try expect_true(silent.is_error())
-    try expect_true(monotonic().difference(started).compare(2.seconds()) < 0)

@@ -80,7 +80,7 @@ export interface Sink[T]:
 // as `try` would. `next` waits inside the source, so a task parks only at a file, socket or pipe. Make one with
 // `ReadStream(source)`. The stream owns its source; closing or dropping it releases that source and what it owns.
 export type ReadStream[T]:
-    // The source this stream pulls.
+    // The source this stream pulls; `close` replaces it with an ended one so what it owned is released at once.
     source: Source[T]
     // Whether `close` has run; a closed stream is at its end.
     closed: Bool = false
@@ -94,28 +94,37 @@ impl ReadStream[T]:
         return self.source.next()
 
 impl Closeable for ReadStream[T]:
-    // Closes the source once; later calls do nothing.
+    // Closes the source and drops it, so a socket or file it held is released now; later calls do nothing.
     var fn close() Unit!:
         if self.closed:
             return ok(unit)
 
         self.closed = true
-        return self.source.close()
+
+        let result = self.source.close()
+        self.source = EndedSource[T]()
+        return result
+
+// A source with nothing left: the one a closed `ReadStream` holds.
+type EndedSource[T]:
+    done: Bool = true
+
+impl Source[T] for EndedSource[T]:
+    var fn next() T?!:
+        return ok(none)
+
+    var fn close() Unit!:
+        return ok(unit)
 
 // Values go out with `write`; `flush` waits for the destination's flush condition. Make one with `WriteStream(sink)`.
 // The stream owns its sink and closes it when its scope ends.
 export type WriteStream[T]:
-    // The destination the stream's writes go to.
+    // The destination the stream's writes go to; `close` replaces it with a closed one.
     sink: Sink[T]
-    // Whether `close` has run.
-    closed: Bool = false
 
 impl WriteStream[T]:
     // Sends `value` to the sink, which may wait; returns sink errors, including `EBADF` for a closed pipe reader.
     var fn write(value: T) Unit!:
-        if self.closed:
-            return error(Error("I/O: resource is closed", kind: "EBADF"))
-
         return self.sink.write(value)
 
     // Returns once the sink has drained what was written; a pipe may still hold up to its capacity of unread values.
@@ -123,13 +132,25 @@ impl WriteStream[T]:
         return self.sink.flush()
 
 impl Closeable for WriteStream[T]:
-    // Closes the sink once; later calls do nothing and later writes fail with `EBADF`. A custom sink may wait while closing.
+    // Closes the sink and drops it; later calls do nothing and later writes fail with `EBADF`. A custom sink may wait while closing.
     var fn close() Unit!:
-        if self.closed:
-            return ok(unit)
+        let result = self.sink.close()
+        self.sink = ClosedSink[T]()
+        return result
 
-        self.closed = true
-        return self.sink.close()
+// A sink that refuses every write: the one a closed `WriteStream` holds.
+type ClosedSink[T]:
+    done: Bool = true
+
+impl Sink[T] for ClosedSink[T]:
+    var fn write(value: T) Unit!:
+        return error(Error("I/O: resource is closed", kind: "EBADF"))
+
+    var fn flush() Unit!:
+        return ok(unit)
+
+    var fn close() Unit!:
+        return ok(unit)
 
 // ---- Descriptors and standard input --------------------------------------------------------------------------------
 

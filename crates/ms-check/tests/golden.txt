@@ -5819,7 +5819,7 @@ import Bytes from "@std/bytes.ms"
 test "bytes":
     let data = "x".to_bytes().with_value(index: 0, value: 255)
     let _out = stdout().write_bytes(data: data)
-resolution	6	25	171	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, closed, flush, sink, writeimport arguments from "@std/os/process.ms"
+resolution	6	25	171	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, flush, sink, writeimport arguments from "@std/os/process.ms"
 import stdout, stderr from "@std/io/io.ms"
 
 export fn main() Int:
@@ -5838,7 +5838,7 @@ export fn main() Int:
     return 0
 resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
 resolution	5	16	124	unknown binding arguments; add: import arguments from "@std/os/env.ms"
-resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, closed, flush, sink, write
+resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, flush, sink, write
 type	9	31	328	unknown argument data; parameters of write: value
 type	9	25	322	missing argument value: String in call to write; add 'value: <String>'
 type	10	31	376	unknown argument data; parameters of write: value

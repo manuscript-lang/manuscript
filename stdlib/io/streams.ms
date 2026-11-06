@@ -1,6 +1,4 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import Duration from "@std/os/time.ms"
 import (ReadStream, WriteStream, Source) from "@std/io/io.ms"
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A step pulls its input only
@@ -187,41 +185,6 @@ impl Source[T] for Taker[T]:
 // end an endless stream. A `count` of 0 or less is an empty stream. Closing it closes `input`.
 export fn take[T](input: ReadStream[T], count: Int) ReadStream[T]:
     return ReadStream[T](Taker[T](input, count))
-
-// One read of the stream in `held[0]`, in a task that `limit` can cancel. The task works on the list in place and is
-// over when this returns.
-fn read_within[T](var held: List[ReadStream[T]], limit: Duration) T?!:
-    return promise(fn: held[0].next()).with(
-        options: PromiseOptions(timeout: limit)
-    ).wait()
-
-// Each wait for an item gets at most `limit`. The stream sits in a list so a read can use it in place. A read that
-// fails, a timeout included, closes the stream; later reads end.
-type Timed[T]:
-    held: List[ReadStream[T]]
-    limit: Duration
-
-impl Source[T] for Timed[T]:
-    var fn next() T?!:
-        if self.held.length() == 0:
-            return ok(none)
-
-        let item = read_within(var self.held, self.limit.clone())
-        if item.is_error():
-            let _ = self.held.pop()
-        return item
-
-    var fn close() Unit!:
-        if let input = self.held.pop():
-            var closing = input
-            return closing.close()
-
-        return ok(unit)
-
-// `input` with a time limit on every item: a wait longer than `limit` fails with `ETIMEDOUT` and cancels the read.
-// Limit a whole pipeline by running its loop in a promise with `PromiseOptions(timeout: ...)`.
-export fn timeout[T](input: ReadStream[T], limit: Duration) ReadStream[T]:
-    return ReadStream[T](Timed[T]([input], limit))
 
 // Combines the items of `input` in order into one value: `f` takes the value so far and the next item, starting from `start`.
 export fn fold[T, S](input: ReadStream[T], start: S, f: fn(S, T) S) S!:

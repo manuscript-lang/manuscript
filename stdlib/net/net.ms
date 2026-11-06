@@ -56,7 +56,7 @@ import (
     msstd_url_resolve,
     msstd_net_connection_close,
     msstd_net_connection_share,
-    msstd_net_connection_close_end,
+    msstd_net_connection_close_if_last,
     msstd_net_connection_local_address,
     msstd_net_connection_peer_address,
     msstd_net_connection_read,
@@ -66,7 +66,7 @@ import (
     msstd_net_datagram_address,
     msstd_net_datagram_close,
     msstd_net_datagram_share,
-    msstd_net_datagram_close_end,
+    msstd_net_datagram_close_if_last,
     msstd_net_datagram_receive,
     msstd_net_datagram_send_bytes,
     msstd_net_listener_accept,
@@ -78,7 +78,7 @@ import (
     msstd_net_release_unadopted,
     msstd_websocket_close,
     msstd_websocket_share,
-    msstd_websocket_close_end,
+    msstd_websocket_close_if_last,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
     msstd_websocket_receive,
@@ -116,7 +116,7 @@ impl Source[Bytes] for ConnectionSource:
 
     // Closes the socket when the output end is already closed.
     var fn close() Unit!:
-        msstd_net_connection_close_end(self.raw.native)
+        msstd_net_connection_close_if_last(self.raw.native)
         return ok(unit)
 
 type ConnectionSink:
@@ -132,7 +132,7 @@ impl Sink[Bytes] for ConnectionSink:
     // Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
     var fn close() Unit!:
         let _ = msstd_net_connection_shutdown_write(self.raw.native)
-        msstd_net_connection_close_end(self.raw.native)
+        msstd_net_connection_close_if_last(self.raw.native)
         return ok(unit)
 
 // What is known about a connection, available after its streams are moved elsewhere.
@@ -213,7 +213,7 @@ impl Source[Datagram] for DatagramSource:
         return ok(try msstd_net_datagram_receive(self.raw.native, none, none))
 
     var fn close() Unit!:
-        msstd_net_datagram_close_end(self.raw.native)
+        msstd_net_datagram_close_if_last(self.raw.native)
         return ok(unit)
 
 type DatagramSink:
@@ -230,7 +230,7 @@ impl Sink[Datagram] for DatagramSink:
         return ok(unit)
 
     var fn close() Unit!:
-        msstd_net_datagram_close_end(self.raw.native)
+        msstd_net_datagram_close_if_last(self.raw.native)
         return ok(unit)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both streams.
@@ -693,7 +693,7 @@ impl Source[WebSocketMessage] for WebSocketSource:
         return ok(none)
 
     var fn close() Unit!:
-        msstd_websocket_close_end(self.raw.native)
+        msstd_websocket_close_if_last(self.raw.native)
         return ok(unit)
 
 type WebSocketSink:
@@ -713,7 +713,7 @@ impl Sink[WebSocketMessage] for WebSocketSink:
         return ok(unit)
 
     var fn close() Unit!:
-        msstd_websocket_close_end(self.raw.native)
+        msstd_websocket_close_if_last(self.raw.native)
         return ok(unit)
 
 /*
