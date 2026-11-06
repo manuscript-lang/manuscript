@@ -42,6 +42,13 @@ fn llvm_release_matches_cranelift_fault_frames() {
     std::fs::create_dir_all(&dir).unwrap();
     let cranelift = build_and_run("cranelift", &dir.join("cranelift"));
     let llvm = build_and_run("llvm", &dir.join("llvm"));
+    for (name, backend) in [("cranelift", "cranelift"), ("llvm", "llvm")] {
+        let sidecar = std::fs::read_to_string(dir.join(format!("{name}.ms-build.json"))).unwrap();
+        assert!(
+            sidecar.contains(&format!("\"backend\": \"{backend}\"")),
+            "{sidecar}"
+        );
+    }
     let _ = std::fs::remove_dir_all(&dir);
     assert_eq!(llvm.0, Some(67), "{}", llvm.1);
     assert_eq!(llvm, cranelift);

@@ -99,7 +99,12 @@ pub(super) fn build<L: Lower>(
         && let Some(entry) = cache.lookup()
         && artifact_source_collision(&output, &request.filename, entry.inputs()).is_none()
         && entry.restore_to(&output).is_ok()
-        && write_metadata(Path::new(&output), request.build_type).is_ok()
+        && write_metadata(
+            Path::new(&output),
+            request.build_type,
+            &backend.build_options(),
+        )
+        .is_ok()
     {
         if structured {
             return Ok(emit_json(

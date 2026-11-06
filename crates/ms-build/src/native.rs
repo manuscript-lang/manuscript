@@ -118,6 +118,16 @@ fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str>
     ms_clif::llvm_available(build).then_some(level)
 }
 
+/// The code generator that builds an executable at `profile`: `"llvm"` when release builds
+/// optimize through LLVM, else `"cranelift"`.
+pub fn backend_name(profile: Profile, build: &BuildOptions) -> &'static str {
+    let llvm = match profile {
+        Profile::Debug => None,
+        Profile::Release | Profile::MinSizeRel => llvm_level(build, "3"),
+    };
+    if llvm.is_some() { "llvm" } else { "cranelift" }
+}
+
 /// The runtime archive named by `build.runtime` (`MS_RT_LIB`), which replaces the one embedded in `ms`.
 pub fn runtime_override(build: &BuildOptions) -> Result<Option<PathBuf>, String> {
     let Some(path) = &build.runtime else {
