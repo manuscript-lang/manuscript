@@ -68,7 +68,7 @@ The agent gets the repair, not just "syntax error". When the fix is mechanical, 
 
 Checking is fast, so the agent can ask after every edit: on a 122,000-line project, `ms check` takes under two seconds (see the numbers below). `ms guide` is a one-page cheat sheet, `ms search_symbol read file` answers one API question, and `ms verify` runs checks, formatting, lint and tests with a single exit code. When a program fails at run time, `ms test --json` hands back the fault as data: kind, values, position and trace. The agent loops until the exit code is zero.
 
-## You review the result
+## Easy to review and understand
 
 Reading the diff line by line does not scale when an agent writes the code. Manuscript is simple enough that the code is easy to follow, and the tooling shows what a program does before you read any of it. You run:
 
