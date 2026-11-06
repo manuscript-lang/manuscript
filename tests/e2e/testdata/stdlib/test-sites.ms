@@ -64,3 +64,8 @@ test "fail builds an error with a site":
     let failure = try expect_error(fail("custom"))
     try expect_equal(failure.message, "custom")
     try expect_true(site_of(failure).ends_with("test-sites.ms:64:5"))
+
+test "source location constants name their use site":
+    try expect_equal(__LINE__, 69)
+    try expect_true(__FILE__.ends_with("test-sites.ms"))
+    try expect_equal("{__FILE__}:{__LINE__}".ends_with(":71"), true)
