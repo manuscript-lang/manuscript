@@ -7,8 +7,8 @@ use crate::collect::{CallRow, EntityRow, InspectionRows};
 use crate::json::Json;
 use crate::sha256;
 use crate::walk::walk_module;
-use ms_check::syntax::{DeclRef, FuncRef};
-use ms_check::types::{BindingRef, MethodRef, n, show};
+use ms_check::api::syntax::{DeclRef, FuncRef};
+use ms_check::api::types::{BindingRef, MethodRef, n, show};
 use ms_check::{ModuleData, Program};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
@@ -290,7 +290,7 @@ fn symbol_of(
     program: &Program,
     module: &ModuleData,
     name: &str,
-) -> Option<ms_check::types::SymRef> {
+) -> Option<ms_check::api::types::SymRef> {
     program
         .symbols
         .get(&module.file)
@@ -306,12 +306,12 @@ fn effects_of(program: &Program, id: &str) -> Vec<String> {
 }
 
 trait DeclSymbolName {
-    fn decl_name_for_symbol(&self) -> ms_check::types::Name;
+    fn decl_name_for_symbol(&self) -> ms_check::api::types::Name;
 }
 
 impl DeclSymbolName for DeclRef {
     /// Tests are looked up by their written name.
-    fn decl_name_for_symbol(&self) -> ms_check::types::Name {
+    fn decl_name_for_symbol(&self) -> ms_check::api::types::Name {
         match &self.decl().kind {
             DeclKind::Test(t) => n(&t.name),
             _ => self.name(),

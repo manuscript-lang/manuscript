@@ -3,8 +3,8 @@
 use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::nativerec::native_rec;
-use ms_check::hir::Resolution;
-use ms_check::types::{self as ct, Builtin, Kind};
+use ms_check::api::hir::Resolution;
+use ms_check::api::types::{self as ct, Builtin, Kind};
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::NativeRec;
@@ -103,7 +103,7 @@ impl<'a> FnLower<'a> {
                     && self.cx.fact(
                         self.hir.data.file,
                         e.id,
-                        ms_check::ownership::Fact::ViewWrap,
+                        ms_check::api::ownership::Fact::ViewWrap,
                     ) =>
             {
                 Val {
@@ -408,7 +408,7 @@ impl<'a> FnLower<'a> {
                 if self.cx.fact(
                     self.hir.data.file,
                     e.id,
-                    ms_check::ownership::Fact::ViewMove,
+                    ms_check::api::ownership::Fact::ViewMove,
                 ) && !self.dead
                 {
                     // The interface view this local holds moves into the result; what stays
@@ -539,7 +539,7 @@ impl<'a> FnLower<'a> {
         if self.cx.fact(
             self.hir.data.file,
             e.id,
-            ms_check::ownership::Fact::PartialMove,
+            ms_check::api::ownership::Fact::PartialMove,
         ) && !self.is_resource(self.ty_of(f))
             && self.needs_drop(self.ty_of(f))
         {

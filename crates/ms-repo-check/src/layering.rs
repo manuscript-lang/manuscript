@@ -1,0 +1,148 @@
+//! Crate layering: which workspace crates each compiler or tool crate may depend on.
+//!
+//! The layers, lowest first:
+//!
+//! ```text
+//! ms-syntax  ->  ms-check  ->  ms-lower  ->  ms-clif / ms-build
+//!                    \->  ms-driver, ms-tooling  ->  ms-lsp  ->  ms-cli
+//! ```
+//!
+//! The runtime (`ms-rt-abi`, `ms-rt-hot`, `ms-rt`, `ms-std-*`, `ms-native`) is a
+//! separate world. The compiler meets it only through the C ABI described by
+//! `ms-rt-abi`, so a runtime crate never depends on a compiler crate and a
+//! compiler crate never depends on a runtime crate other than `ms-rt-abi`.
+//! Test-only edges belong in `[dev-dependencies]`, which this check ignores.
+//!
+//! Widening a row below needs a reason beside it, in the same change.
+
+use std::fs;
+
+/// Allowed normal dependencies on other workspace crates, per compiler or tool crate.
+const COMPILER_AND_TOOLS: &[(&str, &[&str])] = &[
+    ("ms-syntax", &[]),
+    ("ms-json", &[]),
+    ("ms-mir", &[]),
+    ("ms-check", &["ms-syntax"]),
+    // `ms-std-decimal` parses Decimal literals in `expr.rs`; removed when the checker folds them.
+    (
+        "ms-lower",
+        &[
+            "ms-check",
+            "ms-mir",
+            "ms-rt-abi",
+            "ms-std-decimal",
+            "ms-syntax",
+        ],
+    ),
+    ("ms-clif", &["ms-mir", "ms-rt-abi"]),
+    ("ms-build", &["ms-check", "ms-clif", "ms-lower", "ms-mir"]),
+    ("ms-driver", &["ms-check", "ms-syntax"]),
+    ("ms-tooling", &["ms-check", "ms-json", "ms-syntax"]),
+    (
+        "ms-lsp",
+        &[
+            "ms-check",
+            "ms-driver",
+            "ms-json",
+            "ms-syntax",
+            "ms-tooling",
+        ],
+    ),
+    (
+        "ms-cli",
+        &[
+            "ms-build",
+            "ms-check",
+            "ms-driver",
+            "ms-json",
+            "ms-lsp",
+            "ms-mir",
+            "ms-rt-abi",
+            "ms-syntax",
+            "ms-tooling",
+        ],
+    ),
+];
+
+const RUNTIME: &[&str] = &["ms-rt-abi", "ms-rt-hot", "ms-rt", "ms-std-", "ms-native"];
+
+fn is_runtime(name: &str) -> bool {
+    RUNTIME.iter().any(|r| name.starts_with(r))
+}
+
+pub fn check(files: &[String]) -> Vec<String> {
+    let manifests = files
+        .iter()
+        .filter(|p| p.starts_with("crates/") && p.ends_with("/Cargo.toml"));
+    let mut issues = Vec::new();
+    for path in manifests {
+        let Ok(text) = fs::read_to_string(path) else {
+            continue;
+        };
+        let Some(name) = package_name(&text) else {
+            continue;
+        };
+        for dep in normal_dependencies(&text) {
+            if let Some(why) = violation(&name, &dep) {
+                issues.push(format!(
+                    "{path}: {name} -> {dep}: {why}; see crates/ms-repo-check/src/layering.rs"
+                ));
+            }
+        }
+    }
+    issues
+}
+
+fn violation(name: &str, dep: &str) -> Option<&'static str> {
+    if is_runtime(name) {
+        let compiler = COMPILER_AND_TOOLS.iter().any(|(c, _)| *c == dep);
+        return compiler.then_some("a runtime crate must not depend on a compiler crate");
+    }
+    let (_, allowed) = COMPILER_AND_TOOLS.iter().find(|(c, _)| *c == name)?;
+    (!allowed.contains(&dep)).then_some("not in this crate's allowed dependencies")
+}
+
+fn package_name(manifest: &str) -> Option<String> {
+    let line = manifest.lines().find(|l| l.starts_with("name = "))?;
+    Some(line.split('"').nth(1)?.to_string())
+}
+
+/// Workspace (`ms-*`) crates named in the `[dependencies]` table only.
+fn normal_dependencies(manifest: &str) -> Vec<String> {
+    let mut in_table = false;
+    let mut found = Vec::new();
+    for line in manifest.lines() {
+        if line.starts_with('[') {
+            in_table = line.trim() == "[dependencies]";
+            continue;
+        }
+        let key = line.split(['=', '.', ' ']).next().unwrap_or("");
+        if in_table && key.starts_with("ms-") {
+            found.push(key.to_string());
+        }
+    }
+    found
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compiler_crate_may_not_reach_the_runtime() {
+        assert!(violation("ms-lower", "ms-rt").is_some());
+        assert!(violation("ms-lower", "ms-rt-abi").is_none());
+    }
+
+    #[test]
+    fn runtime_crate_may_not_reach_the_compiler() {
+        assert!(violation("ms-std-fs", "ms-check").is_some());
+        assert!(violation("ms-std-fs", "ms-std-path").is_none());
+    }
+
+    #[test]
+    fn dev_dependencies_are_ignored() {
+        let manifest = "[dependencies]\nms-check = { path = \"../ms-check\" }\n[dev-dependencies]\nms-rt = { path = \"../ms-rt\" }\n";
+        assert_eq!(normal_dependencies(manifest), ["ms-check"]);
+    }
+}

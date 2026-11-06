@@ -471,11 +471,6 @@ impl Type {
     }
 }
 
-/// `std(t, name)` for an optional type.
-pub fn std_is(syms: ms_syntax::Names, t: &Option<Ty>, name: &str) -> bool {
-    t.as_ref().is_some_and(|t| t.is_std(syms, name))
-}
-
 /// A named type slot of a case.
 #[derive(Clone, Debug)]
 pub struct Case {
@@ -1137,11 +1132,6 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
     })
 }
 
-/// `Sub` over an optional type.
-pub fn sub_opt(t: &Option<Ty>, bindings: &Subst) -> Option<Ty> {
-    t.as_ref().map(|t| sub(t, bindings))
-}
-
 /// Erases omission permissions and selects the ordinary required-argument form
 /// used by explicit function types and generic inference.
 pub fn required_type(t: &Ty) -> Ty {
@@ -1374,47 +1364,6 @@ pub fn constructor_signature(
     function_with(syms, params, t.clone(), defaults)
 }
 
-/// A key identifying a type's structure.
-pub fn type_key(syms: ms_syntax::Names, t: &Ty) -> String {
-    let mut key = String::new();
-    write_type_key(syms, &mut key, t, false);
-    key
-}
-
-/// `type_key` plus which function parameters are represented as optionals.
-pub fn lowering_key(syms: ms_syntax::Names, t: &Ty) -> String {
-    let mut key = String::new();
-    write_type_key(syms, &mut key, t, true);
-    key
-}
-
-fn write_type_key(syms: ms_syntax::Names, key: &mut String, t: &Ty, lifted: bool) {
-    key.push_str(syms.str(t.id));
-    if t.kind == Kind::Function {
-        for p in &t.params {
-            key.push('[');
-            if p.mutable {
-                key.push_str("var ");
-            }
-            write_type_key(syms, key, &p.ty, lifted);
-            if lifted && t.is_lifted(p.name) {
-                key.push('=');
-            }
-            key.push(']');
-        }
-        key.push_str("[result:");
-        if let Some(r) = &t.result {
-            write_type_key(syms, key, r, lifted);
-        }
-        key.push(']');
-    }
-    for a in &t.args {
-        key.push('[');
-        write_type_key(syms, key, a, lifted);
-        key.push(']');
-    }
-}
-
 /// A set of type-variable ids.
 pub type VarSet = HashSet<Name>;
 
@@ -1600,9 +1549,4 @@ pub fn is_invalid_id(t: &Ty) -> bool {
 /// Whether `t` mentions a variable of `variables`.
 pub fn mentions_variable(t: &Ty, variables: &VarSet) -> bool {
     type_any::<true>(t, |t| variables.contains(&t.id))
-}
-
-/// Names of params.
-pub fn param_names(syms: ms_syntax::Names, params: &[Param]) -> Vec<&'static str> {
-    params.iter().map(|p| syms.str(p.name)).collect()
 }

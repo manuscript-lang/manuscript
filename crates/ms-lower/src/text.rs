@@ -4,7 +4,7 @@ use crate::Error;
 use crate::cx::HelperKey;
 use crate::cx::{Cx, Job, JobKind};
 use crate::func::{FnLower, Val};
-use ms_check::types::Kind;
+use ms_check::api::types::Kind;
 use ms_mir::builder::{FuncBuilder, Var};
 use ms_mir::ir::{Cc, ExternDef, FuncId, Imm, Mode, Module, Op, Param, Value, VtableId};
 use ms_mir::print::ty_str;
@@ -594,7 +594,7 @@ impl<'a> FnLower<'a> {
             self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
         let f = self
             .cx
-            .function_for(self.b.m, &callable, &ms_check::types::Subst::new())?;
+            .function_for(self.b.m, &callable, &ms_check::api::types::Subst::new())?;
         Ok(self.b.call(f, args))
     }
 

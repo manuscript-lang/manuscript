@@ -4,7 +4,7 @@ use super::matches::path_text;
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::ModuleData;
-use ms_check::types::{self, Kind};
+use ms_check::api::types::{self, Kind};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 

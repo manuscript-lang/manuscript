@@ -2,7 +2,7 @@
 
 use crate::walk::walk_module;
 use ms_check::Program;
-use ms_check::types::{self, Kind, Param};
+use ms_check::api::types::{self, Kind, Param};
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
 use std::collections::HashSet;
@@ -52,7 +52,7 @@ fn call_parameters(
     session: &std::rc::Rc<ms_check::Session>,
     module: &ms_check::ModuleData,
     callee: &Expr,
-    info: &ms_check::syntax::Info,
+    info: &ms_check::api::syntax::Info,
 ) -> Option<Vec<Param>> {
     if info.native_str(syms) == "view" || info.case.is_some_and(|c| !syms.str(c).is_empty()) {
         return None;

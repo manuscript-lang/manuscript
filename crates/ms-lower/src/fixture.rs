@@ -7,8 +7,8 @@
 use crate::Error;
 use crate::close::CloseKind;
 use crate::func::FnLower;
-use ms_check::hir::Callable;
-use ms_check::types::{self as ct, BindingRef, Subst};
+use ms_check::api::hir::Callable;
+use ms_check::api::types::{self as ct, BindingRef, Subst};
 use ms_mir::ir::{Imm, Op, Value};
 use ms_mir::types::Ty as MTy;
 use std::rc::Rc;
