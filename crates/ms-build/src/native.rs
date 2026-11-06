@@ -118,6 +118,16 @@ fn llvm_level(build: &BuildOptions, level: &'static str) -> Option<&'static str>
     ms_clif::llvm_available(build).then_some(level)
 }
 
+/// The files `build` points the code generator and linker at beyond the ones passed explicitly:
+/// the runtime archive named by `MS_RT_LIB` and the runtime helper IR named by `MS_RT_HOT`.
+pub fn native_inputs(build: &BuildOptions) -> Vec<PathBuf> {
+    let mut inputs: Vec<PathBuf> = build.runtime.iter().cloned().collect();
+    if let ms_clif::RtHot::File(path) = &build.rt_hot {
+        inputs.push(path.clone());
+    }
+    inputs
+}
+
 /// The code generator that builds an executable at `profile`: `"llvm"` when release builds
 /// optimize through LLVM, else `"cranelift"`.
 pub fn backend_name(profile: Profile, build: &BuildOptions) -> &'static str {
