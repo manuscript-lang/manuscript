@@ -264,16 +264,16 @@ PASS test.ms::starts fresh
 
 ## Run tests only on some platforms
 
-There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/os/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
+There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os()` from `@std/os/system.ms` with an `Os` case (`Os.Linux`, `Os.Macos`, `Os.Windows`, or `Os.Other`). The file must still compile on every platform.
 
 To skip a single test, call `skip` in its body:
 
 ```manuscript
 import skip from "@std/test/test.ms"
-import os_type from "@std/os/process.ms"
+import os, Os from "@std/os/system.ms"
 
 test "unix permission bits":
-    if os_type() == "Windows_NT":
+    if os() == Os.Windows:
         skip("Unix only")
     // Unix-only assertions follow.
 ```
@@ -282,13 +282,13 @@ To skip every test in a file, call `skip` from a fixture hook. `before_all` and 
 
 ```manuscript
 import TestHooks, skip from "@std/test/test.ms"
-import os_type from "@std/os/process.ms"
+import os, Os from "@std/os/system.ms"
 
 type WindowsOnly:
     ok: Bool
 
 fn make_fixture() WindowsOnly:
-    return WindowsOnly(os_type() == "Windows_NT")
+    return WindowsOnly(os() == Os.Windows)
 
 impl TestHooks for WindowsOnly:
     var fn before_all() Unit:

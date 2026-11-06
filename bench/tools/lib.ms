@@ -1,16 +1,8 @@
 // Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
-import (
-    Stdio,
-    os_type,
-    environment,
-    monotonic_time,
-    set_environment,
-    working_directory,
-    run,
-    spawn,
-    system_info
-) from "@std/os/process.ms"
+import RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms"
+import (environment, set_environment, working_directory) from "@std/os/env.ms"
+import (os, monotonic_time, system_info, Os) from "@std/os/system.ms"
 import access, create_directory, read_file, remove, write_file from "@std/os/fs.ms"
 import is_absolute, join from "@std/os/path.ms"
 import stderr, stdin, stdout from "@std/io/io.ms"
@@ -30,9 +22,9 @@ export fn fail(message: String) Int:
 
 // `linux`, `macos` or `windows`.
 export fn host() String:
-    let os = os_type()
-    if os == "Darwin": return "macos"
-    if os == "Windows_NT": return "windows"
+    let family = os()
+    if family == Os.Macos: return "macos"
+    if family == Os.Windows: return "windows"
 
     return "linux"
 
@@ -63,7 +55,7 @@ export fn capture(
     input: String = "",
     cwd: String? = none
 ) Ran:
-    if let out = run(program, arguments, input: input.to_bytes(), cwd: cwd).wait():
+    if let out = run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
         return Ran(
             true, out.exit_code, out.stdout.decode_utf8().get(""),
             out.stderr.decode_utf8().get(""), out.max_resident_bytes
@@ -325,8 +317,11 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
     var code = 125
 
     if let child = spawn(
-        program, arguments, stdin: Stdio.Null, stdout: Stdio.Inherit,
-        stderr: Stdio.Inherit, cwd: dir
+        program,
+        arguments,
+        SpawnOptions(
+            stdin: Stdio.Null, stdout: Stdio.Inherit, stderr: Stdio.Inherit, cwd: dir
+        )
     ):
         code = child.wait().get(125)
         if code < 0 or code > 125: code = 125

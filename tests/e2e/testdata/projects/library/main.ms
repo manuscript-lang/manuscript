@@ -1,6 +1,7 @@
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import memory_usage, process_info from "@std/os/process.ms"
-import arguments from "@std/os/process.ms"
+import process_info from "@std/os/process.ms"
+import memory_usage from "@std/os/system.ms"
+import arguments from "@std/os/env.ms"
 import random_bytes from "@std/os/random.ms"
 import (
     append_file,
@@ -12,7 +13,7 @@ import (
     WatchOptions,
     write_file
 ) from "@std/os/fs.ms"
-import system_info from "@std/os/process.ms"
+import system_info from "@std/os/system.ms"
 import now from "@std/os/time.ms"
 import uuid_v4 from "@std/os/random.ms"
 import secure_int from "@std/os/random.ms"

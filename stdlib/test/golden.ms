@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import environment from "@std/os/process.ms"
+import environment from "@std/os/env.ms"
 import create_directory, read_file, write_file, write_file_bytes from "@std/os/fs.ms"
 import dirname, join from "@std/os/path.ms"
 import fail from "@std/test/test.ms"

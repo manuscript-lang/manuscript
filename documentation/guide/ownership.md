@@ -5,7 +5,7 @@ weight = 4
 
 # Who owns what
 
-There is no garbage collector in Manuscript and no lifetime annotation to write. Instead every value has one owner, and the compiler tracks it. This chapter shows what that feels like with a shopping cart.
+There is no garbage collector in Manuscript and no lifetime annotation to write. Instead every value has one owner, and the compiler tracks it. This chapter shows what that feels like with a cart of items.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Sam has 2 items\nSam has 3 items\nSam has 4 items; archived: 3\n"} -->
 ```manuscript {filename="cart.ms"}

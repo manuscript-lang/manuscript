@@ -34,7 +34,7 @@ Save as `args.ms`. `arguments()` excludes the executable; values after `--` reac
 
 <!-- manuscript-example: {"mode":"run","args":["Sam","Ada"],"stdout":"Hello, Sam!\nHello, Ada!\n","cases":[{"stdout":""}]} -->
 ```manuscript
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
@@ -65,7 +65,7 @@ Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and posit
 ```manuscript
 import Arg, Command, Flag, FlagKind, command from "@std/cli.ms"
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 type Greeting:
     name: String

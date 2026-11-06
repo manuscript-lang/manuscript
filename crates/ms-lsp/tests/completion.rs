@@ -41,8 +41,8 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
             (
                 "machine",
                 3,
-                "fn() Result[String, Error] — @std/os/process.ms",
-                "@std/os/process.ms",
+                "fn() Result[String, Error] — @std/os/system.ms",
+                "@std/os/system.ms",
             ),
             (
                 "max_int",

@@ -1,6 +1,11 @@
 import Bytes from "@std/bytes.ms"
-import (CommandOutput, Commands, Stdio, Subprocess) from "@std/os/process.ms"
-import Duration from "@std/os/time.ms"
+import (
+    CommandOutput,
+    Commands,
+    RunOptions,
+    SpawnOptions,
+    Subprocess
+) from "@std/os/process.ms"
 
 // Shifts the node ids below so that `Echo.run` has the id of a method in another module
 // (`second.ms` or the standard library): defaults must be found by module and id.
@@ -17,24 +22,12 @@ export type Echo:
     code: Int
 
 impl Commands for Echo:
-    fn run(
-        program: String,
-        arguments: List[String],
-        input: Bytes,
-        max_output_bytes: Int?,
-        timeout: Duration?,
-        cwd: String?,
-        env: Map[String, String]
-    ) CommandOutput!:
-        return ok(CommandOutput(self.code, input, "".to_bytes(), 0))
+    fn run(program: String, arguments: List[String], options: RunOptions) CommandOutput!:
+        return ok(CommandOutput(self.code, options.input.clone(), "".to_bytes(), 0))
 
     fn spawn(
         program: String,
         arguments: List[String],
-        stdin: Stdio,
-        stdout: Stdio,
-        stderr: Stdio,
-        cwd: String?,
-        env: Map[String, String]
+        options: SpawnOptions
     ) Subprocess!:
         return error(Error("process: service unavailable", kind: "EAGAIN"))

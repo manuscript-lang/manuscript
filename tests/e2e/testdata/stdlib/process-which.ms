@@ -4,11 +4,11 @@ import join from "@std/os/path.ms"
 import (
     change_directory,
     environment,
-    os_type,
     set_environment,
     which,
     working_directory
-) from "@std/os/process.ms"
+) from "@std/os/env.ms"
+import (os, Os) from "@std/os/system.ms"
 import expect_equal from "@std/test/test.ms"
 
 type SearchEnvironment:
@@ -24,7 +24,7 @@ impl Closeable for SearchEnvironment:
         return ok(unit)
 
 fn saved_variable(values: Map[String, String], name: String) String?:
-    let windows = os_type() == "Windows_NT"
+    let windows = os() == Os.Windows
 
     for entry in values.entries():
         let key = if windows: entry.key.upper() else: entry.key
@@ -49,7 +49,7 @@ fn make_program(path: String) Unit!:
 test "which preserves PATH order and rejects directories and nonexecutable files":
     let directory = try temporary("manuscript-which-order-")
     let _restore = try save_search_environment()
-    let windows = os_type() == "Windows_NT"
+    let windows = os() == Os.Windows
     let separator = if windows: ";" else: ":"
     let suffix = if windows: ".EXE" else: ""
     let root = directory.path()
@@ -82,7 +82,7 @@ test "which preserves PATH order and rejects directories and nonexecutable files
 test "which accepts suffixed names and explicit paths without searching PATH":
     let directory = try temporary("manuscript-which-path-")
     let _restore = try save_search_environment()
-    let windows = os_type() == "Windows_NT"
+    let windows = os() == Os.Windows
     let name = if windows: "program.EXE" else: "program.bin"
     let path = join([directory.path(), name.clone()])
     try make_program(path)
@@ -102,7 +102,7 @@ test "which accepts suffixed names and explicit paths without searching PATH":
 test "which honors PATHEXT defaults and skips empty PATH entries":
     let directory = try temporary("manuscript-which-extensions-")
     let _restore = try save_search_environment()
-    let windows = os_type() == "Windows_NT"
+    let windows = os() == Os.Windows
     let root = directory.path()
     let path_key = if windows: "pAtH" else: "PATH"
     let extension_key = if windows: "pAtHeXt" else: "PATHEXT"

@@ -5,7 +5,8 @@
 // Usage: ms run tools/str-counts.ms -- <ms.toml|file.ms>...
 import exe, note, run_program, use_stats_runtime, works from "./lib.ms"
 import canonicalize, temporary from "@std/os/fs.ms"
-import arguments, set_environment, run from "@std/os/process.ms"
+import run from "@std/os/process.ms"
+import arguments, set_environment from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

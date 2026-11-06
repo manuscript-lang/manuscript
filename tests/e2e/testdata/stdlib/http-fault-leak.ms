@@ -3,7 +3,7 @@ import expect_ok from "@std/test/test.ms"
 import HttpExchange from "@std/net/http.ms"
 import connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
-import memory_usage from "@std/os/process.ms"
+import memory_usage from "@std/os/system.ms"
 
 fn faulting(var exchange: HttpExchange) Unit!:
     let big = "x".repeat(1000000).get("")

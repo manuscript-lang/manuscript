@@ -2,11 +2,11 @@
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/host-accessors.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
-import arguments, environment from "@std/os/process.ms"
+import arguments, environment from "@std/os/env.ms"
 import stdin, stdout, stderr from "@std/io/io.ms"
 import monotonic, now from "@std/os/time.ms"
 import random_bytes from "@std/os/random.ms"
-import system_info from "@std/os/process.ms"
+import system_info from "@std/os/system.ms"
 
 fn check_services() Unit!:
     arguments().length() | try expect_equal(0)

@@ -7,13 +7,9 @@
 // Usage: ms run tools/leak-check.ms [-- files]
 import env, tool_ms, use_stats_runtime from "./lib.ms"
 import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import (
-    arguments,
-    change_directory,
-    working_directory,
-    run,
-    system_info
-) from "@std/os/process.ms"
+import RunOptions, run from "@std/os/process.ms"
+import arguments, change_directory, working_directory from "@std/os/env.ms"
+import system_info from "@std/os/system.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
 import seconds from "@std/os/time.ms"
 import stdout from "@std/io/io.ms"
@@ -57,7 +53,8 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
         if has_tests(source):
             if let out = run(
-                ms.clone(), ["test", absolute.clone()], timeout: seconds(600)
+                ms.clone(), ["test", absolute.clone()],
+                RunOptions(timeout: seconds(600))
             ).wait():
                 let found = leaking_tests(out.stderr.decode_utf8().get(""))
                 lines.append("swept")
@@ -67,7 +64,9 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
             continue
 
-        if let out = run(ms.clone(), ["run", absolute.clone()], timeout: seconds(60)).wait():
+        if let out = run(
+            ms.clone(), ["run", absolute.clone()], RunOptions(timeout: seconds(60))
+        ).wait():
             let counts = live_blocks(out.stderr.decode_utf8().get(""))
             if counts.length() == 0: continue
 

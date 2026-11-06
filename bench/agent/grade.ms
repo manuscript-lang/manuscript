@@ -5,7 +5,7 @@
 // and the modules it imports next to each other under /tests, keeping their relative layout.
 import create_directory, write_file from "@std/os/fs.ms"
 import parse, stringify from "@std/data/json.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import Case from "./core/model.ms"
 import count_workspace from "./core/codetokens.ms"
 import bash, env, must_read, nonblank_lines, norm, read_text from "./lib/text.ms"

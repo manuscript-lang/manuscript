@@ -395,7 +395,7 @@ fn inherent_methods_keep_public_names_and_real_contracts() {
         assert!(!to_json(std::slice::from_ref(module)).contains("$methods"));
     }
     for (path, name, operation) in [
-        ("@std/os/metrics.ms", "Histogram", "record"),
+        ("@std/data/histogram.ms", "Histogram", "record"),
         ("@std/concurrency/promise.ms", "Promise", "wait"),
         ("@std/io/io.ms", "ReadStream", "read"),
     ] {

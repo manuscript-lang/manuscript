@@ -9,7 +9,7 @@
 import JsonValue, parse from "@std/data/json.ms"
 import access, glob, GlobOptions, stat from "@std/os/fs.ms"
 import stdout, stderr from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import parse_timestamp, now from "@std/os/time.ms"
 import round from "@std/math/math.ms"
 import root from "./core/model.ms"

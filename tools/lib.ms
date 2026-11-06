@@ -1,13 +1,8 @@
 // Shared helpers for the repository tools in this directory. Run a tool from the repository root
 // with `ms run tools/<name>.ms [-- arguments]`.
-import (
-    Stdio,
-    os_type,
-    environment,
-    set_environment,
-    run,
-    spawn
-) from "@std/os/process.ms"
+import SpawnOptions, Stdio, run, spawn from "@std/os/process.ms"
+import (environment, set_environment) from "@std/os/env.ms"
+import (os, Os) from "@std/os/system.ms"
 import canonicalize, read_file from "@std/os/fs.ms"
 import stderr from "@std/io/io.ms"
 import hex_encode from "@std/data/encoding.ms"
@@ -15,9 +10,9 @@ import sha256 from "@std/crypto.ms"
 
 // `linux`, `macos` or `windows`.
 export fn host() String:
-    let os = os_type()
-    if os == "Darwin": return "macos"
-    if os == "Windows_NT": return "windows"
+    let family = os()
+    if family == Os.Macos: return "macos"
+    if family == Os.Windows: return "windows"
 
     return "linux"
 
@@ -61,8 +56,11 @@ export fn status(code: Int) Int:
 // A program that cannot start, or one that ends with a status above 125, reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
     if let child = spawn(
-        program, arguments, stdin: Stdio.Null, stdout: Stdio.Inherit,
-        stderr: Stdio.Inherit
+        program,
+        arguments,
+        SpawnOptions(
+            stdin: Stdio.Null, stdout: Stdio.Inherit, stderr: Stdio.Inherit
+        )
     ):
         return status(child.wait().get(125))
 

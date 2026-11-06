@@ -11,7 +11,7 @@ import (
 ) from "@std/net/http.ms"
 import lookup, serve from "@std/net/net.ms"
 import max from "@std/math/math.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 
 fn score(id: Int) Int:
     return id * 7919 % 1000

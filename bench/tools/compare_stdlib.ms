@@ -19,7 +19,7 @@ import (
     write_text
 ) from "./lib.ms"
 import Stats, case_labels, read_cases from "./stdlib_results.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import JsonValue from "@std/data/json.ms"
 
 // One document as `{case: operations}` and `{case: median ns/op}`.
