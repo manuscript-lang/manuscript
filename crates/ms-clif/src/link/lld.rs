@@ -363,11 +363,6 @@ fn macos_arguments(
     };
     if let Some(stage) = &stage {
         command.current_dir(stage);
-        // lld records objects by absolute path; drop the staging directory (and its slash)
-        // so the entry is the relative name `dsymutil` finds from this directory.
-        let mut prefix = stage.as_os_str().to_owned();
-        prefix.push("/");
-        command.arg("-oso_prefix").arg(prefix);
         // The debug map also records each object's modification time; fix it for the objects
         // this build wrote (they are rewritten per build) so it is the same every time.
         for path in std::iter::once(object).chain(inputs.iter().copied()) {
@@ -391,6 +386,13 @@ fn macos_arguments(
         .arg("-ignore_optimization_hints")
         .arg("-o")
         .arg(named(out));
+    if let Some(stage) = &stage {
+        // lld records objects by absolute path; drop the staging directory (and its slash)
+        // so the entry is the relative name `dsymutil` finds from this directory.
+        let mut prefix = stage.as_os_str().to_owned();
+        prefix.push("/");
+        command.arg("-oso_prefix").arg(prefix);
+    }
     if strip {
         command.arg("-x");
     }
