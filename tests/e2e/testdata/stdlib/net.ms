@@ -2,6 +2,7 @@ import expect_equal, expect_error, expect_false, expect_true from "@std/test/tes
 import Bytes from "@std/bytes.ms"
 import within from "./support/conn.ms"
 import (
+    DnsOptions,
     bind_datagram,
     connect,
     connect_unix,
@@ -10,18 +11,13 @@ import (
     resolve_dns,
     restrict,
     with_resolver,
-    parse_ip,
-    parse_cidr,
-    contains_ip,
     Datagram,
     DatagramSocket,
-    DnsKind,
-    IpFamily,
     Listener,
     Connection
 ) from "@std/net/net.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import monotonic from "@std/time.ms"
+import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
+import promise from "@std/concurrency/promise.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -44,7 +40,7 @@ test "IP parsing CIDR normalization and containment":
 
 test "TCP loopback writes reads half close and EOF":
     let listener = try listen("127.0.0.1:0")
-    var client = try connect(listener.address(), 2.seconds()).wait()
+    var client = try connect(listener.address(), timeout: 2.seconds()).wait()
     var server = try listener.accept(2.seconds()).wait()
     try client.output.write("hello".to_bytes())
     try client.output.flush()
@@ -57,7 +53,7 @@ test "TCP loopback writes reads half close and EOF":
 
 test "closing the input leaves the output open and closing both ends the connection":
     let listener = try listen("127.0.0.1:0")
-    var client = try connect(listener.address(), 2.seconds()).wait()
+    var client = try connect(listener.address(), timeout: 2.seconds()).wait()
     var server = try listener.accept(2.seconds()).wait()
 
     // Closing only the input does not end the stream the peer reads.
@@ -75,7 +71,7 @@ test "closing the input leaves the output open and closing both ends the connect
 test "host names resolve whatever their case":
     let listener = try listen("127.0.0.1:0")
     let port = listener.address().split(":").last().get("")
-    let client = try connect("LocalHost:{port}", 2.seconds()).wait()
+    let client = try connect("LocalHost:{port}", timeout: 2.seconds()).wait()
     let server = try listener.accept(2.seconds()).wait()
     try expect_equal(server.info.peer_address, client.info.local_address)
 
@@ -85,7 +81,7 @@ test "an empty Unix socket path is invalid input":
         Error("network: invalid input", kind: "EINVAL")
     )
     try expect_equal(
-        try expect_error(connect_unix("", 1.seconds()).wait()),
+        try expect_error(connect_unix("", timeout: 1.seconds()).wait()),
         Error("network: invalid input", kind: "EINVAL")
     )
 
@@ -116,7 +112,9 @@ test "network restriction denies admission and close rejects acquisitions":
         (
             (
                 try expect_error(
-                    closing.connect("127.0.0.1:1", 1.seconds())
+                    closing.connect(
+                        "127.0.0.1:1", timeout: 1.seconds()
+                    )
                 )
             ) != Error("network: resource is closed", kind: "EBADF")
         )
@@ -149,7 +147,7 @@ test "a promise accepts on a listener it owns":
     let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     let a = promise(fn: ok(accept_one(listener)))
-    var client = try connect(address, 2.seconds()).wait()
+    var client = try connect(address, timeout: 2.seconds()).wait()
     try expect_equal(try a.wait(), 1)
     try client.close()
 
@@ -166,7 +164,7 @@ test "a promise reads a connection it owns":
     let listener = try listen("127.0.0.1:0")
     let address = listener.address()
     let a = promise(fn: ok(accept_and_read(listener)))
-    var client = try connect(address, 2.seconds()).wait()
+    var client = try connect(address, timeout: 2.seconds()).wait()
     try client.output.write("xy".to_bytes())
     try client.output.flush()
     try expect_equal(try a.wait(), 1)
@@ -195,7 +193,7 @@ fn answer_mx(var served: DatagramSocket) Int!:
     return ok(1)
 
 test "resolve returns typed DNS records from the configured resolver":
-    let one = try resolve_dns("127.0.0.1", DnsKind.A, none, 2.seconds())
+    let one = try resolve_dns("127.0.0.1", DnsKind.A, DnsOptions(timeout: 2.seconds()))
     try expect_equal(one.length(), 1)
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
@@ -203,7 +201,9 @@ test "resolve returns typed DNS records from the configured resolver":
     let server = try bind_datagram("127.0.0.1:0")
     let derived = try with_resolver(server.address.clone())
     let asking = promise(
-        fn: derived.resolve("example.test", DnsKind.MX, none, 2.seconds())
+        fn: derived.resolve(
+            "example.test", DnsKind.MX, DnsOptions(timeout: 2.seconds())
+        )
     )
     var answering = server
     let answered = try answer_mx(var answering)
@@ -218,7 +218,7 @@ test "an empty host listens on every interface, with or without IPv6":
     var listener = try listen(":0")
     let parts = listener.address().split(":")
     let port = parts[parts.length() - 1]
-    var client = try connect("127.0.0.1:{port}", 2.seconds()).wait()
+    var client = try connect("127.0.0.1:{port}", timeout: 2.seconds()).wait()
     var server = try listener.accept(2.seconds()).wait()
     try client.output.write("hi".to_bytes())
     try client.output.flush()

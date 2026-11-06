@@ -1,7 +1,7 @@
 # ms-std-net ABI
 
-Native implementations of `@std/net/net.ms`, `@std/net/net.ms`, `@std/net/http.ms` and
-`@std/net/net.ms` for the Rust pipeline. The general rules are those of
+Native implementations of `@std/net/net.ms`, `@std/net/ip.ms`, `@std/net/tls.ms`, `@std/net/websocket.ms`, `@std/net/http.ms` and
+`@std/net/url.ms` for the Rust pipeline. The general rules are those of
 [`crates/ms-rt/ABI.md`](../ms-rt/ABI.md); this file adds what is specific to these
 modules. Behavior follows the standard-library contract in `stdlib/`. `@std/net/sse.ms` is written in Manuscript and
 has no natives.
@@ -111,7 +111,6 @@ Behavior notes (same as Go unless stated):
 ## tls
 
 ```text
-msstd_net_network_connect_tls(net, address, server_name, has_timeout, timeout, out, err) -> u8
 msstd_net_network_connect_tls_config(net, address, opts: *const TlsOptionsWire, has_timeout, timeout, out, err) -> u8
 msstd_net_network_listen_tls(net, address, opts: *const TlsOptionsWire, has_handshake_timeout, handshake_timeout, out, err) -> u8
 msstd_net_connection_tls_info(c, out: *mut TlsInfoWire) -> u8          // TLS status group

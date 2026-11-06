@@ -15,7 +15,7 @@ fn ok_route(request: HttpRequest) HttpResponse:
 
 test "serve caps the request header block":
     let server = serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | try expect_ok
-    var client = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     let filler = "a".repeat(2000000) | try expect_ok
     let head = "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
 
@@ -33,13 +33,13 @@ test "serve timeout closes idle connections":
         address: "127.0.0.1:0", handler: buffered(handler),
         options: HttpServerOptions(timeout: 300.milliseconds())
     ) | try expect_ok
-    var silent = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var silent = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     let closed = recv(var silent, 3.seconds()) | try expect_ok
     if let _data = closed: return error(Error("silent connection was answered"))
 
     try silent.close()
 
-    var reused = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var reused = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     send(var reused, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | try expect_ok
 
     let first = recv(var reused, 2.seconds()) | try expect_ok

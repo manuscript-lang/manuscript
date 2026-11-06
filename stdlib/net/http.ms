@@ -11,8 +11,8 @@ import (
 import stringify from "@std/data/json.ms"
 import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
-import TlsOptions from "@std/net/net.ms"
-import WebSocket, RawWebSocket, web_socket_from from "@std/net/net.ms"
+import TlsOptions from "@std/net/tls.ms"
+import NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms"
 import (
     msstd_http_client_close,
     msstd_http_headers_append,
@@ -269,7 +269,7 @@ export interface HttpExchange:
         allowed_origins: List[String],
         subprotocols: List[String],
         max_message_bytes: Int?
-    ) RawWebSocket!
+    ) NativeWebSocket!
     // Writes one chunk of the response body and flushes it.
     // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
     var fn write(data: String) Unit!

@@ -8,18 +8,10 @@ import (
     verify_certificates,
     CertificateInfo,
     TlsOptions
-) from "@std/net/net.ms"
+) from "@std/net/tls.ms"
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
 import Bytes from "@std/bytes.ms"
-import (
-    connect,
-    connect_tls,
-    connect_tls_config,
-    http_client,
-    listen,
-    listen_tls,
-    serve
-) from "@std/net/net.ms"
+import connect, http_client, listen, listen_tls, serve from "@std/net/net.ms"
 import timestamp from "@std/time.ms"
 import promise, wait_all from "@std/concurrency/promise.ms"
 import Listener, Connection from "@std/net/net.ms"
@@ -180,7 +172,7 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     let listener = try listen_tls("127.0.0.1:0", server_tls, 3.seconds())
     let address = listener.address()
     let served = promise(fn: ok(serve_one_tls(listener)))
-    var client = try connect_tls_config(address.clone(), client_tls, 3.seconds()).wait()
+    var client = try connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()
     try send(var client, "ping")
     try expect_equal((try recv(var client, 3.seconds())).get(), "pong".to_bytes())
 
@@ -207,11 +199,14 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     let address = listener.address()
     let served = promise(fn: ok(serve_one_tls(listener)))
     let _failure = try expect_error(
-        connect_tls(address.clone(), "stdlib.test", 3.seconds()).wait()
+        connect(
+            address.clone(), tls: TlsOptions(server_name: "stdlib.test"),
+            timeout: 3.seconds()
+        ).wait()
     )
     let _served = try wait_all([served])
     let plain = try listen("127.0.0.1:0")
-    var client = try connect(plain.address(), 2.seconds()).wait()
+    var client = try connect(plain.address(), timeout: 2.seconds()).wait()
     try expect_false(client.info.tls_info().is_ok())
 
 fn count_until_eof(listener: Listener) Int:
@@ -246,7 +241,7 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
     let listener = try listen_tls("127.0.0.1:0", server_tls, 5.seconds())
     let address = listener.address()
     let served = promise(fn: ok(count_until_eof(listener)))
-    var client = try connect_tls_config(address.clone(), client_tls, 5.seconds()).wait()
+    var client = try connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()
     try send(var client, "y".repeat(20000000).get())
 
     // No read first: the server's post-handshake bytes must not reset the connection.

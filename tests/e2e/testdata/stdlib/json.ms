@@ -15,7 +15,7 @@ import (
     JsonEncode
 ) from "@std/data/json.ms"
 import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms"
-import Url from "@std/net/net.ms"
+import Url from "@std/net/url.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
 import Data from "@std/core.ms"

@@ -7,7 +7,7 @@ import sleep from "@std/time.ms"
 // whole process dies with the signal instead.
 test "writing to a closed connection returns an error":
     let listener = listen("127.0.0.1:0") | try expect_ok
-    var client = connect(listener.address(), 2.seconds()).wait() | try expect_ok
+    var client = connect(listener.address(), timeout: 2.seconds()).wait() | try expect_ok
     var accepted = listener.accept(2.seconds()).wait() | try expect_ok
     try client.close()
 

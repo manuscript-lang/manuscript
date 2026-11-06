@@ -27,7 +27,7 @@ test "serve ends a connection that trickles its request head":
         address: "127.0.0.1:0", handler: buffered(ok_route),
         options: HttpServerOptions(timeout: 400.milliseconds())
     ) | try expect_ok
-    var client = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     send(var client, "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ") | try expect_ok
 
     // One byte every 100 ms never completes the head; the budget still runs out.
@@ -55,7 +55,7 @@ test "close cancels a handler that outlives the grace period":
         address: "127.0.0.1:0", handler: buffered(slow_route),
         options: HttpServerOptions(grace: 200.milliseconds())
     ) | try expect_ok
-    var client = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | try expect_ok
 
     let _ = sleep(100.milliseconds()).wait()
@@ -95,8 +95,8 @@ test "serve answers requests while handlers read and write files":
         return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
 
     var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | try expect_ok
-    var a = connect(server.address(), 2.seconds()).wait() | try expect_ok
-    var b = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var a = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
+    var b = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     send(var a, "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
     send(var b, "GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
     try expect_file_reply(var a)
@@ -112,7 +112,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
         address: "127.0.0.1:0", handler: oversized,
         options: HttpServerOptions(max_response_bytes: 100)
     ) | try expect_ok
-    var client = connect(server.address(), 2.seconds()).wait() | try expect_ok
+    var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
     send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
 
     let reply_bytes = recv(var client, 3.seconds()) | try expect_ok
@@ -122,7 +122,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
     )
 
 fn raw_status(address: String, request: String) String!:
-    var client = connect(address, 2.seconds()).wait() | try expect_ok
+    var client = connect(address, timeout: 2.seconds()).wait() | try expect_ok
     send(var client, request) | try expect_ok
 
     let reply = recv(var client, 2.seconds()) | try expect_ok

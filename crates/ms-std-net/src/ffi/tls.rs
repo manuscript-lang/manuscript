@@ -1,4 +1,4 @@
-//! Natives for `@std/net/net.ms` and the TLS entry points of `@std/net/net.ms`.
+//! Natives for `@std/net/tls.ms` and the TLS entry points of `@std/net/net.ms`.
 
 use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
@@ -94,21 +94,6 @@ abi_record! {
 }
 
 native! {
-    /// `Network.connect_tls(address, server_name, timeout)`.
-    fn msstd_net_network_connect_tls(
-        net: ObjRef<NetH>,
-        address: &str,
-        server_name: &str,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<ConnH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let c = net.connect_tls(address, server_name, opt(*has_timeout, timeout));
-        out.write(Object(ConnH(report(c, &err)?)));
-        Ok(())
-    }
-
     /// `Network.connect_tls_config(address, options, timeout)`.
     fn msstd_net_network_connect_tls_config(
         net: ObjRef<NetH>,

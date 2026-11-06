@@ -3,7 +3,7 @@
 // conform: origin=documentation/learn/common-tasks.md:240
 import arguments from "@std/os/env.ms"
 import HttpMethod, headers from "@std/net/http.ms"
-import request from "@std/net/net.ms"
+import RequestOptions, request from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
@@ -11,7 +11,8 @@ fn run() Result[Unit, Error]:
         Error("HTTP: invalid input", kind: "EINVAL")
     )
     let response = try request(
-        HttpMethod.Get, url, headers(), "", max_response_bytes: 1048576
+        HttpMethod.Get, url,
+        options: RequestOptions(headers: headers(), max_bytes: 1048576)
     )
     if response.metadata().status != 200:
         return error(Error("HTTP: invalid data", kind: "EBADMSG"))
