@@ -16,14 +16,9 @@ fn notes(var exchange: HttpExchange) Unit!:
     let file = try open("notes.txt", "r", 0)
     var chunks = try file.reader()
     try exchange.send_headers(200, headers())
-
-    while true:
-        let chunk = try chunks.read().wait()
-
-        if let bytes = chunk:
-            try exchange.write_bytes(bytes)
-        else:
-            return ok(unit)
+    for chunk in chunks.wait():
+        try exchange.write_bytes(try chunk)
+    return ok(unit)
 
 fn run() Unit!:
     let server = try serve(":8080", notes)
