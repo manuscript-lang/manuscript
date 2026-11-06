@@ -9,7 +9,7 @@ type Token:
 
 impl Closeable for Token:
     var fn close() Unit!:
-        try append_file(self.log, "close {self.id}\n")
+        try append_file(self.log, "close {self.id}\n").wait()
         return ok(unit)
 
 type Tokens:
@@ -43,7 +43,7 @@ impl Iterator[T!] for Forward[T]:
 fn first_body(log: String) Unit!:
     for item in Forward[Token](Tokens(log.clone())):
         let token = try item
-        try append_file(log, "body {token.id}\n")
+        try append_file(log, "body {token.id}\n").wait()
         break
 
     return ok(unit)

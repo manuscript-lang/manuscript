@@ -8,8 +8,7 @@ import (
     remove,
     stat,
     temporary,
-    write_file,
-    write_file_bytes
+    write_file
 ) from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
@@ -150,7 +149,7 @@ test "filesystem directory creation defaults to requiring an existing parent":
     (try rejected(generic_directory(child)))
     (list(temporary.path()) | try expect_ok).length() | try expect_equal(0)
     (create(child, recursive: true) | try expect_ok)
-    ((stat(child, follow_links: false) | try expect_ok).directory) | try expect_true
+    ((stat(child, follow_links: false) | try expect_ok).is_directory()) | try expect_true
     (generic_directory("{temporary.path()}/generic") | try expect_ok)
     (try rejected(create("")))
 
@@ -179,7 +178,7 @@ test "filesystem removal defaults to retaining nonempty trees":
 test "filesystem default preparation retains written argument order":
     let temporary = temporary("manuscript-default-order-") | try expect_ok
     var log: List[String] = []
-    write_file_bytes(
+    write_file(
         data: data_argument(var log),
         path: argument(var log, "path", "{temporary.path()}/ordered")
     ).wait() | try expect_ok

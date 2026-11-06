@@ -1,5 +1,6 @@
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
+    OpenMode,
     chmod,
     create_directory,
     list,
@@ -9,7 +10,6 @@ import (
     stat,
     temporary,
     write_atomic,
-    write_atomic_bytes,
     write_file
 ) from "@std/os/fs.ms"
 import milliseconds from "@std/time.ms"
@@ -24,25 +24,25 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
     let directory = try temporary("manuscript-atomic-")
     let root = directory.path()
     let path = "{root}/config.txt"
-    try write_atomic(path, "one")
+    try write_atomic(path, "one").wait()
     try expect_equal(try text_of(path), "one")
     try write_file("{root}/mode.txt", "x", false).wait()
     try chmod("{root}/mode.txt", 384)
 
-    let before = (try stat("{root}/mode.txt", true)).permissions
+    let before = (try stat("{root}/mode.txt")).permissions
     let expected = if os() == Os.Windows: 438 else: 384
     try expect_equal(before, expected)
-    try write_atomic("{root}/mode.txt", "y")
-    try expect_equal((try stat("{root}/mode.txt", true)).permissions, before)
+    try write_atomic("{root}/mode.txt", "y").wait()
+    try expect_equal((try stat("{root}/mode.txt")).permissions, before)
     try expect_equal(try text_of("{root}/mode.txt"), "y")
     try chmod("{root}/mode.txt", 438)
 
-    let writable = (try stat("{root}/mode.txt", true)).permissions
+    let writable = (try stat("{root}/mode.txt")).permissions
     try expect_equal(writable, 438)
-    try write_atomic("{root}/mode.txt", "z")
-    try expect_equal((try stat("{root}/mode.txt", true)).permissions, writable)
+    try write_atomic("{root}/mode.txt", "z").wait()
+    try expect_equal((try stat("{root}/mode.txt")).permissions, writable)
     try expect_equal(try text_of("{root}/mode.txt"), "z")
-    try write_atomic_bytes(path, "two".to_bytes())
+    try write_atomic(path, "two".to_bytes()).wait()
     try expect_equal(try text_of(path), "two")
 
     let names = (try list(root, none)).map(fn e: e.name)
@@ -50,7 +50,7 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
 
 test "write_atomic fails without touching the target when the directory is missing":
     let directory = try temporary("manuscript-atomic-")
-    let outcome = write_atomic("{directory.path()}/missing/file.txt", "x")
+    let outcome = write_atomic("{directory.path()}/missing/file.txt", "x").wait()
     try expect_true(outcome.is_error())
 
 test "advisory locks exclude other handles until unlocked or closed":
@@ -58,8 +58,8 @@ test "advisory locks exclude other handles until unlocked or closed":
     let path = "{directory.path()}/lock"
     try write_file(path, "", false).wait()
 
-    var first = try open(path, "r", 0)
-    var second = try open(path, "r", 0)
+    var first = try open(path, OpenMode.Read)
+    var second = try open(path, OpenMode.Read)
     try expect_true(try first.try_lock(true))
     try expect_false(try second.try_lock(true))
     try expect_false(try second.try_lock(false))
@@ -67,7 +67,7 @@ test "advisory locks exclude other handles until unlocked or closed":
     try first.unlock()
     try expect_true(try second.try_lock(false))
 
-    var third = try open(path, "r", 0)
+    var third = try open(path, OpenMode.Read)
     try expect_true(try third.try_lock(false))
     try expect_false(try third.try_lock(true))
     try second.close()
@@ -81,7 +81,7 @@ test "move renames files and trees":
     try write_file("{root}/tree/sub/a.txt", "a", false).wait()
     try move("{root}/tree", "{root}/moved")
     try expect_equal(try text_of("{root}/moved/sub/a.txt"), "a")
-    try expect_true(stat("{root}/tree", false).is_error())
+    try expect_true(stat("{root}/tree", follow_links: false).is_error())
     try write_file("{root}/f.txt", "f", false).wait()
     try move("{root}/f.txt", "{root}/g.txt")
     try expect_equal(try text_of("{root}/g.txt"), "f")

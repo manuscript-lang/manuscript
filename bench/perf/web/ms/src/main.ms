@@ -1,6 +1,6 @@
 // Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on one of that many scheduler threads. The Go server in ../go answers the same requests.
 import Bytes from "@std/bytes.ms"
-import read_file, write_file_bytes from "@std/os/fs.ms"
+import read_file, write_file from "@std/os/fs.ms"
 import (
     HttpServerOptions,
     headers,
@@ -88,7 +88,7 @@ fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
     return reply(500, "lookup failed\n")
 
 fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
-    try write_file_bytes(path, payload, replace: true).wait()
+    try write_file(path, payload, replace: true).wait()
     return ok(try read_file(path).wait())
 
 // The benchmark endpoints.

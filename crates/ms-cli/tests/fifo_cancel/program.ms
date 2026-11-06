@@ -1,4 +1,4 @@
-import open, read_file from "@std/os/fs.ms"
+import OpenMode, OpenOptions, open, read_file from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
@@ -12,7 +12,7 @@ fn read_whole(path: String) Int:
     return -1
 
 fn open_then_read(path: String) Int:
-    let opened = open(path, "r", 420)
+    let opened = open(path, OpenMode.Read, OpenOptions(permissions: 420))
 
     if var file = opened:
         let _data = file.read_file()
@@ -22,7 +22,7 @@ fn open_then_read(path: String) Int:
     return -1
 
 fn open_io_then_read(path: String) Int:
-    let opened = open(path, "r", 420)
+    let opened = open(path, OpenMode.Read, OpenOptions(permissions: 420))
 
     if var file = opened:
         if var input = file.reader():

@@ -15,7 +15,7 @@ import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn read_head(path: String) Bytes?!:
-    let file = try open(path, flags: "r", mode: 0)
+    let file = try open(path)
     return file.read(max_bytes: 4096)
 ```
 
@@ -42,7 +42,7 @@ A binding is closed unless something takes the resource from it. Returning it, p
 To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `try` or `let _ =`.
 
 ```manuscript
-var file = try open(path, flags: "r", mode: 0)
+var file = try open(path)
 let head = try file.read_lines(max_lines: 1)
 let _ = file.close()
 slow_work(head)

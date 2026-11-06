@@ -1,4 +1,4 @@
-import open, temporary, write_file from "@std/os/fs.ms"
+import OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms"
 import lines, collect, from_list, from_bytes from "@std/io/streams.ms"
 import expect_equal from "@std/test/test.ms"
 import memory from "./support/streams.ms"
@@ -10,7 +10,7 @@ test "an unterminated carriage return remains line content":
     for text in ["\r", "tail\r", "tail\r\r"]:
         try write_file(path, text, replace: true).wait()
 
-        let file = try open(path, "r", 384)
+        let file = try open(path, OpenMode.Read, OpenOptions(permissions: 384))
         let found = try collect(lines(try file.reader()), none)
         try expect_equal(found, [text])
 
@@ -23,7 +23,7 @@ test "file and memory line readers agree on endings and byte limits":
         for limit in limits:
             try write_file(path, text, replace: true).wait()
 
-            let file = try open(path, "r", 384)
+            let file = try open(path, OpenMode.Read, OpenOptions(permissions: 384))
             let actual = collect(lines(try file.reader(), limit), none)
             try expect_equal(actual, collect(lines(memory(text), limit), none))
 

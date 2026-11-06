@@ -93,7 +93,7 @@ fn run_one(
 
     if h.name() == "oracle":
         let src = reference_for(ch, lang)
-        let size = stat(src, true).to_optional()
+        let size = stat(src).to_optional()
         create_directory(
             "{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
             recursive: true
@@ -113,7 +113,7 @@ fn run_one(
     var g = grade(ch, lang, ws)
     let sol = "{ws}/{lang.solution}"
 
-    if stat(sol, true).is_ok() and h.name() != "oracle":
+    if stat(sol).is_ok() and h.name() != "oracle":
         let copied = "{root()}/results/sources/{run_id}{lang.suffix()}"
         create_directory("{root()}/results/sources", recursive: true).get()
         copy(sol, copied, CopyOptions(replace: true)).get()
@@ -125,7 +125,7 @@ fn run_one(
         agent.usage.clone(), agent.wall_s, agent.exit_code, agent.timed_out, log.builds,
         log.first_build_ok, log.checks, log.examples_pass, peeked, g.clone(), g.pass
     )
-    append_file(out_file, dumps_data(rec, 0) + "\n").get()
+    append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
     if keep:
         stdout().write("  workspace kept: {ws}\n").get()
@@ -190,7 +190,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 
     for ch in chs:
         for lang in langs:
-            if oracle and not stat(reference_for(ch, lang), true).is_ok():
+            if oracle and not stat(reference_for(ch, lang)).is_ok():
                 (
                     stdout()
                     .write(

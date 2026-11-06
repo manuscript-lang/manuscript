@@ -60,8 +60,8 @@ export fn which(name: String) String?:
     return none
 
 fn runnable(path: String, windows: Bool) Bool:
-    let info = stat(path, follow_links: true)
-    if info.is_error() or not info.get().regular: return false
+    let info = stat(path)
+    if info.is_error() or not info.get().is_file(): return false
     if windows: return true
 
     return access(path, 1).is_ok()

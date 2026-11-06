@@ -228,6 +228,18 @@ export fn owned_promise[A, U](args: A, work: fn(A) U!) Promise[U]:
     )
     return Promise[U](id: id)
 
+// Runs `work` as a promise that owns everything it captured, so it borrows nothing from the caller and may outlive
+// the caller's values. Bind owned copies first (`let owned = path.clone()`) and capture those. Like `owned_promise`, it
+// is for operations that only wait (on a file, a socket, a child process), so its task stays on the calling thread.
+export fn owned_task[U](work: fn() U!) Promise[U]:
+    let id = msrt_promise_new()
+    msrt_promise_start_here(id, owned_task_job[U](id, work))
+    return Promise[U](id: id)
+
+// The entry of an owning task: a closure that owns `work`, since a closure that is returned owns its captures.
+fn owned_task_job[U](id: Int, work: fn() U!) fn() Unit:
+    return fn: complete(id, work())
+
 // The entry of an owning promise: a closure that owns `owned`, since a closure that is returned owns its captures.
 fn owned_job[A, U](id: Int, owned: Owned[A, U]) fn() Unit:
     return fn: complete(id, owned.run())

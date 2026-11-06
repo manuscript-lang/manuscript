@@ -23,7 +23,7 @@ fn churn(root: String, name: String) Int:
     let written = write_file(path, name).wait()
     if written.is_error(): print("write_file: {written.err()}")
 
-    let appended = append_file(path, "!")
+    let appended = append_file(path, "!").wait()
     if appended.is_error(): print("append_file: {appended.err()}")
 
     let renamed = rename(path, "{dir}/b.txt")

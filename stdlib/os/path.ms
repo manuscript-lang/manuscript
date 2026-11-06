@@ -12,6 +12,7 @@ let name = basename(config)
 */
 import msstd_path_matches_glob from "@std/internal/path.ms"
 import Os, os from "@std/os/system.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 
 // Parsed path components using the familiar root, directory, base, extension, and name fields.
 export type PathParts:
@@ -137,14 +138,14 @@ fn trim_end_slashes(text: String) String:
     if not text.ends_with("/"): return text.clone()
 
     var end = text.length()
-    while end > 0 and text.get(end - 1, none) == "/": end -= 1
+    while end > 0 and text.scalar_at(end - 1, none) == 47: end -= 1
     return text.take(end)
 
 // Removes every leading slash.
 fn trim_start_slashes(text: String) String:
     var start = 0
     let count = text.length()
-    while start < count and text.get(start, none) == "/": start += 1
+    while start < count and text.scalar_at(start, none) == 47: start += 1
     return text.drop(start)
 
 // The root of an already slash-normalized path: a Windows drive or UNC share, `/`, or empty.
@@ -152,8 +153,12 @@ fn root_of(windows: Bool, text: String) String:
     if windows:
         let count = text.length()
 
-        if count >= 2 and is_letter(text.get(0, none)) and text.get(1, none) == ":":
-            if count > 2 and text.get(2, none) == "/": return text.take(3)
+        if (
+            count >= 2
+            and is_letter(text.get(0, none))
+            and text.scalar_at(1, none) == 58
+        ):
+            if count > 2 and text.scalar_at(2, none) == 47: return text.take(3)
 
             return text.take(2)
 
@@ -169,13 +174,13 @@ fn root_of(windows: Bool, text: String) String:
 fn unc_root(text: String) String:
     let count = text.length()
     var start = 2
-    while start < count and text.get(start, none) == "/": start += 1
+    while start < count and text.scalar_at(start, none) == 47: start += 1
 
     let server_end = text.drop(start).index_of("/")
     if server_end.is_none(): return ""
 
     var share_start = start + server_end.get(0) + 1
-    while share_start < count and text.get(share_start, none) == "/": share_start += 1
+    while share_start < count and text.scalar_at(share_start, none) == 47: share_start += 1
     if share_start >= count: return ""
 
     let share_end = text.drop(share_start).index_of("/")
@@ -190,41 +195,135 @@ fn is_absolute_in(windows: Bool, text: String) Bool:
     let root = root_in(windows, text)
     return root.ends_with("/") or (windows and root.starts_with("//"))
 
+// A segment of the bytes being normalized, packed as `start * 2^32 + end`.
+fn span(start: Int, end: Int) Int:
+    return start * 4294967296 + end
+
+fn span_start(packed: Int) Int:
+    return packed / 4294967296
+
+fn span_end(packed: Int) Int:
+    return packed % 4294967296
+
+// True when the segment is `..`.
+fn span_is_parent(data: Bytes, packed: Int) Bool:
+    let start = span_start(packed)
+    return (
+        span_end(packed) - start == 2
+        and data.get(start, none).to_int() == 46
+        and data.get(start + 1, none).to_int() == 46
+    )
+
 fn normalize_in(windows: Bool, raw: String) String:
-    let text = slash(windows, raw)
+    if windows: return normalize_core(true, slash(true, raw))
+
+    return normalize_core(false, raw)
+
+// A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment and no trailing separator
+// (the root alone is clean). One scan, so already-clean paths skip the span list and the rebuild.
+fn is_clean(data: Bytes) Bool:
+    let count = data.length()
+    if count == 1: return data.get(0, none).to_int() == 47
+
+    var start = if data.get(0, none).to_int() == 47: 1 else: 0
+    var at = start
+
+    while at <= count:
+        if at == count or data.get(at, none).to_int() == 47:
+            let size = at - start
+            if size == 0: return false
+            if size == 1 and data.get(start, none).to_int() == 46: return false
+            if (
+                size == 2
+                and data.get(start, none).to_int() == 46
+                and data.get(start + 1, none).to_int() == 46
+            ): return false
+
+            start = at + 1
+
+        at += 1
+
+    return true
+
+// `text` already reads backslashes as slashes under Windows rules.
+fn normalize_core(windows: Bool, text: String) String:
     if text.is_empty(): return "."
 
-    var root = root_of(windows, text)
-    let tail = text.drop(root.length())
-    if windows and root.starts_with("//") and not root.ends_with("/"): root = "{root}/"
+    let root = root_of(windows, text)
+    let root_bytes = root.byte_length()
 
-    var stack: List[String] = []
+    // A UNC root without a trailing separator gets one in the result.
+    let unc_open = windows and root.starts_with("//") and not root.ends_with("/")
+    let root_ends_slash = unc_open or root.ends_with("/")
 
-    for part in tail.split("/", none):
-        if part == "" or part == ".": continue
+    // One pass over the bytes after the root: segments are spans into `data`, never copied until written.
+    let data = text.to_bytes()
+    let count = data.length()
+    if not windows and is_clean(data): return text.clone()
 
-        if part != "..":
-            stack.append(part.clone())
-        else if stack.length() > 0 and stack[stack.length() - 1] != "..":
-            stack.pop()
-        else if not root.ends_with("/"):
-            stack.append(part.clone())
+    var stack: List[Int] = []
+    var start = root_bytes
+    var at = root_bytes
 
-    var value = "{root}{stack.join("/")}"
-    if value.is_empty(): value = "."
-    if text.ends_with("/") and not value.ends_with("/"): value = "{value}/"
-    if windows and root.length() == 2 and stack.is_empty(): value = "{root}."
+    while at <= count:
+        if at == count or data.get(at, none).to_int() == 47:
+            let size = at - start
+            let dot = size == 1 and data.get(start, none).to_int() == 46
+
+            if size == 0 or dot:
+                start = at + 1
+            else if (
+                size == 2
+                and data.get(start, none).to_int() == 46
+                and data.get(start + 1, none).to_int() == 46
+            ):
+                if (
+                    stack.length() > 0
+                    and not span_is_parent(
+                        data, stack[stack.length() - 1]
+                    )
+                ):
+                    stack.pop()
+                else if not root_ends_slash:
+                    stack.append(span(start, at))
+
+                start = at + 1
+            else:
+                stack.append(span(start, at))
+                start = at + 1
+
+        at += 1
+
+    var out = BytesBuilder()
+    out.append_bytes(data.view(0, root_bytes))
+    if unc_open: out.append(47)
+
+    for index in 0..stack.length():
+        if index > 0: out.append(47)
+
+        let packed = stack[index]
+        out.append_bytes(data.view(span_start(packed), span_end(packed)))
+
+    if root.is_empty() and stack.is_empty(): out.append(46)
+
+    // A trailing separator survives unless the result already ends with one.
+    if text.ends_with("/") and not (stack.is_empty() and root_ends_slash): out.append(
+        47
+    )
+
+    var value = out.build().decode_utf8().get("")
+    if not windows: return value
+
+    if root.length() == 2 and stack.is_empty(): value = "{root}."
 
     // A relative first component shaped like a drive ("./C:") must not become a drive-relative path
     // once the leading "." is removed.
-    if (
-        windows
-        and root.is_empty()
-        and stack.length() > 0
-        and root_of(windows, stack[0]) != ""
-    ):
-        value = "./{value}"
-    return native(windows, value)
+    if root.is_empty() and stack.length() > 0:
+        let first = stack[0]
+        let head = data.view(span_start(first), span_end(first)).decode_utf8().get("")
+        if root_of(true, head) != "": value = "./{value}"
+
+    return native(true, value)
 
 // The final extension of a basename that holds no slash: a leading dot alone and `..` have none.
 fn extension_of_base(base: String) String:
@@ -237,36 +336,65 @@ fn extension_of_base(base: String) String:
     return base.drop(at)
 
 fn parse_in(windows: Bool, original: String) PathParts:
-    let text = slash(windows, original)
-    let root = root_of(windows, text)
-    let trimmed = trim_end_slashes(text)
-    let root_original = original.take(root.length())
-    var base = ""
-    var directory = ""
+    if windows: return parse_core(true, slash(true, original), original)
 
-    if trimmed.length() > trim_end_slashes(root).length():
-        let at = trimmed.last_index_of("/")
+    return parse_core(false, original, original)
 
-        if let cut = at:
-            base = trimmed.drop(cut + 1)
-            directory = original.take(cut)
-        else:
-            base = trimmed.clone()
+// Splits by byte positions, so every field is one view of `original` decoded; `text` is `original` with
+// backslashes read as slashes (the same positions).
+fn parse_core(windows: Bool, text: String, original: String) PathParts:
+    let root_len = root_of(windows, text).byte_length()
+    let data = text.to_bytes()
+    let source = original.to_bytes()
+    var end = data.length()
+    while end > 0 and data.get(end - 1, none).to_int() == 47: end -= 1
 
-        if windows and root.length() == 2 and at.is_none():
-            base = trimmed.drop(2)
-            directory = root_original.clone()
+    var root_core = root_len
+    while root_core > 0 and data.get(root_core - 1, none).to_int() == 47: root_core -= 1
 
-        if directory.length() < root.length(): directory = root_original.clone()
+    var base_start = 0
+    var base_end = 0
+    var directory_end = 0
 
-    if base.is_empty() and not root.is_empty(): directory = root_original.clone()
+    if end > root_core:
+        var at = end - 1
+        while at >= 0 and data.get(at, none).to_int() != 47: at -= 1
+        base_end = end
 
-    let extension = extension_of_base(base)
-    let name = base.take(base.length() - extension.length())
-    return PathParts(
-        root: root_original.clone(), directory: directory, base: base,
-        extension: extension, name: name
+        if at >= 0:
+            base_start = at + 1
+            directory_end = at
+        else if windows and root_len == 2:
+            base_start = 2
+            directory_end = root_len
+
+        if directory_end < root_len: directory_end = root_len
+
+    if base_end == 0 and root_len > 0: directory_end = root_len
+
+    // The extension starts at the last dot of the base, unless that dot is the base's first byte or the base is `..`.
+    var dot = base_end - 1
+    while dot >= base_start and data.get(dot, none).to_int() != 46: dot -= 1
+
+    let is_parent = (
+        base_end - base_start == 2
+        and dot == base_start + 1
+        and data.get(base_start, none).to_int() == 46
     )
+    let extension_start = if dot < base_start or dot == base_start or is_parent: base_end else: dot
+    return PathParts(
+        root: text_of(source, 0, root_len),
+        directory: text_of(source, 0, directory_end),
+        base: text_of(source, base_start, base_end),
+        extension: text_of(source, extension_start, base_end),
+        name: text_of(source, base_start, extension_start)
+    )
+
+// The text of bytes [start, end) of `data`.
+fn text_of(data: Bytes, start: Int, end: Int) String:
+    if start >= end: return ""
+
+    return data.view(start, end).decode_utf8().get("")
 
 fn extension_in(windows: Bool, text: String) String:
     if windows: return parse_in(true, text).extension
@@ -355,7 +483,7 @@ fn basename_inner(windows: Bool, raw: String, suffix: String, strip: Bool) Strin
     if (
         windows
         and text.length() >= 2
-        and text.get(1, none) == ":"
+        and text.scalar_at(1, none) == 58
         and is_letter(text.get(0, none))
     ):
         prefix = 2
@@ -389,15 +517,25 @@ fn dirname_in(windows: Bool, original: String) String:
     return original.take(at.get(0))
 
 fn join_in(windows: Bool, items: List[String]) String:
-    let parts = items.filter(fn part: not part.is_empty())
-    var joined = parts.join("/")
+    var out = BytesBuilder()
+    var first = ""
+    var count = 0
+
+    for part in items:
+        if part.is_empty(): continue
+
+        if windows and count == 0: first = slash(true, part)
+        if count > 0: out.append(47)
+        out.append_bytes(part.to_bytes())
+        count += 1
+
+    var joined = out.build().decode_utf8().get("")
 
     if windows and slash(true, joined).starts_with("//"):
-        let first = slash(true, parts[0])
         let unc = (
             first.length() > 2
             and first.starts_with("//")
-            and first.get(2, none) != "/"
+            and first.scalar_at(2, none) != 47
         )
         if not unc: joined = "/{trim_start_slashes(slash(true, joined))}"
 

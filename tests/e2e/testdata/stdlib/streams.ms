@@ -1,6 +1,6 @@
 import from_bytes, from_list, map, collect, read_all, copy from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
-import open, read_file, temporary from "@std/os/fs.ms"
+import OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
@@ -9,7 +9,7 @@ fn upper(chunk: Bytes) Bytes:
 test "flows compose stream transforms":
     let temporary = temporary("manuscript-streams-") | try expect_ok
     let path = "{temporary.path()}/pipeline.bin"
-    var output = open(path: path, flags: "w", mode: 420) | try expect_ok
+    var output = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | try expect_ok
     let source = from_bytes("hello world".to_bytes(), 4)
     let copied = try copy(map(source, upper), try output.writer())
     try output.close()

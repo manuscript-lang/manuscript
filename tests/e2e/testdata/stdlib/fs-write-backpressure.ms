@@ -1,10 +1,10 @@
 import expect_equal, expect_ok from "@std/test/test.ms"
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import read_file, temporary, write_file_bytes from "@std/os/fs.ms"
+import read_file, temporary, write_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn write_one(path: String, data: Bytes) fn() Unit!:
-    return fn: write_file_bytes(path.clone(), data, replace: true).wait()
+    return fn: write_file(path.clone(), data, replace: true).wait()
 
 test "more large writes than pool slots all complete":
     let dir = temporary("manuscript-backpressure-") | try expect_ok

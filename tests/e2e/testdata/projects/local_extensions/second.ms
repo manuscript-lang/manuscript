@@ -54,7 +54,7 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _ = append_file(self.events, "20,")
+        let _ = append_file(self.events, "20,").wait()
         return ok(unit)
 
 fn leave(resource: Resource) Unit:

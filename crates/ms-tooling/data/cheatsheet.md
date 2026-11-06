@@ -18,7 +18,7 @@ impl Doc:
         return self.lines[best]
 
 fn load(path: String) Result[Doc, Error]:
-    let f = try open(path, flags: "r", mode: 0)
+    let f = try open(path)
     let lines = try f.read_lines(max_lines: 1000) // Int passes as Int?
     return ok(Doc(lines)) // moves lines
 

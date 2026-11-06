@@ -13,7 +13,7 @@ import serve from "@std/net/net.ms"
 import HttpExchange, headers from "@std/net/http.ms"
 
 fn notes(var exchange: HttpExchange) Unit!:
-    var chunks = try (try open("notes.txt", "r", 0)).reader()
+    var chunks = try (try open("notes.txt")).reader()
     try exchange.send_headers(200, headers())
     for chunk in chunks:
         try exchange.write_bytes(chunk)

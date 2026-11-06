@@ -13,7 +13,7 @@ impl Closeable for Failing:
     var fn close() Unit!:
         if not self.closed:
             self.closed = true
-            try append_file(self.log, "close {self.id}\n")
+            try append_file(self.log, "close {self.id}\n").wait()
             if self.fail:
                 return error(
                     Error(

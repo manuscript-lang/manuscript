@@ -15,7 +15,7 @@ impl Closeable for Latch:
         if self.open:
             self.open = false
 
-            let _ = append_file(self.log, "{self.id},")
+            let _ = append_file(self.log, "{self.id},").wait()
 
         return ok(unit)
 

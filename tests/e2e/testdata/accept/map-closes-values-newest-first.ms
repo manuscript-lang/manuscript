@@ -8,7 +8,7 @@ type Item:
 
 impl Closeable for Item:
     var fn close() Unit!:
-        let _ = append_file(self.log, "{self.id},")
+        let _ = append_file(self.log, "{self.id},").wait()
         return ok(unit)
 
 fn logged(path: String) String:

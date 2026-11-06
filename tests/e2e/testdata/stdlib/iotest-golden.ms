@@ -1,7 +1,14 @@
 import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import from_bytes, read_all from "@std/io/streams.ms"
-import open, read_file, temporary, write_file from "@std/os/fs.ms"
+import (
+    OpenMode,
+    OpenOptions,
+    open,
+    read_file,
+    temporary,
+    write_file
+) from "@std/os/fs.ms"
 import join from "@std/os/path.ms"
 import (
     expect_equal,
@@ -38,7 +45,7 @@ test "fail_after delivers a prefix and then fails":
 test "fail_writer_after writes the prefix that fits and then fails":
     let dir = try expect_ok(temporary("iotest-"))
     let path = join([dir.path(), "out.bin"])
-    let file = try expect_ok(open(path, "w", 420))
+    let file = try expect_ok(open(path, OpenMode.Write, OpenOptions(permissions: 420)))
     var out = fail_writer_after(
         try expect_ok(file.writer()), 3,
         Error("I/O: service unavailable", kind: "EAGAIN")
