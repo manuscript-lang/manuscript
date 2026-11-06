@@ -32,7 +32,7 @@ test "a wrong expectation fails the reader check":
 
 test "one_byte returns single bytes":
     var input = one_byte(source())
-    let chunk = try input.read().wait()
+    let chunk = try input.next()
     try expect_equal(chunk.get().length(), 1)
 
 test "fail_after delivers a prefix and then fails":

@@ -1,5 +1,5 @@
 import stdout from "@std/io/io.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 
 fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     if status == 0:

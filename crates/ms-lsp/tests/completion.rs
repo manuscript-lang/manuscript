@@ -6,7 +6,7 @@ use ms_lsp::text::{Position, Range};
 use ms_rt as _;
 use std::path::Path;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 #[test]
@@ -209,14 +209,14 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
             (
                 "base32_encode",
                 3,
-                "fn(Bytes, Bool, Bool) String — @std/data/encoding.ms",
+                "fn(Bytes, Base32Options) String — @std/data/encoding.ms",
                 Some("@std/data/encoding.ms"),
                 Some("data: ${1:data}"),
             ),
             (
                 "base32_decode",
                 3,
-                "fn(String, Bool, Bool, Int?) Result[Bytes, Error] — @std/data/encoding.ms",
+                "fn(String, Base32Options, Int?) Result[Bytes, Error] — @std/data/encoding.ms",
                 Some("@std/data/encoding.ms"),
                 Some("text: ${1:text}"),
             ),

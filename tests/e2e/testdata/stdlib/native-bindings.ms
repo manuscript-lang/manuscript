@@ -20,8 +20,9 @@ import (
     write_file
 ) from "@std/os/fs.ms"
 import join from "@std/os/path.ms"
-import milliseconds from "@std/os/time.ms"
+import milliseconds from "@std/time.ms"
 import ReadStream from "@std/io/io.ms"
+import within from "./support/conn.ms"
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
@@ -124,9 +125,7 @@ test "stat_filesystem describes the filesystem under a path":
 // Reads events until one has `path` and `kind`, or `tries` events passed.
 fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
     for attempt in 0..tries:
-        let next = try events.read().with(
-            options: PromiseOptions(timeout: 2.seconds())
-        ).wait()
+        let next = try within(var events, 2.seconds())
 
         if let event = next:
             if event.path == path and event.kind == kind: return ok(true)
@@ -201,8 +200,6 @@ test "recursive native watch sees a file in a new subdirectory":
     var seen = false
     for i in 0..8:
         if not seen:
-            if let e = try w.read().with(
-                options: PromiseOptions(timeout: 2.seconds())
-            ).wait():
+            if let e = try within(var w, 2.seconds()):
                 if e.path == join([r.clone(), "d", "f"]): seen = true
     try expect_true(seen)

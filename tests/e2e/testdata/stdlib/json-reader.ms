@@ -1,7 +1,7 @@
 import expect_equal, expect_false, fail from "@std/test/test.ms"
-import json_reader, stringify, JsonValue, JsonLimits from "@std/data/json.ms"
+import json_reader, stringify, JsonValue, JsonOptions from "@std/data/json.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -24,15 +24,15 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(data, size, 0))
+    return ReadStream[Bytes](Chunks(data, size, 0))
 
 // Reads every value as text, or the first error.
-fn decode(input: Bytes, size: Int, limits: JsonLimits? = none) List[String]!:
+fn decode(input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[String]!:
     var values = json_reader[JsonValue](chunked(input, size), limits)
     var out: List[String] = []
 
     while true:
-        let next = try values.read().wait()
+        let next = try values.next()
 
         if let item = next:
             out.append(try stringify(item))
@@ -58,7 +58,7 @@ test "typed values decode as parse does":
     var sum = 0
 
     while true:
-        let next = try numbers.read().wait()
+        let next = try numbers.next()
 
         if let n = next:
             sum += n
@@ -83,10 +83,12 @@ test "invalid UTF-8 inside a value is InvalidData":
     try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "per-value budgets report LimitExceeded":
-    try expect_equal((try decode("[1,2]".to_bytes(), 2, JsonLimits(5))), ["[1,2]"])
+    try expect_equal(
+        (try decode("[1,2]".to_bytes(), 2, JsonOptions(max_bytes: 5))), ["[1,2]"]
+    )
 
-    let wide = decode("[1,2,3]".to_bytes(), 2, JsonLimits(5))
+    let wide = decode("[1,2,3]".to_bytes(), 2, JsonOptions(max_bytes: 5))
     try expect_equal(wide.err().kind, "EOVERFLOW")
 
-    let deep = decode("[[[".to_bytes(), 2, JsonLimits(max_depth: 2))
+    let deep = decode("[[[".to_bytes(), 2, JsonOptions(max_depth: 2))
     try expect_equal(deep.err().kind, "EOVERFLOW")

@@ -13,7 +13,7 @@ fn run() Result[Unit, Error]:
         Error("filesystem: invalid data", kind: "EBADMSG")
     ) | try
     try stdout().write(text)
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():

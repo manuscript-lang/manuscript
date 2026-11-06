@@ -14,7 +14,7 @@ import (
     write_atomic,
     write_file
 ) from "@std/os/fs.ms"
-import stream from "@std/io/io.ms"
+import ReadStream from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 
 test "whole-file writes take text or bytes and complete through promises":
@@ -53,5 +53,5 @@ test "a directory is a stream source of entries and seek takes an origin":
     (try handle.seek(-1, Seek.End)) | try expect_equal(10)
 
     let entries = open_directory(root) | try expect_ok
-    let all = stream[DirectoryEntry](entries) | collect(none) | try expect_ok
+    let all = ReadStream[DirectoryEntry](entries) | collect(none) | try expect_ok
     all.length() | try expect_equal(2)

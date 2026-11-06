@@ -5,7 +5,7 @@ use ms_lsp::completion::completion_at;
 use ms_lsp::text::{Position, Range};
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::Workspace;
 
 #[test]

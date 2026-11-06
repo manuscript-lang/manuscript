@@ -11,4 +11,4 @@ Apply when: touching the lexer, the formatter, doc extraction, or any tool that 
 - A mechanical rewrite must be lexer-aware (text, interpolation, `r"""`); Rust string literals that hold `.ms` and extra extensions (`.src`, `.source`, `.expected`, `.ms.ref`) need their own pass.
 
 Evidence: [proposal](../../proposals/comment-syntax.md), [syntax tests](../../crates/ms-syntax/tests/comments.rs).
-Verify: `cargo test -p ms-syntax --test comments`, `make conform`, `make repo-check`.
+Verify: `cargo test -p ms-syntax --test it -- comments::`, `make conform`, `make repo-check`.

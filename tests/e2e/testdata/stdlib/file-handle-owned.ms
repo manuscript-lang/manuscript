@@ -14,7 +14,7 @@ test "a file handle binding is closed when its scope ends":
     try expect_true(write_file(path, "x", true).wait().is_ok())
 
     var view = view_of(path) | try expect_ok
-    try expect_true(view.read().wait().is_ok())
+    try expect_true(view.next().is_ok())
 
 test "closing a file handle by hand is allowed once more at scope end":
     let temporary = temporary("manuscript-owned-") | try expect_ok

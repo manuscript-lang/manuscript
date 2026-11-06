@@ -3,7 +3,7 @@
 import stdout from "@std/io/io.ms"
 import bind_datagram, connect, listen from "@std/net/net.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import nanoseconds from "@std/os/time.ms"
+import nanoseconds from "@std/time.ms"
 
 // `close` frees the socket, so its port can be bound again while the handle is still held and
 // after a cancelled `accept` or `read` ran its `with` cleanup.
@@ -18,12 +18,12 @@ fn accept_one(address: String) Int:
 
 fn read_one(address: String) Int:
     var client = connect(address, nanoseconds(2000000000)).wait().get()
-    let got = client.input.read().wait()
+    let got = client.input.next()
     return got.get(none).map(fn b: b.length()).get(-1)
 
 fn receive_one(address: String) Int:
     var socket = bind_datagram(address).get()
-    let got = socket.input.read().wait()
+    let got = socket.input.next()
     if got.is_ok():
         return 1
 

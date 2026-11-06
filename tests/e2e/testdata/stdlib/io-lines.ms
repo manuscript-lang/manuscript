@@ -25,7 +25,7 @@ test "an over-budget line fails the read after the lines before it":
     var failure: Error? = none
 
     while true:
-        let step = input.read().wait()
+        let step = input.next()
 
         if step.is_error():
             failure = step.err()
@@ -41,14 +41,14 @@ test "an over-budget line fails the read after the lines before it":
 
 test "a closed stream fails the first read with its error":
     var input = lines(closed_reader())
-    let step = input.read().wait()
+    let step = input.next()
     try expect_equal(step, error(Error("I/O: resource is closed", kind: "EBADF")))
 
 test "break and continue work in a stream loop":
     var seen: List[String] = []
 
-    for line in lines(memory("1\nskip\n3\n4\n")).wait():
-        let text = try line
+    for line in lines(memory("1\nskip\n3\n4\n")):
+        let text = line
         if text == "skip":
             continue
         if text == "4":

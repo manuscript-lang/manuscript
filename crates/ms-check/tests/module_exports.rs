@@ -1,6 +1,6 @@
 //! Imports expose declarations exported by the named module, not its lexical scope.
 
-use ms_check::types::n;
+use ms_check::api::types::n;
 use ms_check::{CheckOptions, ImportMap, Program};
 use ms_syntax::Phase;
 use std::sync::Arc;

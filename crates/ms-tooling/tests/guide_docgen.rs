@@ -397,7 +397,7 @@ fn inherent_methods_keep_public_names_and_real_contracts() {
     for (path, name, operation) in [
         ("@std/data/histogram.ms", "Histogram", "record"),
         ("@std/concurrency/promise.ms", "Promise", "wait"),
-        ("@std/io/io.ms", "ReadStream", "read"),
+        ("@std/io/io.ms", "ReadStream", "next"),
     ] {
         let module = modules.iter().find(|m| m.path == path).unwrap();
         let declaration = module.declarations.iter().find(|d| d.name == name).unwrap();
@@ -430,7 +430,7 @@ fn reference_navigation_follows_source_paths_and_preserves_old_routes() {
         let text = String::from_utf8_lossy(page);
         let title = path.rsplit('/').next().unwrap();
         assert!(text.contains(&format!("title = {title:?}")));
-        let old = ms_check::stdlib::module_stem(&module.path).replace('/', "-");
+        let old = ms_check::api::stdlib::module_stem(&module.path).replace('/', "-");
         if old != stem {
             assert!(text.contains(&format!(
                 "aliases = [\"/standard-library/reference/{old}/\"]"

@@ -12,7 +12,7 @@ Evidence: [range analysis](../../crates/ms-mir/src/opt/range.rs), [saved-length 
 Evidence: [integer conversion regression](../../tests/e2e/testdata/accept/int-float32-rounding.ms), [MIR conversion fixture](../../crates/ms-mir/tests/fixtures/int_to_float32.mir).
 Evidence: [backend settings and compile regression](../../crates/ms-clif/src/cg.rs), [profile options](../../crates/ms-clif/src/lib.rs).
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
-Verify: run `cargo test -p ms-mir --test opt_simplify`; preserve zero-divisor faults and the checked division overflow.
+Verify: run `cargo test -p ms-mir --test it -- opt_simplify::`; preserve zero-divisor faults and the checked division overflow.
 Verify: repeated checks across I/O and dominated blocks collapse; sibling checks, different operations, overflow and division faults keep their behavior.
 Verify: nested replacement loops eliminate redundant bounds checks; shrinking and conditional replacement still fault at an invalid index.
 Verify: run the source fixture in Debug and Release; both constant and variable conversions, both signs, and ties to even must agree.

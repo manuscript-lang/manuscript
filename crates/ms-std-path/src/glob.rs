@@ -282,18 +282,6 @@ impl Glob {
     }
 }
 
-/// Matching without up-front validation: a matching earlier alternative still succeeds even if
-/// a later one is malformed.
-pub fn matches_lenient(value: &str, pattern: &str) -> bool {
-    let Some(patterns) = expand_braces(pattern) else {
-        return false;
-    };
-    let parts: Vec<&str> = value.split('/').collect();
-    patterns
-        .iter()
-        .any(|alt| parse_segments(alt).is_some_and(|segments| match_segments(&parts, &segments)))
-}
-
 fn match_segments(value: &[&str], pattern: &[Segment]) -> bool {
     let n = value.len();
     let mut previous = vec![false; n + 1];

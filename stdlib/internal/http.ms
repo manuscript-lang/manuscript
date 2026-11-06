@@ -11,7 +11,7 @@ import (
     NativeResponseBody,
     RawResponse
 ) from "@std/net/http.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 
 export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
 

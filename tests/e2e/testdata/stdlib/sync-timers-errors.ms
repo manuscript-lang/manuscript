@@ -1,6 +1,6 @@
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 import wrap_error, join_errors from "@std/core.ms"
-import sleep, deadline_after, ticker, monotonic from "@std/os/time.ms"
+import sleep, deadline_after, ticker, monotonic from "@std/time.ms"
 
 test "wrap_error adds context and keeps the kind":
     let gone = Error("gone", kind: "ENOENT", details: {"path": "a.txt"})
@@ -32,7 +32,7 @@ test "deadline expires and ticker paces":
     var ticks = ticker(10.milliseconds())
 
     while count < 3:
-        let tick = try ticks.read().wait()
+        let tick = try ticks.next()
         try expect_true(tick.is_some())
         count += 1
 

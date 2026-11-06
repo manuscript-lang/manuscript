@@ -29,7 +29,7 @@ fn twice(n: Int) Result[Int, Error]:
 
 fn show(n: Int) Result[Unit, Error]:
     try stdout().write("{n}\n")
-    try stdout().flush().wait()
+    try stdout().flush()
     return ok(unit)
 
 export fn main() Int:

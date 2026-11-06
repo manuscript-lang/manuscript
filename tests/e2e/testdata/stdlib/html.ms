@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
-import monotonic from "@std/os/time.ms"
-import (escape, parse, HtmlNode, HtmlAttribute, HtmlLimits) from "@std/data/html.ms"
+import monotonic from "@std/time.ms"
+import (escape, parse, HtmlNode, HtmlAttribute, HtmlOptions) from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -126,16 +126,18 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 
 test "HTML honors optional byte depth and node limits":
     let empty = try parse("")
-    try expect_equal((try parse("", HtmlLimits(0, 2, 4))), empty)
-    try expect_equal((try parse("é", HtmlLimits())), (try parse("é")))
+    try expect_equal(
+        (try parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))), empty
+    )
+    try expect_equal((try parse("é", HtmlOptions())), (try parse("é")))
 
     let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
-    try expect_equal(parse("é", HtmlLimits(1)), limited)
-    try expect_equal(parse("", HtmlLimits(max_depth: 1)), limited)
-    try expect_equal(parse("", HtmlLimits(max_nodes: 3)), limited)
+    try expect_equal(parse("é", HtmlOptions(max_bytes: 1)), limited)
+    try expect_equal(parse("", HtmlOptions(max_depth: 1)), limited)
+    try expect_equal(parse("", HtmlOptions(max_nodes: 3)), limited)
 
     let invalid: HtmlNode! = error(Error("HTML: invalid input", kind: "EINVAL"))
-    try expect_equal(parse("", HtmlLimits(max_nodes: -1)), invalid)
+    try expect_equal(parse("", HtmlOptions(max_nodes: -1)), invalid)
     try expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")
 
 test "HTML depth limit stops deeply nested input without quadratic work":
@@ -143,15 +145,15 @@ test "HTML depth limit stops deeply nested input without quadratic work":
     let nested = "<div>".repeat(60000).get()
     let started = monotonic()
     let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
-    try expect_equal(parse(nested, HtmlLimits(max_depth: 100)), limited)
+    try expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)
 
     let elapsed = monotonic().difference(started).to_milliseconds()
     if elapsed > 5000: return fail("depth limit took {elapsed} ms")
 
-test "HTML parse without limits applies defaults and an empty limits record lifts them":
+test "HTML parse applies default limits and none lifts them":
     let nested = "<div>".repeat(20000).get()
     let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse(nested), limited)
 
-    let lifted = parse(nested, HtmlLimits())
+    let lifted = parse(nested, HtmlOptions(max_depth: none, max_nodes: none))
     try expect_false(lifted.is_error())

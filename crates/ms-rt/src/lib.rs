@@ -30,7 +30,6 @@ pub mod alloc;
 pub mod bits;
 pub mod cabi;
 pub mod cancel;
-pub mod cells;
 pub mod desc;
 pub mod fault;
 pub mod ffi;

@@ -16,11 +16,11 @@ let data = try read_file("notes.txt").wait()
 */
 import BigInt from "@std/math/math.ms"
 import Bytes from "@std/bytes.ms"
-import Duration, milliseconds, monotonic, now, sleep from "@std/os/time.ms"
-import ReadStream, WriteStream, Source, Sink, stream, writer from "@std/io/io.ms"
+import Duration, milliseconds, monotonic, now, sleep from "@std/time.ms"
+import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
 import Promise, adopt, owned_task from "@std/concurrency/promise.ms"
 import msrt_promise_finished from "@std/internal/promises.ms"
-import Timestamp from "@std/os/time.ms"
+import Timestamp from "@std/time.ms"
 import Closeable, Writable from "@std/core.ms"
 import (
     msstd_fs_filesystem,
@@ -227,19 +227,16 @@ impl Source[Bytes] for FileSource:
     var fn close() Unit!:
         return self.file.close()
 
-// Complete writes to a file; `drain` synchronizes it.
+// Complete writes to a file; `flush` synchronizes it.
 type FileSink:
     file: FileHandle
 
 impl Sink[Bytes] for FileSink:
-    var fn put(value: Bytes) Unit!:
+    var fn write(value: Bytes) Unit!:
         return self.file.write(value)
 
-    var fn drain() Promise[Unit]:
-        return adopt[Unit](msrt_promise_finished())
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     var fn close() Unit!:
         return self.file.close()
@@ -263,12 +260,12 @@ impl FileHandle:
     // Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
     fn reader() ReadStream[Bytes]!:
         let own = try self.clone()
-        return ok(stream[Bytes](FileSource(own)))
+        return ok(ReadStream[Bytes](FileSource(own)))
 
     // Adapts complete writes to `Error`/Unit; flush synchronizes the file.
     fn writer() WriteStream[Bytes]!:
         let own = try self.clone()
-        return ok(writer[Bytes](FileSink(own)))
+        return ok(WriteStream[Bytes](FileSink(own)))
 
     // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     fn read(max_bytes: Int?) Bytes?!:
@@ -398,7 +395,7 @@ impl Directory:
     fn read() DirectoryEntry?!:
         return msstd_fs_directory_read(self.native)
 
-// A directory is a stream source: `stream[DirectoryEntry](open_directory(path))` yields its children in native
+// A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path))` yields its children in native
 // order, so steps compose: `... | filter(...) | collect(none)`. Closing the stream closes the directory.
 impl Source[DirectoryEntry] for Directory:
     // The next child entry, or none after the last one; the order is the native directory order.
@@ -442,7 +439,7 @@ impl Source[FileEvent] for WatchSource:
         return ok(unit)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
-    return stream[FileEvent](WatchSource(watcher, []))
+    return ReadStream[FileEvent](WatchSource(watcher, []))
 
 // The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary

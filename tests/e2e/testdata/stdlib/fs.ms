@@ -117,7 +117,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 
     let opened = open(path, OpenMode.Read) | try expect_ok
     var input = opened.reader() | try expect_ok
-    (input.read().wait() | try expect_ok).get() | try expect_equal("hello".to_bytes())
+    (input.next() | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
     stat(path: directory) | try expect_fs_error(
         Error("filesystem: file or directory not found", kind: "ENOENT")

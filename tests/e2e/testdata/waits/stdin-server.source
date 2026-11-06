@@ -8,7 +8,7 @@ import serve from "@std/net/net.ms"
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/line":
         var input = lines(stdin())
-        if let step = input.read().wait():
+        if let step = input.next():
             return HttpResponse(200, headers(), "{step.get("eof")}\n".to_bytes())
 
         return HttpResponse(500, headers(), "read failed\n".to_bytes())

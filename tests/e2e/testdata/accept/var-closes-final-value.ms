@@ -2,7 +2,7 @@ import Closeable from "@std/core.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 type Counter:
     value: Int

@@ -1,5 +1,5 @@
 import arguments from "@std/os/env.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:

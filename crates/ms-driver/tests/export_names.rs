@@ -1,6 +1,6 @@
 //! Project export hints recognize every exported declaration spelling.
 
-mod common;
+use crate::common;
 
 use common::*;
 use ms_driver::imports::{exported_names, suggest_project_imports};

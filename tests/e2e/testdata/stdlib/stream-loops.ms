@@ -1,5 +1,5 @@
 import expect_equal from "@std/test/test.ms"
-import ReadStream, Source, WriteStream, stream, pipe from "@std/io/io.ms"
+import ReadStream, Source, WriteStream, pipe from "@std/io/io.ms"
 import from_list, map, collect, copy from "@std/io/streams.ms"
 
 // Counts up to `stop`, fails once at `fail_at`, and reports where it was when closed.
@@ -27,41 +27,49 @@ impl Source[Int] for Counter:
 
 test "a loop that breaks hands the source back to its stream":
     var closes = pipe[Int](capacity: 8)
-    var s = stream[Int](Counter(0, 5, -1, closes.writer()))
+    var s = ReadStream[Int](Counter(0, 5, -1, closes.writer()))
     var seen: List[Int] = []
 
-    for x in s.wait():
-        seen.append(try x)
+    for x in s:
+        seen.append(x)
         if seen.length() == 2:
             break
 
-    let next = try s.read().wait()
+    let next = try s.next()
     try expect_equal(next.get(-1), 3)
-    for x in s.wait():
-        seen.append(try x)
+    for x in s:
+        seen.append(x)
     try expect_equal(seen, [1, 2, 4, 5])
     try s.close()
     try expect_equal(try closes.receive(), 5)
 
 test "an error ends the loop and the stream reads on":
     var closes = pipe[Int](capacity: 8)
-    var s = stream[Int](Counter(0, 3, 1, closes.writer()))
+    var s = ReadStream[Int](Counter(0, 3, 1, closes.writer()))
     var failures = 0
-    for x in s.wait():
-        if x.is_error():
+
+    while true:
+        let item = s.next()
+
+        if item.is_error():
             failures += 1
+            break
+
+        if item.get().is_none():
+            break
+
     try expect_equal(failures, 1)
 
-    let next = try s.read().wait()
+    let next = try s.next()
     try expect_equal(next.get(-1), 3)
 
 test "closing the stream inside its loop still closes the source once":
     var closes = pipe[Int](capacity: 8)
-    var s = stream[Int](Counter(0, 4, -1, closes.writer()))
-    for x in s.wait():
-        if (try x) == 2:
+    var s = ReadStream[Int](Counter(0, 4, -1, closes.writer()))
+    for x in s:
+        if x == 2:
             try s.close()
-    try expect_equal(try closes.receive(), 4)
+    try expect_equal(try closes.receive(), 2)
 
 test "stages pull directly and keep their results":
     let doubled = try collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)
@@ -69,14 +77,6 @@ test "stages pull directly and keep their results":
 
     let limited = collect(from_list([1, 2, 3]), 2)
     try expect_equal(limited.err().kind, "EOVERFLOW")
-
-test "a stage over a stream with a pending read reads through it":
-    var closes = pipe[Int](capacity: 8)
-    var s = stream[Int](Counter(0, 3, -1, closes.writer()))
-    let pending = s.read()
-    let rest = try collect(s | map(fn v: v + 100), none)
-    try expect_equal(rest, [101, 102, 103])
-    try expect_equal(pending.wait().is_error(), true)
 
 test "copy moves every item":
     var out = pipe[Int](capacity: 8)

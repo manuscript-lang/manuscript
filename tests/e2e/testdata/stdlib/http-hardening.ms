@@ -13,7 +13,7 @@ import (
 import Connection, connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import read_file, temporary, write_file from "@std/os/fs.ms"
-import sleep from "@std/os/time.ms"
+import sleep from "@std/time.ms"
 
 fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())

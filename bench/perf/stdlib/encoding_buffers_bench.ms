@@ -2,6 +2,7 @@ import (
     base64_encode,
     base64_encode_unpadded,
     base32_encode,
+    Base32Options,
     base32_decode,
     ascii85_encode,
     ascii85_decode
@@ -33,11 +34,18 @@ fn unpadded(length: Int, url: Bool) Unit!:
 
 fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
     let data = sample(length)
-    let expected = base32_encode(data, hex, padded)
-    try expect_equal(try base32_decode(expected, hex, padded), data)
+    let expected = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
+    try expect_equal(
+        try base32_decode(
+            expected, Base32Options(hex_alphabet: hex, padded: padded)
+        ),
+        data
+    )
 
     fn work() Unit!:
-        let actual = base32_encode(data, hex, padded)
+        let actual = base32_encode(
+            data, Base32Options(hex_alphabet: hex, padded: padded)
+        )
         try expect_equal(actual, expected)
         return keep(actual.byte_length())
 
@@ -46,7 +54,7 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
 
 fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     let data = sample(length)
-    var text = base32_encode(data, hex, padded)
+    var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
     if mode == 1 or mode == 7: text = "!" + (try "A".repeat(text.byte_length() - 1))
     if mode == 2: text = (try "A".repeat(text.byte_length() - 1)) + "!"
 
@@ -64,7 +72,9 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     if mode == 4: expected = error(Error("encoding: invalid input", kind: "EINVAL"))
 
     fn work() Unit!:
-        let actual = base32_decode(text, hex, padded, limit)
+        let actual = base32_decode(
+            text, Base32Options(hex_alphabet: hex, padded: padded), limit
+        )
         try expect_equal(actual, expected)
         return keep(if mode == 0 or mode == 5 or mode == 6: data.length() else: 1)
 

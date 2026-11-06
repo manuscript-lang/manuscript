@@ -1,6 +1,6 @@
 import adler32, crc32, Adler32, Crc32 from "@std/data/checksum.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import CompressionFormat from "@std/io/archive.ms"
+import CompressionFormat, compress from "@std/io/archive.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "Adler32 RFC vectors and zlib trailer agree":
@@ -14,7 +14,7 @@ test "Adler32 RFC vectors and zlib trailer agree":
     try expect_equal(adler32(binary.build()).to_int(), 2918612865)
 
     let input = "a checksum without compressing the input".to_bytes()
-    let encoded = try CompressionFormat.Zlib.compress(input)
+    let encoded = try compress(input, CompressionFormat.Zlib)
     try expect_equal(adler32(input), try encoded.uint32_be(encoded.length() - 4))
 
 test "checksum values start empty and observations do not reset":

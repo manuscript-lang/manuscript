@@ -36,6 +36,6 @@ test "a reader keeps the shared file open after the handle closes":
 
     var handle = try open(path, OpenMode.Read, OpenOptions(permissions: 384))
     var input = lines(try handle.reader())
-    try expect_equal((try input.read().wait()), "first")
+    try expect_equal((try input.next()), "first")
     try handle.close()
-    try expect_equal((try input.read().wait()), "second")
+    try expect_equal((try input.next()), "second")

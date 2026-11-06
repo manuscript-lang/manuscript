@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-mod support;
+use crate::support;
 use support::{cc, link_fixture};
 
 fn tool(program: &str) -> String {

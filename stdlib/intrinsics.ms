@@ -2,7 +2,7 @@
 
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 
 // Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:
@@ -28,8 +28,6 @@ interface IntegerOperations[T]:
     fn compare(other: T) Int
     // Converts to Float32, rounding to the nearest binary32 value.
     fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Operations shared by the signed integer types (`Int`, `Int8`, `Int16`, `Int32`).
 interface SignedIntegerOperations[T]:
@@ -192,33 +190,15 @@ interface Int8Operations:
     fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
-    // Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() UInt8?
-    // Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() UInt16?
-    // Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() UInt32?
-    // Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() UInt64?
 
 // Conversion operations for Int16, a signed 16-bit integer.
 interface Int16Operations:
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
-    // Converts to Int32; every value fits, so no check is needed.
-    fn to_int32() Int32
     // Converts to Int64; every value fits, so no check is needed.
     fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
-    // Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() UInt8?
-    // Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() UInt16?
-    // Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() UInt32?
-    // Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() UInt64?
 
 // Conversion operations for Int32, a signed 32-bit integer.
 interface Int32Operations:
@@ -230,88 +210,34 @@ interface Int32Operations:
     fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
-    // Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() UInt8?
-    // Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() UInt16?
-    // Converts to UInt32, or returns none when the value is outside UInt32's range.
-    fn to_uint32() UInt32?
-    // Converts to UInt64, or returns none when the value is negative.
-    fn to_uint64() UInt64?
 
 // Conversion operations for UInt8, an unsigned 8-bit integer.
 interface UInt8Operations:
-    // Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Int8?
-    // Converts to Int16; every value fits, so no check is needed.
-    fn to_int16() Int16
-    // Converts to Int32; every value fits, so no check is needed.
-    fn to_int32() Int32
-    // Converts to Int64; every value fits, so no check is needed.
-    fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
-    // Converts to UInt16; every value fits, so no check is needed.
-    fn to_uint16() UInt16
-    // Converts to UInt32; every value fits, so no check is needed.
-    fn to_uint32() UInt32
-    // Converts to UInt64; every value fits, so no check is needed.
-    fn to_uint64() UInt64
 
 // Conversion operations for UInt16, an unsigned 16-bit integer.
 interface UInt16Operations:
-    // Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Int8?
-    // Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Int16?
-    // Converts to Int32; every value fits, so no check is needed.
-    fn to_int32() Int32
-    // Converts to Int64; every value fits, so no check is needed.
-    fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
     // Converts to UInt8, or returns none when the value is outside UInt8's range.
     fn to_uint8() UInt8?
-    // Converts to UInt32; every value fits, so no check is needed.
-    fn to_uint32() UInt32
-    // Converts to UInt64; every value fits, so no check is needed.
-    fn to_uint64() UInt64
 
 // Conversion operations for UInt32, an unsigned 32-bit integer.
 interface UInt32Operations:
-    // Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Int8?
-    // Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Int16?
     // Converts to Int32, or returns none when the value is outside Int32's range.
     fn to_int32() Int32?
     // Converts to Int64; every value fits, so no check is needed.
     fn to_int64() Int64
     // Converts to Int; every value fits, so no check is needed.
     fn to_int() Int
-    // Converts to UInt8, or returns none when the value is outside UInt8's range.
-    fn to_uint8() UInt8?
-    // Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() UInt16?
-    // Converts to UInt64; every value fits, so no check is needed.
-    fn to_uint64() UInt64
 
 // Conversion operations for UInt64, an unsigned 32-bit integer.
 interface UInt64Operations:
-    // Converts to Int8, or returns none when the value is outside Int8's range.
-    fn to_int8() Int8?
-    // Converts to Int16, or returns none when the value is outside Int16's range.
-    fn to_int16() Int16?
-    // Converts to Int32, or returns none when the value is outside Int32's range.
-    fn to_int32() Int32?
-    // Converts to Int64, or returns none when the value is above Int64's maximum.
-    fn to_int64() Int64?
     // Converts to Int, or returns none when the value is above Int's maximum.
     fn to_int() Int?
     // Converts to UInt8, or returns none when the value is outside UInt8's range.
     fn to_uint8() UInt8?
-    // Converts to UInt16, or returns none when the value is outside UInt16's range.
-    fn to_uint16() UInt16?
     // Converts to UInt32, or returns none when the value is outside UInt32's range.
     fn to_uint32() UInt32?
 

@@ -66,11 +66,11 @@ test "subprocess streams that are not piped are closed":
     try expect_equal((try child.wait()), 0)
 
     var errors = lines(child.stderr())
-    let line = try errors.read().wait()
+    let line = try errors.next()
     try expect_equal(line.get(""), "done")
 
     var silent = child.stdout()
-    try expect_false((try silent.read().wait()).is_some())
+    try expect_false((try silent.next()).is_some())
 
     var input = child.stdin()
     try expect_false(input.write("x".to_bytes()).is_ok())
@@ -79,14 +79,14 @@ test "managed subprocess streams incrementally and cleans up on scope exit":
     let child = try spawn("cat", [])
     var input = child.stdin()
     try input.write("ping\n".to_bytes())
-    try input.flush().wait()
+    try input.flush()
 
     var output = lines(child.stdout())
-    let line = try output.read().wait()
+    let line = try output.next()
     try expect_equal(line.get(""), "ping")
     try input.close()
     try expect_equal((try child.wait()), 0)
-    try expect_false((try output.read().wait()).is_some())
+    try expect_false((try output.next()).is_some())
 
 test "run and spawn pass the environment to the child":
     var env: Map[String, String] = Map[String, String]()
@@ -105,5 +105,5 @@ test "run and spawn pass the environment to the child":
     try expect_equal((try child.wait()), 0)
 
     var errors = child.stderr()
-    let text = try errors.read().wait()
+    let text = try errors.next()
     try expect_equal(text.get("".to_bytes()), "from-parent".to_bytes())

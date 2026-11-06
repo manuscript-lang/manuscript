@@ -5,7 +5,7 @@ use ms_lsp::completion::signature_help;
 use ms_lsp::text;
 use ms_rt as _;
 
-mod support;
+use crate::support;
 use support::{Script, Workspace};
 
 const SOURCE: &str = include_str!("signature_help/boundaries.ms");

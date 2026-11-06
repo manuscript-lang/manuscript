@@ -3,15 +3,19 @@
 // conform: timeout=30
 // Closing a server lets a response in progress finish; `wait` returns as soon as it has.
 import headers, HttpRequest, HttpResponse, buffered from "@std/net/http.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
-import stdout from "@std/io/io.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
+import Bytes from "@std/bytes.ms"
+import stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/system.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import Duration, nanoseconds, sleep from "@std/time.ms"
+
+fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
+    return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
 
 fn send(var conn: Connection, text: String) Unit!:
     try conn.output.write(text.to_bytes())
-    return conn.output.flush().wait()
+    return conn.output.flush()
 
 fn handle(request: HttpRequest) HttpResponse:
     let _ = sleep(nanoseconds(300000000)).wait()
@@ -34,11 +38,7 @@ export fn main() Int:
             var text = ""
 
             while true:
-                if let chunk = conn.input.read().with(
-                    options: PromiseOptions(
-                        timeout: nanoseconds(5000000000)
-                    )
-                ).wait():
+                if let chunk = within(var conn.input, nanoseconds(5000000000)):
                     if let data = chunk:
                         text = "{text}{data.decode_utf8().get("?")}"
                         continue

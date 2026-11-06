@@ -7,8 +7,8 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_check::hir::Resolution;
-use ms_check::types::{BindingRef, Name};
+use ms_check::api::hir::Resolution;
+use ms_check::api::types::{BindingRef, Name};
 use ms_mir::builder::Var;
 use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -178,7 +178,7 @@ impl<'a> FnLower<'a> {
                             || body.is_some_and(|body| !crate::mutation::mutated_locals(
                                 self.syms,
                                 &self.hir,
-                                ms_check::hir::Body::Block(body),
+                                ms_check::api::hir::Body::Block(body),
                                 &self.cx.callables,
                                 &self.cx.mutated,
                             )

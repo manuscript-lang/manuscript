@@ -36,17 +36,27 @@ fn diagnostics(source: &str) -> Vec<String> {
         .collect()
 }
 
-#[test]
-fn matches_oracle() {
+/// The records one shard checks are every `SHARDS`th one, so the shards run as separate tests in
+/// parallel. `UPDATE_GOLDEN` rewrites the whole file from shard 0 alone.
+const SHARDS: usize = 4;
+
+fn matches_oracle(shard: usize) {
+    let updating = std::env::var_os("UPDATE_GOLDEN").is_some();
+    if updating && shard != 0 {
+        return;
+    }
     // Deeply nested sources need more stack than a test thread has.
     let handle = std::thread::Builder::new()
         .stack_size(256 << 20)
-        .spawn(|| {
+        .spawn(move || {
             let golden = include_str!("golden.txt");
             let mut failures: Vec<String> = Vec::new();
             let mut total = 0;
             let mut updated = String::new();
-            for record in golden.split('\u{1e}') {
+            for (index, record) in golden.split('\u{1e}').enumerate() {
+                if !updating && index % SHARDS != shard {
+                    continue;
+                }
                 let (source, expected) = record.split_once('\u{1f}').expect("record");
                 let expected: Vec<&str> = expected.lines().collect();
                 total += 1;
@@ -63,7 +73,7 @@ fn matches_oracle() {
                     ));
                 }
             }
-            if std::env::var_os("UPDATE_GOLDEN").is_some() {
+            if updating {
                 let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/golden.txt");
                 std::fs::write(path, updated).expect("write golden.txt");
                 return;
@@ -82,4 +92,24 @@ fn matches_oracle() {
         })
         .expect("spawn");
     handle.join().expect("golden test");
+}
+
+#[test]
+fn matches_oracle_shard_0() {
+    matches_oracle(0);
+}
+
+#[test]
+fn matches_oracle_shard_1() {
+    matches_oracle(1);
+}
+
+#[test]
+fn matches_oracle_shard_2() {
+    matches_oracle(2);
+}
+
+#[test]
+fn matches_oracle_shard_3() {
+    matches_oracle(3);
 }

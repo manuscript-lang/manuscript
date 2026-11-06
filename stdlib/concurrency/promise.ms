@@ -1,5 +1,5 @@
 import Closeable from "@std/core.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import (
     msrt_promise_new,
     msrt_promise_put,
@@ -122,7 +122,10 @@ fn limit(id: Int, options: PromiseOptions) Unit:
 
 // Applies `options` to a promise in place, for an owner that keeps the promise (a server's accept loop). The timeout counts
 // from now; a provided cancel signal replaces the previous signal. `with` is the chaining form.
-export fn set_options[T](target: Promise[T], options: PromiseOptions) Unit:
+export fn set_options[T](
+    target: Promise[T],
+    options: PromiseOptions = PromiseOptions()
+) Unit:
     limit(target.id, options)
 
 // The result in the slot of `id`, moved out; `EBADF` when it is gone.
@@ -162,7 +165,7 @@ impl Promise[T]:
     // Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so
     // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.
     // A provided cancel signal replaces the previous signal.
-    fn with(options: PromiseOptions) Promise[T]:
+    fn with(options: PromiseOptions = PromiseOptions()) Promise[T]:
         limit(self.id, options)
         return self
 

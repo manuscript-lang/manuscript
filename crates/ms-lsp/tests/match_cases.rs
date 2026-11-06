@@ -1,6 +1,6 @@
 //! Cases in match arms participate in the same identity as constructors.
 
-mod support;
+use crate::support;
 
 use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::json::Json;

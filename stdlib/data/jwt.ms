@@ -12,7 +12,7 @@ import (
 ) from "@std/crypto.ms"
 import base64_encode_unpadded, base64_decode_unpadded from "@std/data/encoding.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/os/time.ms"
+import now from "@std/time.ms"
 
 fn jwt_invalid_key() Error:
     return Error("jwt: invalid key", kind: "EINVAL")
@@ -71,11 +71,8 @@ export fn sign_token[T: Data](
     key: Bytes,
     algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
 ) String!:
-    let header = stringify(
-        value: JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"), max_bytes: none,
-        indent: none
-    )
-    let payload = stringify(value: claims, max_bytes: none, indent: none)
+    let header = stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
+    let payload = stringify(claims)
     if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
 
     let head = base64_encode_unpadded(header.get("").to_bytes(), url_safe: true)
@@ -142,7 +139,7 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
     let text = raw.get("".to_bytes()).decode_utf8()
     if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-    let value = parse[T](text.get(""), limits: none)
+    let value = parse[T](text.get(""))
     if let decoded = value:
         return ok(decoded)
 

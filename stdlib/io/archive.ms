@@ -1,6 +1,7 @@
 import Bytes, BytesBuilder, join from "@std/bytes.ms"
 import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
 import (
+    ArchiveLimits,
     msstd_compress_encoder_new,
     msstd_compress_encoder_push,
     msstd_compress_encoder_end,
@@ -22,30 +23,16 @@ export type ArchiveEntry:
     // True for a directory entry rather than a regular file; links and special files are not supported.
     directory: Bool
 
-// Optional limits applied while unpacking untrusted archive data.
-export type ArchiveLimits:
-    // Maximum unpacked entries, including directories; none adds no entry-count budget.
-    max_entries: Int?
+// Bounds applied while unpacking untrusted archive data. Fields set to none add no budget.
+export type ArchiveOptions:
+    // Maximum unpacked entries, including directories.
+    max_entries: Int? = none
     // Maximum unpacked bytes for each entry; zero admits only empty data.
-    max_entry_bytes: Int?
-    // Cumulative unpacked file bytes across all entries; none adds no total-output budget.
-    max_total_bytes: Int?
+    max_entry_bytes: Int? = none
+    // Cumulative unpacked file bytes across all entries.
+    max_bytes: Int? = none
 
-// Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return ENOTSUP. `max_bytes` bounds output when supplied.
-export fn pack(entries: List[ArchiveEntry], format: String, max_bytes: Int?) Bytes!:
-    return msstd_archive_pack(entries, format, max_bytes)
-
-// Decodes exactly `zip` or `tar` (case-sensitive); other formats return ENOTSUP.
-// Applies each supplied entry and total-size limit.
-export fn unpack(
-    data: Bytes,
-    format: String,
-    limits: ArchiveLimits?
-) List[ArchiveEntry]!:
-    return msstd_archive_unpack(data, format, limits)
-
-// Selects a supported archive format without a runtime string spelling check.
-// Existing pack/unpack format: String calls remain available.
+// A supported archive format.
 export enum ArchiveFormat:
     Zip  // ZIP files and directories.
     Tar  // TAR files and directories.
@@ -55,31 +42,27 @@ fn archive_format_name(format: ArchiveFormat) String:
         Zip: return "zip"
         Tar: return "tar"
 
-impl ArchiveFormat:
-    // Packs entries with the same optional output budget and path validation as pack.
-    fn pack(entries: List[ArchiveEntry], max_bytes: Int?) Bytes!:
-        return pack(entries, archive_format_name(self), max_bytes)
+// Encodes entries as `format`. `max_bytes` bounds the encoded output when supplied.
+export fn pack(
+    entries: List[ArchiveEntry],
+    format: ArchiveFormat,
+    max_bytes: Int? = none
+) Bytes!:
+    return msstd_archive_pack(entries, archive_format_name(format), max_bytes)
 
-    // Unpacks in memory with the same entry/byte limits and domain errors as unpack.
-    fn unpack(data: Bytes, limits: ArchiveLimits?) List[ArchiveEntry]!:
-        return unpack(data, archive_format_name(self), limits)
+// Decodes `format`, applying the entry and size bounds in `options`.
+export fn unpack(
+    data: Bytes,
+    format: ArchiveFormat,
+    options: ArchiveOptions = ArchiveOptions()
+) List[ArchiveEntry]!:
+    let limits = ArchiveLimits(
+        max_entries: options.max_entries, max_entry_bytes: options.max_entry_bytes,
+        max_total_bytes: options.max_bytes
+    )
+    return msstd_archive_unpack(data, archive_format_name(format), limits)
 
-/*
-Compresses using exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive).
-Other formats return ENOTSUP; level defaults to 6 (balanced DEFLATE compression).
-Explicit levels must be 0..9 (0 stores data), else EINVAL.
-`max_bytes` bounds the encoded output when supplied.
-*/
-export fn compress(data: Bytes, format: String, level: Int = 6, max_bytes: Int?) Bytes!:
-    return msstd_compress_compress(data, format, level, max_bytes)
-
-// Decompresses exactly `gzip`, `zlib`, or raw `deflate` (case-sensitive); others return ENOTSUP.
-// Stops when the supplied output limit is reached.
-export fn decompress(data: Bytes, format: String, max_bytes: Int?) Bytes!:
-    return msstd_compress_decompress(data, format, max_bytes)
-
-// Selects a supported compression format; Deflate is raw DEFLATE without a wrapper.
-// Existing compress/decompress format: String calls remain available.
+// Selects a compression format; Deflate is raw DEFLATE without a wrapper.
 export enum CompressionFormat:
     Gzip  // DEFLATE data wrapped in GZIP headers and a checksum trailer.
     Zlib  // DEFLATE data with ZLIB header and Adler-32 checksum framing.
@@ -91,15 +74,30 @@ fn compression_format_name(format: CompressionFormat) String:
         Zlib: return "zlib"
         Deflate: return "deflate"
 
-impl CompressionFormat:
-    // Compresses with level 6 by default; explicit levels remain 0..9 (0 stores data).
-    // Uses the same optional output budget/domain errors as compress.
-    fn compress(data: Bytes, level: Int = 6, max_bytes: Int?) Bytes!:
-        return compress(data, compression_format_name(self), level, max_bytes)
+// Settings for `compress`: the DEFLATE level (0 to 9, default 6) and an optional budget on the encoded output bytes.
+export type CompressOptions:
+    // Compression level 0..9, where 0 stores data and 6 is balanced; other levels return EINVAL.
+    level: Int = 6
+    // Maximum encoded bytes; none adds no output budget.
+    max_bytes: Int? = none
 
-    // Decompresses with the same cumulative output limit and validation as decompress.
-    fn decompress(data: Bytes, max_bytes: Int?) Bytes!:
-        return decompress(data, compression_format_name(self), max_bytes)
+// Compresses `data` as `format`; `options.max_bytes` bounds the encoded output when supplied.
+export fn compress(
+    data: Bytes,
+    format: CompressionFormat,
+    options: CompressOptions = CompressOptions()
+) Bytes!:
+    return msstd_compress_compress(
+        data, compression_format_name(format), options.level, options.max_bytes
+    )
+
+// Decompresses `format`, stopping with EOVERFLOW when `max_bytes` of output is exceeded.
+export fn decompress(
+    data: Bytes,
+    format: CompressionFormat,
+    max_bytes: Int? = none
+) Bytes!:
+    return msstd_compress_decompress(data, compression_format_name(format), max_bytes)
 
 // A codec held by a stream step; `failure` is a construction error returned by every read.
 export extern type NativeEncoder
@@ -112,20 +110,20 @@ type Compressing:
     failure: Error?
 
 impl Transform[Bytes, Bytes] for Compressing:
-    var fn step(value: Bytes, var out: WriteStream[Bytes]) Unit!:
+    var fn step(value: Bytes, var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let encoder = self.encoder:
             let packed = msstd_compress_encoder_push(encoder, value)
-            if not packed.is_empty(): try out.write(packed)
+            if not packed.is_empty(): out.append(packed)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[Bytes]) Unit!:
+    var fn finish(var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let encoder = self.encoder:
-            try out.write(msstd_compress_encoder_end(encoder))
+            out.append(msstd_compress_encoder_end(encoder))
         self.encoder = none
         return ok(unit)
 
@@ -151,21 +149,21 @@ type Decompressing:
     failure: Error?
 
 impl Transform[Bytes, Bytes] for Decompressing:
-    var fn step(value: Bytes, var out: WriteStream[Bytes]) Unit!:
+    var fn step(value: Bytes, var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let decoder = self.decoder:
             let plain = try msstd_compress_decoder_push(decoder, value)
-            if not plain.is_empty(): try out.write(plain)
+            if not plain.is_empty(): out.append(plain)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[Bytes]) Unit!:
+    var fn finish(var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let decoder = self.decoder:
             let plain = try msstd_compress_decoder_end(decoder)
-            if not plain.is_empty(): try out.write(plain)
+            if not plain.is_empty(): out.append(plain)
 
         self.decoder = none
         return ok(unit)
@@ -176,7 +174,7 @@ impl Transform[Bytes, Bytes] for Decompressing:
 export fn decompressed(
     input: ReadStream[Bytes],
     format: CompressionFormat,
-    max_bytes: Int?
+    max_bytes: Int? = none
 ) ReadStream[Bytes]:
     let made = msstd_compress_decoder_new(compression_format_name(format), max_bytes)
     var step = Decompressing(decoder: none, failure: none)
@@ -215,7 +213,7 @@ fn tar_is_zero(block: Bytes) Bool:
 // Frames a tar byte stream into members (extension headers, the header and its data) and unpacks each one with
 // `unpack`, so one entry at a time is in memory.
 type TarEntries:
-    limits: ArchiveLimits
+    options: ArchiveOptions
     buffer: Bytes
     count: Int
     total: Int
@@ -255,7 +253,7 @@ impl TarEntries:
         return ok(0)
 
 impl Transform[Bytes, ArchiveEntry] for TarEntries:
-    var fn step(value: Bytes, var out: WriteStream[ArchiveEntry]) Unit!:
+    var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
         if self.done: return ok(unit)
 
         self.buffer = self.buffer.concat(value)
@@ -277,18 +275,18 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 
             let end = member.concat(self.end)
 
-            for entry in try unpack(end, "tar", self.limits):
+            for entry in try unpack(end, ArchiveFormat.Tar, self.options):
                 self.count += 1
                 self.total += entry.data.length()
-                try out.write(entry)
+                out.append(entry)
 
-            if let most = self.limits.max_entries:
+            if let most = self.options.max_entries:
                 if self.count > most: return error(
                     Error(
                         "archive: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
-            if let most = self.limits.max_total_bytes:
+            if let most = self.options.max_bytes:
                 if self.total > most: return error(
                     Error(
                         "archive: limit exceeded", kind: "EOVERFLOW"
@@ -297,18 +295,18 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[ArchiveEntry]) Unit!:
+    var fn finish(var out: List[ArchiveEntry]) Unit!:
         if self.done or self.buffer.is_empty(): return ok(unit)
 
         return error(Error("archive: truncated tar", kind: "EBADMSG"))
 
 // Reads the entries of a tar byte stream one at a time, for archives too big to hold in memory. Each entry is
-// validated as `unpack` does; `max_entry_bytes` bounds one entry and `max_entries` and `max_total_bytes` the
+// validated as `unpack` does; `max_entry_bytes` bounds one entry and `max_entries` and `max_bytes` the
 // whole archive, failing the read with `EOVERFLOW`. A truncated archive fails with `EBADMSG`. Closing
 // the result closes `input`.
 export fn tar_entries(
     input: ReadStream[Bytes],
-    limits: ArchiveLimits = ArchiveLimits()
+    options: ArchiveOptions = ArchiveOptions()
 ) ReadStream[ArchiveEntry]:
     var zeros = BytesBuilder()
     for index in 0..1024:
@@ -316,7 +314,7 @@ export fn tar_entries(
     return through[Bytes, ArchiveEntry](
         input,
         TarEntries(
-            limits: limits, buffer: join([]), count: 0, total: 0, done: false,
+            options: options, buffer: join([]), count: 0, total: 0, done: false,
             end: zeros.build()
         )
     )

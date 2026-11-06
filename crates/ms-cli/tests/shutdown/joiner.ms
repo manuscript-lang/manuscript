@@ -1,5 +1,5 @@
 import stdout from "@std/io/io.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 import promise from "@std/concurrency/promise.ms"
 
 fn long() Int:
@@ -10,8 +10,8 @@ fn long() Int:
 export fn main() Int:
     let w = promise(fn: ok(long()))
     stdout().write("joining\n").get()
-    let _flushed = stdout().flush().wait()
 
+    let _flushed = stdout().flush()
     let outcome = w.wait()
     stdout().write("joined {outcome.is_ok()}\n").get()
     return 0

@@ -1,7 +1,7 @@
 import expect_equal, fail from "@std/test/test.ms"
 import csv_rows, parse, CsvOptions from "@std/data/csv.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -24,7 +24,7 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(data, size, 0))
+    return ReadStream[Bytes](Chunks(data, size, 0))
 
 fn read_rows(
     text: String,
@@ -36,7 +36,7 @@ fn read_rows(
     var out: List[List[String]] = []
 
     while true:
-        let next = try rows.read().wait()
+        let next = try rows.next()
 
         if let row = next:
             out.append(row)
@@ -47,7 +47,7 @@ fn read_rows(
 
 test "rows match parse under every chunk size":
     let text = "a,b,c\r\n1,\"x,y\",3\n\n\"multi\nline \"\"q\"\"\",é,😀\n\"\"\nlast,,"
-    let expected = try parse(text, CsvOptions(), none, none)
+    let expected = try parse(text)
     for size in 1..text.to_bytes().length() + 1:
         if (try read_rows(text, size)) != expected: return fail("chunk size {size}")
 

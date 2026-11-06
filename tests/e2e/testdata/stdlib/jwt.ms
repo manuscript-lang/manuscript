@@ -9,7 +9,7 @@ import (
 ) from "@std/crypto.ms"
 import JsonValue from "@std/data/json.ms"
 import (sign_token, verify_token, JwtAlgorithm, JwtCheck) from "@std/data/jwt.ms"
-import random_bytes from "@std/os/random.ms"
+import random_bytes from "@std/random.ms"
 
 type Profile:
     sub: String

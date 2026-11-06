@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
     check,
+    PropertyOptions,
     ints,
     bools,
     lists,
@@ -26,7 +27,7 @@ test "a failing list property shrinks to the smallest list":
     let cause = try expect_error(
         check(
             "small sums", lists(ints(0, 1000)), fn xs: expect_true(xs.sum() < 50),
-            seed: 11
+            PropertyOptions(seed: 11)
         )
     )
     try expect_contains(cause.message, "counterexample: [50]")
@@ -34,7 +35,8 @@ test "a failing list property shrinks to the smallest list":
 test "a failing integer property shrinks toward the boundary":
     let cause = try expect_error(
         check(
-            "below ten", ints(-1000, 1000), fn n: expect_true(n < 10), seed: 3
+            "below ten", ints(-1000, 1000), fn n: expect_true(n < 10),
+            PropertyOptions(seed: 3)
         )
     )
     try expect_contains(cause.message, "counterexample: 10\n")
@@ -42,7 +44,8 @@ test "a failing integer property shrinks toward the boundary":
 test "negative values shrink toward zero":
     let cause = try expect_error(
         check(
-            "above minus ten", ints(-1000, 1000), fn n: expect_true(n > -10), seed: 5
+            "above minus ten", ints(-1000, 1000), fn n: expect_true(n > -10),
+            PropertyOptions(seed: 5)
         )
     )
     try expect_contains(cause.message, "counterexample: -10\n")
@@ -50,7 +53,8 @@ test "negative values shrink toward zero":
 test "strings shrink to the offending character":
     let cause = try expect_error(
         check(
-            "no z", strings("abz", 12), fn s: expect_true(not s.contains("z")), seed: 2
+            "no z", strings("abz", 12), fn s: expect_true(not s.contains("z")),
+            PropertyOptions(seed: 2)
         )
     )
     try expect_contains(cause.message, "counterexample: z\n")
@@ -59,7 +63,7 @@ test "pairs shrink both components":
     let cause = try expect_error(
         check(
             "small pair sum", pairs(ints(-50, 50), ints(-50, 50)),
-            fn p: expect_true(p.first + p.second < 10), seed: 1
+            fn p: expect_true(p.first + p.second < 10), PropertyOptions(seed: 1)
         )
     )
     try expect_contains(cause.message, "counterexample: Pair(first: ")
@@ -68,7 +72,7 @@ test "optionals shrink toward the failing payload":
     let cause = try expect_error(
         check(
             "below seven", optionals(ints(0, 100)), fn o: expect_true(o.get(0) < 7),
-            seed: 9
+            PropertyOptions(seed: 9)
         )
     )
     try expect_contains(cause.message, "counterexample: Optional.some(7)")
@@ -106,12 +110,14 @@ test "mapped, one_of, element_of, constant, floats and bools compose":
 test "the same seed reproduces the same failure":
     let first = try expect_error(
         check(
-            "seeded", lists(ints(0, 100)), fn xs: expect_true(xs.length() < 3), seed: 42
+            "seeded", lists(ints(0, 100)), fn xs: expect_true(xs.length() < 3),
+            PropertyOptions(seed: 42)
         )
     )
     let second = try expect_error(
         check(
-            "seeded", lists(ints(0, 100)), fn xs: expect_true(xs.length() < 3), seed: 42
+            "seeded", lists(ints(0, 100)), fn xs: expect_true(xs.length() < 3),
+            PropertyOptions(seed: 42)
         )
     )
     try expect_equal(first.message, second.message)
@@ -119,7 +125,10 @@ test "the same seed reproduces the same failure":
 
 test "a fault inside a property shrinks like an error":
     let cause = try expect_error(
-        check("no big values", ints(0, 1000), fn n: faults_at(n, 100), seed: 4)
+        check(
+            "no big values", ints(0, 1000), fn n: faults_at(n, 100),
+            PropertyOptions(seed: 4)
+        )
     )
     try expect_contains(cause.message, "counterexample: 100\n")
     try expect_contains(cause.message, "fault:")

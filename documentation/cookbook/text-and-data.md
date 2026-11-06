@@ -18,7 +18,7 @@ import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     let number = arguments().get(0, default: "42").parse_int()
@@ -51,7 +51,7 @@ import stdout from "@std/io/io.ms"
 fn run() Result[Unit, Error]:
     let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
@@ -78,7 +78,7 @@ Save as `config.ms`. Parse into a type directly and serialize it back. Use stric
 <!-- manuscript-example: {"mode":"run","args":["{\"name\":\"Sam\"}"],"stdout":"{\"name\":\"Sam\",\"enabled\":true}\n","cases":[{"args":["{\"name\":\"Ada\",\"enabled\":false,\"extra\":1}"],"stdout":"{\"name\":\"Ada\",\"enabled\":false}\n"},{"args":["{}"],"exit_code":1},{"args":["{\"name\":42}"],"exit_code":1}]} -->
 ```manuscript
 import arguments from "@std/os/env.ms"
-import parse, stringify from "@std/data/json.ms"
+import parse, stringify, StringifyOptions from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 type Config:
@@ -88,9 +88,9 @@ type Config:
 fn run() Result[Unit, Error]:
     let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
     let config = try parse[Config](text)
-    let encoded = try stringify(config, strict: true)
+    let encoded = try stringify(config, StringifyOptions(strict: true))
     try stdout().write("{encoded}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
@@ -107,6 +107,6 @@ ms run config.ms -- '{"name":"Sam"}'
 ```
 
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
-- Unknown members are ignored unless `ignore_unknown_fields: false`.
+- Unknown members are ignored unless `JsonOptions(ignore_unknown_fields: false)`.
 - Write `parse[Config]` explicitly after `try`.
-- `stringify` writes fields in declaration order. `strict: true` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` fields.
+- `stringify` writes fields in declaration order. `StringifyOptions(strict: true)` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` fields.

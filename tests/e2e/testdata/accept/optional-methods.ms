@@ -1,5 +1,5 @@
 import expect_equal, expect_false from "@std/test/test.ms"
-import JsonLimits from "@std/data/json.ms"
+import JsonOptions from "@std/data/json.ms"
 
 type Counter:
     calls: Int
@@ -62,8 +62,8 @@ test "Optional methods retain generic payload and receiver identity":
     try expect_equal(snapshot, outer)
 
 test "Optional fallbacks preserve standard option records":
-    let limits = JsonLimits(-1)
-    let missing: JsonLimits? = none
+    let limits = JsonOptions(max_bytes: -1)
+    let missing: JsonOptions? = none
     var extracted = missing.get(limits).clone()
     try expect_equal(extracted.max_bytes.get(), -1)
     try expect_false(not (extracted.max_depth.is_none()))

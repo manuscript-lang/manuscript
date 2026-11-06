@@ -1,7 +1,7 @@
 import Closeable, panic from "@std/core.ms"
 import append_file, read_file, temporary from "@std/os/fs.ms"
 import promise from "@std/concurrency/promise.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 type Token:

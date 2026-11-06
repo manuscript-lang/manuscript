@@ -1,8 +1,8 @@
 // The frozen conformance corpus against the Rust ms on this host (`make conform`).
 // Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when present.
-// CONFORM_SHARD=i/n splits the run. Arguments after `--` go to `ms-conform run`.
+// CONFORM_SHARD=i/n splits the run. CONFORM_LEAKS=1 also checks for leaked heap blocks. Arguments after `--` go to `ms-conform run`.
 // Usage: ms run tools/conform.ms [-- extra ms-conform run arguments]
-import env, exe, host, run_program from "./lib.ms"
+import env, exe, host, run_program, use_stats_runtime from "./lib.ms"
 import access, create_directory, read_file, write_file from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 
@@ -19,6 +19,12 @@ export fn main() Int:
         ]
     )
     if code != 0: return code
+
+    // CONFORM_LEAKS=1 links programs against the runtime that counts live heap blocks, and the
+    // runner fails a fixture under fuzz/run, e2e or examples that exits with any (the leak sweep).
+    if env("CONFORM_LEAKS", "") != "":
+        code = use_stats_runtime()
+        if code != 0: return code
 
     create_directory(".artifacts", recursive: true).get()
 

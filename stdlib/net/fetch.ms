@@ -12,9 +12,9 @@ import (
     RawResponse,
     headers
 ) from "@std/net/http.ms"
-import parse, stringify from "@std/data/json.ms"
+import parse, stringify, JsonOptions from "@std/data/json.ms"
 import Network, TlsOptions, http_client from "@std/net/net.ms"
-import Duration, Instant, seconds, monotonic from "@std/os/time.ms"
+import Duration, Instant, seconds, monotonic from "@std/time.ms"
 import (
     msstd_http_client_request_bytes,
     msstd_http_client_share
@@ -95,7 +95,7 @@ impl FetchResponse:
     // Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
     fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
         let text = try self.text()
-        return parse[T](text, ignore_unknown_fields: ignore_unknown_fields)
+        return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
     // Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
     fn check_status() Unit!:

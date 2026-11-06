@@ -1,6 +1,6 @@
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import sse_events, SseEvent, SseLimits from "@std/net/sse.ms"
 
 // Hands out the chunks in order, then fails with `failure` if set, else ends.
@@ -24,7 +24,7 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(parts, 0, none))
+    return ReadStream[Bytes](Chunks(parts, 0, none))
 
 // Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
 fn splits(source: Bytes) List[List[Bytes]]:
@@ -45,7 +45,7 @@ fn decode(parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
     var out = List[SseEvent]()
 
     while true:
-        let next = try events.read().wait()
+        let next = try events.next()
 
         if let event = next:
             out.append(event)
@@ -161,14 +161,14 @@ test "truncated streams fail and clean ends succeed":
 
 test "a read failure is the stream's error and events before it arrive":
     var events = sse_events(
-        stream[Bytes](
+        ReadStream[Bytes](
             Chunks(
                 ["data: a\n\n".to_bytes()], 0, Error("I/O: closed", kind: "EBADF")
             )
         )
     )
-    let first = (try events.read().wait()).get()
+    let first = (try events.next()).get()
     try expect_equal(first.data, "a")
 
-    let failed = events.read().wait()
+    let failed = events.next()
     try expect_equal(failed.err().kind, "EBADF")

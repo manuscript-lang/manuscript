@@ -1,6 +1,6 @@
 import stdout, stdin, ReadStream from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
-import Instant, monotonic from "@std/os/time.ms"
+import Instant, monotonic from "@std/time.ms"
 import StringBuilder from "@std/string.ms"
 
 interface Counter:
@@ -20,7 +20,7 @@ enum Shape:
     Tri(b: Int)
 
 fn got_line(var input: ReadStream[String]) Bool:
-    if let line = input.read().wait():
+    if let line = input.next():
         return line.is_some()
 
     return false

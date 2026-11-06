@@ -524,7 +524,7 @@ fn big(value: Int) BigInt:
     return from_int(value)
 
 fn parse_big(text: String) BigInt?:
-    if let value = parse(text, 10, none):
+    if let value = parse(text, 10):
         return value
 
     return none

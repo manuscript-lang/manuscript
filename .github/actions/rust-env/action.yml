@@ -94,3 +94,12 @@ runs:
       with:
         path: ${{ runner.temp }}/llvm-debug-23.1.1
         key: ${{ steps.llvm-debug.outputs.cache-primary-key }}
+
+    - name: Record Darwin debug linkers after PATH setup
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        command -v dsymutil
+        dsymutil --version
+        xcrun --find dsymutil
+        xcrun dsymutil --version

@@ -8,14 +8,14 @@ fn run() Result[Unit, Error]:
     var input = lines(stdin())
 
     while true:
-        let line = try input.read().wait()
+        let line = try input.next()
 
         if let text = line:
             try stdout().write("{text}\n")
         else:
             break
 
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():

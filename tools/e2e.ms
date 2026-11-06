@@ -12,7 +12,7 @@ import run from "@std/os/process.ms"
 import (arguments, change_directory, working_directory) from "@std/os/env.ms"
 import (system_info) from "@std/os/system.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
-import Instant, monotonic from "@std/os/time.ms"
+import Instant, monotonic from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
 // The exit status and combined output of one `ms` invocation.

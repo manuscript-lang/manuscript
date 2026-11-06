@@ -1,11 +1,11 @@
 // conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
 // conform: phase=check
 // conform: origin=tests/e2e/testdata/projects/library/main.ms
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import process_info from "@std/os/process.ms"
 import memory_usage from "@std/os/system.ms"
 import arguments from "@std/os/env.ms"
-import random_bytes from "@std/os/random.ms"
+import random_bytes from "@std/random.ms"
 import (
     OpenMode,
     OpenOptions,
@@ -19,10 +19,10 @@ import (
     write_file
 ) from "@std/os/fs.ms"
 import system_info from "@std/os/system.ms"
-import now from "@std/os/time.ms"
-import uuid_v4 from "@std/os/random.ms"
-import secure_int from "@std/os/random.ms"
-import parse_timestamp from "@std/os/time.ms"
+import now from "@std/time.ms"
+import uuid_v4 from "@std/random.ms"
+import secure_int from "@std/random.ms"
+import parse_timestamp from "@std/time.ms"
 import posix from "@std/os/path.ms"
 import win32 from "@std/os/path.ms"
 
@@ -42,7 +42,7 @@ fn exercise(path: String) Unit!:
 
     let info = try common_result(result: stat(path: path))
     info.size | try expect_equal(5)
-    (not info.directory) | try expect_true
+    (not info.is_directory()) | try expect_true
 
     let bytes = try common_result(result: random_bytes(count: 16))
     bytes.length() | try expect_equal(16)
@@ -59,7 +59,9 @@ fn exercise(path: String) Unit!:
     )
     (system_info().cpu_count > 0) | try expect_true
 
-    var file = try common_result(result: open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384)))
+    var file = try common_result(
+        result: open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384))
+    )
     let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
     try expect_false(
         not (
@@ -84,7 +86,7 @@ fn exercise(path: String) Unit!:
         )
     )
     let _appended = try common_result(result: append_file(path: path, data: "!").wait())
-    let events = try watcher.read().wait()
+    let events = try watcher.next()
     events.is_some() | try expect_true
     try watcher.close()
 

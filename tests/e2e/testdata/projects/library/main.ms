@@ -2,7 +2,7 @@ import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import process_info from "@std/os/process.ms"
 import memory_usage from "@std/os/system.ms"
 import arguments from "@std/os/env.ms"
-import random_bytes from "@std/os/random.ms"
+import random_bytes from "@std/random.ms"
 import (
     OpenMode,
     OpenOptions,
@@ -16,10 +16,10 @@ import (
     write_file
 ) from "@std/os/fs.ms"
 import system_info from "@std/os/system.ms"
-import now from "@std/os/time.ms"
-import uuid_v4 from "@std/os/random.ms"
-import secure_int from "@std/os/random.ms"
-import parse_timestamp from "@std/os/time.ms"
+import now from "@std/time.ms"
+import uuid_v4 from "@std/random.ms"
+import secure_int from "@std/random.ms"
+import parse_timestamp from "@std/time.ms"
 import posix from "@std/os/path.ms"
 import win32 from "@std/os/path.ms"
 
@@ -83,7 +83,7 @@ fn exercise(path: String) Unit!:
         )
     )
     let _appended = try common_result(result: append_file(path: path, data: "!").wait())
-    let events = try watcher.read().wait()
+    let events = try watcher.next()
     events.is_some() | try expect_true
     try watcher.close()
 
