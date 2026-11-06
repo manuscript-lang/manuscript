@@ -206,7 +206,7 @@ impl Pass<'_> {
                 }
                 self.expr(value, &mut live);
             }
-            StmtKind::Call(e) => self.expr(e, &mut live),
+            StmtKind::Call(e) | StmtKind::Yield(e) => self.expr(e, &mut live),
             StmtKind::Return(e) => {
                 live = self.exit.clone();
                 if let Some(e) = e {

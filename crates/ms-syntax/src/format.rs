@@ -404,6 +404,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
                     | Tok::Comma
                     | Tok::Colon
                     | Tok::Return
+                    | Tok::Yield
                     | Tok::Plus
                     | Tok::Minus
                     | Tok::Star
@@ -553,6 +554,7 @@ fn statement_value(s: &Stmt) -> Option<&Expr> {
         StmtKind::Bind { value, .. } | StmtKind::Assign { value, .. } => Some(value),
         StmtKind::Call(e) => Some(e),
         StmtKind::Return(e) => e.as_ref(),
+        StmtKind::Yield(e) => Some(e),
         StmtKind::If { cond, .. } | StmtKind::While { cond, .. } => Some(cond),
         StmtKind::For { iter, .. } => Some(iter),
         StmtKind::Break | StmtKind::Continue => None,
@@ -1554,7 +1556,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             let before = start.checked_sub(1).map(|i| tokens[i].kind);
             if !matches!(
                 before,
-                None | Some(Tok::Assign | Tok::Return | Tok::Newline | Tok::Indent | Tok::Dedent)
+                None | Some(
+                    Tok::Assign
+                        | Tok::Return
+                        | Tok::Yield
+                        | Tok::Newline
+                        | Tok::Indent
+                        | Tok::Dedent
+                )
             ) {
                 return;
             }
@@ -1707,6 +1716,11 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 StmtKind::While { .. } => start += 1,
                 StmtKind::Return(_) => {
                     if tokens[start].kind == Tok::Return {
+                        start += 1;
+                    }
+                }
+                StmtKind::Yield(_) => {
+                    if tokens[start].kind == Tok::Yield {
                         start += 1;
                     }
                 }

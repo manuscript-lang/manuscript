@@ -80,7 +80,7 @@ impl Scan<'_> {
             StmtKind::Bind { value, .. } | StmtKind::Assign { value, .. } => {
                 self.value(syms, value, false)
             }
-            StmtKind::Call(e) => self.value(syms, e, false),
+            StmtKind::Call(e) | StmtKind::Yield(e) => self.value(syms, e, false),
             StmtKind::Break | StmtKind::Continue => Outcome::Continues,
             StmtKind::If {
                 cond,

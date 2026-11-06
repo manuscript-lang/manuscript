@@ -702,6 +702,8 @@ pub enum StmtKind {
     Call(Expr),
     /// `return [value]`; also an inline body's expression.
     Return(Option<Expr>),
+    /// `yield value`: hands `value` to the consumer of a generator and suspends until the next `next()`.
+    Yield(Expr),
     /// `break`
     Break,
     /// `continue`

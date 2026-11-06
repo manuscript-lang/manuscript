@@ -227,6 +227,8 @@ pub struct Checker {
     pub(crate) loops: usize,
     /// `(function, place)` of each `lock` guard that is still held.
     pub(crate) test_function: usize,
+    /// The function being checked as a generator, and its item type.
+    pub(crate) generator: Option<(usize, Ty)>,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
     pub(crate) unresolved_constructors: HashSet<Pos>,
@@ -284,6 +286,7 @@ impl Checker {
             serial: 0,
             loops: 0,
             test_function: 0,
+            generator: None,
             rejected_names: HashSet::new(),
             unknown_type: false,
             unresolved_constructors: HashSet::new(),
@@ -1591,6 +1594,7 @@ impl Checker {
         let old_function = self.function;
         let old_loops = self.loops;
         let old_test = self.test_function;
+        let old_generator = self.generator.take();
         self.scope = self.variable_scope(vars);
         self.result = t.result.clone();
         self.function = self.serial + 1;
@@ -1627,6 +1631,30 @@ impl Checker {
                 .self_binding = Some(b);
         }
         let result_ty = t.result_ty();
+        let mut generator = false;
+        if let Some(f) = d.func() {
+            let found = ms_syntax::visit::yields(&f.body);
+            if found.here || found.in_closure {
+                generator = true;
+                match self.stream_item(&result_ty) {
+                    Some(item) if found.here => {
+                        // The body runs as a stream step: `try` and a bare `return` end it, so it is
+                        // checked like a test block, whose result is `Result[Unit, Error]`.
+                        self.generator = Some((self.function, item));
+                        self.result = Some(self.session.test_outcome());
+                        self.test_function = self.function;
+                    }
+                    _ if found.here => self.type_error(
+                        d.pos(),
+                        format!(
+                            "a function that uses yield must return ReadStream[T] (from @std/io/io.ms), found {rt}",
+                            rt = result_ty.display(self.syms)
+                        ),
+                    ),
+                    _ => {}
+                }
+            }
+        }
         let fall;
         if let Some(c) = d.decl.constant().filter(|_| d.index.is_none()) {
             self.check_parameters(d, &[], &t.params);
@@ -1645,7 +1673,12 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        if fall && !is_test && self.syms.str(result_ty.id) != "Unit" && !result_ty.is_invalid() {
+        if fall
+            && !is_test
+            && !generator
+            && self.syms.str(result_ty.id) != "Unit"
+            && !result_ty.is_invalid()
+        {
             self.type_error(
                 d.pos(),
                 format!(
@@ -1659,6 +1692,7 @@ impl Checker {
         self.function = old_function;
         self.loops = old_loops;
         self.test_function = old_test;
+        self.generator = old_generator;
     }
 
     fn check_field_defaults(&mut self, d: &DeclRef, s: &SymRef) {

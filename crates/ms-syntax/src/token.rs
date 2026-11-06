@@ -26,7 +26,7 @@ tokens! {
     For => "for", If => "if", Impl => "impl", Import => "import", In => "in",
     Interface => "interface", Let => "let", Match => "match", Not => "not",
     Or => "or", Ref => "ref", Return => "return", SelfKw => "self", Test => "test", True => "true", Try => "try",
-    Type => "type", Unit => "unit", Var => "var", While => "while", Underscore => "_",
+    Type => "type", Unit => "unit", Var => "var", While => "while", Yield => "yield", Underscore => "_",
     LParen => "(", RParen => ")", LBracket => "[", RBracket => "]", LBrace => "{", RBrace => "}",
     Colon => ":", Comma => ",", Dot => ".", Plus => "+", Minus => "-", Star => "*", Slash => "/",
     Percent => "%", Lt => "<", Gt => ">", Assign => "=", Amp => "&", Pipe => "|", Ellipsis => "...", DotDot => "..", Question => "?", Bang => "!",
@@ -67,6 +67,7 @@ impl Tok {
             "unit" => Tok::Unit,
             "var" => Tok::Var,
             "while" => Tok::While,
+            "yield" => Tok::Yield,
             "_" => Tok::Underscore,
             _ => Tok::Name,
         }
@@ -111,6 +112,7 @@ pub const KEYWORDS: &[&str] = &[
     "unit",
     "var",
     "while",
+    "yield",
 ];
 
 /// One token. The text is `source[lo..hi]` of the (CRLF-normalised) source the

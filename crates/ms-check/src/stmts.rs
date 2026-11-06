@@ -140,6 +140,7 @@ impl Checker {
             StmtKind::Assign { target, value, .. } => self.check_assign(s, target, value),
             StmtKind::Return(value) => self.check_return(s, value.as_ref()),
             StmtKind::Call(value) => self.check_call_statement(s.pos, value),
+            StmtKind::Yield(value) => self.check_yield(s, value),
             StmtKind::Break | StmtKind::Continue => {
                 let is_break = matches!(s.kind, StmtKind::Break);
                 if self.loops == 0 {
@@ -343,6 +344,23 @@ impl Checker {
         (false, false)
     }
 
+    /// `yield value` in a generator: the value is an item of the stream the function returns.
+    fn check_yield(&mut self, s: &Stmt, value: &Expr) -> (bool, bool) {
+        let item = match &self.generator {
+            Some((function, item)) if *function == self.function => item.clone(),
+            _ => {
+                self.expression(value, None);
+                self.type_error(
+                    s.pos,
+                    "yield is allowed only directly in a function that returns ReadStream[T], not in a closure or a test",
+                );
+                return (true, false);
+            }
+        };
+        let i = self.expression_in(value, Some(&item), "the yielded value".to_string());
+        (true, i.breaks)
+    }
+
     fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
         let i = if matches!(value.kind, ExprKind::Match { .. }) {
             // A match used as a statement discards its result, so its arms need
@@ -513,7 +531,7 @@ impl Checker {
     }
 
     /// The item type of `t` when it is a `ReadStream[T]`.
-    fn stream_item(&self, t: &Ty) -> Option<Ty> {
+    pub(crate) fn stream_item(&self, t: &Ty) -> Option<Ty> {
         let std_stream = self.syms.str(t.name) == "ReadStream"
             && t.symbol()
                 .is_some_and(|s| self.syms.str(s.module) == "@std/io/io.ms");

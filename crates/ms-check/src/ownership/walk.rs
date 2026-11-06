@@ -2045,6 +2045,7 @@ impl Walker<'_> {
             } => self.bind(s, *mutable, pattern, value),
             StmtKind::Assign { target, value, .. } => self.assign(s, target, value),
             StmtKind::Call(e) => self.expr(e, Demand::Discard),
+            StmtKind::Yield(e) => self.expr(e, Demand::Move),
             StmtKind::Return(e) => {
                 if let Some(e) = e {
                     self.returned(e);
@@ -4439,7 +4440,7 @@ impl Walker<'_> {
                     add(&mut out, written);
                     add(&mut out, self.nested_writes(value));
                 }
-                StmtKind::Bind { value, .. } | StmtKind::Call(value) => {
+                StmtKind::Bind { value, .. } | StmtKind::Call(value) | StmtKind::Yield(value) => {
                     add(&mut out, self.nested_writes(value));
                 }
                 StmtKind::Return(value) => {

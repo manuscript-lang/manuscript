@@ -79,7 +79,7 @@ pub fn walk_stmt<V: Visitor>(v: &mut V, s: &Stmt) {
             }
             walk_expr(v, value);
         }
-        StmtKind::Call(e) => walk_expr(v, e),
+        StmtKind::Call(e) | StmtKind::Yield(e) => walk_expr(v, e),
         StmtKind::Return(e) => {
             if let Some(e) = e {
                 walk_expr(v, e);
@@ -157,4 +157,48 @@ pub fn walk_expr<V: Visitor>(v: &mut V, e: &Expr) {
         }
     }
     v.leave_expr(e);
+}
+
+/// Where a body has `yield` statements: directly in the function, or inside a closure.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Yields {
+    /// A `yield` outside every closure: the function is a generator.
+    pub here: bool,
+    /// A `yield` inside a closure, which is never a generator.
+    pub in_closure: bool,
+}
+
+/// Finds the `yield` statements of a function body.
+pub fn yields(body: &[Stmt]) -> Yields {
+    struct Finder {
+        depth: usize,
+        found: Yields,
+    }
+    impl Visitor for Finder {
+        fn stmt(&mut self, s: &Stmt) {
+            if matches!(s.kind, StmtKind::Yield(_)) {
+                if self.depth == 0 {
+                    self.found.here = true;
+                } else {
+                    self.found.in_closure = true;
+                }
+            }
+        }
+        fn expr(&mut self, e: &Expr) {
+            if matches!(e.kind, ExprKind::Lambda(_)) {
+                self.depth += 1;
+            }
+        }
+        fn leave_expr(&mut self, e: &Expr) {
+            if matches!(e.kind, ExprKind::Lambda(_)) {
+                self.depth -= 1;
+            }
+        }
+    }
+    let mut finder = Finder {
+        depth: 0,
+        found: Yields::default(),
+    };
+    walk_block(&mut finder, body);
+    finder.found
 }

@@ -189,7 +189,7 @@ impl Flow<'_> {
                 let target_moves = matches!(target, AssignTarget::Member(t) if own(t));
                 after(own(value) || target_moves)
             }
-            StmtKind::Call(e) => after(own(e)),
+            StmtKind::Call(e) | StmtKind::Yield(e) => after(own(e)),
             StmtKind::Return(e) => {
                 let moved = e.as_ref().is_some_and(own);
                 if state == Held::Yes && !moved {

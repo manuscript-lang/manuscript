@@ -68,7 +68,7 @@ impl<'a> StmtView<'a> {
                 }
                 view.value = Some(value);
             }
-            StmtKind::Call(e) => view.value = Some(e),
+            StmtKind::Call(e) | StmtKind::Yield(e) => view.value = Some(e),
             StmtKind::Return(e) => {
                 view.shape = Shape::Return;
                 view.value = e.as_ref();

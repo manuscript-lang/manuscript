@@ -1743,6 +1743,12 @@ impl<'a> Parser<'a> {
                 self.end()?;
                 StmtKind::Return(value)
             }
+            Tok::Yield => {
+                self.at += 1;
+                let value = self.expression(0)?;
+                self.end()?;
+                StmtKind::Yield(value)
+            }
             Tok::Break | Tok::Continue => {
                 self.at += 1;
                 self.end()?;
@@ -1869,7 +1875,6 @@ impl<'a> Parser<'a> {
                         "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
                         "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
-                        "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n_t}' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", n_t = self.names.str(n))),
                         "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": let result = promise(fn: work()), then result.wait()"),
                         _ => {}

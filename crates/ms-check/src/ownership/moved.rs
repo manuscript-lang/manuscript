@@ -119,7 +119,7 @@ impl Pass<'_> {
                 }
                 self.expr(value, &mut must);
             }
-            StmtKind::Call(e) => self.expr(e, &mut must),
+            StmtKind::Call(e) | StmtKind::Yield(e) => self.expr(e, &mut must),
             StmtKind::Return(e) => {
                 must = Must::new();
                 if let Some(e) = e {

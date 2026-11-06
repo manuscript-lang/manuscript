@@ -175,6 +175,11 @@ impl<'a> FnLower<'a> {
                 self.temps.truncate(mark);
                 return Ok(());
             }
+            StmtKind::Yield(_) => {
+                return Err(Error::new(
+                    "yield is checked but not lowered yet: generator state machines are not implemented",
+                ));
+            }
             StmtKind::Break => {
                 let ctx = self
                     .loops
