@@ -114,8 +114,6 @@ On a generated 122,000-line project (40 packages, cold build, 4 vCPUs), the same
 | debug build | 4.8 s | 10.5 s (`go build`) | 18.0 s (`cargo build`) |
 | release build | 43.8 s (LLVM) | 10.5 s | 30.5 s (`cargo build --release`) |
 
-The loop an agent runs all day is check and debug build, and there Manuscript is the fastest: a check is about 7 times faster than Go's and 10 times faster than Rust's, and a debug build is 2.2 times faster than Go's and 3.7 times faster than Rust's. Release builds are the slow path on purpose, because LLVM spends the time on optimization. Today Manuscript's release build is slower than Rust's and Go's, and the numbers say so. Go has no separate release step, so its single time is repeated.
-
 The numbers come from the [compile-time benchmark](https://github.com/manuscript-lang/manuscript/blob/main/bench/compile-time/README.md), which generates the same program in each language and names the machine and command. The Rust version is one crate with 40 modules, the closest match for Go's 40 packages.
 
 ## We measure it with agents
