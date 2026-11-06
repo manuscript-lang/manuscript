@@ -10,10 +10,10 @@
     <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One native binary, no runtime to install</p>
   </div>
   <div class="home-example" aria-label="A complete Manuscript program">
-    <div class="home-example-intro"><strong>A web server in a few lines.</strong><p>Serve a handler and wait for it. Shutdown on SIGINT or SIGTERM drains open connections.</p></div>
+    <div class="home-example-intro"><strong>Serve a file.</strong><p>A handler waits for the file read like any other call, with no <code>async</code>, and answers the request. SIGINT and SIGTERM drain open connections.</p></div>
     {{ .Page.RenderString (dict "display" "block") .Inner }}
     <p class="home-code-hint">Scroll code horizontally <span aria-hidden="true">↔</span></p>
-    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run server.ms</code><code><span aria-hidden="true">$ </span>curl localhost:8080/docs</code><samp>Hello from /docs</samp></div>
+    <div class="home-output"><code><span aria-hidden="true">$ </span>ms run server.ms</code><code><span aria-hidden="true">$ </span>curl localhost:8080</code><samp>hello from a file</samp></div>
   </div>
 </section>
 <section class="home-benefits" aria-labelledby="benefits-title">
