@@ -339,6 +339,31 @@ fn macos_arguments(
         "x86_64"
     };
     let sdk = sdk_stubs(dir, arch, object, inputs)?;
+    // The debug map records each object's path as given, and the staging directory's name varies
+    // per build. Link from inside it with names relative to it, so identical inputs link to
+    // identical bytes (`dsymutil` runs from there too).
+    let stage = object
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .and_then(|p| std::fs::canonicalize(p).ok());
+    let named = |path: &Path| -> PathBuf {
+        let Some(stage) = &stage else {
+            return path.to_path_buf();
+        };
+        let absolute = match (path.parent(), path.file_name()) {
+            (Some(parent), Some(name)) if !path.exists() => std::fs::canonicalize(parent)
+                .map(|p| p.join(name))
+                .unwrap_or_else(|_| path.to_path_buf()),
+            _ => std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf()),
+        };
+        absolute
+            .strip_prefix(stage)
+            .map(Path::to_path_buf)
+            .unwrap_or(absolute)
+    };
+    if let Some(stage) = &stage {
+        command.current_dir(stage);
+    }
     command
         .args(["-flavor", "darwin", "-arch", arch])
         .args(["-platform_version", "macos", "12.0", "12.0"])
@@ -350,11 +375,15 @@ fn macos_arguments(
         // Workaround: remove once lld is fixed (#1748).
         .arg("-ignore_optimization_hints")
         .arg("-o")
-        .arg(out);
+        .arg(named(out));
     if strip {
         command.arg("-x");
     }
-    command.arg(object).args(inputs).args([
+    command.arg(named(object));
+    for input in inputs {
+        command.arg(named(input));
+    }
+    command.args([
         "-lSystem",
         "-framework",
         "Security",

@@ -68,11 +68,21 @@ fn emit_debug_companion(object: &Path, inputs: &[&Path], out: &Path) -> Result<(
     }
     let companion = debug_companion_path(out).expect("macOS companion");
     let tool = "dsymutil";
-    let o = std::process::Command::new(tool)
-        .arg(out)
+    let mut command = std::process::Command::new(tool);
+    // The linker recorded the objects relative to their directory.
+    if let Some(stage) = object
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .and_then(|p| std::fs::canonicalize(p).ok())
+    {
+        command.current_dir(stage);
+    }
+    let absolute = |path: &Path| std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    command
+        .arg(absolute(out))
         .arg("-o")
-        .arg(&companion)
-        .output();
+        .arg(absolute(&companion));
+    let o = command.output();
     // Without `dsymutil` (no Xcode tools) the executable still runs; it just has no source lines.
     let o = match o {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
