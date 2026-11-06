@@ -20,6 +20,8 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 
 Latest refresh with Go and Rust comparisons for the docs: [`results-2026-11-05.md`](results-2026-11-05.md).
 
+Latest `for_each` check: [`for-each-var-2026-11-06.md`](for-each-var-2026-11-06.md).
+
 Latest perf bash: [`perf-bash-2026-11-03.md`](perf-bash-2026-11-03.md).
 
 Latest Manuscript-only baseline for every suite: [`baseline-2026-10-28.md`](baseline-2026-10-28.md) (previous: [`baseline-2026-10-27.md`](baseline-2026-10-27.md)). Latest same-machine before/after: [`refcount-removal-2026-11-03.md`](refcount-removal-2026-11-03.md) (the refcount removal, three binaries, every suite).

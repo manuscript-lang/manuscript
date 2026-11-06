@@ -327,6 +327,7 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             name: p.name,
             val: Val { v: *v, own: false },
             wrapped: false,
+            reader: false,
         })
         .collect();
     debug_assert_eq!(job.params.len(), nargs.len());

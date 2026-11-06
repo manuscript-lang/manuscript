@@ -72,6 +72,18 @@ impl FnLower<'_> {
         reverse: bool,
         body: &mut ItemBody<'_>,
     ) -> Result<(), Error> {
+        self.each_item_at(items, reverse, false, body)
+    }
+
+    /// `each_item`, handing a map's body the address of each value instead of the value, for a
+    /// callback that takes it as `var`.
+    fn each_item_at(
+        &mut self,
+        items: Items,
+        reverse: bool,
+        value_address: bool,
+        body: &mut ItemBody<'_>,
+    ) -> Result<(), Error> {
         let count = match items {
             Items::List(lv) => {
                 let l = self.b.use_var(lv);
@@ -147,7 +159,13 @@ impl FnLower<'_> {
                         .expect("load")
                 };
                 let mut xs = vec![load(self, kp, a[0])];
-                if is_map {
+                if is_map && value_address {
+                    let addr = self
+                        .b
+                        .emit(Op::Load, &[vp], Imm::Ty(MTy::PTR), Some(MTy::PTR))
+                        .expect("load");
+                    xs.push(addr);
+                } else if is_map {
                     xs.push(load(self, vp, a[1]));
                 }
                 let stop = body(self, &xs)?;
@@ -252,7 +270,8 @@ impl FnLower<'_> {
                 }
             }
             "for_each" => {
-                self.each_item(items, false, &mut |s, xs| {
+                // A map's callback takes its value as `var`: it gets the value's address.
+                self.each_item_at(items, false, !is_set && !f.reader, &mut |s, xs| {
                     let f = s.b.use_var(fvar);
                     s.b.call_ind(f, xs);
                     Ok(None)

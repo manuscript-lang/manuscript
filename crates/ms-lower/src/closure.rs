@@ -1487,6 +1487,7 @@ impl FnLower<'_> {
                             name: q.name,
                             val: Val { v: *v, own: false },
                             wrapped: false,
+                            reader: false,
                         })
                         .collect();
                     let before = tmp.len();
@@ -1502,6 +1503,7 @@ impl FnLower<'_> {
                 name: p.name,
                 val,
                 wrapped: false,
+                reader: false,
             });
         }
         Ok(args)
@@ -2063,10 +2065,15 @@ impl FnLower<'_> {
                 .emit(Op::Slot, &[], Imm::Ty(have), Some(MTy::PTR))
                 .expect("slot");
             self.b.emit(Op::Store, &[slot, x.v], Imm::None, None);
+            // The adapter reads the value in place, so it stays alive to the end of the statement.
+            if x.own {
+                self.temps.push(x.v);
+            }
             slot
         } else {
-            // The adapter holds the function value it adapts: a declared copy of a borrowed one.
-            self.owned_boundary(x)
+            // The adapter holds the function value it adapts: it takes an owned one over and
+            // copies a borrowed one.
+            if x.own { x.v } else { self.owned_boundary(x) }
         };
         let v = self
             .b

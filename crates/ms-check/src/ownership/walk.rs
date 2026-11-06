@@ -5,7 +5,7 @@ use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
     BORROWED_ERROR, BORROWED_OK, CallModes, ParamMode, ResultBorrow, Summaries, Summary,
-    call_modes, receiver_mode, result_borrow,
+    call_modes, receiver_mode, result_borrow, takes_element_mutator,
 };
 use super::places::{Place, Step};
 use super::*;
@@ -2619,6 +2619,16 @@ impl Walker<'_> {
     /// last use. A `Copy` receiver is copied, and a temporary one is owned by the value. Returns
     /// the places a borrowing value holds.
     fn method_value_use(&mut self, e: &Expr, recv: &Expr, escaping: bool) -> Vec<(Place, bool)> {
+        if self.is_place(recv)
+            && let Some((m, _)) = self.method_value_parts(e)
+            && takes_element_mutator(&m)
+        {
+            self.error(
+                e.pos,
+                "this method takes a callback that can change the receiver's elements, so it cannot be used as a value; call it, or write a closure",
+            );
+            return Vec::new();
+        }
         if self.class_of(recv) == Class::Copy || !self.is_place(recv) {
             self.expr(recv, Demand::Read);
             return Vec::new();

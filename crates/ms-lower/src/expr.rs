@@ -50,6 +50,16 @@ impl<'a> FnLower<'a> {
 
     /// Lowers an expression, converting to an interface where the checker marked it.
     pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        self.expr_with(e, true)
+    }
+
+    /// Lowers an expression whose function value reads the parameters the checker let it
+    /// stand in for, without the adapter that would fit it to the declared type.
+    pub fn expr_unfit(&mut self, e: &Expr) -> Result<Val, Error> {
+        self.expr_with(e, false)
+    }
+
+    fn expr_with(&mut self, e: &Expr, fit_reader: bool) -> Result<Val, Error> {
         let saved = self.converting;
         if self.hir.info(e).interface_source.is_some() || self.hir.info(e).function_source.is_some()
         {
@@ -60,6 +70,7 @@ impl<'a> FnLower<'a> {
         let mut x = x?;
         let reader = self.hir.info(e).function_source.clone();
         if let Some(src) = reader
+            && fit_reader
             && !self.dead
         {
             x = self.fit_reader_function(e, x, &src)?;
