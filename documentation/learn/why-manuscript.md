@@ -49,7 +49,7 @@ export fn main() Int:
 1650 cents
 ```
 
-You can follow this without a manual. An `enum` lists the cases, an `interface` names what a type can do, `impl` connects them, and `match` covers every case. `var` marks the one thing that changes. Nothing is copied behind your back, because the only mark for that is `.clone()`. Each value has one owner, the compiler frees it at its last use, and there is no garbage collector and no lifetime annotation.
+You can follow this without a manual. An `enum` lists the cases, an `interface` names what a type can do, `impl` connects them, and `match` covers every case. `var` marks the one thing that changes.
 
 The syntax is also cheap for a model to produce. Manuscript spells logic with plain English words, `and`, `or`, `not`, `fn`, `var`, `else if`, `none`, where other languages use symbols and punctuation. Plain words are common in a model's training text and tend to cost fewer tokens than strings of operators, so the same program takes less to write and less to read back.
 
