@@ -20,6 +20,12 @@ use std::collections::HashMap;
 
 type Vs = Vec<Value>;
 
+mod closure;
+mod data;
+mod memory;
+mod runtime;
+mod scalar;
+
 fn flags() -> MemFlagsData {
     MemFlagsData::trusted()
 }
@@ -1752,571 +1758,70 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
+    /// Lowers one instruction by routing it to the function for its op family, then
+    /// normalizes the result leaves to the machine types of the result type.
     fn lower_inst(&mut self, f: &Func, inst: &Inst) {
-        let checks = self.g.opts.checks;
         let previous_overflow = self.overflow_result.take();
-        let m = self.g.m;
         let res_ty = inst.res.map(|r| f.ty(r));
         let out: Vs = match inst.op {
-            Op::IConst => {
-                let Imm::Int(v) = inst.imm else {
-                    unreachable!()
-                };
-                vec![self.iconst(v)]
+            Op::IConst | Op::FConst | Op::BConst | Op::UnitConst | Op::StrLit | Op::BytesLit => {
+                self.constants(f, inst)
             }
-            Op::FConst if res_ty == Some(Ty::FLOAT32) => {
-                vec![self.b.ins().f32const(inst.imm.float() as f32)]
+            Op::IAdd | Op::ISub | Op::IMul | Op::INeg | Op::F32Round | Op::SDiv | Op::SRem => {
+                self.integer_ops(inst, previous_overflow)
             }
-            Op::FConst => vec![self.b.ins().f64const(inst.imm.float())],
-            Op::BConst => {
-                let Imm::Bool(v) = inst.imm else {
-                    unreachable!()
-                };
-                vec![self.b.ins().iconst(types::I8, v as i64)]
-            }
-            Op::UnitConst => vec![],
-            Op::StrLit => {
-                let Imm::Str(s) = inst.imm else {
-                    unreachable!()
-                };
-                let d = self.g.str_lit(s.0);
-                if let Some(r) = inst.res {
-                    self.str_lits.insert(r.index(), s.0);
-                }
-                let base = self.data_addr(d);
-                let ptr = base;
-                let len = self.g.m.strings[s.0 as usize].len() as i64;
-                let tagged = self.iconst(len | STR_STATIC as i64);
-                vec![ptr, tagged]
-            }
-            Op::BytesLit => {
-                let Imm::Int(i) = inst.imm else {
-                    unreachable!()
-                };
-                let n = self.g.m.blobs[i as usize].len() as i64;
-                if n == 0 {
-                    let z = self.iconst(0);
-                    vec![z, z, z]
-                } else {
-                    let data = self.g.blob(i as usize);
-                    let ptr = self.data_addr(data);
-                    // Capacity zero marks the bytes as borrowed: nothing frees them.
-                    let (len, cap) = (self.iconst(n), self.iconst(0));
-                    vec![ptr, len, cap]
-                }
-            }
-            Op::IAdd => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                if let Some((Op::IAdd, _, _, v)) =
-                    previous_overflow.filter(|p| p.1 == x && p.2 == y)
-                {
-                    v
-                } else {
-                    self.b.ins().iadd(x, y)
-                }
-            }],
-            Op::ISub => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().isub(x, y)
-            }],
-            Op::IMul => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                if let Some((Op::IMul, _, _, v)) =
-                    previous_overflow.filter(|p| p.1 == x && p.2 == y)
-                {
-                    v
-                } else {
-                    self.mul(x, y)
-                }
-            }],
-            Op::INeg => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().ineg(x)
-            }],
-            Op::IAddOverflow | Op::IMulOverflow => {
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                let (v, of) = if inst.op == Op::IAddOverflow {
-                    self.b.ins().sadd_overflow(x, y)
-                } else {
-                    self.mul_overflow(x, y)
-                };
-                self.overflow_result = Some((
-                    if inst.op == Op::IAddOverflow {
-                        Op::IAdd
-                    } else {
-                        Op::IMul
-                    },
-                    x,
-                    y,
-                    v,
-                ));
-                vec![of]
-            }
-            Op::IntOverflowIf => {
-                if checks {
-                    self.fault_if(self.a(inst, 0)[0], "msrt_fault_int_overflow", vec![]);
-                }
-                vec![]
-            }
-            Op::NarrowChk => {
-                let x = self.a(inst, 0)[0];
-                let (lo, hi) = self
-                    .g
-                    .lay
-                    .m
-                    .types
-                    .int_range(f.ty(inst.args[0]))
-                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
-                if checks {
-                    let (lo_k, hi_k) = (
-                        self.b.ins().iconst(types::I64, lo as i64),
-                        self.b.ins().iconst(types::I64, hi as i64),
-                    );
-                    let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
-                    let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
-                    let bad = self.b.ins().bor(lo, hi);
-                    self.fault_if(bad, "msrt_fault_int_range", vec![]);
-                }
-                vec![x]
-            }
-            Op::Conv => {
-                let x = self.a(inst, 0)[0];
-                let to = if res_ty == Some(Ty::FLOAT32) {
-                    types::F32
-                } else {
-                    types::F64
-                };
-                vec![self.float_as(x, to)]
-            }
-            Op::INarrowOpt => {
-                let x = self.a(inst, 0)[0];
-                let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
-                let from = f.ty(inst.args[0]);
-                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
-                    self.g.lay.m.types.narrow_range(from, i)
-                });
-                let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, lo),
-                    self.b.ins().iconst(types::I64, hi),
-                );
-                let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
-                let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
-                let ok = self.b.ins().band(ge, le);
-                vec![ok, x]
-            }
-            Op::F32Round => vec![{
-                let x = self.a(inst, 0)[0];
-                self.float_as(x, types::F32)
-            }],
-            Op::IAddChk | Op::ISubChk | Op::IMulChk => {
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                if !checks {
-                    vec![match inst.op {
-                        Op::IAddChk => self.b.ins().iadd(x, y),
-                        Op::ISubChk => self.b.ins().isub(x, y),
-                        _ => self.mul(x, y),
-                    }]
-                } else {
-                    let (v, of) = match inst.op {
-                        Op::IAddChk => self.b.ins().sadd_overflow(x, y),
-                        Op::ISubChk => self.b.ins().ssub_overflow(x, y),
-                        _ => self.mul_overflow(x, y),
-                    };
-                    self.fault_if(of, "msrt_fault_int_overflow", vec![]);
-                    vec![v]
-                }
-            }
-            Op::UAddChk | Op::USubChk | Op::UMulChk => {
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                if !checks {
-                    vec![match inst.op {
-                        Op::UAddChk => self.b.ins().iadd(x, y),
-                        Op::USubChk => self.b.ins().isub(x, y),
-                        _ => self.mul(x, y),
-                    }]
-                } else {
-                    let (v, of) = match inst.op {
-                        Op::UAddChk => self.b.ins().uadd_overflow(x, y),
-                        Op::USubChk => self.b.ins().usub_overflow(x, y),
-                        _ => self.b.ins().umul_overflow(x, y),
-                    };
-                    self.fault_if(of, "msrt_fault_int_range", vec![]);
-                    vec![v]
-                }
-            }
-            Op::INegChk => {
-                let x = self.a(inst, 0)[0];
-                if checks {
-                    let z = self.iconst(0);
-                    let (v, of) = self.b.ins().ssub_overflow(z, x);
-                    self.fault_if(of, "msrt_fault_int_overflow", vec![]);
-                    vec![v]
-                } else {
-                    vec![self.b.ins().ineg(x)]
-                }
-            }
-            Op::SDivChk => {
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                if checks {
-                    let z = self.b.ins().icmp_imm_s(IntCC::Equal, y, 0);
-                    self.fault_if(z, "msrt_fault_div_zero", vec![]);
-                    let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
-                    let mn = self.b.ins().icmp_imm_s(IntCC::Equal, x, i64::MIN);
-                    let both = self.b.ins().band(m1, mn);
-                    self.fault_if(both, "msrt_fault_div_overflow", vec![x, y]);
-                }
-                vec![self.b.ins().sdiv(x, y)]
-            }
-            Op::SRemChk => {
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                if checks {
-                    let z = self.b.ins().icmp_imm_s(IntCC::Equal, y, 0);
-                    self.fault_if(z, "msrt_fault_rem_zero", vec![]);
-                }
-                let m1 = self.b.ins().icmp_imm_s(IntCC::Equal, y, -1);
-                let one = self.iconst(1);
-                let safe = self.b.ins().select(m1, one, y);
-                let r = self.b.ins().srem(x, safe);
-                let zero = self.iconst(0);
-                vec![self.b.ins().select(m1, zero, r)]
-            }
-            Op::SDiv => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().sdiv(x, y)
-            }],
-            Op::SRem => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().srem(x, y)
-            }],
-            Op::And => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().band(x, y)
-            }],
-            Op::Or => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().bor(x, y)
-            }],
-            Op::Xor => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().bxor(x, y)
-            }],
-            Op::Shl => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().ishl(x, y)
-            }],
-            Op::Sshr => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().sshr(x, y)
-            }],
-            Op::Ushr => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().ushr(x, y)
-            }],
-            Op::Rotl => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().rotl(x, y)
-            }],
-            Op::Rotr => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().rotr(x, y)
-            }],
-            Op::Clz => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().clz(x)
-            }],
-            Op::Ctz => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().ctz(x)
-            }],
-            Op::Popcnt => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().popcnt(x)
-            }],
-            Op::Not => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().bxor_imm_s(x, 1)
-            }],
-            Op::UICmp => {
-                let Imm::Cc(cc) = inst.imm else {
-                    unreachable!()
-                };
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                let cc = match cc {
-                    Cc::Eq => IntCC::Equal,
-                    Cc::Ne => IntCC::NotEqual,
-                    Cc::Lt => IntCC::UnsignedLessThan,
-                    Cc::Le => IntCC::UnsignedLessThanOrEqual,
-                    Cc::Gt => IntCC::UnsignedGreaterThan,
-                    Cc::Ge => IntCC::UnsignedGreaterThanOrEqual,
-                };
-                vec![self.b.ins().icmp(cc, x, y)]
-            }
-            Op::ICmp => {
-                let Imm::Cc(cc) = inst.imm else {
-                    unreachable!()
-                };
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                vec![self.b.ins().icmp(Self::icc(cc), x, y)]
-            }
-            Op::FCmp => {
-                let Imm::Cc(cc) = inst.imm else {
-                    unreachable!()
-                };
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                vec![self.b.ins().fcmp(Self::fcc(cc), x, y)]
-            }
-            Op::FAdd => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().fadd(x, y)
-            }],
-            Op::FSub => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().fsub(x, y)
-            }],
-            Op::FMul => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().fmul(x, y)
-            }],
-            Op::FDiv => vec![{
-                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
-                self.b.ins().fdiv(x, y)
-            }],
-            Op::FNeg => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().fneg(x)
-            }],
-            Op::FSqrt => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().sqrt(x)
-            }],
-            Op::FFloor => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().floor(x)
-            }],
-            Op::FCeil => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().ceil(x)
-            }],
-            Op::FTrunc => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().trunc(x)
-            }],
-            Op::FAbs => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().fabs(x)
-            }],
-            Op::I2F => vec![{
-                let x = self.a(inst, 0)[0];
-                if res_ty == Some(Ty::FLOAT32) {
-                    self.b.ins().fcvt_from_sint(types::F32, x)
-                } else {
-                    self.b.ins().fcvt_from_sint(types::F64, x)
-                }
-            }],
-            Op::F2IOpt => {
-                let v = self.a(inst, 0)[0];
-                let v = self.float_as(v, types::F64);
-                let lo = self.b.ins().f64const(-9223372036854775808.0);
-                let hi = self.b.ins().f64const(9223372036854775808.0);
-                let ge = self.b.ins().fcmp(FloatCC::GreaterThanOrEqual, v, lo);
-                let lt = self.b.ins().fcmp(FloatCC::LessThan, v, hi);
-                let ok = self.b.ins().band(ge, lt);
-                vec![ok, self.b.ins().fcvt_to_sint_sat(types::I64, v)]
-            }
-            Op::B2I => vec![{
-                let x = self.a(inst, 0)[0];
-                self.b.ins().uextend(types::I64, x)
-            }],
-            Op::Select => {
-                let c = self.a(inst, 0)[0];
-                let (t, e) = (self.a(inst, 1), self.a(inst, 2));
-                t.iter()
-                    .zip(&e)
-                    .map(|(x, y)| self.b.ins().select(c, *x, *y))
-                    .collect()
-            }
-            Op::RecNew => {
-                let flat: Vs = (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect();
-                self.rec_pack(res_ty.expect("rec.new result"), flat)
-            }
-            Op::RecGet => {
-                let Imm::Field(_, i) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let (_, at, w) = self.fields_of(ty)[i as usize];
-                match self.rec_block(ty) {
-                    Some(block) => {
-                        let lay = mem_layout(&block);
-                        let p = self.a(inst, 0)[0];
-                        (at..at + w)
-                            .map(|k| self.load_leaf(block[k], p, lay.offsets[k] as i32))
-                            .collect()
-                    }
-                    None => self.a(inst, 0)[at..at + w].to_vec(),
-                }
-            }
-            Op::RecSet | Op::RecFill => {
-                let Imm::Field(_, i) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let (fty, at, w) = self.fields_of(ty)[i as usize];
-                let held = self.a(inst, 0);
-                let mut obj = self.rec_expand(ty, &held);
-                if inst.op == Op::RecSet && m.needs_drop(fty) {
-                    let old = obj[at..at + w].to_vec();
-                    self.drop_value(fty, &old);
-                }
-                let new = self.a(inst, 1);
-                obj.splice(at..at + w, new);
-                // The old value is consumed by the set: an indirect record moves its fields into a
-                // fresh block and frees the old one, so no block is ever written in place.
-                if self.rec_block(ty).is_some() {
-                    self.free(held[0]);
-                }
-                self.rec_pack(ty, obj)
-            }
-            Op::AltNew | Op::AltView => self.alt_new(inst, res_ty.expect("alt.new result")),
-            Op::AltPlain => self.a(inst, 0),
-            Op::AltOwn => {
-                // Every case copied: the result is the ordinary alternative.
-                let ty = res_ty.expect("alt.own result");
-                let v = self.a(inst, 0);
-                self.clone_value(ty, &v)
-            }
-            Op::AltTag => {
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                match &self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { .. }) => {
-                        vec![self.b.ins().load(types::I64, flags(), v[0], 0)]
-                    }
-                    _ => vec![v[0]],
-                }
-            }
-            Op::AltGet | Op::AltTake => {
-                let Imm::AltField(a, c, i) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let (_, idx) = self.alt_fields(a)[c as usize][i as usize].clone();
-                let v = self.a(inst, 0);
-                match &self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { block, .. }) => {
-                        let lay = mem_layout(block);
-                        idx.iter()
-                            .map(|k| {
-                                self.b.ins().load(
-                                    leaf_type(block[*k]),
-                                    flags(),
-                                    v[0],
-                                    lay.offsets[*k] as i32,
-                                )
-                            })
-                            .collect()
-                    }
-                    _ => idx.iter().map(|k| v[*k]).collect(),
-                }
-            }
-            Op::RecRelease => {
-                let Imm::RecMask(_, mask) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let held = self.a(inst, 0);
-                let v = self.rec_expand(ty, &held);
-                // Drop the fields that were not moved out, then free the block of an indirect record.
-                for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
-                    if mask >> k & 1 == 0 {
-                        self.drop_value(fty, &v[at..at + w]);
-                    }
-                }
-                if self.rec_block(ty).is_some() {
-                    self.free(held[0]);
-                }
-                vec![]
-            }
-            Op::AltRelease => {
-                let Imm::AltMask(a, c, mask) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let case = self.alt_fields(a)[c as usize].clone();
-                let v = self.a(inst, 0);
-                let boxed = match &self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
-                    _ => None,
-                };
-                // Drop the payload fields that were not moved out, then free the block.
-                for (k, (fty, idx)) in case.iter().enumerate() {
-                    if mask >> k & 1 == 1 || !m.needs_drop(*fty) {
-                        continue;
-                    }
-                    let fv: Vs = match &boxed {
-                        Some(block) => {
-                            let lay = mem_layout(block);
-                            idx.iter()
-                                .map(|j| {
-                                    self.b.ins().load(
-                                        leaf_type(block[*j]),
-                                        flags(),
-                                        v[0],
-                                        lay.offsets[*j] as i32,
-                                    )
-                                })
-                                .collect()
-                        }
-                        None => idx.iter().map(|j| v[*j]).collect(),
-                    };
-                    self.drop_value(*fty, &fv);
-                }
-                if boxed.is_some() {
-                    self.free(v[0]);
-                }
-                vec![]
-            }
-            Op::AltUnbox => {
-                let Imm::AltField(a, c, i) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let case = self.alt_fields(a)[c as usize].clone();
-                let v = self.a(inst, 0);
-                let boxed = match &self.g.lay.shape(ty).alt {
-                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
-                    _ => None,
-                };
-                // Read every payload leaf of the case, drop all fields but `i`, free the block.
-                let fields: Vec<Vs> = case
-                    .iter()
-                    .map(|(_, idx)| match &boxed {
-                        Some(block) => {
-                            let lay = mem_layout(block);
-                            idx.iter()
-                                .map(|k| {
-                                    self.b.ins().load(
-                                        leaf_type(block[*k]),
-                                        flags(),
-                                        v[0],
-                                        lay.offsets[*k] as i32,
-                                    )
-                                })
-                                .collect()
-                        }
-                        None => idx.iter().map(|k| v[*k]).collect(),
-                    })
-                    .collect();
-                for (k, ((fty, _), fv)) in case.iter().zip(&fields).enumerate() {
-                    if k != i as usize {
-                        self.drop_value(*fty, fv);
-                    }
-                }
-                if boxed.is_some() {
-                    self.free(v[0]);
-                }
-                fields[i as usize].clone()
-            }
+            Op::IAddOverflow
+            | Op::IMulOverflow
+            | Op::IntOverflowIf
+            | Op::NarrowChk
+            | Op::Conv
+            | Op::INarrowOpt
+            | Op::IAddChk
+            | Op::ISubChk
+            | Op::IMulChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
+            | Op::INegChk
+            | Op::SDivChk
+            | Op::SRemChk => self.checked_integer_ops(f, inst),
+            Op::And
+            | Op::Or
+            | Op::Xor
+            | Op::Shl
+            | Op::Sshr
+            | Op::Ushr
+            | Op::Rotl
+            | Op::Rotr
+            | Op::Clz
+            | Op::Ctz
+            | Op::Popcnt
+            | Op::Not => self.bit_ops(inst),
+            Op::UICmp | Op::ICmp | Op::FCmp | Op::Select => self.comparisons(inst),
+            Op::FAdd
+            | Op::FSub
+            | Op::FMul
+            | Op::FDiv
+            | Op::FNeg
+            | Op::FSqrt
+            | Op::FFloor
+            | Op::FCeil
+            | Op::FTrunc
+            | Op::FAbs
+            | Op::I2F
+            | Op::F2IOpt
+            | Op::B2I => self.float_ops(f, inst),
+            Op::RecNew | Op::RecGet | Op::RecSet | Op::RecFill => self.records(f, inst),
+            Op::AltNew
+            | Op::AltView
+            | Op::AltPlain
+            | Op::AltOwn
+            | Op::AltTag
+            | Op::AltGet
+            | Op::AltTake
+            | Op::RecRelease
+            | Op::AltRelease
+            | Op::AltUnbox => self.alternatives(f, inst),
             Op::ListNew
             | Op::ListLit
             | Op::ListConst
@@ -2329,464 +1834,45 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::ListSetU
             | Op::ListFill
             | Op::ListPush
-            | Op::ListDropLast => self.lower_list(f, inst),
-            Op::ListTake => {
-                let lt = f.ty(inst.args[0]);
-                let (_, leaves, size) = self.elem_info(lt);
-                let l = self.a(inst, 0);
-                let i = self.a(inst, 1)[0];
-                let at = self.elem_addr(l[0], l[1], i, size, Op::ListGetU);
-                self.load_leaves(at, 0, &leaves)
-            }
-            Op::ListRelease => {
-                let lt = f.ty(inst.args[0]);
-                let l = self.a(inst, 0);
-                let from = self.a(inst, 1)[0];
-                self.drop_list_from(lt, l[0], l[1], Some(from));
-                vec![]
-            }
-            Op::OptSome | Op::OptView => {
-                let ty = res_ty.expect("opt.some result");
-                let v = self.a(inst, 0);
-                if self.opt_boxed(ty) {
-                    assert!(
-                        inst.op == Op::OptSome,
-                        "a borrowed optional cannot have a boxed layout"
-                    );
-                    let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
-                        unreachable!()
-                    };
-                    let leaves = self.g.lay.leaves(inner);
-                    let p = self.alloc(mem_layout(&leaves).size as i64);
-                    self.store_leaves(p, 0, &leaves, &v);
-                    vec![p]
-                } else if self.opt_niche(ty) {
-                    v
-                } else {
-                    let one = self.b.ins().iconst(types::I8, 1);
-                    let mut out = vec![one];
-                    out.extend(v);
-                    out
-                }
-            }
-            Op::OptNone => {
-                let ty = res_ty.expect("opt.none result");
-                self.zeros(ty)
-            }
-            Op::OptIsSome => {
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                if self.opt_niche(ty) {
-                    vec![self.opt_present(ty, &v)]
-                } else {
-                    vec![v[0]]
-                }
-            }
-            Op::OptGet | Op::OptUnwrap => {
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                let nullable = self.opt_niche(ty);
-                if inst.op == Op::OptUnwrap && checks {
-                    // Every layout keeps the presence word (null pointer or tag) first; an
-                    // optional string also needs its tag.
-                    let none = if self.g.lay.is_str_like(ty) {
-                        let some = self.opt_present(ty, &v);
-                        self.b.ins().icmp_imm_s(IntCC::Equal, some, 0)
-                    } else {
-                        self.b.ins().icmp_imm_s(IntCC::Equal, v[0], 0)
-                    };
-                    self.fault_if(none, "msrt_fault_unwrap_none", vec![]);
-                }
-                let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
-                    unreachable!()
-                };
-                let payload = if self.opt_boxed(ty) {
-                    let leaves = self.g.lay.leaves(inner);
-                    self.load_leaves(v[0], 0, &leaves)
-                } else if nullable {
-                    v
-                } else {
-                    v[1..].to_vec()
-                };
-                // `unwrap` returns an owned value; `get` borrows.
-                if inst.op == Op::OptUnwrap {
-                    self.clone_value(inner, &payload)
-                } else {
-                    payload
-                }
-            }
-            Op::OptUnbox => {
-                // Moves the payload out of a some: the box (if any) is freed, the payload lives on.
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                let TyKind::Opt(inner) = self.g.m.types.kind(ty).clone() else {
-                    unreachable!()
-                };
-                if self.opt_boxed(ty) {
-                    let leaves = self.g.lay.leaves(inner);
-                    let payload = self.load_leaves(v[0], 0, &leaves);
-                    self.free(v[0]);
-                    payload
-                } else if self.opt_niche(ty) {
-                    v
-                } else {
-                    v[1..].to_vec()
-                }
-            }
-            Op::StrByte => {
-                // An inline string's bytes are its two words, little-endian.
-                let (s, i) = (self.a(inst, 0), self.a(inst, 1)[0]);
-                let inline = self.str_is_inline(s[1]);
-                let (word, mem, join) = (
-                    self.b.create_block(),
-                    self.b.create_block(),
-                    self.b.create_block(),
-                );
-                self.b.append_block_param(join, types::I64);
-                self.b.ins().brif(inline, word, &[], mem, &[]);
-                self.b.switch_to_block(word);
-                let high = self
-                    .b
-                    .ins()
-                    .icmp_imm_s(IntCC::SignedGreaterThanOrEqual, i, 8);
-                let w = self.b.ins().select(high, s[1], s[0]);
-                let shift = self.b.ins().band_imm_s(i, 7);
-                let shift = self.b.ins().ishl_imm_u(shift, 3);
-                let w = self.b.ins().ushr(w, shift);
-                let w = self.b.ins().band_imm_s(w, 0xff);
-                self.b.ins().jump(join, &[BlockArg::Value(w)]);
-                self.b.switch_to_block(mem);
-                let at = self.b.ins().iadd(s[0], i);
-                let byte = self.b.ins().load(types::I8, flags(), at, 0);
-                let byte = self.b.ins().uextend(types::I64, byte);
-                self.b.ins().jump(join, &[BlockArg::Value(byte)]);
-                self.b.switch_to_block(join);
-                vec![self.b.block_params(join)[0]]
-            }
-            Op::StrAscii => {
-                let b = self.a(inst, 0)[0];
-                let d = self.g.rt_data("msrt_ascii_chars");
-                let base = self.data_addr(d);
-                let off = self.b.ins().imul_imm_s(b, ASCII_CHAR_STRIDE as i64);
-                let ptr = self.b.ins().iadd(base, off);
-                let tagged = self.iconst(1 | STR_STATIC as i64);
-                vec![ptr, tagged]
-            }
-            Op::StrLen => {
-                // Scalar count: computed by the runtime (long strings are remembered there).
-                let s = self.a(inst, 0);
-                let at = match self.home_of(inst.args[0]) {
-                    Some(h) => h.addr,
-                    None => self.spill_temp(&s, &[Leaf::I64; 2]),
-                };
-                vec![self.rt_call("msrt_string_length", &[at])[0]]
-            }
-            Op::ClosureNew => self.closure_new(inst),
-            Op::ClosureCap => {
-                let Imm::Idx(i) = inst.imm else {
-                    unreachable!()
-                };
-                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
-                    unreachable!()
-                };
-                let mut off = CLOSURE_CAPTURES as i64;
-                let mut found = (0, Vec::new());
-                for (k, c) in captures.iter().enumerate() {
-                    let leaves = self.g.lay.leaves(*c);
-                    let lay = mem_layout(&leaves);
-                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-                    if k == i as usize {
-                        found = (off, leaves);
-                    }
-                    off += lay.size as i64;
-                }
-                let env = self.a(inst, 0)[0];
-                self.load_leaves(env, found.0, &found.1)
-            }
-            Op::ClosureCapAddr => {
-                let Imm::Idx(i) = inst.imm else {
-                    unreachable!()
-                };
-                let ms_mir::ir::FuncKind::Closure { captures } = &f.kind else {
-                    unreachable!()
-                };
-                let mut off = CLOSURE_CAPTURES as i64;
-                let mut found = 0;
-                for (k, c) in captures.iter().enumerate() {
-                    let leaves = self.g.lay.leaves(*c);
-                    let lay = mem_layout(&leaves);
-                    off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
-                    if k == i as usize {
-                        found = off;
-                    }
-                    off += lay.size as i64;
-                }
-                let env = self.a(inst, 0)[0];
-                vec![self.b.ins().iadd_imm_s(env, found)]
-            }
-            Op::IfaceNew => {
-                let Imm::Vtable(vt) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let leaves = self.g.lay.leaves(ty);
-                let size = mem_layout(&leaves).size as i64;
-                let blk = self.alloc(size);
-                let v = self.a(inst, 0);
-                self.store_leaves(blk, 0, &leaves, &v);
-                let id = self.g.vtables[vt.index()];
-                let addr = self.data_addr(id);
-                vec![blk, addr]
-            }
-            Op::IfaceBorrow => {
-                // A box holding the borrowed leaves as they are; the tag says only the box is
-                // freed.
-                let Imm::Vtable(vt) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let leaves = self.g.lay.leaves(ty);
-                let size = mem_layout(&leaves).size as i64;
-                let blk = self.alloc(size);
-                let v = self.a(inst, 0);
-                self.store_leaves(blk, 0, &leaves, &v);
-                let id = self.g.vtables[vt.index()];
-                let addr = self.data_addr(id);
-                vec![blk, self.b.ins().bor_imm_s(addr, 1)]
-            }
-            Op::IfaceView => {
-                let v = self.a(inst, 0);
-                let vt = self.b.ins().band_imm_s(v[1], !3);
-                vec![v[0], self.b.ins().bor_imm_s(vt, 2)]
-            }
-            Op::IfaceData => vec![self.a(inst, 0)[0]],
-            Op::IfaceIs => {
-                let Imm::Vtable(vt) = inst.imm else {
-                    unreachable!()
-                };
-                let have = self.a(inst, 0)[1];
-                let have = self.b.ins().band_imm_s(have, !3);
-                let id = self.g.vtables[vt.index()];
-                let want = self.data_addr(id);
-                vec![self.b.ins().icmp(IntCC::Equal, have, want)]
-            }
-            Op::MoveOut => self.a(inst, 0),
-            Op::Clone => {
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                self.clone_value(ty, &v)
-            }
-            Op::Drop => {
-                let ty = f.ty(inst.args[0]);
-                let v = self.a(inst, 0);
-                self.drop_value(ty, &v);
-                vec![]
-            }
-            Op::DropIf => {
-                let ty = f.ty(inst.args[1]);
-                let flag = self.a(inst, 0)[0];
-                let v = self.a(inst, 1);
-                self.if_then(flag, |s| s.drop_value(ty, &v));
-                vec![]
-            }
-            Op::Slot => {
-                let Imm::Ty(ty) = inst.imm else {
-                    unreachable!()
-                };
-                let lay = self.g.lay.mem(ty);
-                let slot = self.b.create_sized_stack_slot(StackSlotData::new(
-                    StackSlotKind::ExplicitSlot,
-                    lay.size.max(8),
-                    3,
-                ));
-                if let Some(r) = inst.res {
-                    self.slot_of.insert(r.index(), slot);
-                    self.slot_blk.insert(r.index(), self.cur);
-                }
-                vec![self.b.ins().stack_addr(types::I64, slot, 0)]
-            }
-            Op::ListAddr | Op::ListAddrU => {
-                let lt = f.ty(inst.args[0]);
-                let (_, _, size) = self.elem_info(lt);
-                let l = self.a(inst, 0);
-                let i = self.a(inst, 1)[0];
-                let mode = if inst.op == Op::ListAddr {
-                    Op::ListGet
-                } else {
-                    Op::ListGetU
-                };
-                vec![self.elem_addr(l[0], l[1], i, size, mode)]
-            }
-            Op::PtrIsNull => {
-                let p = self.a(inst, 0)[0];
-                vec![self.b.ins().icmp_imm_s(IntCC::Equal, p, 0)]
-            }
-            Op::PtrField => {
-                let Imm::Field(r, i) = inst.imm else {
-                    unreachable!()
-                };
-                let rty = m.types.find(&TyKind::Rec(r)).expect("record type interned");
-                let (_, at, _) = self.fields_of(rty)[i as usize];
-                let block = self.rec_block(rty);
-                let lay = mem_layout(&block.clone().unwrap_or_else(|| self.g.lay.leaves(rty)));
-                let off = lay.offsets.get(at).copied().unwrap_or(0) as i64;
-                // The result is read and written with the field's own layout, so each of its
-                // leaves must sit at the same distance from the field's address as in the field.
-                debug_assert!(
-                    {
-                        let fty = m.records[r.index()].fields[i as usize].1;
-                        let own = mem_layout(&self.g.lay.leaves(fty));
-                        own.offsets
-                            .iter()
-                            .enumerate()
-                            .all(|(k, o)| lay.offsets[at + k] - lay.offsets[at] == *o)
-                    },
-                    "field {i} of record {r:?} is laid out differently inside the record"
-                );
-                let mut p = self.a(inst, 0)[0];
-                if block.is_some() {
-                    // The argument addresses the record's pointer.
-                    p = self.b.ins().load(types::I64, flags(), p, 0);
-                }
-                vec![self.add_imm(p, off)]
-            }
-            Op::Load | Op::Take => {
-                let Imm::Ty(ty) = inst.imm else {
-                    unreachable!()
-                };
-                let leaves = self.g.lay.leaves(ty);
-                let p = self.a(inst, 0)[0];
-                let out = self.load_leaves(p, 0, &leaves);
-                if inst.op == Op::Take
-                    && self.is_wide(ty)
-                    && let Some(r) = inst.res
-                {
-                    self.homes[r.index()] = Some(Home {
-                        addr: p,
-                        slot: self.slot_of.get(&inst.args[0].index()).copied(),
-                        blk: Some(self.cur),
-                    });
-                }
-                out
-            }
-            Op::Store | Op::Put => {
-                let ty = f.ty(inst.args[1]);
-                let (dst, src) = (inst.args[0].index(), inst.args[1]);
-                // A wide value moving into a fresh slot just adopts the memory it already lives in.
-                if inst.op == Op::Put
-                    && self.is_wide(ty)
-                    && !self.used[dst]
-                    && self.slot_blk.get(&dst) == Some(&self.cur)
-                    && let Some(h) = self.home_of(src)
-                {
-                    self.vals[dst] = vec![h.addr];
-                    match h.slot {
-                        Some(s) => self.slot_of.insert(dst, s),
-                        None => self.slot_of.remove(&dst),
-                    };
-                    return;
-                }
-                let leaves = self.g.lay.leaves(ty);
-                let (p, v) = (self.a(inst, 0)[0], self.a(inst, 1));
-                self.store_leaves(p, 0, &leaves, &v);
-                vec![]
-            }
-            Op::Call => {
-                let Imm::Func(c) = inst.imm else {
-                    unreachable!()
-                };
-                let args: Vs = (0..inst.args.len()).flat_map(|i| self.a(inst, i)).collect();
-                let id = self.g.funcs[c.index()];
-                self.call_id(id, &args)
-            }
-            Op::CallInd => self.call_closure(f, inst),
-            Op::CallMethod => self.call_method(inst),
-            Op::CallRt => self.call_extern(f, inst),
-            Op::FuncAddr => {
-                let Imm::Func(g) = inst.imm else {
-                    unreachable!()
-                };
-                let r = self.fref(self.g.funcs[g.index()]);
-                vec![self.b.ins().func_addr(types::I64, r)]
-            }
-            Op::TypeDesc => {
-                let Imm::Ty(t) = inst.imm else { unreachable!() };
-                vec![self.typedesc_addr(t)]
-            }
-            Op::Poll => {
-                if self.g.opts.poll {
-                    let hdr = self.task_hdr();
-                    let addr = self.add_imm(hdr, ISOLATE_HDR_CANCEL);
-                    let v = self.b.ins().atomic_load(types::I8, flags(), addr);
-                    self.fault_if(v, "msrt_cancelled", vec![]);
-                }
-                vec![]
-            }
-            Op::DepthEnter => {
-                self.depth_enter();
-                vec![]
-            }
-            Op::DepthLeave => vec![],
-            Op::CleanupPush => {
-                let Imm::Func(c) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = f.ty(inst.args[0]);
-                let leaves = self.g.lay.leaves(ty);
-                let v = self.a(inst, 0);
-                let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
-                if !self.g.m.funcs[c.index()].unwind_only {
-                    let slot = self.spill(&v, &leaves);
-                    let r = self.fref(thunk);
-                    let fa = self.b.ins().func_addr(types::I64, r);
-                    self.rt_call("msrt_cleanup_push", &[fa, slot])
-                } else {
-                    // A closer that only acts while a guarded task unwinds: with no guard open the
-                    // registration is skipped, and its handle 0 makes the discard a no-op.
-                    let hdr = self.task_hdr();
-                    let guarded =
-                        self.b
-                            .ins()
-                            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
-                    let none = self.iconst(0);
-                    let push = self.b.create_block();
-                    let join = self.b.create_block();
-                    self.b.append_block_param(join, types::I64);
-                    self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
-                    self.b.switch_to_block(push);
-                    let slot = self.spill(&v, &leaves);
-                    let r = self.fref(thunk);
-                    let fa = self.b.ins().func_addr(types::I64, r);
-                    let h = self.rt_call("msrt_cleanup_push", &[fa, slot])[0];
-                    self.b.ins().jump(join, &[h.into()]);
-                    self.b.switch_to_block(join);
-                    self.b.block_params(join).to_vec()
-                }
-            }
-            Op::CleanupRun => {
-                let h = self.a(inst, 0)[0];
-                self.rt_call("msrt_cleanup_run", &[h]);
-                vec![]
-            }
-            Op::GlobalGet | Op::GlobalSet => {
-                let Imm::Global(gi) = inst.imm else {
-                    unreachable!()
-                };
-                let ty = m.globals[gi.index()].ty;
-                let leaves = self.g.lay.leaves(ty);
-                let addr = self.data_addr(self.g.globals[gi.index()]);
-                if inst.op == Op::GlobalGet {
-                    self.load_leaves(addr, 0, &leaves)
-                } else {
-                    if m.needs_drop(ty) {
-                        let old = self.load_leaves(addr, 0, &leaves);
-                        self.drop_value(ty, &old);
-                    }
-                    let v = self.a(inst, 0);
-                    self.store_leaves(addr, 0, &leaves, &v);
-                    vec![]
-                }
-            }
+            | Op::ListDropLast
+            | Op::ListTake
+            | Op::ListRelease => self.lists(f, inst),
+            Op::OptSome
+            | Op::OptView
+            | Op::OptNone
+            | Op::OptIsSome
+            | Op::OptGet
+            | Op::OptUnwrap
+            | Op::OptUnbox => self.optionals(f, inst),
+            Op::StrByte | Op::StrAscii | Op::StrLen => self.strings(inst),
+            Op::ClosureNew
+            | Op::ClosureCap
+            | Op::ClosureCapAddr
+            | Op::IfaceNew
+            | Op::IfaceBorrow
+            | Op::IfaceView
+            | Op::IfaceData
+            | Op::IfaceIs => self.closures_and_interfaces(f, inst),
+            Op::Call | Op::CallInd | Op::CallMethod | Op::CallRt => self.calls(f, inst),
+            Op::MoveOut | Op::Clone | Op::Drop | Op::DropIf => self.ownership(f, inst),
+            Op::Slot
+            | Op::ListAddr
+            | Op::ListAddrU
+            | Op::PtrIsNull
+            | Op::PtrField
+            | Op::Load
+            | Op::Take
+            | Op::Store
+            | Op::Put => self.memory(f, inst),
+            Op::FuncAddr
+            | Op::TypeDesc
+            | Op::Poll
+            | Op::DepthEnter
+            | Op::DepthLeave
+            | Op::CleanupPush
+            | Op::CleanupRun
+            | Op::GlobalGet
+            | Op::GlobalSet => self.runtime_services(f, inst),
         };
         let out = match res_ty {
             Some(t) => {
