@@ -21,9 +21,7 @@ fn messages(source: &str) -> Vec<String> {
 
 #[test]
 fn an_unknown_name_in_interpolation_is_the_only_error() {
-    let found = messages(
-        "export fn main() Int:\n    let total = 4550\n    print(\"{totl}\")\n    return 0\n",
-    );
+    let found = messages(include_str!("follow_on_errors/interpolation.ms"));
     assert_eq!(found.len(), 1, "{found:?}");
     assert!(found[0].starts_with("unknown binding totl"), "{found:?}");
 }
