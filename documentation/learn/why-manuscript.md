@@ -92,7 +92,7 @@ Property tests draw inputs nobody thought of and shrink any failure to a small c
 
 Manuscript is young, and the project is hardened with frontier models. We use them to find edge cases, bugs, memory leaks and performance regressions, and to fix them.
 
-A **bug bash** points a model at one area. It writes probe programs against new features and their edges, compares what happens with the documented rule, fixes real bugs with regression tests, and files an issue with a minimal repro for anything that needs a decision. For example, one bug bash found that the diagnostic for an empty block told users to write `unit`, which the parser then rejected ([#1914](https://github.com/manuscript-lang/manuscript/pull/1914)). A **perf bash** starts from a measured gap: the model reproduces it, changes one thing, and shows before and after on the same machine. Results are added as dated sections, never edited, and a fix that costs more than it earns is closed with the numbers. Both workflows are written down as skills in the repository: [bug bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/bug-bash/SKILL.md) and [perf bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/perf-bash/SKILL.md).
+The method is simple. For correctness, a model probes one area at a time: it writes programs against new features and their edges, compares what happens with the documented rule, and fixes real bugs with regression tests. For performance, it starts from a measured gap, reproduces it, changes one thing, and shows before and after on the same machine. A fix that costs more than it earns is dropped.
 
 ## A pipeline built for fast iteration and fast binaries
 
