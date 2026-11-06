@@ -63,7 +63,7 @@ fn build(
     pin: &Path,
     runtime: &Path,
     options: &ms_build::BuildOptions,
-) -> Result<(), String> {
+) -> Result<ms_build::Backend, String> {
     let mut module = parse_module(&program(code)).unwrap();
     build_executable_pinned(
         &mut module,
@@ -187,7 +187,7 @@ fn the_pin_keeps_a_build_s_own_executable_after_another_build_replaces_the_outpu
     let output = executable(&root, "shared");
     let pin_a = executable(&root, "pin-a");
     let pin_b = executable(&root, "pin-b");
-    build(7, &output, &pin_a, &runtime, &options).unwrap();
+    let backend_a = build(7, &output, &pin_a, &runtime, &options).unwrap();
     exits(&output, 7);
     exits(&pin_a, 7);
     let bytes_a = std::fs::read(&output).unwrap();
@@ -195,7 +195,7 @@ fn the_pin_keeps_a_build_s_own_executable_after_another_build_replaces_the_outpu
     assert_eq!(producer_identity(&pin_a), identity_a);
 
     // B replaces the public executable and companion before A's private artifacts are recorded.
-    build(9, &output, &pin_b, &runtime, &options).unwrap();
+    let backend_b = build(9, &output, &pin_b, &runtime, &options).unwrap();
     exits(&output, 9);
     exits(&pin_a, 7);
     exits(&pin_b, 9);
@@ -219,35 +219,33 @@ fn the_pin_keeps_a_build_s_own_executable_after_another_build_replaces_the_outpu
     }
     let directory = root.join("cache");
     let sources = [source];
-    for (key, pin) in [("a", &pin_a), ("b", &pin_b)] {
+    for (key, pin, backend) in [("a", &pin_a, backend_a), ("b", &pin_b, backend_b)] {
         let companion = debug_companion_path(pin);
         cache::store(
             &directory,
             key,
             root.to_str().unwrap(),
+            backend,
             &sources,
             pin,
             companion.as_deref(),
         );
     }
-    for (key, expected, bytes, identity) in [
-        ("a", 7, &bytes_a, &identity_a),
-        ("b", 9, &bytes_b, &identity_b),
+    for (key, expected, bytes, identity, backend) in [
+        ("a", 7, &bytes_a, &identity_a, backend_a),
+        ("b", 9, &bytes_b, &identity_b, backend_b),
     ] {
         let entry =
             cache::lookup(&directory, key).expect("a native cache entry must have been recorded");
-        assert_eq!(
-            std::fs::read(directory.join(key).join("exe")).unwrap(),
-            *bytes
-        );
+        assert_eq!(entry.backend, backend);
+        let cached_executable = directory
+            .join(key)
+            .join(format!("exe-{}", backend.as_str()));
+        assert_eq!(std::fs::read(&cached_executable).unwrap(), *bytes);
         let cached_companion =
             debug_companion_path(&output).map(|_| directory.join(key).join("companion"));
         assert_eq!(
-            companion_identity(
-                &directory.join(key).join("exe"),
-                cached_companion.as_deref()
-            )
-            .as_ref(),
+            companion_identity(&cached_executable, cached_companion.as_deref()).as_ref(),
             identity.as_ref()
         );
         let restored = executable(&root, &format!("restored-{key}"));

@@ -19,6 +19,6 @@ pub use ms_clif::{BuildOptions, CopyProbe, RtHot};
 pub use ms_lower::SKIP_MARKER;
 pub use ms_mir::ir::Module;
 pub use native::{
-    Profile, backend_name, build_executable, build_executable_pinned, native_inputs, publish,
-    runtime_override,
+    Backend, Profile, backend_name, build_executable, build_executable_pinned, native_inputs,
+    publish, runtime_override,
 };
