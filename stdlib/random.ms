@@ -25,10 +25,12 @@ import (
 ) from "@std/internal/random.ms"
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
+// ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
     return draw_int(min, max_exclusive)
 
 // Creates a version-4 UUID from the operating system's entropy.
+// ms: effect std.random.read
 export fn uuid_v4() String!:
     return draw_uuid()
 
@@ -37,6 +39,7 @@ Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time i
 ULIDs made later sort after earlier ones as strings; two made in the same millisecond are ordered randomly.
 Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
 */
+// ms: effect std.random.read
 export fn ulid() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000
@@ -73,24 +76,29 @@ Returns a random token of `size` bytes as unpadded URL-safe Base64.
 The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API keys and password-reset links.
 `size` follows `random_bytes`: 0 through 16 MiB, otherwise EINVAL.
 */
+// ms: effect std.random.read
 export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
     return ok(base64_encode_unpadded(data, url_safe: true))
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the operating system's entropy.
+// ms: effect std.random.read
 export fn float() Float!:
     return draw_float()
 
 // Shuffles the list in place with an unbiased Fisher-Yates shuffle and returns it.
+// ms: effect std.random.read
 export fn shuffle[T](values: List[T]) List[T]!:
     return draw_shuffle(values)
 
 // Returns a uniformly chosen item, or none for an empty list.
+// ms: effect std.random.read
 export fn choice[T](values: List[T]) T?!:
     return draw_choice(values)
 
 // Returns `count` distinct positions' items chosen uniformly without replacement, in random order, as copies; the input is unchanged.
 // A `count` outside 0 through the list length returns EINVAL.
+// ms: effect std.random.read
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     if count < 0 or count > values.length():
         return error(Error("random: invalid input", kind: "EINVAL"))
@@ -107,6 +115,7 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 
 // Returns an item chosen with probability proportional to its weight, or none for an empty list.
 // `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns EINVAL.
+// ms: effect std.random.read
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
     if values.is_empty() and weights.is_empty():
         return ok(none)
@@ -164,6 +173,7 @@ fn weighted_position(weights: List[Float], point: Float) Int:
 
 // Returns exactly `count` unpredictable bytes from the operating system, with `count` from 0 through 16 MiB (16777216).
 // A negative or larger count returns EINVAL; a source failure returns EIO. The call observes task cancellation between 64 KiB chunks.
+// ms: effect std.random.read
 export fn random_bytes(count: Int) Bytes!:
     return msstd_random_os_bytes(count)
 

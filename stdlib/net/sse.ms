@@ -57,6 +57,7 @@ event ends cleanly; otherwise the final read fails with `EBADMSG` and the unfini
 dispatched. A malformed line or an exceeded limit fails the read, and the failure is final. Supplied limits
 must be positive, otherwise the first read fails with `EINVAL`. Closing the result closes `input`.
 */
+// ms: effect std.net.connect
 export fn sse_events(
     input: ReadStream[Bytes],
     limits: SseLimits = SseLimits()

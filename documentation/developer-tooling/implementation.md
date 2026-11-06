@@ -270,6 +270,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `try x.flush()`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
+| MSL116 | warning | A function reaches an effect no `// ms: allow_effect` line permits. A function is pure unless a line above it, or in the file's header comment, permits what it reaches (`std.fs.read`, `std.fs.*`, `*.read`, `*`). A function's own lines can only tighten the header. `// ms: effect NAME` declares an effect and hides the body from callers. `main`, `test` and `fixture` are unrestricted. Converting a record to an interface, naming a function as a value and writing a closure charge the enclosing function. The message names the call path |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 

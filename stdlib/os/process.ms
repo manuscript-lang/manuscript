@@ -256,6 +256,7 @@ Starts `program` directly, without a shell, searching the PATH, and returns a pr
 Output beyond `options.max_output_bytes` in total across both streams returns EOVERFLOW, `options.timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
 `options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns EAGAIN. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 */
+// ms: effect std.process.run
 export fn run(
     program: String,
     arguments: List[String],
@@ -275,6 +276,7 @@ export fn run(
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
 // `options.cwd` and `options.env` behave as in `run`.
+// ms: effect std.process.run
 export fn spawn(
     program: String,
     arguments: List[String],
@@ -292,27 +294,32 @@ Numeric validation does not guarantee OS support. Observing does not suppress ho
 Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
 Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation may prevent code after a read from running.
 */
+// ms: effect std.process.signal
 export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
     let native = try msstd_process_watch_signals(signals, capacity)
     return ok(ReadStream[Int](SignalSource(native)))
 
 // Returns the current process title.
 // Platforms that cannot read it return ENOTSUP.
+// ms: effect std.process.read
 export fn title() String!:
     return msstd_process_title()
 
 // Sets the process title shown by tools such as `ps`.
 // A title with NUL or newline returns EINVAL, and platforms that cannot rename a process return ENOTSUP.
+// ms: effect std.process.write
 export fn set_title(title: String) Unit!:
     return msstd_process_set_title(title)
 
 // Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
 // A failed user lookup returns EIO, a `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns EACCES.
+// ms: effect std.process.write
 export fn initialize_groups(username: String, gid: Int) Unit!:
     return msstd_process_initialize_groups(username, gid)
 
 // Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
 // `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on Windows.
+// ms: effect std.process.run
 export fn replace(
     program: String,
     arguments: List[String],
@@ -329,49 +336,59 @@ export fn replace(
 
 // Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
 // Text that is not valid UTF-8 returns ENOTSUP.
+// ms: effect std.process.read
 export fn process_info() ProcessInfo!:
     return msstd_process_info()
 
 // Returns cumulative user and kernel CPU time consumed by this process in microseconds.
 // Platforms without resource accounting return ENOTSUP.
+// ms: effect std.process.read
 export fn cpu_usage() CpuUsage!:
     return msstd_process_cpu_usage()
 
 // Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
 // Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination. A pid that names no process returns ENOENT.
+// ms: effect std.process.signal
 export fn send_signal(pid: Int, signal: Int) Unit!:
     return msstd_process_send_signal(pid, signal)
 
 // Returns the numeric ids of the supplementary groups of the process.
 // Windows returns ENOTSUP.
+// ms: effect std.process.read
 export fn groups() List[Int]!:
     return msstd_process_groups()
 
 // Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
 // Platforms without them return ENOTSUP.
+// ms: effect std.process.read
 export fn resource_usage() ResourceUsage!:
     return msstd_process_resource_usage()
 
 // Sets mask 0..511 (0777) and returns the previous mask; ENOTSUP on Windows.
+// ms: effect std.process.write
 export fn umask(mask: Int) Int!:
     return msstd_process_umask(mask)
 
 // Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return EINVAL.
 // Identity changes require OS permission and are ENOTSUP on Windows.
+// ms: effect std.process.write
 export fn set_identity(kind: String, id: Int) Unit!:
     return msstd_process_set_identity(kind, id)
 
 // Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
 // Invalid ids return EINVAL, a lack of privilege returns EACCES, and Windows returns ENOTSUP.
+// ms: effect std.process.write
 export fn set_groups(groups: List[Int]) Unit!:
     return msstd_process_set_groups(groups)
 
 // Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
 // A pid outside 0 through 2147483647 returns EINVAL, and platforms without priorities return ENOTSUP.
+// ms: effect std.process.read
 export fn get_priority(pid: Int) Int!:
     return msstd_system_get_priority(pid)
 
 // Accepts pid 0..2147483647 and priority -20..19 (lower is higher priority).
 // Unix uses nice values; Windows maps ranges to native priority classes.
+// ms: effect std.process.write
 export fn set_priority(pid: Int, priority: Int) Unit!:
     return msstd_system_set_priority(pid, priority)

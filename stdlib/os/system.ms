@@ -144,50 +144,61 @@ export fn constants() Map[String, Int]:
 
 // Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
 // This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
+// ms: effect std.system.read
 export fn monotonic_time() Int:
     return msstd_process_monotonic_time()
 
 // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
+// ms: effect std.system.read
 export fn constrained_memory() Int!:
     return msstd_process_constrained_memory()
 
 // Returns bytes available to new allocations: the host's available memory, reduced to the remaining headroom when a Linux cgroup memory limit applies.
+// ms: effect std.system.read
 export fn available_memory() Int!:
     return msstd_process_available_memory()
 
 // Returns heap and resident memory statistics for this process, in bytes.
+// ms: effect std.system.read
 export fn memory_usage() MemoryUsage!:
     return msstd_process_memory_usage()
 
 // Returns elapsed Duration since runtime initialization, rather than host boot.
+// ms: effect std.system.read
 export fn uptime() Duration!:
     return msstd_process_elapsed()
 
 // Returns the operating system name, processor architecture, and logical CPU count for this host.
+// ms: effect std.system.read
 export fn system_info() SystemInfo:
     return msstd_system_info()
 
 // Returns the host's name as reported by the operating system.
 // A name that is not valid UTF-8 returns ENOTSUP.
+// ms: effect std.system.read
 export fn hostname() String!:
     return msstd_system_hostname()
 
 // Returns the current user's name, numeric ids, home directory, and login shell.
 // The shell is empty when the host does not record one, and text that is not valid UTF-8 returns ENOTSUP.
+// ms: effect std.system.read
 export fn user_info() UserInfo!:
     return msstd_system_user_info()
 
 // Returns one NetworkInterface for every address on every interface, including loopback.
 // An interface name that is not valid UTF-8 returns ENOTSUP.
+// ms: effect std.system.read
 export fn network_interfaces() List[NetworkInterface]!:
     return msstd_system_network_interfaces()
 
 // Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time counters.
+// ms: effect std.system.read
 export fn cpus() List[CpuInfo]!:
     return msstd_system_cpus()
 
 // Returns memory sizes in bytes, host uptime, load averages, and available parallelism in one snapshot.
 // A host query failure returns an `Error` describing it.
+// ms: effect std.system.read
 export fn metrics() SystemMetrics!:
     let snapshot = try msstd_system_metrics()
     return ok(
@@ -205,14 +216,17 @@ export fn metrics() SystemMetrics!:
 
 // Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
 // Returns ENOTSUP where the host does not expose it.
+// ms: effect std.system.read
 export fn os_release() String!:
     return msstd_system_os_release()
 
 // Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
 // Returns ENOTSUP where the host does not expose it.
+// ms: effect std.system.read
 export fn os_version() String!:
     return msstd_system_os_version()
 
 // Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use the target's architecture name.
+// ms: effect std.system.read
 export fn machine() String!:
     return msstd_system_machine()

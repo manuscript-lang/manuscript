@@ -488,11 +488,13 @@ export fn from_calendar(
     )
 
 // Returns the host's local time zone name, or `UTC` when it cannot be determined.
+// ms: effect std.system.read
 export fn local_zone() String:
     return msstd_time_local_zone()
 
 // Starts a timer for the requested duration and returns its promise; `wait()` it to pause the current task for at least
 // that long. The timer has no task of its own, and dropping the promise cancels it.
+// ms: effect std.clock.sleep
 export fn sleep(duration: Duration) Promise[Unit]:
     return adopt[Unit](msrt_promise_sleep(duration.nanos))
 
@@ -502,11 +504,13 @@ export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
 
 // Returns the current reading of the monotonic clock, for measuring elapsed time.
 // Readings are only comparable with others from this clock and do not correspond to a calendar date.
+// ms: effect std.clock.read
 export fn monotonic() Instant:
     return msstd_time_clock_now()
 
 // Returns the current calendar time as a UTC Timestamp with nanosecond precision.
 // It can jump when the system clock is adjusted, so use `monotonic` for elapsed time.
+// ms: effect std.clock.read
 export fn now() Timestamp:
     return msstd_time_wall_clock_now()
 
@@ -516,6 +520,7 @@ export type Deadline:
     at: Instant
 
 // Returns a deadline `duration` from now.
+// ms: effect std.clock.read
 export fn deadline_after(duration: Duration) Deadline:
     return Deadline(at: monotonic().shift(duration))
 
@@ -555,6 +560,7 @@ impl Source[Instant] for TickSource:
         return ok(unit)
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or less is a programming fault.
+// ms: effect std.clock.sleep
 export fn ticker(period: Duration) ReadStream[Instant]:
     if period.compare(nanoseconds(0)) <= 0:
         panic("ticker: period must be positive")

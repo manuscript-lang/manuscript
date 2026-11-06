@@ -4,6 +4,7 @@
 
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
+- [Effects are implicit-deny comment directives](effects-are-implicit-deny-comment-directives.md): `allow_effect` permits, `effect` declares, `std.` tags on exported stdlib functions, MSL116 warns first.
 - [Bound formatter scans to required context](bound-formatter-scans-to-required-context.md): track flow prefix facts and stop suffix measurement once a safe bound forces expansion.
 - [Bound navigation coordinate work to the query](bound-navigation-coordinate-work-to-the-query.md): avoid repeated prefix scans while preserving malformed snapshots and early-reference costs.
 - [Workspace scans filter files before running the checker](workspace-scans-filter-files-before-running-the-checker.md): `ms search_symbol` took minutes at the repository root until the lexical prefilter and reference search skipped unrelated files.

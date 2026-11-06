@@ -53,6 +53,7 @@ print("total: {total}")
 print(order)
 ```
 */
+// ms: effect std.console.write
 export fn print[T](value: T) Unit:
     msrt_io_write_stdout(value.to_string())
     msrt_io_write_stdout("\n")

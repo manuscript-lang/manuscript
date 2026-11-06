@@ -307,6 +307,7 @@ export fn create(transport: Transport, options: LoggerOptions = LoggerOptions())
     )
 
 // Writes log records to the process standard-output stream.
+// ms: effect std.console.write
 export fn stdout_transport() Transport:
     return StdoutTransport(closed: false)
 
@@ -315,6 +316,7 @@ export fn handle_transport(file: FileHandle) Transport:
     return FileTransport(file: file, closed: false)
 
 // Appends log records to a file at `path`.
+// ms: effect std.fs.write
 export fn file_transport(path: String) Transport!:
     match open(path, OpenMode.Append, OpenOptions(permissions: 420)):
         ok(file): return ok(handle_transport(file))
@@ -381,6 +383,7 @@ Appends log records to the file at `path` and rotates it by size.
 When a record would take the file past `max_bytes` (a positive size; a single larger record is still written whole, to a fresh file), the file is renamed to `path.1`, an older `path.1` to `path.2`, and so on up to `path.<keep>`; the oldest is deleted. `keep` is the number of rotated files to retain, zero or more, and zero discards the old contents. A non-positive `max_bytes` or a negative `keep` returns `EINVAL`. An existing file keeps being appended to, counting its current size.
 Example: `create(rotating_file_transport("app.log", max_bytes: 1048576, keep: 5))`.
 */
+// ms: effect std.fs.write
 export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Transport!:
     if max_bytes <= 0 or keep < 0: return error(
         Error("logging: invalid input", kind: "EINVAL")

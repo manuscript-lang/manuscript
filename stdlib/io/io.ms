@@ -190,6 +190,7 @@ impl Sink[Bytes] for DescriptorSink:
         return drained
 
 // Returns the process standard-input stream.
+// ms: effect std.console.read
 export fn stdin() ReadStream[Bytes]:
     return ReadStream[Bytes](DescriptorSource(msrt_streams_open(0, 1)))
 
@@ -253,18 +254,22 @@ impl Sink[Bytes] for Stderr:
         return ok(unit)
 
 // Standard output as text.
+// ms: effect std.console.write
 export fn stdout() WriteStream[String]:
     return WriteStream[String](Stdout())
 
 // Standard output as bytes; it shares its buffer with `stdout()`.
+// ms: effect std.console.write
 export fn stdout_bytes() WriteStream[Bytes]:
     return WriteStream[Bytes](Stdout())
 
 // Standard error as text.
+// ms: effect std.console.write
 export fn stderr() WriteStream[String]:
     return WriteStream[String](Stderr())
 
 // Standard error as bytes.
+// ms: effect std.console.write
 export fn stderr_bytes() WriteStream[Bytes]:
     return WriteStream[Bytes](Stderr())
 
@@ -424,6 +429,7 @@ export enum StdStream:
 
 // Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
 // This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
+// ms: effect std.console.write
 export fn redirect_to_null(stream: StdStream) Unit!:
     var which = 2
 
