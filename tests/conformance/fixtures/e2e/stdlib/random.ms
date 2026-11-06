@@ -9,7 +9,7 @@ import (
     shuffle,
     choice,
     random_bytes
-) from "@std/os/random.ms"
+) from "@std/random.ms"
 
 test "random bytes returns the requested count and rejects out-of-range counts":
     try expect_equal((try random_bytes(16)).length(), 16)

@@ -20,7 +20,7 @@ import (
     Connection
 ) from "@std/net/net.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import sleep, monotonic from "@std/os/time.ms"
+import sleep, monotonic from "@std/time.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")

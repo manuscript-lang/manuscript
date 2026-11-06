@@ -37,7 +37,7 @@ export fn main() Int:
 
 ## Explicit implementations
 
-Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
+Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see [explicit implementations](#explicit-implementations). The relationship is always declared, never inferred from matching names.
 
 `impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
 
@@ -56,7 +56,7 @@ impl Increment for Offset:
 
 ## Coherence and visibility
 
-An implementation in the type's defining module is available wherever the type is used. One declared for an imported source type is a **local extension**, visible only in the declaring module. The interface may be local or imported. For example, `offset.ms` exports a record:
+An implementation in the type's defining module is available wherever the type is used. One declared for an imported source type is a **local extension**, visible only in the declaring module. The interface may be local or imported. For example, `offset.ms` exports a type:
 
 ```text
 export type Offset:
@@ -85,9 +85,9 @@ Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `D
 - Separate modules may define the same local pair; extensions never propagate through imports.
 - Views, bound methods, and specialized generics keep the implementation selected where they were created; a raw concrete value carries no extra conformance into another module.
 - A `Map` or `Set` whose key type has a local `Equal` or `Hashable` keeps the implementations of the module that created it, including when another module adds, removes, or looks up keys; a collection created where the type has none keeps structural equality.
-- Receivers must be source-defined nominal records or enums. Standard-library receivers, interfaces, bare type parameters, specialization, and implementation inheritance are unsupported.
+- Receivers must be source-defined nominal types or enums. Standard-library receivers, interfaces, bare type parameters, specialization, and implementation inheritance are unsupported.
 - Contracts may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
-- Implementations re-export neither their type nor their contract. Exported contracts expose every operation, under the [public surface rules](records.md#public-data-surfaces).
+- Implementations re-export neither their type nor their contract. Exported contracts expose every operation, under the [public surface rules](named-types.md#public-data-surfaces).
 - Same-named operations from different interfaces need an [interface-typed binding](#selecting-an-operation).
 
 ## Generic implementations
@@ -149,9 +149,9 @@ A call infers the operation's parameters from its arguments, or takes them expli
 
 ## Interface conversion
 
-A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `let` with a type annotation, record fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
+A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `let` with a type annotation, fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
 
-The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
+The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
 ```manuscript
 fn use_increment(operation: Increment) Int:

@@ -12,7 +12,10 @@ import (
 ) from "@std/crypto.ms"
 import base64_encode_unpadded, base64_decode_unpadded from "@std/data/encoding.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/os/time.ms"
+import now from "@std/time.ms"
+
+fn jwt_invalid_key() Error:
+    return Error("jwt: invalid key", kind: "EINVAL")
 
 // Selects how a token is signed. A verifier names the one it accepts; it never trusts the algorithm a token claims.
 export enum JwtAlgorithm:
@@ -68,14 +71,9 @@ export fn sign_token[T: Data](
     key: Bytes,
     algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
 ) String!:
-    let header = stringify(
-        value: JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"), max_bytes: none,
-        indent: none
-    )
-    let payload = stringify(value: claims, max_bytes: none, indent: none)
-    if header.is_error() or payload.is_error(): return error(
-        Error("jwt: invalid key", kind: "EINVAL")
-    )
+    let header = stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
+    let payload = stringify(claims)
+    if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
 
     let head = base64_encode_unpadded(header.get("").to_bytes(), url_safe: true)
     let body = base64_encode_unpadded(payload.get("").to_bytes(), url_safe: true)
@@ -141,7 +139,7 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
     let text = raw.get("".to_bytes()).decode_utf8()
     if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-    let value = parse[T](text.get(""), limits: none)
+    let value = parse[T](text.get(""))
     if let decoded = value:
         return ok(decoded)
 
@@ -159,24 +157,24 @@ fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
         let mac = hash.hmac(key, data)
         if let bytes = mac: return ok(bytes)
 
-        return error(Error("jwt: invalid key", kind: "EINVAL"))
+        return error(jwt_invalid_key())
 
     if algorithm == JwtAlgorithm.Rs256:
         let signed = rsa_sign(key, HashAlgorithm.Sha256, data)
         if let bytes = signed: return ok(bytes)
 
-        return error(Error("jwt: invalid key", kind: "EINVAL"))
+        return error(jwt_invalid_key())
 
     if algorithm == JwtAlgorithm.Es256:
         let signed = ecdsa_sign(key, HashAlgorithm.Sha256, data)
         if let der = signed: return der_to_raw(der, 32)
 
-        return error(Error("jwt: invalid key", kind: "EINVAL"))
+        return error(jwt_invalid_key())
 
     let signed = sign(key, data)
     if let bytes = signed: return ok(bytes)
 
-    return error(Error("jwt: invalid key", kind: "EINVAL"))
+    return error(jwt_invalid_key())
 
 fn verify_bytes(
     algorithm: JwtAlgorithm,
@@ -188,7 +186,7 @@ fn verify_bytes(
         let mac = hash.hmac(key, data)
         if let bytes = mac: return ok(constant_time_equal(bytes, signature))
 
-        return error(Error("jwt: invalid key", kind: "EINVAL"))
+        return error(jwt_invalid_key())
 
     if algorithm == JwtAlgorithm.Rs256:
         return ok(rsa_verify(key, HashAlgorithm.Sha256, data, signature))
@@ -243,9 +241,7 @@ fn includes_audience(claim: JsonValue, audience: String) Bool:
 
 // Converts an ASN.1 DER ECDSA signature to the fixed-width `r || s` form JWS uses.
 fn der_to_raw(der: Bytes, width: Int) Bytes!:
-    if der.length() < 8 or der.get(0).to_int() != 48: return error(
-        Error("jwt: invalid key", kind: "EINVAL")
-    )
+    if der.length() < 8 or der.get(0).to_int() != 48: return error(jwt_invalid_key())
 
     var at = 2
     if der.get(1).to_int() >= 128: at = 3
@@ -254,13 +250,13 @@ fn der_to_raw(der: Bytes, width: Int) Bytes!:
 
     for side in 0..2:
         if at + 2 > der.length() or der.get(at).to_int() != 2: return error(
-            Error("jwt: invalid key", kind: "EINVAL")
+            jwt_invalid_key()
         )
 
         var size = der.get(at + 1).to_int()
         var start = at + 2
         if start + size > der.length() or size > width + 1: return error(
-            Error("jwt: invalid key", kind: "EINVAL")
+            jwt_invalid_key()
         )
 
         while size > width:

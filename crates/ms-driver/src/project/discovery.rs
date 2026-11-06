@@ -24,6 +24,10 @@ fn is_test_name_bytes(name: &[u8]) -> bool {
         || name.ends_with(b"_bench.ms")
 }
 
+fn is_nested_project(dir: &str) -> bool {
+    Path::new(&pathops::join(&[dir, "ms.toml"])).is_file()
+}
+
 fn is_directory_link(path: &Path, kind: &FileType) -> bool {
     kind.is_symlink() && std::fs::metadata(path).is_ok_and(|m| m.is_dir())
 }
@@ -106,7 +110,8 @@ fn walk_entry(
 /// every `.ms` file below the configured source directory. Hidden, `vendor`
 /// and `node_modules` directories are skipped and directory symlinks are not
 /// followed. Traversal errors are returned so callers cannot report a partial
-/// scan as success.
+/// scan as success. Nested projects (directories with their own `ms.toml`) are
+/// skipped.
 pub fn discover_modules(
     project: &Project,
     include_source: bool,
@@ -119,7 +124,10 @@ pub fn discover_modules(
                 if include_source && !all && path == project.source {
                     return false;
                 }
-                return !(path != root && skipped_name(name));
+                // A nested project is selected explicitly, never by its parent.
+                return path == root
+                    || path == project.root
+                    || !(skipped_name(name) || is_nested_project(path));
             }
             if (all && pathops::ext(name) == ".ms") || is_test_name(name) {
                 files.insert(path.to_string());

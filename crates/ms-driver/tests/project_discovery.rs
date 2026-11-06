@@ -142,3 +142,27 @@ fn overlay_discovery_uses_source_and_test_exclusions() {
         "not sorted: {files:?}"
     );
 }
+
+#[test]
+fn discovery_skips_nested_projects() {
+    let dir = TempDir::new();
+    let root = dir.path().to_string();
+    let src = join(&root, "src");
+    let own = write(&root, "test.ms", "");
+    let own_src = write(&src, "value.ms", "");
+    write(&root, "examples/demo/ms.toml", "");
+    write(&root, "examples/demo/test.ms", "");
+    write(&src, "inner/ms.toml", "");
+    write(&src, "inner/value.ms", "");
+    write(&src, "inner/value_test.ms", "");
+    let p = Project {
+        root: root.clone(),
+        source: src,
+        ..Default::default()
+    };
+    assert_eq!(discover_modules(&p, false).unwrap(), vec![own.clone()]);
+    assert_eq!(
+        sorted(discover_modules(&p, true).unwrap()),
+        sorted(vec![own, own_src])
+    );
+}

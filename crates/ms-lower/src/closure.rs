@@ -27,6 +27,9 @@ enum Receiver {
 /// Captures use environment indices, never SSA values from the enclosing function.
 pub(crate) enum LambdaCapture {
     Local(ct::BindingRef, usize),
+    /// A variable the closure changes and owns: the capture lives in the closure's environment
+    /// and the body works on it in place.
+    Owned(ct::BindingRef, usize),
     /// A pointer to the maker's value of a variable the non-escaping closure only reads.
     Borrowed(ct::BindingRef, usize),
     Alias {
@@ -95,6 +98,22 @@ impl FnLower<'_> {
                     continue;
                 }
             }
+            if changed.contains(&b.uid)
+                && self.moves_at(b.uid, e.id)
+                && let Some(l) = self.locals.get(&b.uid).copied()
+                && l.slot.is_some()
+                && let Some(close) = self.capture_closer(b.uid, e, l.ty)
+            {
+                // An escaping closure that changes a resource takes it: the environment holds
+                // the value, the body changes it there, and dropping the closure closes it.
+                saved.push(LambdaCapture::Owned(b.clone(), cap_vals.len()));
+                let v = self.take_local(b.uid, &l);
+                closers.push((cap_vals.len() as u32, close));
+                cap_tys.push(l.ty);
+                cap_vals.push(v);
+                self.moved_closer(b.uid, e);
+                continue;
+            }
             saved.push(LambdaCapture::Local(b.clone(), cap_vals.len()));
             if changed.contains(&b.uid) {
                 // The closure changes this variable: it shares the variable's storage.
@@ -111,6 +130,12 @@ impl FnLower<'_> {
                 cap_tys.push(MTy::PTR);
                 cap_vals.push(slot);
                 scoped = true;
+                // The checker counts an escaping closure as taking the variable, but this one
+                // shares the variable's storage, so the scope still owns the value: it closes
+                // and drops it at its end.
+                if self.moves_at(b.uid, e.id) {
+                    self.must_move.remove(&b.uid);
+                }
                 continue;
             }
             let x = if self.moves_at(b.uid, e.id) {
@@ -1701,6 +1726,28 @@ fn lower_lambda_body(
                 fl.b.emit(Op::Load, &[values[*index]], Imm::Ty(ty), Some(ty))
                     .expect("load");
             fl.bind_borrowed(b, v);
+            continue;
+        }
+        if let LambdaCapture::Owned(b, index) = capture {
+            let ty = fl.mty(&b.ty)?;
+            let addr =
+                fl.b.emit(
+                    Op::ClosureCapAddr,
+                    &[env],
+                    Imm::Idx(*index as u32),
+                    Some(MTy::PTR),
+                )
+                .expect("capture address");
+            let var = fl.b.declare_var(ty, Mode::Borrow);
+            fl.locals.insert(
+                b.uid,
+                crate::func::Local {
+                    var,
+                    ty,
+                    slot: Some(addr),
+                    opt: false,
+                },
+            );
             continue;
         }
         let LambdaCapture::Local(b, index) = capture else {

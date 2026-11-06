@@ -2,7 +2,7 @@
 
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 
 // Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:
@@ -11,6 +11,32 @@ interface ValueOperations:
 // Data values have a deep clone returning the concrete receiver type.
 interface CloneOperations[T]:
     fn clone() T
+
+/*
+Operations shared by every integer type (`Int` and the sized signed and unsigned integers); `T` is the receiver type.
+Each integer type's own `<Type>Operations` interface adds only its conversions to other integer types.
+*/
+interface IntegerOperations[T]:
+    // Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
+    // A radix outside 2 through 36 is a programming fault.
+    fn to_string_radix(radix: Int) String
+    // Converts to the nearest Float; integers beyond 2^53 in magnitude can lose low-order digits.
+    fn to_float() Float
+    // Converts to the exactly equal Decimal; no rounding occurs.
+    fn to_decimal() Decimal
+    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+    fn compare(other: T) Int
+    // Converts to Float32, rounding to the nearest binary32 value.
+    fn to_float32() Float32
+    // Converts to Float64, rounding to the nearest binary64 value.
+    fn to_float64() Float64
+
+// Operations shared by the signed integer types (`Int`, `Int8`, `Int16`, `Int32`).
+interface SignedIntegerOperations[T]:
+    // Returns the absolute value; the most negative value has none and faults like any overflow.
+    fn abs() T
+    // Returns -1, 0 or 1 as this value is negative, zero or positive.
+    fn sign() Int
 
 /*
 String receiver operations use UTF-8 text. Methods named `scalar_*` count Unicode
@@ -105,19 +131,6 @@ interface StringOperations:
 
 // Conversion operations for machine-sized integers.
 interface IntOperations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; integers beyond 2^53 in magnitude can lose low-order digits.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: Int) Int
-    // Returns the absolute value; the most negative Int has none and faults like any overflow.
-    fn abs() Int
-    // Returns -1, 0 or 1 as this value is negative, zero or positive.
-    fn sign() Int
     // A Duration of this many milliseconds, as in `500.milliseconds()`; faults when the nanosecond count overflows Int.
     fn milliseconds() Duration
     // A Duration of this many seconds, as in `2.seconds()`; faults when the nanosecond count overflows Int.
@@ -142,10 +155,6 @@ interface IntOperations:
     fn to_uint32() UInt32?
     // Converts to UInt64, or returns none when the value is negative.
     fn to_uint64() UInt64?
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Formatting and classification operations for floating-point values.
 interface FloatOperations:
@@ -175,19 +184,6 @@ interface FloatOperations:
 
 // Conversion operations for Int8, a signed 8-bit integer.
 interface Int8Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; every Int8 converts exactly.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: Int8) Int
-    // Returns the absolute value; the most negative Int8 has none and faults like any overflow.
-    fn abs() Int8
-    // Returns -1, 0 or 1 as this value is negative, zero or positive.
-    fn sign() Int
     // Converts to Int16; every value fits, so no check is needed.
     fn to_int16() Int16
     // Converts to Int32; every value fits, so no check is needed.
@@ -204,26 +200,9 @@ interface Int8Operations:
     fn to_uint32() UInt32?
     // Converts to UInt64, or returns none when the value is negative.
     fn to_uint64() UInt64?
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Conversion operations for Int16, a signed 16-bit integer.
 interface Int16Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; every Int16 converts exactly.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: Int16) Int
-    // Returns the absolute value; the most negative Int16 has none and faults like any overflow.
-    fn abs() Int16
-    // Returns -1, 0 or 1 as this value is negative, zero or positive.
-    fn sign() Int
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
     // Converts to Int32; every value fits, so no check is needed.
@@ -240,26 +219,9 @@ interface Int16Operations:
     fn to_uint32() UInt32?
     // Converts to UInt64, or returns none when the value is negative.
     fn to_uint64() UInt64?
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Conversion operations for Int32, a signed 32-bit integer.
 interface Int32Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits and a leading `-` for negatives.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; every Int32 converts exactly.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: Int32) Int
-    // Returns the absolute value; the most negative Int32 has none and faults like any overflow.
-    fn abs() Int32
-    // Returns -1, 0 or 1 as this value is negative, zero or positive.
-    fn sign() Int
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
     // Converts to Int16, or returns none when the value is outside Int16's range.
@@ -276,22 +238,9 @@ interface Int32Operations:
     fn to_uint32() UInt32?
     // Converts to UInt64, or returns none when the value is negative.
     fn to_uint64() UInt64?
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Conversion operations for UInt8, an unsigned 8-bit integer.
 interface UInt8Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; every UInt8 converts exactly.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: UInt8) Int
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
     // Converts to Int16; every value fits, so no check is needed.
@@ -308,22 +257,9 @@ interface UInt8Operations:
     fn to_uint32() UInt32
     // Converts to UInt64; every value fits, so no check is needed.
     fn to_uint64() UInt64
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Conversion operations for UInt16, an unsigned 16-bit integer.
 interface UInt16Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; every UInt16 converts exactly.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: UInt16) Int
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
     // Converts to Int16, or returns none when the value is outside Int16's range.
@@ -340,22 +276,9 @@ interface UInt16Operations:
     fn to_uint32() UInt32
     // Converts to UInt64; every value fits, so no check is needed.
     fn to_uint64() UInt64
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Conversion operations for UInt32, an unsigned 32-bit integer.
 interface UInt32Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; every UInt32 converts exactly.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: UInt32) Int
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
     // Converts to Int16, or returns none when the value is outside Int16's range.
@@ -372,22 +295,9 @@ interface UInt32Operations:
     fn to_uint16() UInt16?
     // Converts to UInt64; every value fits, so no check is needed.
     fn to_uint64() UInt64
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Conversion operations for UInt64, an unsigned 32-bit integer.
 interface UInt64Operations:
-    // Formats the integer in a radix from 2 through 36 using lowercase digits.
-    // A radix outside 2 through 36 is a programming fault.
-    fn to_string_radix(radix: Int) String
-    // Converts to the nearest Float; the nearest representable value is used above 2^53.
-    fn to_float() Float
-    // Converts to the exactly equal Decimal; no rounding occurs.
-    fn to_decimal() Decimal
-    // Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-    fn compare(other: UInt64) Int
     // Converts to Int8, or returns none when the value is outside Int8's range.
     fn to_int8() Int8?
     // Converts to Int16, or returns none when the value is outside Int16's range.
@@ -404,10 +314,6 @@ interface UInt64Operations:
     fn to_uint16() UInt16?
     // Converts to UInt32, or returns none when the value is outside UInt32's range.
     fn to_uint32() UInt32?
-    // Converts to Float32, rounding to the nearest binary32 value.
-    fn to_float32() Float32
-    // Converts to Float64, rounding to the nearest binary64 value.
-    fn to_float64() Float64
 
 // Classification and conversion operations for Float32, a binary32 floating-point value.
 interface Float32Operations:

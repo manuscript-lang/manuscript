@@ -8,7 +8,7 @@ A violated precondition (a percentile outside 0 to 100, mismatched list lengths,
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
-// Equal-width counts over a range of values, from `bin_counts`. (`@std/os/metrics.ms` has the recording `Histogram`.)
+// Equal-width counts over a range of values, from `bin_counts`. (`@std/data/histogram.ms` has the recording `Histogram`.)
 export type BinCounts:
     // The least value counted, which is the lower edge of the first bin.
     low: Float
@@ -130,7 +130,18 @@ fn percentile_sorted(ordered: List[Float], percent: Float) Float:
     if below + 1 >= ordered.length():
         return ordered[ordered.length() - 1]
 
-    return ordered[below] + (ordered[below + 1] - ordered[below]) * fraction
+    let low = ordered[below]
+    let high = ordered[below + 1]
+
+    // An exact position or equal neighbors return the neighbor; interpolating would turn `inf - inf` or `inf * 0` into NaN.
+    if fraction == 0.0 or low == high:
+        return low
+
+    // A lone infinite neighbor stays the result of the weighted blend.
+    if not low.is_finite() and high != -low:
+        return low
+
+    return low + (high - low) * fraction
 
 /*
 Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.

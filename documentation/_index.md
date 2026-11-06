@@ -2,28 +2,28 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "Help agents build correct, fast programs you can understand. Simple types and generics keep code clear, compiler feedback guides repairs, and interactive code maps make review easier."
+description = "Agents write it and people understand it. A small typed language with failure, mutation and copies marked in the source, compiler feedback an agent can act on, code maps for review, and fast native builds."
 +++
 
 {{< docs-home >}}
-<!-- manuscript-example: {"mode":"run","files":{"changes.txt":"Internal cleanup\n+ Add CSV export\n+ Fix date parsing\n","template.txt":"Release notes\n$changes"},"stdout":"Release notes\n+ Add CSV export\n+ Fix date parsing\n"} -->
-```manuscript {filename="generate_release_notes.ms"}
-import open, read_file from "@std/os/fs.ms"
-import lines, collect from "@std/io/streams.ms"
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript {filename="server.ms"}
+import open from "@std/os/fs.ms"
+import serve from "@std/net/net.ms"
+import HttpExchange, headers from "@std/net/http.ms"
 
-fn render() Unit!:
-    let template = read_file("template.txt")
-    let file = try open("changes.txt", "r", 0)
-    let source = try file.reader() | lines
-    let highlights = try collect(source)
-        | .filter(fn line: line.starts_with("+ "))
-        | .join("\n")
-    let page = try template.wait()
-    print(page.decode_utf8().get()
-        .replace("$changes", highlights))
+fn notes(var exchange: HttpExchange) Unit!:
+    var chunks = try (try open("notes.txt", "r", 0)).reader()
+    try exchange.send_headers(200, headers())
+    for chunk in chunks.wait():
+        try exchange.write_bytes(try chunk)
     return ok(unit)
 
+fn run() Unit!:
+    let server = try serve(":8080", notes)
+    return server.wait()
+
 export fn main() Int:
-    return if render().is_ok(): 0 else: 1
+    return if run().is_ok(): 0 else: 1
 ```
 {{< /docs-home >}}

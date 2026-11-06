@@ -19,9 +19,9 @@ Enums are tagged and exhaustively matched.
 - At least one case; case names are unique, and payload field names are unique within a case.
 - A case may have no payload: `Missing`.
 - Payload types are explicit; fields have no defaults.
-- `enum` bodies contain only bare variant names with optional payload parameters; record fields belong in a `type` and methods in an `impl` block.
+- `enum` bodies contain only bare variant names with optional payload parameters; fields belong in a `type` and methods in an `impl` block.
 
-Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. Then remove `case` before each variant. Both legacy spellings are rejected with diagnostics explaining the new spelling. Records keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling. `case` is no longer reserved: `case`, `case(value: Int)`, and record field `case: Int` are ordinary names in their respective contexts.
+Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. Then remove `case` before each variant. Both legacy spellings are rejected with diagnostics explaining the new spelling. Types keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling. `case` is no longer reserved: `case`, `case(value: Int)`, and field `case: Int` are ordinary names in their respective contexts.
 
 ## Construction and identity
 
@@ -57,7 +57,7 @@ After `let Ready = LeftState.Ready`, `Ready` refers to that binding, not case lo
 
 Type arguments attach to the enum, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. This also holds for standard Optional/Result cases.
 
-Exporting an enum exposes every case and payload field. Payload types follow the [public surface](records.md#public-data-surfaces) and [recursive data](records.md#recursive-data) rules for records.
+Exporting an enum exposes every case and payload field. Payload types follow the [public surface](named-types.md#public-data-surfaces) and [recursive data](named-types.md#recursive-data) rules for types.
 
 ## Handling a case
 

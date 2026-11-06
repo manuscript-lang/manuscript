@@ -1,5 +1,6 @@
 import expect_equal, expect_fault, expect_true from "@std/test/test.ms"
-import owned_promise from "@std/concurrency/promise.ms"
+import Promise, owned_promise, promise, wait_all from "@std/concurrency/promise.ms"
+import microseconds, sleep from "@std/time.ms"
 
 fn depth(n: Int) Int:
     if n == 0:
@@ -53,3 +54,22 @@ fn faulting_depth(n: Int) Unit:
         return
 
     faulting_depth(n - 1)
+
+fn parked_depth(n: Int) Int:
+    if n == 0:
+        sleep(microseconds(10)).wait().get(unit)
+        return 0
+
+    return parked_depth(n - 1) + 1
+
+// Promise tasks run on every scheduler thread, and each thread keeps its own running segment. With one
+// shared copy, 32 or more tasks that grew and parked at once chained their segments into a cycle that
+// frame capture at the next promise start followed forever.
+test "many tasks recurse past their first slot and park on several threads":
+    var tasks: List[Promise[Int]] = []
+    for i in 0..64:
+        tasks.append(promise(fn: ok(parked_depth(20000 + i))))
+
+    let results = try wait_all(tasks)
+    for i in 0..64:
+        try expect_equal(results[i], 20000 + i)

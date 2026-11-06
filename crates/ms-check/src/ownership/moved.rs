@@ -1,4 +1,4 @@
-//! Which moved bindings some path keeps.
+//! Which bindings some path keeps without completing a tracked action.
 //!
 //! A binding that every path moves out of before leaving its scope has nothing left to drop: its
 //! local is consumed where the move is. A binding some path keeps is still dropped at the scope
@@ -7,13 +7,14 @@
 //! The walk runs backwards over the body with a set of bindings that every path from the current
 //! point moves before any exit of the scope. An exit (the end of the body, `return`, and `break`
 //! or `continue` for the loop they leave) empties the set for the bindings whose scope ends; a
-//! join keeps the bindings every incoming path moves.
+//! join keeps the bindings every incoming path moves. Scope-close inference reuses the walk
+//! with completed explicit-close and replacement actions, without changing lowering move facts.
 
 use crate::hir::*;
 use ms_syntax::ast::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-/// Every path from here moves these bindings before leaving their scope.
+/// Every path from here completes an action for these bindings before leaving their scope.
 type Must = HashSet<usize>;
 
 fn meet(into: &mut Option<Must>, from: Must) {
@@ -23,16 +24,23 @@ fn meet(into: &mut Option<Must>, from: Must) {
     }
 }
 
-/// The bindings with a move (`moves`, by use node and binding) that some path keeps.
+/// The bindings with an action (by expression and binding) that some path leaves undone.
+/// Moves consume a binding; completed closes and replacements handle its old close outcome.
+/// Actions occur after the expression's operands have finished evaluating.
 pub fn conditional(
     m: &ModuleHir,
     c: &Callable,
-    moves: &HashSet<(NodeId, usize)>,
+    actions: &HashSet<(NodeId, usize)>,
 ) -> HashSet<usize> {
     let mut p = Pass {
         m,
-        moves,
-        moved: moves.iter().map(|(_, u)| *u).collect(),
+        actions: actions
+            .iter()
+            .fold(HashMap::new(), |mut actions, &(node, uid)| {
+                actions.entry(node).or_insert_with(Vec::new).push(uid);
+                actions
+            }),
+        tracked: actions.iter().map(|(_, u)| *u).collect(),
         out: HashSet::new(),
         breaks: Vec::new(),
         continues: Vec::new(),
@@ -53,18 +61,18 @@ pub fn conditional(
 
 struct Pass<'a> {
     m: &'a ModuleHir,
-    moves: &'a HashSet<(NodeId, usize)>,
-    /// Bindings with at least one move.
-    moved: HashSet<usize>,
+    actions: HashMap<NodeId, Vec<usize>>,
+    /// Bindings with at least one tracked action.
+    tracked: HashSet<usize>,
     out: HashSet<usize>,
     breaks: Vec<Must>,
     continues: Vec<Must>,
 }
 
 impl Pass<'_> {
-    /// The declaration of `uid`: some path from it keeps the value when no move is certain.
+    /// The declaration of `uid`: some path leaves its lifetime without a tracked action.
     fn define(&mut self, uid: usize, must: &Must) {
-        if self.moved.contains(&uid) && !must.contains(&uid) {
+        if self.tracked.contains(&uid) && !must.contains(&uid) {
             self.out.insert(uid);
         }
     }
@@ -193,6 +201,11 @@ impl Pass<'_> {
 
     /// Walks an expression backwards: children in reverse evaluation order.
     fn expr(&mut self, e: &Expr, must: &mut Must) {
+        // Reverse evaluation order: a completed action follows every operand. A `try` in
+        // an operand can still exit before this action, clearing it below.
+        if let Some(bindings) = self.actions.get(&e.id) {
+            must.extend(bindings);
+        }
         match &e.kind {
             ExprKind::Number(_) | ExprKind::Bool(_) | ExprKind::Unit => {}
             ExprKind::Text(parts) => {
@@ -202,13 +215,7 @@ impl Pass<'_> {
                     }
                 }
             }
-            ExprKind::Name(_) => {
-                if let Resolution::Local(b) = self.m.resolution(e)
-                    && self.moves.contains(&(e.id, b.uid))
-                {
-                    must.insert(b.uid);
-                }
-            }
+            ExprKind::Name(_) => {}
             ExprKind::Member { left, .. } => self.expr(left, must),
             ExprKind::Apply { left, value, .. } => {
                 if let Some(v) = value {
@@ -246,7 +253,7 @@ impl Pass<'_> {
                 }
                 self.expr(left, must);
             }
-            ExprKind::Lambda(l) => self.lambda(e, l, must),
+            ExprKind::Lambda(l) => self.lambda(e, l),
             ExprKind::Call { callee, args } => {
                 for a in args.iter().rev() {
                     self.expr(&a.value, must);
@@ -275,7 +282,7 @@ impl Pass<'_> {
     }
 
     /// A lambda moves the captures it owns when it is built; its body is a scope of its own.
-    fn lambda(&mut self, e: &Expr, l: &Lambda, must: &mut Must) {
+    fn lambda(&mut self, e: &Expr, l: &Lambda) {
         let saved = (
             std::mem::take(&mut self.breaks),
             std::mem::take(&mut self.continues),
@@ -285,10 +292,5 @@ impl Pass<'_> {
             self.define(b.uid, &inner);
         }
         (self.breaks, self.continues) = saved;
-        for b in self.m.captures(e) {
-            if self.moves.contains(&(e.id, b.uid)) {
-                must.insert(b.uid);
-            }
-        }
     }
 }

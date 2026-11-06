@@ -3,7 +3,8 @@ import (
     base64_encode_unpadded,
     base64_decode_unpadded,
     base32_encode,
-    base32_decode
+    base32_decode,
+    Base32Options
 ) from "@std/data/encoding.ms"
 import expect_equal from "@std/test/test.ms"
 
@@ -55,13 +56,32 @@ test "Base32 matches RFC 4648 padded and unpadded vectors":
     for index in 0..texts.length():
         let bytes = texts[index].to_bytes()
         try expect_equal(base32_encode(bytes), encoded[index])
-        try expect_equal(base32_encode(bytes, padded: false), raw[index])
-        try expect_equal(base32_encode(bytes, true), hex[index])
-        try expect_equal(base32_encode(bytes, true, false), hex_raw[index])
+        try expect_equal(base32_encode(bytes, Base32Options(padded: false)), raw[index])
+        try expect_equal(
+            base32_encode(bytes, Base32Options(hex_alphabet: true)), hex[index]
+        )
+        try expect_equal(
+            base32_encode(
+                bytes, Base32Options(hex_alphabet: true, padded: false)
+            ),
+            hex_raw[index]
+        )
         try expect_equal(try base32_decode(encoded[index]), bytes)
-        try expect_equal(try base32_decode(raw[index], padded: false), bytes)
-        try expect_equal(try base32_decode(hex[index], true), bytes)
-        try expect_equal(try base32_decode(hex_raw[index], true, false), bytes)
+        try expect_equal(
+            try base32_decode(raw[index], Base32Options(padded: false)), bytes
+        )
+        try expect_equal(
+            try base32_decode(
+                hex[index], Base32Options(hex_alphabet: true)
+            ),
+            bytes
+        )
+        try expect_equal(
+            try base32_decode(
+                hex_raw[index], Base32Options(hex_alphabet: true, padded: false)
+            ),
+            bytes
+        )
 
 test "Base32 enforces exact terminal padding and uppercase alphabets":
     let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
@@ -74,8 +94,10 @@ test "Base32 enforces exact terminal padding and uppercase alphabets":
     for text in [
         "M", "MZX", "MZXW6Y", "MY=", "MY======", "my", "M0", "M1", "M8", "M9", "MY\r\n"
     ]:
-        try expect_equal(base32_decode(text, padded: false), invalid)
-    try expect_equal(base32_decode("W0======", true), invalid)
+        try expect_equal(base32_decode(text, Base32Options(padded: false)), invalid)
+    try expect_equal(
+        base32_decode("W0======", Base32Options(hex_alphabet: true)), invalid
+    )
     try expect_equal(base32_decode("CO======"), invalid)
 
 test "Base32 rejects nonzero unused bits in each tail shape":
@@ -83,9 +105,11 @@ test "Base32 rejects nonzero unused bits in each tail shape":
     for text in ["MZ======", "MZX R===", "MZXR====", "MZXW7===", "MZXW6YR="]:
         try expect_equal(base32_decode(text), invalid)
     for text in ["MZ", "MZXR", "MZXW7", "MZXW6YR"]:
-        try expect_equal(base32_decode(text, padded: false), invalid)
+        try expect_equal(base32_decode(text, Base32Options(padded: false)), invalid)
     for text in ["CP======", "CPNH====", "CPNMV===", "CPNMUOH="]:
-        try expect_equal(base32_decode(text, true), invalid)
+        try expect_equal(
+            base32_decode(text, Base32Options(hex_alphabet: true)), invalid
+        )
 
 test "encoding variants honor zero exact exceeded absent and negative limits":
     let empty = Bytes([])
@@ -95,7 +119,8 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
     try expect_equal(try base64_decode_unpadded("", max_bytes: 0), empty)
     try expect_equal(try base32_decode("MY======", max_bytes: 1), "f".to_bytes())
     try expect_equal(
-        try base32_decode("MY", padded: false, max_bytes: 1), "f".to_bytes()
+        try base32_decode("MY", Base32Options(padded: false), max_bytes: 1),
+        "f".to_bytes()
     )
     try expect_equal(base32_decode("MY======", max_bytes: 0), limited)
     try expect_equal(base64_decode_unpadded("Zg", max_bytes: 0), limited)
@@ -119,7 +144,16 @@ test "encoding variants honor Bytes views and cross block boundaries":
             for padded in [false, true]:
                 try expect_equal(
                     try base32_decode(
-                        base32_encode(bytes, hex, padded), hex, padded, length
+                        base32_encode(
+                            bytes,
+                            Base32Options(
+                                hex_alphabet: hex, padded: padded
+                            )
+                        ),
+                        Base32Options(
+                            hex_alphabet: hex, padded: padded
+                        ),
+                        length
                     ),
                     bytes
                 )
@@ -153,15 +187,55 @@ test "Base32 rejects interior padding before output budgets":
 
     for hex in [false, true]:
         for text in ["A=AAAAAA", "AA======AA======"]:
-            try expect_equal(base32_decode(text, hex, true, 0), invalid)
-            try expect_equal(base32_decode(text, hex, true, -1), negative)
-            try expect_equal(base32_decode(text, hex, true), invalid)
-            try expect_equal(base32_decode(text, hex, true, 100), invalid)
+            try expect_equal(
+                base32_decode(
+                    text, Base32Options(hex_alphabet: hex, padded: true), 0
+                ),
+                invalid
+            )
+            try expect_equal(
+                base32_decode(
+                    text, Base32Options(hex_alphabet: hex, padded: true), -1
+                ),
+                negative
+            )
+            try expect_equal(
+                base32_decode(
+                    text, Base32Options(hex_alphabet: hex, padded: true)
+                ),
+                invalid
+            )
+            try expect_equal(
+                base32_decode(
+                    text, Base32Options(hex_alphabet: hex, padded: true), 100
+                ),
+                invalid
+            )
 
-        try expect_equal(base32_decode("A=AA", hex, false, 0), invalid)
-        try expect_equal(base32_decode("A=AA", hex, false, 100), invalid)
-        try expect_equal(base32_decode("!!!!!!!!", hex, true, 0), limited)
-        try expect_equal(base32_decode("!!!!!!!!", hex, true, 100), invalid)
+        try expect_equal(
+            base32_decode(
+                "A=AA", Base32Options(hex_alphabet: hex, padded: false), 0
+            ),
+            invalid
+        )
+        try expect_equal(
+            base32_decode(
+                "A=AA", Base32Options(hex_alphabet: hex, padded: false), 100
+            ),
+            invalid
+        )
+        try expect_equal(
+            base32_decode(
+                "!!!!!!!!", Base32Options(hex_alphabet: hex, padded: true), 0
+            ),
+            limited
+        )
+        try expect_equal(
+            base32_decode(
+                "!!!!!!!!", Base32Options(hex_alphabet: hex, padded: true), 100
+            ),
+            invalid
+        )
 
     try expect_equal(base64_decode_unpadded("A=AA", max_bytes: 0), limited)
 

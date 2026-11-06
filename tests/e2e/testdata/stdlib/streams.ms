@@ -1,7 +1,7 @@
 import from_bytes, from_list, map, collect, read_all, copy from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
 import open, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()
@@ -30,3 +30,9 @@ test "read_all joins chunks and enforces its limit":
         (try read_all(from_bytes("abcdef".to_bytes(), 4), none)), "abcdef".to_bytes()
     )
     try expect_equal(read_all(from_bytes("abcdef".to_bytes(), 4), 5).is_error(), true)
+
+test "from_bytes rejects a chunk size below one instead of never ending":
+    for size in [0, -1]:
+        var source = from_bytes("abc".to_bytes(), size)
+        let first = try expect_error(source.read().wait())
+        try expect_equal(first.kind, "EINVAL")

@@ -52,7 +52,7 @@ fn literals() Unit:
 
 ## Sized numbers
 
-`Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, records, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
+`Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, user types, optionals, enums, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
 
 ```manuscript
 fn sized() Unit:
@@ -174,6 +174,6 @@ Booleans drive [if](../control-flow/conditionals.md) and [while](../control-flow
 
 ## Durations
 
-`500.milliseconds()`, `2.seconds()`, and `2.minutes()` are `Duration` values; these are methods of `Int`. A `Duration` is a signed 64-bit nanosecond count (`2.seconds()` is 2,000,000,000), and they check overflow. `@std/os/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
+`500.milliseconds()`, `2.seconds()`, and `2.minutes()` are `Duration` values; these are methods of `Int`. A `Duration` is a signed 64-bit nanosecond count (`2.seconds()` is 2,000,000,000), and they check overflow. `@std/time.ms` also exports `nanoseconds`, `microseconds`, `milliseconds`, `seconds`, `minutes`, and `hours` as functions (`sleep(seconds(2))`); all take `Int` and fault when the nanosecond count overflows. Interpolating a `Duration` or calling `to_string()` gives human text such as `1m30.5s`, `250ms`, or `0s`.
 
-Use `monotonic()` from `@std/os/time.ms` to read an `Instant` for measuring elapsed time. An instant records a clock domain and a nanosecond tick; compare readings from the same domain, since crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds() + 1` is a type error.
+Use `monotonic()` from `@std/time.ms` to read an `Instant` for measuring elapsed time. An instant records a clock domain and a nanosecond tick; compare readings from the same domain, since crossing domains faults. Duration and Instant arithmetic checks overflow ([operator table](expressions.md)). Mixed arithmetic such as `2.seconds() + 1` is a type error.

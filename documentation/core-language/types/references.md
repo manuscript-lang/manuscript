@@ -7,9 +7,9 @@ weight = 5
 
 ## How memory works
 
-Strings, records and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
+Strings, types and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
 
-Everything else, including strings, records, lists and maps, is handed around by reference until you put it somewhere that must own it:
+Everything else, including strings, types, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
 - `let b = a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` and `f(var a)` borrow exclusively, so changes reach `a`.
 - Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
@@ -27,7 +27,7 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 - `Optional` and `Result` can carry borrowed payloads. When the relevant return paths borrow the payload, `ok(self.name)` or `self.slots.get(i)` keeps it borrowed; `none` needs no owner. A `Result` can own its success value while borrowing its error from an argument, and `try` preserves the ownership of the active case. A borrowed payload must be cloned before storing it in a new owner.
 - A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A lambda or an interface method owns its result.
 - A call that borrows from a temporary must leave an owned result: it can move the whole temporary, but retaining a part requires a clonable result. Bind the argument first to borrow a part of a non-clonable value.
-- A record field owns its value. A record cannot view another variable.
+- A field owns its value. A type cannot view another variable.
 - A place changed in place (a `var` argument, a `var` receiver, a `var` borrow, a closure that assigns) may not overlap any other operand or live borrow of the same call or scope. Distinct fields (`var p.left`, `var p.right`) and distinct non-negative literal list indexes (`var xs[0]`, `var xs[1]`) are disjoint; every other pair of element accesses (`xs[i]`, `xs[0]` with `xs[-1]`, map entries) may be the same element and is rejected, as is any change to the list itself while an element borrow is live. A read that finishes before the change starts, such as an `Int` argument `f(var xs, xs[0])`, stays valid. The receiver of a method and a function value a variable holds are read in place while the arguments run, so an argument (a `match` arm among them) may not reassign that variable: `f(match m: _: f = g; 1)` is rejected, as is `r.m(match m: _: r = other; 1)`; reassign before the call instead.
 
 ```manuscript
@@ -56,7 +56,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Data copies
 
-`.clone()` is a deep copy of nested values. Opaque handles and function values have no clone and are never copied, and a value that holds one is not `Clonable` either. See [mutation and cloning](records.md#mutation-and-cloning).
+`.clone()` is a deep copy of nested values. Opaque handles and function values have no clone and are never copied, and a value that holds one is not `Clonable` either. See [mutation and cloning](named-types.md#mutation-and-cloning).
 
 ## Sharing a value
 
@@ -64,7 +64,7 @@ There is no shared mutable value. A value has one owner; a promise reads what it
 
 ## References inside other values
 
-Record fields and collection slots own their values. Moving a resource into one transfers the cleanup duty to the holder. At scope end, a holder closes the resources it owns, including nested parts; its own `Closeable.close`, if present, runs before its parts. See [the close-order table](../cleanup/closeable.md#records-and-collections-close-what-they-hold).
+Fields and collection slots own their values. Moving a resource into one transfers the cleanup duty to the holder. At scope end, a holder closes the resources it owns, including nested parts; its own `Closeable.close`, if present, runs before its parts. See [the close-order table](../cleanup/closeable.md#types-and-collections-close-what-they-hold).
 
 A borrow of a resource field keeps the holder available and prevents closing or changing it while that borrow is still used. Destructuring transfers only the fields that move out; omitted resource fields are still closed.
 

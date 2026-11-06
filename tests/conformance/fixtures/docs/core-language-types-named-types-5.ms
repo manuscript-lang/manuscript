@@ -1,0 +1,12 @@
+// conform: tags=control-flow,diagnostics,interfaces,records,tier-core
+// conform: phase=check
+// conform: origin=documentation/core-language/types/named-types.md:52
+interface Counter:
+    var fn increment() Unit
+
+type Val:
+    val: Int
+
+impl Counter for Val:
+    var fn increment() Unit:
+        self.val = self.val + 1

@@ -558,7 +558,7 @@ impl Checker {
             "filesystem" | "network" | "commands" | "control" | "system" | "clock"
             | "wall_clock" | "entropy" | "terminal" | "files" => {
                 return format!(
-                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/os/time.ms\""
+                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\""
                 );
             }
             _ => {}
@@ -605,15 +605,15 @@ impl Checker {
                     .map(|o| self.syms.str(o.name).to_string()),
             );
         }
-        if let Some(intrinsic) = self.session.intrinsic_operations(receiver.id)
-            && let Some(def) = &intrinsic.def
-        {
-            names.extend(
-                def.operations
-                    .borrow()
-                    .iter()
-                    .map(|o| self.syms.str(o.name).to_string()),
-            );
+        for intrinsic in self.session.intrinsic_operations(receiver.id) {
+            if let Some(def) = &intrinsic.def {
+                names.extend(
+                    def.operations
+                        .borrow()
+                        .iter()
+                        .map(|o| self.syms.str(o.name).to_string()),
+                );
+            }
         }
         if receiver.kind == Kind::Variable {
             for b in receiver.bounds() {

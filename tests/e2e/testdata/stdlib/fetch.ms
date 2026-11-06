@@ -17,7 +17,7 @@ import (
     buffered
 ) from "@std/net/http.ms"
 import serve from "@std/net/net.ms"
-import milliseconds, sleep from "@std/os/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 
 type Greeting:
     name: String

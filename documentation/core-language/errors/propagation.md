@@ -58,7 +58,7 @@ fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountErr
 
 `try` requires the operand's error type to be the enclosing function's error type.
 
-- `Result[T, E]` can become `Result[U, E]` for the same `E`. `Error` has no special conversion: it is an ordinary record.
+- `Result[T, E]` can become `Result[U, E]` for the same `E`. `Error` has no special conversion: it is an ordinary type.
 - The original error and its fields pass through unchanged.
 - Different error types need an explicit translation, for example [`map_error`](results.md#converting-a-domain-error-to-error) or [pattern matching](../control-flow/pattern-matching.md).
 - The expression after `try` is evaluated once. `try operation() + 1` means `(try operation()) + 1`.

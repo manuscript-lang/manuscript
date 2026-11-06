@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
-import monotonic from "@std/os/time.ms"
+import arguments from "@std/os/env.ms"
+import monotonic from "@std/time.ms"
 
 fn ints(size: Int, unique: Int, repeats: Int) Int:
     var data = List[Int](reserve: size)

@@ -1,6 +1,6 @@
 //! The diagram views: one question each, built from the fact model.
 
-use crate::facts::{Fact, Facts, Slot};
+use crate::facts::{Fact, Facts};
 use crate::tree::Node;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
@@ -253,24 +253,53 @@ fn mark_reachable<'a>(facts: &'a Facts, view: &str, key: &'a str, seen: &mut Has
 }
 
 /// Resolves a name, `file::name`, or full key to exactly one entity.
+/// An exact key takes precedence over display names and qualified names.
 pub fn find_entity<'a>(facts: &'a Facts, name: &str) -> Result<&'a Fact, String> {
+    if let Some(fact) = facts.entities.get(name) {
+        return Ok(fact);
+    }
     let matches: Vec<&Fact> = facts
         .entities
         .values()
-        .filter(|f| f.name == name || f.key == name || format!("{}::{}", f.file, f.name) == name)
+        .filter(|f| f.name == name || format!("{}::{}", f.file, f.name) == name)
         .collect();
     match matches.len() {
         1 => Ok(matches[0]),
         0 => Err(format!(
-            "no entity named {name}; use a declaration name or file::name (ms review lists the public surface)"
+            "no entity named {name}; use a declaration name, file::name, or full entity ID file#kind#name (ms review lists the public surface)"
         )),
         _ => {
-            let keys: Vec<String> = matches
+            let mut keys: Vec<String> = matches
                 .iter()
                 .map(|f| format!("{}::{}", f.file, f.name))
                 .collect();
+            // A type and its impl share file::name. Test display names can
+            // also equal another entity's qualified name or full key. Count
+            // all name matches before offering qualified-name remedies.
+            let mut counts: HashMap<&str, usize> =
+                keys.iter().map(|key| (key.as_str(), 0)).collect();
+            for f in facts.entities.values() {
+                if let Some(count) = counts.get_mut(f.name.as_str()) {
+                    *count += 1;
+                }
+                let qualified = format!("{}::{}", f.file, f.name);
+                if qualified != f.name
+                    && let Some(count) = counts.get_mut(qualified.as_str())
+                {
+                    *count += 1;
+                }
+            }
+            let usable = keys.iter().zip(&matches).all(|(key, f)| {
+                facts
+                    .entities
+                    .get(key)
+                    .map_or(counts[key.as_str()] == 1, |exact| exact.key == f.key)
+            });
+            if !usable {
+                keys = matches.iter().map(|f| f.key.clone()).collect();
+            }
             Err(format!(
-                "{name} is ambiguous: {}; qualify it as file::name",
+                "{name} is ambiguous; use one of: {}",
                 keys.join(", ")
             ))
         }
@@ -490,7 +519,8 @@ fn capped(root: &mut Node, skipped: usize) {
 }
 
 /// How a callable's parameters and result move ownership, per the memory model:
-/// a plain parameter is a shared borrow, `var` an exclusive borrow, a result is owned.
+/// plain parameters follow their checked passing mode, `var` is exclusive, and
+/// result labels preserve borrowed values and owned views/cases.
 fn ownership_view(facts: &Facts, entity: &str, depth: i64) -> Result<Node, String> {
     let roots: Vec<&Fact> = if entity.is_empty() {
         facts
@@ -534,17 +564,22 @@ fn ownership_node(
     for s in &f.slots {
         let mode = if s.var {
             "var (exclusive borrow)"
-        } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
-            "copy"
         } else {
-            "borrow"
+            s.passing_mode()
         };
-        node.children
-            .push(Node::new(format!("{}: {}  {mode}", s.name, s.ty)));
+        let text = if mode.is_empty() {
+            format!("{}: {}", s.name, s.ty)
+        } else {
+            format!("{}: {}  {mode}", s.name, s.ty)
+        };
+        node.children.push(Node::new(text));
     }
     if let Some(r) = &f.result {
-        node.children
-            .push(Node::new(format!("returns {}  owned", r.ty)));
+        node.children.push(Node::new(format!(
+            "returns {}  {}",
+            r.ty,
+            f.result_ownership.label()
+        )));
     }
     if f.scopes > 0 {
         node.children
@@ -782,7 +817,7 @@ fn class_diagram(facts: &Facts, entity: &str, depth: i64) -> Option<String> {
     Some(out)
 }
 
-/// Types flow into a function as borrows, copies, or `var` borrows; the result flows out owned.
+/// Render checked parameter/result modes without inferring ownership from type spellings.
 fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
     let roots = ownership_roots(facts, entity);
     let mut out = String::from("flowchart LR\n");
@@ -809,20 +844,32 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
                 f.name.replace('"', "'")
             );
             for s in &f.slots {
-                let mode = param_mode(s);
+                let mode = s.passing_mode();
                 let style = match mode {
                     "var" => "stroke:#d33,stroke-width:3px",
                     "copy" => "stroke:#999,stroke-dasharray:4",
+                    "move" => "stroke:#2a2,stroke-width:3px",
                     _ => "stroke:#37b",
                 };
                 let tid = flow_type_node(&mut out, &mut declared, &s.ty);
-                let _ = writeln!(out, "    {tid} -->|\"{} {mode}\"| {fid}", s.name);
+                let _ = writeln!(
+                    out,
+                    "    {tid} -->|\"{}\"| {fid}",
+                    format!("{} {mode}", s.name).trim_end()
+                );
                 styles.push(style);
             }
             if let Some(r) = &f.result {
                 let tid = flow_type_node(&mut out, &mut declared, &r.ty);
-                let _ = writeln!(out, "    {fid} -->|owned| {tid}");
-                styles.push("stroke:#2a2,stroke-width:3px");
+                let mode = f.result_ownership.label();
+                let _ = writeln!(out, "    {fid} -->|\"{mode}\"| {tid}");
+                styles.push(
+                    if matches!(f.result_ownership, crate::facts::ResultOwnership::Borrow) {
+                        "stroke:#37b"
+                    } else {
+                        "stroke:#2a2,stroke-width:3px"
+                    },
+                );
             }
             if level < depth {
                 next.extend(f.calls.iter().filter_map(|k| facts.entities.get(k)));
@@ -857,16 +904,6 @@ fn ownership_roots<'a>(facts: &'a Facts, entity: &str) -> Vec<&'a Fact> {
                     && (f.scopes > 0 || f.slots.iter().any(|s| s.var))
             })
             .collect(),
-    }
-}
-
-fn param_mode(s: &Slot) -> &'static str {
-    if s.var {
-        "var"
-    } else if matches!(s.ty.as_str(), "Int" | "Float" | "Bool" | "Unit" | "Instant") {
-        "copy"
-    } else {
-        "borrow"
     }
 }
 
@@ -946,8 +983,8 @@ fn ascii_classes(facts: &Facts, chosen: &[&Fact]) -> String {
 }
 
 /// One signature line per function: `var` marks an argument the callee may
-/// change, a plain parameter is borrowed (or copied, for scalars), the result is
-/// owned. Callees nest beneath their caller.
+/// change; parameter and result modes are available in the JSON/Mermaid view.
+/// Callees nest beneath their caller.
 fn ascii_ownership(facts: &Facts, entity: &str, depth: i64) -> String {
     let mut out = String::new();
     let mut lines = 0;

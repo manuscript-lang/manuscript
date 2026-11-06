@@ -540,6 +540,11 @@ impl<'a> FnLower<'a> {
                 own: true,
             });
         }
+        // A part of a borrowed result the checker counts as an owned value (`r.err().message`):
+        // the consumer that keeps it clones just that part, as it would the whole.
+        if self.boundary_reads.contains(&obj.v) {
+            self.boundary_reads.insert(f);
+        }
         Ok(Val { v: f, own: false })
     }
 
@@ -592,6 +597,7 @@ impl<'a> FnLower<'a> {
                     // The element is read in place and the list drops with the statement's
                     // temporaries: a consumer that keeps the element is the one that copies it.
                     self.temps.push(l.v);
+                    self.boundary_reads.insert(got);
                     return Ok(Val { v: got, own: false });
                 }
                 if l.own {

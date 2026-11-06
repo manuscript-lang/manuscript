@@ -9,12 +9,12 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected fn(String, List[String], Bytes, Int?, Duration?, String?, Map[String, String]) Result[CommandOutput, Error], found fn(String, List[String], Bytes, Int?, Duration?, String?, Map[String, String]) Promise[CommandOutput] (in the return value)",
+        "message": "expected fn(String, List[String], RunOptions) Result[CommandOutput, Error], found fn(String, List[String], RunOptions) Promise[CommandOutput] (in the return value)",
         "position": {
           "file": "lowering-native-defaults.ms",
-          "line": 44,
+          "line": 36,
           "column": 12,
-          "offset": 1334
+          "offset": 1243
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module",
         "position": {
           "file": "lowering-native-defaults.ms",
-          "line": 53,
+          "line": 45,
           "column": 12,
-          "offset": 1586
+          "offset": 1495
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/lowering-native-defaults.ms:44:12: type: expected fn(String, List[String], Bytes, Int?, Duration?, String?, Map[String, String]) Result[CommandOutput, Error], found fn(String, List[String], Bytes, Int?, Duration?, String?, Map[String, String]) Promise[CommandOutput] (in the return value)\n    |\n 44 |     return run\n    |            ^\n<DIR>/lowering-native-defaults.ms:53:12: resolution: unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 53 |     return fs.write_file\n    |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/lowering-native-defaults.ms:36:12: type: expected fn(String, List[String], RunOptions) Result[CommandOutput, Error], found fn(String, List[String], RunOptions) Promise[CommandOutput] (in the return value)\n    |\n 36 |     return run\n    |            ^\n<DIR>/lowering-native-defaults.ms:45:12: resolution: unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 45 |     return fs.write_file\n    |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

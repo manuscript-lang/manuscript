@@ -3,7 +3,7 @@
 // Harness output is `count,rounds,shape,elapsed_ns,checksum,source_bytes,output_bytes,rss`.
 import absolute, fail, invalid, median, options, write_text from "./lib.ms"
 import all_ints, rounds_for, run_pinned from "./study.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 type Case:

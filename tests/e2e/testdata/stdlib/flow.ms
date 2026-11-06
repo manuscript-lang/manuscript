@@ -8,7 +8,7 @@ import (
     Throttle
 ) from "@std/concurrency/flow.ms"
 import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms"
-import milliseconds, sleep, monotonic from "@std/os/time.ms"
+import milliseconds, sleep, monotonic from "@std/time.ms"
 
 fn flaky(attempt: Int) Int!String:
     if attempt < 3:

@@ -22,7 +22,7 @@ import (
     read_text,
     write_text
 ) from "./lib.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import JsonValue from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 

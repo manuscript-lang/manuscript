@@ -8,8 +8,9 @@
 // Usage: ms run tools/copy-check.ms [-- files]
 import tool_ms from "./lib.ms"
 import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import arguments, change_directory, working_directory, run from "@std/os/process.ms"
-import seconds from "@std/os/time.ms"
+import RunOptions, run from "@std/os/process.ms"
+import arguments, change_directory, working_directory from "@std/os/env.ms"
+import seconds from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
 // The probe lines the compiler printed on standard error, without their prefix.
@@ -57,7 +58,9 @@ export fn main() Int:
         else:
             continue
 
-        if let out = run(ms.clone(), command, timeout: seconds(120), env: env).wait():
+        if let out = run(
+            ms.clone(), command, RunOptions(timeout: seconds(120), env: env)
+        ).wait():
             swept += 1
 
             let sites = copies(out.stderr.decode_utf8().get(""))

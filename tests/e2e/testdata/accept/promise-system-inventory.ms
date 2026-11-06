@@ -1,6 +1,6 @@
 import expect_equal from "@std/test/test.ms"
 import promise, wait_all from "@std/concurrency/promise.ms"
-import cpus, network_interfaces from "@std/os/process.ms"
+import cpus, network_interfaces from "@std/os/system.ms"
 
 fn counts() Int!:
     let c = try cpus()

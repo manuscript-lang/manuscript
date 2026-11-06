@@ -304,8 +304,51 @@ fn deliver(id: i64, event: Event) {
 /// Applies the events other threads sent to this one.
 pub(crate) fn apply_events() {
     for event in sched::take_events() {
-        apply(event);
+        match event {
+            Event::Ended { id, status, report } => end_remote(id, status, report),
+            event => apply(event),
+        }
     }
+}
+
+/// What a task needs to finish the end of promise `id` once its closure is dropped.
+struct EndJob {
+    id: i64,
+    status: u8,
+    report: Vec<u8>,
+}
+
+/// Applies an end that came from another thread. Dropping the closure can join work (a captured
+/// promise is cancelled and awaited), which needs a task to park, so it runs in one instead of in
+/// the scheduler's event handling.
+fn end_remote(id: i64, status: u8, report: Vec<u8>) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if t.closure[i] == 0 {
+        apply(Event::Ended { id, status, report });
+        return;
+    }
+    let job = Box::into_raw(Box::new(EndJob { id, status, report }));
+    // SAFETY: the entry takes the job; the task is detached and ends by itself.
+    unsafe { task::msrt_task_spawn(end_entry, job.cast(), task::SPAWN_DETACHED, 0) };
+}
+
+unsafe extern "C-unwind" fn end_entry(arg: *mut u8) {
+    // SAFETY: `arg` is the job `end_remote` leaked for this task.
+    let EndJob { id, status, report } = *unsafe { Box::from_raw(arg.cast::<EndJob>()) };
+    let t = table();
+    if let Some(i) = index(t, id) {
+        let closure = t.closure[i];
+        if closure != 0 {
+            // SAFETY: the closure handed over at start; the task is over, so this is its last use.
+            // The slot keeps the closure until it is gone, so a result that arrives meanwhile waits.
+            unsafe { crate::obj::drop_obj(closure as *mut ms_rt_abi::Obj) };
+            if let Some(i) = index(table(), id) {
+                table().closure[i] = 0;
+            }
+        }
+    }
+    apply(Event::Ended { id, status, report });
 }
 
 fn drop_block(ptr: usize, desc: usize) {

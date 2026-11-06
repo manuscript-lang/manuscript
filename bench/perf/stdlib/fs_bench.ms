@@ -1,7 +1,7 @@
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
 import list, read_file, stat, temporary, write_file_bytes from "@std/os/fs.ms"
-import create, file_transport from "@std/log.ms"
+import create, file_transport, LoggerOptions from "@std/log.ms"
 
 fn block() Bytes:
     return "0123456789abcdef".repeat(4096).get("").to_bytes()
@@ -75,7 +75,7 @@ bench "fs.list_200":
 bench "log.info":
     if var dir = temporary("ms-bench-"):
         if let transport = file_transport("{dir.path()}/log.txt"):
-            if let logger = create(transport, timestamp: false):
+            if let logger = create(transport, LoggerOptions(timestamp: false)):
                 fn work() Result[Unit, Error]:
                     var n = 0
                     for i in 0..20000:

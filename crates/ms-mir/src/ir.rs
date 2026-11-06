@@ -288,7 +288,7 @@ pub enum Op {
     // Strings.
     StrLen, StrByte, StrAscii,
     // Closures and interface views.
-    ClosureNew, ClosureCap, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
+    ClosureNew, ClosureCap, ClosureCapAddr, IfaceNew, IfaceBorrow, IfaceView, IfaceData, IfaceIs,
     // Ownership.
     Clone, Drop, DropIf, MoveOut,
     // Raw memory: stack slots, interior pointers into lists and records.
@@ -405,7 +405,7 @@ impl Op {
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast, Op::ListRelease,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
         Op::StrLen, Op::StrByte, Op::StrAscii,
-        Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
+        Op::ClosureNew, Op::ClosureCap, Op::ClosureCapAddr, Op::IfaceNew, Op::IfaceBorrow, Op::IfaceView, Op::IfaceData, Op::IfaceIs,
         Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
@@ -516,6 +516,7 @@ impl Op {
             Op::StrAscii => ("str.ascii", K::None, true, effects!()),
             Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
+            Op::ClosureCapAddr => ("closure.cap_addr", K::Idx, true, effects!()),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
             Op::IfaceBorrow => ("iface.borrow", K::Vtable, true, effects!(alloc)),
             Op::IfaceView => ("iface.view", K::None, true, effects!()),

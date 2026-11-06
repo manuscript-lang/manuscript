@@ -1,4 +1,4 @@
-import Calendar, Instant, Timestamp from "@std/os/time.ms"
+import Calendar, Instant, Timestamp from "@std/time.ms"
 
 export extern fn msstd_time_duration_add(value: Int, other: Int) Int
 
@@ -23,8 +23,6 @@ export extern fn msstd_time_duration_to_minutes(value: Int) Float
 export extern fn msstd_time_duration_to_hours(value: Int) Float
 
 export extern fn msstd_time_local_zone() String
-
-export extern fn msstd_time_sleep(duration: Int) Unit
 
 export extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 

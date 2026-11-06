@@ -5,7 +5,7 @@
 // Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
 import parse from "@std/data/json.ms"
 import stdout, stderr from "@std/io/io.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import root from "./core/model.ms"
 import fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms"
 import nonblank_lines, read_text from "./lib/text.ms"

@@ -13,7 +13,7 @@ import (
     write_text
 ) from "./lib.ms"
 import all_ints, run_pinned from "./study.ms"
-import arguments from "@std/os/process.ms"
+import arguments from "@std/os/env.ms"
 import JsonValue, parse from "@std/data/json.ms"
 
 export type Identity:

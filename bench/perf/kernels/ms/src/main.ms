@@ -1,5 +1,5 @@
 import stdout from "@std/io/io.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 
 type Body:
     x: Float
@@ -55,11 +55,11 @@ fn advance(var bodies: List[Body], steps: Int) Float:
         var i = 0
 
         while i < n:
-            var a = bodies.get(i)
+            var a = bodies.get(i).clone()
             var j = i + 1
 
             while j < n:
-                var b = bodies.get(j)
+                var b = bodies.get(j).clone()
                 let dx = a.x - b.x
                 let dy = a.y - b.y
                 let dz = a.z - b.z
@@ -80,7 +80,7 @@ fn advance(var bodies: List[Body], steps: Int) Float:
         i = 0
 
         while i < n:
-            var a = bodies.get(i)
+            var a = bodies.get(i).clone()
             a.x += 0.01 * a.vx
             a.y += 0.01 * a.vy
             a.z += 0.01 * a.vz

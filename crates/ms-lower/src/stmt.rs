@@ -547,13 +547,9 @@ impl<'a> FnLower<'a> {
             let at = self.borrow(i);
             let mut new = Some(self.owned(x));
             return self.place_update(left, &mut |s, list| {
-                let (elem, moved) = s.list_elem_at(list, at)?;
-                let new = new.take().expect("one update");
-                let updated = s.set_path(elem, true, &path, new)?;
-                Ok(if moved {
-                    s.b.list_fill(list, at, updated)
-                } else {
-                    s.b.list_set(list, at, updated)
+                s.update_elem(list, at, &mut |s, elem| {
+                    let new = new.take().expect("one update");
+                    s.set_path(elem, true, &path, new)
                 })
             });
         }
@@ -618,13 +614,7 @@ impl<'a> FnLower<'a> {
             }
             let at = self.borrow(i);
             return self.place_update(left, &mut |s, list| {
-                let (elem, moved) = s.list_elem_at(list, at)?;
-                let updated = s.update_path(elem, &path, f)?;
-                Ok(if moved {
-                    s.b.list_fill(list, at, updated)
-                } else {
-                    s.b.list_set(list, at, updated)
-                })
+                s.update_elem(list, at, &mut |s, elem| s.update_path(elem, &path, f))
             });
         }
         if !matches!(cur.kind, ExprKind::Name(_)) {
@@ -647,6 +637,56 @@ impl<'a> FnLower<'a> {
         let updated = self.update_path(root, &path, f)?;
         self.local_put(&l, updated);
         Ok(())
+    }
+
+    /// The owned container `obj` (a list or a map) with the element at `at` replaced by
+    /// `g(element)`: a list element is moved out and refilled, a map entry is taken from its slot
+    /// and put back, and a missing key faults like a read.
+    fn update_elem(
+        &mut self,
+        obj: ms_mir::ir::Value,
+        at: ms_mir::ir::Value,
+        g: &mut dyn FnMut(&mut Self, ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error>,
+    ) -> Result<ms_mir::ir::Value, Error> {
+        if matches!(self.b.m.types.kind(self.ty_of(obj)), TyKind::Obj(..)) {
+            let mt = self.ty_of(obj);
+            let vty = self.map_value_type(obj)?;
+            let (kd, vd) = self.map_descs(mt)?;
+            let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+            let ks = self.borrow_slot(at);
+            let ptr = self.call_runtime("msrt_map_get_ptr", &[obj, kd, vd, ks], MTy::PTR)?;
+            let missing = self
+                .b
+                .emit(Op::PtrIsNull, &[ptr], Imm::None, Some(MTy::BOOL))
+                .expect("is_null");
+            let (bad, good) = (self.b.new_block(), self.b.new_block());
+            self.b.br_if(missing, bad, &[], good, &[]);
+            self.b.seal_block(bad);
+            self.b.seal_block(good);
+            self.b.switch_to(bad);
+            self.fault_key_not_found(at)?;
+            self.b.switch_to(good);
+            let drops = self.needs_drop(vty);
+            let (take, put) = if drops {
+                (Op::Take, Op::Put)
+            } else {
+                (Op::Load, Op::Store)
+            };
+            let cur = self
+                .b
+                .emit(take, &[ptr], Imm::Ty(vty), Some(vty))
+                .expect("take");
+            let inner = g(self, cur)?;
+            self.b.emit(put, &[ptr, inner], Imm::None, None);
+            return Ok(obj);
+        }
+        let (elem, moved) = self.list_elem_at(obj, at)?;
+        let updated = g(self, elem)?;
+        Ok(if moved {
+            self.b.list_fill(obj, at, updated)
+        } else {
+            self.b.list_set(obj, at, updated)
+        })
     }
 
     /// Element `at` of the owned list `list`, owned: a droppable element is moved out (the caller

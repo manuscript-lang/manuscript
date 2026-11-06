@@ -131,6 +131,24 @@ impl Drop for Serving {
     }
 }
 
+/// The handler closure `serve` handed over, dropped unless a serving takes it.
+struct OwnedHandler(*mut Obj);
+
+impl OwnedHandler {
+    fn keep(self) -> *mut Obj {
+        let handler = self.0;
+        std::mem::forget(self);
+        handler
+    }
+}
+
+impl Drop for OwnedHandler {
+    fn drop(&mut self) {
+        // SAFETY: the closure `serve` handed over, dropped once here.
+        unsafe { ms_rt::obj::msrt_obj_drop(self.0) };
+    }
+}
+
 native! {
     // -------------------------------------------------------------------- server
 
@@ -145,10 +163,12 @@ native! {
         out: Out<Object<ServingH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
+        // The handler is ours from here: a failure before the serving exists must release it.
+        let owned = OwnedHandler(env.as_ptr());
         let options = report(server_options(opts), &err)?;
         let root = crate::net::root();
         let listener = report(root.listen(address), &err)?;
-        out.write(Object(ServingH(Rc::new(Serving::new(options, env.as_ptr(), listener)))));
+        out.write(Object(ServingH(Rc::new(Serving::new(options, owned.keep(), listener)))));
         Ok(())
     }
 

@@ -8,7 +8,7 @@ use ms_tooling::mark::{explain, explain_json, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, TIER_EFFECT, compare_facts};
 use ms_tooling::tree::Node;
-use ms_tooling::views::{NODE_CAP, build_view, mermaid_view};
+use ms_tooling::views::{NODE_CAP, build_view, find_entity, mermaid_view};
 use std::collections::BTreeMap;
 
 const SAMPLE_DIFF: &str = "diff --git a/src/a.ms b/src/a.ms\nindex 111..222 100644\n--- a/src/a.ms\n+++ b/src/a.ms\n@@ -1,4 +1,5 @@\n fn one() Int:\n-    return 1\n+    let x = 1\n+    return x\n \n fn two() Int:\ndiff --git a/new.ms b/new.ms\nnew file mode 100644\n--- /dev/null\n+++ b/new.ms\n@@ -0,0 +1,2 @@\n+fn n() Int:\n+    return 0\n";
@@ -262,6 +262,105 @@ fn views_answer_one_question_each() {
 }
 
 #[test]
+fn ambiguous_entity_remedies_select_distinct_declarations() {
+    let facts = facts_of(vec![
+        fact("main.ms", "record", "Box", 1),
+        fact("main.ms", "impl", "Box", 4),
+        fact("other.ms", "record", "Box", 1),
+    ]);
+    for name in ["Box", "main.ms::Box"] {
+        let error = find_entity(&facts, name).unwrap_err();
+        let (_, remedies) = error.split_once(": ").unwrap();
+        let remedies = remedies.split("; ").next().unwrap();
+        let selected: Vec<_> = remedies
+            .split(", ")
+            .map(|selector| {
+                find_entity(&facts, selector)
+                    .unwrap_or_else(|error| panic!("unusable remedy {selector}: {error}"))
+                    .key
+                    .as_str()
+            })
+            .collect();
+        let expected = if name == "Box" {
+            vec![
+                "main.ms#impl#Box",
+                "main.ms#record#Box",
+                "other.ms#record#Box",
+            ]
+        } else {
+            vec!["main.ms#impl#Box", "main.ms#record#Box"]
+        };
+        assert_eq!(selected, expected);
+    }
+    assert_eq!(
+        find_entity(&facts, "main.ms#record#Box").unwrap().kind,
+        "record"
+    );
+    assert_eq!(
+        find_entity(&facts, "Box").unwrap_err(),
+        find_entity(&facts, "Box").unwrap_err()
+    );
+}
+
+#[test]
+fn cross_module_entity_remedies_keep_file_qualification() {
+    let facts = facts_of(vec![
+        fact("a.ms", "record", "Item", 1),
+        fact("b.ms", "record", "Item", 1),
+        fact("a.ms", "fn", "unique", 4),
+    ]);
+    let error = find_entity(&facts, "Item").unwrap_err();
+    assert_eq!(
+        error,
+        "Item is ambiguous; use one of: a.ms::Item, b.ms::Item"
+    );
+    for selector in ["a.ms::Item", "b.ms::Item", "a.ms#record#Item"] {
+        assert_eq!(find_entity(&facts, selector).unwrap().name, "Item");
+    }
+    assert_eq!(find_entity(&facts, "unique").unwrap().file, "a.ms");
+    let missing = find_entity(&facts, "a.ms#record#Missing").unwrap_err();
+    assert!(missing.contains("a.ms#record#Missing"));
+    assert!(missing.contains("file#kind#name"), "{missing}");
+}
+
+#[test]
+fn full_entity_ids_take_precedence_over_display_names() {
+    let record = fact("main.ms", "record", "Box", 1);
+    let named_test = fact("main.ms", "test", &record.key, 7);
+    let facts = facts_of(vec![
+        record.clone(),
+        fact("main.ms", "impl", "Box", 4),
+        named_test.clone(),
+    ]);
+    assert_eq!(find_entity(&facts, &record.key).unwrap(), &record);
+    assert_eq!(find_entity(&facts, &named_test.key).unwrap(), &named_test);
+    assert_eq!(
+        find_entity(&facts, &format!("{}::{}", named_test.file, named_test.name)).unwrap(),
+        &named_test
+    );
+    let error = find_entity(&facts, "Box").unwrap_err();
+    let (_, remedies) = error.split_once("; use one of: ").unwrap();
+    for selector in remedies.split(", ") {
+        assert_ne!(find_entity(&facts, selector).unwrap().kind, "test");
+    }
+}
+
+#[test]
+fn entity_remedies_account_for_other_declarations_display_names() {
+    let facts = facts_of(vec![
+        fact("main.ms", "record", "Item", 1),
+        fact("other.ms", "record", "Item", 1),
+        fact("main.ms", "test", "other.ms::Item", 7),
+    ]);
+    let error = find_entity(&facts, "Item").unwrap_err();
+    let (_, remedies) = error.split_once("; use one of: ").unwrap();
+    assert_eq!(remedies, "main.ms#record#Item, other.ms#record#Item");
+    for selector in remedies.split(", ") {
+        assert_eq!(find_entity(&facts, selector).unwrap().kind, "record");
+    }
+}
+
+#[test]
 fn cycle_and_depth() {
     let mut a = fact("r.ms", "fn", "a", 1);
     let mut b = fact("r.ms", "fn", "b", 4);
@@ -501,6 +600,7 @@ fn slot(name: &str, ty: &str, var: bool, refs: &[&str]) -> ms_tooling::facts::Sl
         name: name.into(),
         ty: ty.into(),
         var,
+        ownership: Default::default(),
         refs: refs.iter().map(|r| r.to_string()).collect(),
     }
 }
