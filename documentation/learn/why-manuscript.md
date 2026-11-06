@@ -94,19 +94,20 @@ Manuscript is young, and the project is hardened with frontier models. We use th
 
 A **bug bash** points a model at one area. It writes probe programs against new features and their edges, compares what happens with the documented rule, fixes real bugs with regression tests, and files an issue with a minimal repro for anything that needs a decision. For example, one bug bash found that the diagnostic for an empty block told users to write `unit`, which the parser then rejected ([#1914](https://github.com/manuscript-lang/manuscript/pull/1914)). A **perf bash** starts from a measured gap: the model reproduces it, changes one thing, and shows before and after on the same machine. Results are added as dated sections, never edited, and a fix that costs more than it earns is closed with the numbers. Both workflows are written down as skills in the repository: [bug bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/bug-bash/SKILL.md) and [perf bash](https://github.com/manuscript-lang/manuscript/blob/main/skills/perf-bash/SKILL.md).
 
-## Speed is a priority, at compile time and at run time
+## A pipeline built for fast iteration and fast binaries
 
-An agent runs the compiler dozens of times per task, so compile speed is part of the design. `ms check` parses and type-checks without building, debug builds use Cranelift for a quick edit-check-run loop, and release builds use LLVM to optimize what you ship.
+The compiler is a ladder of stages. Each stage lowers the program to a representation closer to the machine, and each costs more than the one before it:
 
-On a generated 122,000-line project (40 packages, cold build, 4 vCPUs), a debug build takes 5.4 seconds against 9.0 seconds for `go build`. Release builds spend extra time optimizing the executable you ship, so the comparison that matters for the edit-check-run loop is the debug build.
+```text
+Manuscript source -> HIR -> MIR -> CLIF -> LLVM IR
+```
 
-At run time, compiled Manuscript beats the equivalent Go program on all seven kernels (sieve, n-body, life, matmul, trees, collatz and map counting), at 0.08 to 0.82 times Go's time, and on all ten core data-structure operations (list, map, set, sort, strings, bytes and priority queue), at 0.04 to 0.70 times. Against Rust the results are mixed: ahead on some, behind on others. Agent-style workloads that parse and transform text are mostly slower than Go today, and the results page says so.
+1. **Source to HIR.** `ms check` parses and type-checks the program into a typed high-level IR, and reports diagnostics, without building anything. It is the fastest stage, and an agent can run it after every edit.
+2. **HIR to MIR.** Lowering makes ownership, moves and drops explicit in a mid-level IR, where the optimizer and verifier run.
+3. **MIR to CLIF.** Debug builds hand MIR to Cranelift, which produces working native code quickly. This is the edit-check-run loop.
+4. **MIR to LLVM.** Release builds (`ms build --release`) hand the program to LLVM, which spends the most time and produces the fastest code.
 
-Every number comes from the [2026-11-05 results](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/results-2026-11-05.md), which names the revision, machine, tool versions and the command to reproduce it. Perf bashes keep closing the gaps those suites show.
-
-## It ships
-
-`ms build --release` produces a native executable that runs without Manuscript installed. The standard library already covers HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, so common programs need nothing extra. Work that waits, such as a request or a file read, is written like any other call: there is no `async`, and dropping a promise cancels it.
+The early stages are much faster than the later ones, so most iterations stop early: check while you write, run the Cranelift build to try it, and pay for LLVM only when you ship. As a program matures you can spend more of the pipeline on it, adding optimization where it earns its cost. The result is a compiler designed for fast iteration that still produces fast production binaries. `ms build --release` yields a native executable that runs without Manuscript installed.
 
 ## We measure it with agents
 
