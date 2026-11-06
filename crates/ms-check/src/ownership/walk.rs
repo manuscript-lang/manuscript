@@ -1248,8 +1248,21 @@ impl Walker<'_> {
     fn borrow_source(&self, e: &Expr) -> Option<BorrowSource> {
         // `ok(x)` and `error(x)` are references when `x` is: the wrapper adds no storage. A
         // payload converted on the way in (`error(cause)` as `Error`) or copied is a new value.
-        if self.result_payload(e).is_some() {
-            return self.borrow_source(self.wrapped_borrow(e)?);
+        if let Some(payload) = self.result_payload(e) {
+            let wrapped = self.wrapped_borrow(e)?;
+            // `ok(x)` returned as an `Optional` of a `Result` is itself the wrapped value; its
+            // reference is `x`, which must be tested for conversion and copy the same way.
+            if std::ptr::eq(wrapped, e) {
+                let info = self.cx.m.info(payload);
+                if info.interface_source.is_some()
+                    || info.wrap_some.is_some()
+                    || self.class_of(payload) == Class::Copy
+                {
+                    return None;
+                }
+                return self.borrow_source(payload);
+            }
+            return self.borrow_source(wrapped);
         }
         // A field or element of what a borrow-returning call returns (`self.head().tags[0]`) is a part of
         // the same sources; a field chain extends the path, an element ends it.
