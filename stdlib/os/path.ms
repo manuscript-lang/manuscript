@@ -219,6 +219,32 @@ fn normalize_in(windows: Bool, raw: String) String:
 
     return normalize_core(false, raw)
 
+// A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment and no trailing separator
+// (the root alone is clean). One scan, so already-clean paths skip the span list and the rebuild.
+fn is_clean(data: Bytes) Bool:
+    let count = data.length()
+    if count == 1: return data.get(0, none).to_int() == 47
+
+    var start = if data.get(0, none).to_int() == 47: 1 else: 0
+    var at = start
+
+    while at <= count:
+        if at == count or data.get(at, none).to_int() == 47:
+            let size = at - start
+            if size == 0: return false
+            if size == 1 and data.get(start, none).to_int() == 46: return false
+            if (
+                size == 2
+                and data.get(start, none).to_int() == 46
+                and data.get(start + 1, none).to_int() == 46
+            ): return false
+
+            start = at + 1
+
+        at += 1
+
+    return true
+
 // `text` already reads backslashes as slashes under Windows rules.
 fn normalize_core(windows: Bool, text: String) String:
     if text.is_empty(): return "."
@@ -233,6 +259,8 @@ fn normalize_core(windows: Bool, text: String) String:
     // One pass over the bytes after the root: segments are spans into `data`, never copied until written.
     let data = text.to_bytes()
     let count = data.length()
+    if not windows and is_clean(data): return text.clone()
+
     var stack: List[Int] = []
     var start = root_bytes
     var at = root_bytes
@@ -496,7 +524,7 @@ fn join_in(windows: Bool, items: List[String]) String:
     for part in items:
         if part.is_empty(): continue
 
-        if count == 0: first = slash(true, part)
+        if windows and count == 0: first = slash(true, part)
         if count > 0: out.append(47)
         out.append_bytes(part.to_bytes())
         count += 1
