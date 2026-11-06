@@ -8,7 +8,7 @@ and a matching type; flags and arguments without a field, such as inherited pers
 `process.arguments()` from `main`.
 
 ```manuscript
-import Arg, Command, Flag, FlagKind, command from "@std/cli/cli.ms"
+import Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import arguments from "@std/os/env.ms"
 
 type Greeting:
