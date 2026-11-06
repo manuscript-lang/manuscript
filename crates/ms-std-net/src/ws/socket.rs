@@ -90,6 +90,8 @@ pub struct Socket {
     write_error: RefCell<Option<WsErr>>,
     /// `close()` ran.
     closed: Cell<bool>,
+    /// Halves of a `WebSocket` record that have closed; the session closes with the second.
+    ends: Cell<u8>,
     /// An earlier read failure ended the session (`osWebSocket.failed`).
     failed: Cell<bool>,
 }
@@ -124,6 +126,7 @@ impl Socket {
             flushing: Cell::new(false),
             write_error: RefCell::new(None),
             closed: Cell::new(false),
+            ends: Cell::new(0),
             failed: Cell::new(false),
         }
     }
@@ -281,6 +284,15 @@ impl Socket {
     /// Idempotent.
     pub fn close(&self) {
         self.close_with(code::NORMAL, "");
+    }
+
+    /// One half of a `WebSocket` record closes: the session closes with the second half.
+    pub fn close_end(&self) {
+        let ends = self.ends.get().saturating_add(1);
+        self.ends.set(ends);
+        if ends >= 2 {
+            self.close();
+        }
     }
 
     /// Like [`close`](Self::close) with a status code and reason (cut to 123 bytes).

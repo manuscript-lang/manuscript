@@ -1,6 +1,6 @@
 import StringBuilder from "@std/string.ms"
 import Bytes, join from "@std/bytes.ms"
-import ReadStream, WriteStream, Sink, Transform, through, writer from "@std/io/io.ms"
+import ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms"
 import Promise from "@std/concurrency/promise.ms"
 
 // Delimiter and line ending used when parsing or writing CSV, and the row and cell bounds for `parse`.
@@ -292,7 +292,7 @@ impl CsvRows:
         return ok(unit)
 
 impl Transform[Bytes, List[String]] for CsvRows:
-    var fn step(value: Bytes, var out: WriteStream[List[String]]) Unit!:
+    var fn step(value: Bytes, var out: List[List[String]]) Unit!:
         let data = self.tail.concat(value)
         let cut = self.boundary(data)
         self.scanned = data.length() - cut
@@ -303,7 +303,7 @@ impl Transform[Bytes, List[String]] for CsvRows:
         let text = data.decode_utf8_range(0, cut).get("")
         return write_rows(try parse(text, self.options), var out)
 
-    var fn finish(var out: WriteStream[List[String]]) Unit!:
+    var fn finish(var out: List[List[String]]) Unit!:
         let data = self.tail.clone()
         self.tail = join([])
         self.scanned = 0
@@ -312,8 +312,8 @@ impl Transform[Bytes, List[String]] for CsvRows:
         let text = data.decode_utf8().get("")
         return write_rows(try parse(text, self.options), var out)
 
-fn write_rows(rows: List[List[String]], var out: WriteStream[List[String]]) Unit!:
-    for row in rows: try out.write(row)
+fn write_rows(rows: List[List[String]], var out: List[List[String]]) Unit!:
+    for row in rows: out.append(row)
     return ok(unit)
 
 /*
@@ -406,15 +406,12 @@ type CsvRowsSink:
     options: CsvOptions
 
 impl Sink[List[String]] for CsvRowsSink:
-    var fn put(value: List[String]) Unit!:
+    var fn write(value: List[String]) Unit!:
         let text = try stringify([value], self.options)
         return self.output.write(text.to_bytes())
 
-    var fn drain() Promise[Unit]:
+    var fn flush() Unit!:
         return self.output.flush()
-
-    fn buffered() Int:
-        return self.output.buffered()
 
     var fn close() Unit!:
         return self.output.close()
@@ -428,4 +425,4 @@ export fn csv_writer(
     output: WriteStream[Bytes],
     options: CsvOptions = CsvOptions()
 ) WriteStream[List[String]]:
-    return writer[List[String]](CsvRowsSink(output: output, options: options))
+    return WriteStream[List[String]](CsvRowsSink(output: output, options: options))

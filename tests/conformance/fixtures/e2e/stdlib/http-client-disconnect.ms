@@ -10,7 +10,7 @@ import nanoseconds, sleep from "@std/os/time.ms"
 
 fn send(var conn: Connection, text: String) Unit!:
     try conn.output.write(text.to_bytes())
-    return conn.output.flush().wait()
+    return conn.output.flush()
 
 type Reporter:
     name: String

@@ -14,7 +14,7 @@ fn echo(var exchange: HttpExchange) Unit!:
             max_message_bytes: 1024
         )
 
-        match try socket.input.read().wait():
+        match try socket.input.next():
             message:
                 try socket.output.write(message)
             none:
@@ -52,7 +52,7 @@ fn exercise() Unit!:
     )
     response.metadata.status | try expect_equal(200)
 
-    let part = try response.body.read().wait()
+    let part = try response.body.next()
 
     match part:
         data:
@@ -79,7 +79,7 @@ fn exercise() Unit!:
         WebSocketMessage(data: "echo me".to_bytes(), kind: WebSocketKind.Text)
     )
 
-    match try socket.input.read().wait():
+    match try socket.input.next():
         message:
             try expect_true(message.kind == WebSocketKind.Text)
             try expect_equal(

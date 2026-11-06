@@ -8,7 +8,7 @@ import (
 ) from "@std/data/encoding_stream.ms"
 import join from "@std/bytes.ms"
 import Bytes from "@std/bytes.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -31,7 +31,7 @@ impl Source[Bytes] for Chunks:
         return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
-    return stream[Bytes](Chunks(data, size, 0))
+    return ReadStream[Bytes](Chunks(data, size, 0))
 
 type Texts:
     parts: List[String]
@@ -66,7 +66,7 @@ fn join_text(input: ReadStream[String]) String!:
     var out = ""
 
     while true:
-        let next = try source.read().wait()
+        let next = try source.next()
 
         if let text = next:
             out = out.concat(text)
@@ -80,7 +80,7 @@ fn join_bytes(input: ReadStream[Bytes]) Bytes!:
     var out: List[Bytes] = []
 
     while true:
-        let next = try source.read().wait()
+        let next = try source.next()
 
         if let data = next:
             out.append(data)
@@ -107,15 +107,15 @@ test "base64 decoding matches under every text piece size":
 
     for size in 1..text.length() + 1:
         let got = try join_bytes(
-            base64_decoded(stream[String](Texts(pieces(text, size), 0)))
+            base64_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
         )
         if got != data: return fail("size {size}")
 
 test "base64 decoding rejects malformed text and truncated groups":
-    let bad = join_bytes(base64_decoded(stream[String](Texts(["aGVs", "bG8*"], 0))))
+    let bad = join_bytes(base64_decoded(ReadStream[String](Texts(["aGVs", "bG8*"], 0))))
     try expect_equal(bad.err().kind, "EBADMSG")
 
-    let cut = join_bytes(base64_decoded(stream[String](Texts(["aGVsb"], 0))))
+    let cut = join_bytes(base64_decoded(ReadStream[String](Texts(["aGVsb"], 0))))
     try expect_equal(cut.err().kind, "EBADMSG")
 
 test "base64 decoding rejects data after padding at every chunk boundary":
@@ -128,7 +128,7 @@ test "base64 decoding rejects data after padding at every chunk boundary":
                 let right = text.slice(cut, text.length()).get("")
                 let got = join_bytes(
                     base64_decoded(
-                        stream[String](
+                        ReadStream[String](
                             Texts([left, "", right], 0)
                         ),
                         url_safe
@@ -144,7 +144,7 @@ test "base64 decoding permits empty chunks after terminal padding":
                 let right = text.slice(cut, text.length()).get("")
                 let got = try join_bytes(
                     base64_decoded(
-                        stream[String](
+                        ReadStream[String](
                             Texts(
                                 [
                                     "", left, "", right, "", ""
@@ -159,19 +159,19 @@ test "base64 decoding permits empty chunks after terminal padding":
 
 test "base64 terminal padding survives a rejected read":
     var same_chunk = base64_decoded(
-        stream[String](Texts(["Zg==A", "", "", "AAA", "", ""], 0))
+        ReadStream[String](Texts(["Zg==A", "", "", "AAA", "", ""], 0))
     )
-    try expect_equal(same_chunk.read().wait().err().kind, "EBADMSG")
-    try expect_equal(same_chunk.read().wait().err().kind, "EBADMSG")
-    try expect_equal(try same_chunk.read().wait(), none)
+    try expect_equal(same_chunk.next().err().kind, "EBADMSG")
+    try expect_equal(same_chunk.next().err().kind, "EBADMSG")
+    try expect_equal(try same_chunk.next(), none)
 
     var later_chunk = base64_decoded(
-        stream[String](Texts(["Zg==", "A", "", "", "AAA", "", ""], 0))
+        ReadStream[String](Texts(["Zg==", "A", "", "", "AAA", "", ""], 0))
     )
-    try expect_equal((try later_chunk.read().wait()).get(), "f".to_bytes())
-    try expect_equal(later_chunk.read().wait().err().kind, "EBADMSG")
-    try expect_equal(later_chunk.read().wait().err().kind, "EBADMSG")
-    try expect_equal(try later_chunk.read().wait(), none)
+    try expect_equal((try later_chunk.next()).get(), "f".to_bytes())
+    try expect_equal(later_chunk.next().err().kind, "EBADMSG")
+    try expect_equal(later_chunk.next().err().kind, "EBADMSG")
+    try expect_equal(try later_chunk.next(), none)
 
 test "hex steps round trip under every chunk size":
     let data = "hex \u{0}\u{ff} data".to_bytes()
@@ -181,10 +181,10 @@ test "hex steps round trip under every chunk size":
         if text != hex_encode(data.clone()): return fail("encode size {size}")
 
         let back = try join_bytes(
-            hex_decoded(stream[String](Texts(pieces(text, size), 0)))
+            hex_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
         )
         if back != data: return fail("decode size {size}")
 
 test "hex decoding rejects an odd tail":
-    let outcome = join_bytes(hex_decoded(stream[String](Texts(["abc"], 0))))
+    let outcome = join_bytes(hex_decoded(ReadStream[String](Texts(["abc"], 0))))
     try expect_equal(outcome.err().kind, "EBADMSG")

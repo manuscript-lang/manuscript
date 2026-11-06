@@ -6,9 +6,8 @@ import (
     ReadStream,
     WriteStream,
     Source,
-    stream,
-    descriptor_reader,
-    descriptor_writer
+    DescriptorSource,
+    DescriptorSink
 ) from "@std/io/io.ms"
 import (
     msstd_process_command_run,
@@ -124,15 +123,27 @@ impl Closeable for Subprocess:
 impl Subprocess:
     // The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
     fn stdin() WriteStream[Bytes]:
-        return descriptor_writer(msstd_process_subprocess_stream_id(self.native, 0))
+        return WriteStream[Bytes](
+            DescriptorSink(
+                msstd_process_subprocess_stream_id(self.native, 0)
+            )
+        )
 
     // The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
     fn stdout() ReadStream[Bytes]:
-        return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 1))
+        return ReadStream[Bytes](
+            DescriptorSource(
+                msstd_process_subprocess_stream_id(self.native, 1)
+            )
+        )
 
     // The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
     fn stderr() ReadStream[Bytes]:
-        return descriptor_reader(msstd_process_subprocess_stream_id(self.native, 2))
+        return ReadStream[Bytes](
+            DescriptorSource(
+                msstd_process_subprocess_stream_id(self.native, 2)
+            )
+        )
 
     // Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if `timeout` elapses first, leaving the child running.
     fn wait(timeout: Duration? = none) Int!:
@@ -283,7 +294,7 @@ Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation m
 */
 export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
     let native = try msstd_process_watch_signals(signals, capacity)
-    return ok(stream[Int](SignalSource(native)))
+    return ok(ReadStream[Int](SignalSource(native)))
 
 // Returns the current process title.
 // Platforms that cannot read it return ENOTSUP.

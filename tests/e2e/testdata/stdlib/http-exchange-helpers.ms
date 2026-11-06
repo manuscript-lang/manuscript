@@ -30,8 +30,8 @@ test "buffered adapts a request-to-response handler":
     try expect_equal(response.metadata.status, 201)
 
     var text = ""
-    for chunk in response.body.wait():
-        text += (try chunk).decode_utf8().get("")
+    for chunk in response.body:
+        text += chunk.decode_utf8().get("")
     try expect_equal(text, "/x:abc")
 
 test "read_body bounds the body by its limit":

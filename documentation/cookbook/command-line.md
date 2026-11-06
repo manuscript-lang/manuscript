@@ -26,7 +26,7 @@ ms run hello.ms
 Hello, Manuscript!
 ```
 
-`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush().wait()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
+`print` returns `Unit`. The next recipe uses `stdout().write(...)` and `stdout().flush()` to control text and flushing explicitly. These methods use the stream `Result` interface, but ordinary stdout does not expose native write errors through it. Use `stdout_bytes()` for byte output.
 
 ## Read command-line arguments
 
@@ -40,7 +40,7 @@ import stdout from "@std/io/io.ms"
 fn run() Result[Unit, Error]:
     for name in arguments():
         try stdout().write("Hello, {name}!\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
@@ -74,7 +74,7 @@ type Greeting:
 fn greet(options: Greeting) Result[Int, Error]:
     for round in 0..options.times:
         try stdout().write("Hello, {options.name}!\n")
-    try stdout().flush().wait()
+    try stdout().flush()
     return ok(0)
 
 export fn main() Int:

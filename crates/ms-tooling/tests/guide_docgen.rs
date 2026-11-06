@@ -397,7 +397,7 @@ fn inherent_methods_keep_public_names_and_real_contracts() {
     for (path, name, operation) in [
         ("@std/data/histogram.ms", "Histogram", "record"),
         ("@std/concurrency/promise.ms", "Promise", "wait"),
-        ("@std/io/io.ms", "ReadStream", "read"),
+        ("@std/io/io.ms", "ReadStream", "next"),
     ] {
         let module = modules.iter().find(|m| m.path == path).unwrap();
         let declaration = module.declarations.iter().find(|d| d.name == name).unwrap();

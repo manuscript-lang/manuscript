@@ -3,7 +3,8 @@
 // conform: timeout=30
 // A handler that is still waiting when the server's request timeout passes is cancelled and the
 // request is answered 504, with or without a grace period; the server keeps serving afterwards.
-import PromiseOptions from "@std/concurrency/promise.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
+import Bytes from "@std/bytes.ms"
 import (
     buffered,
     headers,
@@ -11,14 +12,17 @@ import (
     HttpResponse,
     HttpServerOptions
 ) from "@std/net/http.ms"
-import stdout from "@std/io/io.ms"
+import stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import monotonic_time from "@std/os/system.ms"
-import nanoseconds, sleep from "@std/os/time.ms"
+import Duration, nanoseconds, sleep from "@std/os/time.ms"
+
+fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
+    return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
 
 fn send(var conn: Connection, text: String) Unit!:
     try conn.output.write(text.to_bytes())
-    return conn.output.flush().wait()
+    return conn.output.flush()
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
@@ -33,11 +37,7 @@ fn fetch(address: String, path: String) String:
         var text = ""
 
         while true:
-            if let chunk = conn.input.read().with(
-                options: PromiseOptions(
-                    timeout: nanoseconds(5000000000)
-                )
-            ).wait():
+            if let chunk = within(var conn.input, nanoseconds(5000000000)):
                 if let data = chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue

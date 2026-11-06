@@ -110,20 +110,20 @@ type Compressing:
     failure: Error?
 
 impl Transform[Bytes, Bytes] for Compressing:
-    var fn step(value: Bytes, var out: WriteStream[Bytes]) Unit!:
+    var fn step(value: Bytes, var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let encoder = self.encoder:
             let packed = msstd_compress_encoder_push(encoder, value)
-            if not packed.is_empty(): try out.write(packed)
+            if not packed.is_empty(): out.append(packed)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[Bytes]) Unit!:
+    var fn finish(var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let encoder = self.encoder:
-            try out.write(msstd_compress_encoder_end(encoder))
+            out.append(msstd_compress_encoder_end(encoder))
         self.encoder = none
         return ok(unit)
 
@@ -149,21 +149,21 @@ type Decompressing:
     failure: Error?
 
 impl Transform[Bytes, Bytes] for Decompressing:
-    var fn step(value: Bytes, var out: WriteStream[Bytes]) Unit!:
+    var fn step(value: Bytes, var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let decoder = self.decoder:
             let plain = try msstd_compress_decoder_push(decoder, value)
-            if not plain.is_empty(): try out.write(plain)
+            if not plain.is_empty(): out.append(plain)
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[Bytes]) Unit!:
+    var fn finish(var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let decoder = self.decoder:
             let plain = try msstd_compress_decoder_end(decoder)
-            if not plain.is_empty(): try out.write(plain)
+            if not plain.is_empty(): out.append(plain)
 
         self.decoder = none
         return ok(unit)
@@ -253,7 +253,7 @@ impl TarEntries:
         return ok(0)
 
 impl Transform[Bytes, ArchiveEntry] for TarEntries:
-    var fn step(value: Bytes, var out: WriteStream[ArchiveEntry]) Unit!:
+    var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
         if self.done: return ok(unit)
 
         self.buffer = self.buffer.concat(value)
@@ -278,7 +278,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
             for entry in try unpack(end, ArchiveFormat.Tar, self.options):
                 self.count += 1
                 self.total += entry.data.length()
-                try out.write(entry)
+                out.append(entry)
 
             if let most = self.options.max_entries:
                 if self.count > most: return error(
@@ -295,7 +295,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 
         return ok(unit)
 
-    var fn finish(var out: WriteStream[ArchiveEntry]) Unit!:
+    var fn finish(var out: List[ArchiveEntry]) Unit!:
         if self.done or self.buffer.is_empty(): return ok(unit)
 
         return error(Error("archive: truncated tar", kind: "EBADMSG"))

@@ -32,7 +32,7 @@ test "deadline expires and ticker paces":
     var ticks = ticker(10.milliseconds())
 
     while count < 3:
-        let tick = try ticks.read().wait()
+        let tick = try ticks.next()
         try expect_true(tick.is_some())
         count += 1
 

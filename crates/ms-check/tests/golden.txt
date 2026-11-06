@@ -2740,7 +2740,7 @@ fn probe(input: ReadStream) Bool:
     if let line = next(input):
         return line.is_some()
     return false
-resolution	1	8	7	module does not export read_line; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
+resolution	1	8	7	module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
 type	2	17	66	ReadStream requires 1 type arguments, found 0; write ReadStream[T1]
 resolution	3	16	99	unknown binding read_line; declare it with 'let read_line = ...' before use, define 'fn read_line(...) T:', or import it from a moduleinterface Counter:
     fn bump(by: Int) Int
@@ -5546,7 +5546,7 @@ fn add(a: Int, b: Int) Int:
 
 export fn run() Int:
     return add(1, 2)
-type	5	21	133	expected Result[Unit, Error], found Promise[Unit] (in the return value); a call that waits returns a Promise; call wait() on it to get the resultimport TextError from "@std/errors.ms"
+import TextError from "@std/errors.ms"
 export fn load(n: Int) Result[Int, TextError]:
     return ok(n)
 resolution	1	8	7	unknown standard module @std/errors.ms
@@ -5581,7 +5581,7 @@ export fn main() Int:
 fn read_number() Int:
     let input = stdin().read(max_bytes: 1)
     return 41
-type	11	30	243	unknown argument max_bytes; this call takes no argumentsimport stdout, stderr from "@std/io/io.ms"
+resolution	11	25	238	unknown or ambiguous member read on ReadStream[Bytes]; available: close, closed, next, sourceimport stdout, stderr from "@std/io/io.ms"
 import panic from "@std/faults.ms"
 
 test "pass=a=b":
@@ -5819,7 +5819,7 @@ import Bytes from "@std/bytes.ms"
 test "bytes":
     let data = "x".to_bytes().with_value(index: 0, value: 255)
     let _out = stdout().write_bytes(data: data)
-resolution	6	25	171	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, collects, flush, items, sink, writeimport arguments from "@std/os/process.ms"
+resolution	6	25	171	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, closed, flush, sink, writeimport arguments from "@std/os/process.ms"
 import stdout, stderr from "@std/io/io.ms"
 
 export fn main() Int:
@@ -5838,7 +5838,7 @@ export fn main() Int:
     return 0
 resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
 resolution	5	16	124	unknown binding arguments; add: import arguments from "@std/os/env.ms"
-resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: buffered, close, collects, flush, items, sink, write
+resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, closed, flush, sink, write
 type	9	31	328	unknown argument data; parameters of write: value
 type	9	25	322	missing argument value: String in call to write; add 'value: <String>'
 type	10	31	376	unknown argument data; parameters of write: value
@@ -6142,7 +6142,7 @@ fn probe(input: ReadStream) Bool:
 export fn main() Int:
     if probe(stdin()): return 1
     return 0
-resolution	1	8	7	module does not export read_line; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
+resolution	1	8	7	module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
 type	4	17	106	ReadStream requires 1 type arguments, found 0; write ReadStream[T1]
 type	3	14	86	division by zero always faults; guard the divisor or use a nonzero constant
 resolution	5	19	142	unknown binding read_line; declare it with 'let read_line = ...' before use, define 'fn read_line(...) T:', or import it from a module
@@ -6566,9 +6566,9 @@ export fn main() Int:
         _:
             return 2
 
-resolution	1	8	7	module does not export files; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
+resolution	1	8	7	module does not export files; @std/io/io.ms exports: DescriptorSink, DescriptorSource, EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
 resolution	2	8	41	module does not export File; did you mean 'Pipe'?
-resolution	3	8	74	module does not export IoError; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
+resolution	3	8	74	module does not export IoError; @std/io/io.ms exports: DescriptorSink, DescriptorSource, EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
 resolution	5	11	126	unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it
 resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"test %q:
     let minimum = nanoseconds(-9223372036854775808)

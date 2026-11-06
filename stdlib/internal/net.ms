@@ -79,7 +79,7 @@ export extern fn msstd_net_connection_close(handle: NativeConnection) Unit
 
 export extern fn msstd_net_connection_share(handle: NativeConnection) NativeConnection
 
-export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Unit
+export extern fn msstd_net_connection_close_end(handle: NativeConnection) Unit
 
 export extern fn msstd_net_connection_local_address(handle: NativeConnection) String
 
@@ -109,7 +109,7 @@ export extern fn msstd_net_datagram_share(
     handle: NativeDatagramSocket
 ) NativeDatagramSocket
 
-export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) Unit
+export extern fn msstd_net_datagram_close_end(handle: NativeDatagramSocket) Unit
 
 export extern fn msstd_net_datagram_receive(
     handle: NativeDatagramSocket,
@@ -149,7 +149,7 @@ export extern fn msstd_websocket_close(handle: NativeWebSocket) Unit
 
 export extern fn msstd_websocket_share(handle: NativeWebSocket) NativeWebSocket
 
-export extern fn msstd_websocket_close_if_last(handle: NativeWebSocket) Unit
+export extern fn msstd_websocket_close_end(handle: NativeWebSocket) Unit
 
 export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Unit!
 

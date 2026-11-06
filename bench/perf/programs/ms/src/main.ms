@@ -20,7 +20,7 @@ enum Shape:
     Tri(b: Int)
 
 fn got_line(var input: ReadStream[String]) Bool:
-    if let line = input.read().wait():
+    if let line = input.next():
         return line.is_some()
 
     return false

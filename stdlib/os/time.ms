@@ -1,5 +1,5 @@
 import Data, panic from "@std/core.ms"
-import ReadStream, Source, stream from "@std/io/io.ms"
+import ReadStream, Source from "@std/io/io.ms"
 import Promise, adopt from "@std/concurrency/promise.ms"
 import (
     msstd_time_duration_add,
@@ -560,4 +560,4 @@ export fn ticker(period: Duration) ReadStream[Instant]:
         panic("ticker: period must be positive")
 
     let due = monotonic().shift(period.clone())
-    return stream[Instant](TickSource(period: period, due: due))
+    return ReadStream[Instant](TickSource(period: period, due: due))

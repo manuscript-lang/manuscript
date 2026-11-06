@@ -12,8 +12,8 @@ export fn main() Int:
     if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         let server = acquired
         stdout().write("{server.address()}\n").get()
-        let _flushed = stdout().flush().wait()
 
+        let _flushed = stdout().flush()
         let _ignored = server.wait()
         return 0
 

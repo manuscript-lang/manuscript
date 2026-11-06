@@ -26,7 +26,7 @@ fn open_io_then_read(path: String) Int:
 
     if var file = opened:
         if var input = file.reader():
-            let _data = input.read().wait()
+            let _data = input.next()
             let _closed = input.close()
 
         return 1

@@ -25,7 +25,7 @@ fn echo(var exchange: HttpExchange) Unit!:
                 )
             )
         )
-        let message = (try http_result(socket.input.read().wait())).get()
+        let message = (try http_result(socket.input.next())).get()
         let _sent = (
             try http_result(
                 socket.output.write(
@@ -75,10 +75,8 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         max_response_bytes: 5, timeout: 2.seconds()
     ) | try expect_ok
     body.metadata.status | try expect_equal(201)
-    (body.body.read().wait() | try expect_ok).get() | try expect_equal(
-        "hello".to_bytes()
-    )
-    ((body.body.read().wait() | try expect_ok).is_none()) | try expect_true
+    (body.body.next() | try expect_ok).get() | try expect_equal("hello".to_bytes())
+    ((body.body.next() | try expect_ok).is_none()) | try expect_true
     try client.close()
 
     let _limited: Unit! = error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
@@ -109,7 +107,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let _sent = socket.output.write(
         WebSocketMessage(data: "é🙂".to_bytes(), kind: WebSocketKind.Text)
     ) | try expect_ok
-    let message = (socket.input.read().wait() | try expect_ok).get()
+    let message = (socket.input.next() | try expect_ok).get()
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:

@@ -145,11 +145,9 @@ native! {
         Object(SocketH(s.0.0.clone()))
     }
 
-    /// Closes the session when `s` is its last handle.
-    fn msstd_websocket_close_if_last(s: ObjRef<SocketH>) -> () {
-        if std::rc::Rc::strong_count(&s.0.0) == 1 {
-            s.close();
-        }
+    /// One end of a `WebSocket` record closes; the session closes with the second end.
+    fn msstd_websocket_close_end(s: ObjRef<SocketH>) -> () {
+        s.close_end();
     }
 
     /// `WebSocket.subprotocol()`.

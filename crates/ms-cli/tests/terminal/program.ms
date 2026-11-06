@@ -1,13 +1,18 @@
-import TerminalEvent, EraseRegion, raw_mode from "@std/io/io.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
+import TerminalEvent, EraseRegion, ReadStream, raw_mode from "@std/io/io.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import stdout from "@std/io/io.ms"
-import nanoseconds from "@std/os/time.ms"
+import Duration, nanoseconds from "@std/os/time.ms"
 
 fn describe(e: TerminalEvent) String:
     match e:
         Text(t): return "text:" + t
         Key(n, c, a, s): return "key:" + n + " ctrl={c} alt={a} shift={s}"
         Resize(c, r): return "resize:{c}x{r}"
+
+fn next_event(var events: ReadStream[TerminalEvent], limit: Duration) TerminalEvent?!:
+    return promise(fn: events.next()).with(
+        options: PromiseOptions(timeout: limit)
+    ).wait()
 
 export fn main() Int:
     let raw = raw_mode(alternate_screen: false)
@@ -24,11 +29,7 @@ export fn main() Int:
         var done = false
 
         while not done:
-            let next = events.read().with(
-                options: PromiseOptions(
-                    timeout: nanoseconds(5000000000)
-                )
-            ).wait()
+            let next = next_event(var events, nanoseconds(5000000000))
 
             if let maybe = next:
                 if let e = maybe:

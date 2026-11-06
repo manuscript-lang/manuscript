@@ -1,11 +1,12 @@
 import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
 import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
+import sleep, milliseconds from "@std/os/time.ms"
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
     var seen: List[Int] = []
-    for item in input.wait():
-        seen.append(try item)
+    for item in input:
+        seen.append(item)
     return ok(seen)
 
 test "a pipe delivers values in order and ends when every writer is closed":
@@ -32,30 +33,35 @@ test "each writer is its own end like dup: the reader ends after the last one cl
     try second.close()
 
     var seen: List[String] = []
-    for item in input.wait():
-        seen.append(try item)
+    for item in input:
+        seen.append(item)
     try expect_equal(seen, ["a", "b", "c"])
 
-test "flush waits until the reader has taken the queue down to the capacity":
-    var p = pipe[Int](1)
+fn fill(p: Pipe[Int], count: Int) Unit!:
     var out = p.writer()
+    for i in 0..count:
+        try out.write(i)
+    try out.flush()
+    return out.close()
+
+test "a write waits while the pipe holds more than its capacity, so the reader sets the pace":
+    var p = pipe[Int](1)
     var input = p.reader()
-    try out.write(1)
-    try out.write(2)
-    try out.write(3)
-    try expect_equal(out.buffered(), 3)
+    var gate = p.writer()
+    let producer = promise(fn: fill(p, 20))
 
-    let drained = out.flush()
-    try expect_false(drained.done())
+    // The producer cannot finish 20 writes into a pipe of capacity 1 until the reader takes values.
+    try sleep(milliseconds(50)).wait()
+    try expect_false(producer.done())
 
-    let first = try input.read().wait()
-    try expect_equal(first.get(0), 1)
-    try expect_false(drained.done())
-
-    let second = try input.read().wait()
-    try expect_equal(second.get(0), 2)
-    try drained.wait()
-    try expect_equal(out.buffered(), 1)
+    var seen: List[Int] = []
+    for i in 0..20:
+        seen.append((try input.next()).get(-1))
+    try producer.wait()
+    try gate.close()
+    try expect_equal(
+        seen, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    )
 
 test "a write fails with Closed once the reader is gone":
     var p = pipe[Int](2)
@@ -72,11 +78,11 @@ test "a pipe has one reader; asking again gives a stream that has already ended"
     var input = p.reader()
     var again = p.reader()
     try out.write(7)
-    try expect_equal((try again.read().wait()), none)
-    try expect_equal((try input.read().wait()), 7)
+    try expect_equal((try again.next()), none)
+    try expect_equal((try input.next()), 7)
 
 test "a promise that owns a pipe writes to it through a writer of its own":
-    var p = pipe[Int](2)
+    var p = pipe[Int](8)
     var input = p.reader()
 
     // Holds the pipe open until the producer is done, since the reader ends when the last writer closes.

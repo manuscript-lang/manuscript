@@ -1,14 +1,5 @@
 import Closeable, Data from "@std/core.ms"
-import (
-    ReadStream,
-    WriteStream,
-    Source,
-    Sink,
-    stream,
-    writer,
-    pipe,
-    Pipe
-) from "@std/io/io.ms"
+import (ReadStream, WriteStream, Source, Sink, pipe, Pipe) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
 import Duration from "@std/os/time.ms"
@@ -65,7 +56,7 @@ import (
     msstd_url_resolve,
     msstd_net_connection_close,
     msstd_net_connection_share,
-    msstd_net_connection_close_if_last,
+    msstd_net_connection_close_end,
     msstd_net_connection_local_address,
     msstd_net_connection_peer_address,
     msstd_net_connection_read,
@@ -75,7 +66,7 @@ import (
     msstd_net_datagram_address,
     msstd_net_datagram_close,
     msstd_net_datagram_share,
-    msstd_net_datagram_close_if_last,
+    msstd_net_datagram_close_end,
     msstd_net_datagram_receive,
     msstd_net_datagram_send_bytes,
     msstd_net_listener_accept,
@@ -87,7 +78,7 @@ import (
     msstd_net_release_unadopted,
     msstd_websocket_close,
     msstd_websocket_share,
-    msstd_websocket_close_if_last,
+    msstd_websocket_close_end,
     msstd_websocket_ping,
     msstd_websocket_ping_bytes,
     msstd_websocket_receive,
@@ -125,26 +116,23 @@ impl Source[Bytes] for ConnectionSource:
 
     // Closes the socket when the output end is already closed.
     var fn close() Unit!:
-        msstd_net_connection_close_if_last(self.raw.native)
+        msstd_net_connection_close_end(self.raw.native)
         return ok(unit)
 
 type ConnectionSink:
     raw: RawConnection
 
 impl Sink[Bytes] for ConnectionSink:
-    var fn put(value: Bytes) Unit!:
+    var fn write(value: Bytes) Unit!:
         return msstd_net_connection_write_bytes(self.raw.native, value, none)
 
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     // Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
     var fn close() Unit!:
         let _ = msstd_net_connection_shutdown_write(self.raw.native)
-        msstd_net_connection_close_if_last(self.raw.native)
+        msstd_net_connection_close_end(self.raw.native)
         return ok(unit)
 
 // What is known about a connection, available after its streams are moved elsewhere.
@@ -196,8 +184,8 @@ fn connection(raw: RawConnection) Connection:
 
     let other = RawConnection(msstd_net_connection_share(raw.native))
     return Connection(
-        input: stream[Bytes](ConnectionSource(raw)),
-        output: writer[Bytes](ConnectionSink(other)),
+        input: ReadStream[Bytes](ConnectionSource(raw)),
+        output: WriteStream[Bytes](ConnectionSink(other)),
         info: ConnectionInfo(local, peer, tls)
     )
 
@@ -225,7 +213,7 @@ impl Source[Datagram] for DatagramSource:
         return ok(try msstd_net_datagram_receive(self.raw.native, none, none))
 
     var fn close() Unit!:
-        msstd_net_datagram_close_if_last(self.raw.native)
+        msstd_net_datagram_close_end(self.raw.native)
         return ok(unit)
 
 type DatagramSink:
@@ -233,19 +221,16 @@ type DatagramSink:
 
 impl Sink[Datagram] for DatagramSink:
     // Sends `value.data` as one datagram to `value.address`, resolving a host name with the network's resolver.
-    var fn put(value: Datagram) Unit!:
+    var fn write(value: Datagram) Unit!:
         return msstd_net_datagram_send_bytes(
             self.raw.native, value.data, value.address, none
         )
 
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     var fn close() Unit!:
-        msstd_net_datagram_close_if_last(self.raw.native)
+        msstd_net_datagram_close_end(self.raw.native)
         return ok(unit)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both streams.
@@ -267,8 +252,8 @@ fn datagram_socket(raw: RawDatagramSocket) DatagramSocket:
     let address = msstd_net_datagram_address(raw.native)
     let other = RawDatagramSocket(msstd_net_datagram_share(raw.native))
     return DatagramSocket(
-        input: stream[Datagram](DatagramSource(raw)),
-        output: writer[Datagram](DatagramSink(other)), address: address
+        input: ReadStream[Datagram](DatagramSource(raw)),
+        output: WriteStream[Datagram](DatagramSink(other)), address: address
     )
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
@@ -708,7 +693,7 @@ impl Source[WebSocketMessage] for WebSocketSource:
         return ok(none)
 
     var fn close() Unit!:
-        msstd_websocket_close_if_last(self.raw.native)
+        msstd_websocket_close_end(self.raw.native)
         return ok(unit)
 
 type WebSocketSink:
@@ -716,7 +701,7 @@ type WebSocketSink:
 
 impl Sink[WebSocketMessage] for WebSocketSink:
     // Sends one message. Text must be valid UTF-8 or the call returns EBADMSG, and a payload over `max_message_bytes` returns EOVERFLOW.
-    var fn put(value: WebSocketMessage) Unit!:
+    var fn write(value: WebSocketMessage) Unit!:
         match value.kind:
             Text: return msstd_websocket_send_bytes(self.raw.native, value.data, true)
             Binary: return msstd_websocket_send_bytes(
@@ -724,14 +709,11 @@ impl Sink[WebSocketMessage] for WebSocketSink:
             )
             Ping: return msstd_websocket_ping_bytes(self.raw.native, value.data)
 
-    var fn drain() Promise[Unit]:
-        return deferred[Unit](fn(id: Int) Unit: complete[Unit](id, ok(unit)))
-
-    fn buffered() Int:
-        return 0
+    var fn flush() Unit!:
+        return ok(unit)
 
     var fn close() Unit!:
-        msstd_websocket_close_if_last(self.raw.native)
+        msstd_websocket_close_end(self.raw.native)
         return ok(unit)
 
 /*
@@ -758,8 +740,9 @@ export fn web_socket_from(raw: RawWebSocket) WebSocket:
     let subprotocol = msstd_websocket_subprotocol(raw.native)
     let other = RawWebSocket(msstd_websocket_share(raw.native))
     return WebSocket(
-        input: stream[WebSocketMessage](WebSocketSource(raw)),
-        output: writer[WebSocketMessage](WebSocketSink(other)), subprotocol: subprotocol
+        input: ReadStream[WebSocketMessage](WebSocketSource(raw)),
+        output: WriteStream[WebSocketMessage](WebSocketSink(other)),
+        subprotocol: subprotocol
     )
 
 // WebSocket message, timeout, TLS, and per-message compression settings.

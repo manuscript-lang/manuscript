@@ -41,8 +41,8 @@ test "handle natives bound to a name are usable":
     let err = stderr
     let wall = now
     let mono = monotonic
-    try out().flush().wait()
-    try err().flush().wait()
+    try out().flush()
+    try err().flush()
     try expect_true(wall().unix_seconds() > 0)
 
     let first = mono()

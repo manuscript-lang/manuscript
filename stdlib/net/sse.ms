@@ -87,7 +87,7 @@ fn exceeds(value: Int, limit: Int?) Bool:
     return false
 
 impl Transform[Bytes, SseEvent] for Decoder:
-    var fn step(value: Bytes, var out: WriteStream[SseEvent]) Unit!:
+    var fn step(value: Bytes, var out: List[SseEvent]) Unit!:
         var events = List[SseEvent]()
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
@@ -130,10 +130,10 @@ impl Transform[Bytes, SseEvent] for Decoder:
                 self.failure = failure.clone()
                 return error(failure)
 
-        for event in events: try out.write(event)
+        for event in events: out.append(event)
         return ok(unit)
 
-    var fn finish(var out: WriteStream[SseEvent]) Unit!:
+    var fn finish(var out: List[SseEvent]) Unit!:
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 

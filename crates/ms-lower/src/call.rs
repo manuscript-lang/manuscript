@@ -419,6 +419,17 @@ impl<'a> FnLower<'a> {
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            // A temporary held across a later `try` in the same call is ours again once every
+            // argument is evaluated: a consumed parameter takes it instead of a copy.
+            let a = if !a.own
+                && owned_mask.as_ref().is_some_and(|mask| mask[i])
+                && self.temps.contains(&a.v)
+            {
+                self.unhold_temp(a.v);
+                Val { v: a.v, own: true }
+            } else {
+                a
+            };
             owned_args.push(a.own && !vars.contains(&i));
             if !vars.contains(&i) {
                 // A consumed parameter takes the value itself: a copy only when `a` is a borrow.

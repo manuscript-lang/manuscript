@@ -23,7 +23,7 @@ fn run() Result[Unit, Error]:
         | .decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
         | try
     try stdout().write(text)
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
@@ -74,7 +74,7 @@ The program succeeds silently; `cat` shows the saved content. Use `replace: true
 
 ## Read standard input line by line
 
-Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `read().wait()` returns the next line, or `none` at end of input.
+Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` returns the next line, or `none` at end of input.
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript
@@ -84,12 +84,12 @@ import lines from "@std/io/streams.ms"
 fn run() Result[Unit, Error]:
     var input = lines(stdin())
     while true:
-        let line = try input.read().wait()
+        let line = try input.next()
         if let text = line:
             try stdout().write("{text}\n")
         else:
             break
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     if run().is_error():
