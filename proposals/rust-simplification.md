@@ -52,8 +52,38 @@ Proposal, 2026-11-06, checked against `92f810ad`. Not implemented. Builds on, an
 
 Each PR follows `skills/create-pr`, measures before/after (build time, `bench/perf`, line counts), updates `crates/DESIGN.md` and `documentation/contributing/architecture.md`, and adds a wiki page for any durable lesson.
 
+## Addendum: domains and the perf guard (2026-11-06, owner direction: domain-driven layers, no perf regression)
+
+Dependency facts from the `Cargo.toml` files and `use` sites:
+
+- **`ms-check` has no public facade.** `lib.rs` exports 28 `pub mod`s (`checker`, `calls`, `stmts`, `exprs`, `hints`, `ownership`, ...); consumers reach into internals: `ms-lower` has 167 `ms_check` references (55 into `hir`), `ms-tooling` 17 files, `ms-lsp` 15. Editor queries (`editor.rs`, `suggestions.rs`) live beside the type checker.
+- **`ms-lower` consumes the syntax tree, not just HIR.** 47 `ms_syntax::ast` uses in a pass that should read checked HIR; so a syntax change reaches lowering, and HIR is not the contract.
+- **Compiler crates depend on runtime crates.** `ms-lower`, `ms-driver`, `ms-lsp`, `ms-build` depend on `ms-rt`; `ms-lower` on `ms-std-decimal` (one call, `expr.rs:242`, parsing a Decimal literal). The compiler/runtime boundary is a single ABI (`ms-rt-abi` plus the generated `rt_symbols` table); everything else is a leak.
+- **`ms-std-*` is acyclic but ad hoc**: `io->fs->path`, `process->fs,io`, `system->process`, `archive,net->core`.
+
+Target bounded contexts, each with one public API and a one-way dependency rule (enforced by `ms-repo-check`, which already holds a layering list):
+
+| Context | Crates | Public contract |
+| --- | --- | --- |
+| Language front end | `ms-syntax` | AST, `parse`, `format` |
+| Semantics | `ms-check` split into `semantics` (resolve, types, contracts, effects, ownership) and `editor` (hints, suggestions, completion) | `Program` + typed HIR + diagnostics |
+| Middle end | `ms-lower`, `ms-mir` | HIR in, MIR out; `ms-lower` stops importing `ms_syntax::ast` |
+| Back end | `ms-clif` (Cranelift, LLVM), `ms-build` | MIR in, object + link |
+| Runtime | `ms-rt-abi`, `ms-rt`, `ms-rt-hot`, `ms-std-*`, `ms-native` | C ABI only; compiler never imports these |
+| Tools | `ms-driver`, `ms-tooling`, `ms-lsp`, `ms-cli`, `ms-conform` | consume Semantics API only |
+
+New track **E (boundaries)**, mostly mechanical and low risk to perf because it moves no hot code: (1) a `ms_check::api` facade, then make the 28 modules `pub(crate)`; (2) carry the few AST facts lowering still reads (47 sites) onto HIR nodes; (3) move the Decimal literal parse behind the checker (const-evaluated into HIR) and the `cabi` constants into `ms-rt-abi`, then drop `ms-rt`/`ms-std-decimal` from `ms-lower`, `ms-driver`, `ms-lsp` and `ms-build` (the last two may need a feature split for embedding the archive only); (4) split `editor` out of `ms-check`; (5) repo-check rule for the table above. Order: E before A, because A is easier once lowering reads only HIR.
+
+**Perf guard (applies to every track).** Compile-time and run-time are measured separately, before and after, on the same machine against the latest dated baseline in `bench/perf/` (`baseline-2026-10-28.md`):
+1. Run-time: `make` perf target over `bench/perf/*/ms.toml`; a regression above noise (agreed threshold: more than 2% median on any case) blocks the PR. Tracks A, B, C, D are checked against this; track E should show none and is proven by identical emitted objects on the conformance corpus.
+2. Compile-time: `ms check` and `ms build` on the standard-library-heavy corpus (the front end is `opt-level = 2` in dev for this reason; a crate split must keep that profile and cross-crate inlining: hot front-end functions get `#[inline]` or stay in-crate, measured).
+3. Runtime moves (D): `nm` diff of `libms_native.a` exported symbols must be identical, `ms-rt-hot` inlining unchanged (callgrind instruction counts on the map and string cases).
+4. Data layout: any new table (track B op descriptions) is a flat array indexed by the op discriminant, not a hash map, consistent with the data-oriented rule.
+5. Results go in a dated `bench/perf` section on the PR, not in prose.
+
 ## Open questions
 
-1. Order: A, B, C, D as above, or start with D (highest readability, lowest risk)?
+1. Order: E, A, B, C, D (E first, since it makes A easier), or start with D (highest readability, lowest risk)?
+   Is the 2% median threshold the right perf gate?
 2. Is a differential test between Cranelift and LLVM acceptable in CI time, and which platforms (LLVM is Linux and macOS only)?
 3. Accept dropping a track if its measurement does not pay for itself?
