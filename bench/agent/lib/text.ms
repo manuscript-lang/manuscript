@@ -2,7 +2,7 @@
 import create_directory, read_file, write_file from "@std/os/fs.ms"
 import dirname from "@std/os/path.ms"
 import compile from "@std/string.ms"
-import seconds from "@std/os/time.ms"
+import seconds from "@std/time.ms"
 import RunOptions, run from "@std/os/process.ms"
 import environment from "@std/os/env.ms"
 import monotonic_time from "@std/os/system.ms"

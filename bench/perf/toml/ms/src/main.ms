@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 import StringBuilder from "@std/string.ms"
-import monotonic from "@std/os/time.ms"
+import monotonic from "@std/time.ms"
 import parse from "@std/data/toml.ms"
 
 fn document(count: Int) String:

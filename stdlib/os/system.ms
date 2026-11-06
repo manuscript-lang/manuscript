@@ -1,5 +1,5 @@
 import MetricsSnapshot from "@std/internal/system.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import IpFamily from "@std/net/net.ms"
 import (
     msstd_system_endianness,

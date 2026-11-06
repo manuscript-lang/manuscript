@@ -11,7 +11,7 @@ import (
 ) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import HttpClient from "@std/net/http.ms"
 import HttpClientOptions from "@std/net/http.ms"
 import HttpExchange from "@std/net/http.ms"
@@ -20,7 +20,7 @@ import HttpMethod from "@std/net/http.ms"
 import HttpServer from "@std/net/http.ms"
 import NativeServing, NativeWorker from "@std/net/http.ms"
 import HttpServerOptions from "@std/net/http.ms"
-import Timestamp from "@std/os/time.ms"
+import Timestamp from "@std/time.ms"
 import (
     Promise,
     promise,
@@ -28,7 +28,7 @@ import (
     deferred,
     complete
 ) from "@std/concurrency/promise.ms"
-import sleep from "@std/os/time.ms"
+import sleep from "@std/time.ms"
 import (
     msstd_url_encode_component,
     msstd_net_ip_address_text,

@@ -14,7 +14,7 @@ import (
     StringifyOptions,
     JsonEncode
 ) from "@std/data/json.ms"
-import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/os/time.ms"
+import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms"
 import Url from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"

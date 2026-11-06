@@ -1,4 +1,4 @@
-//! `@std/os/random.ms` natives. The operating-system `Entropy` source is a plain function; the
+//! `@std/random.ms` natives. The operating-system `Entropy` source is a plain function; the
 //! algorithms over any `Entropy` are Manuscript source.
 
 pub mod ffi;

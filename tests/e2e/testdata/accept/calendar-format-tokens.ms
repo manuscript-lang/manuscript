@@ -1,4 +1,4 @@
-import timestamp from "@std/os/time.ms"
+import timestamp from "@std/time.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "calendar format keeps token boundaries and literal text":

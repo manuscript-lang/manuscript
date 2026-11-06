@@ -3,7 +3,7 @@ import Bytes from "@std/bytes.ms"
 import FileHandle, open, remove, rename, stat from "@std/os/fs.ms"
 import stdout, stdout_bytes from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/os/time.ms"
+import now from "@std/time.ms"
 
 fn log_closed() Error:
     return Error("logging: resource is closed", kind: "EBADF")

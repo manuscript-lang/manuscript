@@ -558,7 +558,7 @@ impl Checker {
             "filesystem" | "network" | "commands" | "control" | "system" | "clock"
             | "wall_clock" | "entropy" | "terminal" | "files" => {
                 return format!(
-                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/os/time.ms\""
+                    "{message}; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\""
                 );
             }
             _ => {}

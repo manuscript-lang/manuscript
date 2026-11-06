@@ -1725,12 +1725,12 @@ impl Session {
         with_args(&sym.ty(self.syms), args)
     }
 
-    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/os/time.ms`.
+    /// `Duration`, `Instant` or `Timestamp`, the records of `@std/time.ms`.
     pub fn time_type(self: &Rc<Self>, name: &str) -> Ty {
         // The module is checked on first use; its records have no fields before that.
-        self.standard_exports("@std/os/time.ms");
+        self.standard_exports("@std/time.ms");
         let sym = self
-            .source_type(n("@std/os/time.ms"), n(name))
+            .source_type(n("@std/time.ms"), n(name))
             .unwrap_or_else(|| panic!("standard time type {name}"));
         sym.ty(self.syms)
     }

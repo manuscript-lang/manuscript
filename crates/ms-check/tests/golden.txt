@@ -11,7 +11,7 @@ fn use(path: String) Int:
         error(NotFound): return 1
         ok(_): return 0
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	3	11	75	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TextError from "@std/errors.ms"
+resolution	3	11	75	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"import TextError from "@std/errors.ms"
 fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 fn use() Unit:
@@ -29,7 +29,7 @@ fn use() Unit:
     )
 resolution	1	8	7	module does not export network; did you mean 'Network'?
 resolution	3	8	89	unknown standard module @std/faults.ms
-resolution	6	19	183	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	6	19	183	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
 type	6	71	235	cannot infer callback parameter request; provide a type or a known function context
 resolution	8	16	310	unknown binding panic; add: import panic from "@std/core.ms"// Doubles a number.
 export fn double(value: Int) Int:
@@ -579,7 +579,7 @@ fn explicit() Unit:
     fs.create_directory("", true)
     fs.remove("", false)
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
 type	6	46	194	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
 type Override:
     received: Bool
@@ -827,7 +827,7 @@ export fn main() Int:
 import parse, CsvOptions from "@std/data/csv.ms"
 import commands, Commands, CommandOutput, CommandError from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 fn forward[T](item: T) T: item
 resolution	3	8	121	module does not export commands; did you mean 'Commands'?
 resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
@@ -839,15 +839,15 @@ resolution	3	43	156	module does not export CommandError; @std/os/process.ms expo
 export fn main() Int:
     return panic(message: "profile failure")
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/os/time.ms"
+resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 export fn main() Int:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0
-type	4	20	125	unknown argument data; parameters of write: value
-type	4	14	119	missing argument value: String in call to write; add 'value: <String>'
-type	4	5	110	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
+type	4	20	122	unknown argument data; parameters of write: value
+type	4	14	116	missing argument value: String in call to write; add 'value: <String>'
+type	4	5	107	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
@@ -1214,13 +1214,13 @@ impl parse	2	6	6	expected a name, found end of lineinterface DatagramSocket:
     fn receive(max_bytes: Int? = none, timeout: Duration? = none) Result[Datagram, NetworkError]
     fn send(data: String, address: String, timeout: Duration? = none) Result[Unit, NetworkError]
     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]
-resolution	4	49	118	unknown type Duration; add: import Duration from "@std/os/time.ms"
+resolution	4	49	118	unknown type Duration; add: import Duration from "@std/time.ms"
 resolution	4	74	143	unknown type Datagram; add: import Datagram from "@std/net/net.ms"
 resolution	4	84	153	unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
-resolution	5	53	219	unknown type Duration; add: import Duration from "@std/os/time.ms"
+resolution	5	53	219	unknown type Duration; add: import Duration from "@std/time.ms"
 resolution	5	84	250	unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it
 resolution	6	25	288	unknown type Bytes; add: import Bytes from "@std/bytes.ms"
-resolution	6	58	321	unknown type Duration; add: import Duration from "@std/os/time.ms"
+resolution	6	58	321	unknown type Duration; add: import Duration from "@std/time.ms"
 resolution	6	89	352	unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import ittype DnsRecord:
     kind: DnsKind
     value: String
@@ -4897,7 +4897,7 @@ fn text(value: Queue[Int]) String:
 parse	2	20	46	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import HttpClient from "@std/net/http.ms"
 fn work(client: HttpClient) Unit:
     client.|
-parse	3	12	87	expected a name, found '|' from "@std/os/time.ms"
+parse	3	12	87	expected a name, found '|' from "@std/time.ms"
 fn work(value: parse	1	2	1	indentation must be a multiple of four spaces, found 1; use 0 or 4fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) Unit:
     entries.add("a", 1)
 type	2	5	81	cannot change `entries`: parameter `entries` is not declared var; write `var entries: <Type>` in the signature and pass `var` at every callfn use(entries: Map[String, Int]) Unit:
@@ -5112,7 +5112,7 @@ fn os_name() String:
     return system().info().os
 resolution	1	8	7	module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, RangeOptions, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/collections/collections.ms"'
 resolution	2	8	65	unknown standard module @std/system.ms; did you mean '@std/os/system.ms'?
-resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"fn label(value: Int) String:
+resolution	6	12	187	unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"fn label(value: Int) String:
     return "{value}"
 test "methods":
     let labels = [1].map(transform: label)
@@ -5458,7 +5458,7 @@ fn classify(path: String) String:
         error(NotFound): return "missing"
         ok(_): return "exists"
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	3	11	83	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"type Point:
+resolution	3	11	83	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"type Point:
     x: Int
     y: Int
 
@@ -5610,7 +5610,7 @@ test "source":
 resolution	1	8	7	unknown standard module @std/faults.ms
 resolution	2	8	42	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	5	29	149	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	6	19	186	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	6	19	186	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
 resolution	7	39	286	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	9	16	339	unknown binding panic; add: import panic from "@std/core.ms"import parse, CsvOptions from "@std/data/csv.ms"
 import base64_encode, base64_decode from "@std/data/encoding.ms"
@@ -5806,7 +5806,7 @@ type	6	31	199	unknown argument data; parameters of write: value
 type	6	25	193	missing argument value: String in call to write; add 'value: <String>'export fn helper() Int: return 0
 test "bad":
     let x = unknown_name
-resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a moduleimport sleep, nanoseconds from "@std/os/time.ms"
+resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a moduleimport sleep, nanoseconds from "@std/time.ms"
 
 test "timeout":
     sleep(nanoseconds(1000000000))
@@ -6068,17 +6068,17 @@ test "encoded nominal identity":
     if not (view.get() == 3):
         return fail("check failed")
 type	12	16	243	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyimport stdout from "@std/io/io.ms"
-import clock from "@std/os/time.ms"
-import Instant from "@std/os/time.ms"
+import clock from "@std/time.ms"
+import Instant from "@std/time.ms"
 
 export fn now() Instant:
     return clock().now()
 
 export fn close_output() Unit:
     stdout().close()
-resolution	2	8	42	module does not export clock; @std/os/time.ms exports: Calendar, Deadline, Duration, Instant, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/time.ms"'
-resolution	6	12	146	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-type	9	5	196	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn private_value() Int:
+resolution	2	8	42	module does not export clock; @std/time.ms exports: Calendar, Deadline, Duration, Instant, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/time.ms"'
+resolution	6	12	140	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
+type	9	5	190	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
     return value
@@ -6277,7 +6277,7 @@ export fn main() Int:
     return 0
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	1	20	19	module does not export FileSystemError; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	4	14	92	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
 resolution	5	31	135	unknown type FileSystemError; declare it with 'type FileSystemError:' / 'enum FileSystemError:' / 'interface FileSystemError:', declare it as a type parameter, or import it
 resolution	5	56	160	unknown binding FileSystemError; declare it with 'let FileSystemError = ...' before use, define 'fn FileSystemError(...) T:', or import it from a moduletype Counter:
     value: Int
@@ -6297,11 +6297,11 @@ test "inherent fault frame":
 impl I:
     fn f() Int:
         return 1
-type	3	1	28	I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interfaceimport Duration from "@std/os/time.ms"
+type	3	1	28	I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interfaceimport Duration from "@std/time.ms"
 impl Duration:
     fn f() Int:
         return 1
-type	2	1	39	inherent methods belong in the module that declares Duration; to add operations to another module's type, declare an interface and write 'impl <Interface> for Duration:'type B[T]:
+type	2	1	36	inherent methods belong in the module that declares Duration; to add operations to another module's type, declare an interface and write 'impl <Interface> for Duration:'type B[T]:
     x: T
 impl B:
     fn f() Int:
@@ -6570,7 +6570,7 @@ export fn main() Int:
 resolution	2	8	41	module does not export File; did you mean 'Pipe'?
 resolution	3	8	74	module does not export IoError; @std/io/io.ms exports: EraseRegion, NativeRawTerminal, Pipe, RawHandle, RawTerminal, ReadStream, Sink, Source, StdStream, TerminalCapabilities, TerminalEvent, TerminalSize, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/io/io.ms"'
 resolution	5	11	126	unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it
-resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"test %q:
+resolution	8	18	188	unknown binding files; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"test %q:
     let minimum = nanoseconds(-9223372036854775808)
     let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
@@ -6683,7 +6683,7 @@ test "fixture next to the manifest":
         error(_):
             return fail("fixture not found")
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, NativeWatcher, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
-resolution	5	11	137	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
+resolution	5	11	137	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:
@@ -6742,9 +6742,9 @@ test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
 resolution	3	8	164	module does not export network; did you mean 'Network'?
-resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-resolution	14	34	628	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
-resolution	17	34	871	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/os/time.ms"
+resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
+resolution	14	34	628	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
+resolution	17	34	871	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
 type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":

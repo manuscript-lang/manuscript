@@ -12,7 +12,7 @@ import (
     write_atomic_bytes,
     write_file
 ) from "@std/os/fs.ms"
-import milliseconds from "@std/os/time.ms"
+import milliseconds from "@std/time.ms"
 import which from "@std/os/env.ms"
 import os, Os from "@std/os/system.ms"
 

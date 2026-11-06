@@ -444,9 +444,9 @@ impl Type {
         self.is_source_type(syms, "@std/test/test.ms", "TestHooks")
     }
 
-    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/os/time.ms`.
+    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
     pub fn is_time(&self, syms: ms_syntax::Names, name: &str) -> bool {
-        self.is_source_type(syms, "@std/os/time.ms", name)
+        self.is_source_type(syms, "@std/time.ms", name)
     }
 
     /// Whether this is the type `name` declared by the bundled source module `module`.

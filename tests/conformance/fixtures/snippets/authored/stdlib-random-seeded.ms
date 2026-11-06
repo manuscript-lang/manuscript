@@ -2,7 +2,7 @@
 // conform: phase=test
 // conform: origin=issue 2166
 import expect_equal, expect_fault from "@std/test/test.ms"
-import seeded from "@std/os/random.ms"
+import seeded from "@std/random.ms"
 
 test "equal seeds give equal sequences and match SplitMix64":
     var first = seeded(1)

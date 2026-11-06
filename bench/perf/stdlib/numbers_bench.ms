@@ -3,7 +3,7 @@ import Bytes from "@std/bytes.ms"
 import Decimal from "@std/math/decimal.ms"
 import from_int from "@std/math/math.ms"
 import compress, decompress, CompressionFormat from "@std/io/archive.ms"
-import parse_timestamp from "@std/os/time.ms"
+import parse_timestamp from "@std/time.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
 
 fn unpacked_length(data: Bytes) Int:

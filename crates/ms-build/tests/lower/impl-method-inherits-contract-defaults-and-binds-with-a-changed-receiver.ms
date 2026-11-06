@@ -3,7 +3,7 @@
 
 import Subprocess, CommandOutput from "@std/os/process.ms"
 import Bytes from "@std/bytes.ms"
-import Duration from "@std/os/time.ms"
+import Duration from "@std/time.ms"
 import CsvOptions from "@std/data/csv.ms"
 
 interface Runner:

@@ -1,4 +1,4 @@
-import Calendar, Instant, Timestamp from "@std/os/time.ms"
+import Calendar, Instant, Timestamp from "@std/time.ms"
 
 export extern fn msstd_time_duration_add(value: Int, other: Int) Int
 
