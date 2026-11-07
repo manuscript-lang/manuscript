@@ -23,6 +23,8 @@ pub struct AnalysisSelection {
     pub cwd: String,
     /// More than one input: diagnostics carry paths relative to the working directory.
     pub collection: bool,
+    /// The directories scanned to find the inputs: a watch reruns when a new file appears in one.
+    pub scanned: Vec<String>,
 }
 
 pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, ProjectError> {
@@ -96,7 +98,7 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
                 continue;
             }
         };
-        let (paths, error) = standalone_analysis_files(&root);
+        let (paths, error) = standalone_analysis_files(&root, &mut selection.scanned);
         if let Some(error) = error {
             report(&mut selection, &cwd, target, &error);
         }
@@ -113,15 +115,23 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
 
 /// Established directory exclusions: hidden, `vendor` and `node_modules`
 /// directories and nested projects (which require explicit selection) are skipped.
-fn standalone_analysis_files(root: &str) -> (Vec<String>, Option<ProjectError>) {
+fn standalone_analysis_files(
+    root: &str,
+    scanned: &mut Vec<String>,
+) -> (Vec<String>, Option<ProjectError>) {
     let mut files = Vec::new();
-    let error = walk(root, &mut files).err();
+    let error = walk(root, &mut files, scanned).err();
     (files, error)
 }
 
-fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
+fn walk(
+    directory: &str,
+    files: &mut Vec<String>,
+    scanned: &mut Vec<String>,
+) -> Result<(), ProjectError> {
     let read =
         std::fs::read_dir(directory).map_err(|e| ProjectError::path("open", directory, &e))?;
+    scanned.push(directory.to_string());
     let mut entries = Vec::new();
     for entry in read {
         let entry = entry.map_err(|e| ProjectError::path("readdirent", directory, &e))?;
@@ -171,7 +181,7 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
                     ));
                 }
             }
-            walk(&path, files)?;
+            walk(&path, files, scanned)?;
         } else {
             files.push(path);
         }
