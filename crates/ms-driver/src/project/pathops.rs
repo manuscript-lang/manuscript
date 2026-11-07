@@ -303,7 +303,12 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
         }
         let link = std::fs::read_link(&dest_text)
             .map_err(|e| ProjectError::path("readlink", &dest_text, &e))?;
-        let link = link.to_string_lossy().into_owned().into_bytes();
+        // A lossy copy would name a different file, so a target that is not text is rejected.
+        let Some(link) = link.to_str().map(|text| text.as_bytes().to_vec()) else {
+            return Err(ProjectError::msg(format!(
+                "symlink {dest_text} points to a path that is not valid UTF-8; point it at a UTF-8 name"
+            )));
+        };
         let mut next = link.clone();
         next.extend_from_slice(&path[end..]);
         path = next;
