@@ -94,6 +94,9 @@ pub(crate) struct FnLower<'a> {
     pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
+    /// Index expressions of a place already evaluated, by expression address, until the place
+    /// update that selects with them takes them.
+    pub prepared_indices: HashMap<usize, Value>,
     /// Intact resource temporaries: their slots own the values while later expressions run.
     /// The keys are borrowed views, consumed only by `take_resource_temp`.
     pub resource_temps: HashMap<Value, crate::close::ResourceTemp>,
@@ -584,6 +587,7 @@ impl<'a> FnLower<'a> {
             must_move: HashSet::new(),
             list_iters: HashMap::new(),
             temps: Vec::new(),
+            prepared_indices: HashMap::new(),
             resource_temps: HashMap::new(),
             loops: Vec::new(),
             dead: false,
