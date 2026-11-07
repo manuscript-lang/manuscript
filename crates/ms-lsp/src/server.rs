@@ -214,6 +214,9 @@ impl Params {
                 text: string_field(document, "text")?,
                 version: integer_field(document, "version")?,
             };
+            if uri::parse(&p.document.uri).is_none() {
+                return Err(());
+            }
         }
         if let Some(context) = typed(value, "context")? {
             if !matches!(context, Json::Obj(_)) {
@@ -728,6 +731,7 @@ impl Server<'_> {
             .unwrap_or(false);
         if let Some(root) = params.get("rootUri").and_then(|u| u.as_str())
             && !root.is_empty()
+            && uri::parse(root).is_some()
         {
             self.roots.push(uri::filename(root));
         }
@@ -736,7 +740,9 @@ impl Server<'_> {
             .and_then(|f| f.as_array())
             .unwrap_or(&[])
         {
-            if let Some(root) = folder.get("uri").and_then(|u| u.as_str()) {
+            if let Some(root) = folder.get("uri").and_then(|u| u.as_str())
+                && uri::parse(root).is_some()
+            {
                 self.roots.push(uri::filename(root));
             }
         }

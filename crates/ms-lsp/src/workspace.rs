@@ -68,11 +68,17 @@ pub fn workspace_documents(
     cancel: Option<CancelCheck>,
 ) -> Result<Vec<Document>, ScanError> {
     canceled(cancel)?;
+    if uri::parse(&d.uri).is_none() {
+        return Ok(Vec::new());
+    }
     let path = d.path();
     let (root, nested) = workspace_scope(d, recursive);
     let mut files: BTreeMap<String, Document> = BTreeMap::new();
     for open in docs.values() {
         canceled(cancel)?;
+        if uri::parse(&open.uri).is_none() {
+            continue;
+        }
         let name = open.path();
         if let Ok(relative) = pathops::rel(&root, &name)
             && relative != ".."
@@ -255,6 +261,9 @@ pub(crate) fn workspace_symbols_matching(
     for d in open {
         if canceled(cancel).is_err() {
             return None;
+        }
+        if uri::parse(&d.uri).is_none() {
+            continue;
         }
         match discover(d, false) {
             Ok(files) => documents.extend(files),

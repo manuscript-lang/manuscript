@@ -22,7 +22,7 @@ pub struct Url {
     pub fragment: bool,
 }
 
-/// Parses a URI the way `url.Parse` does for the shapes editors send.
+/// Parses the URI shapes editors send, rejecting paths whose decoded bytes are not UTF-8.
 pub fn parse(raw: &str) -> Option<Url> {
     let mut url = Url::default();
     let mut rest = raw;
@@ -79,7 +79,8 @@ fn unescape(text: &str) -> Option<String> {
             at += 1;
         }
     }
-    Some(String::from_utf8_lossy(&out).into_owned())
+    // Lossy decoding would give invalid bytes the identity of a real U+FFFD filename.
+    String::from_utf8(out).ok()
 }
 
 /// The path of a `file:` URI; any other URI is its own name.
@@ -236,6 +237,17 @@ mod tests {
             filename("manuscript-stdlib:///io.ms"),
             "manuscript-stdlib:///io.ms"
         );
+    }
+
+    #[test]
+    fn invalid_utf8_escapes_do_not_substitute_a_file_identity() {
+        for name in ["%FF", "%C3%28", "%F0%80%80%80", "%ED%A0%80"] {
+            let uri = format!("file:///tmp/{name}.ms");
+            assert!(parse(&uri).is_none(), "{uri}");
+            assert_eq!(filename(&uri), uri);
+        }
+        assert_eq!(parse("file:///tmp/%EF%BF%BD.ms").unwrap().path, "/tmp/�.ms");
+        assert!(standard_library_path("manuscript-stdlib:///%FF.ms").is_err());
     }
 
     #[test]

@@ -353,6 +353,12 @@ pub fn analyze_with(
 ) -> Rc<Analysis> {
     let session = options.session.clone().unwrap_or_default();
     options.session = Some(session.clone());
+    if uri::parse(&d.uri).is_none() {
+        return Rc::new(Analysis {
+            session,
+            ..Analysis::default()
+        });
+    }
     if standard_library_document(syms, &session, d).is_some() {
         return Rc::new(library_analysis(session));
     }
@@ -365,7 +371,8 @@ pub fn analyze_with(
     let path = d.path();
     let mut overlay = Overlay::new();
     for open in docs.values() {
-        if uri::is_standard_library(&open.uri)
+        if uri::parse(&open.uri).is_none()
+            || uri::is_standard_library(&open.uri)
             || standard_library_document(syms, &session, open).is_some()
         {
             continue;

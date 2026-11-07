@@ -148,7 +148,9 @@ fn open_uri(docs: &Documents, path: &str) -> String {
     let mut matches: Vec<&String> = docs
         .values()
         .filter(|open| {
-            !uri::is_standard_library(&open.uri) && source_identity(&open.path()) == wanted
+            uri::parse(&open.uri).is_some()
+                && !uri::is_standard_library(&open.uri)
+                && source_identity(&open.path()) == wanted
         })
         .map(|open| &open.uri)
         .collect();
