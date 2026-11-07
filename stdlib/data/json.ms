@@ -419,6 +419,17 @@ impl Transform[Bytes, T] for JsonReading[T]:
         out.append(try completed)
         return ok(unit)
 
+// The error a negative limit reports on the first read, or none.
+fn invalid_limits(options: JsonOptions) Error?:
+    if (
+        options.max_bytes.get(0) < 0
+        or options.max_depth.get(0) < 0
+        or options.max_values.get(0) < 0
+    ):
+        return Error("JSON: invalid options", kind: "EINVAL")
+
+    return none
+
 /*
 Reads a sequence of JSON values of type `T` from a byte stream, such as JSON Lines or concatenated JSON.
 
@@ -436,11 +447,12 @@ export fn json_reader[T: Data = JsonValue](
     input: ReadStream[Bytes],
     options: JsonOptions = JsonOptions()
 ) ReadStream[T]:
+    let failure = invalid_limits(options)
     return through[Bytes, T](
         input,
         JsonReading[T](
             options: options, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
-            in_string: false, escaped: false, finished: false, failure: none
+            in_string: false, escaped: false, finished: false, failure: failure
         )
     )
 
