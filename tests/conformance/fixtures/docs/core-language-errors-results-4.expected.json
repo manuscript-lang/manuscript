@@ -19,15 +19,15 @@
         "fix": {
           "position": {
             "file": "core-language-errors-results-4.ms",
-            "line": 1,
+            "line": 5,
             "column": 1,
-            "offset": 0
+            "offset": 184
           },
           "end": {
             "file": "core-language-errors-results-4.ms",
-            "line": 1,
+            "line": 5,
             "column": 1,
-            "offset": 0
+            "offset": 184
           },
           "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
@@ -45,15 +45,15 @@
         "fix": {
           "position": {
             "file": "core-language-errors-results-4.ms",
-            "line": 1,
+            "line": 5,
             "column": 1,
-            "offset": 0
+            "offset": 184
           },
           "end": {
             "file": "core-language-errors-results-4.ms",
-            "line": 1,
+            "line": 5,
             "column": 1,
-            "offset": 0
+            "offset": 184
           },
           "replacement": "import Decimal from \"@std/math/decimal.ms\"\n"
         }
