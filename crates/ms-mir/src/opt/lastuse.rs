@@ -39,7 +39,11 @@ pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
 }
 
 /// Whether dropping a value of `t` only frees memory.
-fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> bool {
+///
+/// `seen` holds every record and alternative already entered. Revisiting one counts as plain: it
+/// is either still being visited (a cycle) or was finished without finding a resource, since any
+/// other finding ends the whole walk. So each type is classified once, however many paths reach it.
+fn plain(m: &Module, t: crate::types::Ty, seen: &mut HashSet<crate::types::Ty>) -> bool {
     match m.types.kind(t) {
         TyKind::Unit
         | TyKind::Bool
@@ -59,28 +63,22 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> b
         TyKind::List(e) | TyKind::Opt(e) => plain(m, *e, seen),
         TyKind::Obj(n, args) => n.is_map_or_set() && args.iter().all(|a| plain(m, *a, seen)),
         TyKind::Rec(r) => {
-            if seen.contains(&t) {
+            if !seen.insert(t) {
                 return true;
             }
-            seen.push(t);
-            let ok = m.records[r.index()]
+            m.records[r.index()]
                 .fields
                 .iter()
-                .all(|f| plain(m, f.1, seen));
-            seen.pop();
-            ok
+                .all(|f| plain(m, f.1, seen))
         }
         TyKind::Alt(a) => {
-            if seen.contains(&t) {
+            if !seen.insert(t) {
                 return true;
             }
-            seen.push(t);
-            let ok = m.alts[a.index()]
+            m.alts[a.index()]
                 .cases
                 .iter()
-                .all(|c| c.fields.iter().all(|f| plain(m, f.1, seen)));
-            seen.pop();
-            ok
+                .all(|c| c.fields.iter().all(|f| plain(m, f.1, seen)))
         }
     }
 }
@@ -266,7 +264,7 @@ fn function(m: &Module, f: &mut Func) -> bool {
             }
         }
     }
-    cands.retain(|(v, _, _)| plain(m, f.ty(*v), &mut Vec::new()) && m.needs_drop(f.ty(*v)));
+    cands.retain(|(v, _, _)| plain(m, f.ty(*v), &mut HashSet::new()) && m.needs_drop(f.ty(*v)));
     if cands.is_empty() {
         return false;
     }
