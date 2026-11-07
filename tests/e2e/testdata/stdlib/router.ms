@@ -460,6 +460,40 @@ test "access_log writes one record per request":
     try expect_true(text_out.contains("\"status\":404"))
     try expect_equal(text_out.lines().length(), 2)
 
+fn no_content(var exchange: HttpExchange, params: RouteParams) Unit!:
+    return exchange.send(204, headers(), "ignored".to_bytes())
+
+test "access_log counts only the body bytes that are sent":
+    let dir = temporary("ms-router-log-head-") | try expect_ok
+    let lines = "{dir.path()}/lines"
+    let logger = (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
+    var r = Router()
+    r.use(access_log(logger))
+    r.get("/a", say("hello")).get()
+    r.get("/s", stream_parts).get()
+    r.get("/n", no_content).get()
+
+    let head = try r.call(request(HttpMethod.Head, "/a"))
+    try expect_equal(head.body.length(), 0)
+
+    let streamed = try r.call(request(HttpMethod.Head, "/s"))
+    try expect_equal(streamed.body.length(), 0)
+
+    let empty = try r.call(get("/n"))
+    try expect_equal(empty.status, 204)
+    try expect_equal((try r.call(get("/a"))).status, 200)
+    try expect_equal(body_of(try r.call(get("/s"))), "onetwo")
+
+    let records = logged(lines.clone()).lines()
+    try expect_equal(records.length(), 5)
+    try expect_true(records[0].contains("\"method\":\"HEAD\""))
+    try expect_true(records[0].contains("\"bytes\":0"))
+    try expect_true(records[1].contains("\"bytes\":0"))
+    try expect_true(records[2].contains("\"status\":204"))
+    try expect_true(records[2].contains("\"bytes\":0"))
+    try expect_true(records[3].contains("\"bytes\":5"))
+    try expect_true(records[4].contains("\"bytes\":6"))
+
 test "verb helpers register their method":
     var r = Router()
     try r.put("/v", say("put"))

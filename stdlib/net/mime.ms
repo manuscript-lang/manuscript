@@ -166,22 +166,28 @@ fn split_params(text: String) List[String]:
     pieces.append(current.drain())
     return pieces
 
-// Returns the unquoted value, or none for an unterminated quote.
+// Returns the unquoted value, or none unless an unescaped quote closes it at the very end.
 fn unquote(raw: String) String?:
     if not raw.starts_with("\""): return raw.clone()
-    if raw.length() < 2 or not raw.ends_with("\""): return none
 
     var out = StringBuilder()
     var escaped = false
+    var closed = false
 
-    for c in raw.slice(1, raw.length() - 1).get("").chars():
+    for c in raw.drop(1).chars():
+        if closed: return none
+
         if escaped:
             out.append(c)
             escaped = false
         else if c == "\\":
             escaped = true
+        else if c == "\"":
+            closed = true
         else:
             out.append(c)
+
+    if not closed: return none
 
     return out.build()
 

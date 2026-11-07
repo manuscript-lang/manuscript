@@ -700,7 +700,7 @@ type Run:
 
 impl Run:
     var fn write(text: String) Unit!Error:
-        self.written += text.length()
+        self.written += text.byte_length()
         if self.written > self.limit: return error(
             Error("template: output limit exceeded", kind: "EOVERFLOW")
         )
