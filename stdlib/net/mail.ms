@@ -93,10 +93,21 @@ export fn parse_address_list(text: String) List[Address]!:
     var out = List[Address]()
     var current = StringBuilder()
     var quoted = false
+    var escaped = false
     var depth = 0
     var pieces = List[String]()
 
     for c in text.chars():
+        if escaped:
+            escaped = false
+            current.append(c)
+            continue
+
+        if quoted and c == "\\":
+            escaped = true
+            current.append(c)
+            continue
+
         if c == "\"": quoted = not quoted
         if not quoted and c == "<": depth += 1
         if not quoted and c == ">": depth -= 1
@@ -127,12 +138,22 @@ export fn parse_message(raw: String) Message!:
     let crlf = raw.index_of("\r\n\r\n")
     let lf = raw.index_of("\n\n")
 
-    if let at = crlf:
+    // The first blank line ends the headers, whichever line ending it uses.
+    var at = -1
+    var skip = 0
+
+    if let found = crlf:
+        at = found
+        skip = 4
+
+    if let found = lf:
+        if at < 0 or found < at:
+            at = found
+            skip = 2
+
+    if at >= 0:
         head = raw.take(at)
-        body = raw.drop(at + 4)
-    else if let at = lf:
-        head = raw.take(at)
-        body = raw.drop(at + 2)
+        body = raw.drop(at + skip)
     else:
         head = raw.clone()
 
