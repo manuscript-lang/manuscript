@@ -306,10 +306,20 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
 
 /// A promise where its result is required: `wait()` gives it.
 pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
-    if !crate::suggestions::promise_wait_fits(syms, actual, expected) {
+    if crate::suggestions::promise_wait_fits(syms, actual, expected) {
+        return "a call that waits returns a Promise; call wait() on it to get the result"
+            .to_string();
+    }
+    let is_promise = actual.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise")
+        && actual.args.len() == 1;
+    if !is_promise || expected.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise") {
         return String::new();
     }
-    "a call that waits returns a Promise; call wait() on it to get the result".to_string()
+    format!(
+        "a call that waits returns a Promise; wait() gives its result, {}!, so call wait() and unwrap it with 'try' or '.get()' before using it as {}",
+        actual.args[0].display(syms),
+        expected.display(syms)
+    )
 }
 
 /// Names the explicit conversion between Int and Float.
