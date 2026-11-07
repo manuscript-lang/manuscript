@@ -5,14 +5,16 @@ test "new set":
     [1].set(1, 2)
 
 test "bound set":
-    let set = [1].set
+    var items = [1]
+    let set = items.set
     set(-2, 2)
 
 test "new remove":
     [1].remove(1)
 
 test "bound remove":
-    let remove = [1].remove
+    var items = [1]
+    let remove = items.remove
     remove(-2)
 
 test "empty set":

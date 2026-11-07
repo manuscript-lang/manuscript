@@ -372,9 +372,17 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
         parent: base + 1 + s.parent,
         call_line: s.call_line,
     }));
-    let ml = |l: Loc| Loc {
-        scope: base + 1 + l.scope,
-        ..l
+    // A position the callee does not know (a generated thunk) is the call's own, so a fault
+    // there reports the call line instead of whatever code was laid out before it.
+    let ml = |l: Loc| {
+        if l.line == 0 && l.scope == 0 {
+            call.loc
+        } else {
+            Loc {
+                scope: base + 1 + l.scope,
+                ..l
+            }
+        }
     };
 
     let vmap: Vec<Value> = callee.values.iter().map(|t| f.new_value(*t)).collect();

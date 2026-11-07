@@ -206,6 +206,8 @@ pub struct CallableOwnership {
     /// Conditional and match expressions whose value is a reference on every arm: lowering
     /// joins the arms without copying.
     pub borrowed_matches: HashSet<NodeId>,
+    /// Native reads used in place from origins that remain held.
+    pub borrowed_reads: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -319,6 +321,9 @@ impl Hir<'_> {
             let file = c.module.file;
             for n in &out.facts.borrowed_matches {
                 node_facts.set(file, *n, Fact::BorrowedMatch);
+            }
+            for n in &out.facts.borrowed_reads {
+                node_facts.set(file, *n, Fact::BorrowedRead);
             }
             if out.facts.returns_borrow && out.facts.view {
                 node_facts.set(c.module.file, c.id(), Fact::ReturnsView);
