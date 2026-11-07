@@ -53,7 +53,8 @@ export type TlsOptions:
 export fn parse_certificates(pem: String, max_certificates: Int?) List[CertificateInfo]!:
     return msstd_tls_parse_certificates(pem, max_certificates)
 
-// Verifies a PEM certificate chain against roots, name constraints, and the supplied time.
+// Verifies a PEM certificate chain against roots, name constraints, and the supplied time. An empty `roots_pem` reads the system roots.
+// ms: effect std.system.read
 export fn verify_certificates(
     chain_pem: String,
     roots_pem: String,

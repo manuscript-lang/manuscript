@@ -144,7 +144,7 @@ export fn constants() Map[String, Int]:
 
 // Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
 // This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
-// ms: effect std.system.read
+// ms: effect std.clock.read
 export fn monotonic_time() Int:
     return msstd_process_monotonic_time()
 
