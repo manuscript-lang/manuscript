@@ -348,3 +348,28 @@ fn non_utf8_link_target_is_rejected() {
         .to_string();
     assert!(error.contains("not valid UTF-8"), "{error}");
 }
+
+/// Retargeting a link inside a chain changes the import, so every link the lookup passes through
+/// is reported, and a loop of links ends the walk.
+#[cfg(unix)]
+#[test]
+fn link_components_follow_link_chains_and_stop_on_loops() {
+    use ms_driver::project::link_components;
+    let (_dir, p) = fixture(MANIFEST);
+    write(&p.source, "a.ms", "export fn value() Int: 7\n");
+    let (mid, dep) = (join(&p.source, "mid.ms"), join(&p.source, "dep.ms"));
+    std::os::unix::fs::symlink("a.ms", &mid).unwrap();
+    std::os::unix::fs::symlink("mid.ms", &dep).unwrap();
+    assert_eq!(
+        link_components(&p.root, &dep),
+        vec![dep.clone(), mid.clone()]
+    );
+
+    let (left, right) = (join(&p.source, "left.ms"), join(&p.source, "right.ms"));
+    std::os::unix::fs::symlink("right.ms", &left).unwrap();
+    std::os::unix::fs::symlink("left.ms", &right).unwrap();
+    assert_eq!(
+        link_components(&p.root, &left),
+        vec![left.clone(), right.clone()]
+    );
+}
