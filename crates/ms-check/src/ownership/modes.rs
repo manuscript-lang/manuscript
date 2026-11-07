@@ -187,6 +187,15 @@ fn callback_changes_receiver(m: &ModuleHir, call: &Expr, args: &[Argument]) -> b
     })
 }
 
+/// Type application specializes a callable without creating a reusable method
+/// value. Runtime indexing must remain an evaluated callee expression.
+pub fn method_callee<'e>(syms: ms_syntax::Names, m: &ModuleHir, e: &'e Expr) -> &'e Expr {
+    match &e.kind {
+        ExprKind::Apply { left, .. } if m.info(e).native_str(syms) != "index" => left,
+        _ => e,
+    }
+}
+
 /// Resolves the modes of a call from its callee.
 pub fn call_modes(
     syms: ms_syntax::Names,
@@ -220,7 +229,9 @@ fn call_modes_declared(
     };
     // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
     let value_call = match &call.kind {
-        ExprKind::Call { callee, .. } => !matches!(callee.kind, ExprKind::Member { .. }),
+        ExprKind::Call { callee, .. } => {
+            !matches!(method_callee(syms, m, callee).kind, ExprKind::Member { .. })
+        }
         _ => false,
     };
     match m.resolution(call) {
@@ -419,6 +430,31 @@ fn method_modes(
         };
     }
     native_method_modes(syms, method, count, label)
+}
+
+/// The payload a checked native wrapper operation passes through unchanged.
+/// Callback-created values, even of the same type, do not imply passthrough.
+pub fn wrapper_passthrough(
+    syms: ms_syntax::Names,
+    method: &MethodRef,
+    receiver: &Ty,
+) -> Option<Ty> {
+    let name = syms.str(method.native);
+    let index = if method.receiver.is(Builtin::Optional) {
+        match name {
+            "or_else" | "ok_or" | "ok_or_else" => 0,
+            _ => return None,
+        }
+    } else if method.receiver.is(Builtin::Result) {
+        match name {
+            "or_else" | "map_error" | "to_optional" => 0,
+            "map" | "and_then" => 1,
+            _ => return None,
+        }
+    } else {
+        return None;
+    };
+    receiver.args.get(index).cloned()
 }
 
 /// How a method treats its receiver, for a method used as a value.

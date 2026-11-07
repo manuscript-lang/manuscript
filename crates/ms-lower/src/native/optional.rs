@@ -184,8 +184,9 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         if keep {
-                            let o = s.owned(Val { v: r, own: false });
-                            s.finish(recv);
+                            // Pass an owned wrapper through; copying a borrowed wrapper is
+                            // the declared Optional boundary, not an implicit ordinary copy.
+                            let o = s.owned_boundary(recv);
                             s.finish(f.val);
                             return Ok(Some(o));
                         }
@@ -469,10 +470,8 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned_boundary(Val { v: p, own: false });
+                        let po = s.take_alt_field_through(alt, ok, 0, recv);
                         let v = s.b.alt_new(oa, out_ok, &[po]);
-                        s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -554,15 +553,13 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned_boundary(Val { v: p, own: false });
+                        let po = s.take_alt_field_through(alt, ok, 0, recv);
                         let v = s.b.opt_some(po);
-                        s.finish(recv);
                         Ok(Some(v))
                     },
                     &mut |s| {
                         let v = s.none_owned(out);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         Ok(Some(v))
                     },
                 )
