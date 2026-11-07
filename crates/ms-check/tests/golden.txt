@@ -190,7 +190,7 @@ export fn main() Int:
         return 1
 
     return 0
-resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 resolution	5	32	132	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
 
 test "arithmetic":
@@ -3418,7 +3418,7 @@ fn g() Int: return 1
     for i, x in [1]:
         return i
     return 0
-parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.valuefn f() Int:
+parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)fn f() Int:
     let n = [1].map(fn(x) => x + 1)
     return 0
 parse	2	27	38	expected a name, found '='fn f() Int:
@@ -5662,7 +5662,7 @@ export fn main() Int:
     let _out = stdout().write(data: "out={args[0]}\n")
     let _err = stderr().write(data: "stderr\n")
     return 7
-resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 resolution	4	16	123	unknown binding arguments; add: import arguments from "@std/os/env.ms"
 type	5	31	165	unknown argument data; parameters of write: value
 type	5	25	159	missing argument value: String in call to write; add 'value: <String>'
@@ -5836,7 +5836,7 @@ export fn main() Int:
     if args.length() > 0 and args[0] == "fail":
         return 23
     return 0
-resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 resolution	5	16	124	unknown binding arguments; add: import arguments from "@std/os/env.ms"
 resolution	7	29	214	unknown or ambiguous member write_bytes on WriteStream[String]; available: close, flush, sink, write
 type	9	31	328	unknown argument data; parameters of write: value
@@ -5872,7 +5872,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-resolution	1	8	7	module does not export arguments; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'
+resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 type	6	24	186	unknown argument data; parameters of write: value
 type	6	18	180	missing argument value: String in call to write; add 'value: <String>'
 resolution	10	16	274	unknown binding arguments; add: import arguments from "@std/os/env.ms"

@@ -306,10 +306,20 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
 
 /// A promise where its result is required: `wait()` gives it.
 pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
-    if !crate::suggestions::promise_wait_fits(syms, actual, expected) {
+    if crate::suggestions::promise_wait_fits(syms, actual, expected) {
+        return "a call that waits returns a Promise; call wait() on it to get the result"
+            .to_string();
+    }
+    let is_promise = actual.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise")
+        && actual.args.len() == 1;
+    if !is_promise || expected.is_source_type(syms, crate::suggestions::PROMISE_MODULE, "Promise") {
         return String::new();
     }
-    "a call that waits returns a Promise; call wait() on it to get the result".to_string()
+    format!(
+        "a call that waits returns a Promise; wait() gives its result, {}!, so call wait() and unwrap it with 'try' or '.get()' before using it as {}",
+        actual.args[0].display(syms),
+        expected.display(syms)
+    )
 }
 
 /// Names the explicit conversion between Int and Float.
@@ -765,6 +775,26 @@ impl Checker {
                 return format!("{message}; {fix}");
             }
         }
+        if (receiver.is(Builtin::Optional) || receiver.is(Builtin::Result))
+            && !receiver.args.is_empty()
+            && self
+                .member_names(&receiver.args[0])
+                .contains(&self.syms.str(name).to_string())
+        {
+            let (wrapper, unwrap) = if receiver.is(Builtin::Optional) {
+                ("an Optional", "`if let value = x:` or x.get(default)")
+            } else {
+                (
+                    "a Result",
+                    "`try x` inside a fn that returns Result, `if let value = x:` or x.get(default)",
+                )
+            };
+            return format!(
+                "{message}; the value is {wrapper} of {payload_t}, which has {name_t}: unwrap it first with {unwrap}",
+                payload_t = receiver.args[0].display(self.syms),
+                name_t = self.syms.str(name)
+            );
+        }
         if (receiver.is(Builtin::List) || receiver.is(Builtin::Map) || receiver.is(Builtin::Set))
             && matches!(self.syms.str(name), "some" | "every")
         {
@@ -900,6 +930,12 @@ impl Checker {
         let hint = did_you_mean(self.syms.str(item.name), &exports);
         if !hint.is_empty() {
             return format!("{message}{hint}");
+        }
+        let elsewhere = import_hint(&self.session, self.syms.str(item.name));
+        if let Some(statement) = elsewhere.strip_prefix("; add: ") {
+            return format!(
+                "{message}; another standard module exports it, so replace this import with: {statement}"
+            );
         }
         if exports.is_empty() {
             return format!(

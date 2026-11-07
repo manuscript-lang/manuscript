@@ -431,7 +431,7 @@ impl Checker {
             // final check reports, so the call must not also ask for explicit types.
             if self.p.diagnostics[checkpoint..]
                 .iter()
-                .any(|d| d.phase == Phase::Resolution)
+                .any(|d| d.phase == Phase::Resolution || d.message.starts_with("operator operands"))
             {
                 self.label_mismatch = true;
             }
