@@ -1,5 +1,6 @@
 import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import append_file, read_file, remove, temporary from "@std/os/fs.ms"
+import secure_int from "@std/random.ms"
 import expect_equal, expect_ok from "@std/test/test.ms"
 
 type Marker:
@@ -41,3 +42,33 @@ test "a bound native method over a named receiver closes it once, not twice":
     let log = "{tmp.path()}/log"
     try named(log.clone())
     try expect_equal(events(log), "2,")
+
+// A resource with only scalar fields has no drop glue but still has one owner that closes it. Its
+// id names the file the close appends to, since it has nowhere to keep a log path.
+type Tag:
+    id: Int
+
+fn tag_log(id: Int) String:
+    return "/tmp/ms-bound-native-tag-{id}"
+
+impl Closeable for Tag:
+    var fn close() Unit!:
+        try append_file(tag_log(self.id), "closed,").wait()
+        return ok(unit)
+
+fn borrowed_status(result: Int!Tag) Bool:
+    let check = result.is_error
+    return check()
+
+test "a method value over a borrowed scalar resource leaves the close to its owner":
+    let id = try secure_int(1, 1000000000)
+    let log = tag_log(id)
+    try borrow_then_check(id, log.clone())
+    try expect_equal(events(log.clone()), "closed,")
+    try remove(log)
+
+fn borrow_then_check(id: Int, log: String) Unit!:
+    let result: Int!Tag = error(Tag(id))
+    try expect_equal(borrowed_status(result), true)
+    try expect_equal(read_file(log.clone()).wait().is_error(), true)
+    return ok(unit)
