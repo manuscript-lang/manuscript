@@ -1260,8 +1260,22 @@ impl<'a> FnLower<'a> {
 
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
         let mut root = iter;
-        while let ExprKind::Member { left, .. } = &root.kind {
-            root = left;
+        // `xs.field`, `xs[i]` and `xs.get(i)` borrow part of `xs` while `xs` is unchanged.
+        loop {
+            match &root.kind {
+                ExprKind::Member { left, .. }
+                | ExprKind::Index { left, .. }
+                | ExprKind::Apply {
+                    left,
+                    value: Some(_),
+                    ..
+                } => root = left,
+                ExprKind::Call { callee, .. } => match &callee.kind {
+                    ExprKind::Member { left, .. } => root = left,
+                    _ => break,
+                },
+                _ => break,
+            }
         }
         matches!(&root.kind, ExprKind::Name(_))
             && matches!(

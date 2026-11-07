@@ -895,12 +895,9 @@ fn materialize(
             return ok(TomlValue.ArrayValue(result))
         TableArray(slot):
             var result: List[TomlValue] = []
-
-            // Indexed: `for id in arrays[slot]` fails lowering (#2920; use `for id in arrays[slot]` once fixed).
-            for k in 0..arrays[slot].length(): result.append(
+            for id in arrays[slot]: result.append(
                 try materialize(
-                    tables, arrays, Node.TableNode(arrays[slot][k]), (depth + 1),
-                    var budget
+                    tables, arrays, Node.TableNode(id), (depth + 1), var budget
                 )
             )
             return ok(TomlValue.ArrayValue(result))
