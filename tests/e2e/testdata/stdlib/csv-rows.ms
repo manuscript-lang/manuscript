@@ -1,6 +1,6 @@
 import expect_equal, fail from "@std/test/test.ms"
 import csv_rows, parse, CsvOptions from "@std/data/csv.ms"
-import Bytes from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
@@ -32,7 +32,15 @@ fn read_rows(
     options: CsvOptions = CsvOptions(),
     max_record_bytes: Int? = none
 ) List[List[String]]!:
-    var rows = csv_rows(chunked(text.to_bytes(), size), options, max_record_bytes)
+    return read_raw(text.to_bytes(), size, options, max_record_bytes)
+
+fn read_raw(
+    data: Bytes,
+    size: Int,
+    options: CsvOptions = CsvOptions(),
+    max_record_bytes: Int? = none
+) List[List[String]]!:
+    var rows = csv_rows(chunked(data, size), options, max_record_bytes)
     var out: List[List[String]] = []
 
     while true:
@@ -75,3 +83,44 @@ test "the record budget reports LimitExceeded":
         try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8),
         [["ab", "cd"], ["ef", "gh"]]
     )
+
+test "the record budget does not depend on where chunks end":
+    for size in 1..12:
+        let long = read_rows("abcdefghij\n", size, CsvOptions(), 4)
+        try expect_equal(long.err().kind, "EOVERFLOW")
+
+        let many = read_rows("ab\ncdefghij\nkl\n", size, CsvOptions(), 4)
+        try expect_equal(many.err().kind, "EOVERFLOW")
+
+        let quoted = read_rows("\"a\nb\nc\nd\",x\n", size, CsvOptions(), 4)
+        try expect_equal(quoted.err().kind, "EOVERFLOW")
+        try expect_equal(
+            try read_rows("abcd\nefgh\n", size, CsvOptions(), 4), [["abcd"], ["efgh"]]
+        )
+        try expect_equal(try read_rows("abcd\r\n", size, CsvOptions(), 5), [["abcd"]])
+
+test "malformed UTF-8 is InvalidData beside valid rows and a split scalar is not":
+    var bad = BytesBuilder()
+    bad.append_bytes("ok\n".to_bytes())
+    bad.append(255)
+    bad.append(10)
+
+    let block = bad.build()
+    var tail = BytesBuilder()
+    tail.append(255)
+
+    let unterminated = tail.build()
+    var truncated = BytesBuilder()
+    truncated.append_bytes("a,".to_bytes())
+    truncated.append(195)
+    truncated.append(10)
+
+    let cut = truncated.build()
+
+    for size in 1..6:
+        try expect_equal(read_raw(block.clone(), size).err().kind, "EBADMSG")
+        try expect_equal(read_raw(unterminated.clone(), size).err().kind, "EBADMSG")
+        try expect_equal(read_raw(cut.clone(), size).err().kind, "EBADMSG")
+
+    for size in 1..8:
+        try expect_equal(try read_rows("a,é,😀\n", size), [["a", "é", "😀"]])
