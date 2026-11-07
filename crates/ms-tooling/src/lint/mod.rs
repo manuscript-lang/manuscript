@@ -10,6 +10,7 @@ mod patterns;
 mod promises;
 mod recursion;
 mod tasks;
+mod text;
 
 use ms_check::{ModuleData, Program};
 use ms_syntax::{DiagnosticFix, Pos};
@@ -35,7 +36,7 @@ impl Severity {
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL115`.
+    /// Stable rule code, `MSL001`..`MSL117`.
     pub code: &'static str,
     /// The rule's severity.
     pub severity: Severity,
@@ -154,6 +155,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "permit it with `// ms: allow_effect <effect>` above the function or in the file header, or move the call to the caller, or take a capability parameter",
     },
+    Rule {
+        code: "MSL117",
+        family: "Integer literal interpolated into text",
+        severity: Severity::Warning,
+        repair: "write `\\{4\\}` for literal braces such as a regex quantifier, or put the pattern in `r\"\"\"` raw text; delete the braces to write the number",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
@@ -216,6 +223,7 @@ pub fn lint_program(syms: ms_syntax::Names, program: &Program) -> Vec<Finding> {
         matches::lint(syms, module, &mut findings);
         tasks::lint(syms, module, &mut findings);
         promises::lint(syms, module, &mut findings);
+        text::lint(syms, module, &mut findings);
     }
     effects::lint(syms, program, &mut findings);
     findings.sort_by(|a, b| {

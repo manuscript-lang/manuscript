@@ -12,5 +12,6 @@ mod lint_flush;
 mod lint_promises;
 mod lint_rules;
 mod lint_tasks;
+mod lint_text;
 mod review;
 mod stdlib_effects;
