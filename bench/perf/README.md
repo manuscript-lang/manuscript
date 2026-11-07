@@ -18,6 +18,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 | [`tasks/`](tasks) | resident memory and page tables per parked promise task at 100k and 1M, spawn and cancel time | `ms run bench/perf/tasks/main.ms -- 1000000 sleep` | [`tasks/README.md`](tasks/README.md) |
 | [`mailbox/`](mailbox) | ns per promise through the scheduler mailboxes (cross-thread start and event traffic) | `ms run bench/perf/mailbox/main.ms -- 100000 5` | [`mailbox/README.md`](mailbox/README.md) |
+| [`promise-tree/`](promise-tree) | promise fan-out and one-promise-per-call fork trees at 1 and 4 threads | `MS_THREADS=4 ms run bench/perf/promise-tree/main.ms -- tree 36 5` | [`promise-tree/README.md`](promise-tree/README.md) |
 
 Latest refresh with Go and Rust comparisons for the docs: [`results-2026-11-05.md`](results-2026-11-05.md).
 
