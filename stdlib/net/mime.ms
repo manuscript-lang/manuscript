@@ -331,7 +331,9 @@ impl Transform[Bytes, Part] for MultipartParts:
                     // Preamble text is ignored; keep only a tail that could start the delimiter.
                     let keep = self.delimiter.length() - 1
                     let size = self.buffer.length()
-                    if size > keep: self.buffer = try self.buffer.slice(size - keep, size)
+                    if size > keep: self.buffer = try self.buffer.slice(
+                        size - keep, size
+                    )
                     break
 
                 if let limit = self.max_part_bytes:
