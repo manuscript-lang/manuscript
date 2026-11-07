@@ -23,9 +23,11 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
     while index < lines.length():
         let number = index + 1
-        let entry = lines[index].trim()
+
+        // Text inside an opening quote is literal, so only the front of the line is trimmed here.
+        let entry = lines[index].trim_start()
         index += 1
-        if entry.is_empty() or entry.starts_with("#"): continue
+        if entry.trim().is_empty() or entry.starts_with("#"): continue
 
         let assignment = entry.cut_prefix("export ").get(entry)
         let found = assignment.index_of("=")
@@ -37,11 +39,11 @@ export fn parse_dotenv(text: String) Map[String, String]!:
             config_error(number, "invalid variable name")
         )
 
-        let value = assignment.drop(at + 1).trim()
+        let value = assignment.drop(at + 1).trim_start()
         let quote = value.take(1)
 
         if quote != "'" and quote != "\"" and quote != "`":
-            out.add(name, bare_value(value))
+            out.add(name, bare_value(value.trim()))
             continue
 
         // Only the newest line is searched for the closing quote, so a long value stays linear.
