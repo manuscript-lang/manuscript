@@ -163,6 +163,16 @@ impl Walker<'_> {
             .unwrap_or_else(|| "later".to_string())
     }
 
+    /// Where a moved value is used again: a use that is the move itself runs again on the
+    /// next pass of an enclosing loop.
+    pub(super) fn later_at(&self, moved: NodeId, next: NodeId) -> String {
+        if moved == next {
+            " on the next loop iteration".to_string()
+        } else {
+            format!(" at {}", self.at(next))
+        }
+    }
+
     // ------------------------------------------------------------ types
 
     pub(super) fn class_of(&self, e: &Expr) -> Class {

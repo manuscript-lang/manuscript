@@ -1521,7 +1521,7 @@ impl Error for E:
 type	4	8	50	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	4	26	68	unknown binding this; the receiver in an impl method is 'self'; write self instead of thisfn error_method() Unit:
     let method = Error.message
-resolution	2	24	47	unknown or non-nullary alternative case message of Error; cases:  (cases with payloads need call syntax)fn error_value() Error: Error.message("bad input")
+resolution	2	24	47	Error has no member message; a type name is followed only by an enum casefn error_value() Error: Error.message("bad input")
 resolution	1	31	30	Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a valueinterface Shape:
     fn area() Int
 type Sq:
@@ -5353,7 +5353,7 @@ fn use(value: Item?) Int:
     match value:
         item: return Item.value
         none: return 0
-resolution	5	27	95	unknown or non-nullary alternative case value of Item; cases:  (cases with payloads need call syntax)fn use(value: Int?) Int:
+resolution	5	27	95	Item has no member value; a type name is followed only by an enum casefn use(value: Int?) Int:
     match value:
         int: return Int
         none: return 0
@@ -5399,7 +5399,7 @@ fn use[T](value: Box[T]?) T:
     match value:
         box: return Box.value
         none: return panic(message: "empty")
-resolution	5	25	96	unknown or non-nullary alternative case value of Box; cases:  (cases with payloads need call syntax)
+resolution	5	25	96	Box has no member value; a type name is followed only by an enum case
 resolution	6	22	123	unknown binding panic; add: import panic from "@std/core.ms"enum Flag:
     Ready
 fn use(value: Int?) Int:

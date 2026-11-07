@@ -550,7 +550,7 @@ impl Walker<'_> {
         } else if !self.is_last(e.id, b) {
             let later = self
                 .next_use(e.id, b)
-                .map(|n| format!(" at {}", self.at(n)))
+                .map(|n| self.later_at(e.id, n))
                 .unwrap_or_default();
             if b.ty.kind == Kind::Function {
                 self.error(
@@ -743,7 +743,7 @@ impl Walker<'_> {
                 .places
                 .get(&(e.id, root.uid))
                 .and_then(|u| u.next)
-                .map(|n| format!(" at {}", self.at(n)))
+                .map(|n| self.later_at(e.id, n))
                 .unwrap_or_default();
             self.error(
                 e.pos,

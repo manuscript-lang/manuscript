@@ -669,14 +669,27 @@ impl Checker {
                 i.case = Some(cs.name);
                 return i;
             }
-            self.res_error(
-                e.pos,
-                format!(
-                    "unknown or non-nullary alternative case {name_t} of {}; cases: {} (cases with payloads need call syntax)",
-                    self.syms.str(typ.name),
-                    list(&crate::stmts::case_names(self.syms, &typ), 12)
-                , name_t = self.syms.str(name)),
-            );
+            let names = crate::stmts::case_names(self.syms, &typ);
+            if names.is_empty() {
+                self.res_error(
+                    e.pos,
+                    format!(
+                        "{} has no member {}; a type name is followed only by an enum case",
+                        self.syms.str(typ.name),
+                        self.syms.str(name)
+                    ),
+                );
+            } else {
+                self.res_error(
+                    e.pos,
+                    format!(
+                        "unknown or non-nullary alternative case {name_t} of {}; cases: {} (cases with payloads need call syntax)",
+                        self.syms.str(typ.name),
+                        list(&names, 12),
+                        name_t = self.syms.str(name)
+                    ),
+                );
+            }
             i.ty = Some(invalid());
             return i;
         }
