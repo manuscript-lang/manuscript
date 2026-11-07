@@ -76,6 +76,9 @@ impl<'a> FnLower<'a> {
                 }
             };
             let mut val = r?;
+            if self.dead {
+                return Ok(());
+            }
             if p.ty.is(Builtin::Optional) {
                 let o = self.owned(val);
                 val = Val {

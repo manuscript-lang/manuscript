@@ -18,3 +18,4 @@ mod ownership;
 mod promise_fixes;
 mod subcodes;
 mod type_display;
+mod wrapper_passthrough;

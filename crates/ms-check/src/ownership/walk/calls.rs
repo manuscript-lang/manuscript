@@ -130,11 +130,12 @@ impl Walker<'_> {
         }
         self.facts.calls.insert(e.id, modes.clone());
         let name = self.call_name(callee);
-        let receiver_expr = match (&callee.kind, cx.m.resolution(e)) {
+        let member = method_callee(self.syms, self.cx.m, callee);
+        let receiver_expr = match (&member.kind, cx.m.resolution(e)) {
             (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
             _ => None,
         };
-        if let (ExprKind::Member { name, .. }, Some(r)) = (&callee.kind, receiver_expr)
+        if let (ExprKind::Member { name, .. }, Some(r)) = (&member.kind, receiver_expr)
             && self.syms.str(name) == "close"
             && let Resolution::Local(b) = cx.m.resolution(r)
         {
@@ -226,20 +227,27 @@ impl Walker<'_> {
             // it over, not a copy. A read in place (`xs.first()`) stays a borrow, and a type
             // parameter copies as its bound allows.
             let result_ty = self.cx.m.ty(e);
-            if mode == ParamMode::Borrow
-                && self.class_of(e) != Class::Copy
+            let passthrough = match self.cx.m.resolution(e) {
+                Resolution::Method(m) => wrapper_passthrough(self.syms, &m, &self.cx.m.ty(r)),
+                _ => None,
+            };
+            let takes_payload = self.class_of(e) != Class::Copy
                 && !self.cx.classes.clonable(self.syms, &result_ty)
                 && (unbounded_parameter(&result_ty).is_none() || self.wrapper_receiver(r))
-                && ty_contains(&self.cx.m.ty(r), &result_ty)
+                && ty_contains(&self.cx.m.ty(r), &result_ty);
+            let takes_preserved =
+                passthrough.is_some_and(|t| !self.cx.classes.clonable(self.syms, &t));
+            if mode == ParamMode::Borrow
+                && (takes_payload || takes_preserved)
                 && self.native_borrow_receiver(e).is_none()
             {
                 mode = ParamMode::Move;
-                if !args.is_empty()
+                if (takes_preserved || !args.is_empty())
                     && let Some(source) = self.native_borrow_receiver(r)
                 {
                     // The receiver is itself a native lend (`m.get(k)`, `xs.first()`): the
-                    // element stays in its collection, so `get(default)` taking it out would
-                    // copy it (`get()` without a default lends the payload in place).
+                    // element stays in its collection. Taking its payload into an owning
+                    // result would copy it; a plain `get()` still lends it in place.
                     let (from, text) = (self.expr_text(source), self.expr_text(r));
                     let why =
                         clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");
@@ -316,6 +324,16 @@ impl Walker<'_> {
                 }
             }
             self.check_overlap(e.pos, &format!("`{name}`"), &operands);
+        }
+        // A checked native container read used in place lends from its held receiver. Keep
+        // that result borrowed for inline lowering too; a temporary source or owning use
+        // keeps its existing boundary handling.
+        if d != Demand::Move
+            && self.class_of(e) != Class::Copy
+            && self.native_borrow_receiver(e).is_some()
+            && self.pure_origins(e).is_some()
+        {
+            self.facts.borrowed_reads.insert(e.id);
         }
         // Results. A borrow-returning callee returns a reference into its arguments: holding it is a
         // borrow of them, storing or returning it needs a copy, and when a source is a
@@ -620,8 +638,9 @@ impl Walker<'_> {
         };
         let modes = call_modes(self.syms, self.cx.m, call, args, self.cx.summaries);
         let mut written: Vec<(&Expr, ParamMode)> = Vec::new();
+        let member = method_callee(self.syms, self.cx.m, callee);
         if let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
-            (&callee.kind, self.cx.m.resolution(call))
+            (&member.kind, self.cx.m.resolution(call))
             && modes.receiver == Some(ParamMode::Mutate)
         {
             written.push((left, ParamMode::Mutate));

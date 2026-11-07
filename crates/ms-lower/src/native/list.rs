@@ -778,7 +778,16 @@ impl<'a> FnLower<'a> {
         } else {
             Mode::Borrow
         };
-        self.two_ways_mode(cond, ty, mode, yes, no)
+        let out = self.two_ways_mode(cond, ty, mode, yes, no)?;
+        // A scalar resource has no drop glue, so its storage mode is a borrow, but the join
+        // still owns it: its parent must close.
+        if mode == Mode::Borrow && !self.dead && self.part_closer_mir(ty)?.is_some() {
+            return Ok(Val {
+                v: out.v,
+                own: true,
+            });
+        }
+        Ok(out)
     }
 
     /// `two_ways` with the result's ownership chosen by the caller: `Borrow` joins two values

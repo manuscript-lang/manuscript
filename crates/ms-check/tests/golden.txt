@@ -6412,7 +6412,7 @@ test "unimported":
     let insert = [1].insert
     insert(index: 5, value: 9)
     return 0
-export fn main() Int:
+type	2	22	43	a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closureexport fn main() Int:
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
