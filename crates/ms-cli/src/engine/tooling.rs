@@ -415,6 +415,7 @@ pub(super) fn watched_files(syms: ms_syntax::Names, input: &str, checked: &Check
     if !checked.project_root.is_empty() {
         files.push(pathops::join(&[&checked.project_root, "ms.toml"]));
     }
+    files.extend(checked.links.iter().cloned());
     let Some(program) = &checked.program else {
         return files;
     };
@@ -438,6 +439,8 @@ pub(super) fn absolute(path: &str) -> Option<String> {
 pub(super) struct FileState {
     size: u64,
     modified: Option<SystemTime>,
+    /// Where a symbolic link points: retargeting it changes what an import resolves to.
+    link: Option<std::path::PathBuf>,
 }
 
 /// `None` for a file that does not exist.
@@ -446,6 +449,7 @@ pub(super) fn file_state(path: &str) -> Option<FileState> {
     Some(FileState {
         size: meta.len(),
         modified: meta.modified().ok(),
+        link: std::fs::read_link(path).ok(),
     })
 }
 

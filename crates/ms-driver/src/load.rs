@@ -50,6 +50,8 @@ pub struct Graph {
     pub project_root: String,
     pub configuration: String,
     pub diagnostics: Vec<Diagnostic>,
+    /// Symbolic links an import path passed through, so retargeting one is a source change.
+    pub links: Vec<String>,
 }
 
 /// Diagnostics pass through import edges unchanged; plain errors and cycles
@@ -496,6 +498,21 @@ impl Loader<'_> {
         Ok(key)
     }
 
+    /// Resolves a local import, noting the symbolic links its path passes through.
+    fn resolve(&mut self, importer: &str, path: &str) -> Result<String, ProjectError> {
+        use crate::project::Target;
+        let target = match crate::project::import_target(self.config, importer, path)? {
+            Target::Generated(module) => return Ok(module),
+            Target::Path(target) => target,
+        };
+        for link in crate::project::link_components(&self.config.root, &target) {
+            if !self.graph.links.contains(&link) {
+                self.graph.links.push(link);
+            }
+        }
+        crate::project::source_path(&self.config.root, &target, self.overlay)
+    }
+
     fn import_module(
         &mut self,
         syms: ms_syntax::Names,
@@ -507,15 +524,13 @@ impl Loader<'_> {
         let target = if let Some(target) = self.resolved.get(&request) {
             target.clone()
         } else {
-            let target =
-                crate::project::resolve_import(self.config, importer, &item.path, self.overlay)
-                    .map_err(|e| {
-                        Failure::diagnostic(Box::new(resolution(
-                            file,
-                            item.pos,
-                            explain_path_error(&e, &item.path),
-                        )))
-                    })?;
+            let target = self.resolve(importer, &item.path).map_err(|e| {
+                Failure::diagnostic(Box::new(resolution(
+                    file,
+                    item.pos,
+                    explain_path_error(&e, &item.path),
+                )))
+            })?;
             self.resolved.insert(request, target.clone());
             target
         };

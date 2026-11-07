@@ -14,6 +14,26 @@ pub fn resolve_import(
     path: &str,
     overlay: &Overlay,
 ) -> Result<String, ProjectError> {
+    match import_target(project, importer, path)? {
+        Target::Generated(module) => Ok(module),
+        Target::Path(target) => source_path(&project.root, &target, overlay),
+    }
+}
+
+/// An import before its symlinks are resolved.
+pub enum Target {
+    /// A module generated on load; no file exists.
+    Generated(String),
+    /// The path the import names, links unresolved.
+    Path(String),
+}
+
+/// The path a local import names, before symlink resolution and confinement.
+pub fn import_target(
+    project: &Project,
+    importer: &str,
+    path: &str,
+) -> Result<Target, ProjectError> {
     if path.contains('\\') {
         return Err(ProjectError::msg(
             "import paths use / separators; write \"./dir/file.ms\" instead of backslashes",
@@ -37,7 +57,10 @@ pub fn resolve_import(
                 )));
             }
             // Generated on load; no file exists, so there is nothing to canonicalize.
-            return Ok(crate::project::embed::module_path(&project.root, alias));
+            return Ok(Target::Generated(crate::project::embed::module_path(
+                &project.root,
+                alias,
+            )));
         }
         let base = project.aliases.get(alias).map(String::as_str).unwrap_or("");
         if base.is_empty() {
@@ -71,7 +94,36 @@ pub fn resolve_import(
             "imports require a relative path or alias; write \"./{path}\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml"
         )));
     }
-    source_path(&project.root, &target, overlay)
+    Ok(Target::Path(target))
+}
+
+/// The symbolic links among the components of `path` (relative paths are under `root`), as
+/// absolute paths: the entries whose retargeting changes what the import resolves to.
+pub fn link_components(root: &str, path: &str) -> Vec<String> {
+    let full = if pathops::is_abs(path) {
+        pathops::clean(path)
+    } else {
+        pathops::join(&[root, path])
+    };
+    let mut links = Vec::new();
+    let mut walked = String::new();
+    for part in full.split('/') {
+        if part.is_empty() && walked.is_empty() {
+            walked.push('/');
+            continue;
+        }
+        if part.is_empty() {
+            continue;
+        }
+        if !walked.ends_with('/') {
+            walked.push('/');
+        }
+        walked.push_str(part);
+        if std::fs::symlink_metadata(&walked).is_ok_and(|m| m.file_type().is_symlink()) {
+            links.push(walked.clone());
+        }
+    }
+    links
 }
 
 /// Canonicalize a source path within `root`, which must be canonical. An
