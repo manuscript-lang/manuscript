@@ -18,7 +18,7 @@ use crate::ir::{
     Block, ExternDef, ExternRole, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value,
 };
 use crate::types::Ty;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Only the in-place `s = s + piece` append, which an unoptimized build needs to keep a loop that
 /// grows a string linear.
@@ -159,9 +159,14 @@ fn collect(
     }
 }
 
+/// Fuses every builder append that can be fused independently of the others in one scan. Each
+/// fusion would otherwise cost a rescan and rewrite of the function, and a function with many
+/// interpolated appends would be quadratic.
 fn fuse_one(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let info = info(f);
+    let mut claimed: HashSet<(usize, usize)> = HashSet::new();
+    let mut plans = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             if ext_role(m, inst) != Some(ExternRole::StrBuilderAppend) {
@@ -181,80 +186,88 @@ fn fuse_one(m: &mut Module, fi: usize) -> bool {
                     .iter()
                     .any(|&(db, di)| db != bi || di < ii)
             });
-            if early || plan.pieces.len() > 8 {
+            if early || plan.pieces.len() > 8 || plan.remove.iter().any(|r| claimed.contains(r)) {
                 continue;
             }
-            apply(m, fi, bi, ii, plan);
-            return true;
+            claimed.extend(plan.remove.iter().copied());
+            plans.push((bi, ii, plan));
         }
     }
-    false
+    if plans.is_empty() {
+        return false;
+    }
+    apply(m, fi, plans);
+    true
 }
 
-fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
-    let app = m.funcs[fi].blocks[bi].insts[ii].clone();
-    let Imm::Ext(append_ext) = app.imm else {
-        return;
-    };
-    let sb = app.args[0];
-    let sb_ty = m.funcs[fi].ty(sb);
-    let int_ext = m.add_extern(ExternDef {
-        name: "msrt_strbuilder_append_int".to_string(),
-        params: vec![
-            Param {
-                ty: sb_ty,
-                mode: Mode::Borrow,
-            },
-            Param {
-                ty: Ty::INT,
-                mode: Mode::Borrow,
-            },
-        ],
-        ret: Ty::UNIT,
-        noreturn: false,
-        pure_: false,
-        fresh: false,
-        role: ExternRole::StrBuilderAppendInt,
-        leaf: true,
-        reads: false,
-    });
-    let f = &mut m.funcs[fi];
-    let last = plan.pieces.len() - 1;
-    let mut calls = Vec::new();
-    for (k, p) in plan.pieces.iter().enumerate() {
-        let res = if k == last {
-            app.res
-        } else {
-            Some(f.new_value(Ty::UNIT))
+/// Replaces each planned append with its piece calls and deletes the constructors and drops the
+/// plans absorb, rewriting every block once.
+fn apply(m: &mut Module, fi: usize, plans: Vec<(usize, usize, Plan)>) {
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    let mut replace: HashMap<(usize, usize), Vec<Inst>> = HashMap::new();
+    for (bi, ii, plan) in plans {
+        let app = m.funcs[fi].blocks[bi].insts[ii].clone();
+        let Imm::Ext(append_ext) = app.imm else {
+            continue;
         };
-        let (ext, arg) = match p {
-            Piece::Int(x) => (int_ext, *x),
-            Piece::Str(s) => (append_ext, *s),
-        };
-        calls.push(Inst {
-            op: Op::CallRt,
-            args: vec![sb, arg],
-            imm: Imm::Ext(ext),
-            res,
-            loc: app.loc,
+        let sb = app.args[0];
+        let sb_ty = m.funcs[fi].ty(sb);
+        let int_ext = m.add_extern(ExternDef {
+            name: "msrt_strbuilder_append_int".to_string(),
+            params: vec![
+                Param {
+                    ty: sb_ty,
+                    mode: Mode::Borrow,
+                },
+                Param {
+                    ty: Ty::INT,
+                    mode: Mode::Borrow,
+                },
+            ],
+            ret: Ty::UNIT,
+            noreturn: false,
+            pure_: false,
+            fresh: false,
+            role: ExternRole::StrBuilderAppendInt,
+            leaf: true,
+            reads: false,
         });
-    }
-    f.blocks[bi].insts.splice(ii..=ii, calls);
-    // Deleting shifts later positions in the append's own block; the splice grew it by
-    // `pieces - 1`, and removals there are all positions other than the replaced one.
-    let grown = plan.pieces.len() - 1;
-    for (b, blk) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0usize;
-        blk.insts.retain(|_| {
-            let orig = if b == bi && k > ii + grown {
-                k - grown
+        let f = &mut m.funcs[fi];
+        let last = plan.pieces.len() - 1;
+        let mut calls = Vec::new();
+        for (k, p) in plan.pieces.iter().enumerate() {
+            let res = if k == last {
+                app.res
             } else {
-                k
+                Some(f.new_value(Ty::UNIT))
             };
-            let drop_it = (b != bi || k < ii || k > ii + grown) && plan.remove.contains(&(b, orig));
-            k += 1;
-            !drop_it
-        });
+            let (ext, arg) = match p {
+                Piece::Int(x) => (int_ext, *x),
+                Piece::Str(s) => (append_ext, *s),
+            };
+            calls.push(Inst {
+                op: Op::CallRt,
+                args: vec![sb, arg],
+                imm: Imm::Ext(ext),
+                res,
+                loc: app.loc,
+            });
+        }
+        replace.insert((bi, ii), calls);
+        removed.extend(plan.remove);
+    }
+    let f = &mut m.funcs[fi];
+    for (b, blk) in f.blocks.iter_mut().enumerate() {
+        let old = std::mem::take(&mut blk.insts);
+        let mut insts = Vec::with_capacity(old.len());
+        for (k, inst) in old.into_iter().enumerate() {
+            if let Some(calls) = replace.remove(&(b, k)) {
+                insts.extend(calls);
+            } else if !removed.contains(&(b, k)) {
+                insts.push(inst);
+            }
+        }
+        blk.insts = insts;
     }
 }
 
