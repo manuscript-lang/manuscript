@@ -1602,7 +1602,7 @@ impl<'a> FnLower<'a> {
             }
             ms_check::api::hir::Body::Expr(e) => {
                 let moved_before = self.closed_on_path.clone();
-                let x = self.expr(e)?;
+                let x = self.returned_expr(e)?;
                 self.emit_return(Some(x));
                 self.closed_on_path = moved_before;
             }
