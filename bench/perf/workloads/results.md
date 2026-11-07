@@ -62,3 +62,28 @@ Worst gaps to work on next: c09 (3x Rust), c18, c03, c13 (2x Rust), c05 (2.8x Go
 `c09-ciphers` under callgrind (300 KB input, 43.7M instructions before): `String.from_scalars` took 3.8M, built a `Vec`, then copied it into the string. An all-ASCII list now narrows straight into the result (2.4M, whole program 41.4M, -5%; 100-scalar call 142 to 80 ns). Wall-clock moved 134 to 128 ms, inside the noise. The rest of the profile is spread thin: the compiled `transform` loop 25%, `owned_copy` 8%, `sub_scalars`, `replace`, `slice`, `realloc` 3-4% each.
 
 Profiling note: callgrind cannot map the 256 GiB allocator reservation, so `ensure_region` fails and every allocation goes to glibc `malloc` (it made `c09` look malloc-bound at 68M instructions). Shrink `PAGES_SIZE` and `GROW_CHUNKS` in `crates/ms-rt/src/alloc.rs` locally for a profile run and do not commit the change.
+
+## 2026-11-07, closing `stdout()` no longer flushes
+
+`stdout()` returns a new stream per call and a temporary stream closes its sink when it dies, so `try stdout().write(...)` ran `msrt_io_flush` after every write: one `write` system call per output line (863,660 for c18 at 3 MB of input, 17 bytes each). The reference programs for Go and Rust buffer their output. `Stdout.close` now leaves the process-wide buffer alone; it is flushed by `flush()`, at exit, before a child process starts, before anything is written to standard error, and on a trap or fault. Same machine and method as the section above, min of 5, revision `a12e611b` plus this change.
+
+| program | before ms | after ms | go ms | rust ms | ms/go | ms/rust |
+|---|---:|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 71.8 | 72.2 | 46.9 | 33.3 | 1.54x | 2.17x |
+| c05-calculator | 150.1 | 58.0 | 56.1 | 134.0 | 1.03x | 0.43x |
+| c09-ciphers | 128.3 | 58.6 | 62.0 | 42.8 | 0.94x | 1.37x |
+| c13-inventory-orders | 366.9 | 142.6 | 291.0 | 168.7 | 0.49x | 0.85x |
+| c14-dp-suite | 768.4 | 663.4 | 1639.7 | 521.0 | 0.40x | 1.27x |
+| c16-maze-bfs | 24.9 | 26.9 | 36.7 | 38.6 | 0.73x | 0.70x |
+| c18-cron-next-runs | 1789.0 | 883.6 | 1199.7 | 846.8 | 0.74x | 1.04x |
+| c25-log-analyzer | 23.8 | 23.5 | 62.2 | 23.8 | 0.38x | 0.99x |
+| c36-bank-ledger | 85.8 | 89.2 | 139.6 | 71.7 | 0.64x | 1.24x |
+| c44-unified-diff | 2.9 | 3.2 | 85.3 | 15.9 | 0.04x | 0.20x |
+
+The earlier "c05 is 2.8x Go" and "c09 is 3x Rust" gaps were this syscall cost, not computation: `c18` under callgrind ran 884M instructions against Rust's 837M. The workloads harness reads output through a pipe, which is what made the per-write flush expensive; with stdout sent to `/dev/null` the gap was only 1.2x. Biggest remaining gaps: c03 (2.2x Rust, `split` and `find` on one-byte separators), c09 and c36 (1.2-1.4x Rust).
+
+## 2026-11-07, texts built by `StringBuilder`, `repeat` and `replace` keep the ASCII flag
+
+A heap string carries an ASCII flag so `length`, `get` and `slice` need not count scalars. `StringBuilder.build` (and so `List.join`), `String.repeat` and `String.replace` produced unflagged strings, so each `length()` or `get(i)` on a 17 KB result rescanned it (235 ns per call). The stdlib suite against `baseline-2026-10-28.md` showed it as `string.index_char_at` 10.7 to 217 ns; after the change it is 7.6 ns. `msrt_strbuilder_freeze`, `msrt_string_repeat` and `fill_replaced` now flag an ASCII result (one vector scan for the builder).
+
+Other cases that read 2x or worse against that baseline on 2026-11-07 and reproduce when rerun alone, not fixed here: `fs.read_file_64k` 8 to 63 us (`read_file` returns a promise, so the program has two tasks and `offload` hands every read to a pool thread: two thread wake-ups per call instead of an inline read), `fs.write_file_64k` 138 to 220 us (same cause), `json.navigate` 49 to 105 ns (`Map.get` through `JsonValue.get` clones each value; callgrind shows 200k `slot_copy` calls per 100k iterations), `list.max_by_loop` 47.7 to 109 us (indexing `pts[best].y` twice per iteration; reading the value once is 2.5x faster).

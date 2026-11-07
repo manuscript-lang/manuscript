@@ -1135,7 +1135,7 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
         let total = text.len() * count as usize;
         let r = alloc_str(total);
         fill_repeated(r.ptr_word, text, total);
-        *out = r;
+        *out = if is_ascii(&*s) { r.with_ascii() } else { r };
         STATUS_OK
     }
 }
@@ -1306,7 +1306,11 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
         }
         core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, text.len() - i);
     }
-    out
+    if text.is_ascii() && new.is_ascii() {
+        out.with_ascii()
+    } else {
+        out
+    }
 }
 
 #[unsafe(no_mangle)]

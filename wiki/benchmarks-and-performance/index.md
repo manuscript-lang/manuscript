@@ -23,3 +23,4 @@ Perf and agent benchmarks, profiling.
 - [Freed large blocks stay resident after an `/io` burst](freed-large-blocks-stay-resident-after-an-io-burst.md): 64 in-flight 2 MiB requests leave 111 MB resident; pinning glibc's mmap threshold fixes it but slows JSON parse ~20%.
 - [Release LLVM builds split into parallel units](release-llvm-builds-split-into-parallel-units.md): one `opt`+`llc` per unit above 2 MiB of code; 350 s to 60 s at 122k lines, no cross-unit inlining; `MS_LLVM_UNITS` overrides.
 - [Callgrind needs a smaller allocator reservation](callgrind-needs-a-smaller-allocator-reservation.md): the 256 GiB reservation fails under valgrind, so profiles show glibc `malloc` costs the real run never pays.
+- [A temporary `stdout()` stream must not flush on close](a-temporary-stdout-stream-must-not-flush-on-close.md): per-write flush cost one syscall per output line and halved program speed through a pipe.
