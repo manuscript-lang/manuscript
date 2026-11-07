@@ -10,6 +10,7 @@ Evidence: [interpreter](../../crates/ms-mir/src/interp.rs), [native lowering](..
 Evidence: [simplifier and checked-CSE regressions](../../crates/ms-mir/tests/opt_simplify.rs), [dominator-scoped value numbering](../../crates/ms-mir/src/opt/simplify.rs).
 Evidence: [range analysis](../../crates/ms-mir/src/opt/range.rs), [saved-length regressions](../../crates/ms-mir/tests/opt_range.rs).
 Evidence: [integer conversion regression](../../tests/e2e/testdata/accept/int-float32-rounding.ms), [MIR conversion fixture](../../crates/ms-mir/tests/fixtures/int_to_float32.mir).
+Verify: both signed and unsigned integer conversions to `Float32` round directly to binary32. An intermediate binary64 conversion can erase which side of a midpoint a large integer is on; cover direct calls and bound conversion methods.
 Evidence: [backend settings and compile regression](../../crates/ms-clif/src/cg.rs), [profile options](../../crates/ms-clif/src/lib.rs).
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
 Verify: run `cargo test -p ms-mir --test it -- opt_simplify::`; preserve zero-divisor faults and the checked division overflow.

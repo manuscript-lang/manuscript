@@ -599,6 +599,12 @@ pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
     v as u64 as f64
 }
 
+/// `UInt64.to_float32`: round once to binary32, then widen for the runtime ABI.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_to_float32(v: i64) -> f64 {
+    f64::from(v as u64 as f32)
+}
+
 /// `UInt64` in decimal digits.
 pub fn format_u64(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
     let mut n = v;
@@ -653,6 +659,25 @@ mod tests {
         let mut out = Vec::new();
         format_radix_u64(u64::MAX, 16, &mut out);
         assert_eq!(out, b"ffffffffffffffff");
+    }
+
+    #[test]
+    fn uint64_to_float32_rounds_once() {
+        let cases = [
+            (4_611_686_293_305_294_849u64, 4_611_686_568_183_201_792.0),
+            (9_223_372_586_610_589_695, 9_223_372_036_854_775_808.0),
+            (9_223_372_586_610_589_696, 9_223_372_036_854_775_808.0),
+            (9_223_372_586_610_589_697, 9_223_373_136_366_403_584.0),
+            (9_223_373_686_122_217_471, 9_223_373_136_366_403_584.0),
+            (9_223_373_686_122_217_472, 9_223_374_235_878_031_360.0),
+            (9_223_373_686_122_217_473, 9_223_374_235_878_031_360.0),
+            (0, 0.0),
+            (16_777_217, 16_777_216.0),
+            (u64::MAX, 18_446_744_073_709_551_616.0),
+        ];
+        for (input, expected) in cases {
+            assert_eq!(msrt_uint_to_float32(input as i64), expected, "{input}");
+        }
     }
 
     #[test]

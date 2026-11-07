@@ -333,6 +333,7 @@ msrt_uint_compare(a: i64, b: i64) -> i64
 msrt_uint_div(a: i64, b: i64) -> i64
 msrt_uint_rem(a: i64, b: i64) -> i64
 msrt_uint_to_float(v: i64) -> f64
+msrt_uint_to_float32(v: i64) -> f64
 msrt_uint_to_string(v: i64, out: *mut StrVal)
 msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_unwind_drops() -> u8 @leaf

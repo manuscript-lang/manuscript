@@ -773,7 +773,12 @@ impl<'a> FnLower<'a> {
             self.b.inarrow_opt(x, inner)
         } else if types.is_float(result) {
             let float = if from == MTy::UINT64 {
-                self.call_runtime("msrt_uint_to_float", &[x], MTy::FLOAT)?
+                let sym = if result == MTy::FLOAT32 {
+                    "msrt_uint_to_float32"
+                } else {
+                    "msrt_uint_to_float"
+                };
+                self.call_runtime(sym, &[x], MTy::FLOAT)?
             } else if types.is_int(from) {
                 self.b.i2f(x, result)
             } else {
