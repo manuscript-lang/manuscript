@@ -58,6 +58,28 @@ impl Source {
     }
 }
 
+/// The names on `// ms: effect NAME` lines in the comment block directly above the declaration
+/// containing `offset`.
+pub fn declared_effect_lines(source: &str, offset: usize) -> Vec<String> {
+    if offset > source.len() || !source.is_char_boundary(offset) {
+        return Vec::new();
+    }
+    let before = &source[..offset];
+    let line_start = before.rfind('\n').map_or(0, |n| n + 1);
+    let mut names: Vec<String> = Vec::new();
+    for line in source[..line_start].lines().rev() {
+        let line = line.trim_start();
+        if !line.starts_with("//") {
+            break;
+        }
+        if let Some(name) = line.strip_prefix("// ms: effect ") {
+            names.push(name.trim().to_string());
+        }
+    }
+    names.reverse();
+    names
+}
+
 /// The `//` lines and `/* */` blocks that end on the line directly above the declaration
 /// containing `offset`, else a trailing `//` on the declaration's line. A blank line detaches the
 /// block. Markers are removed; text is otherwise preserved.

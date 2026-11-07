@@ -3,7 +3,7 @@
 //! exports of a checked program.
 
 use crate::guide::render;
-use crate::guide::source::{Source, leading_comment};
+use crate::guide::source::{Source, declared_effect_lines, leading_comment};
 use ms_check::api::checker::Names;
 use ms_check::api::stdlib;
 use ms_check::api::syntax::{DeclRef, FuncRef};
@@ -34,6 +34,8 @@ pub struct ApiDeclaration {
     pub name: String,
     /// Leading comment text.
     pub doc: String,
+    /// Effects the function declares with `// ms: effect NAME` lines (`std.fs.read`).
+    pub effects: Vec<String>,
     /// `fn`, `record`, `alternative`, `interface`, `native`, `constant`, `type`.
     pub kind: String,
     /// The checked type, spelled as the checker prints it.
@@ -486,6 +488,8 @@ fn document_symbol(
             d.declaration = format!("let {}: {}\n", syms.str(symbol.name), d.ty);
         }
         d.doc = leading_comment(source.map_or("", Source::text), decl.pos().offset as usize);
+        d.effects =
+            declared_effect_lines(source.map_or("", Source::text), decl.pos().offset as usize);
         d.members = document_members(syms, session, decl, source, &ty);
     } else {
         d.declaration = format!("type {}:\n", syms.str(symbol.name));

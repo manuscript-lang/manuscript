@@ -23,6 +23,8 @@ pub struct EntityRow {
     pub line: usize,
     pub exported: bool,
     pub effects: Vec<String>,
+    pub reach: Vec<String>,
+    pub permits: Vec<String>,
 }
 
 /// An inspection call site, as far as facts need it.
@@ -68,6 +70,8 @@ pub fn collect_facts(
                 exported: e.exported,
                 line: e.line,
                 effects: e.effects.clone(),
+                reach: e.reach.clone(),
+                permits: e.permits.clone(),
                 error: error_type(&e.ty),
                 ..Fact::default()
             },
@@ -165,6 +169,8 @@ pub fn collect_facts(
         fact.calls.sort();
         fact.external.sort();
         fact.effects.sort();
+        fact.reach.sort();
+        fact.permits.sort();
     }
     for list in facts.imports.values_mut() {
         list.sort();

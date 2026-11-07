@@ -169,6 +169,40 @@ pub fn location(uri: &str, range: Range) -> Json {
     obj([("uri", uri.into()), ("range", range.json())])
 }
 
+/// The effects line hover shows for a project or standard function: the declared effects it
+/// reaches, what it is permitted to reach, or that it is pure in the ambient sense.
+fn effects_line(
+    syms: ms_syntax::Names,
+    analysis: &Analysis,
+    info: &OccInfo,
+    shown: &str,
+) -> Option<String> {
+    if !shown.starts_with("fn(") {
+        return None;
+    }
+    let program = analysis.program.as_ref()?;
+    let id = match (&info.method, &info.symbol) {
+        (Some(m), _) if !syms.str(m.id).is_empty() => m.id,
+        (_, Some(s)) if syms.str(s.native).is_empty() => s.id,
+        _ => return None,
+    };
+    let reach = program
+        .declared_effects
+        .get(&id)
+        .cloned()
+        .unwrap_or_default();
+    let permits = program.effect_permits.get(&id).cloned().unwrap_or_default();
+    let mut parts = vec![if reach.is_empty() {
+        "effects: pure (ambient authority only)".to_string()
+    } else {
+        format!("effects: {}", reach.join(", "))
+    }];
+    if !permits.is_empty() {
+        parts.push(format!("permits: {}", permits.join(", ")));
+    }
+    Some(parts.join("  \n"))
+}
+
 /// The type hover shows for an occurrence, or `None` when its type did not resolve.
 pub fn hover_type(syms: ms_syntax::Names, info: &OccInfo) -> Option<String> {
     let mut shown = info.ty.clone()?;
@@ -230,6 +264,10 @@ pub fn navigation(
             return Json::Null;
         };
         let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
+        if let Some(line) = effects_line(syms, analysis, &info, &shown) {
+            value.push_str("\n\n");
+            value.push_str(&line);
+        }
         let docs = hover_documentation(syms, analysis, &info);
         if !docs.is_empty() {
             value.push_str("\n\n");

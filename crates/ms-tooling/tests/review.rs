@@ -142,6 +142,43 @@ fn effect_gain_ranks_through_callers() {
     }
 }
 
+fn declared_program(permit: bool, reach: bool) -> Facts {
+    let mut connect = fact("r.ms", "fn", "connect", 3);
+    let mut save = fact("r.ms", "fn", "save", 7);
+    save.calls = vec![connect.key.clone()];
+    if reach {
+        connect.reach = vec!["std.net.connect".into()];
+        save.reach = vec!["std.net.connect".into()];
+    }
+    if permit {
+        save.permits = vec!["std.net.*".into()];
+    }
+    facts_of(vec![connect, save])
+}
+
+#[test]
+fn new_permission_and_new_reach_are_effect_findings_and_permission_ranks_first() {
+    let base = declared_program(false, false);
+    let head = declared_program(true, true);
+    let findings = compare_facts(&base, &head, &input(&[8]));
+    let save = findings
+        .iter()
+        .find(|f| f.changes.iter().any(|c| c.starts_with("permits:")))
+        .expect("permission finding");
+    assert_eq!(save.tier, TIER_EFFECT);
+    assert_eq!(save.changes[0], "permits: + std.net.*");
+    assert!(
+        save.changes
+            .iter()
+            .any(|c| c == "reaches: + std.net.connect")
+    );
+    assert!(
+        save.evidence.iter().any(|e| e == "path: save -> connect"),
+        "{:?}",
+        save.evidence
+    );
+}
+
 #[test]
 fn review_reach_counts_distinct_callers_across_cycles() {
     let mut entry = fact("r.ms", "fn", "entry", 1);
@@ -220,7 +257,15 @@ fn report_is_stable_and_capped() {
     let input = input(&[]);
     let capped = diff_report(&base, &head, &input, ReviewOptions::default());
     assert!(capped.render("ascii").contains("+3 more (use --all)"));
-    let all = diff_report(&base, &head, &input, ReviewOptions { all: true });
+    let all = diff_report(
+        &base,
+        &head,
+        &input,
+        ReviewOptions {
+            all: true,
+            ..ReviewOptions::default()
+        },
+    );
     assert!(!all.render("ascii").contains("more (use --all)"));
     for format in ["ascii", "markdown", "json"] {
         assert_eq!(

@@ -361,6 +361,14 @@ impl Checker {
                 edges: node.edge_pos.clone(),
             });
         }
+        self.p.effect_permits = reach
+            .iter()
+            .filter(|n| n.project)
+            .filter_map(|n| {
+                let lines = n.allow_fn.as_ref().or(n.allow_file.as_ref())?;
+                Some((n.id, lines.clone()))
+            })
+            .collect();
         let resolved = resolve(&reach);
         self.p.declared_effects = resolved.declared;
         self.p.effect_violations = resolved.violations;

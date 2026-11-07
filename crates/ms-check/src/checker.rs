@@ -104,6 +104,9 @@ pub struct Program {
     pub effects: HashMap<Name, Vec<&'static str>>,
     /// Declared effects (`// ms: effect`) callers see, by callable id, sorted by name.
     pub declared_effects: HashMap<Name, Vec<String>>,
+    /// `allow_effect` patterns in force per project callable (its own lines, else its file's);
+    /// absent means no line, so the callable is pure.
+    pub effect_permits: HashMap<Name, Vec<String>>,
     /// Project callables that reach a declared effect no `// ms: allow_effect` line permits.
     pub effect_violations: Vec<crate::effect_reach::Violation>,
     /// Modules in dependency order (reachable bundled source modules first).

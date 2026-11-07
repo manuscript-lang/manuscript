@@ -12,6 +12,7 @@ struct Entry {
     kind: String,
     signature: String,
     doc: String,
+    effects: Vec<String>,
     words: Vec<String>,
     doc_words: Vec<String>,
     module_words: Vec<String>,
@@ -30,14 +31,16 @@ fn standard_index(syms: ms_syntax::Names) -> &'static [Entry] {
                 } else {
                     signature
                 };
-                index.push(new_entry(
+                let mut entry = new_entry(
                     &module.path,
                     short,
                     &d.name,
                     &d.kind,
                     &first_block(signature),
                     &d.doc,
-                ));
+                );
+                entry.effects = d.effects.clone();
+                index.push(entry);
                 for m in &d.members {
                     index.push(new_entry(
                         &module.path,
@@ -74,6 +77,7 @@ fn new_entry(path: &str, short: &str, name: &str, kind: &str, signature: &str, d
         kind: kind.to_string(),
         signature: signature.to_string(),
         doc: doc.to_string(),
+        effects: Vec::new(),
         words: split_words(name),
         doc_words: split_words(doc),
         module_words: split_words(short),
@@ -133,6 +137,8 @@ pub struct Match {
     pub signature: String,
     /// One-line description.
     pub doc: String,
+    /// Declared effects (`std.fs.read`); empty for a pure function.
+    pub effects: Vec<String>,
     /// The `ms search_symbol` path, such as `json.parse`.
     pub path: String,
     /// Ranking score; higher is better.
@@ -183,6 +189,7 @@ pub fn search(syms: ms_syntax::Names, query: &str, limit: usize) -> Vec<Match> {
             kind: e.kind.clone(),
             signature: e.signature.clone(),
             doc: first_line(&e.doc, 120),
+            effects: e.effects.clone(),
             path: std_path(&e.module, &e.name),
             score: total,
         });

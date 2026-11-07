@@ -181,6 +181,22 @@ fn classify(
     match (h, b) {
         (Some(h), None) if base_checked => {
             s.add(TIER_INTERNAL, "added".into(), "added", 1);
+            if !h.permits.is_empty() {
+                s.add(
+                    TIER_EFFECT,
+                    format!("permits: + {}", h.permits.join(", ")),
+                    "effect_permit",
+                    7,
+                );
+            }
+            if !h.reach.is_empty() {
+                s.add(
+                    TIER_EFFECT,
+                    format!("reaches: + {}", h.reach.join(", ")),
+                    "effect_reach",
+                    6,
+                );
+            }
             if h.exported {
                 s.add(
                     TIER_CONTRACT,
@@ -209,9 +225,17 @@ fn classify(
         return (s.finding, false);
     };
     if let Some(b) = b {
+        let reach = added(&h.reach, &b.reach);
+        if !reach.is_empty() {
+            s.finding
+                .evidence
+                .push(effect_path(h, &reach, head, |f| &f.reach));
+        }
         let gained = gained_effects(h, Some(b));
         if !gained.is_empty() {
-            s.finding.evidence.push(effect_path(h, &gained, head));
+            s.finding
+                .evidence
+                .push(effect_path(h, &gained, head, |f| &f.effects));
         }
     }
     let scored = !s.finding.changes.is_empty() && s.finding.score > 1;
@@ -264,6 +288,24 @@ fn compare(h: &Fact, b: &Fact, s: &mut Scorer) {
         );
         s.add(TIER_INTERNAL, change, "effect_loss", 1);
     }
+    let permits = added(&h.permits, &b.permits);
+    if !permits.is_empty() {
+        s.add(
+            TIER_EFFECT,
+            format!("permits: + {}", permits.join(", ")),
+            "effect_permit",
+            7,
+        );
+    }
+    let reach = added(&h.reach, &b.reach);
+    if !reach.is_empty() {
+        s.add(
+            TIER_EFFECT,
+            format!("reaches: + {}", reach.join(", ")),
+            "effect_reach",
+            6,
+        );
+    }
     if h.error != b.error {
         s.add(
             TIER_ERROR,
@@ -294,6 +336,11 @@ fn visibility(exported: bool) -> &'static str {
     if exported { "exported" } else { "private" }
 }
 
+/// Entries of `head` that `base` lacks.
+fn added(head: &[String], base: &[String]) -> Vec<String> {
+    head.iter().filter(|e| !base.contains(e)).cloned().collect()
+}
+
 fn gained_effects(h: &Fact, b: Option<&Fact>) -> Vec<String> {
     h.effects
         .iter()
@@ -304,14 +351,19 @@ fn gained_effects(h: &Fact, b: Option<&Fact>) -> Vec<String> {
 
 /// Follows callees that carry a gained effect down to the native operation or
 /// boundary where it enters, choosing the first name at each step.
-fn effect_path(start: &Fact, gained: &[String], head: &Facts) -> String {
+fn effect_path(
+    start: &Fact,
+    gained: &[String],
+    head: &Facts,
+    of: fn(&Fact) -> &Vec<String>,
+) -> String {
     let mut path = vec![start.name.clone()];
     let mut seen = BTreeSet::from([start.key.clone()]);
     let mut current = start;
     loop {
         let next = current.calls.iter().find_map(|key| {
             let callee = head.entities.get(key)?;
-            (!seen.contains(key) && has_any(&callee.effects, gained)).then_some(callee)
+            (!seen.contains(key) && has_any(of(callee), gained)).then_some(callee)
         });
         let Some(next) = next else { break };
         seen.insert(next.key.clone());

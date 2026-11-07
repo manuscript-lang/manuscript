@@ -212,19 +212,31 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             return Err(2);
         }
     };
-    let (mut diff, mut format, mut output, mut explain) =
-        (String::new(), String::new(), String::new(), String::new());
+    let (mut diff, mut format, mut output, mut explain, mut effect) = (
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+        String::new(),
+    );
     let (mut all, mut json) = (false, false);
     let mut i = 2;
     while i < args.len() {
         let (flag, value, inline) = split_value_option(
             &args[i],
-            &["--diff", "--format", "--explain", "-o", "--output"],
+            &[
+                "--diff",
+                "--format",
+                "--explain",
+                "--effect",
+                "-o",
+                "--output",
+            ],
         );
         match flag {
             "--all" => all = true,
             "--json" => json = true,
-            "--diff" | "--format" | "--explain" | "-o" | "--output" => {
+            "--diff" | "--format" | "--explain" | "--effect" | "-o" | "--output" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
@@ -235,6 +247,7 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
                     "--diff" => diff = value.to_string(),
                     "--format" => format = value.to_string(),
                     "--explain" => explain = value.to_string(),
+                    "--effect" => effect = value.to_string(),
                     _ => output = value.to_string(),
                 }
             }
@@ -274,12 +287,19 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             "--explain needs --diff; it explains one finding of a diff report, e.g. ms review ms.toml --diff change.patch --explain 1",
         ));
     }
+    if !effect.is_empty() && diff.is_empty() {
+        return Err(usage_error(
+            io,
+            "--effect needs --diff; it keeps the findings that reach or permit one effect, e.g. ms review ms.toml --diff change.patch --effect std.net.*",
+        ));
+    }
     Ok(ReviewRequest {
         filename,
         diff,
         format,
         output,
         explain,
+        effect,
         all,
     })
 }

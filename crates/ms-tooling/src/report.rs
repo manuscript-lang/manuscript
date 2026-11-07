@@ -65,8 +65,10 @@ pub struct Report {
 
 /// Selects how much of each section is shown.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct ReviewOptions {
+pub struct ReviewOptions<'a> {
     pub all: bool,
+    /// Keep only findings whose effect rows name this effect or match this pattern; empty keeps all.
+    pub effect: &'a str,
 }
 
 fn capped(rows: Vec<Vec<String>>, options: ReviewOptions) -> (Vec<Vec<String>>, usize) {
@@ -89,6 +91,21 @@ fn strings(list: &[&str]) -> Vec<String> {
     list.iter().map(|s| s.to_string()).collect()
 }
 
+/// Whether an effect row of `finding` (`permits: + std.fs.*`, `reaches: + std.net.connect`)
+/// lists `effect`, or a listed name matches `effect` read as a pattern.
+fn names_effect(finding: &Finding, effect: &str) -> bool {
+    finding.changes.iter().any(|change| {
+        let Some(list) = change
+            .strip_prefix("permits: + ")
+            .or_else(|| change.strip_prefix("reaches: + "))
+        else {
+            return false;
+        };
+        list.split(", ")
+            .any(|name| name == effect || ms_check::api::effects::matches(effect, name))
+    })
+}
+
 /// Builds the report for a change: head facts, base facts, and input.
 pub fn diff_report(
     base: &Facts,
@@ -96,7 +113,10 @@ pub fn diff_report(
     input: &DiffInput,
     options: ReviewOptions,
 ) -> Report {
-    let findings = compare_facts(base, head, input);
+    let mut findings = compare_facts(base, head, input);
+    if !options.effect.is_empty() {
+        findings.retain(|f| names_effect(f, options.effect));
+    }
     let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
     let mut attention = 0;
     for f in &findings {

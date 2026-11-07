@@ -14,11 +14,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":11,"jsonrpc":"2.0"}
 {"id":12,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":13,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":14,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
+{"id":14,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":15,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":16,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":17,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":18,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
+{"id":18,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":19,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":20,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":0},"start":{"character":15,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":25,"line":4},"start":{"character":18,"line":4}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":21,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":0},"start":{"character":12,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
@@ -58,11 +58,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":55,"jsonrpc":"2.0"}
 {"id":56,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":57,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
-{"id":58,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```"},"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}}}
+{"id":58,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}}}
 {"id":59,"jsonrpc":"2.0","result":{"placeholder":"helper","range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}}}
 {"id":60,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":61,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
-{"id":62,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```"},"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}}}
+{"id":62,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}}}
 {"id":63,"jsonrpc":"2.0","result":{"placeholder":"helper","range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}}}
 {"id":64,"jsonrpc":"2.0","result":[]}
 {"id":65,"jsonrpc":"2.0","result":null}
@@ -90,11 +90,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":87,"jsonrpc":"2.0"}
 {"id":88,"jsonrpc":"2.0","result":[]}
 {"id":89,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
-{"id":90,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmain: fn() Int\n```"},"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
+{"id":90,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmain: fn() Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
 {"id":91,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
 {"id":92,"jsonrpc":"2.0","result":[]}
 {"id":93,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
-{"id":94,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmain: fn() Int\n```"},"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
+{"id":94,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmain: fn() Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
 {"id":95,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":7,"line":3},"start":{"character":3,"line":3}}}}
 {"id":96,"jsonrpc":"2.0","result":[]}
 {"id":97,"jsonrpc":"2.0","result":null}
@@ -154,11 +154,11 @@
 {"id":151,"jsonrpc":"2.0","result":{"placeholder":"value","range":{"end":{"character":13,"line":5},"start":{"character":8,"line":5}}}}
 {"id":152,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":153,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":154,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
+{"id":154,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
 {"id":155,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
 {"id":156,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":157,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":158,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
+{"id":158,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
 {"id":159,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
 {"id":160,"jsonrpc":"2.0","result":[{"range":{"end":{"character":30,"line":5},"start":{"character":23,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":161,"jsonrpc":"2.0","result":[{"range":{"end":{"character":15,"line":4},"start":{"character":8,"line":4}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
@@ -186,11 +186,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":183,"jsonrpc":"2.0"}
 {"id":184,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":185,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
-{"id":186,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```"},"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
+{"id":186,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
 {"id":187,"jsonrpc":"2.0","result":{"placeholder":"helper","range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
 {"id":188,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":189,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
-{"id":190,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```"},"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
+{"id":190,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
 {"id":191,"jsonrpc":"2.0","result":{"placeholder":"helper","range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
 {"id":192,"jsonrpc":"2.0","result":[{"range":{"end":{"character":23,"line":6},"start":{"character":18,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":193,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":5},"start":{"character":8,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
@@ -254,11 +254,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":251,"jsonrpc":"2.0"}
 {"id":252,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":253,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":254,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}}}}
+{"id":254,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}}}}
 {"id":255,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}}}}
 {"id":256,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":257,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":258,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}}}}
+{"id":258,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}}}}
 {"id":259,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}}}}
 {"id":260,"jsonrpc":"2.0","result":[{"range":{"end":{"character":12,"line":4},"start":{"character":11,"line":4}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":261,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":3},"start":{"character":17,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
@@ -298,11 +298,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":295,"jsonrpc":"2.0"}
 {"id":296,"jsonrpc":"2.0","result":[]}
 {"id":297,"jsonrpc":"2.0","result":[{"range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":298,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhidden: fn() Int\n```"},"range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}}}}
+{"id":298,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhidden: fn() Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}}}}
 {"id":299,"jsonrpc":"2.0","result":{"placeholder":"hidden","range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}}}}
 {"id":300,"jsonrpc":"2.0","result":[]}
 {"id":301,"jsonrpc":"2.0","result":[{"range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":302,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhidden: fn() Int\n```"},"range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}}}}
+{"id":302,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhidden: fn() Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}}}}
 {"id":303,"jsonrpc":"2.0","result":{"placeholder":"hidden","range":{"end":{"character":9,"line":6},"start":{"character":3,"line":6}}}}
 {"id":304,"jsonrpc":"2.0","result":[]}
 {"id":305,"jsonrpc":"2.0","result":null}
@@ -333,11 +333,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":327,"jsonrpc":"2.0"}
 {"id":328,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":329,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":330,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
+{"id":330,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":331,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":332,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":333,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":334,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
+{"id":334,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":335,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}}}}
 {"id":336,"jsonrpc":"2.0","result":[]}
 {"id":337,"jsonrpc":"2.0","result":null}
@@ -373,11 +373,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":367,"jsonrpc":"2.0"}
 {"id":368,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":369,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
-{"id":370,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```"},"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}}}}
+{"id":370,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}}}}
 {"id":371,"jsonrpc":"2.0","result":{"placeholder":"helper","range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}}}}
 {"id":372,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":373,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
-{"id":374,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```"},"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}}}}
+{"id":374,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}}}}
 {"id":375,"jsonrpc":"2.0","result":{"placeholder":"helper","range":{"end":{"character":16,"line":2},"start":{"character":10,"line":2}}}}
 {"id":376,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":3},"start":{"character":18,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
 {"id":377,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":2},"start":{"character":17,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
@@ -409,11 +409,11 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":403,"jsonrpc":"2.0"}
 {"id":404,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":405,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":406,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
+{"id":406,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
 {"id":407,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
 {"id":408,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":13,"line":0},"start":{"character":7,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":409,"jsonrpc":"2.0","result":[{"range":{"end":{"character":16,"line":3},"start":{"character":10,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
-{"id":410,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
+{"id":410,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
 {"id":411,"jsonrpc":"2.0","result":{"placeholder":"double","range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
 {"id":412,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":3},"start":{"character":18,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
 {"id":413,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":2},"start":{"character":17,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
@@ -423,7 +423,7 @@
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS3001","message":"operator operands require the same independently known type, found Int * String; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)","range":{"end":{"character":14,"line":4},"start":{"character":13,"line":4}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms","version":2}}
-{"id":417,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```"},"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
+{"id":417,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: fn(Int) Int\n```\n\neffects: pure (ambient authority only)"},"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}}}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}}
