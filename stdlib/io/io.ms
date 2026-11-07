@@ -197,7 +197,8 @@ export fn stdin() ReadStream[Bytes]:
 // ---- Standard output and error -------------------------------------------------------------------------------------
 
 // Standard output, as text or bytes; the runtime's process-wide buffer is shared. Writes are buffered until flushed or
-// the process exits, and closing flushes.
+// the process exits, a child starts, or something is written to standard error. Closing does not flush: `stdout()` makes
+// a fresh stream each call, so a flush on close would turn every `stdout().write(...)` into a system call.
 type Stdout:
     unused: Bool = false
 
@@ -211,7 +212,6 @@ impl Sink[String] for Stdout:
         return ok(unit)
 
     var fn close() Unit!:
-        msrt_io_flush()
         return ok(unit)
 
 impl Sink[Bytes] for Stdout:
@@ -224,7 +224,6 @@ impl Sink[Bytes] for Stdout:
         return ok(unit)
 
     var fn close() Unit!:
-        msrt_io_flush()
         return ok(unit)
 
 // Standard error, as text or bytes.
