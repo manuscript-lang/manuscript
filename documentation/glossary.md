@@ -25,6 +25,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Result](core-language/errors/results.md) | Either a success value or an expected error value. Callers can handle or forward the error. |
 | [Optional](core-language/types/optionals.md) | Either a present value or `none`. Absence does not carry an error explanation. |
 | [Fault](core-language/errors/faults.md) | A programming failure, such as a violated invariant. It ends the current operation after cleanup. |
+| [Effect](core-language/functions/effects.md) | Something a function does beyond computing a value, such as printing, reading a file or the clock. `// ms: allow_effect` permits one; a function with no line is pure. |
 | [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
 | [Own](core-language/types/references.md) | The binding, field, or collection slot responsible for dropping a value. A move transfers that responsibility; replacing an owned value drops the old one. |
 | [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`let`, plain argument) or exclusive (`var`). It ends at its last use. |
