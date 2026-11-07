@@ -278,17 +278,19 @@ fn long_chain(n: usize) -> String {
     src
 }
 
-/// A chain of 1200 pieces fuses in groups within a bounded time. Before the chain walk was
+/// A chain of 30000 pieces fuses in groups within a bounded time. Before the chain walk was
 /// bounded, every link walked the whole chain below it on every pass round, which made
-/// `ms build` of such a program cubic in the chain's length (64 s for 2000 pieces).
+/// `ms build` of such a program cubic in the chain's length (64 s for 2000 pieces). Rejecting a
+/// chain that was too long still fused one group per round, which was quadratic (117 s for 32000
+/// pieces).
 #[test]
 fn a_long_concat_chain_fuses_in_linear_rounds() {
-    let mut m = parse_module(&long_chain(1200)).expect("parse");
+    let mut m = parse_module(&long_chain(30_000)).expect("parse");
     verify_module(&m).expect("input verifies");
     let start = std::time::Instant::now();
     assert!(opt::strfuse::run(&mut m));
     assert!(
-        start.elapsed() < std::time::Duration::from_secs(20),
+        start.elapsed() < std::time::Duration::from_secs(10),
         "strfuse took {:?}",
         start.elapsed()
     );
