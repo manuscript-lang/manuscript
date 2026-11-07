@@ -447,6 +447,7 @@ pub fn alloc(size: usize) -> *mut u8 {
             #[cfg(any(test, feature = "stats"))]
             {
                 live_add(s, 1);
+                live_bucket(class, 1);
             }
             return head;
         }
@@ -473,6 +474,7 @@ fn alloc_slow(size: usize) -> *mut u8 {
             #[cfg(any(test, feature = "stats"))]
             {
                 live_add(s, 1);
+                live_bucket(class, 1);
             }
             return head;
         }
@@ -486,6 +488,7 @@ fn alloc_slow(size: usize) -> *mut u8 {
             #[cfg(any(test, feature = "stats"))]
             {
                 live_add(s, 1);
+                live_bucket(class, 1);
             }
             return p;
         }
@@ -510,6 +513,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
             #[cfg(any(test, feature = "stats"))]
             {
                 live_add(s, 1);
+                live_bucket(NUM_CLASSES, 1);
             }
             return head;
         }
@@ -519,6 +523,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
             #[cfg(any(test, feature = "stats"))]
             {
                 live_add(s, 1);
+                live_bucket(NUM_CLASSES, 1);
             }
             return shared;
         }
@@ -531,6 +536,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
     #[cfg(any(test, feature = "stats"))]
     {
         live_add(s, 1);
+        live_bucket(NUM_CLASSES, 1);
     }
     p
 }
@@ -575,6 +581,7 @@ pub fn alloc_zeroed_cached(size: usize) -> *mut u8 {
     #[cfg(any(test, feature = "stats"))]
     {
         live_add(s, 1);
+        live_bucket(NUM_CLASSES, 1);
     }
     head
 }
@@ -605,6 +612,8 @@ pub unsafe fn free(p: *mut u8) {
     if let Some(word) = page_word(p) {
         let class = word as u8 as usize;
         let owner = word >> OWNER_SHIFT;
+        #[cfg(any(test, feature = "stats"))]
+        live_bucket(class, -1);
         if owner == s.heap {
             // SAFETY: a freed block is at least 16 bytes, so it can hold the free-list link in its
             // first word.
@@ -620,8 +629,12 @@ pub unsafe fn free(p: *mut u8) {
             unsafe { remote_free(owner as usize, p) };
         }
     } else if let Some(chunk) = grow_chunk_of(p) {
+        #[cfg(any(test, feature = "stats"))]
+        live_bucket(NUM_CLASSES, -1);
         grow_release(s, chunk);
     } else {
+        #[cfg(any(test, feature = "stats"))]
+        live_bucket(NUM_CLASSES, -1);
         // SAFETY: not a block of the reservation, so it came from malloc/realloc.
         unsafe { free_large(s, p) };
     }
@@ -806,6 +819,7 @@ fn grow_take(s: &mut State, size: usize) -> Option<*mut u8> {
     #[cfg(any(test, feature = "stats"))]
     {
         live_add(s, 1);
+        live_bucket(NUM_CLASSES, 1);
     }
     Some(grow_base(s.grow_chunk) as *mut u8)
 }
@@ -912,6 +926,37 @@ pub fn live_blocks() -> isize {
 #[cfg(feature = "stats")]
 static LIVE_ALL: core::sync::atomic::AtomicIsize = core::sync::atomic::AtomicIsize::new(0);
 
+/// Live blocks per size class, the last slot counting large blocks (`stats` builds). A block that
+/// `realloc` moved to another class is freed from the new one, so a bucket can read below zero;
+/// the leak report shows the nonzero ones to say what kind of block outlived the program.
+#[cfg(feature = "stats")]
+static LIVE_BUCKETS: [core::sync::atomic::AtomicIsize; NUM_CLASSES + 1] =
+    [const { core::sync::atomic::AtomicIsize::new(0) }; NUM_CLASSES + 1];
+
+#[cfg(any(test, feature = "stats"))]
+#[inline]
+fn live_bucket(_bucket: usize, _delta: isize) {
+    #[cfg(feature = "stats")]
+    LIVE_BUCKETS[_bucket].fetch_add(_delta, Ordering::Relaxed);
+}
+
+/// `(block size, live count)` for each size class with a nonzero count; the size is 0 for large
+/// blocks (`stats` builds).
+#[cfg(feature = "stats")]
+pub fn live_by_size() -> Vec<(usize, isize)> {
+    (0..=NUM_CLASSES)
+        .filter_map(|bucket| {
+            let n = LIVE_BUCKETS[bucket].load(Ordering::Relaxed);
+            let size = if bucket < NUM_CLASSES {
+                CLASS_SIZES[bucket] as usize
+            } else {
+                0
+            };
+            (n != 0).then_some((size, n))
+        })
+        .collect()
+}
+
 #[cfg(any(test, feature = "stats"))]
 fn live_add(s: &mut State, delta: isize) {
     s.live += delta;
@@ -923,6 +968,32 @@ fn live_add(s: &mut State, delta: isize) {
 mod tests {
     use super::*;
     use crate::testutil::lock;
+
+    #[cfg(feature = "stats")]
+    #[test]
+    fn live_blocks_are_counted_by_size_class() {
+        let _guard = lock();
+        let class_size = |n: &[(usize, isize)], size: usize| {
+            n.iter().find(|(s, _)| *s == size).map_or(0, |(_, c)| *c)
+        };
+        let before = live_by_size();
+        let a = alloc(40);
+        let b = alloc(40);
+        let big = alloc(MAX_SMALL + 1);
+        let held = live_by_size();
+        let size = CLASS_SIZES[class_of(40)] as usize;
+        assert_eq!(class_size(&held, size) - class_size(&before, size), 2);
+        assert_eq!(class_size(&held, 0) - class_size(&before, 0), 1);
+        // SAFETY: the blocks were allocated above and are freed once.
+        unsafe {
+            free(a);
+            free(b);
+            free(big);
+        }
+        let after = live_by_size();
+        assert_eq!(class_size(&after, size), class_size(&before, size));
+        assert_eq!(class_size(&after, 0), class_size(&before, 0));
+    }
 
     #[test]
     fn classes_cover_sizes() {
