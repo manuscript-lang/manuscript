@@ -775,6 +775,26 @@ impl Checker {
                 return format!("{message}; {fix}");
             }
         }
+        if (receiver.is(Builtin::Optional) || receiver.is(Builtin::Result))
+            && !receiver.args.is_empty()
+            && self
+                .member_names(&receiver.args[0])
+                .contains(&self.syms.str(name).to_string())
+        {
+            let (wrapper, unwrap) = if receiver.is(Builtin::Optional) {
+                ("an Optional", "`if let value = x:` or x.get(default)")
+            } else {
+                (
+                    "a Result",
+                    "`try x` inside a fn that returns Result, `if let value = x:` or x.get(default)",
+                )
+            };
+            return format!(
+                "{message}; the value is {wrapper} of {payload_t}, which has {name_t}: unwrap it first with {unwrap}",
+                payload_t = receiver.args[0].display(self.syms),
+                name_t = self.syms.str(name)
+            );
+        }
         if (receiver.is(Builtin::List) || receiver.is(Builtin::Map) || receiver.is(Builtin::Set))
             && matches!(self.syms.str(name), "some" | "every")
         {

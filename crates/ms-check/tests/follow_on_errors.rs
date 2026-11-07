@@ -44,3 +44,19 @@ fn a_promise_used_as_its_payload_explains_what_wait_returns() {
         "{found:?}"
     );
 }
+
+#[test]
+fn a_field_read_through_an_optional_or_result_names_the_unwrap() {
+    let found = messages(
+        "type P:\n    id: Int\n\nfn find() P?:\n    return none\n\nfn load() P!:\n    return ok(P(id: 1))\n\nfn main() Int:\n    let a = find()\n    let b = load()\n    return a.id + b.id\n",
+    );
+    assert_eq!(found.len(), 2, "{found:?}");
+    assert!(
+        found[0].contains("an Optional of P, which has id"),
+        "{found:?}"
+    );
+    assert!(
+        found[1].contains("a Result of P, which has id"),
+        "{found:?}"
+    );
+}

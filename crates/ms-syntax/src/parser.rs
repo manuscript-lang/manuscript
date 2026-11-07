@@ -1808,7 +1808,7 @@ impl<'a> Parser<'a> {
                 }
                 if self.kind() == Tok::Comma {
                     let c = self.peek();
-                    return self.fail(c, "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value");
+                    return self.fail(c, "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)");
                 }
                 self.need(Tok::In)?;
                 let iter = self.expression(0)?;

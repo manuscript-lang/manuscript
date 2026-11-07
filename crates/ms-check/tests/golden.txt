@@ -3418,7 +3418,7 @@ fn g() Int: return 1
     for i, x in [1]:
         return i
     return 0
-parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.valuefn f() Int:
+parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)fn f() Int:
     let n = [1].map(fn(x) => x + 1)
     return 0
 parse	2	27	38	expected a name, found '='fn f() Int:
