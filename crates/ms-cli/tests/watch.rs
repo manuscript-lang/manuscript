@@ -127,3 +127,38 @@ fn test_reruns_after_each_change() {
     assert_eq!(watch.interrupt(), Some(130));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn check_watch_reruns_when_a_broken_dependency_is_repaired() {
+    let dir = scratch("check-dependency");
+    let dependency = dir.join("dep.ms");
+    let valid = "export fn value() Int: 3\n";
+    std::fs::write(&dependency, valid).unwrap();
+    std::fs::write(dir.join("main.ms"), include_str!("watch/imports_value.ms")).unwrap();
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    save(&dependency, "export fn value(\n");
+    watch.until("ms: waiting for changes");
+
+    // The broken import loaded no modules, yet the dependency is still watched.
+    save(&dependency, valid);
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn check_watch_sees_a_new_file_in_an_existing_subdirectory() {
+    let dir = scratch("check-subdirectory");
+    std::fs::create_dir_all(dir.join("demo/src")).unwrap();
+    std::fs::write(dir.join("demo/src/old.ms"), "export fn old() Int: 1\n").unwrap();
+    let mut watch = Watch::start(&dir, &["check", "demo", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    save(&dir.join("demo/src/new.ms"), "export fn broken(\n");
+    watch.until("new.ms");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}

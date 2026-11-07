@@ -28,11 +28,16 @@ impl Files {
     /// The input, its manifest and every local module it loads, as of now.
     fn refresh(&mut self, syms: ms_syntax::Names, input: &str) {
         let checked = analyze_with(syms, input, &Overlay::new(), false, false);
+        let kept = std::mem::take(&mut self.0);
         self.0 = watched_files(syms, input, &checked)
             .into_iter()
             .chain(absolute(input))
             .map(|path| (path.clone(), file_state(&path)))
             .collect();
+        // A module that dropped out of the graph (a broken import loads none) stays watched.
+        for (path, state) in kept {
+            self.0.entry(path).or_insert(state);
+        }
     }
 
     /// Whether any watched file changed since the last call.

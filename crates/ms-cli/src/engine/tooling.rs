@@ -95,11 +95,17 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
         if due.is_some_and(|at| Instant::now() >= at) {
             due = None;
             let (_, files) = analysis_once(syms, request, io);
+            // A file that dropped out of the graph (a broken import loads no modules) stays
+            // watched, so repairing it reruns the check.
+            let kept = std::mem::take(&mut watched);
             watched = files
                 .into_iter()
                 .chain(request.targets.iter().filter_map(|t| absolute(t)))
                 .map(|path| (path.clone(), file_state(&path)))
                 .collect();
+            for (path, state) in kept {
+                watched.entry(path).or_insert(state);
+            }
             let _ = writeln!(io.stderr, "ms: waiting for changes");
             let _ = io.stdout.flush();
         }
@@ -149,6 +155,7 @@ fn analysis_once(
             request.targets.join(", ")
         );
     }
+    files.extend(selection.scanned.iter().cloned());
     for input in &selection.inputs {
         let checked = analyze_with(syms, &input.path, &Overlay::new(), check, check);
         if request.fix {
