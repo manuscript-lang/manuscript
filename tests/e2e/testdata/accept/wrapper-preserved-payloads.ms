@@ -137,3 +137,41 @@ test "discarded owned errors close while borrowed errors stay alive":
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,")
     try borrowed_error(log.clone())
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,31,")
+
+fn specialized_optional[T](value: T?, create: fn() Int) T!Int:
+    return value.ok_or_else[Int](create)
+
+fn specialized_error[T](value: Int!T) String!T:
+    return value.map[String](fn item: "{item}")
+
+fn specialized_transfers(log: String) Unit:
+    let present: Marker? = Marker(60, log.clone())
+    let _first = specialized_optional(present, fn: 0)
+    let failed: Int!Marker = error(Marker(61, log))
+    let _second = specialized_error(failed)
+
+test "specialized direct generic methods transfer instead of retaining reusable captures":
+    let tmp = temporary("wrapper-specialized-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    try write_file(log, "").wait()
+    specialized_transfers(log.clone())
+    try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "61,60,")
+
+type Box:
+    items: List[Int]
+
+impl Box:
+    fn read[T](_tag: T) List[Int]: self.items
+
+    var fn change[T](_tag: T) Int:
+        self.items.append(3)
+        return self.items.length()
+
+test "specialized source methods and indexed function calls keep their receiver paths":
+    var box = Box([1, 2])
+    try expect_equal(box.read[Int](0).length(), 2)
+    try expect_equal(box.change[Int](0), 3)
+    try expect_equal(box.items, [1, 2, 3])
+
+    let callbacks = [fn(value: Int) Int: value + 1]
+    try expect_equal(callbacks[0](4), 5)

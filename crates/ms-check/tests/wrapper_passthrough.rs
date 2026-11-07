@@ -115,3 +115,23 @@ fn preserved_bound_payloads_require_clonable() {
         );
     }
 }
+
+#[test]
+fn specialized_source_receivers_preserve_borrow_and_overlap_checks() {
+    for (source, expected) in [
+        (
+            include_str!("wrapper_passthrough/reject-specialized-source-borrow.ms"),
+            "while `view` borrows it",
+        ),
+        (
+            include_str!("wrapper_passthrough/reject-specialized-source-overlap.ms"),
+            "overlaps argument",
+        ),
+    ] {
+        let got = diagnostics(source);
+        assert!(
+            got.iter().any(|d| d.contains(expected)),
+            "{source}: {got:?}"
+        );
+    }
+}

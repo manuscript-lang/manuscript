@@ -76,3 +76,26 @@ fn bound_transformed_error_resource() Bool:
 fn collection_get_still_borrows() Int:
     let values = [Marker(1)]
     return values.first().get().id
+
+fn direct_specialized_optional[T, E](value: T?, create: fn() E) T!E:
+    return value.ok_or_else[E](create)
+
+fn direct_specialized_result[T, E, U](value: T!E, transform: fn(T) U) U!E:
+    return value.map[U](transform)
+
+type Box:
+    items: List[Int]
+
+impl Box:
+    fn read[T](_tag: T) List[Int]: self.items
+
+    var fn change[T](_tag: T) Int:
+        self.items.append(3)
+        return self.items.length()
+
+fn specialized_source_and_indexed_call() Int:
+    var box = Box([1, 2])
+    let count = box.read[Int](0).length()
+    let changed = box.change[Int](0)
+    let callbacks = [fn(value: Int) Int: value + 1]
+    return count + changed + callbacks[0](4)

@@ -581,12 +581,7 @@ impl Walker<'_> {
     /// A method used as a value (`xs.append`, `re.find`, or specialized, `log.error[Unit]`):
     /// the method and its receiver expression.
     pub(super) fn method_value_parts<'e>(&self, e: &'e Expr) -> Option<(MethodRef, &'e Expr)> {
-        let member = match &e.kind {
-            ExprKind::Apply { left, .. } if self.cx.m.info(e).native_str(self.syms) != "index" => {
-                left
-            }
-            _ => e,
-        };
+        let member = method_callee(self.syms, self.cx.m, e);
         let ExprKind::Member { left, .. } = &member.kind else {
             return None;
         };

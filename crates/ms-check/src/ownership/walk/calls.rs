@@ -130,11 +130,12 @@ impl Walker<'_> {
         }
         self.facts.calls.insert(e.id, modes.clone());
         let name = self.call_name(callee);
-        let receiver_expr = match (&callee.kind, cx.m.resolution(e)) {
+        let member = method_callee(self.syms, self.cx.m, callee);
+        let receiver_expr = match (&member.kind, cx.m.resolution(e)) {
             (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
             _ => None,
         };
-        if let (ExprKind::Member { name, .. }, Some(r)) = (&callee.kind, receiver_expr)
+        if let (ExprKind::Member { name, .. }, Some(r)) = (&member.kind, receiver_expr)
             && self.syms.str(name) == "close"
             && let Resolution::Local(b) = cx.m.resolution(r)
         {
@@ -627,8 +628,9 @@ impl Walker<'_> {
         };
         let modes = call_modes(self.syms, self.cx.m, call, args, self.cx.summaries);
         let mut written: Vec<(&Expr, ParamMode)> = Vec::new();
+        let member = method_callee(self.syms, self.cx.m, callee);
         if let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
-            (&callee.kind, self.cx.m.resolution(call))
+            (&member.kind, self.cx.m.resolution(call))
             && modes.receiver == Some(ParamMode::Mutate)
         {
             written.push((left, ParamMode::Mutate));

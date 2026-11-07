@@ -517,9 +517,10 @@ impl Walker<'_> {
             return Some(Vec::new());
         };
         let mut out = Vec::new();
+        let member = method_callee(self.syms, self.cx.m, callee);
         if ret_borrow.receiver
             && let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
-                (&callee.kind, self.cx.m.resolution(e))
+                (&member.kind, self.cx.m.resolution(e))
         {
             out.push(&**left);
         }
