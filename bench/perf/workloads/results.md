@@ -81,3 +81,9 @@ Profiling note: callgrind cannot map the 256 GiB allocator reservation, so `ensu
 | c44-unified-diff | 2.9 | 3.2 | 85.3 | 15.9 | 0.04x | 0.20x |
 
 The earlier "c05 is 2.8x Go" and "c09 is 3x Rust" gaps were this syscall cost, not computation: `c18` under callgrind ran 884M instructions against Rust's 837M. The workloads harness reads output through a pipe, which is what made the per-write flush expensive; with stdout sent to `/dev/null` the gap was only 1.2x. Biggest remaining gaps: c03 (2.2x Rust, `split` and `find` on one-byte separators), c09 and c36 (1.2-1.4x Rust).
+
+## 2026-11-07, texts built by `StringBuilder`, `repeat` and `replace` keep the ASCII flag
+
+A heap string carries an ASCII flag so `length`, `get` and `slice` need not count scalars. `StringBuilder.build` (and so `List.join`), `String.repeat` and `String.replace` produced unflagged strings, so each `length()` or `get(i)` on a 17 KB result rescanned it (235 ns per call). The stdlib suite against `baseline-2026-10-28.md` showed it as `string.index_char_at` 10.7 to 217 ns; after the change it is 7.6 ns. `msrt_strbuilder_freeze`, `msrt_string_repeat` and `fill_replaced` now flag an ASCII result (one vector scan for the builder).
+
+Other cases that read 2x or worse against that baseline on 2026-11-07 and reproduce when rerun alone, not fixed here: `fs.read_file_64k` 8 to 63 us (`read_file` returns a promise, so the program has two tasks and `offload` hands every read to a pool thread: two thread wake-ups per call instead of an inline read), `fs.write_file_64k` 138 to 220 us (same cause), `json.navigate` 49 to 105 ns (`Map.get` through `JsonValue.get` clones each value; callgrind shows 200k `slot_copy` calls per 100k iterations), `list.max_by_loop` 47.7 to 109 us (indexing `pts[best].y` twice per iteration; reading the value once is 2.5x faster).
