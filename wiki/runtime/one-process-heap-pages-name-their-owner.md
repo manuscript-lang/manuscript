@@ -9,3 +9,5 @@ Evidence: `crates/ms-rt/src/alloc.rs` tests (`a_released_heap_is_adopted_with_it
 Verify: the unmapped base must be an address no pointer reaches (`UNMAPPED`); a zero base makes every low malloc address look like a heap block, and `fault::address_ordered_tables` crashed at start on a non-PIE binary.
 
 The per-string scalar-count and position hint is gone (it was keyed by address and went stale when a string moved threads). Cost, measured: `s.get(i)` over a 200k-character ASCII string went from 6 ms to 554 ms (O(n) per call). A real fix stores an ASCII flag in the string tag, not a cache.
+
+Non-ASCII text still pays O(index) per `get`, `scalar_at` and `slice` with nonnegative bounds (2026-11-07: `get(i)` over every index of a 100k-scalar mixed-script string, 23 s before walking from the front without counting the whole string, 7.9 s after). A cache keyed by address is ruled out for the reason above; a real fix needs scalar-index data stored in the string itself, and the string tag has no free bit.

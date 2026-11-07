@@ -151,6 +151,29 @@ pub fn offset_of(s: &[u8], mut n: usize) -> usize {
     i
 }
 
+/// Byte offset reached by moving `n` scalars forward from byte offset `from`, or `None` when
+/// fewer than `n` scalars remain. Runs of eight ASCII bytes are skipped a word at a time, and no
+/// scalar count of the whole string is needed, so reaching a nearby index costs the distance only.
+pub fn advance(s: &[u8], from: usize, mut n: usize) -> Option<usize> {
+    let mut i = from;
+    while n > 0 {
+        if i >= s.len() {
+            return None;
+        }
+        if n >= 8 && i + 8 <= s.len() {
+            let w = u64::from_le_bytes(s[i..i + 8].try_into().unwrap());
+            if w & 0x8080_8080_8080_8080 == 0 {
+                i += 8;
+                n -= 8;
+                continue;
+            }
+        }
+        i += if s[i] < 0x80 { 1 } else { decode(&s[i..]).1 };
+        n -= 1;
+    }
+    Some(i)
+}
+
 /// Unicode White_Space, as `unicode.IsSpace`.
 pub fn is_space(c: u32) -> bool {
     match char::from_u32(c) {
