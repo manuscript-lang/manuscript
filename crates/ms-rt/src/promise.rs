@@ -982,6 +982,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
     let start = Start {
         id,
         closure: work as usize,
+        at: crate::sys::monotonic_ns(),
     };
     if here || sched::current() == sched::NONE || sched::pinned_here() {
         execute(start);
@@ -1005,6 +1006,33 @@ pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi
     // The caller hands the closure over: the promise owns it until the work runs or it is dropped.
     t.flags[i] |= DEFERRED;
     t.retry_state[i] = work as usize;
+}
+
+/// Runs promise `id` on the waiter's own stack if no thread has taken it yet: the closure leaves
+/// its queue and runs here under a guard, so a fault still ends only that promise. Costs about a
+/// call, against a task start. Only an unbounded wait does this; a wait with a deadline cannot
+/// stop the work, so it leaves the promise to run as a task.
+fn run_unstarted(id: i64) {
+    let t = table();
+    let Some(i) = index(t, id) else { return };
+    if t.closure[i] == 0 || t.thread[i] != NOT_STARTED || t.flags[i] & WANT_CANCEL != 0 {
+        return;
+    }
+    let Some(closure) = sched::remove_pending(id) else {
+        return;
+    };
+    let mut msg = crate::string::NO_STR;
+    // SAFETY: the promise owns the closure until `Ended`; the entry calls it as a task would.
+    let status =
+        unsafe { fault::msrt_guard_call(task::closure_entry, closure as *mut u8, &mut msg) };
+    let report = if status == 1 {
+        fault::fault_report(&msg, &[])
+    } else {
+        Vec::new()
+    };
+    // SAFETY: the guard handed over the message, released once.
+    unsafe { crate::string::release_opt(&msg) };
+    apply(Event::Ended { id, status, report });
 }
 
 /// Runs the deferred work of `id` if it has not run: the caller is the waiter.
@@ -1154,6 +1182,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
         (Some(o), i) => Some(o.min(i)),
         (None, i) => Some(i),
     };
+    if deadline.is_none() {
+        run_unstarted(id);
+    }
     run_deferred(id, deadline);
     loop {
         let t = table();
@@ -1383,6 +1414,35 @@ mod tests {
         msrt_promise_drop(id);
         // A dropped id is stale: done reads as finished and the slot's next promise is distinct.
         assert_eq!(msrt_promise_done(id), 1);
+        task::teardown();
+    }
+
+    crate::isolate_static! {
+        static RAN_IN: u64 = 0;
+    }
+
+    unsafe extern "C-unwind" fn note_task(_: *mut Closure) {
+        // SAFETY: called from a running task; stores a stack Int the callee takes.
+        unsafe {
+            *RAN_IN.ptr() = task::msrt_task_current();
+            let mut v = 1i64;
+            msrt_promise_put(*ID.ptr(), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn waiting_on_a_promise_nobody_took_runs_it_in_the_waiters_task() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, note_task);
+        // SAFETY: the test runs as a task.
+        let me = unsafe { task::msrt_task_current() };
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        // SAFETY: this isolate's state.
+        assert_eq!(unsafe { *RAN_IN.ptr() }, me);
+        assert_eq!(take_int(id), 1);
+        msrt_promise_drop(id);
         task::teardown();
     }
 

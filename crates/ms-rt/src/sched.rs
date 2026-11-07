@@ -1,9 +1,9 @@
 //! Scheduler threads: where `promise(fn)` runs.
 //!
-//! The program starts on one thread. A promise started with `promise(fn)` is placed on a thread:
-//! the caller's own, or the next one in round-robin order when that one has less to do (the
-//! caller itself is not counted). A thread starts the first time a promise is placed on it, up to
-//! the core count (`msrt_runtime_set_threads` or `MS_THREADS` change the limit), so a program that
+//! The program starts on one thread. A promise started with `promise(fn)` is queued on the
+//! caller's own thread and starts nowhere until someone needs it: its waiter runs it inline if
+//! nobody took it, or an idle thread takes the oldest queued one. A thread starts when a promise is
+//! queued and none is idle, up to the core count (`msrt_runtime_set_threads` or `MS_THREADS` change the limit), so a program that
 //! never overlaps work stays on one thread.
 //!
 //! Each thread is an isolate with its own task scheduler and poller. Its only shared state is its
@@ -18,7 +18,7 @@
 use crate::isolate;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 /// Most scheduler threads. The thread index lives in six bits of a promise id.
 pub const MAX_THREADS: usize = 63;
@@ -82,7 +82,17 @@ impl Drop for Pin {
 pub(crate) struct Start {
     pub id: i64,
     pub closure: usize,
+    /// When it was queued (monotonic ns); 0 for a start that is run at once.
+    pub at: i64,
 }
+
+/// How long a start waits in its creator's queue before another thread may take it. Most forks
+/// finish or are joined within this time, so they never pay for a task; a task start costs a few
+/// microseconds, so a start that outlives the beat is worth moving. It is also long enough that a
+/// creator which is about to wait on its own first promise (slower in a debug build) gets there
+/// first: a start that captures a native stream is bound to the thread that first uses it, and
+/// the terminal events test fails when a thief takes it (20 us was too short).
+const BEAT_NS: i64 = 2_000_000;
 
 /// What a thread tells another about a promise.
 pub(crate) enum Event {
@@ -128,6 +138,8 @@ struct Slot {
     live: AtomicU32,
     /// Promises waiting in `mail.pending`.
     pending: AtomicU32,
+    /// When the oldest of them was queued, or 0 when none is.
+    front_at: AtomicI64,
     /// Whether `mail.events` may hold events.
     signalled: AtomicU32,
     /// The registry slot of the thread's isolate, or `usize::MAX` before it runs.
@@ -143,6 +155,7 @@ impl Slot {
             busy: AtomicU32::new(0),
             live: AtomicU32::new(0),
             pending: AtomicU32::new(0),
+            front_at: AtomicI64::new(0),
             signalled: AtomicU32::new(0),
             isolate: AtomicUsize::new(usize::MAX),
             root: AtomicU64::new(0),
@@ -168,8 +181,14 @@ static HANDLES: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new())
 crate::isolate_static! {
     /// This thread's index, or `usize::MAX` before it has one.
     static INDEX: usize = usize::MAX;
-    /// The thread after which the next promise is offered.
-    static CURSOR: usize = 0;
+}
+
+/// Publishes the length and oldest age of a queue, under its lock.
+fn publish(slot: &Slot, mail: &Mail) {
+    slot.pending
+        .store(mail.pending.len() as u32, Ordering::SeqCst);
+    let at = mail.pending.front().map_or(0, |s| s.at);
+    slot.front_at.store(at, Ordering::SeqCst);
 }
 
 fn lock(m: &Mutex<Mail>) -> std::sync::MutexGuard<'_, Mail> {
@@ -226,29 +245,6 @@ pub extern "C-unwind" fn msrt_runtime_limit() -> i64 {
     limit() as i64
 }
 
-fn load_of(thread: usize) -> u32 {
-    SLOTS[thread].live.load(Ordering::SeqCst) + SLOTS[thread].pending.load(Ordering::SeqCst)
-}
-
-/// Chooses the thread for a new promise: the caller's, or the next one in round-robin order if
-/// it has less to do. A thread's load is its promise tasks (running or waiting) plus the starts
-/// queued for it.
-fn place(me: usize) -> usize {
-    let n = limit();
-    if n <= 1 {
-        return me;
-    }
-    // SAFETY: this isolate's state.
-    let cursor = unsafe { &mut *CURSOR.ptr() };
-    let mut next = (*cursor + 1) % n;
-    if next == me {
-        next = (next + 1) % n;
-    }
-    *cursor = next;
-    let mine = load_of(me);
-    if load_of(next) < mine { next } else { me }
-}
-
 /// Makes thread `index` exist.
 fn ensure_started(index: usize) {
     let mut handles = HANDLES.lock().unwrap_or_else(|e| e.into_inner());
@@ -284,47 +280,46 @@ pub(crate) fn warm(n: usize) {
     }
 }
 
-/// Sends a start to a scheduler thread, placed by load.
+/// Queues a start on the calling thread's own queue. Nothing is sent anywhere: a promise that
+/// nobody takes is run by its waiter (`promise::run_unstarted`), which costs about a call. An idle
+/// thread takes the oldest queued start; when none is idle and the limit allows, one more thread is
+/// started so there is someone to take it.
 pub(crate) fn submit(start: Start) {
     let me = current();
-    let target = if me == NONE { me } else { place(me) };
-    debug_assert!(target < MAX_THREADS || me == NONE);
-    if target == NONE {
+    if me == NONE {
         unreachable!("submit is for scheduler threads");
     }
-    if target != me {
-        ensure_started(target);
-    }
+    let first;
     {
-        let mut mail = lock(&SLOTS[target].mail);
+        let mut mail = lock(&SLOTS[me].mail);
+        first = mail.pending.is_empty();
         mail.pending.push_back(start);
-        SLOTS[target]
-            .pending
-            .store(mail.pending.len() as u32, Ordering::SeqCst);
+        publish(&SLOTS[me], &mail);
     }
-    if target != me {
-        wake(target);
-    }
-    if SLOTS[target].busy.load(Ordering::SeqCst) > 0 || target == me {
-        wake_idle(target);
+    if first && IDLE.load(Ordering::Acquire) & !(1u64 << me) != 0 {
+        wake_idle(me);
+    } else {
+        let next = STARTED.load(Ordering::Acquire);
+        if next < limit() {
+            ensure_started(next);
+        }
     }
 }
 
-/// Removes the promise `id` if it has not started; answers whether it did.
+/// Removes the promise `id` if it has not started; answers whether it did. A promise is only
+/// ever queued on its creator's thread, and only its creator asks, so only that queue is looked
+/// at; the newest entries are tried first, since a waiter usually wants the one it just made.
 pub(crate) fn remove_pending(id: i64) -> Option<usize> {
-    for slot in &SLOTS[..STARTED.load(Ordering::Acquire)] {
-        if slot.pending.load(Ordering::SeqCst) == 0 {
-            continue;
-        }
-        let mut mail = lock(&slot.mail);
-        if let Some(at) = mail.pending.iter().position(|s| s.id == id) {
-            let start = mail.pending.remove(at).expect("position is in range");
-            slot.pending
-                .store(mail.pending.len() as u32, Ordering::SeqCst);
-            return Some(start.closure);
-        }
+    let me = current();
+    if me == NONE || SLOTS[me].pending.load(Ordering::SeqCst) == 0 {
+        return None;
     }
-    None
+    let slot = &SLOTS[me];
+    let mut mail = lock(&slot.mail);
+    let at = mail.pending.iter().rposition(|s| s.id == id)?;
+    let start = mail.pending.remove(at).expect("position is in range");
+    publish(slot, &mail);
+    Some(start.closure)
 }
 
 /// Sends `event` to `thread` and wakes it.
@@ -369,7 +364,7 @@ pub(crate) fn take_events() -> Vec<Event> {
 }
 
 /// The next promise for the calling thread to start: its own oldest, else one taken from the
-/// newest end of the longest queue of another thread.
+/// oldest end of the longest queue of another thread.
 pub(crate) fn next_pending() -> Option<Start> {
     let me = current();
     if me == NONE {
@@ -378,9 +373,7 @@ pub(crate) fn next_pending() -> Option<Start> {
     if SLOTS[me].pending.load(Ordering::SeqCst) != 0 {
         let mut mail = lock(&SLOTS[me].mail);
         let start = mail.pending.pop_front();
-        SLOTS[me]
-            .pending
-            .store(mail.pending.len() as u32, Ordering::SeqCst);
+        publish(&SLOTS[me], &mail);
         if start.is_some() {
             return start;
         }
@@ -388,11 +381,12 @@ pub(crate) fn next_pending() -> Option<Start> {
     if SLOTS[me].live.load(Ordering::SeqCst) != 0 {
         return None;
     }
+    let now = crate::sys::monotonic_ns();
     let started = STARTED.load(Ordering::Acquire);
     let (mut best, mut most) = (usize::MAX, 0);
     for thread in (0..started).filter(|&t| t != me) {
         let n = SLOTS[thread].pending.load(Ordering::SeqCst);
-        if n > most {
+        if n > most && aged(thread, now) {
             (best, most) = (thread, n);
         }
     }
@@ -400,11 +394,38 @@ pub(crate) fn next_pending() -> Option<Start> {
         return None;
     }
     let mut mail = lock(&SLOTS[best].mail);
-    let start = mail.pending.pop_back();
-    SLOTS[best]
-        .pending
-        .store(mail.pending.len() as u32, Ordering::SeqCst);
+    let start = if mail.pending.front().is_some_and(|s| now - s.at >= BEAT_NS) {
+        mail.pending.pop_front()
+    } else {
+        None
+    };
+    publish(&SLOTS[best], &mail);
     start
+}
+
+/// Whether the oldest start queued on `thread` has waited a beat.
+fn aged(thread: usize, now: i64) -> bool {
+    let at = SLOTS[thread].front_at.load(Ordering::SeqCst);
+    at != 0 && now - at >= BEAT_NS
+}
+
+/// How long until some queued start can be taken by the calling thread, which is free to take one:
+/// 0 when one can be now, negative when none is queued.
+pub(crate) fn steal_wait_ns() -> i64 {
+    let me = current();
+    if me == NONE || SLOTS[me].live.load(Ordering::SeqCst) != 0 {
+        return -1;
+    }
+    let now = crate::sys::monotonic_ns();
+    let mut wait = -1;
+    for thread in (0..STARTED.load(Ordering::Acquire)).filter(|&t| t != me) {
+        let at = SLOTS[thread].front_at.load(Ordering::SeqCst);
+        if at != 0 {
+            let w = (at + BEAT_NS - now).max(0);
+            wait = if wait < 0 { w } else { wait.min(w) };
+        }
+    }
+    wait
 }
 
 /// Whether the calling thread has a promise it could start now.
@@ -416,9 +437,7 @@ pub(crate) fn work_available() -> bool {
     if SLOTS[me].pending.load(Ordering::SeqCst) != 0 {
         return true;
     }
-    SLOTS[me].live.load(Ordering::SeqCst) == 0
-        && (0..STARTED.load(Ordering::Acquire))
-            .any(|t| SLOTS[t].pending.load(Ordering::SeqCst) != 0)
+    steal_wait_ns() == 0
 }
 
 /// Counts a promise task started (`1`) or ended (`-1`) on the calling thread.
@@ -518,6 +537,7 @@ pub fn shutdown() {
         mail.pending.clear();
         mail.events.clear();
         slot.pending.store(0, Ordering::SeqCst);
+        slot.front_at.store(0, Ordering::SeqCst);
         slot.signalled.store(0, Ordering::SeqCst);
         slot.busy.store(0, Ordering::SeqCst);
         slot.live.store(0, Ordering::SeqCst);
