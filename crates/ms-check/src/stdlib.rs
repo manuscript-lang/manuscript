@@ -925,6 +925,7 @@ impl Loader<'_> {
                 let def = s.ty(syms).def.clone().expect("def");
                 let fields = self.c.params(d.record_fields());
                 *def.fields.borrow_mut() = fields;
+                def.clear_cases();
                 let mut seen: HashSet<Name> = HashSet::new();
                 for cs in d.cases() {
                     if !seen.insert(cs.name) {
