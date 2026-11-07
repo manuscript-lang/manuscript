@@ -312,6 +312,7 @@ msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_upper(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_task_cancel(handle: u64)
 msrt_task_count() -> usize
+msrt_task_others_stalled() -> bool
 msrt_task_current() -> u64
 msrt_task_forget_fd(fd: i32)
 msrt_task_grow(shim: unsafe extern "C-unwind" fn(*mut u8), block: *mut u8)

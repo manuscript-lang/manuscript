@@ -28,7 +28,8 @@ use std::sync::{Condvar, Mutex, MutexGuard};
 use std::vec::Vec;
 
 use crate::task::{
-    msrt_task_count, msrt_token_free, msrt_token_new, msrt_token_park, msrt_token_post_remote,
+    msrt_task_count, msrt_task_others_stalled, msrt_token_free, msrt_token_new, msrt_token_park,
+    msrt_token_post_remote,
 };
 
 /// The runtime's `TOKEN_REMOTE` flag and park results.
@@ -174,7 +175,7 @@ pub fn threads() -> usize {
 /// it runs inline and a command-line program starts no thread.
 pub fn alone() -> bool {
     // SAFETY: reads the scheduler's task count on the runtime thread.
-    unsafe { msrt_task_count() <= 1 }
+    unsafe { msrt_task_count() <= 1 || msrt_task_others_stalled() }
 }
 
 fn dns_cap() -> usize {
