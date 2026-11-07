@@ -92,3 +92,12 @@ test "per-value budgets report LimitExceeded":
 
     let deep = decode("[[[".to_bytes(), 2, JsonOptions(max_depth: 2))
     try expect_equal(deep.err().kind, "EOVERFLOW")
+
+test "negative limits fail the first read with EINVAL for every input":
+    for limits in [
+        JsonOptions(max_bytes: -1), JsonOptions(max_depth: -1),
+        JsonOptions(max_values: -1)
+    ]:
+        for input in ["", "  ", "1", "\{\}", "\{\"a\":[1"]:
+            let outcome = decode(input.to_bytes(), 2, limits.clone())
+            try expect_equal(outcome.err().kind, "EINVAL")

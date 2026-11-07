@@ -257,7 +257,12 @@ fn make_part(section: Bytes) Part!:
     )
 
     let skip = if blank == 0: 2 else: 4
-    let headers = try parse_headers(inner.decode_utf8_range(0, blank).get(""))
+    let header_text = inner.decode_utf8_range(0, blank)
+    if header_text.is_none(): return error(
+        Error("MIME: invalid multipart body", kind: "EBADMSG")
+    )
+
+    let headers = try parse_headers(header_text.get(""))
     var part = Part(
         headers: headers,
         data: inner.slice(blank + skip, inner.length()).get("".to_bytes())

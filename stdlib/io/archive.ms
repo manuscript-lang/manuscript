@@ -205,6 +205,46 @@ fn tar_size(block: Bytes) Int:
 
     return size
 
+// The decimal `size` among the `length key=value\n` records of a PAX extended header, or -1.
+fn pax_size(data: Bytes) Int:
+    var found = -1
+    var pos = 0
+
+    while pos < data.length():
+        let space = data.index_of_byte(32, pos)
+        if space.is_none(): break
+
+        var length = 0
+
+        for i in pos..space.get():
+            let digit = data.get(i, 0).to_int()
+            if digit < 48 or digit > 57 or i - pos > 9: return found
+
+            length = length * 10 + digit - 48
+
+        if length < 5 or pos + length > data.length(): break
+
+        let end = pos + length - 1
+        let eq = data.index_of_byte(61, space.get() + 1)
+
+        if eq.is_some() and eq.get() < end:
+            let key = data.slice(space.get() + 1, eq.get()).get("".to_bytes())
+
+            if key == "size".to_bytes():
+                var value = 0
+                var valid = eq.get() + 1 < end and end - eq.get() - 1 <= 15
+
+                for i in eq.get() + 1..end:
+                    let digit = data.get(i, 0).to_int()
+                    if digit < 48 or digit > 57: valid = false
+                    if valid: value = value * 10 + digit - 48
+
+                if valid: found = value
+
+        pos += length
+
+    return found
+
 fn tar_is_zero(block: Bytes) Bool:
     for byte in block.values():
         if byte != 0: return false
@@ -229,16 +269,21 @@ impl TarEntries:
     fn member_length() Int!:
         var at = 0
 
+        // A PAX `size` record replaces the size field of the header that follows it.
+        var override = -1
+
         while true:
             if self.buffer.length() < at + 512: return ok(0)
 
             let block = try self.buffer.slice(at, at + 512)
             let flag = block.get(156, 0).to_int()
-            let size = tar_size(block)
-            var padded = (size + 511) / 512 * 512
+            var size = tar_size(block)
+            var padded = 0
 
             // 'x', 'g', 'L' and 'K' carry data for the header that follows them.
             let extension = flag == 120 or flag == 103 or flag == 76 or flag == 75
+            if not extension and override >= 0: size = override
+            padded = (size + 511) / 512 * 512
             at += 512
             if (
                 flag == 53
@@ -253,6 +298,12 @@ impl TarEntries:
             at += padded
             if self.buffer.length() < at: return ok(0)
             if not extension: return ok(at)
+
+            if flag == 120:
+                let start = at - padded
+                let records = try self.buffer.slice(start, start + size)
+                let found = pax_size(records)
+                if found >= 0: override = found
 
         return ok(0)
 

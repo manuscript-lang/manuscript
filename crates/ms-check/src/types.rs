@@ -539,6 +539,13 @@ impl Definition {
         })
     }
 
+    /// Drops every case, so a signature pass that runs again over the same declaration replaces
+    /// the cases instead of appending a second copy.
+    pub fn clear_cases(&self) {
+        self.cases.borrow_mut().clear();
+        self.case_indices.borrow_mut().clear();
+    }
+
     /// Appends a case; add cases only through this so the name index stays in step.
     pub fn push_case(&self, case: Case) {
         let mut cases = self.cases.borrow_mut();

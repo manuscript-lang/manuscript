@@ -1748,6 +1748,9 @@ impl<'a> FnLower<'a> {
                 self.hold_temp(x);
             }
             receiver = Some((x, held));
+        } else if !discards {
+            // The receiver's own index expressions run before the arguments.
+            self.prepare_place(recv_expr)?;
         }
         let args = self.native_args(view)?;
         if self.dead {

@@ -249,6 +249,8 @@ type CsvRows:
     tail: Bytes
     scanned: Int
     quoted: Bool
+    // The longest complete record the last `boundary` call passed, without its line feed.
+    longest: Int
 
 impl CsvRows:
     // Offset just past the last line end outside quotes in `data`, or 0 when the block holds none.
@@ -256,6 +258,8 @@ impl CsvRows:
         let total = data.length()
         var pos = self.scanned
         var cut = 0
+        self.longest = 0
+
         var quote = data.index_of_byte(34, pos).get(total)
         var line = data.index_of_byte(10, pos).get(total)
 
@@ -272,6 +276,7 @@ impl CsvRows:
             if quote < pos: quote = data.index_of_byte(34, pos).get(total)
 
             if line < quote:
+                if line - cut > self.longest: self.longest = line - cut
                 cut = line + 1
                 pos = line + 1
                 continue
@@ -297,10 +302,14 @@ impl Transform[Bytes, List[String]] for CsvRows:
         let cut = self.boundary(data)
         self.scanned = data.length() - cut
         self.tail = try data.slice(cut, data.length())
+        try self.check_size(self.longest)
         try self.check_size(self.tail.length())
         if cut == 0: return ok(unit)
 
-        let text = data.decode_utf8_range(0, cut).get("")
+        let decoded = data.decode_utf8_range(0, cut)
+        if decoded.is_none(): return invalid_text()
+
+        let text = decoded.get("")
         return write_rows(try parse(text, self.options), var out)
 
     var fn finish(var out: List[List[String]]) Unit!:
@@ -309,8 +318,14 @@ impl Transform[Bytes, List[String]] for CsvRows:
         self.scanned = 0
         if data.is_empty(): return ok(unit)
 
-        let text = data.decode_utf8().get("")
+        let decoded = data.decode_utf8()
+        if decoded.is_none(): return invalid_text()
+
+        let text = decoded.get("")
         return write_rows(try parse(text, self.options), var out)
+
+fn invalid_text() Unit!:
+    return error(Error("CSV: invalid UTF-8", kind: "EBADMSG"))
 
 fn write_rows(rows: List[List[String]], var out: List[List[String]]) Unit!:
     for row in rows: out.append(row)
@@ -333,7 +348,7 @@ export fn csv_rows(
         input,
         CsvRows(
             options: options, max_record_bytes: max_record_bytes, tail: join([]),
-            scanned: 0, quoted: false
+            scanned: 0, quoted: false, longest: 0
         )
     )
 

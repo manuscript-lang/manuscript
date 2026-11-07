@@ -25,9 +25,41 @@ pub fn canonical(text: &str) -> Cow<'_, str> {
     }
 }
 
+/// A decimal float literal rounded once, directly to binary32 (a contextual `Float32` literal),
+/// widened to `f64` for immediates. Parsing as binary64 first would round twice; the result is
+/// infinite when the literal is beyond the finite binary32 range.
+pub fn float32(text: &str) -> Option<f64> {
+    canonical(text).parse::<f32>().ok().map(f64::from)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::canonical;
+    use super::{canonical, float32};
+
+    #[test]
+    fn float32_rounds_once() {
+        // One unit below the overflow midpoint rounds to the maximum finite binary32.
+        let max = float32("340282356779733661637539395458142568447.0").unwrap();
+        assert_eq!(max, f64::from(f32::MAX));
+        assert!(
+            float32("340282356779733661637539395458142568448.0")
+                .unwrap()
+                .is_infinite()
+        );
+        assert_eq!(
+            float32("1.0000000596046448").unwrap(),
+            f64::from(f32::from_bits(0x3f80_0001))
+        );
+        assert_eq!(
+            float32("1.0000001788139343").unwrap(),
+            f64::from(f32::from_bits(0x3f80_0001))
+        );
+        assert_eq!(
+            float32("7.0064923216240854e-46").unwrap(),
+            f64::from(f32::from_bits(1))
+        );
+        assert_eq!(float32("1_0.5").unwrap(), 10.5);
+    }
 
     #[test]
     fn canonicalizes() {

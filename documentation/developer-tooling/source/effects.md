@@ -5,6 +5,8 @@ weight = 3
 
 # Understanding effects
 
+This page covers the call-graph view of how code reads and writes data. For permissions that `ms lint` enforces, see [effects and permissions](../../core-language/functions/effects.md).
+
 Use an effects view when reviewing how code reads or changes data and reaches external operations. It follows calls so you can see how a small helper reaches behavior outside the program.
 
 Save this as `hello.ms`:
@@ -40,7 +42,7 @@ Effects combine along calls. The vocabulary is `read`, `write` and `unknown`. Re
 | Several known targets | Include the union of their effects. |
 | Unresolved function value or contract call | Include `unknown`; do not treat it as having no effects. |
 
-Summaries describe reachable behavior; no syntax promises purity or restricts effects.
+Summaries describe reachable behavior. To restrict what a function may reach, use [effects and permissions](../../core-language/functions/effects.md); this view does not enforce anything.
 
 ## Effects and cancellation
 

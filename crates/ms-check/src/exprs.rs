@@ -404,7 +404,7 @@ impl Checker {
             let narrow = expected
                 .filter(|t| float_bits(self.syms, t) == Some(32) && self.syms.str(t.id) != "Float");
             match (text.parse::<f64>(), narrow) {
-                (Ok(v), Some(_)) if (v as f32).is_infinite() => self.type_error(
+                (Ok(_), Some(_)) if ms_syntax::number::float32(text).is_none_or(f64::is_infinite) => self.type_error(
                     e.pos,
                     "Float literal is outside finite binary32 range; use a smaller magnitude (about 3.4e38 at most)",
                 ),

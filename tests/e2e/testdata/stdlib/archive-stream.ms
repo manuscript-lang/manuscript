@@ -206,3 +206,72 @@ test "tar entries accept distinct paths and sibling directories":
     let archive = try members(["a/", "a/b", "a/c/", "a/c/d", "e"])
     let expected = try unpack(archive.clone(), ArchiveFormat.Tar)
     try expect_equal(try read_entries(chunked(archive, 700)), expected)
+
+// A ustar header block with a valid checksum.
+fn header(name: String, size: Int, flag: Int) Bytes:
+    var block: List[Int] = []
+    for index in 0..512:
+        block.append(0)
+
+    let label = name.to_bytes()
+    for index in 0..label.length():
+        block[index] = label.get(index, 0).to_int()
+
+    var left = size
+
+    for index in 0..11:
+        block[134 - index] = 48 + left % 8
+        left = left / 8
+
+    block[156] = flag
+
+    let magic = "ustar".to_bytes()
+    for index in 0..5:
+        block[257 + index] = magic.get(index, 0).to_int()
+    block[263] = 48
+    block[264] = 48
+    for index in 148..156:
+        block[index] = 32
+
+    var sum = 0
+    for byte in block:
+        sum += byte
+
+    var rest = sum
+
+    for index in 0..6:
+        block[153 - index] = 48 + rest % 8
+        rest = rest / 8
+
+    block[154] = 0
+    block[155] = 32
+
+    var out = BytesBuilder()
+    for byte in block:
+        out.append(byte.to_uint8().get(0))
+    return out.build()
+
+// Zero-pads `data` to a whole 512-byte block.
+fn padded(data: Bytes) Bytes:
+    var out = BytesBuilder()
+    out.append_bytes(data.clone())
+    for index in 0..(512 - data.length() % 512) % 512:
+        out.append(0)
+    return out.build()
+
+test "tar entries frame members by a PAX size override as unpack does":
+    var archive = BytesBuilder()
+    let records = "9 size=1\n".to_bytes()
+    archive.append_bytes(header("pax", records.length(), 120))
+    archive.append_bytes(padded(records))
+    archive.append_bytes(header("f", 0, 48))
+    archive.append_bytes(padded("x".to_bytes()))
+    for index in 0..1024:
+        archive.append(0)
+
+    let bytes = archive.build()
+    let expected = try unpack(bytes.clone(), ArchiveFormat.Tar)
+    try expect_equal(expected.length(), 1)
+    try expect_equal(expected[0].data, "x".to_bytes())
+    for size in [1, 512, 1536, 4096]:
+        try expect_equal(try read_entries(chunked(bytes.clone(), size)), expected)

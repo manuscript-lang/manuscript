@@ -156,6 +156,17 @@ impl<'a> FnLower<'a> {
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
+            let idx = names
+                .iter()
+                .position(|n| *n == a.slot.name)
+                .ok_or_else(|| {
+                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
+                })?;
+            // A `var` argument selects its place once, at its written position; the reads and
+            // the writeback below reuse the evaluated indices.
+            if vars.contains(&(idx + offset)) && self.is_place(a.expr) {
+                self.prepare_place(a.expr)?;
+            }
             let at = self.b.current();
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -174,12 +185,6 @@ impl<'a> FnLower<'a> {
                 None => x,
             };
             let x = if later_try { self.hold_temp(x) } else { x };
-            let idx = names
-                .iter()
-                .position(|n| *n == a.slot.name)
-                .ok_or_else(|| {
-                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
-                })?;
             if vars.contains(&(idx + offset)) {
                 places[idx] = Some(a.expr.clone());
             }
