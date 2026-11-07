@@ -117,7 +117,13 @@ impl Complex:
 
     // Returns `e` raised to this number.
     fn exp() Complex:
-        return complex_polar(exp(self.re), self.im)
+        let radius = exp(self.re)
+
+        // A zero imaginary part stays zero where the radius overflows; `inf * sin(0)` would be NaN.
+        if self.im == 0.0:
+            return Complex(re: radius, im: self.im)
+
+        return complex_polar(radius, self.im)
 
     // Returns the principal natural logarithm; the imaginary part is the phase.
     fn log() Complex:
@@ -132,7 +138,12 @@ impl Complex:
             return Complex(re: 0.0, im: copy_sign(sqrt(-self.re), self.im))
 
         let modulus = self.abs()
-        let real = sqrt((modulus + self.re.abs()) / 2.0)
+
+        // A finite number whose magnitude overflows has a finite root: take the root of the half and scale by sqrt(2).
+        if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
+            return Complex(re: self.re / 2.0, im: self.im / 2.0).sqrt().scale(sqrt(2.0))
+
+        let real = sqrt(modulus / 2.0 + self.re.abs() / 2.0)
         if self.re >= 0.0:
             return Complex(re: real, im: self.im / (2.0 * real))
 

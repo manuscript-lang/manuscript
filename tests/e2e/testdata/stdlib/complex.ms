@@ -1,4 +1,5 @@
 import expect_equal, expect_true from "@std/test/test.ms"
+import infinity from "@std/math/math.ms"
 import Complex, complex, complex_polar, imaginary_unit from "@std/math/complex.ms"
 
 fn near(left: Complex, right: Complex) Bool:
@@ -43,3 +44,13 @@ test "complex division by zero follows float rules":
         ).divide(complex(0.0, 0.0)).is_infinite()
     )
     try expect_equal(complex(0.0, 0.0).pow(complex(0.0, 0.0)), complex(1.0, 0.0))
+
+test "complex exp keeps a zero imaginary part when the radius overflows":
+    try expect_equal(complex(710.0, 0.0).exp(), complex(infinity, 0.0))
+
+test "complex sqrt stays finite when the magnitude overflows":
+    let root = complex(1.7e308, 1.7e308).sqrt()
+    try expect_true(root.re.is_finite() and root.im.is_finite())
+
+    let square = root.scale(1e-100).multiply(root.scale(1e-100))
+    try expect_true(near(square.scale(1e-108), complex(1.7, 1.7)))
