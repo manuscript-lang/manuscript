@@ -1260,7 +1260,7 @@ impl<'a> FnLower<'a> {
 
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
         let mut root = iter;
-        // `xs.field`, `xs[i]` and `xs.get(i)` borrow part of `xs` while `xs` is unchanged.
+        // `xs.field` and `xs[i]` borrow part of `xs` while `xs` is unchanged. A method call may return a new value (`entries()`), so it is not followed.
         loop {
             match &root.kind {
                 ExprKind::Member { left, .. }
@@ -1270,10 +1270,6 @@ impl<'a> FnLower<'a> {
                     value: Some(_),
                     ..
                 } => root = left,
-                ExprKind::Call { callee, .. } => match &callee.kind {
-                    ExprKind::Member { left, .. } => root = left,
-                    _ => break,
-                },
                 _ => break,
             }
         }
