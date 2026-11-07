@@ -483,8 +483,9 @@ impl FnLower<'_> {
             return Ok(Receiver::Value(recv));
         }
         let t = self.ty_of(recv.v);
-        if !self.needs_drop(t) {
-            // A plain value is as cheap to copy as to point to.
+        if !self.needs_drop(t) && self.part_closer_mir(t)?.is_none() {
+            // A plain value is as cheap to copy as to point to. A resource with no drop glue
+            // still has one owner that closes it, so a borrowed one stays an address.
             return Ok(Receiver::Value(recv));
         }
         let slot = self
@@ -934,6 +935,12 @@ impl FnLower<'_> {
                 f.kind = FuncKind::Closure {
                     captures: vec![held.capture(rty)],
                 };
+                // A receiver the closure owns is closed when the closure is dropped.
+                if matches!(held, Held::Value)
+                    && let Some(kind) = self.part_closer_mir(rty)?
+                {
+                    f.capture_closers = vec![(0, self.close_thunk(&kind, rty, true))];
+                }
                 let id = self.b.m.add_func(f);
                 // Omission adaptation needs the declared payload types, including the
                 // method's own type arguments fixed by its checked function-value type.
@@ -1525,6 +1532,7 @@ pub(crate) fn build_bound_native(
     let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
+    b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
     fl.scope_override = Some(job.scope);
     let recv_ty = match job.held {

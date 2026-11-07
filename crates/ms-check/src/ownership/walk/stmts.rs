@@ -666,7 +666,7 @@ impl Walker<'_> {
             && let Some(payload) = wrapper_passthrough(self.syms, &m, &self.cx.m.ty(recv))
         {
             // A function value can run repeatedly and cannot move out its captured receiver.
-            // Only the preserved payload needs copying; a Result error is merely borrowed.
+            // Only the preserved payload needs copying; callback inputs remain borrowed.
             self.require_clonable(
                 e,
                 &payload,

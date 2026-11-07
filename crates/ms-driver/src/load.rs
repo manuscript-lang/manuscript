@@ -50,8 +50,9 @@ pub struct Graph {
     pub project_root: String,
     pub configuration: String,
     pub diagnostics: Vec<Diagnostic>,
-    /// Symbolic links an import path passed through, so retargeting one is a source change.
-    pub links: Vec<String>,
+    /// Paths besides the modules that the load depended on: symbolic links an import passed
+    /// through, and embedded directories and files. A change to one is a source change.
+    pub inputs: Vec<String>,
 }
 
 /// Diagnostics pass through import edges unchanged; plain errors and cycles
@@ -138,10 +139,11 @@ fn load_entries(
 ) -> Graph {
     let (mut config, manifest) = match source_project(filename) {
         Ok(found) => found,
-        Err((root, error)) => {
+        Err((root, error, inputs)) => {
             let file: Arc<str> = Arc::from(filename);
             return Graph {
                 source_root: root,
+                inputs,
                 diagnostics: vec![from_error(&file, &error)],
                 ..Graph::default()
             };
@@ -262,22 +264,27 @@ fn manifest_pos(config: &Project) -> Pos {
 }
 
 /// `(project, is_manifest)`, or the root and the error.
-fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectError)> {
-    let absolute = pathops::abs(filename).map_err(|e| (String::new(), e))?;
+/// The project of `filename`, or the failure with the root and the embedded directories the
+/// manifest named, which stay watched so creating one reruns the load.
+type Rejected = (String, ProjectError, Vec<String>);
+
+fn source_project(filename: &str) -> Result<(Project, bool), Rejected> {
+    let absolute = pathops::abs(filename).map_err(|e| (String::new(), e, Vec::new()))?;
     if pathops::base(&absolute) == "ms.toml" {
         let (config, error) = crate::project::read_project_partial(&absolute);
         return match error {
-            Some(error) => Err((config.root, error)),
+            Some(error) => Err(rejected(config, error)),
             None => Ok((config, true)),
         };
     }
-    let root = pathops::eval_symlinks(&pathops::dir(&absolute)).map_err(|e| (String::new(), e))?;
+    let root = pathops::eval_symlinks(&pathops::dir(&absolute))
+        .map_err(|e| (String::new(), e, Vec::new()))?;
     // The nearest enclosing ms.toml supplies the import root and aliases, so entry
     // files can share a library above them. The file stays the sole entry.
     if let Some(manifest) = enclosing_manifest(&root) {
         let (mut config, error) = crate::project::read_project_partial(&manifest);
         if let Some(error) = error {
-            return Err((config.root, error));
+            return Err(rejected(config, error));
         }
         config.entry = absolute;
         return Ok((config, false));
@@ -288,6 +295,21 @@ fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectErr
         ..Project::default()
     };
     Ok((config, false))
+}
+
+fn rejected(config: Project, error: ProjectError) -> Rejected {
+    let embedded = config
+        .embed
+        .values()
+        .map(|directory| {
+            if pathops::is_abs(directory) {
+                directory.clone()
+            } else {
+                pathops::join(&[&config.root, directory])
+            }
+        })
+        .collect();
+    (config.root, error, embedded)
 }
 
 /// The nearest `ms.toml` in `dir` or an ancestor.
@@ -434,9 +456,15 @@ impl Loader<'_> {
         } else if let Some((name, directory)) =
             crate::project::embed::name_of(&self.config.embed, &self.config.root, canonical)
         {
-            crate::project::embed::generate(name, directory)
-                .map_err(Failure::Error)?
-                .into_bytes()
+            // The directory stays an input when generation fails, so repairing it reruns.
+            self.add_input(directory.to_string());
+            let generated = crate::project::embed::generate(name, directory);
+            if let Ok(inputs) = crate::project::embed::inputs(directory) {
+                for input in inputs {
+                    self.add_input(input.to_string_lossy().into_owned());
+                }
+            }
+            generated.map_err(Failure::Error)?.into_bytes()
         } else {
             std::fs::read(canonical)
                 .map_err(|e| Failure::Error(ProjectError::path("open", canonical, &e)))?
@@ -498,6 +526,12 @@ impl Loader<'_> {
         Ok(key)
     }
 
+    fn add_input(&mut self, path: String) {
+        if !self.graph.inputs.contains(&path) {
+            self.graph.inputs.push(path);
+        }
+    }
+
     /// Resolves a local import, noting the symbolic links its path passes through.
     fn resolve(&mut self, importer: &str, path: &str) -> Result<String, ProjectError> {
         use crate::project::Target;
@@ -506,9 +540,7 @@ impl Loader<'_> {
             Target::Path(target) => target,
         };
         for link in crate::project::link_components(&self.config.root, &target) {
-            if !self.graph.links.contains(&link) {
-                self.graph.links.push(link);
-            }
+            self.add_input(link);
         }
         crate::project::source_path(&self.config.root, &target, self.overlay)
     }

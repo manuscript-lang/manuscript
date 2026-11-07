@@ -241,12 +241,12 @@ impl Walker<'_> {
                 && self.native_borrow_receiver(e).is_none()
             {
                 mode = ParamMode::Move;
-                if !args.is_empty()
+                if (takes_preserved || !args.is_empty())
                     && let Some(source) = self.native_borrow_receiver(r)
                 {
                     // The receiver is itself a native lend (`m.get(k)`, `xs.first()`): the
-                    // element stays in its collection, so `get(default)` taking it out would
-                    // copy it (`get()` without a default lends the payload in place).
+                    // element stays in its collection. Taking its payload into an owning
+                    // result would copy it; a plain `get()` still lends it in place.
                     let (from, text) = (self.expr_text(source), self.expr_text(r));
                     let why =
                         clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");

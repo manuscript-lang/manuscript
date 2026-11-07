@@ -64,3 +64,54 @@ fn clonable_bound_methods_keep_reusable_semantics() {
     let got = diagnostics(include_str!("wrapper_passthrough/accept-clonable-bound.ms"));
     assert!(got.is_empty(), "{got:?}");
 }
+
+#[test]
+fn preserved_payload_transfer_and_transform_controls() {
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/accept-preserved-transfers.ms"
+    ));
+    assert!(got.is_empty(), "{got:?}");
+}
+
+#[test]
+fn preserved_payloads_cannot_be_duplicated() {
+    for body in [
+        include_str!("wrapper_passthrough/reject-ok-or-preserved-reuse.ms"),
+        include_str!("wrapper_passthrough/reject-ok-or-else-preserved-reuse.ms"),
+        include_str!("wrapper_passthrough/reject-map-error-preserved-reuse.ms"),
+        include_str!("wrapper_passthrough/reject-to-optional-preserved-reuse.ms"),
+        include_str!("wrapper_passthrough/reject-map-preserved-reuse.ms"),
+        include_str!("wrapper_passthrough/reject-and-then-preserved-reuse.ms"),
+        include_str!("wrapper_passthrough/reject-ok-or-zero-collection.ms"),
+        include_str!("wrapper_passthrough/reject-to-optional-zero-collection.ms"),
+    ] {
+        let got = diagnostics(body);
+        assert!(
+            got.iter()
+                .any(|d| d.contains("cannot") || d.contains("would take")),
+            "{body}: {got:?}"
+        );
+    }
+}
+
+#[test]
+fn preserved_bound_payloads_require_clonable() {
+    for body in [
+        include_str!("wrapper_passthrough/reject-ok-or-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-ok-or-else-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-map-error-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-to-optional-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-map-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-and-then-bound-resource.ms"),
+        include_str!("wrapper_passthrough/reject-bound-preserved-generic.ms"),
+        include_str!("wrapper_passthrough/reject-bound-error-generic.ms"),
+        include_str!("wrapper_passthrough/reject-bound-preserved-function.ms"),
+    ] {
+        let got = diagnostics(body);
+        assert!(
+            got.iter()
+                .any(|d| d.contains("method value keeps its receiver") && d.contains("clone")),
+            "{body}: {got:?}"
+        );
+    }
+}

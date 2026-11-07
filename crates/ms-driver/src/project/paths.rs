@@ -97,30 +97,67 @@ pub fn import_target(
     Ok(Target::Path(target))
 }
 
+/// The most links one lookup follows, as in the resolver.
+const MAX_LINKS: usize = 255;
+
 /// The symbolic links among the components of `path` (relative paths are under `root`), as
-/// absolute paths: the entries whose retargeting changes what the import resolves to.
+/// absolute paths, and the links their targets pass through in turn: the entries whose
+/// retargeting changes what the import resolves to.
 pub fn link_components(root: &str, path: &str) -> Vec<String> {
     let full = if pathops::is_abs(path) {
         pathops::clean(path)
     } else {
         pathops::join(&[root, path])
     };
-    let mut links = Vec::new();
-    let mut walked = String::new();
-    for part in full.split('/') {
-        if part.is_empty() && walked.is_empty() {
-            walked.push('/');
-            continue;
-        }
-        if part.is_empty() {
-            continue;
-        }
-        if !walked.ends_with('/') {
-            walked.push('/');
-        }
-        walked.push_str(part);
-        if std::fs::symlink_metadata(&walked).is_ok_and(|m| m.file_type().is_symlink()) {
+    let mut links: Vec<String> = Vec::new();
+    let mut pending = vec![full];
+    let mut followed = 0;
+    while let Some(next) = pending.pop() {
+        let mut walked = String::new();
+        let parts: Vec<&str> = next.split('/').collect();
+        for (at, part) in parts.iter().enumerate() {
+            if part.is_empty() && walked.is_empty() {
+                walked.push('/');
+                continue;
+            }
+            if part.is_empty() {
+                continue;
+            }
+            let parent = walked.clone();
+            if !walked.ends_with('/') {
+                walked.push('/');
+            }
+            walked.push_str(part);
+            if !std::fs::symlink_metadata(&walked).is_ok_and(|m| m.file_type().is_symlink()) {
+                continue;
+            }
+            if links.contains(&walked) {
+                break;
+            }
             links.push(walked.clone());
+            followed += 1;
+            let Some(target) = std::fs::read_link(&walked)
+                .ok()
+                .and_then(|t| t.to_str().map(str::to_string))
+            else {
+                break;
+            };
+            if followed > MAX_LINKS {
+                return links;
+            }
+            // The target, resolved from the link's directory, followed by the rest of this path.
+            let base = if pathops::is_abs(&target) {
+                pathops::clean(&target)
+            } else {
+                pathops::join(&[&parent, &target])
+            };
+            let rest = parts[at + 1..].join("/");
+            pending.push(if rest.is_empty() {
+                base
+            } else {
+                pathops::join(&[&base, &rest])
+            });
+            break;
         }
     }
     links

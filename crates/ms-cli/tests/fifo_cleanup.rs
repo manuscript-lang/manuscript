@@ -59,14 +59,14 @@ fn cancelled_whole_file_reads_do_not_leak_descriptors() {
         .split_whitespace()
         .map(|n| n.parse().unwrap())
         .collect();
-    assert_eq!(counts.len(), 3, "{output}");
+    assert_eq!(counts.len(), 2, "{output}");
     assert_eq!(
         counts[0], 10,
         "every read must have been cancelled: {output}"
     );
     assert_eq!(
-        counts[1], counts[2],
-        "cancelled reads leaked descriptors: {output}"
+        counts[1], 0,
+        "cancelled reads leaked descriptors on the FIFO: {output}"
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
