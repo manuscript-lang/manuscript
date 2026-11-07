@@ -87,6 +87,26 @@ pub fn check_graph_in(
         .diagnostics
         .extend(program.diagnostics.iter().cloned());
     crate::imports::suggest_project_imports(syms, &mut checked.diagnostics, &graph.source_root);
+    // Import hints from either standard or project modules share source placement.
+    // Keep the advertised JSON fix identical to what `ms check --fix` applies.
+    let mut sources = None;
+    for issue in &mut checked.diagnostics {
+        let Some(fix) = &mut issue.fix else { continue };
+        if fix.pos.offset != 0 || fix.end.offset != 0 || !fix.replacement.starts_with("import ") {
+            continue;
+        }
+        let sources = sources.get_or_insert_with(|| {
+            program
+                .modules
+                .iter()
+                .map(|module| (syms.str(module.file), module.source.as_ref()))
+                .collect::<std::collections::HashMap<&str, &str>>()
+        });
+        if let Some(source) = sources.get(issue.file.as_ref()) {
+            fix.pos = crate::imports::import_position(source);
+            fix.end = fix.pos;
+        }
+    }
     if checked.success()
         && request.entry
         && let Some(issue) = check_entry(syms, &program, &graph.entry)

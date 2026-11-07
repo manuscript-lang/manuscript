@@ -4,7 +4,7 @@
 use ms_lsp::actions::editor_actions;
 use ms_lsp::analysis::{Document, Documents, analyze};
 use ms_lsp::completion::completion_at;
-use ms_lsp::json::Json;
+use ms_lsp::json::{Json, obj};
 use ms_lsp::lint::Tooling;
 use ms_lsp::text::{self, Position, Range};
 use ms_rt as _;
@@ -125,6 +125,23 @@ fn apply(source: &str, action: &Json) -> String {
     result
 }
 
+fn apply_completion(source: &str, completion: &Json) -> String {
+    let mut edits = completion
+        .get("additionalTextEdits")
+        .and_then(Json::as_array)
+        .expect("import edit")
+        .to_vec();
+    edits.push(completion.get("textEdit").unwrap().clone());
+    let action = obj([(
+        "edit",
+        obj([(
+            "documentChanges",
+            Json::Arr(vec![obj([("edits", Json::Arr(edits))])]),
+        )]),
+    )]);
+    apply(source, &action)
+}
+
 fn actions(source: &str, only: &str) -> (Document, Vec<Json>) {
     let syms = ms_syntax::Names::global();
     let ws = Workspace::new("editing-actions");
@@ -148,6 +165,121 @@ fn actions(source: &str, only: &str) -> (Document, Vec<Json>) {
 
 fn title(action: &Json) -> &str {
     action.get("title").and_then(|t| t.as_str()).unwrap()
+}
+
+#[test]
+fn adding_imports_preserves_grouped_declarations_and_file_directives() {
+    let syms = ms_syntax::Names::global();
+    for source in [
+        include_str!("editing_regressions/import-fix-grouped.ms"),
+        include_str!("editing_regressions/import-fix-header.ms"),
+    ] {
+        for source in [source.to_string(), source.replace('\n', "\r\n")] {
+            let (_, found) = actions(&source, "quickfix");
+            let action = found
+                .iter()
+                .find(|a| title(a) == "Add `import Bytes from \"@std/bytes.ms\"`")
+                .expect("add import fix");
+            let fixed = apply(&source, action);
+            ms_syntax::format(&"main.ms".into(), &fixed).expect("fixed source parses");
+            let d = Document::new("file:///tmp/import-fix.ms", &fixed);
+            let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+            assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+            let program = checked.program.as_ref().expect("checked program");
+            assert!(
+                ms_tooling::lint::lint_program(syms, program)
+                    .iter()
+                    .all(|finding| finding.code != "MSL116"),
+                "file directive lost: {fixed}"
+            );
+            let (_, repeated) = actions(&fixed, "quickfix");
+            assert!(
+                repeated
+                    .iter()
+                    .all(|a| !title(a).starts_with("Add `import Bytes"))
+            );
+        }
+    }
+}
+
+#[test]
+fn completion_auto_import_preserves_file_effect_directives() {
+    let syms = ms_syntax::Names::global();
+    let source = include_str!("editing_regressions/import-fix-header.ms");
+    for source in [source.to_string(), source.replace('\n', "\r\n")] {
+        for snippets in [false, true] {
+            let d = Document::new("file:///tmp/import-completion.ms", &source);
+            let at = text::position(&source, source.find("Bytes").unwrap() + "Bytes".len());
+            let completion = completion_at(
+                syms,
+                &ms_check::Session::new(),
+                &d,
+                &Documents::new(),
+                at,
+                snippets,
+            )
+            .expect("completion")
+            .into_iter()
+            .map(|item| item.json())
+            .find(|item| item.get("label").and_then(Json::as_str) == Some("Bytes"))
+            .expect("Bytes completion");
+            let fixed = apply_completion(&source, &completion);
+            assert!(
+                fixed.starts_with("// ms: allow_effect std.console.write"),
+                "{fixed}"
+            );
+            let updated = Document::new(d.uri.clone(), &fixed);
+            let checked = analyze(syms, &ms_check::Session::new(), &updated, &Documents::new());
+            assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+            assert!(
+                checked
+                    .program
+                    .as_ref()
+                    .unwrap()
+                    .effect_violations
+                    .is_empty(),
+                "{fixed}"
+            );
+        }
+    }
+}
+
+#[test]
+fn project_completions_quote_paths_and_prefix_dot_filenames() {
+    let syms = ms_syntax::Names::global();
+    let source = include_str!("editing_regressions/project-gadget-use.ms");
+    for file in ["{gadget}.ms", ".gadget.ms", "space é😀.ms"] {
+        let ws = Workspace::new("project-completion-path");
+        std::fs::write(
+            ws.path(file),
+            include_str!("editing_regressions/project-gadget.ms"),
+        )
+        .unwrap();
+        let d = Document::new(ws.uri("main.ms"), source);
+        for snippets in [false, true] {
+            let at = text::position(source, source.find("Gadget").unwrap() + "Gadget".len());
+            let item = completion_at(
+                syms,
+                &ms_check::Session::new(),
+                &d,
+                &Documents::new(),
+                at,
+                snippets,
+            )
+            .expect("completion")
+            .into_iter()
+            .map(|item| item.json())
+            .find(|item| item.get("label").and_then(Json::as_str) == Some("Gadget"))
+            .expect("project completion");
+            let fixed = apply_completion(source, &item);
+            let parsed =
+                ms_syntax::parser::parse(&"main.ms".into(), &fixed).expect("completion parses");
+            assert_eq!(parsed.imports[0].path.as_ref(), format!("./{file}"));
+            let updated = Document::new(d.uri.clone(), &fixed);
+            let checked = analyze(syms, &ms_check::Session::new(), &updated, &Documents::new());
+            assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+        }
+    }
 }
 
 #[test]
@@ -181,17 +313,23 @@ fn removing_the_last_unused_import_drops_the_separator() {
 
 #[test]
 fn organize_imports_moves_whole_multiline_declarations() {
-    let source = include_str!("editing_regressions/multiline-imports.ms");
-    for source in [source.to_string(), source.replace('\n', "\r\n")] {
-        let (_, found) = actions(&source, "source.organizeImports");
-        let action = found.first().expect("organize imports");
-        let organized = apply(&source, action);
-        assert!(
-            organized.starts_with("import (") && organized.contains("leading_zeros"),
-            "{organized}"
-        );
-        assert!(organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap());
-        ms_syntax::format(&"main.ms".into(), &organized).expect("organized source parses");
+    for fixture in [
+        include_str!("editing_regressions/multiline-imports.ms"),
+        include_str!("editing_regressions/import-fix-grouped.ms"),
+    ] {
+        for source in [fixture.to_string(), format!("{fixture}\nfn broken(\n")] {
+            for source in [source.to_string(), source.replace('\n', "\r\n")] {
+                let (_, found) = actions(&source, "source.organizeImports");
+                let action = found.first().expect("organize imports");
+                let organized = apply(&source, action);
+                assert!(organized.starts_with("import ("), "{organized}");
+                assert!(
+                    organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap()
+                );
+                let valid = organized.split("fn broken(").next().unwrap();
+                ms_syntax::format(&"main.ms".into(), valid).expect("organized imports parse");
+            }
+        }
     }
 }
 
@@ -456,35 +594,34 @@ fn unresolved_standard_name_offers_an_add_import_fix() {
 #[test]
 fn project_exports_are_offered_before_standard_ones() {
     let syms = ms_syntax::Names::global();
-    let ws = Workspace::new("project-import");
-    std::fs::create_dir_all(ws.path("lib")).unwrap();
-    std::fs::write(
-        ws.path("lib/blobs.ms"),
-        "export type Bytes:\n    size: Int\n",
-    )
-    .unwrap();
-    let source = "fn size(b: Bytes) Int:\n    return 0\n";
-    let d = Document::new(ws.uri("main.ms"), source);
-    let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
-    let whole = Range {
-        start: Position::default(),
-        end: text::position(source, source.len()),
-    };
-    let found = editor_actions(syms, &d, &checked, &Tooling, &Documents::new(), whole, &[]);
-    let titles: Vec<&str> = found
-        .iter()
-        .map(title)
-        .filter(|t| t.starts_with("Add `"))
-        .collect();
-    assert_eq!(
-        titles,
-        [
-            "Add `import Bytes from \"./lib/blobs.ms\"`",
-            "Add `import Bytes from \"@std/bytes.ms\"`"
-        ]
-    );
-    let first = found.iter().find(|a| title(a) == titles[0]).unwrap();
-    assert!(apply(source, first).starts_with("import Bytes from \"./lib/blobs.ms\"\n"));
+    for file in ["lib/blobs.ms", "lib/{blobs}.ms"] {
+        let ws = Workspace::new("project-import");
+        std::fs::create_dir_all(ws.path("lib")).unwrap();
+        std::fs::write(ws.path(file), "export type Bytes:\n    size: Int\n").unwrap();
+        let source = "fn size(b: Bytes) Int:\n    return 0\n";
+        let d = Document::new(ws.uri("main.ms"), source);
+        let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+        let whole = Range {
+            start: Position::default(),
+            end: text::position(source, source.len()),
+        };
+        let found = editor_actions(syms, &d, &checked, &Tooling, &Documents::new(), whole, &[]);
+        let titles: Vec<&str> = found
+            .iter()
+            .map(title)
+            .filter(|t| t.starts_with("Add `"))
+            .collect();
+        assert_eq!(titles.len(), 2);
+        assert_eq!(titles[1], "Add `import Bytes from \"@std/bytes.ms\"`");
+        let first = found.iter().find(|a| title(a) == titles[0]).unwrap();
+        let fixed = apply(source, first);
+        let parsed =
+            ms_syntax::parser::parse(&"main.ms".into(), &fixed).expect("fixed source parses");
+        assert_eq!(parsed.imports[0].path.as_ref(), format!("./{file}"));
+        let updated = Document::new(d.uri.clone(), &fixed);
+        let checked = analyze(syms, &ms_check::Session::new(), &updated, &Documents::new());
+        assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+    }
 }
 
 #[test]

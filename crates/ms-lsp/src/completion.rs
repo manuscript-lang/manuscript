@@ -162,6 +162,7 @@ struct Completer<'a> {
     items: Vec<Item>,
     seen: HashSet<String>,
     files: DeclFiles,
+    import_placement: Option<(Position, &'static str)>,
 }
 
 impl Completer<'_> {
@@ -255,12 +256,19 @@ impl Completer<'_> {
         if self.items.len() > before {
             let item = self.items.last_mut().expect("added");
             item.detail.push_str(&format!(" — {path}"));
+            let (at, newline) = self.import_placement.get_or_insert_with(|| {
+                let newline = if self.d.text.contains("\r\n") {
+                    "\r\n"
+                } else {
+                    "\n"
+                };
+                (crate::actions::file_header_end(&self.d.text), newline)
+            });
             item.additional = vec![text_edit(
-                Range::at(Position::default()),
+                Range::at(*at),
                 &format!(
-                    "import {} from {}\n",
-                    syms.str(s.name),
-                    ms_driver::project::quoting::quote(path)
+                    "{}{newline}",
+                    ms_driver::imports::import_statement(syms.str(s.name), path)
                 ),
             )];
         }
@@ -682,18 +690,16 @@ impl Completer<'_> {
             if !matches {
                 continue;
             }
+            let Some(path) =
+                ms_driver::imports::import_path(&pathops::dir(&self.d.path()), &file.path())
+            else {
+                continue;
+            };
             let checked = workspace_analysis(syms, &self.a.result.session, &file, self.docs);
             let (Some(module), Some(program)) = (checked.module(syms, &file), &checked.program)
             else {
                 continue;
             };
-            let Ok(relative) = pathops::rel(&pathops::dir(&self.d.path()), &file.path()) else {
-                continue;
-            };
-            let mut path = relative;
-            if !path.starts_with('.') {
-                path = format!("./{path}");
-            }
             let symbols: Vec<SymRef> = program
                 .symbols
                 .get(&module.file)
@@ -776,6 +782,7 @@ pub fn completion_at(
         items: Vec::new(),
         seen: HashSet::new(),
         files,
+        import_placement: None,
     };
     if c.member {
         k.member_items(syms);

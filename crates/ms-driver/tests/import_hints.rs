@@ -48,3 +48,83 @@ fn project_import_fix_resolves_from_the_diagnostic_module() {
     );
     assert!(repaired.success(), "{:?}", repaired.diagnostics);
 }
+
+#[test]
+fn import_fixes_preserve_file_effect_permissions() {
+    let syms = ms_syntax::Names::global();
+    let fixture = include_str!("import_hints/effect-header.ms");
+    for project in [false, true] {
+        for source in [fixture.to_string(), fixture.replace('\n', "\r\n")] {
+            let dir = TempDir::new();
+            let path = write(dir.path(), "main.ms", &source);
+            if project {
+                write(
+                    dir.path(),
+                    "blobs.ms",
+                    include_str!("import_hints/blobs.ms"),
+                );
+            }
+            let checked = check_graph(
+                syms,
+                load_file(syms, &path, LoadOptions::default()),
+                CheckRequest::default(),
+            );
+            assert_eq!(checked.diagnostics.len(), 1, "{:?}", checked.diagnostics);
+            let fix = checked.diagnostics[0].fix.as_ref().expect("import fix");
+            assert_eq!(fix.pos.line, 3);
+            assert_eq!(fix.end, fix.pos);
+            let mut fixed = source.clone();
+            fixed.insert_str(fix.pos.offset as usize, &fix.replacement);
+            write(dir.path(), "main.ms", &fixed);
+            let repaired = check_graph(
+                syms,
+                load_file(syms, &path, LoadOptions::default()),
+                CheckRequest::default(),
+            );
+            assert!(repaired.success(), "{:?}", repaired.diagnostics);
+            assert!(
+                repaired
+                    .program
+                    .as_ref()
+                    .unwrap()
+                    .effect_violations
+                    .is_empty(),
+                "{fixed}"
+            );
+        }
+    }
+}
+
+#[test]
+fn generated_import_paths_round_trip_as_source() {
+    for path in [
+        "./plain.ms",
+        "./a\"b.ms",
+        r"./a\b.ms",
+        "./a{b}.ms",
+        "./a}b.ms",
+        "./a\nb.ms",
+        "./a\tb.ms",
+        "./a\u{7}b.ms",
+        "./é😀.ms",
+        "./a\u{202e}b.ms",
+    ] {
+        let source = format!("{}\n", ms_driver::imports::import_statement("Widget", path));
+        let module = ms_syntax::parser::parse(&"import.ms".into(), &source)
+            .unwrap_or_else(|error| panic!("{path:?}: {error:?}"));
+        assert_eq!(module.imports[0].path.as_ref(), path);
+    }
+}
+
+#[test]
+fn unrepresentable_import_paths_are_not_rewritten_as_another_path() {
+    let expected = if cfg!(windows) {
+        Some("./a/b.ms")
+    } else {
+        None
+    };
+    assert_eq!(
+        ms_driver::imports::import_path("/root", r"/root/a\b.ms").as_deref(),
+        expected
+    );
+}

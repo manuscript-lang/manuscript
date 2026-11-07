@@ -125,6 +125,49 @@ fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
         .collect()
 }
 
+/// A new leading import goes after a blank-terminated initial comment block.
+/// Otherwise it would move file-wide effect permissions below the first import.
+pub fn import_position(source: &str) -> Pos {
+    let mut offset = 0;
+    let mut comments = 0;
+    for line in source.split_inclusive('\n') {
+        if line.trim_start().starts_with("//") {
+            offset += line.len();
+            comments += 1;
+        } else if comments > 0 && line.trim().is_empty() {
+            return Pos::new((offset + line.len()) as u32, comments + 2, 1);
+        } else {
+            break;
+        }
+    }
+    Pos::new(0, 1, 1)
+}
+
+/// A source import statement, with its module path quoted as Manuscript text.
+pub fn import_statement(name: &str, path: &str) -> String {
+    let mut literal = String::from("\"");
+    for c in path.chars() {
+        match c {
+            '\\' | '"' | '{' | '}' => {
+                literal.push('\\');
+                literal.push(c);
+            }
+            '\n' => literal.push_str("\\n"),
+            '\r' => literal.push_str("\\r"),
+            '\t' => literal.push_str("\\t"),
+            c if c.is_control()
+                || matches!(c, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') =>
+            {
+                use std::fmt::Write;
+                let _ = write!(literal, "\\u{{{:X}}}", c as u32);
+            }
+            c => literal.push(c),
+        }
+    }
+    literal.push('"');
+    format!("import {name} from {literal}")
+}
+
 /// The name an `unknown binding`/`unknown type` diagnostic is about.
 pub fn unresolved_name(message: &str) -> Option<&str> {
     let rest = message
@@ -137,7 +180,12 @@ pub fn unresolved_name(message: &str) -> Option<&str> {
 
 /// The import path of `target` as written in a file inside `dir`.
 pub fn import_path(dir: &str, target: &str) -> Option<String> {
-    let relative = pathops::rel(dir, target).ok()?.replace('\\', "/");
+    let relative = pathops::rel(dir, target).ok()?;
+    // Native Windows separators are already normalized by `rel`. A remaining
+    // backslash is a Unix filename byte, which the import-path grammar rejects.
+    if relative.contains('\\') {
+        return None;
+    }
     Some(if relative.starts_with("../") {
         relative
     } else {
@@ -220,7 +268,7 @@ pub fn suggest_project_imports(
         match paths.as_slice() {
             [] => {}
             [path] => {
-                let statement = format!("import {name} from \"{path}\"");
+                let statement = import_statement(&name, path);
                 d.message = format!("{head}; add: {statement}");
                 let start = Pos::new(0, 1, 1);
                 d.fix = Some(DiagnosticFix {
