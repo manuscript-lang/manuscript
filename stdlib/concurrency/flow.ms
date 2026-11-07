@@ -32,6 +32,11 @@ impl RetryPolicy:
             if wait.compare(self.max_delay) >= 0:
                 break
 
+            // Doubling would reach the cap: stop before the product can overflow.
+            if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2:
+                wait = Duration(nanos: self.max_delay.nanos)
+                break
+
             wait = wait.multiply(2)
 
         return Duration(nanos: wait.nanos.min(self.max_delay.nanos))

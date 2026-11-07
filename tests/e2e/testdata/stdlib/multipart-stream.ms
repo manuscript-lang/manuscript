@@ -104,3 +104,10 @@ test "a non-UTF-8 header block is InvalidData in both parsers":
     try expect_equal(parse_multipart(bytes.clone(), "XyZ").err().kind, "EBADMSG")
     for size in [1, 7, 200]:
         try expect_equal(read_parts(bytes.clone(), size).err().kind, "EBADMSG")
+
+test "an Int-max part limit does not overflow on a partial part":
+    let body = "--XyZ\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
+    for size in 1..body.length() + 1:
+        let parts = try read_parts(body.clone(), size, 9223372036854775807)
+        try expect_equal(parts.length(), 1)
+        try expect_equal(parts[0].data, "x".to_bytes())

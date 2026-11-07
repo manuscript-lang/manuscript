@@ -8,7 +8,7 @@ import (
     Throttle
 ) from "@std/concurrency/flow.ms"
 import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms"
-import milliseconds, sleep, monotonic from "@std/time.ms"
+import Duration, milliseconds, sleep, monotonic from "@std/time.ms"
 
 fn flaky(attempt: Int) Int!String:
     if attempt < 3:
@@ -40,6 +40,22 @@ test "backoff doubles and is capped":
     try expect_equal(policy.wait_after(1).nanos, milliseconds(10).nanos)
     try expect_equal(policy.wait_after(3).nanos, milliseconds(40).nanos)
     try expect_equal(policy.wait_after(9).nanos, milliseconds(50).nanos)
+
+test "backoff caps at a representable limit without overflowing":
+    let cap = 6000000000000000000
+    let policy = RetryPolicy(
+        delay: Duration(nanos: 5000000000000000000),
+        max_delay: Duration(nanos: cap),
+        jitter: false
+    )
+    try expect_equal(policy.wait_after(1).nanos, 5000000000000000000)
+    try expect_equal(policy.wait_after(2).nanos, cap)
+    try expect_equal(policy.wait_after(40).nanos, cap)
+
+test "backoff reaching the cap exactly returns it":
+    let policy = RetryPolicy(delay: milliseconds(25), max_delay: milliseconds(50))
+    try expect_equal(policy.wait_after(2).nanos, milliseconds(50).nanos)
+    try expect_equal(policy.wait_after(3).nanos, milliseconds(50).nanos)
 
 test "rate limiter allows a burst then waits":
     var limiter = rate_limiter(100, burst: 3)
