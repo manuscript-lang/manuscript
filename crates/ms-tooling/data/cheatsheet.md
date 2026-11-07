@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Statically typed; native code. Four-space indent, `//` and `/* */` comments. No `print`: write text via `@std/io/io.ms`.
+Statically typed; native code. Four-space indent, `//` and `/* */` comments. `print(x)` is for quick output.
 
 <!-- complete -->
 ```manuscript

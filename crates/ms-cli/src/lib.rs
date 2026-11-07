@@ -84,13 +84,13 @@ const PROJECT_COMMANDS: &[&str] = &[
 ];
 
 /// Inside a project directory, `ms run` means `ms run ms.toml`: when the command
-/// names no target (nothing after it, or only `-- program arguments`), insert
+/// names no target (nothing after it, or only options and `-- program arguments`), insert
 /// the manifest in the current directory.
 fn default_project_target(args: &[String]) -> Option<Vec<String>> {
     if !PROJECT_COMMANDS.contains(&args[0].as_str()) {
         return None;
     }
-    if args.len() > 1 && args[1] != "--" {
+    if args.len() > 1 && args[1] != "--" && !args[1].starts_with('-') {
         return None;
     }
     if !std::path::Path::new("ms.toml").is_file() {

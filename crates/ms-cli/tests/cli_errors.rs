@@ -257,3 +257,24 @@ fn project_commands_default_to_the_manifest_in_the_current_directory() {
     assert_eq!(missing.status.code(), Some(2), "{missing:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn options_without_a_target_use_the_manifest_in_the_current_directory() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-default-options-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let ms_in = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(args)
+            .current_dir(&dir)
+            .output()
+            .unwrap()
+    };
+    assert!(ms_in(&["init"]).status.success());
+    let build = ms_in(&["build", "-o", "app"]);
+    assert!(build.status.success(), "{build:?}");
+    assert!(dir.join("app").exists() || dir.join("app.exe").exists());
+    let fmt = ms_in(&["fmt", "--check"]);
+    assert!(fmt.status.success(), "{fmt:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
