@@ -12,7 +12,7 @@ import (
     ArchiveOptions,
     CompressionFormat
 ) from "@std/io/archive.ms"
-import Bytes, join from "@std/bytes.ms"
+import Bytes, BytesBuilder, join from "@std/bytes.ms"
 import ReadStream, Source from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
 
@@ -166,3 +166,43 @@ test "tar entries enforce limits and report truncation":
 
     let cut = read_entries(chunked(archive.slice(0, 1000).get("".to_bytes()), 300))
     try expect_equal(cut.err().kind, "EBADMSG")
+
+// One member of a tar archive: a file's header and data block, or a directory's header.
+fn member(path: String, directory: Bool) Bytes!:
+    let data = if directory: "".to_bytes() else: "x".to_bytes()
+    let archive = try pack([ArchiveEntry(path, data, directory)], ArchiveFormat.Tar)
+    return archive.slice(0, if directory: 512 else: 1024)
+
+// Paths ending in `/` are directories.
+fn members(paths: List[String]) Bytes!:
+    var archive = join([])
+
+    for path in paths:
+        let directory = path.ends_with("/")
+        let name = if directory: path.take(path.length() - 1) else: path
+        archive = archive.concat(try member(name, directory))
+
+    var end = BytesBuilder()
+    for index in 0..1024:
+        end.append(0)
+    return ok(archive.concat(end.build()))
+
+test "tar entries reject duplicate and conflicting paths as unpack does":
+    let cases = [
+        ["same.txt", "same.txt"], ["a/", "a"], ["a", "a/b"], ["a/b", "a"],
+        ["a", "a/b/c/"]
+    ]
+
+    for paths in cases:
+        let archive = try members(paths)
+        let expected = unpack(archive.clone(), ArchiveFormat.Tar)
+        try expect_equal(expected.is_error(), true)
+
+        for size in [1, 512, 700, 4096]:
+            let got = read_entries(chunked(archive.clone(), size))
+            try expect_equal(got.err().kind, expected.err().kind)
+
+test "tar entries accept distinct paths and sibling directories":
+    let archive = try members(["a/", "a/b", "a/c/", "a/c/d", "e"])
+    let expected = try unpack(archive.clone(), ArchiveFormat.Tar)
+    try expect_equal(try read_entries(chunked(archive, 700)), expected)

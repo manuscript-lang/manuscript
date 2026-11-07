@@ -219,6 +219,10 @@ type TarEntries:
     total: Int
     done: Bool
     end: Bytes
+    // Cleaned paths seen so far, the file paths among them, and every ancestor directory of a seen path.
+    names: Set[String]
+    files: Set[String]
+    parents: Set[String]
 
 impl TarEntries:
     // Bytes of the member at the start of the buffer, or 0 while its end has not arrived.
@@ -252,6 +256,29 @@ impl TarEntries:
 
         return ok(0)
 
+impl TarEntries:
+    // Applies `unpack`'s whole-archive path rules across members: no duplicate path, no file that is
+    // also a directory, and no entry below a file.
+    var fn admit(path: String, directory: Bool) Unit!:
+        let invalid: Unit! = error(Error("archive: invalid archive", kind: "EBADMSG"))
+        if self.names.contains(path.clone()): return invalid
+        if not directory and self.parents.contains(path.clone()): return invalid
+
+        var dir = path.clone()
+
+        while true:
+            let slash = dir.last_index_of("/")
+            if slash.is_none(): break
+
+            dir = dir.take(slash.get())
+            if self.files.contains(dir.clone()): return invalid
+
+            self.parents.add(dir.clone())
+
+        if not directory: self.files.add(path.clone())
+        self.names.add(path)
+        return ok(unit)
+
 impl Transform[Bytes, ArchiveEntry] for TarEntries:
     var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
         if self.done: return ok(unit)
@@ -276,6 +303,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
             let end = member.concat(self.end)
 
             for entry in try unpack(end, ArchiveFormat.Tar, self.options):
+                try self.admit(entry.path.clone(), entry.directory)
                 self.count += 1
                 self.total += entry.data.length()
                 out.append(entry)
@@ -315,6 +343,7 @@ export fn tar_entries(
         input,
         TarEntries(
             options: options, buffer: join([]), count: 0, total: 0, done: false,
-            end: zeros.build()
+            end: zeros.build(), names: Set[String](), files: Set[String](),
+            parents: Set[String]()
         )
     )
