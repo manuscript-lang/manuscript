@@ -1732,6 +1732,23 @@ impl<'a> FnLower<'a> {
                 return Ok(done);
             }
         }
+        // A receiver that is not a place is evaluated before the arguments, as written. An owned
+        // receiver stays registered as a temporary while a later argument can leave through `try`.
+        let mut receiver: Option<(Val, bool)> = None;
+        if !self.is_place(recv_expr) {
+            let x = self.expr(recv_expr)?;
+            if self.dead {
+                return Ok(x);
+            }
+            let held = view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr));
+            if held {
+                self.hold_temp(x);
+            }
+            receiver = Some((x, held));
+        }
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
@@ -1745,10 +1762,9 @@ impl<'a> FnLower<'a> {
         {
             return Ok(done);
         }
-        if !self.is_place(recv_expr) {
-            let x = self.expr(recv_expr)?;
-            if self.dead {
-                return Ok(x);
+        if let Some((x, held)) = receiver {
+            if held {
+                self.unhold_temp(x.v);
             }
             let old = self.owned(x);
             let (new, r) = self.mutate_any(name, old, &m.ty.params, &args, false, result_mty)?;
