@@ -327,6 +327,15 @@ impl Transform[Bytes, Part] for MultipartParts:
             let at = self.buffer.index_of(self.delimiter)
 
             if at.is_none():
+                if not self.in_part:
+                    // Preamble text is ignored; keep only a tail that could start the delimiter.
+                    let keep = self.delimiter.length() - 1
+                    let size = self.buffer.length()
+                    if size > keep: self.buffer = try self.buffer.slice(
+                        size - keep, size
+                    )
+                    break
+
                 if let limit = self.max_part_bytes:
                     if self.buffer.length() > limit + self.delimiter.length():
                         return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
