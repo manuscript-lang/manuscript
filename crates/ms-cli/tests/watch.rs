@@ -134,11 +134,7 @@ fn check_watch_reruns_when_a_broken_dependency_is_repaired() {
     let dependency = dir.join("dep.ms");
     let valid = "export fn value() Int: 3\n";
     std::fs::write(&dependency, valid).unwrap();
-    std::fs::write(
-        dir.join("main.ms"),
-        include_str!("watch/imports_value.ms"),
-    )
-    .unwrap();
+    std::fs::write(dir.join("main.ms"), include_str!("watch/imports_value.ms")).unwrap();
     let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
     watch.until("ms: waiting for changes");
 
