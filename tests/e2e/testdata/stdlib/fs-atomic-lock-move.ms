@@ -3,10 +3,12 @@ import (
     OpenMode,
     chmod,
     create_directory,
+    create_link,
     list,
     move,
     open,
     read_file,
+    read_link,
     stat,
     temporary,
     write_atomic,
@@ -47,6 +49,28 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
 
     let names = (try list(root, none)).map(fn e: e.name)
     try expect_equal(names.length(), 2)
+
+test "write_atomic writes through a symbolic link and keeps the link":
+    let directory = try temporary("manuscript-atomic-link-")
+    let root = directory.path()
+    try write_file("{root}/real.txt", "old", false).wait()
+    try create_link("{root}/link.txt", "real.txt")
+    try write_atomic("{root}/link.txt", "new").wait()
+    try expect_true((try stat("{root}/link.txt", follow_links: false)).is_symlink())
+    try expect_equal(try read_link("{root}/link.txt"), "real.txt")
+    try expect_equal(try text_of("{root}/real.txt"), "new")
+    try expect_equal(try text_of("{root}/link.txt"), "new")
+    try expect_equal((try list(root, none)).length(), 2)
+
+test "write_atomic replaces a link that names nothing":
+    let directory = try temporary("manuscript-atomic-dangling-")
+    let root = directory.path()
+    try create_link("{root}/dangling.txt", "missing.txt")
+    try write_atomic("{root}/dangling.txt", "made").wait()
+    try expect_false(
+        (try stat("{root}/dangling.txt", follow_links: false)).is_symlink()
+    )
+    try expect_equal(try text_of("{root}/dangling.txt"), "made")
 
 test "write_atomic fails without touching the target when the directory is missing":
     let directory = try temporary("manuscript-atomic-")

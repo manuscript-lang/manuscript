@@ -806,7 +806,7 @@ export fn open_directory(path: String) Directory!:
 
 /*
 Starts replacing the file at `path` with `data` (text or `Bytes`) all-or-nothing and returns its promise: readers see the old contents or the new, never a partial file.
-The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
+The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. When `path` is a symbolic link the file it names is replaced and the link stays; a link that cannot be resolved is replaced itself. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
 Example: `write_atomic("config.json", text).wait()`.
 */
 // ms: effect std.fs.write
@@ -817,7 +817,16 @@ export fn write_atomic(path: String, data: Writable) Promise[Unit]:
 fn atomic_job(path: String, data: Bytes) fn() Unit!:
     return fn: replace_atomically(path, data)
 
-fn replace_atomically(path: String, data: Bytes) Unit!:
+// The file a write to `path` replaces: the target of a symbolic link, so the link stays, else `path`.
+// A link that cannot be resolved (a dangling one) is replaced itself.
+fn through_links(path: String) String:
+    let link = stat(path, follow_links: false)
+    if link.is_error() or not link.get().is_symlink(): return path.clone()
+
+    return canonicalize(path).get(path.clone())
+
+fn replace_atomically(link: String, data: Bytes) Unit!:
+    let path = through_links(link)
     let existing = stat(path)
     var mode = 420
     if let info = existing: mode = info.permissions
