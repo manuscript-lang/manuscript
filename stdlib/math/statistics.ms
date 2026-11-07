@@ -163,7 +163,7 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 
 /*
 Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
-Values equal to the greatest value fall in the last bin; when every value is equal they all fall in the first bin. A `bins` below 1 faults.
+Values equal to the greatest value fall in the last bin (so an infinite value does), and when every value is equal they all fall in the first bin. When the range is infinite, the finite values fall in the first bin. A `bins` below 1 faults.
 Example: `if let bins = bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` prints `[1, 3]`.
 */
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
@@ -174,15 +174,24 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 
     let low = values.min().get(0.0)
     let high = values.max().get(0.0)
-    let width = (high - low) / bins.to_float()
+
+    // A range beyond the Float maximum (or an infinite end) is measured in halves so the width stays finite where it can.
+    let halved = not (high - low).is_finite()
+    let origin = if halved: low / 2.0 else: low
+    let width = (if halved: high / 2.0 - origin else: high - low) / bins.to_float()
     var counts: List[Int] = []
     for index in 0..bins:
         counts.append(0)
 
     for value in values:
         var bin = 0
-        if width > 0.0:
-            bin = ((value - low) / width).truncate_to_int().get(0)
+
+        if low < high and value >= high:
+            bin = bins - 1
+        else if width > 0.0 and width.is_finite():
+            let scaled = if halved: value / 2.0 else: value
+            bin = ((scaled - origin) / width).truncate_to_int().get(0)
+
         if bin >= bins:
             bin = bins - 1
         counts.set(bin, counts[bin] + 1)
