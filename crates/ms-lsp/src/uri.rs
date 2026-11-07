@@ -143,6 +143,14 @@ fn escape_path(path: &str) -> String {
 
 /// The `file:` URI of an absolute path.
 pub fn file_uri(path: &str) -> String {
+    if !cfg!(windows) {
+        return format!("file://{}", escape_path(path));
+    }
+    windows_file_uri(path)
+}
+
+/// Windows separators and verbatim prefixes are not part of a file URI.
+fn windows_file_uri(path: &str) -> String {
     let mut p = path.replace('\\', "/");
     // `canonicalize` on Windows returns verbatim `\\?\` paths, which are not part of the name.
     if let Some(rest) = p.strip_prefix("//?/UNC/") {
@@ -190,10 +198,25 @@ mod tests {
             assert_eq!(filename(&file_uri(path)), path, "{path}");
         }
         assert_eq!(file_uri("/tmp/a b.ms"), "file:///tmp/a%20b.ms");
-        assert_eq!(file_uri(r"\\?\D:\a\b.ms"), "file:///D:/a/b.ms");
+        assert_eq!(windows_file_uri(r"\\?\D:\a\b.ms"), "file:///D:/a/b.ms");
         assert_eq!(
-            file_uri(r"\\?\UNC\host\share\b.ms"),
+            windows_file_uri(r"\\?\UNC\host\share\b.ms"),
             "file://host/share/b.ms"
+        );
+    }
+
+    #[test]
+    fn native_separator_identity() {
+        let path = r"/tmp/a\b.ms";
+        let expected = if cfg!(windows) {
+            "file:///tmp/a/b.ms"
+        } else {
+            "file:///tmp/a%5Cb.ms"
+        };
+        assert_eq!(file_uri(path), expected);
+        assert_eq!(
+            filename(expected),
+            if cfg!(windows) { "/tmp/a/b.ms" } else { path }
         );
     }
 

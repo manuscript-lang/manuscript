@@ -10,6 +10,7 @@ use crate::workspace;
 use ms_check::api::syntax::ModRef;
 use ms_driver::project::pathops;
 use ms_syntax::token::Tok;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 fn action_for(
@@ -128,26 +129,71 @@ fn project_exports(
     found
 }
 
-/// Where `statement` goes: after the leading run of imports, else at the top.
-fn import_insertion(source: &str, statement: &str) -> (Position, String) {
+/// Import boundaries anchored to the recovered module, scanned only up to the
+/// next known declaration. Unrelated unfinished code cannot erase valid imports.
+fn import_end_lines(source: &str, module: Option<&ModRef>) -> BTreeMap<usize, usize> {
+    let Some(module) = module else {
+        return BTreeMap::new();
+    };
+    let mut boundaries: Vec<usize> = module
+        .imports
+        .iter()
+        .map(|i| i.pos.offset as usize)
+        .collect();
+    boundaries.extend(module.decls.iter().map(|d| d.pos().offset as usize));
+    boundaries.push(source.len());
+    boundaries.sort_unstable();
+    boundaries.dedup();
+    let positions = text::SourcePositions::new(source);
+    let mut ends = BTreeMap::new();
+    for import in &module.imports {
+        let start = import.pos.offset as usize;
+        let line = import.pos.line as usize - 1;
+        if ends.contains_key(&line) {
+            continue;
+        }
+        let next = boundaries.partition_point(|at| *at <= start);
+        let Some(&end) = boundaries.get(next) else {
+            continue;
+        };
+        let Some(part) = source.get(start..end) else {
+            continue;
+        };
+        if let Some(path) = text::editor_tokens(part)
+            .iter()
+            .find(|t| t.kind == text::EditorKind::Str)
+        {
+            ends.insert(line, positions.position(start + path.end).line);
+        }
+    }
+    ends
+}
+
+/// Keep a blank-terminated initial comment block at the top of the file.
+/// Moving effect permissions below an import would change their scope.
+pub(crate) fn file_header_end(source: &str) -> Position {
+    text::position(
+        source,
+        ms_driver::imports::import_position(source).offset as usize,
+    )
+}
+
+/// Where `statement` goes: after the leading run of imports, else after a file header.
+fn import_insertion(source: &str, statement: &str, module: Option<&ModRef>) -> (Position, String) {
     let newline = if source.contains("\r\n") {
         "\r\n"
     } else {
         "\n"
     };
     let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let ends = import_end_lines(source, module);
     let mut at = 0;
     let mut last = None;
     while at < lines.len() {
         let line = lines[at].trim();
-        if line.starts_with("import ") {
-            let mut open = line.contains('{') && !line.contains('}');
-            at += 1;
-            while open && at < lines.len() {
-                open = !lines[at].contains(')');
-                at += 1;
-            }
-            last = Some(at - 1);
+        if let Some(&end) = ends.get(&at) {
+            at = end + 1;
+            last = Some(end);
         } else if line.is_empty() || line.starts_with("//") || line.starts_with("/*") {
             at += 1;
         } else {
@@ -161,13 +207,7 @@ fn import_insertion(source: &str, statement: &str) -> (Position, String) {
             let prefix = if missing { newline } else { "" };
             (end, format!("{prefix}{statement}{newline}"))
         }
-        None => (
-            Position {
-                line: 0,
-                character: 0,
-            },
-            format!("{statement}{newline}"),
-        ),
+        None => (file_header_end(source), format!("{statement}{newline}")),
     }
 }
 
@@ -286,7 +326,7 @@ pub fn editor_actions(
         let mut statements: Vec<String> = exports
             .iter()
             .filter(|(exported, _)| exported == name)
-            .map(|(_, path)| format!("import {name} from \"{path}\""))
+            .map(|(_, path)| ms_driver::imports::import_statement(name, path))
             .collect();
         // A project declaration is preferred over a standard-library one.
         let standard = ms_check::api::hints::import_hint(&checked.session, name);
@@ -294,7 +334,7 @@ pub fn editor_actions(
             statements.push(statement.to_string());
         }
         for (i, statement) in statements.iter().enumerate() {
-            let (at, text) = import_insertion(&d.text, statement);
+            let (at, text) = import_insertion(&d.text, statement, module.as_ref());
             let diagnostic = obj([
                 ("range", r.json()),
                 ("message", issue.message.clone().into()),
@@ -371,27 +411,19 @@ pub fn editor_actions(
     // Sort contiguous import runs. Comments and blank separators retain their
     // original attachment and remain outside the replaced source ranges.
     let lines: Vec<&str> = d.text.split_inclusive('\n').collect();
+    let ends = import_end_lines(&d.text, module.as_ref());
     let mut edits = Vec::new();
     let mut at = 0;
-    let is_import = |line: &str| line.trim().starts_with("import ");
     while at < lines.len() {
-        if !is_import(lines[at]) {
+        if !ends.contains_key(&at) {
             at += 1;
             continue;
         }
         let start = at;
         let mut block: Vec<String> = Vec::new();
-        while at < lines.len() && is_import(lines[at]) {
-            // A parenthesized import continues until the line with its `)`.
-            let mut declaration = lines[at].to_string();
-            let mut open = lines[at].contains('(') && !lines[at].contains(')');
-            at += 1;
-            while open && at < lines.len() {
-                open = !lines[at].contains(')');
-                declaration.push_str(lines[at]);
-                at += 1;
-            }
-            block.push(declaration);
+        while let Some(&end) = ends.get(&at) {
+            block.push(lines[at..=end].concat());
+            at = end + 1;
         }
         let before = block.concat();
         // Group by module path, the part of the statement after `from`.
