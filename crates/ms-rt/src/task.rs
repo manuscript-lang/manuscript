@@ -1431,6 +1431,14 @@ unsafe fn reactor_wait() {
                 };
                 break;
             }
+            let steal = crate::sched::steal_wait_ns();
+            if steal >= 0 {
+                timeout_ns = if timeout_ns < 0 {
+                    steal
+                } else {
+                    timeout_ns.min(steal)
+                };
+            }
             if let Some(deadline) = crate::promise::next_deadline() {
                 let ns = (deadline - now).max(0);
                 timeout_ns = if timeout_ns < 0 {
@@ -2053,7 +2061,7 @@ crate::isolate_static! {
 
 /// Entry of a task that runs a `fn() Unit`: calls the closure with itself as its
 /// environment, as every closure call does.
-unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
+pub(crate) unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;
     // SAFETY: `arg` is the retained closure object `spawn_promise_task` stored.
     unsafe {
