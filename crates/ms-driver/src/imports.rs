@@ -6,7 +6,7 @@
 //! of them exports, replaces the hint with that file's import (preferred over a
 //! standard-library one).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -25,10 +25,20 @@ const MAX_FILES: usize = 2000;
 pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
     let mut names = Vec::new();
     let mut groups = None;
+    let mut headers = None;
     for (line, text) in source.lines().enumerate() {
         let Some(rest) = text.strip_prefix("export ") else {
             continue;
         };
+        // A column-zero `export` inside a block comment or multi-line text declares nothing; only
+        // a lexer `export` token does. Sources without such lines never lex.
+        let Some(headers) = headers.get_or_insert_with(|| export_headers(source)) else {
+            // Keep valid neighboring exports when lexing an incomplete file fails.
+            return parsed_exported_names(syms, source);
+        };
+        if !headers.contains(&((line + 1) as u32)) {
+            continue;
+        }
         let rest = rest.trim_start();
         let rest = rest
             .strip_prefix("extern ")
@@ -64,6 +74,20 @@ pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
         }
     }
     names
+}
+
+/// The lines where a real `export` token starts in column one.
+fn export_headers(source: &str) -> Option<BTreeSet<u32>> {
+    let file = Arc::from("<import-hints>");
+    let lexed = lexer::lex(&file, source).ok()?;
+    Some(
+        lexed
+            .tokens
+            .iter()
+            .filter(|token| token.kind == Tok::Export && token.pos.column == 1)
+            .map(|token| token.pos.line)
+            .collect(),
+    )
 }
 
 /// Group entries start four columns past their export and outside any nested
