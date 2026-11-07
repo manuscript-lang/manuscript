@@ -97,6 +97,7 @@ impl<'a> FnLower<'a> {
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
         let mut read_at = Vec::new();
+        let mut held = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let at = self.b.current();
             // A native takes a reading function for a `var` function parameter as written.
@@ -114,6 +115,7 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
+            held.push(later_try && val.own);
             let val = if later_try { self.hold_temp(val) } else { val };
             out.push(NArg {
                 name: a.slot.name,
@@ -122,8 +124,17 @@ impl<'a> FnLower<'a> {
                 reader,
             });
         }
-        for (arg, (expr, at)) in out.iter_mut().zip(read_at) {
-            arg.val = self.refresh(expr, arg.val, at)?;
+        if !self.dead {
+            for ((arg, (expr, at)), held) in out.iter_mut().zip(read_at).zip(held) {
+                // A later `try` needed this owned argument registered only until it succeeded.
+                // Transfer the captured value, not a copy of its temporary borrow or a fresh
+                // read of the source place (which may already have been moved).
+                if held {
+                    self.unhold_temp(arg.val.v);
+                    arg.val.own = true;
+                }
+                arg.val = self.refresh(expr, arg.val, at)?;
+            }
         }
         // Written order decides evaluation; callers index by declared parameter position, so
         // `set(value: 8, 0)` must hand them the index before the value.

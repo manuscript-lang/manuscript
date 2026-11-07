@@ -106,3 +106,72 @@ test "literal increments keep stable mutable-key counters":
     values.add(key.clone(), values.get(key).get(0) + 1)
     try expect_equal(values["long-dynamic-map-key-1"], 1)
     try expect_equal(values["long-dynamic-map-key-2"], 1)
+
+// Source methods named clone must run even when the arithmetic fits counter fusion.
+type CounterKey:
+    value: Int
+
+impl CounterKey:
+    fn clone() CounterKey:
+        return CounterKey(self.value + 1)
+
+test "counter updates call a source-defined clone method":
+    let key = CounterKey(1)
+    var values = {CounterKey(1): 1}
+    values.add(key.clone(), values.get(key).get(0) + 1)
+    try expect_equal(values[CounterKey(1)], 1)
+    try expect_equal(values[CounterKey(2)], 2)
+
+fn successful_value(value: Int) Int!:
+    return ok(value)
+
+fn failed_value() Int!:
+    return error(Error("expected map value failure"))
+
+fn add_failed_value(var values: Map[String, Int], key: String) Unit!:
+    values.add(key.clone(), try failed_value())
+    return ok(unit)
+
+test "an owned native argument transfers after a later try succeeds":
+    let key = "long-dynamic-map-key-{1}"
+    var values: Map[String, Int] = Map()
+
+    // Referencing the owner prevents borrowed-key elision, as in TOML materialization.
+    values.add(key.clone(), try successful_value(key.length()))
+    values.add_default(key.clone(), try successful_value(key.length() + 1))
+    try expect_equal(values[key], key.length())
+
+test "a moved native argument survives a later try without rereading its source":
+    let key = "long-dynamic-map-key-{1}"
+    var values: Map[String, Int] = Map()
+    values.add(key, try successful_value(7))
+    try expect_equal(values["long-dynamic-map-key-1"], 7)
+
+test "a later failing try leaves its map unchanged":
+    var values: Map[String, Int] = Map()
+    let result = add_failed_value(var values, "long-dynamic-map-key-{1}")
+    try expect_equal(result.is_error(), true)
+    try expect_equal(values.length(), 0)
+
+type FaultingCounterKey:
+    value: Int
+
+impl FaultingCounterKey:
+    fn clone() FaultingCounterKey:
+        let checked = self.value + 1
+        return FaultingCounterKey(checked - 1)
+
+test "counter fusion preserves faults from an equal-valued source clone":
+    let key = FaultingCounterKey(9223372036854775807)
+    var values = {FaultingCounterKey(9223372036854775807): 1}
+    let message = try expect_fault(
+        fn: values.add(key.clone(), values.get(key).get(0) + 1)
+    )
+    try expect_contains(message, "overflow")
+
+test "native borrowers retain owned arguments after a later try":
+    let separator = "long-dynamic-map-key-{1}"
+    let pieces = "before-long-dynamic-map-key-1-after".split(
+        separator.clone(), max_parts: try successful_value(2)
+    )
+    try expect_equal(pieces, ["before-", "-after"])

@@ -25,3 +25,11 @@ descriptor ([#2858](https://github.com/manuscript-lang/manuscript/issues/2858)).
 The same owner-lifetime rule applies to borrowed-key `add` and `add_default`: an immutable
 key's source must not be consumed by the value argument. Keep its explicit clone when that
 argument references the key owner.
+
+Only a checked native structural `clone` may be elided, never a source method that happens
+to have the same name ([#2865](https://github.com/manuscript-lang/manuscript/issues/2865)).
+
+An owned native argument held for a later `try` remains registered on early exit. After all
+arguments succeed, restore ownership of that captured value before refreshing or consuming
+arguments. Otherwise lowering can reread a moved source or silently copy an explicit clone
+([#2866](https://github.com/manuscript-lang/manuscript/issues/2866)).

@@ -22,7 +22,14 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
 }
 
 /// `x` of `x.clone()`.
-fn clone_receiver(syms: ms_check::api::Names, e: &Expr) -> Option<&Expr> {
+fn clone_receiver<'e>(
+    syms: ms_check::api::Names,
+    hir: &ms_check::api::hir::ModuleHir,
+    e: &'e Expr,
+) -> Option<&'e Expr> {
+    if hir.info(e).native_str(syms) != "clone" {
+        return None;
+    }
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
@@ -58,7 +65,7 @@ impl<'a> FnLower<'a> {
         let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
         // `m.add(w.clone(), m.get(w).get(0) + 1)`: the explicit copy is only needed when the key
         // is absent, so the runtime makes it then and the lookup borrows `w`.
-        let key = clone_receiver(self.syms, key).unwrap_or(key);
+        let key = clone_receiver(self.syms, &self.hir, key).unwrap_or(key);
         let ExprKind::Binary { op, left, right } = &value.kind else {
             return Ok(None);
         };
@@ -182,7 +189,7 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         let (key_e, value_e) = (view.arguments[0].expr, view.arguments[1].expr);
-        let Some(inner) = clone_receiver(self.syms, key_e) else {
+        let Some(inner) = clone_receiver(self.syms, &self.hir, key_e) else {
             return Ok(None);
         };
         if !self.is_place(recv_expr) || !self.is_place(inner) {
