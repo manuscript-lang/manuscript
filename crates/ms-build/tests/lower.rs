@@ -11,7 +11,7 @@ use ms_lower::{Options, lower_program};
 use ms_rt as _;
 use std::path::{Path, PathBuf};
 
-fn lower(path: &Path) -> String {
+fn lower_module(path: &Path) -> ms_mir::ir::Module {
     let syms = ms_syntax::Names::global();
     let loaded = check_graph(
         syms,
@@ -29,7 +29,11 @@ fn lower(path: &Path) -> String {
     )
     .expect("lower");
     ms_mir::verify::verify_module(&module).expect("verified MIR");
-    ms_mir::print::print_module(&module)
+    module
+}
+
+fn lower(path: &Path) -> String {
+    ms_mir::print::print_module(&lower_module(path))
 }
 
 fn quoted(rest: &str) -> Vec<&str> {
@@ -123,4 +127,50 @@ fn rsa_source_calls_and_function_values() {
         assert!(mir.contains(&format!("msstd_crypto_rsa_{name}")), "{name}");
     }
     assert!(mir.contains("alt.tag"));
+}
+
+#[test]
+fn bound_native_scalar_resources_keep_ownership_in_capture_metadata() {
+    use ms_mir::ir::FuncKind;
+    use ms_mir::types::Ty;
+
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/lower/bound-native-scalar-resource.ms");
+    let module = lower_module(&path);
+    let mut owning = 0;
+    let mut borrowed = 0;
+    let mut plain = 0;
+    for func in &module.funcs {
+        let FuncKind::Closure { captures } = &func.kind else {
+            continue;
+        };
+        if func.name == "is_error" {
+            assert_eq!(captures.len(), 1);
+            if captures[0] == Ty::PTR {
+                // The named parameter and Holder.result projection borrow their receiver.
+                assert!(func.capture_closers.is_empty());
+                borrowed += 1;
+            } else {
+                assert!(
+                    !module.needs_drop(captures[0]),
+                    "must exercise a scalar resource"
+                );
+                assert_eq!(func.capture_closers.len(), 1);
+                let (index, closer) = func.capture_closers[0];
+                assert_eq!(index, 0);
+                let closer = &module.funcs[closer.index()];
+                assert_eq!(closer.params.len(), 1);
+                assert_eq!(closer.params[0].ty, Ty::PTR);
+                owning += 1;
+            }
+        } else if func.name == "abs" {
+            assert_eq!(captures.as_slice(), &[Ty::INT]);
+            assert!(func.capture_closers.is_empty());
+            plain += 1;
+        }
+    }
+    // Helper caching shares the borrowed thunk but separates it from the owning one.
+    assert_eq!(owning, 1, "missing owning native resource capture");
+    assert_eq!(borrowed, 1, "missing borrowed native resource capture");
+    assert_eq!(plain, 1, "missing plain scalar native capture");
 }

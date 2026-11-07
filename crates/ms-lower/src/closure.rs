@@ -483,8 +483,9 @@ impl FnLower<'_> {
             return Ok(Receiver::Value(recv));
         }
         let t = self.ty_of(recv.v);
-        if !self.needs_drop(t) {
-            // A plain value is as cheap to copy as to point to.
+        if !self.needs_drop(t) && self.part_closer_mir(t)?.is_none() {
+            // A plain value is as cheap to copy as to point to. A resource still
+            // has one owner even when its representation needs no drop glue.
             return Ok(Receiver::Value(recv));
         }
         let slot = self
