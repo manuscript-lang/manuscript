@@ -2045,10 +2045,34 @@ pub unsafe extern "C-unwind" fn msrt_string_from_scalars(
     // SAFETY: caller passes a live list of Int and a writable out.
     unsafe {
         let v = &*values;
-        let mut b = Vec::with_capacity(v.len);
+        let src = if v.len == 0 {
+            &[][..]
+        } else {
+            core::slice::from_raw_parts(v.ptr as *const i64, v.len)
+        };
+        // All-ASCII is the common case: one OR-reduction proves it (a negative or large value sets a
+        // bit above 0x7F as an unsigned word), and the bytes are then narrowed straight into the result.
+        let ascii = src.iter().fold(0u64, |acc, &n| acc | n as u64) < 0x80;
+        if ascii {
+            if src.len() <= STR_INLINE_MAX {
+                let mut small = [0u8; STR_INLINE_MAX];
+                for (d, &n) in small.iter_mut().zip(src) {
+                    *d = n as u8;
+                }
+                *out = from_bytes(&small[..src.len()]);
+                return STATUS_OK;
+            }
+            let s = alloc_str(src.len());
+            let dst = core::slice::from_raw_parts_mut(s.ptr_word, src.len());
+            for (d, &n) in dst.iter_mut().zip(src) {
+                *d = n as u8;
+            }
+            *out = s.with_ascii();
+            return STATUS_OK;
+        }
+        let mut b = Vec::with_capacity(src.len());
         let mut tmp = [0u8; 4];
-        for i in 0..v.len {
-            let n = *(v.ptr as *const i64).add(i);
+        for &n in src {
             if !(0..=0x10FFFF).contains(&n) || (0xD800..=0xDFFF).contains(&n) {
                 return STATUS_INVALID_INPUT;
             }
@@ -2340,6 +2364,41 @@ pub fn count_copy(kind: usize, bytes: usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn from_scalars_covers_ascii_unicode_and_invalid_input() {
+        let build = |values: &[i64]| {
+            let list = VecVal {
+                ptr: values.as_ptr() as *mut u8,
+                len: values.len(),
+                cap: values.len(),
+            };
+            let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+            // SAFETY: `list` is a live list of Int and `out` is writable.
+            let status = unsafe { msrt_string_from_scalars(&list, out.as_mut_ptr()) };
+            // SAFETY: a successful call wrote `out`.
+            (
+                status,
+                (status == STATUS_OK).then(|| unsafe { bytes(&out.assume_init()).to_vec() }),
+            )
+        };
+        let long: Vec<i64> = (0..40).map(|i| 65 + i % 26).collect();
+        for values in [&[][..], &[104, 105], &long[..]] {
+            let want: Vec<u8> = values.iter().map(|&n| n as u8).collect();
+            assert_eq!(build(values), (STATUS_OK, Some(want)));
+        }
+        let mixed = [
+            72, 0xE9, 0x20AC, 0x1F600, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33,
+        ];
+        let want: String = mixed
+            .iter()
+            .map(|&n| char::from_u32(n as u32).unwrap())
+            .collect();
+        assert_eq!(build(&mixed), (STATUS_OK, Some(want.into_bytes())));
+        for bad in [-1, 0xD800, 0x110000, i64::MIN, i64::MAX] {
+            assert_eq!(build(&[65, bad]).0, STATUS_INVALID_INPUT, "{bad}");
+        }
+    }
 
     #[test]
     fn short_searches_agree_with_a_naive_scan() {

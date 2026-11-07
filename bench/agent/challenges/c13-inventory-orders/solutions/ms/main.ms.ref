@@ -259,7 +259,7 @@ fn run() Result[Unit, Error]:
     )
 
     while true:
-        let next = try input.read().wait()
+        let next = try input.next()
         if next.is_none():
             break
 
@@ -270,7 +270,7 @@ fn run() Result[Unit, Error]:
         for out in run_command(var w, line):
             try stdout().write("{out}\n")
 
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     match run():

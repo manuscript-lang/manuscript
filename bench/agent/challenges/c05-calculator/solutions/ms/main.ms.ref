@@ -112,7 +112,7 @@ fn evaluate(line: String) String:
 fn run() Result[Unit, Error]:
     var input = lines(stdin(), 1048576)
     while true:
-        let next = try input.read().wait()
+        let next = try input.next()
         if next.is_none():
             break
 
@@ -122,7 +122,7 @@ fn run() Result[Unit, Error]:
 
         try stdout().write("{evaluate(line)}\n")
 
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     match run():
