@@ -107,6 +107,7 @@ test "a non-UTF-8 header block is InvalidData in both parsers":
 
 test "an Int-max part limit does not overflow on a partial part":
     let body = "--XyZ\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
+
     for size in 1..body.length() + 1:
         let parts = try read_parts(body.clone(), size, 9223372036854775807)
         try expect_equal(parts.length(), 1)

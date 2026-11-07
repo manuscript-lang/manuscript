@@ -44,8 +44,7 @@ test "backoff doubles and is capped":
 test "backoff caps at a representable limit without overflowing":
     let cap = 6000000000000000000
     let policy = RetryPolicy(
-        delay: Duration(nanos: 5000000000000000000),
-        max_delay: Duration(nanos: cap),
+        delay: Duration(nanos: 5000000000000000000), max_delay: Duration(nanos: cap),
         jitter: false
     )
     try expect_equal(policy.wait_after(1).nanos, 5000000000000000000)
