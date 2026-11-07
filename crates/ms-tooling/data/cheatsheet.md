@@ -32,6 +32,7 @@ export fn main() Int:
 ```
 
 - Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
+- Effects: pure unless `// ms: allow_effect std.fs.*`.
 - Be terse: infer closure types, one-line bodies (`fn f(x: Int) Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
 - `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib, imported as `@std/<dir>/<m>.ms`: `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
