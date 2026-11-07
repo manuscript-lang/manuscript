@@ -32,7 +32,7 @@ ms run ms.toml -- first second
 Arguments: 2
 ```
 
-Values after `--` are the program's arguments. `init` creates `ms.toml`, `src/main.ms`, a test file and a `.gitignore`. Run the remaining commands from `my-app`.
+Values after `--` are the program's arguments. `init` creates `ms.toml`, `src/main.ms`, a test file and a `.gitignore`. Run the remaining commands from `my-app`; there, `ms run -- first second`, `ms check` and `ms test` default to `ms.toml`.
 
 ## 2. Read the code {#read-the-program}
 
