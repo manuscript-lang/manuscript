@@ -141,7 +141,7 @@ let price = discount(price: 20d, percent: 10d).get(0d)
 let text = discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
-Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` reports `called Result.get() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
+Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
 
 ## Converting success to an Optional
 

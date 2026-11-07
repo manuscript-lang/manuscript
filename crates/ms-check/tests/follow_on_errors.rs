@@ -66,3 +66,10 @@ fn an_import_from_the_wrong_standard_module_names_the_right_one() {
         "{found:?}"
     );
 }
+
+#[test]
+fn any_fault_in_an_argument_is_the_only_error() {
+    let found = messages(include_str!("follow_on_errors/failed_call_in_argument.ms"));
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].starts_with("indexing a String"), "{found:?}");
+}

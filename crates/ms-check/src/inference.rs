@@ -426,12 +426,12 @@ impl Checker {
         let checkpoint = self.p.diagnostics.len();
         let info = self.expression(e, None);
         if self.p.diagnostics.len() != checkpoint {
-            // An unresolved name is a fault of the argument itself, not of missing context: the
+            // An unresolved name or other fault that is not a missing inference is a fault of the argument itself, not of missing context: the
             // type variable it should fix stays unknown only because of that error, which the
             // final check reports, so the call must not also ask for explicit types.
             if self.p.diagnostics[checkpoint..]
                 .iter()
-                .any(|d| d.phase == Phase::Resolution || d.message.starts_with("operator operands"))
+                .any(|d| d.phase == Phase::Resolution || !d.message.starts_with("cannot infer"))
             {
                 self.label_mismatch = true;
             }
