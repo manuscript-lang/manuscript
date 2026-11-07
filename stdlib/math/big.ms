@@ -54,7 +54,7 @@ export fn rat_of_float(value: Float) BigRat?:
     let mantissa = ldexp(parts.fraction, 53).truncate_to_int().get(0)
     return rat_of_binary(big(mantissa), parts.exponent - 53)
 
-// Returns the exact value `mantissa * 2^exponent`.
+// Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216 bits faults.
 export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
     if exponent >= 0:
         return BigRat(num: shl(mantissa, exponent), den: big(1))
@@ -539,13 +539,13 @@ fn shl(value: BigInt, count: Int) BigInt:
     if let result = value.shift_left(count):
         return result
 
-    panic("shl: negative count")
+    panic("bigrat: shift count out of range")
 
 fn shr(value: BigInt, count: Int) BigInt:
     if let result = value.shift_right(count):
         return result
 
-    panic("shr: negative count")
+    panic("bigrat: shift count out of range")
 
 fn pow10(count: Int) BigInt:
     if let result = from_int(10).pow(count):
