@@ -1,0 +1,108 @@
+import expect_equal, expect_fault, expect_contains from "@std/test/test.ms"
+
+fn replace_text(var key: String) Int:
+    key = "long-dynamic-map-key-2"
+    return 5
+
+fn replace_number(var key: Int) Int:
+    key = 2
+    return 5
+
+test "a counter retains its explicitly cloned mutable key":
+    var values = {"long-dynamic-map-key-1": 1, "long-dynamic-map-key-2": 20}
+    var key = "long-dynamic-map-key-{1}"
+    values.add(key.clone(), values.get(key).get(0) + replace_text(var key))
+    try expect_equal(values["long-dynamic-map-key-1"], 6)
+    try expect_equal(values["long-dynamic-map-key-2"], 20)
+
+test "a commuted counter lookup can select a new mutable key":
+    var values = {1: 1, 2: 20}
+    var key = 1
+    values.add(key, replace_number(var key) + values.get(key).get(0))
+    try expect_equal(values[1], 25)
+    try expect_equal(values[2], 20)
+
+test "a counter reads its old scalar key before the next operand":
+    var values = {1: 1, 2: 20}
+    var key = 1
+    values.add(key, values.get(key).get(0) + replace_number(var key))
+    try expect_equal(values[1], 6)
+    try expect_equal(values[2], 20)
+
+test "immutable dynamic keys keep counter arithmetic":
+    let key = "long-dynamic-map-key-{1}"
+    var values: Map[String, Int] = Map()
+    values.add(key.clone(), values.get(key).get(3) + 2)
+    values.add(key.clone(), values.get(key).get(0) * 4)
+    values.add(key.clone(), values.get(key).get(0) - 1)
+    try expect_equal(values[key], 19)
+
+test "immutable scalar and literal keys keep counter updates":
+    let key = 1
+    var values: Map[Int, Int] = Map()
+    values.add(key, 2 + values.get(key).get(3))
+    values.add(2, values.get(2).get(4) * 3)
+    try expect_equal(values[1], 5)
+    try expect_equal(values[2], 12)
+
+test "stable counter updates keep checked integer overflow":
+    let key = 1
+    var values = {1: 9223372036854775807}
+    let message = try expect_fault(fn: values.add(key, values.get(key).get(0) + 1))
+    try expect_contains(message, "overflow")
+
+test "counter keys apply their checked Optional conversion":
+    var values = Map[Int?, Int]()
+    values.add(1, values.get(1).get(0) + 1)
+    values.add(2, values.get(2).get(3) * 2)
+    try expect_equal(values.get(1).get(0), 1)
+    try expect_equal(values.get(2).get(0), 6)
+    try expect_equal(values.length(), 2)
+
+test "already Optional counter keys retain their representation":
+    let key: Int? = 1
+    var values = Map[Int?, Int]()
+    values.add(key, values.get(key).get(0) + 2)
+    try expect_equal(values.get(1).get(0), 2)
+    try expect_equal(values.length(), 1)
+
+fn consume_text(key: String) Int:
+    let values = [key]
+    return values.length() + 4
+
+test "an immutable counter key can be consumed after its lookup":
+    var values = {"long-dynamic-map-key-1": 1}
+    let key = "long-dynamic-map-key-{1}"
+    values.add(key.clone(), values.get(key).get(0) + consume_text(key))
+    try expect_equal(values["long-dynamic-map-key-1"], 6)
+
+test "a map add retains its cloned key while its source is consumed":
+    var values: Map[String, Int] = Map()
+    let key = "long-dynamic-map-key-{1}"
+    values.add(key.clone(), consume_text(key))
+    try expect_equal(values["long-dynamic-map-key-1"], 5)
+
+test "a map add default retains its key while its source is consumed":
+    var values: Map[String, Int] = Map()
+    let key = "long-dynamic-map-key-{1}"
+    values.add_default(key.clone(), consume_text(key))
+    try expect_equal(values["long-dynamic-map-key-1"], 5)
+
+fn consume_keys(keys: List[String]) Int:
+    let nested = [keys]
+    return nested.length() + 4
+
+test "an indexed key clone survives consuming its container":
+    var values: Map[String, Int] = Map()
+    let keys = ["long-dynamic-map-key-{1}"]
+    values.add(keys[0].clone(), consume_keys(keys))
+    try expect_equal(values["long-dynamic-map-key-1"], 5)
+
+test "literal increments keep stable mutable-key counters":
+    var key = "long-dynamic-map-key-{1}"
+    var values: Map[String, Int] = Map()
+    values.add(key.clone(), values.get(key).get(0) + 1)
+    key = "long-dynamic-map-key-{2}"
+    values.add(key.clone(), values.get(key).get(0) + 1)
+    try expect_equal(values["long-dynamic-map-key-1"], 1)
+    try expect_equal(values["long-dynamic-map-key-2"], 1)

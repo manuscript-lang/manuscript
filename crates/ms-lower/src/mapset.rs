@@ -79,7 +79,28 @@ impl<'a> FnLower<'a> {
             }
             _ => return Ok(None),
         };
+        // The insertion key and later lookup must select the same value. A literal operand
+        // cannot change or consume even a mutable key; other operands require an immutable key.
+        let literal_operand = matches!(other.kind, ExprKind::Number(_));
+        let stable_key = match &key.kind {
+            ExprKind::Number(_) => true,
+            ExprKind::Name(_) => matches!(
+                self.hir.resolution(key),
+                Resolution::Local(b) if !b.mutable || literal_operand
+            ),
+            _ => false,
+        };
+        if !stable_key {
+            return Ok(None);
+        }
         if crate::mutation::uses_of(&self.hir, other, recv.uid) != 0 {
+            return Ok(None);
+        }
+        // Immutable keys can still be moved by the other operand. Keep their last use
+        // in source order rather than retaining a borrowed key past that move.
+        if let Resolution::Local(binding) = self.hir.resolution(key)
+            && crate::mutation::uses_of(&self.hir, other, binding.uid) != 0
+        {
             return Ok(None);
         }
         let mt = self.emty(recv_expr)?;
@@ -87,6 +108,11 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         };
         if n != Native::Map || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
+            return Ok(None);
+        }
+        // As in map_get_chain, checked key conversions (such as Int to Optional[Int])
+        // need the ordinary argument path rather than a slot of the raw expression's type.
+        if a.first() != Some(&self.emty(key)?) {
             return Ok(None);
         }
         // The fused update checks 64-bit overflow only; sized integers take the general path.
@@ -163,7 +189,11 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         let base = crate::mutation::place_base(self.syms, &self.hir, inner);
-        if !matches!(self.hir.resolution(base), Resolution::Local(b) if !b.mutable) {
+        let Resolution::Local(binding) = self.hir.resolution(base) else {
+            return Ok(None);
+        };
+        // The key is borrowed until the add, so the value must not consume its owner.
+        if binding.mutable || crate::mutation::uses_of(&self.hir, value_e, binding.uid) != 0 {
             return Ok(None);
         }
         let mt = self.emty(recv_expr)?;
