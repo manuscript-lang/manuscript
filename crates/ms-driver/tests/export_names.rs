@@ -75,3 +75,24 @@ fn missing_opaque_types_and_grouped_constants_get_import_fixes() {
         );
     }
 }
+
+#[test]
+fn export_lookalikes_in_comments_and_text_declare_nothing() {
+    let syms = ms_syntax::Names::global();
+    let source = concat!(
+        "/*\n",
+        "export type Commented:\n",
+        "    value: Int\n",
+        "*/\n",
+        "\n",
+        "let note = \"\"\"\n",
+        "export fn quoted() Int: 1\n",
+        "\"\"\"\n",
+        "\n",
+        "export type Actual:\n",
+        "    value: Int\n",
+    );
+    for source in [source.to_string(), source.replace('\n', "\r\n")] {
+        assert_eq!(exported_names(syms, &source), ["Actual"]);
+    }
+}
