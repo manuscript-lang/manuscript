@@ -24,7 +24,7 @@ fn flagged(source: &str) -> Vec<String> {
 
 #[test]
 fn a_regex_quantifier_written_in_a_plain_literal_is_flagged() {
-    let got = flagged("export fn main() Int:\n    print(\"\\\\d{4}-\\\\d{2}\")\n    return 0\n");
+    let got = flagged(include_str!("lint_text/quantifier.ms"));
     assert_eq!(got.len(), 2, "{got:?}");
     assert!(
         got[0].starts_with("`{4}` interpolates the number 4"),
@@ -34,8 +34,6 @@ fn a_regex_quantifier_written_in_a_plain_literal_is_flagged() {
 
 #[test]
 fn escaped_braces_names_and_expressions_are_not_flagged() {
-    let got = flagged(
-        "export fn main() Int:\n    let n = 4\n    print(\"\\\\d\\{4\\}\")\n    print(\"{n} {n + 1} {1 + 2}\")\n    return 0\n",
-    );
+    let got = flagged(include_str!("lint_text/clean.ms"));
     assert!(got.is_empty(), "{got:?}");
 }
