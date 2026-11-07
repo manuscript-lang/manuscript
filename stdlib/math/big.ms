@@ -86,13 +86,8 @@ export fn parse_rat(text: String) BigRat!:
     var exponent = 0
 
     if exponent_parts.length() == 2:
-        let digits = exponent_parts[1]
-
-        if digits.starts_with("+"):
-            exponent = parse_exponent(digits.slice(1, digits.scalar_length()).get(""))
-        else:
-            exponent = parse_exponent(digits)
-
+        // `parse_exponent` takes the one optional sign itself, so a second sign is malformed.
+        exponent = parse_exponent(exponent_parts[1])
         if exponent == -1000001:
             return error(Error("bigrat: invalid data", kind: "EBADMSG"))
         if exponent > 100000 or exponent < -100000:
@@ -106,6 +101,10 @@ export fn parse_rat(text: String) BigRat!:
     var joined = point[0].clone()
 
     if point.length() == 2:
+        // A sign belongs only before the integer digits; joining the halves would hide a misplaced one.
+        if point[1].starts_with("+") or point[1].starts_with("-"):
+            return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
         fraction_digits = point[1].scalar_length()
         joined = "{point[0]}{point[1]}"
 
@@ -228,7 +227,8 @@ impl BigRat:
 
     // Converts to the nearest Float, or none when the magnitude is beyond the Float range.
     fn to_float() Float?:
-        return binary_to_float(div_round(self.num, self.den, 53))
+        let parts = div_parts(self.num, self.den, 53)
+        return binary_to_float(parts.value, parts.sticky)
 
     // Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
     // A negative digit count returns EINVAL; a result that rounds to zero has no minus sign.
@@ -446,6 +446,12 @@ impl BigFloat:
         if self.mant.sign() == 0:
             return 0
 
+        // The leading bit's position orders the magnitudes without aligning them across the exponent gap.
+        let own_top = self.exp + bit_length(self.mant)
+        let other_top = other.exp + bit_length(other.mant)
+        if own_top != other_top:
+            return own_top.compare(other_top) * self.mant.sign()
+
         let low = smaller(self.exp, other.exp)
         return shl(self.mant, self.exp - low).compare(shl(other.mant, other.exp - low))
 
@@ -480,7 +486,7 @@ impl BigFloat:
 
     // Converts to the nearest Float, or none when the magnitude is beyond the Float range.
     fn to_float() Float?:
-        return binary_to_float(binary_of(self))
+        return binary_to_float(binary_of(self), false)
 
     // Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
     // A negative digit count returns EINVAL.
@@ -587,10 +593,14 @@ fn round_to(mant: BigInt, exp: Int, sticky: Bool, prec: Int) Binary:
         kept = -kept
     return Binary(mant: kept, exp: exp + shift)
 
-// Divides `numerator` by a positive `denominator`, rounding once to `prec` bits.
-fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
+// A quotient truncated toward zero with at least `prec + 2` bits, and whether a nonzero remainder lay below it.
+type Quotient:
+    value: Binary
+    sticky: Bool
+
+fn div_parts(numerator: BigInt, denominator: BigInt, prec: Int) Quotient:
     if numerator.sign() == 0:
-        return Binary(mant: from_int(0), exp: 0)
+        return Quotient(value: Binary(mant: from_int(0), exp: 0), sticky: false)
 
     let magnitude = numerator.abs()
     var shift = prec + 2 + bit_length(denominator) - bit_length(magnitude)
@@ -602,14 +612,48 @@ fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
     let sticky = (scaled % denominator).sign() != 0
     if numerator.sign() < 0:
         quotient = -quotient
-    return round_to(quotient, -shift, sticky, prec)
+    return Quotient(value: Binary(mant: quotient, exp: -shift), sticky: sticky)
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float range.
-fn binary_to_float(value: Binary) Float?:
-    let rounded = round_to(value.mant, value.exp, false, 53)
+// Divides `numerator` by a positive `denominator`, rounding once to `prec` bits.
+fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
+    let parts = div_parts(numerator, denominator, prec)
+    return round_to(parts.value.mant, parts.value.exp, parts.sticky, prec)
 
-    if let fraction = rounded.mant.to_float():
-        let result = ldexp(fraction, rounded.exp)
+// Converts to the nearest Float, or none when the magnitude is beyond the Float range. Rounds once, onto the
+// binary64 grid: 53 significant bits for a normal result, fewer as the value falls into the subnormal range.
+// `sticky` says nonzero bits lie below `value`, which then must carry at least 55 bits.
+fn binary_to_float(value: Binary, sticky: Bool) Float?:
+    if value.mant.sign() == 0:
+        return 0.0
+
+    let magnitude = value.mant.abs()
+    let bits = bit_length(magnitude)
+    var grid = value.exp + bits - 1 - 52
+    if grid < -1074:
+        grid = -1074
+
+    var kept = magnitude.clone()
+    var exponent = value.exp
+
+    if value.exp < grid:
+        let shift = grid - value.exp
+        exponent = grid
+
+        if shift > bits:
+            kept = from_int(0)
+        else:
+            kept = shr(magnitude, shift)
+
+            let rest = magnitude - shl(kept, shift)
+            let order = rest.compare(shl(from_int(1), shift - 1))
+            let odd = kept.bit_and(from_int(1)).sign() != 0
+            if order > 0 or order == 0 and (sticky or odd):
+                kept = kept + from_int(1)
+
+    if let fraction = kept.to_float():
+        var result = ldexp(fraction, exponent)
+        if value.mant.sign() < 0:
+            result = -result
         if result.is_finite():
             return result
 

@@ -348,7 +348,7 @@ impl Transform[Bytes, Part] for MultipartParts:
                     break
 
                 if let limit = self.max_part_bytes:
-                    if self.buffer.length() > limit + self.delimiter.length():
+                    if self.buffer.length() - self.delimiter.length() > limit:
                         return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
                 break
 
