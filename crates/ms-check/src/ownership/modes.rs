@@ -421,6 +421,20 @@ fn method_modes(
     native_method_modes(syms, method, count, label)
 }
 
+/// The payload preserved by native `or_else`: Optional's present value or Result's
+/// success value, not Result's error (which is only lent to the callback).
+/// Source methods and same-typed transforming combinators do not imply passthrough.
+pub fn wrapper_passthrough(
+    syms: ms_syntax::Names,
+    method: &MethodRef,
+    receiver: &Ty,
+) -> Option<Ty> {
+    (syms.str(method.native) == "or_else"
+        && (method.receiver.is(Builtin::Optional) || method.receiver.is(Builtin::Result)))
+    .then(|| receiver.args.first().cloned())
+    .flatten()
+}
+
 /// How a method treats its receiver, for a method used as a value.
 pub fn receiver_mode(
     syms: ms_syntax::Names,

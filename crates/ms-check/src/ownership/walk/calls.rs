@@ -226,11 +226,18 @@ impl Walker<'_> {
             // it over, not a copy. A read in place (`xs.first()`) stays a borrow, and a type
             // parameter copies as its bound allows.
             let result_ty = self.cx.m.ty(e);
-            if mode == ParamMode::Borrow
-                && self.class_of(e) != Class::Copy
+            let passthrough = match self.cx.m.resolution(e) {
+                Resolution::Method(m) => wrapper_passthrough(self.syms, &m, &self.cx.m.ty(r)),
+                _ => None,
+            };
+            let takes_payload = self.class_of(e) != Class::Copy
                 && !self.cx.classes.clonable(self.syms, &result_ty)
                 && (unbounded_parameter(&result_ty).is_none() || self.wrapper_receiver(r))
-                && ty_contains(&self.cx.m.ty(r), &result_ty)
+                && ty_contains(&self.cx.m.ty(r), &result_ty);
+            let takes_preserved =
+                passthrough.is_some_and(|t| !self.cx.classes.clonable(self.syms, &t));
+            if mode == ParamMode::Borrow
+                && (takes_payload || takes_preserved)
                 && self.native_borrow_receiver(e).is_none()
             {
                 mode = ParamMode::Move;

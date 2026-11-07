@@ -184,8 +184,9 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         if keep {
-                            let o = s.owned(Val { v: r, own: false });
-                            s.finish(recv);
+                            // Pass an owned wrapper through; copying a borrowed wrapper is
+                            // the declared Optional boundary, not an implicit ordinary copy.
+                            let o = s.owned_boundary(recv);
                             s.finish(f.val);
                             return Ok(Some(o));
                         }
