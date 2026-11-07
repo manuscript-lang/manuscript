@@ -244,13 +244,52 @@ fn owned_task_job[U](id: Int, work: fn() U!) fn() Unit:
 fn owned_job[A, U](id: Int, owned: Owned[A, U]) fn() Unit:
     return fn: complete(id, owned.run())
 
-// Waits for every promise and returns the results in order. The first error ends the wait: the promises still running
-// are cancelled and waited for before `wait_all` returns it.
+// Waits for every promise and returns the results in order. The first promise to fail, in time rather than list order,
+// ends the wait: the promises still running are cancelled and waited for before `wait_all` returns its error.
 export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
     var pending = promises
+    let count = pending.length()
+    var slots: List[T!] = []
+    var taken: List[Bool] = []
+
+    for at in 0..count:
+        slots.append(error(Error("promise: not finished")))
+        taken.append(false)
+
+    // In list order, take what is finished. When the next one is not, block until anything finishes and take
+    // everything that has, so a failure behind a slow promise ends the wait without waiting for the slow one.
+    var head = 0
+
+    while head < count:
+        if taken[head]:
+            head += 1
+        else if pending[head].done():
+            let value = try pending[head].wait()
+            slots[head] = ok(value)
+            taken[head] = true
+            head += 1
+        else:
+            var ids: List[Int] = []
+            for at in head..count:
+                if not taken[at]:
+                    ids.append(pending[at].id)
+            msrt_promise_wait_any(ids, -1)
+
+            for at in head..count:
+                if not taken[at] and pending[at].done():
+                    let value = try pending[at].wait()
+                    slots[at] = ok(value)
+                    taken[at] = true
+
+    var reversed: List[T] = []
+    for at in 0..count:
+        if let slot = slots.pop():
+            reversed.append(try slot)
+
     var results: List[T] = []
-    for index in 0..pending.length():
-        results.append(try pending[index].wait())
+    for at in 0..count:
+        if let value = reversed.pop():
+            results.append(value)
     return ok(results)
 
 // Waits for the first promise to finish and returns its result; the others are cancelled and waited for. Errors as
