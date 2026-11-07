@@ -2185,6 +2185,55 @@ impl<'a> FnLower<'a> {
         self.b.unreachable();
     }
 
+    /// Faults for `get()` on an error result. When the error is a record whose first field is a
+    /// `String` message (the standard `Error`), the fault names it; any other error type gets the
+    /// generic text.
+    fn fault_result_get(&mut self, alt: ms_mir::types::AltId, r: Value, err: u32) {
+        let payload = self.b.m.alts[alt.index()].cases[err as usize].fields[0].1;
+        let message_field = match self.b.m.types.kind(payload) {
+            TyKind::Rec(rid) => {
+                let first = self.b.m.records[rid.index()].fields.first();
+                first
+                    .filter(|f| f.0 == "message" && f.1 == MTy::STR)
+                    .map(|_| *rid)
+            }
+            _ => None,
+        };
+        let Some(rid) = message_field else {
+            self.runtime_fault("msrt_fault_result_get");
+            return;
+        };
+        let e = self.b.alt_get(alt, err, 0, r);
+        let message = self.b.rec_get(rid, 0, e);
+        let head = self.b.str_lit("called Result.get() on error: ");
+        let tail = self
+            .b
+            .str_lit("; check is_ok first, or pass a default: get(default: ...)");
+        let joined = self
+            .call_runtime("msrt_string_concat", &[head, message], MTy::STR)
+            .and_then(|text| self.call_runtime("msrt_string_concat", &[text, tail], MTy::STR));
+        let Ok(text) = joined else {
+            self.runtime_fault("msrt_fault_result_get");
+            return;
+        };
+        let fault = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: "msrt_fault_string".to_string(),
+            params: vec![ms_mir::ir::Param {
+                ty: MTy::STR,
+                mode: ms_mir::ir::Mode::Borrow,
+            }],
+            ret: MTy::UNIT,
+            noreturn: true,
+            pure_: false,
+            fresh: false,
+            role: ms_mir::ir::ExternRole::None,
+            leaf: crate::rtcall::rt_flags("msrt_fault_string").leaf,
+            reads: crate::rtcall::rt_flags("msrt_fault_string").reads,
+        });
+        self.b.call_rt(fault, &[text]);
+        self.b.unreachable();
+    }
+
     fn optional_method(
         &mut self,
         out: MTy,
@@ -2448,7 +2497,7 @@ impl<'a> FnLower<'a> {
             self.b.seal_block(good);
             self.b.seal_block(bad);
             self.b.switch_to(bad);
-            self.runtime_fault("msrt_fault_result_get");
+            self.fault_result_get(alt, r, err);
             self.b.switch_to(good);
             let p = self.b.alt_get(alt, ok, 0, r);
             self.boundary_reads.insert(p);
@@ -2495,7 +2544,7 @@ impl<'a> FnLower<'a> {
                             Ok(Some(v))
                         }
                         None => {
-                            s.runtime_fault("msrt_fault_result_get");
+                            s.fault_result_get(alt, r, err);
                             Ok(None)
                         }
                     },
