@@ -72,6 +72,14 @@ test "bin_counts bins values":
     try expect_equal(same.counts, [2, 0, 0])
     try expect_none(bin_counts(List[Float](), 2))
 
+test "bin_counts places the greatest value in the last bin when the range overflows":
+    let inf = 1.0 / 0.0
+    let wide = try expect_some(bin_counts([-1.7e308, 0.0, 1.7e308, 1.7e308], 2))
+    try expect_equal(wide.counts, [1, 3])
+
+    let unbounded = try expect_some(bin_counts([0.0, 1.0, inf], 2))
+    try expect_equal(unbounded.counts, [2, 1])
+
 test "correlation and regression":
     try expect_close(
         try expect_some(correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])), 1.0, 0.000001
