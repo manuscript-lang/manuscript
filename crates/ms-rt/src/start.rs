@@ -115,6 +115,17 @@ unsafe fn run_main() {
 fn report_leaks() {
     {
         eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+        if crate::alloc::live_blocks() != 0 {
+            // Which size classes still hold blocks: a flaky leak names its blocks by size.
+            let by_size: Vec<String> = crate::alloc::live_by_size()
+                .iter()
+                .map(|(size, n)| match size {
+                    0 => format!("large={n}"),
+                    _ => format!("{size}B={n}"),
+                })
+                .collect();
+            eprintln!("ms-rt live blocks by size: {}", by_size.join(" "));
+        }
         let [allocs, bytes] = crate::alloc::requested();
         // SAFETY: the counters belong to this isolate.
         let k = unsafe { *crate::string::COPY_COUNTS.ptr() };
