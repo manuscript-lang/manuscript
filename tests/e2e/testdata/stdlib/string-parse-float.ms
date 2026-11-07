@@ -11,11 +11,12 @@ test "parse_float reads integers decimals and exponents":
 test "parse_float accepts the special spellings of math.parse_float":
     "Infinity".parse_float() | try expect_equal(infinity)
     "-Infinity".parse_float() | try expect_equal(-infinity)
+    "+Infinity".parse_float() | try expect_equal(infinity)
     try expect_true("NaN".parse_float().get().is_nan())
 
 test "parse_float returns none for invalid or out-of-range text":
     for text in [
-        "", " 1.0", "1.0 ", "1_0", "1.", ".5", "0x1p2", "nan", "inf", "abc", "1e999"
+        "", " 1.0", "1.0 ", "1_0", "1.", ".5", "0x1p2", "nan", "inf", "abc", "1e999", "+NaN"
     ]:
         text.parse_float() | try expect_equal(none)
 
