@@ -17,6 +17,8 @@ import (
     msrt_pipe_add_writer,
     msrt_pipe_write,
     msrt_pipe_read,
+    msrt_pipe_try,
+    msrt_pipe_ended,
     msrt_pipe_flush,
     msrt_pipe_buffered,
     msrt_pipe_close_writer,
@@ -280,6 +282,12 @@ type PipeSource[T]:
 
 impl Source[T] for PipeSource[T]:
     var fn next() T?!:
+        // Fast path: a queued value or the end needs no promise.
+        if let queued = msrt_pipe_try[T](self.id):
+            return ok(queued)
+        if msrt_pipe_ended(self.id) == 1:
+            return ok(none)
+
         let p = msrt_pipe_read(self.id)
         let code = msrt_promise_wait(p, -1)
 
