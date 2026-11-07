@@ -58,6 +58,8 @@ pub fn run<L: Lower>(
         unknown_command(io, &args[0]);
         return 2;
     };
+    let defaulted = default_project_target(args);
+    let args = defaulted.as_deref().unwrap_or(args);
     if requests_help(&args[1..]) {
         let _ = write!(io.stdout, "{usage}");
         return 0;
@@ -73,6 +75,30 @@ pub fn run<L: Lower>(
         "guide" => commands::run_guide(args, io),
         _ => run_source_command(syms, args, &usage, engine, io),
     }
+}
+
+/// Commands that take a source file or project and default to `./ms.toml`.
+const PROJECT_COMMANDS: &[&str] = &[
+    "check", "lint", "build", "emit", "run", "test", "bench", "fmt", "verify", "inspect",
+    "diagram", "review", "profile",
+];
+
+/// Inside a project directory, `ms run` means `ms run ms.toml`: when the command
+/// names no target (nothing after it, or only `-- program arguments`), insert
+/// the manifest in the current directory.
+fn default_project_target(args: &[String]) -> Option<Vec<String>> {
+    if !PROJECT_COMMANDS.contains(&args[0].as_str()) {
+        return None;
+    }
+    if args.len() > 1 && args[1] != "--" {
+        return None;
+    }
+    if !std::path::Path::new("ms.toml").is_file() {
+        return None;
+    }
+    let mut out = vec![args[0].clone(), "ms.toml".to_string()];
+    out.extend_from_slice(&args[1..]);
+    Some(out)
 }
 
 /// Name the nearest command and list the rest.

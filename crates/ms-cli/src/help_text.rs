@@ -39,6 +39,9 @@ Start with:
   ms check ms.toml
   ms run ms.toml -- first second
 
+Inside a project directory, commands that take a target default to ./ms.toml:
+  ms run -- first second
+
 Bare ms prints this help and exits successfully.
 Long options that take values also accept --flag=value.
 Run 'ms help <command>' or 'ms <command> --help' for usage and examples.

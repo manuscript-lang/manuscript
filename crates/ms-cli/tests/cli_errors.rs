@@ -228,3 +228,32 @@ fn one_unclosed_delimiter_is_reported_once() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn project_commands_default_to_the_manifest_in_the_current_directory() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-default-target-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let ms_in = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(args)
+            .current_dir(&dir)
+            .output()
+            .unwrap()
+    };
+    let init = ms_in(&["init"]);
+    assert!(init.status.success(), "{init:?}");
+
+    let check = ms_in(&["check"]);
+    assert!(check.status.success(), "{check:?}");
+    assert!(String::from_utf8_lossy(&check.stdout).starts_with("Checked ms.toml"));
+
+    let run = ms_in(&["run", "--", "a", "b"]);
+    assert!(run.status.success(), "{run:?}");
+    assert_eq!(String::from_utf8_lossy(&run.stdout), "Arguments: 2\n");
+
+    std::fs::remove_file(dir.join("ms.toml")).unwrap();
+    let missing = ms_in(&["check"]);
+    assert_eq!(missing.status.code(), Some(2), "{missing:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
