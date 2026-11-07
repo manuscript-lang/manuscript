@@ -76,3 +76,21 @@ test "unified_diff keeps offsets across shared leading and trailing lines":
         unified_diff([], ["a"], UnifiedDiffOptions(context: 0)),
         "--- a\n+++ b\n@@ -0,0 +1 @@\n+a\n"
     )
+
+test "unified_diff clamps a context larger than the input":
+    let expected = "--- a\n+++ b\n@@ -1 +1 @@\n-before\n+after\n"
+    try expect_equal(
+        unified_diff(["before"], ["after"], UnifiedDiffOptions(context: 3)), expected
+    )
+    try expect_equal(
+        unified_diff(
+            ["before"], ["after"], UnifiedDiffOptions(context: 9223372036854775807)
+        ),
+        expected
+    )
+    try expect_equal(
+        unified_diff(
+            ["same"], ["same"], UnifiedDiffOptions(context: 9223372036854775807)
+        ),
+        ""
+    )

@@ -25,7 +25,7 @@ fn bucket_top(index: Int) Int:
     let offset = index - EXACT
     let shift = offset / 32 + 1
     let low = shift_left(offset % 32 + 32, shift)
-    return low + shift_left(1, shift) - 1
+    return low + (shift_left(1, shift) - 1)
 
 /*
 A latency histogram: records non-negative `Int` values, usually nanoseconds, in fixed memory and

@@ -32,3 +32,13 @@ test "histogram times a span and returns its result":
     try expect_equal(h.count(), 1)
     h.record_duration(milliseconds(2))
     try expect_equal(h.maximum().get(0) >= 2000000, true)
+
+test "histogram answers for the highest valid Int bucket":
+    var h = histogram()
+    h.record(9223372036854775807)
+    try expect_equal(h.percentile(100.0).get(0), 9223372036854775807)
+    try expect_equal(h.percentile(50.0).get(0), 9223372036854775807)
+
+    var low_edge = histogram()
+    low_edge.record(9079256848778919936)
+    try expect_equal(low_edge.percentile(100.0).get(0), 9079256848778919936)
