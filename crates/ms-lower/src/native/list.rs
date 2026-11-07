@@ -406,9 +406,15 @@ impl<'a> FnLower<'a> {
                 self.hold_temp(x);
             }
             receiver = Some((x, held));
-        } else if !discards {
-            // The receiver's own index expressions run before the arguments.
+        } else {
+            // The receiver place is selected and read before the arguments, once: its index
+            // expressions and its bounds or missing-key fault come first, and the entry closing
+            // and the mutation below reuse the selection.
             self.prepare_place(recv_expr)?;
+            self.access_receiver(recv_expr)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
         }
         let args = self.native_args(view)?;
         if self.dead {

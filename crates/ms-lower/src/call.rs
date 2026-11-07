@@ -799,6 +799,14 @@ impl<'a> FnLower<'a> {
                 subst.insert(v.id, ct::sub(a, &self.subst));
             }
         }
+        // A changing receiver selects its place once, at its written position; the read below and
+        // the writeback reuse the evaluated indices.
+        if self.cx.var_positions(&c).contains(&0) && self.is_place(recv_expr) {
+            self.prepare_place(recv_expr)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
+        }
         let recv = self.expr(recv_expr)?;
         if self.dead {
             return Ok(recv);

@@ -609,12 +609,34 @@ impl<'a> FnLower<'a> {
         if self.dead || self.prepared_indices.contains_key(&key) {
             return Ok(());
         }
+        self.access_receiver(left)?;
+        if self.dead {
+            return Ok(());
+        }
         let i = self.expr(index)?;
         if self.dead {
             return Ok(());
         }
         let at = self.borrow(i);
         self.prepared_indices.insert(key, at);
+        Ok(())
+    }
+
+    /// Reads the receiver `left` of an index inside a place (`grid[0]` in `grid[0][later()]`), so
+    /// its bounds or missing-key fault comes before the next index runs. A receiver that is a
+    /// plain variable or a field of one cannot fault and is skipped.
+    pub(crate) fn access_receiver(&mut self, left: &Expr) -> Result<(), Error> {
+        let mut root = left;
+        while let ExprKind::Member { left, .. } = &root.kind {
+            root = left;
+        }
+        if crate::mutation::index_parts(self.syms, &self.hir, root).is_none() {
+            return Ok(());
+        }
+        let read = self.expr(left)?;
+        if !self.dead && read.own {
+            self.drop_value(read.v);
+        }
         Ok(())
     }
 
