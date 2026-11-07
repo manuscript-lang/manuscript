@@ -1,7 +1,7 @@
-import list, read_file from "@std/os/fs.ms"
+import list, read_file, read_link from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import milliseconds from "@std/time.ms"
+import milliseconds, sleep from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 
 fn read_pipe(path: String) Int:
@@ -15,16 +15,29 @@ fn cancel_read(path: String) Int:
 
     return 0
 
+// Descriptors that refer to the FIFO. The total descriptor count is not a fair measure: the
+// runtime lazily starts an event loop (an epoll and a wake pipe) for each worker thread, and a
+// loaded machine starts them at different times.
+fn open_on(path: String) Int:
+    var count = 0
+    for entry in list("/proc/self/fd").get():
+        if read_link("/proc/self/fd/{entry.name}").get("") == path: count += 1
+    return count
+
 export fn main() Int:
     let path = arguments()[0].clone()
-    if cancel_read(path.clone()) != 1:
-        return 1
-
-    let before = list("/proc/self/fd").get().length()
     var cancelled = 0
     for i in 0..10:
         cancelled += cancel_read(path.clone())
 
-    let after = list("/proc/self/fd").get().length()
-    stdout().write("{cancelled} {before} {after}\n").get()
+    // A cancelled read may still be closing its descriptor; one that leaked never does.
+    var open = open_on(path.clone())
+    var waited = 0
+
+    while open > 0 and waited < 200:
+        let _slept = sleep(milliseconds(10)).wait()
+        waited += 1
+        open = open_on(path.clone())
+
+    stdout().write("{cancelled} {open}\n").get()
     return 0

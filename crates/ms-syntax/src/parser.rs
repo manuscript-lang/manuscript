@@ -82,6 +82,7 @@ fn type_token(kind: Tok) -> bool {
             | Tok::Question
             | Tok::Bang
             | Tok::Fn
+            | Tok::Var
             | Tok::LParen
             | Tok::RParen
     )
