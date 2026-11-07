@@ -241,16 +241,31 @@ impl<'a> FnLower<'a> {
             some,
             out,
             &mut |s| {
-                // An owned optional hands its payload over; a borrowed `Clonable` one is cloned.
-                let o = if recv.own {
-                    s.b.opt_unbox(r)
+                // Closing an unused cause can fault. Keep an owned resource receiver
+                // intact and registered until that cleanup succeeds, before taking its payload.
+                let held = if recv.own && cause.is_some_and(|c| c.val.own) {
+                    s.hold_resource_temp(r)?
                 } else {
-                    let p = s.b.opt_get(r);
-                    s.clone_value(p)
+                    None
                 };
                 if let Some(c) = cause {
-                    s.finish(c.val);
+                    // A borrowed cause remains with its caller.
+                    s.close_finish(c.val);
                 }
+                let receiver = if let Some(key) = held {
+                    let owned = s.take_resource_temp(key).0;
+                    s.unhold_temp(key);
+                    owned
+                } else {
+                    r
+                };
+                // No user evaluation follows retirement of the intact receiver guard.
+                let o = if recv.own {
+                    s.b.opt_unbox(receiver)
+                } else {
+                    let p = s.b.opt_get(receiver);
+                    s.clone_value(p)
+                };
                 Ok(Some(s.b.alt_new(res, ok as u32, &[o])))
             },
             &mut |s| {
