@@ -13,3 +13,11 @@ Evidence: [borrowed reads](../../crates/ms-lower/src/borrow_shape.rs), [fixture]
 Verify: `ms emit` of the fixture shows `msrt_map_get_ptr` and `opt.view`, no `msrt_map_get`; `make stdlib-bench BENCHFILTER=map.get` keeps `map.get_let` within 1.2x of `map.get_chain`.
 
 Lesson (strict-copy gate, 2026-11-05): the gate is unconditional, so a borrowed place reaching an owning position without a declared copy fails the build (`internal: N implicit copies of a borrow at file.rs:LINE (Some(Op)) @src:line:col`). Fix a gap in this order: (1) make the checker record the borrow so lowering binds it borrowed (a `let` of a function-valued field needed `is_place` to stop excluding it; `var x = m.get(k).get()` borrows the entry exclusively, as `if var` does); (2) a move; (3) only then a declared copy: `owned_boundary` for the `Optional`/`Result` payload rule, `clone_value` for a capture or wrapper that owns its own copy, `boundary_reads` for a value the lowering reads as a declared copy, or `.clone()` in the source. The borrowed-signature instance of a function that moves a parameter is the `adapter`: its copies are the declared adaptation, so they are not gaps. `has_try` must skip lambda bodies (a `try` inside a lambda is not the enclosing function's). A sweep for gaps must cover project fixtures, `crates/*/tests/**/*.ms`, `tools/` and `bench/`, not only the accept and stdlib fixtures; `tools/e2e.ms` runs on `target/debug/ms`, so rebuild it first or stale-binary failures look like regressions.
+
+A temporary cleanup hold is not a checker borrow. For source arguments and implicit receivers
+held across a later `try`, remember the captured owned value rather than refreshing it from
+its source place: that source may already have been moved. Keep the hold through default
+arguments, then transfer ownership only when the same argument value survives. A default
+that replaces a `var` slot does not transfer ownership of the superseded held value. Early
+exits retain cleanup registration. See [#2867](https://github.com/manuscript-lang/manuscript/issues/2867)
+and [source argument regressions](../../tests/e2e/testdata/accept/source-owned-arguments-across-try.ms).

@@ -155,6 +155,7 @@ impl<'a> FnLower<'a> {
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
+        let mut held = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let idx = names
                 .iter()
@@ -184,17 +185,26 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            let original = (later_try && x.own).then_some(x.v);
+            if let Some(v) = original {
+                held.push((idx, v));
+            }
             let x = if later_try { self.hold_temp(x) } else { x };
             if vars.contains(&(idx + offset)) {
                 places[idx] = Some(a.expr.clone());
             }
             slots[idx] = Some(x);
-            read_at.push((idx, a.expr, at));
+            read_at.push((idx, a.expr, at, original));
         }
-        for (idx, expr, at) in read_at {
+        for (idx, expr, at, original) in read_at {
             let Some(x) = slots[idx] else {
                 continue;
             };
+            // A captured owned value is already the argument, even while its cleanup hold
+            // presents it as a borrow. Refreshing it could reread an already-moved source.
+            if original == Some(x.v) {
+                continue;
+            }
             // A `var` argument is the variable itself: it sees what its siblings changed.
             slots[idx] = Some(
                 if vars.contains(&(idx + offset)) && !x.own && self.is_place(expr) {
@@ -233,7 +243,21 @@ impl<'a> FnLower<'a> {
                     self.default_argument(callee, i, subst, &mut slots, recv, Some(call_pos));
                 self.source_scope = parent;
                 let d = result?;
+                if self.dead {
+                    return Ok(Args { slots, places });
+                }
                 slots[i] = Some(d);
+            }
+        }
+        // Keep holds through defaults: a default may exit early or replace an earlier `var`
+        // slot. Only an unchanged captured argument transfers its registered ownership.
+        for (idx, v) in held {
+            if let Some(x) = &mut slots[idx]
+                && x.v == v
+                && !x.own
+            {
+                self.unhold_temp(v);
+                x.own = true;
             }
         }
         Ok(Args { slots, places })
@@ -811,11 +835,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = if view
-            .arguments
-            .iter()
-            .any(|a| crate::mutation::has_try(a.expr))
-        {
+        let hold_receiver = recv.own
+            && view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr));
+        let recv = if hold_receiver {
             self.hold_temp(recv)
         } else {
             recv
@@ -826,7 +851,15 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = self.refresh(recv_expr, recv, at)?;
+        let recv = if hold_receiver {
+            self.unhold_temp(recv.v);
+            Val {
+                v: recv.v,
+                own: true,
+            }
+        } else {
+            self.refresh(recv_expr, recv, at)?
+        };
         let mut all = vec![Some(recv)];
         all.extend(args.slots);
         let mut places = vec![
