@@ -162,3 +162,22 @@ fn check_watch_sees_a_new_file_in_an_existing_subdirectory() {
     assert_eq!(watch.interrupt(), Some(130));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn check_watch_reruns_when_an_imported_link_is_retargeted() {
+    let dir = scratch("check-link");
+    std::fs::write(dir.join("a.ms"), "export fn value() Int: 3\n").unwrap();
+    std::fs::write(dir.join("b.ms"), "export fn value() Int:\n").unwrap();
+    std::fs::write(dir.join("main.ms"), include_str!("watch/imports_value.ms")).unwrap();
+    std::os::unix::fs::symlink("a.ms", dir.join("dep.ms")).unwrap();
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    // Only the link changes; both targets existed before the watch started.
+    std::fs::remove_file(dir.join("dep.ms")).unwrap();
+    std::os::unix::fs::symlink("b.ms", dir.join("dep.ms")).unwrap();
+    watch.until("suite cannot be empty");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
