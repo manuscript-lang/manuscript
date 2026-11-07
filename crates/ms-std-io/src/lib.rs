@@ -12,7 +12,6 @@ pub use ms_std_fs::stream;
 
 use alloc::vec::Vec;
 use ms_rt::ffi::{ErrOut, Has, ObjMut, StatusCode, native};
-use ms_rt::glue::fault;
 use ms_rt_abi::{STATUS_FAILED, STATUS_NONE};
 use stream::{IoFail, IoRes, Stream};
 
@@ -70,11 +69,9 @@ native! {
         status(h.write(data.as_bytes()), &err)
     }
 
-    /// Closes the stream; a failing descriptor release raises a fault with its text.
-    fn msstd_io_close(h: ObjMut<Stream>) -> () {
+    /// Closes the stream; a failing descriptor release is returned as an error.
+    fn msstd_io_close(h: ObjMut<Stream>; err: ErrOut) -> Result<(), StatusCode> {
         let mut h = h;
-        if let Err(IoFail { message, .. }) = h.close() {
-            fault(core::str::from_utf8(&message).unwrap_or("close failed"));
-        }
+        status(h.close(), &err)
     }
 }

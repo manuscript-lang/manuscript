@@ -531,7 +531,7 @@ msstd_http_serving_share(handle s: *const ObjCell<ServingH>) -> *mut ObjCell<Ser
 msstd_http_serving_worker(handle s: *const ObjCell<ServingH>, out: *mut *mut ObjCell<WorkerH>, err: ErrSlot) -> u8
 msstd_http_worker_adopt(handle w: *const ObjCell<WorkerH>, connection: i64)
 msstd_http_worker_close(handle w: *const ObjCell<WorkerH>)
-msstd_io_close(handle h: *mut ObjCell<Stream>)
+msstd_io_close(handle h: *mut ObjCell<Stream>, err: ErrSlot) -> u8
 msstd_io_read(handle h: *mut ObjCell<Stream>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_io_redirect_null(which: i64, err: ErrSlot) -> u8
 msstd_io_write(handle h: *mut ObjCell<Stream>, data: *const StrVal, err: ErrSlot) -> u8
