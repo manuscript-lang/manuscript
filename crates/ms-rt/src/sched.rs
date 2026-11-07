@@ -88,8 +88,11 @@ pub(crate) struct Start {
 
 /// How long a start waits in its creator's queue before another thread may take it. Most forks
 /// finish or are joined within this time, so they never pay for a task; a task start costs a few
-/// microseconds, so a start that outlives the beat is worth moving.
-const BEAT_NS: i64 = 20_000;
+/// microseconds, so a start that outlives the beat is worth moving. It is also long enough that a
+/// creator which is about to wait on its own first promise (slower in a debug build) gets there
+/// first: a start that captures a native stream is bound to the thread that first uses it, and
+/// the terminal events test fails when a thief takes it (20 us was too short).
+const BEAT_NS: i64 = 2_000_000;
 
 /// What a thread tells another about a promise.
 pub(crate) enum Event {
