@@ -605,7 +605,7 @@ impl<'a> FnLower<'a> {
             return Ok(());
         };
         self.prepare_place(left)?;
-        let key = index as *const Expr as usize;
+        let key = (index.id, index.pos);
         if self.dead || self.prepared_indices.contains_key(&key) {
             return Ok(());
         }
@@ -620,10 +620,7 @@ impl<'a> FnLower<'a> {
 
     /// The value of a place's index expression: the one `prepare_place` evaluated, else evaluated now.
     fn place_index(&mut self, index: &Expr) -> Result<ms_mir::ir::Value, Error> {
-        if let Some(at) = self
-            .prepared_indices
-            .remove(&(index as *const Expr as usize))
-        {
+        if let Some(at) = self.prepared_indices.remove(&(index.id, index.pos)) {
             return Ok(at);
         }
         let i = self.expr(index)?;

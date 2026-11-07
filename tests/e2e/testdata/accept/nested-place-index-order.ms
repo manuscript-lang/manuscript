@@ -31,3 +31,37 @@ test "an indexed receiver runs before the arguments of a changing method":
     rows[at(var events, 1)].set(0, arg(var events, 2))
     try expect_equal(rows[0][0], 9)
     try expect_equal(events, [1, 2])
+
+fn bump(var x: Int) Unit:
+    x += 1
+
+fn bump_both(var a: Int, var b: Int) Unit:
+    a += 1
+    b += 10
+
+fn index(var calls: Int) Int:
+    calls += 1
+    return 0
+
+test "a var element argument evaluates its index once":
+    var calls = 0
+    var xs = [1]
+    bump(var xs[index(var calls)])
+    try expect_equal(calls, 1)
+    try expect_equal(xs, [2])
+
+test "several var element arguments evaluate each index once":
+    var calls = 0
+    var xs = [1, 2]
+    var ys = [[3]]
+    bump_both(var xs[index(var calls)], var ys[index(var calls)][index(var calls)])
+    try expect_equal(calls, 3)
+    try expect_equal(xs, [2, 2])
+    try expect_equal(ys, [[13]])
+
+test "a var field of an indexed element evaluates its index once":
+    var events: List[Int] = []
+    var cells = [Cell(1)]
+    bump(var cells[at(var events, 7)].value)
+    try expect_equal(events, [7])
+    try expect_equal(cells[0].value, 2)

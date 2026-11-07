@@ -94,9 +94,10 @@ pub(crate) struct FnLower<'a> {
     pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
-    /// Index expressions of a place already evaluated, by expression address, until the place
-    /// update that selects with them takes them.
-    pub prepared_indices: HashMap<usize, Value>,
+    /// Index expressions of a place already evaluated, by node id and position (the call keeps a
+    /// clone of the place, so the address is not stable), until the place update that selects
+    /// with them takes them.
+    pub prepared_indices: HashMap<(ms_check::api::NodeId, Pos), Value>,
     /// Intact resource temporaries: their slots own the values while later expressions run.
     /// The keys are borrowed views, consumed only by `take_resource_temp`.
     pub resource_temps: HashMap<Value, crate::close::ResourceTemp>,
