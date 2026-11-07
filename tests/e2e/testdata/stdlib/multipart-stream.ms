@@ -6,7 +6,7 @@ import (
     form_part,
     Part
 ) from "@std/net/mime.ms"
-import Bytes from "@std/bytes.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 import ReadStream, Source from "@std/io/io.ms"
 
 // Hands out the chunks in order, then ends.
@@ -91,3 +91,16 @@ test "a preamble longer than the part budget is ignored under every chunk size":
         let parts = try read_parts(body.clone(), size, 20)
         try expect_equal(parts.length(), 1)
         try expect_equal(parts[0].data, "x".to_bytes())
+
+test "a non-UTF-8 header block is InvalidData in both parsers":
+    var body = BytesBuilder()
+    body.append_bytes(
+        "--XyZ\r\nContent-Disposition: form-data; name=f\r\nX-Test: ".to_bytes()
+    )
+    body.append(255)
+    body.append_bytes("\r\n\r\nx\r\n--XyZ--\r\n".to_bytes())
+
+    let bytes = body.build()
+    try expect_equal(parse_multipart(bytes.clone(), "XyZ").err().kind, "EBADMSG")
+    for size in [1, 7, 200]:
+        try expect_equal(read_parts(bytes.clone(), size).err().kind, "EBADMSG")
