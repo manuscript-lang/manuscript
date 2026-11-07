@@ -35,13 +35,52 @@ impl visit::Visitor for Positions {
 /// The spelling of the explicit duplicate in diagnostics.
 const CLONE: &str = "clone";
 
+/// Every method of the program that implements a contract, found by contract and receiver so a
+/// conversion does not scan all implementations of a widely implemented interface.
+pub struct ContractMethods<'a> {
+    by_receiver: HashMap<(Name, Name), Vec<&'a MethodRef>>,
+    /// Receivers that are type variables match any source type.
+    by_variable: HashMap<Name, Vec<&'a MethodRef>>,
+}
+
+impl<'a> ContractMethods<'a> {
+    pub fn new(methods: &'a [MethodRef]) -> Self {
+        let mut index = ContractMethods {
+            by_receiver: HashMap::new(),
+            by_variable: HashMap::new(),
+        };
+        for m in methods {
+            let Some(contract) = &m.contract else {
+                continue;
+            };
+            if m.variables.iter().any(|v| v.id == m.receiver.id) {
+                index.by_variable.entry(contract.id).or_default().push(m);
+            } else {
+                index
+                    .by_receiver
+                    .entry((contract.id, m.receiver.id))
+                    .or_default()
+                    .push(m);
+            }
+        }
+        index
+    }
+
+    /// The methods implementing `contract` whose receiver can match `receiver`.
+    pub fn of(&self, contract: Name, receiver: Name) -> impl Iterator<Item = &'a MethodRef> + '_ {
+        let exact = self.by_receiver.get(&(contract, receiver));
+        let variable = self.by_variable.get(&contract);
+        exact.into_iter().chain(variable).flatten().copied()
+    }
+}
+
 pub struct Context<'a> {
     pub m: &'a ModuleHir,
     pub c: &'a Callable,
     pub classes: &'a Classifier,
     pub summaries: &'a Summaries,
-    /// Every method of the program, to find the implementations an interface conversion uses.
-    pub methods: &'a [MethodRef],
+    /// The implementations an interface conversion uses.
+    pub methods: &'a ContractMethods<'a>,
     pub live: &'a Liveness,
     /// Lambdas known to escape, from the previous iteration.
     pub escaped: &'a HashSet<NodeId>,

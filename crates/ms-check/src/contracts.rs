@@ -338,9 +338,14 @@ impl Checker {
         if let Some(contract) = &method.contract {
             if contract.kind == Kind::Variable {
                 self.generic_contract_methods.push(at);
+            } else if method.variables.iter().any(|v| v.id == method.receiver.id) {
+                self.variable_receiver_contract_methods
+                    .entry(contract.id)
+                    .or_default()
+                    .push(at);
             } else {
                 self.methods_by_contract
-                    .entry(contract.id)
+                    .entry((contract.id, method.receiver.id))
                     .or_default()
                     .push(at);
             }
@@ -820,9 +825,17 @@ impl Checker {
         }
         let exact = self
             .methods_by_contract
+            .get(&(contract.id, receiver.id))
+            .map_or(&[][..], |v| v);
+        let by_variable = self
+            .variable_receiver_contract_methods
             .get(&contract.id)
             .map_or(&[][..], |v| v);
-        for &at in exact.iter().chain(&self.generic_contract_methods) {
+        for &at in exact
+            .iter()
+            .chain(by_variable)
+            .chain(&self.generic_contract_methods)
+        {
             let m = &self.p.methods[at];
             if !self.method_visible(m) {
                 continue;

@@ -34,13 +34,10 @@ impl Walker<'_> {
         let target = self.cx.m.ty(e);
         let Some(def) = &target.def else { return };
         let ops = def.operations.borrow().clone();
-        for m in self.cx.methods {
-            let (Some(contract), Some(decl)) = (&m.contract, &m.decl) else {
+        for m in self.cx.methods.of(target.id, src.id) {
+            let Some(decl) = &m.decl else {
                 continue;
             };
-            if contract.id != target.id {
-                continue;
-            }
             let mut bound = Subst::new();
             if !unify(&m.receiver, src, &variable_set(&m.variables), &mut bound) {
                 continue;
