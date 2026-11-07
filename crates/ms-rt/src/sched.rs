@@ -18,7 +18,7 @@
 use crate::isolate;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
 /// Most scheduler threads. The thread index lives in six bits of a promise id.
 pub const MAX_THREADS: usize = 63;
@@ -34,7 +34,26 @@ static PINNED: [AtomicUsize; MAX_THREADS] = [const { AtomicUsize::new(0) }; MAX_
 /// might use it stays on the thread that does.
 pub(crate) fn pinned_here() -> bool {
     let me = current();
-    me < MAX_THREADS && PINNED[me].load(Ordering::Relaxed) > 0
+    me < MAX_THREADS
+        && (PINNED[me].load(Ordering::Relaxed) > 0
+            || (me == 0 && MAIN_AFFINE.load(Ordering::Relaxed)))
+}
+
+/// Set once the main thread has touched state only it may use (`ffi::Global`: the terminal). From
+/// then on a promise started on the main thread stays there, since one that reaches that state
+/// from another thread faults.
+static MAIN_AFFINE: AtomicBool = AtomicBool::new(false);
+
+#[cfg(test)]
+pub(crate) fn unpin_main() {
+    MAIN_AFFINE.store(false, Ordering::Relaxed);
+}
+
+/// Records that the main thread uses main-thread-only state.
+pub(crate) fn pin_main() {
+    if !MAIN_AFFINE.load(Ordering::Relaxed) {
+        MAIN_AFFINE.store(true, Ordering::Relaxed);
+    }
 }
 
 /// A native stream's place: the thread that last used it. A fresh stream has none, so promises
@@ -88,11 +107,8 @@ pub(crate) struct Start {
 
 /// How long a start waits in its creator's queue before another thread may take it. Most forks
 /// finish or are joined within this time, so they never pay for a task; a task start costs a few
-/// microseconds, so a start that outlives the beat is worth moving. It is also long enough that a
-/// creator which is about to wait on its own first promise (slower in a debug build) gets there
-/// first: a start that captures a native stream is bound to the thread that first uses it, and
-/// the terminal events test fails when a thief takes it (20 us was too short).
-const BEAT_NS: i64 = 2_000_000;
+/// microseconds, so a start that outlives the beat is worth moving.
+const BEAT_NS: i64 = 20_000;
 
 /// What a thread tells another about a promise.
 pub(crate) enum Event {

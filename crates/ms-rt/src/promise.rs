@@ -1922,6 +1922,20 @@ mod tests {
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn touching_main_thread_state_keeps_the_mains_promises_on_it() {
+        let _g = lock();
+        // `Global` holds main-thread-only state (the terminal); a promise that reaches it from
+        // another thread faults, so once the main thread has used one, its promises stay put.
+        static CELL: crate::ffi::Global<core::cell::Cell<u8>> =
+            crate::ffi::Global::new(core::cell::Cell::new(0));
+        CELL.get().set(1);
+        assert!(sched::pinned_here());
+        sched::unpin_main();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn promises_started_beside_a_used_native_stream_stay_on_its_thread() {
         let _g = lock();
         sched::msrt_runtime_set_threads(4);
