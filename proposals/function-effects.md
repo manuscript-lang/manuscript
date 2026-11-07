@@ -84,7 +84,7 @@ export fn print(value: Printable) Unit: ...
 ```
 
 - Vocabulary: `std.fs.{read,write,delete}`, `std.net.{connect,listen}`, `std.process.{run,signal,read,write}`, `std.env.{read,write}`, `std.clock.{read,sleep}`, `std.random.read`, `std.console.{read,write}`, `std.system.read`. User effects are unprefixed (`db.write`); `std.*` is reserved.
-- Untagged exported functions are pure; wrappers (`host_tree`) inherit by inference. Externs and `stdlib/internal` are never marked.
+- Tags follow logical capability, not extern calls: a function lists every capability it exposes (`ulid` reads random and clock); handle methods inherit from where the handle was opened; pure computation is untagged. Wrappers (`host_tree`) inherit by inference. Externs and `stdlib/internal` are never marked. A golden listing in `crates/ms-tooling/tests/stdlib_effects.txt` makes tag changes reviewable.
 - Drift: repo-check flags an exported function that reaches `stdlib/internal` with no tag on the path.
 - Stdlib effect sets are API: a new tag is a breaking change in release notes, migrated by `ms check --fix`.
 

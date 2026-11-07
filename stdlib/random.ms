@@ -40,6 +40,7 @@ ULIDs made later sort after earlier ones as strings; two made in the same millis
 Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
 */
 // ms: effect std.random.read
+// ms: effect std.clock.read
 export fn ulid() String!:
     let moment = now()
     let millis = moment.seconds * 1000 + moment.nanos / 1000000

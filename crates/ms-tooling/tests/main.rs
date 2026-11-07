@@ -13,3 +13,4 @@ mod lint_promises;
 mod lint_rules;
 mod lint_tasks;
 mod review;
+mod stdlib_effects;
