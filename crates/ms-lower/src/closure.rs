@@ -504,6 +504,19 @@ impl FnLower<'_> {
         }
     }
 
+    /// A source method environment closes the receiver only when it owns the capture.
+    /// The thunk identity already distinguishes owned captures from borrowed addresses.
+    fn own_receiver_capture(&mut self, thunk: FuncId, recv: Receiver) -> Result<(), Error> {
+        if let Receiver::Value(v) = recv {
+            let ty = self.ty_of(v.v);
+            if let Some(kind) = self.part_closer_mir(ty)? {
+                let close = self.close_thunk(&kind, ty, true);
+                self.b.m.funcs[thunk.index()].capture_closers = vec![(0, close)];
+            }
+        }
+        Ok(())
+    }
+
     /// Queues (once per key) the thunk of a source method that changes its receiver, which
     /// the closure holds as the address of the variable.
     fn shared_method_thunk(
@@ -751,6 +764,9 @@ impl FnLower<'_> {
             } else if let Some(thunk) =
                 self.default_thunk(e, fid, &c, &subst, Some(recv_mty), None)?
             {
+                if !changes {
+                    self.own_receiver_capture(thunk, recv)?;
+                }
                 let held = self.captured(recv);
                 let v = self
                     .b
@@ -822,6 +838,9 @@ impl FnLower<'_> {
                 id
             }
         };
+        if matches!(callee, Ok((_, false))) {
+            self.own_receiver_capture(thunk, recv)?;
+        }
         let v = self
             .b
             .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
@@ -1273,6 +1292,7 @@ pub(crate) fn build_default_thunk(
     let file = m.add_file(syms.str(job.callable.module.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
+    b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, hir, job.subst.clone(), file, proto.ret);
     let result = lower_default_thunk(&mut fl, job);
     let mut f = fl.b.into_func();
