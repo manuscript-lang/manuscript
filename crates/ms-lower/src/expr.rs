@@ -60,6 +60,10 @@ impl<'a> FnLower<'a> {
     }
 
     fn expr_with(&mut self, e: &Expr, fit_reader: bool) -> Result<Val, Error> {
+        // An index of a place whose indices were evaluated already (`prepare_place`) is read, not rerun.
+        if let Some(&v) = self.prepared_indices.get(&(e.id, e.pos)) {
+            return Ok(Val { v, own: false });
+        }
         let saved = self.converting;
         if self.hir.info(e).interface_source.is_some() || self.hir.info(e).function_source.is_some()
         {

@@ -1732,6 +1732,10 @@ impl<'a> FnLower<'a> {
                 return Ok(done);
             }
         }
+        if self.is_place(recv_expr) && !discards {
+            // The receiver's own index expressions run before the arguments.
+            self.prepare_place(recv_expr)?;
+        }
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));

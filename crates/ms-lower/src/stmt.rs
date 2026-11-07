@@ -540,11 +540,11 @@ impl<'a> FnLower<'a> {
         path.reverse();
         if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) {
             // A field of a list element (`xs[i].n = 1`): the list receives the updated element.
-            let i = self.expr(index)?;
+            self.prepare_place(cur)?;
             if self.dead {
                 return Ok(());
             }
-            let at = self.borrow(i);
+            let at = self.place_index(index)?;
             let mut new = Some(self.owned(x));
             return self.place_update(left, &mut |s, list| {
                 s.update_elem(list, at, &mut |s, elem| {
@@ -594,6 +594,39 @@ impl<'a> FnLower<'a> {
     }
 
     /// Replaces the place `target` (a variable or a field chain from one) by `f(current)`.
+    /// Evaluates the index expressions selecting `e`, receiver first and each once, so a nested
+    /// place (`grid[a()][b()].n`) runs `a()` before `b()`. The place update takes the results.
+    pub(crate) fn prepare_place(&mut self, e: &Expr) -> Result<(), Error> {
+        let mut cur = e;
+        while let ExprKind::Member { left, .. } = &cur.kind {
+            cur = left;
+        }
+        let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) else {
+            return Ok(());
+        };
+        self.prepare_place(left)?;
+        let key = (index.id, index.pos);
+        if self.dead || self.prepared_indices.contains_key(&key) {
+            return Ok(());
+        }
+        let i = self.expr(index)?;
+        if self.dead {
+            return Ok(());
+        }
+        let at = self.borrow(i);
+        self.prepared_indices.insert(key, at);
+        Ok(())
+    }
+
+    /// The value of a place's index expression: the one `prepare_place` evaluated, else evaluated now.
+    fn place_index(&mut self, index: &Expr) -> Result<ms_mir::ir::Value, Error> {
+        if let Some(at) = self.prepared_indices.remove(&(index.id, index.pos)) {
+            return Ok(at);
+        }
+        let i = self.expr(index)?;
+        Ok(self.borrow(i))
+    }
+
     pub fn place_update(
         &mut self,
         target: &Expr,
@@ -608,11 +641,11 @@ impl<'a> FnLower<'a> {
         path.reverse();
         if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) {
             // A list element changes in place: the list receives the updated element.
-            let i = self.expr(index)?;
+            self.prepare_place(target)?;
             if self.dead {
                 return Ok(());
             }
-            let at = self.borrow(i);
+            let at = self.place_index(index)?;
             return self.place_update(left, &mut |s, list| {
                 s.update_elem(list, at, &mut |s, elem| s.update_path(elem, &path, f))
             });
