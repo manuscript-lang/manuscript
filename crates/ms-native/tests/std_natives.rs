@@ -404,7 +404,10 @@ mod fs_io {
                 STATUS_OK
             );
             assert_eq!(contents(&out), b"aXYd");
-            msstd_io_close(handle.cast());
+            assert_eq!(
+                msstd_io_close(handle.cast(), ErrSlot(core::ptr::null_mut())),
+                STATUS_OK
+            );
             assert_eq!(
                 msstd_fs_file_sync(handle, ErrSlot(core::ptr::null_mut())),
                 ms_rt_abi::STATUS_CLOSED

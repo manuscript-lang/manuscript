@@ -20,7 +20,7 @@ import Duration, Timestamp from "@std/time.ms"
 
 export extern fn msstd_fs_filesystem() FileSystem
 
-export extern fn msstd_io_close(file: NativeFile) Unit
+export extern fn msstd_io_close(file: NativeFile) Unit!
 
 export extern fn msstd_fs_file_clone(file: NativeFile) FileHandle!
 

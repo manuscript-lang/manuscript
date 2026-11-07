@@ -236,7 +236,7 @@ impl Sink[Bytes] for FileSink:
         return self.file.write(value)
 
     var fn flush() Unit!:
-        return ok(unit)
+        return self.file.sync()
 
     var fn close() Unit!:
         return self.file.close()
@@ -245,8 +245,7 @@ impl Closeable for FileHandle:
     // Closes the file, interrupts calls in progress, and waits for them to stop.
     // Safe to call repeatedly; later operations return EBADF.
     var fn close() Unit!:
-        msstd_io_close(self.native)
-        return ok(unit)
+        return msstd_io_close(self.native)
 
 impl FileHandle:
     /*
