@@ -1757,7 +1757,19 @@ impl<'a> FnLower<'a> {
                     self.drop_value(new);
                     r
                 }
-                None => Val { v: new, own: true },
+                // The updated temporary is the result only when the method returns its receiver;
+                // a Unit method releases it, as the place branch below does.
+                None if result_ty.is(Builtin::List)
+                    || result_ty.is(Builtin::Map)
+                    || result_ty.is(Builtin::Set) =>
+                {
+                    Val { v: new, own: true }
+                }
+                None => {
+                    self.drop_value(new);
+                    let u = self.b.unit();
+                    Val { v: u, own: false }
+                }
             });
         }
         let mut result: Option<Val> = None;
