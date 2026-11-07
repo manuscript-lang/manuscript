@@ -24,6 +24,19 @@ test "media types parse and format":
     try expect_true(parse_media_type("text").is_error())
     try expect_true(parse_media_type("a/b; x=\"open").is_error())
 
+test "an escaped closing quote does not end a quoted parameter":
+    // text/plain; name="x\"  (the last quote is a quoted pair)
+    try expect_true(parse_media_type("text/plain; name=\"x\\\"").is_error())
+    try expect_true(parse_media_type("text/plain; name=\"x\\\\\\\"").is_error())
+    try expect_true(parse_media_type("text/plain; name=\"x\"y").is_error())
+    try expect_true(parse_media_type("text/plain; name=\"").is_error())
+
+    let pair = parse_media_type("text/plain; name=\"x\\\"y\"").get()
+    try expect_equal(pair.params.get("name").get(""), "x\"y")
+
+    let slash = parse_media_type("text/plain; name=\"x\\\\\"").get()
+    try expect_equal(slash.params.get("name").get(""), "x\\")
+
 test "extension table maps both ways":
     try expect_equal(media_type_for_extension(".JSON").get(""), "application/json")
     try expect_equal(media_type_for_extension("png").get(""), "image/png")
