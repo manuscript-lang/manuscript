@@ -11,7 +11,8 @@ use ms_build::Lower;
 use ms_driver::project::Overlay;
 
 use super::tooling::{
-    FileState, WATCH_INTERVAL, WATCH_SETTLE, absolute, analyze_with, file_state, watched_files,
+    FileState, WATCH_INTERVAL, WATCH_SETTLE, absolute, analyze_with, file_state, observed,
+    watched_files,
 };
 use super::{Engine, TempDir, compile, testing};
 use crate::backend::{BackendResult, Io, RunRequest, TestRequest};
@@ -27,17 +28,15 @@ struct Files(BTreeMap<String, Option<FileState>>);
 impl Files {
     /// The input, its manifest and every local module it loads, as of now.
     fn refresh(&mut self, syms: ms_syntax::Names, input: &str) {
+        let started = std::time::SystemTime::now();
         let checked = analyze_with(syms, input, &Overlay::new(), false, false);
-        let kept = std::mem::take(&mut self.0);
-        self.0 = watched_files(syms, input, &checked)
-            .into_iter()
-            .chain(absolute(input))
-            .map(|path| (path.clone(), file_state(&path)))
-            .collect();
-        // A module that dropped out of the graph (a broken import loads none) stays watched.
-        for (path, state) in kept {
-            self.0.entry(path).or_insert(state);
-        }
+        self.0 = observed(
+            std::mem::take(&mut self.0),
+            watched_files(syms, input, &checked)
+                .into_iter()
+                .chain(absolute(input)),
+            started,
+        );
     }
 
     /// Whether any watched file changed since the last call.
