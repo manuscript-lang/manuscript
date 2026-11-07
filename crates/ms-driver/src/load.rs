@@ -4,7 +4,7 @@
 //! once in dependency order, and records which module each import names.
 //! Standard (`@std/`) imports belong to the checker.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::project::{Overlay, Project, ProjectError, pathops};
@@ -39,6 +39,9 @@ pub struct EditorOptions {
 pub struct Graph {
     pub modules: Vec<ModRef>,
     pub imports: ImportMap,
+    /// Local inputs: manifests, attempted source files and first missing path prefixes.
+    /// Retained when a strict load discards the module graph, so watchers can recover.
+    pub input_paths: BTreeSet<String>,
     /// Logical path (relative to `source_root`) of the entry module; empty for a library.
     pub entry: String,
     /// A project manifest without an entry.
@@ -134,12 +137,14 @@ fn load_entries(
     options: LoadOptions,
     editor: &EditorOptions,
 ) -> Graph {
-    let (mut config, manifest) = match source_project(filename) {
+    let mut input_paths = BTreeSet::new();
+    let (mut config, manifest) = match source_project(filename, &mut input_paths) {
         Ok(found) => found,
         Err((root, error)) => {
             let file: Arc<str> = Arc::from(filename);
             return Graph {
                 source_root: root,
+                input_paths,
                 diagnostics: vec![from_error(&file, &error)],
                 ..Graph::default()
             };
@@ -147,6 +152,7 @@ fn load_entries(
     };
     let mut graph = Graph {
         source_root: config.root.clone(),
+        input_paths,
         ..Graph::default()
     };
     if manifest {
@@ -259,22 +265,72 @@ fn manifest_pos(config: &Project) -> Pos {
     )
 }
 
+/// Resolution reports the first missing component, not necessarily the complete
+/// import. Watch that component so directory creation can advance resolution.
+fn missing_input(root: &str, error: &ProjectError) -> Option<String> {
+    if let ProjectError::Manifest(error) = error {
+        return missing_input(root, &error.cause);
+    }
+    if root.is_empty() || !error.is_not_exist() {
+        return None;
+    }
+    let ProjectError::Path(error) = error else {
+        return None;
+    };
+    // A reported missing prefix must really be absent, not an unresolved link.
+    // Its existing canonical parent determines whether it is inside the root.
+    if std::fs::symlink_metadata(&error.path).is_ok_and(|meta| meta.file_type().is_symlink()) {
+        return None;
+    }
+    let parent = pathops::eval_symlinks(&pathops::dir(&error.path)).ok()?;
+    let path = pathops::join(&[&parent, &pathops::base(&error.path)]);
+    let relative = pathops::rel(root, &path).ok()?;
+    (!pathops::escapes(&relative)).then_some(path)
+}
+
+/// Alias diagnostics keep their explanation as text. Recover the failed target
+/// from its assignment location and reuse the resolver, without parsing messages.
+fn missing_project_input(config: &Project, error: &ProjectError) -> Option<String> {
+    if let Some(path) = missing_input(&config.root, error) {
+        return Some(path);
+    }
+    let error = error.manifest_error()?;
+    config.aliases.iter().find_map(|(name, target)| {
+        let assignment = config.assignments.get(&format!("aliases.{name}"))?;
+        if assignment.value != error.location {
+            return None;
+        }
+        let error = crate::project::source_path(&config.root, target, &Overlay::new()).err()?;
+        missing_input(&config.root, &error)
+    })
+}
+
 /// `(project, is_manifest)`, or the root and the error.
-fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectError)> {
+fn source_project(
+    filename: &str,
+    input_paths: &mut BTreeSet<String>,
+) -> Result<(Project, bool), (String, ProjectError)> {
     let absolute = pathops::abs(filename).map_err(|e| (String::new(), e))?;
     if pathops::base(&absolute) == "ms.toml" {
+        input_paths.insert(absolute.clone());
         let (config, error) = crate::project::read_project_partial(&absolute);
         return match error {
-            Some(error) => Err((config.root, error)),
+            Some(error) => {
+                input_paths.extend(missing_project_input(&config, &error));
+                Err((config.root, error))
+            }
             None => Ok((config, true)),
         };
     }
     let root = pathops::eval_symlinks(&pathops::dir(&absolute)).map_err(|e| (String::new(), e))?;
     // The nearest enclosing ms.toml supplies the import root and aliases, so entry
     // files can share a library above them. The file stays the sole entry.
-    if let Some(manifest) = enclosing_manifest(&root) {
+    if let Some(manifest) = enclosing_manifest_with(&root, |path| {
+        input_paths.insert(path.to_string());
+    }) {
         let (mut config, error) = crate::project::read_project_partial(&manifest);
         if let Some(error) = error {
+            input_paths.extend(missing_project_input(&config, &error));
             return Err((config.root, error));
         }
         config.entry = absolute;
@@ -290,9 +346,15 @@ fn source_project(filename: &str) -> Result<(Project, bool), (String, ProjectErr
 
 /// The nearest `ms.toml` in `dir` or an ancestor.
 pub fn enclosing_manifest(dir: &str) -> Option<String> {
+    enclosing_manifest_with(dir, |_| {})
+}
+
+/// Record negative lookups too: creating a nearer manifest changes resolution.
+fn enclosing_manifest_with(dir: &str, mut record: impl FnMut(&str)) -> Option<String> {
     let mut current = dir.to_string();
     loop {
         let candidate = pathops::join(&[&current, "ms.toml"]);
+        record(&candidate);
         if std::fs::metadata(&candidate).is_ok_and(|m| m.is_file()) {
             return Some(candidate);
         }
@@ -412,6 +474,7 @@ impl Loader<'_> {
             }
             return Err(failure.clone());
         }
+        self.graph.input_paths.insert(canonical.to_string());
         self.active.insert(canonical.to_string());
         let result = self.load(syms, canonical, &file);
         self.active.remove(canonical);
@@ -510,6 +573,9 @@ impl Loader<'_> {
             let target =
                 crate::project::resolve_import(self.config, importer, &item.path, self.overlay)
                     .map_err(|e| {
+                        self.graph
+                            .input_paths
+                            .extend(missing_input(&self.config.root, &e));
                         Failure::diagnostic(Box::new(resolution(
                             file,
                             item.pos,

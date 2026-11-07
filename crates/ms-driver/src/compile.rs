@@ -1,5 +1,6 @@
 //! Checking a loaded graph: everything up to (not including) lowering.
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use ms_check::api::types::{SymKind, n};
@@ -14,6 +15,8 @@ pub struct Checked {
     pub project_root: String,
     pub configuration: String,
     pub entry: String,
+    /// Source inputs retained even when loading failed before producing a program.
+    pub input_paths: BTreeSet<String>,
     /// The checked program; absent when loading failed before checking.
     pub program: Option<Program>,
     pub diagnostics: Vec<Diagnostic>,
@@ -67,6 +70,7 @@ pub fn check_graph_in(
         project_root: graph.project_root.clone(),
         configuration: graph.configuration.clone(),
         entry: graph.entry.clone(),
+        input_paths: graph.input_paths,
         program: None,
         diagnostics: graph.diagnostics.clone(),
     };

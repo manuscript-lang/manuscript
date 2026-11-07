@@ -372,6 +372,14 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
 /// Windows canonicalization (which also resolves junctions and drive roots).
 #[cfg(any(windows, test))]
 fn canonicalize_with_prefix_error(path: &str) -> Result<std::path::PathBuf, ProjectError> {
+    canonicalize_with_prefix_error_at(path, 0)
+}
+
+#[cfg(any(windows, test))]
+fn canonicalize_with_prefix_error_at(
+    path: &str,
+    links: usize,
+) -> Result<std::path::PathBuf, ProjectError> {
     let error = match std::fs::canonicalize(path) {
         Ok(canonical) => return Ok(canonical),
         Err(error) => ProjectError::path("lstat", path, &error),
@@ -385,6 +393,29 @@ fn canonicalize_with_prefix_error(path: &str) -> Result<std::path::PathBuf, Proj
             continue;
         }
         if let Err(cause) = std::fs::canonicalize(prefix) {
+            // Native canonicalization reports a dangling link itself. Follow its
+            // target before naming the missing prefix, as the Unix walker does.
+            if cause.kind() == std::io::ErrorKind::NotFound
+                && let Ok(target) = std::fs::read_link(prefix)
+            {
+                if links >= 255 {
+                    return Err(ProjectError::msg("EvalSymlinks: too many links"));
+                }
+                let parent = prefix.parent().unwrap_or(std::path::Path::new("."));
+                let parent = std::fs::canonicalize(parent)
+                    .map_err(|e| ProjectError::path("lstat", &parent.to_string_lossy(), &e))?;
+                let mut target = parent.join(target);
+                let suffix = std::path::Path::new(path)
+                    .strip_prefix(prefix)
+                    .expect("prefix is an ancestor of path");
+                if !suffix.as_os_str().is_empty() {
+                    target.push(suffix);
+                }
+                let Some(target) = target.to_str() else {
+                    return Err(error);
+                };
+                return canonicalize_with_prefix_error_at(target, links + 1);
+            }
             let prefix = clean(&prefix.to_string_lossy());
             return Err(ProjectError::path("lstat", &prefix, &cause));
         }
@@ -417,6 +448,83 @@ mod tests {
             canonicalize_with_prefix_error(root.to_str().unwrap()).unwrap(),
             std::fs::canonicalize(&root).unwrap()
         );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn canonicalization_follows_dangling_links_to_the_missing_prefix() {
+        let root = std::env::temp_dir().join(format!("ms-missing-link-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let target = root.join("target");
+        let link = root.join("linked");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&target, &link).unwrap();
+        let requested = link.join("value.ms");
+        for expected in [target.clone(), target.join("value.ms")] {
+            let error = canonicalize_with_prefix_error(requested.to_str().unwrap()).unwrap_err();
+            assert!(error.is_not_exist());
+            let ProjectError::Path(error) = error else {
+                panic!("expected path error")
+            };
+            let parent = eval_symlinks(&dir(&error.path)).unwrap();
+            let physical = join(&[&parent, &base(&error.path)]);
+            let parent = eval_symlinks(expected.parent().unwrap().to_str().unwrap()).unwrap();
+            let want = join(&[&parent, expected.file_name().unwrap().to_str().unwrap()]);
+            assert_eq!(physical, want);
+            std::fs::create_dir_all(&target).unwrap();
+        }
+        // Once both directory and file exist, resolve the requested file.
+        std::fs::write(target.join("value.ms"), "").unwrap();
+        assert_eq!(
+            canonicalize_with_prefix_error(requested.to_str().unwrap()).unwrap(),
+            std::fs::canonicalize(target.join("value.ms")).unwrap()
+        );
+        let file_target = root.join("missing.ms");
+        let file_link = root.join("linked.ms");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&file_target, &file_link).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(&file_target, &file_link).unwrap();
+        let error = canonicalize_with_prefix_error(file_link.to_str().unwrap()).unwrap_err();
+        let ProjectError::Path(error) = error else {
+            panic!("expected path error")
+        };
+        // Joining an empty suffix adds a separator, which verbatim Windows
+        // paths preserve and would turn the missing file into its own parent.
+        assert!(!error.path.ends_with(['/', '\\']));
+        assert!(eval_symlinks(&dir(&error.path)).is_ok());
+        std::fs::remove_file(file_link).unwrap();
+        #[cfg(windows)]
+        std::fs::remove_dir(&link).unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn canonicalization_does_not_replace_a_non_unicode_link_target() {
+        let root = std::env::temp_dir().join(format!("ms-non-unicode-link-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        #[cfg(unix)]
+        let target = {
+            use std::os::unix::ffi::OsStringExt;
+            root.join(std::ffi::OsString::from_vec(vec![0xff]))
+        };
+        #[cfg(windows)]
+        let target = {
+            use std::os::windows::ffi::OsStringExt;
+            root.join(std::ffi::OsString::from_wide(&[0xd800]))
+        };
+        // Only the replacement-character file exists. Lossy conversion must
+        // not silently redirect the dangling link to this different file.
+        std::fs::write(root.join("�"), "").unwrap();
+        let link = root.join("linked.ms");
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(&target, &link).unwrap();
+        assert!(canonicalize_with_prefix_error(link.to_str().unwrap()).is_err());
+        std::fs::remove_file(link).unwrap();
         std::fs::remove_dir_all(root).unwrap();
     }
 

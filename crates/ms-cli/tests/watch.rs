@@ -66,6 +66,14 @@ impl Watch {
         std::fs::read_to_string(directory.join("stdout.txt")).unwrap_or_default()
     }
 
+    fn until_stdout(&self, directory: &Path, text: &str) {
+        let deadline = Instant::now() + WAIT;
+        while !self.stdout(directory).contains(text) {
+            assert!(Instant::now() < deadline, "no {text:?} in stdout");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
     /// Ctrl-C, then the exit status.
     fn interrupt(mut self) -> Option<i32> {
         let status = Command::new("kill")
@@ -159,6 +167,70 @@ fn check_watch_sees_a_new_file_in_an_existing_subdirectory() {
     save(&dir.join("demo/src/new.ms"), "export fn broken(\n");
     watch.until("new.ms");
     watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn check_and_run_watch_recover_when_an_initially_missing_import_is_created() {
+    for command in ["check", "run"] {
+        let dir = scratch(&format!("missing-import-{command}"));
+        std::fs::write(dir.join("main.ms"), include_str!("watch/missing_entry.ms")).unwrap();
+        let mut watch = Watch::start(&dir, &[command, "main.ms", "--watch"]);
+        watch.until("ms: waiting for changes");
+        save(
+            &dir.join("dep.ms"),
+            include_str!("watch/missing_dependency.ms"),
+        );
+        if command == "check" {
+            watch.until("ms: waiting for changes");
+            watch.until_stdout(&dir, "Checked main.ms");
+        } else {
+            watch.until("ms: restarted run");
+            watch.until("ms: exited with status 3; waiting for changes");
+        }
+        assert_eq!(watch.interrupt(), Some(130));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+fn bare_file_check_watch_recovers_when_its_nearest_manifest_is_repaired() {
+    let dir = scratch("broken-nearest-manifest");
+    std::fs::write(dir.join("main.ms"), include_str!("watch/missing_entry.ms")).unwrap();
+    std::fs::write(
+        dir.join("dep.ms"),
+        include_str!("watch/missing_dependency.ms"),
+    )
+    .unwrap();
+    let manifest = dir.join("ms.toml");
+    std::fs::write(&manifest, "[project]\nname\n").unwrap();
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+    save(&manifest, include_str!("watch/manifest.toml"));
+    watch.until("ms: waiting for changes");
+    watch.until_stdout(&dir, "Checked main.ms");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn bare_file_check_watch_recovers_when_a_manifest_is_created() {
+    let dir = scratch("created-nearest-manifest");
+    std::fs::write(dir.join("main.ms"), include_str!("watch/alias_entry.ms")).unwrap();
+    std::fs::write(
+        dir.join("dep.ms"),
+        include_str!("watch/missing_dependency.ms"),
+    )
+    .unwrap();
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+    save(
+        &dir.join("ms.toml"),
+        include_str!("watch/alias_manifest.toml"),
+    );
+    watch.until("ms: waiting for changes");
+    watch.until_stdout(&dir, "Checked main.ms");
     assert_eq!(watch.interrupt(), Some(130));
     let _ = std::fs::remove_dir_all(&dir);
 }
