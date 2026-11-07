@@ -32,6 +32,8 @@ pub enum Fact {
     /// A field of an owned local or parameter moved out at its last use (`f(b.items)`,
     /// `return b.items`): the checker's move, whose lowering may still copy the field.
     PartialMove = 1 << 9,
+    /// A native read whose result borrows from held origins in its checked use position.
+    BorrowedRead = 1 << 10,
 }
 
 /// Fact flags by module file, then by node id.
