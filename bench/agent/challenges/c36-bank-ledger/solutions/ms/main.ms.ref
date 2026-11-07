@@ -180,7 +180,7 @@ fn run() Result[Unit, Error]:
     var l = Ledger(accounts: Map[String, Account](), out: StringBuilder(), fees: 0)
 
     while true:
-        let next = try input.read().wait()
+        let next = try input.next()
         if next.is_none():
             break
 
@@ -191,7 +191,7 @@ fn run() Result[Unit, Error]:
         step(var l, t)
 
     try stdout().write(l.out.build())
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     match run():

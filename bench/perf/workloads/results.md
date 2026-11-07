@@ -39,3 +39,26 @@ Manuscript is faster than Go on 8 of 10 programs and level on the ciphers; Go is
 ## 2026-11-03, refcount removal
 
 The reference solutions were ported from the removed `read_line`/`flush` API to `lines(stdin())` and `flush().wait()`. Min of two rounds of 5 on `d34af765` (refcounts, streams redesign) against `d6052382` (no refcounts): the ten programs read 0.94x to 1.09x with the Go and Rust columns moving as much, so no regression beyond noise. Table in [refcount-removal-2026-11-03.md](../refcount-removal-2026-11-03.md).
+
+## 2026-11-07, suite rebuilt after the streams change
+
+The ten reference solutions stopped building after [#2726](https://github.com/manuscript-lang/manuscript/pull/2726) (`input.read().wait()` is now `input.next()`, `flush()` returns its `Result`); they are ported again. Revision `4e8da342` plus the `String.from_scalars` change, Release LLVM build, min of 5, same shared 4 vCPU Xeon VM as above.
+
+| program | ms ms | go ms | rust ms | ms/go | ms/rust |
+|---|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 71.8 | 45.1 | 33.8 | 1.59x | 2.12x |
+| c05-calculator | 150.1 | 53.2 | 142.0 | 2.82x | 1.06x |
+| c09-ciphers | 128.3 | 61.7 | 43.1 | 2.08x | 2.98x |
+| c13-inventory-orders | 366.9 | 303.6 | 168.9 | 1.21x | 2.17x |
+| c14-dp-suite | 768.4 | 1593.5 | 511.4 | 0.48x | 1.50x |
+| c16-maze-bfs | 24.9 | 35.7 | 35.8 | 0.70x | 0.69x |
+| c18-cron-next-runs | 1789.0 | 1188.3 | 831.5 | 1.51x | 2.15x |
+| c25-log-analyzer | 23.8 | 48.4 | 24.1 | 0.49x | 0.99x |
+| c36-bank-ledger | 85.8 | 126.4 | 70.0 | 0.68x | 1.23x |
+| c44-unified-diff | 2.9 | 64.6 | 16.7 | 0.04x | 0.17x |
+
+Worst gaps to work on next: c09 (3x Rust), c18, c03, c13 (2x Rust), c05 (2.8x Go).
+
+`c09-ciphers` under callgrind (300 KB input, 43.7M instructions before): `String.from_scalars` took 3.8M, built a `Vec`, then copied it into the string. An all-ASCII list now narrows straight into the result (2.4M, whole program 41.4M, -5%; 100-scalar call 142 to 80 ns). Wall-clock moved 134 to 128 ms, inside the noise. The rest of the profile is spread thin: the compiled `transform` loop 25%, `owned_copy` 8%, `sub_scalars`, `replace`, `slice`, `realloc` 3-4% each.
+
+Profiling note: callgrind cannot map the 256 GiB allocator reservation, so `ensure_region` fails and every allocation goes to glibc `malloc` (it made `c09` look malloc-bound at 68M instructions). Shrink `PAGES_SIZE` and `GROW_CHUNKS` in `crates/ms-rt/src/alloc.rs` locally for a profile run and do not commit the change.

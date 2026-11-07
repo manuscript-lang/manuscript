@@ -131,7 +131,7 @@ fn run() Result[Unit, Error]:
         shown = shown + 1
 
     try stdout().write("{out.join("\n")}\n")
-    return stdout().flush().wait()
+    return stdout().flush()
 
 export fn main() Int:
     match run():
