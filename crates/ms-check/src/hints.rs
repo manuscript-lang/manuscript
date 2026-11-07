@@ -931,6 +931,12 @@ impl Checker {
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }
+        let elsewhere = import_hint(&self.session, self.syms.str(item.name));
+        if let Some(statement) = elsewhere.strip_prefix("; add: ") {
+            return format!(
+                "{message}; another standard module exports it, so replace this import with: {statement}"
+            );
+        }
         if exports.is_empty() {
             return format!(
                 "{message}; {path} exports nothing; namespace imports are unsupported, so import individual exported declarations"
