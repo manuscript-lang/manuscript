@@ -417,3 +417,57 @@ fn many_fusions_in_one_function_take_linear_time() {
     let text = print_module(&m);
     assert_eq!(text.matches("@msrt_string_fmt2 (").count(), n, "{text}");
 }
+
+/// `n` independent `out.append("row {i}\n")` calls on one builder in one function.
+fn many_appends(n: usize) -> String {
+    let mut s = String::from(
+        r#"module "main"
+file 0 "a.ms"
+extern @msrt_int_to_string(int) -> str fresh int_to_string
+extern @msrt_string_concat(str, str) -> str fresh string_concat
+extern @msrt_strbuilder_append(ptr, str) -> unit strbuilder_append
+entry @main
+
+fn @fill(%0: ptr, %1: int) -> unit inline(never) {
+b0:
+"#,
+    );
+    let mut v = 2;
+    for _ in 0..n {
+        s.push_str(&format!(
+            "  %{v}: str = str \"row \"\n  %{}: str = call.rt @msrt_int_to_string (%1)\n  %{}: str = call.rt @msrt_string_concat (%{v}, %{})\n  drop %{}\n  %{}: unit = call.rt @msrt_strbuilder_append (%0, %{})\n  drop %{}\n",
+            v + 1,
+            v + 2,
+            v + 1,
+            v + 1,
+            v + 3,
+            v + 2,
+            v + 2
+        ));
+        v += 4;
+    }
+    s.push_str(&format!("  %{v}: unit = unit\n  ret %{v}\n}}\n"));
+    s.push_str("\nfn @main() -> int export {\nb0:\n  %0: int = iconst 0\n  ret %0\n}\n");
+    s
+}
+
+/// Each append used to rescan and rewrite the whole function, so many appends in one function
+/// were quadratic.
+#[test]
+fn many_appends_in_one_function_take_linear_time() {
+    let n = 12_000;
+    let mut m = parse_module(&many_appends(n)).expect("parse");
+    verify_module(&m).expect("verify");
+    let start = std::time::Instant::now();
+    ms_mir::opt::strfuse::run(&mut m);
+    let took = start.elapsed();
+    verify_module(&m).expect("verify after");
+    assert!(took.as_secs() < 5, "took {took:?}");
+    let text = print_module(&m);
+    assert_eq!(
+        text.matches("@msrt_strbuilder_append_int (").count(),
+        n,
+        "{text}"
+    );
+    assert_eq!(text.matches("@msrt_string_concat (").count(), 0, "{text}");
+}
