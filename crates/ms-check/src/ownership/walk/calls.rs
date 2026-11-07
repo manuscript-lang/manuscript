@@ -325,6 +325,16 @@ impl Walker<'_> {
             }
             self.check_overlap(e.pos, &format!("`{name}`"), &operands);
         }
+        // A checked native container read used in place lends from its held receiver. Keep
+        // that result borrowed for inline lowering too; a temporary source or owning use
+        // keeps its existing boundary handling.
+        if d != Demand::Move
+            && self.class_of(e) != Class::Copy
+            && self.native_borrow_receiver(e).is_some()
+            && self.pure_origins(e).is_some()
+        {
+            self.facts.borrowed_reads.insert(e.id);
+        }
         // Results. A borrow-returning callee returns a reference into its arguments: holding it is a
         // borrow of them, storing or returning it needs a copy, and when a source is a
         // temporary the caller owns the result (lowering copies it out before the temporary

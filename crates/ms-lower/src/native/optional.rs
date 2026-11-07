@@ -91,7 +91,7 @@ impl<'a> FnLower<'a> {
                 self.close_finish(recv);
                 Ok(Val { v, own: false })
             }
-            "get" if args.is_empty() && self.needs_drop(inner) && !recv.own => {
+            "get" if args.is_empty() && self.holds(inner) && !recv.own => {
                 // The payload of a borrowed optional is a borrow of it: a reader uses it in
                 // place and a `let` holds it as a lexical borrow. (An owned optional hands its
                 // payload over below.)

@@ -770,6 +770,12 @@ impl FnLower<'_> {
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
+                // A callee that returns a borrow of its receiver or arguments: the closure's
+                // caller expects an owned result, so the thunk copies it.
+                let copy_result = match callee {
+                    Ok((fid, _)) => self.borrowed_result_copy(fid, ret, &name)?,
+                    Err(_) => false,
+                };
                 let mut ps = vec![Param {
                     ty: MTy::PTR,
                     mode: Mode::Borrow,
@@ -803,6 +809,12 @@ impl FnLower<'_> {
                     }
                     Ok((fid, true)) => call_changing_receiver(&mut b, fid, this, recv_mty, rest),
                 };
+                let r = if copy_result {
+                    b.emit(Op::Clone, &[r], Imm::Int(1), Some(ret))
+                        .expect("copy result")
+                } else {
+                    r
+                };
                 b.ret(Some(r));
                 let f = b.into_func();
                 let id = self.b.m.add_func(f);
@@ -815,6 +827,20 @@ impl FnLower<'_> {
             .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
             .expect("closure");
         Ok(Val { v, own: true })
+    }
+
+    /// Whether a bound method's thunk must copy the result of `fid`, a callee returning a borrow.
+    /// A resource result cannot be copied, so that form is reported instead of miscompiled.
+    fn borrowed_result_copy(&mut self, fid: FuncId, ret: MTy, name: &str) -> Result<bool, Error> {
+        if !self.b.m.funcs[fid.index()].ret_borrowed || !self.needs_drop(ret) {
+            return Ok(false);
+        }
+        if self.part_closer_mir(ret)?.is_some() {
+            return Err(Error::new(format!(
+                "method value .{name} returns a borrowed resource; call the method instead"
+            )));
+        }
+        Ok(true)
     }
 
     /// A native function used as a value: a closure forwarding to the native.
@@ -1323,6 +1349,19 @@ fn lower_default_thunk(
             all.extend(vals);
             fl.b.call(fid, &all)
         }
+    };
+    // A callee returning a borrow points into its receiver or a holder: copy it before the
+    // holders drop.
+    let r = if fl.b.m.funcs[fid.index()].ret_borrowed {
+        let t = fl.ty_of(r);
+        if fl.part_closer_mir(t)?.is_some() {
+            return Err(Error::new(
+                "a method value returns a borrowed resource; call the method instead",
+            ));
+        }
+        fl.clone_value(r)
+    } else {
+        r
     };
     for held in holders {
         fl.drop_value(held);

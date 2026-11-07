@@ -615,13 +615,9 @@ impl Walker<'_> {
         recv: &Expr,
         escaping: bool,
     ) -> Vec<(Place, bool)> {
-        if !self.is_place(recv) {
-            // A temporary receiver has no other owner: the value keeps its own copy.
-            self.expr(recv, Demand::Read);
-            return Vec::new();
-        }
+        // A temporary receiver has no variable to share, so its updates would be lost.
         let whole = matches!(recv.kind, ExprKind::Name(_));
-        let Some((info, _)) = self.place(recv).filter(|_| whole) else {
+        let Some((info, _)) = self.place(recv).filter(|_| whole && self.is_place(recv)) else {
             self.error(
                 e.pos,
                 "a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closure",
