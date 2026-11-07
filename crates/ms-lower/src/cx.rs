@@ -326,6 +326,50 @@ pub struct Job {
 }
 
 /// Whole-program lowering context.
+/// Positions in `Cx::methods` by operation name and receiver type, so finding the method a type
+/// provides does not scan every method of the program (a table per implementing type would make
+/// that quadratic).
+#[derive(Default)]
+pub struct MethodIndex {
+    by_receiver: HashMap<(Name, Name), Vec<usize>>,
+    /// Methods whose receiver is a type variable match any receiver.
+    by_variable: HashMap<Name, Vec<usize>>,
+}
+
+impl MethodIndex {
+    fn new(methods: &[ct::MethodRef]) -> Self {
+        let mut index = MethodIndex::default();
+        for (at, m) in methods.iter().enumerate() {
+            let Some(op) = m.name() else { continue };
+            if m.variables.iter().any(|v| v.id == m.receiver.id) {
+                index.by_variable.entry(op).or_default().push(at);
+            } else {
+                index
+                    .by_receiver
+                    .entry((m.receiver.id, op))
+                    .or_default()
+                    .push(at);
+            }
+        }
+        index
+    }
+
+    /// The positions of the methods named `op` that can match `receiver`, in declaration order.
+    pub fn candidates(&self, receiver: Name, op: Name) -> Vec<usize> {
+        let mut at: Vec<usize> = [
+            self.by_receiver.get(&(receiver, op)),
+            self.by_variable.get(&op),
+        ]
+        .into_iter()
+        .flatten()
+        .flatten()
+        .copied()
+        .collect();
+        at.sort_unstable();
+        at
+    }
+}
+
 pub struct Cx {
     /// Reads and interns identifier text.
     pub syms: ms_check::api::Names,
@@ -361,6 +405,8 @@ pub struct Cx {
     pub contracts: HashMap<ms_mir::types::IfaceId, ct::Ty>,
     /// Every implementation method of the program.
     pub methods: Vec<ct::MethodRef>,
+    /// `methods` by receiver and operation name.
+    pub method_index: MethodIndex,
     /// The checker type behind each lowered record or alternative.
     pub source_tys: Column<ct::Ty>,
     /// The `.ms` methods of the native records, built once from the program's methods.
@@ -469,6 +515,7 @@ impl Cx {
             helpers: HashMap::new(),
             vtables: HashMap::new(),
             contracts: HashMap::new(),
+            method_index: MethodIndex::new(&program.methods),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
             close_moves: program.close_moves.clone(),

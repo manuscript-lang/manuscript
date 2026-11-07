@@ -74,14 +74,10 @@ impl Cx {
         let mut methods = Vec::new();
         for s in &sigs {
             let mut found = None;
-            for mm in &self.methods {
+            for at in self.method_index.candidates(concrete.id, ct::n(&s.name)) {
+                let mm = &self.methods[at];
                 let Some(decl) = &mm.decl else { continue };
                 if self.syms.str(mm.id).is_empty() || !mm.visible_in(scope) {
-                    continue;
-                }
-                if mm.name().map(|n| self.syms.str(n).to_string()).as_deref()
-                    != Some(s.name.as_str())
-                {
                     continue;
                 }
                 let mut subst = ct::Subst::new();
@@ -355,15 +351,13 @@ impl Cx {
         scope: ct::Name,
     ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
         let mut found = None;
-        for mm in &self.methods {
+        for at in self.method_index.candidates(concrete.id, ct::n(name)) {
+            let mm = &self.methods[at];
             let Some(decl) = &mm.decl else { continue };
             if self.syms.str(mm.id).is_empty()
                 || !self.syms.str(mm.native).is_empty()
                 || !mm.visible_in(scope)
             {
-                continue;
-            }
-            if mm.name().map(|n| self.syms.str(n).to_string()).as_deref() != Some(name) {
                 continue;
             }
             let mut subst = ct::Subst::new();
