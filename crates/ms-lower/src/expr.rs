@@ -248,15 +248,13 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = ms_check::api::number::canonical(text)
-                    .parse()
-                    .map_err(|_| Error::new(format!("bad float literal {text}")))?;
-                let f = if negate { -f } else { f };
-                let f = if ct::float_bits(self.syms, &t) == Some(32) {
-                    f64::from(f as f32)
+                let f: f64 = if ct::float_bits(self.syms, &t) == Some(32) {
+                    ms_check::api::number::float32(text)
                 } else {
-                    f
-                };
+                    ms_check::api::number::canonical(text).parse().ok()
+                }
+                .ok_or_else(|| Error::new(format!("bad float literal {text}")))?;
+                let f = if negate { -f } else { f };
                 let ty = self.mty(&t)?;
                 let v = self.b.fconst_ty(f, ty);
                 Ok(Val { v, own: false })
@@ -346,13 +344,12 @@ impl<'a> FnLower<'a> {
             }
             "UInt64" => Some(u64::try_from(parse_int(text)?).ok()? as i64),
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = ms_check::api::number::canonical(text).parse().ok()?;
-                let f = if negate { -f } else { f };
-                let f = if ct::float_bits(self.syms, &t) == Some(32) {
-                    f64::from(f as f32)
+                let f: f64 = if ct::float_bits(self.syms, &t) == Some(32) {
+                    ms_check::api::number::float32(text)?
                 } else {
-                    f
+                    ms_check::api::number::canonical(text).parse().ok()?
                 };
+                let f = if negate { -f } else { f };
                 Some(f.to_bits() as i64)
             }
             _ => None,
