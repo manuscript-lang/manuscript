@@ -380,16 +380,6 @@ impl<'a> FnLower<'a> {
         // A mutator that discards an entry closes a resource in it first; the fast paths below
         // overwrite entries without a look at the old one.
         let discards = self.discards_resource(recv_expr, name)?;
-        if !discards {
-            if name == "add"
-                && let Some(done) = self.fused_update(e, view, m, recv_expr)?
-            {
-                return Ok(done);
-            }
-            if let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
-                return Ok(done);
-            }
-        }
         // A receiver that is not a place is evaluated before the arguments, as written. An owned
         // receiver stays registered as a temporary while a later argument can leave through `try`.
         let mut receiver: Option<(Val, bool)> = None;
@@ -407,17 +397,27 @@ impl<'a> FnLower<'a> {
             }
             receiver = Some((x, held));
         } else {
-            // The receiver place is selected and read before the arguments, once: its index
-            // expressions and its bounds or missing-key fault come first, and the entry closing
-            // and the mutation below reuse the selection.
             self.prepare_place(recv_expr)?;
-            self.access_receiver(recv_expr)?;
             if self.dead {
+                self.finish_place(recv_expr);
                 return Ok(self.dummy(MTy::UNIT));
+            }
+        }
+        if !discards {
+            if name == "add"
+                && let Some(done) = self.fused_update(e, view, m, recv_expr)?
+            {
+                self.finish_place(recv_expr);
+                return Ok(done);
+            }
+            if let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
+                self.finish_place(recv_expr);
+                return Ok(done);
             }
         }
         let mut args = self.native_args(view)?;
         if self.dead {
+            self.finish_place(recv_expr);
             return Ok(self.dummy(MTy::UNIT));
         }
         if discards {
@@ -440,6 +440,7 @@ impl<'a> FnLower<'a> {
             }
             self.close_discarded_entry(recv_expr, name, &args)?;
             if self.dead {
+                self.finish_place(recv_expr);
                 return Ok(self.dummy(MTy::UNIT));
             }
             for (i, resource) in held.into_iter().rev() {
@@ -457,6 +458,7 @@ impl<'a> FnLower<'a> {
             && !hands_back
             && let Some(done) = self.slot_list_set(recv_expr, &args)?
         {
+            self.finish_place(recv_expr);
             return Ok(done);
         }
         if let Some((x, held)) = receiver {
@@ -554,7 +556,7 @@ impl<'a> FnLower<'a> {
             let Some(kind) = self.part_closer(&ty)? else {
                 return Ok(());
             };
-            self.place_update(recv_expr, &mut |s, old| {
+            self.place_update_prepared(recv_expr, &mut |s, old| {
                 Ok(s.close_discarded_kind(&kind, old))
             })?;
             return Ok(());

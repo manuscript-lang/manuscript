@@ -61,7 +61,7 @@ impl<'a> FnLower<'a> {
 
     fn expr_with(&mut self, e: &Expr, fit_reader: bool) -> Result<Val, Error> {
         // An index of a place whose indices were evaluated already (`prepare_place`) is read, not rerun.
-        if let Some(&v) = self.prepared_indices.get(&(e.id, e.pos)) {
+        if let Some(&v) = self.prepared_indices.get(&self.place_key(e)) {
             return Ok(Val { v, own: false });
         }
         let saved = self.converting;
@@ -136,6 +136,11 @@ impl<'a> FnLower<'a> {
             }
             _ => x,
         };
+        if !self.dead && self.capture_indices.contains(&self.place_key(e)) {
+            let v = self.borrow(x);
+            self.prepared_indices.insert(self.place_key(e), v);
+            return Ok(Val { v, own: false });
+        }
         Ok(x)
     }
 
