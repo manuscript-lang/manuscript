@@ -20,6 +20,8 @@ struct Described {
     definition: String,
     symbol_type: String,
     doc: String,
+    /// Declared effects, from the checker for project symbols and the stdlib tags for library ones.
+    effects: String,
     uses: Vec<String>,
     std: bool,
 }
@@ -73,6 +75,9 @@ pub fn search_symbol(
         if !m.doc.is_empty() {
             out += &format!("  // {}\n", clip(&m.doc, 160));
         }
+        if !m.effects.is_empty() {
+            out += &format!("  {}\n", m.effects);
+        }
         if m.std {
             out += &format!("  details: ms search_symbol {}\n", m.name);
             continue;
@@ -102,13 +107,14 @@ pub fn search_symbol(
 }
 
 fn describe_project(m: SymbolMatch) -> Described {
-    let (symbol_type, doc) = split_hover(&m.hover);
+    let (symbol_type, doc, effects) = split_hover(&m.hover);
     Described {
         name: m.name,
         kind: m.kind.to_string(),
         definition: display_path(&m.definition),
         symbol_type,
         doc,
+        effects,
         uses: m
             .references
             .iter()
@@ -160,6 +166,11 @@ fn library_matches(
             definition: format!("std:{}", m.module),
             symbol_type: m.signature.split_whitespace().collect::<Vec<_>>().join(" "),
             doc: m.doc.clone(),
+            effects: if m.kind == "fn" && !m.effects.is_empty() {
+                format!("effects: {}", m.effects.join(", "))
+            } else {
+                String::new()
+            },
             uses: Vec::new(),
             std: true,
         })
@@ -178,6 +189,9 @@ fn document(query: &str, total: usize, described: &[Described]) -> Json {
         if !m.doc.is_empty() {
             entry = entry.with("doc", Json::str(&m.doc));
         }
+        if !m.effects.is_empty() {
+            entry = entry.with("effects", Json::str(&m.effects));
+        }
         if !m.uses.is_empty() {
             entry = entry.with("uses", Json::Arr(m.uses.iter().map(Json::str).collect()));
         }
@@ -190,6 +204,20 @@ fn document(query: &str, total: usize, described: &[Described]) -> Json {
         .with("matches", Json::Arr(matches.collect()))
 }
 
+/// Moves the `effects:` and `permits:` lines hover appends out of the description.
+fn split_effects(doc: &str) -> (String, String) {
+    let (mut keep, mut effects) = (Vec::new(), Vec::new());
+    for line in doc.lines() {
+        let line = line.trim_end();
+        if line.starts_with("effects: ") || line.starts_with("permits: ") {
+            effects.push(line.to_string());
+        } else {
+            keep.push(line);
+        }
+    }
+    (keep.join("\n").trim().to_string(), effects.join("  "))
+}
+
 fn clip(text: &str, limit: usize) -> String {
     if text.chars().count() <= limit {
         return text.to_string();
@@ -199,12 +227,15 @@ fn clip(text: &str, limit: usize) -> String {
 }
 
 /// Separates the language server's hover Markdown into a type line and a description.
-fn split_hover(hover: &str) -> (String, String) {
+fn split_hover(hover: &str) -> (String, String, String) {
     let hover = hover.trim();
     let body = hover.strip_prefix("```manuscript\n").unwrap_or(hover);
     match body.split_once("\n```") {
-        Some((inner, rest)) => (inner.replace('\n', " "), first_sentence(rest)),
-        None => (hover.replace('\n', " "), String::new()),
+        Some((inner, rest)) => {
+            let (rest, effects) = split_effects(rest);
+            (inner.replace('\n', " "), first_sentence(&rest), effects)
+        }
+        None => (hover.replace('\n', " "), String::new(), String::new()),
     }
 }
 

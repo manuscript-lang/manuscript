@@ -659,6 +659,7 @@ pub fn review(syms: ms_syntax::Names, request: &ReviewRequest, io: &mut Io) -> B
     let head_facts = facts_of(syms, &head);
     let options = ReviewOptions {
         all: request.all || request.format == "json",
+        effect: &request.effect,
     };
     if request.diff.is_empty() {
         let report = project_report(&head_facts, options);

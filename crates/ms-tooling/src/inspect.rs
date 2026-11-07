@@ -43,6 +43,10 @@ pub struct Entity {
     pub span: Span,
     pub exported: bool,
     pub effects: Vec<String>,
+    /// Declared effects (`// ms: effect`) the callable performs or reaches.
+    pub reach: Vec<String>,
+    /// `allow_effect` patterns in force for the callable.
+    pub permits: Vec<String>,
 }
 
 /// A call, construction, operation or cleanup site.
@@ -210,6 +214,8 @@ pub fn inspect(syms: ms_syntax::Names, program: &Program) -> Inspection {
                 span: source_span(syms, module, decl.pos(), ends),
                 exported: decl.decl().export,
                 effects: Vec::new(),
+                reach: Vec::new(),
+                permits: Vec::new(),
             };
             if let DeclKind::Test(t) = &decl.decl().kind {
                 let kind = if t.bench { "bench" } else { "test" };
@@ -221,6 +227,8 @@ pub fn inspect(syms: ms_syntax::Names, program: &Program) -> Inspection {
                 entity.checker_id = syms.str(symbol.id).to_string();
                 entity.ty = show(syms, &symbol.value_type());
                 entity.effects = effects_of(program, syms.str(symbol.id));
+                entity.reach = reach_of(program, syms.str(symbol.id));
+                entity.permits = permits_of(program, syms.str(symbol.id));
             }
             if let DeclKind::Impl(_) = decl.decl().kind {
                 entity.id = format!("{file}#impl#{}", decl.pos().offset);
@@ -259,6 +267,8 @@ pub fn inspect(syms: ms_syntax::Names, program: &Program) -> Inspection {
                     span: source_span(syms, module, method.pos, ends),
                     exported: false,
                     effects: effects_of(program, syms.str(checked.id)),
+                    reach: reach_of(program, syms.str(checked.id)),
+                    permits: permits_of(program, syms.str(checked.id)),
                 });
                 let mut sites = Sites {
                     syms: ms_syntax::Names::global(),
@@ -302,6 +312,22 @@ fn effects_of(program: &Program, id: &str) -> Vec<String> {
         .effects
         .get(&n(id))
         .map(|list| list.iter().map(|s| s.to_string()).collect())
+        .unwrap_or_default()
+}
+
+fn reach_of(program: &Program, id: &str) -> Vec<String> {
+    program
+        .declared_effects
+        .get(&n(id))
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn permits_of(program: &Program, id: &str) -> Vec<String> {
+    program
+        .effect_permits
+        .get(&n(id))
+        .cloned()
         .unwrap_or_default()
 }
 
@@ -613,6 +639,12 @@ impl Inspection {
             if !e.effects.is_empty() {
                 fields.push(("effects".into(), Json::strings(&e.effects)));
             }
+            if !e.reach.is_empty() {
+                fields.push(("reach".into(), Json::strings(&e.reach)));
+            }
+            if !e.permits.is_empty() {
+                fields.push(("permits".into(), Json::strings(&e.permits)));
+            }
             Json::Obj(fields)
         });
         let calls = self.calls.iter().map(|c| {
@@ -653,6 +685,8 @@ impl Inspection {
                     line: e.span.line,
                     exported: e.exported,
                     effects: e.effects.clone(),
+                    reach: e.reach.clone(),
+                    permits: e.permits.clone(),
                 })
                 .collect(),
             calls: self

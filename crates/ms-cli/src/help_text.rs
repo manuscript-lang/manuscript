@@ -301,7 +301,7 @@ Examples:
   ms diagram ms.toml --view flow --entity save --json
 "#;
 
-pub const HELP_REVIEW: &str = r#"Usage: ms review <file.ms|ms.toml> [--diff <file|->] [--explain n|id] [--format ascii|markdown] [--json] [--all] [-o output]
+pub const HELP_REVIEW: &str = r#"Usage: ms review <file.ms|ms.toml> [--diff <file|->] [--explain n|id] [--effect name|pattern] [--format ascii|markdown] [--json] [--all] [-o output]
 
 Print a fixed-template report of where to look. Without --diff it maps the project:
 public surface, entry points with effects, error types, resources, imports.
@@ -316,6 +316,7 @@ Options:
   --format <name>      ascii (default) or markdown
   --json               Emit the complete report or explanation as versioned JSON (not with --format)
   --explain <n|id>     Show one finding in full: score terms, evidence, callers (needs --diff)
+  --effect <pattern>   Keep findings that reach or permit this effect, e.g. std.net.* (needs --diff)
   --all                Show every row instead of the first five per section
   -o, --output <path>  Write output to a file (default: stdout)
   -h, --help  Show this help without executing the command

@@ -19,6 +19,10 @@ pub struct Fact {
     pub exported: bool,
     pub line: usize,
     pub effects: Vec<String>,
+    /// Declared effects (`std.fs.read`, `db.write`) the callable reaches.
+    pub reach: Vec<String>,
+    /// `allow_effect` patterns in force: what the callable is permitted to reach.
+    pub permits: Vec<String>,
     pub error: String,
     pub tries: usize,
     /// Bindings whose scope closes a resource.

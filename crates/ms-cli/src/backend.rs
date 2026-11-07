@@ -160,6 +160,8 @@ pub struct ReviewRequest {
     pub format: String,
     pub output: String,
     pub explain: String,
+    /// Keep only findings that reach or permit this effect (a name or pattern).
+    pub effect: String,
     pub all: bool,
 }
 

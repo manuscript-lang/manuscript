@@ -698,7 +698,9 @@ pub fn requests_help(args: &[String]) -> bool {
         match args[i].as_str() {
             "--" => return false,
             "-h" | "--help" => return true,
-            flag if VALUE_OPTIONS.contains(&flag) || ["--limit", "--explain"].contains(&flag) => {
+            flag if VALUE_OPTIONS.contains(&flag)
+                || ["--limit", "--explain", "--effect"].contains(&flag) =>
+            {
                 i += 1;
             }
             _ => {}
@@ -748,7 +750,10 @@ mod tests {
 
     #[test]
     fn help_scanning_respects_option_values_and_the_separator() {
-        for flag in VALUE_OPTIONS.iter().chain(["--limit", "--explain"].iter()) {
+        for flag in VALUE_OPTIONS
+            .iter()
+            .chain(["--limit", "--explain", "--effect"].iter())
+        {
             for value in ["-h", "--help"] {
                 let args = [flag.to_string(), value.to_string()];
                 assert!(!requests_help(&args), "{args:?}");
