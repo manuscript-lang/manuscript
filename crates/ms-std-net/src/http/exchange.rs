@@ -288,6 +288,9 @@ impl Exchange {
                 if st.decoder.finish_on_eof() {
                     return Ok(None);
                 }
+                // The peer ended the body early; answer 400 like any other broken framing.
+                drop(st);
+                self.st.borrow_mut().body_malformed = true;
                 return Err(IoErr::failed("unexpected EOF"));
             }
         }
@@ -925,6 +928,29 @@ mod tests {
         assert_eq!(two.matches("HTTP/1.1").count(), 2, "{two}");
         assert!(two.contains("X-Seen: 2"));
         assert!(two.contains("204 No Content"));
+    }
+
+    #[test]
+    fn answers_a_truncated_request_body_with_400() {
+        let (_net, server) = start(Limits::default());
+        for body in [
+            &b"POST /x HTTP/1.1\r\nHost: t\r\nContent-Length: 10\r\n\r\nabc"[..],
+            &b"POST /x HTTP/1.1\r\nHost: t\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nabc"[..],
+        ] {
+            let addr = server.address().to_string();
+            let text = with_client(move || {
+                use std::io::{Read, Write};
+                let mut s = std::net::TcpStream::connect(&addr).unwrap();
+                s.set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                    .unwrap();
+                s.write_all(body).unwrap();
+                s.shutdown(std::net::Shutdown::Write).unwrap();
+                let mut out = Vec::new();
+                let _ = s.read_to_end(&mut out);
+                String::from_utf8_lossy(&out).into_owned()
+            });
+            assert!(text.starts_with("HTTP/1.1 400"), "{text}");
+        }
     }
 
     #[test]
