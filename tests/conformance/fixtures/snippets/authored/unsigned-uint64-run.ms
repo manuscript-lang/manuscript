@@ -28,7 +28,7 @@ export fn main() Int:
         "{max.to_float()} {half.to_decimal()} {max.to_int()} {one.to_int()} {max.to_uint32()} {one.to_uint8()}\n"
     )
     let l: List[UInt64] = [max, 5, half, 0]
-    let _ = stdout().write("{l.sorted()} {l.sorted().reverse()}\n")
+    let _ = stdout().write("{l.sorted()} {l.sorted().reversed()}\n")
     let s = Stamp(id: max, tag: 7)
     let big: Int = 5
     let _ = stdout().write("{s.id} {s.tag} {big.to_uint64()} {(-big).to_uint64()}\n")
