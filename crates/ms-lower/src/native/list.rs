@@ -416,12 +416,42 @@ impl<'a> FnLower<'a> {
                 return Ok(self.dummy(MTy::UNIT));
             }
         }
-        let args = self.native_args(view)?;
+        let mut args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
         if discards {
+            // The incoming owned arguments stay registered while the old entry closes: a close
+            // that faults unwinds them with the statement instead of leaking them.
+            // A resource is registered for fault and cancellation cleanup; other owned values
+            // wait as ordinary temporaries.
+            let mut held = Vec::new();
+            for (i, arg) in args.iter_mut().enumerate() {
+                if !arg.val.own {
+                    continue;
+                }
+                if let Some(key) = self.hold_resource_temp(arg.val.v)? {
+                    arg.val = Val { v: key, own: false };
+                    held.push((i, true));
+                } else {
+                    arg.val = self.hold_temp(arg.val);
+                    held.push((i, false));
+                }
+            }
             self.close_discarded_entry(recv_expr, name, &args)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
+            for (i, resource) in held.into_iter().rev() {
+                let key = args[i].val.v;
+                let v = if resource {
+                    self.take_resource_temp(key).0
+                } else {
+                    key
+                };
+                self.unhold_temp(key);
+                args[i].val = Val { v, own: true };
+            }
         }
         if name == "set"
             && !hands_back
