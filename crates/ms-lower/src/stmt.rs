@@ -154,7 +154,7 @@ impl<'a> FnLower<'a> {
                 // this return; the other paths still drop it.
                 let moved_before = self.closed_on_path.clone();
                 let x = match e {
-                    Some(e) => self.expr(e)?,
+                    Some(e) => self.returned_expr(e)?,
                     None => Val {
                         v: self.b.unit(),
                         own: false,
@@ -284,6 +284,23 @@ impl<'a> FnLower<'a> {
             return self.bind_closing(&b, x, cleanup.as_ref());
         }
         self.bind_pattern(pattern, x)
+    }
+
+    /// The value of a `return`. A borrow-returning function returns the entry of a container read
+    /// in place (`opt.view`), not a copy the caller would never release.
+    pub(crate) fn returned_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if self.b.func_mut().ret_borrowed
+            && let Some(shape) = self.borrowed_shape(e)?
+        {
+            let Some((present, entry)) = self.borrowed_read(shape, e)? else {
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
+            };
+            return self.borrowed_optional(present, &entry);
+        }
+        self.expr(e)
     }
 
     /// The binding and read shape when `let name = value` or `if let name = value` can borrow

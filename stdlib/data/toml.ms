@@ -389,7 +389,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
         invalid(reader, "inline table is closed")
     )
 
-    let existing = lookup(reader, parent, key)
+    let existing = lookup(reader, parent, key).clone()
 
     if existing.is_none():
         try allocate(var reader)
@@ -418,7 +418,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
     Unit, Error
 ]:
-    let existing = lookup(reader, parent, key)
+    let existing = lookup(reader, parent, key).clone()
 
     if existing.is_none():
         try allocate(var reader)
