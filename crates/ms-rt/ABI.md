@@ -343,6 +343,7 @@ msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8
 msrt_task_cancel(handle: u64)
 msrt_task_current() -> u64
 msrt_task_count() -> usize
+msrt_task_others_stalled() -> bool
 ```
 
 `spawn` queues the task; it first runs when the caller parks or yields. `flags & 1` makes it
