@@ -4,6 +4,7 @@ use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, ServingH, WorkerH, opt, report};
+use crate::bound::Bound;
 use crate::conn::Listener;
 use crate::error::HttpErr;
 use crate::http::server::{Limits, Options, Server};
@@ -202,7 +203,7 @@ native! {
             Server::start_adopting(&crate::net::root(), program, s.options.clone()),
             &err,
         )?;
-        out.write(Object(WorkerH(server)));
+        out.write(Object(WorkerH(Bound::new(server))));
         Ok(())
     }
 
@@ -232,7 +233,7 @@ native! {
 
     /// `HttpExchange.headers()`.
     fn msstd_http_exchange_headers(x: ObjRef<ExchH>) -> Object<HeadersH> {
-        Object(HeadersH(Rc::new(RefCell::new(x.headers().borrow().clone()))))
+        Object(HeadersH(Bound::new(Rc::new(RefCell::new(x.headers().borrow().clone())))))
     }
 
     /// `HttpExchange.method()`.

@@ -90,7 +90,7 @@ pub(super) fn http_from_code(status: u8, failed: String) -> HttpErr {
 }
 
 fn new_headers(h: Headers) -> Object<HeadersH> {
-    Object(HeadersH(Rc::new(RefCell::new(h))))
+    Object(HeadersH(Bound::new(Rc::new(RefCell::new(h)))))
 }
 
 fn client_options(w: &HttpClientOptionsWire) -> Result<ClientOptions, HttpErr> {
@@ -233,9 +233,9 @@ fn one_shot(
     let (response, data) = report(result, err)?;
     out.write(ClientResponseWire {
         status: i64::from(response.status),
-        headers: ObjSlot::new(HeadersH(Rc::new(RefCell::new(
+        headers: ObjSlot::new(HeadersH(Bound::new(Rc::new(RefCell::new(
             response.headers.borrow().clone(),
-        )))),
+        ))))),
         protocol: Str::new(&response.protocol),
         body: Bytes::new(&data),
     });
@@ -368,7 +368,7 @@ native! {
     fn msstd_http_body_metadata(b: ObjRef<BodyH>) -> out MetadataWire {
         MetadataWire {
             status: i64::from(b.status),
-            headers: ObjSlot::new(HeadersH(Rc::new(RefCell::new(b.headers.borrow().clone())))),
+            headers: ObjSlot::new(HeadersH(Bound::new(Rc::new(RefCell::new(b.headers.borrow().clone()))))),
             protocol: Str::new(&b.protocol),
         }
     }

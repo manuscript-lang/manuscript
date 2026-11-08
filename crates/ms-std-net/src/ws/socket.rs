@@ -491,6 +491,7 @@ mod tests {
     use super::*;
     use crate::http::h1::{Parsed, parse_request, parse_response};
     use crate::net::Network;
+    use std::sync::Arc;
 
     const SEC: Option<i64> = Some(2_000_000_000);
     const SHORT: Option<i64> = Some(30_000_000);
@@ -510,7 +511,7 @@ mod tests {
 
     /// Opens a TCP pair and performs the real handshake over it, sequentially on one thread.
     fn pair(
-        net: &Rc<Network>,
+        net: &Arc<Network>,
         compression: bool,
         server_max: Option<u64>,
         client_max: Option<u64>,
@@ -580,7 +581,7 @@ mod tests {
         (client, server)
     }
 
-    fn setup() -> (Rc<Network>, Socket, Socket) {
+    fn setup() -> (Arc<Network>, Socket, Socket) {
         let net = Network::new_root();
         let (c, s) = pair(&net, false, None, None);
         (net, c, s)

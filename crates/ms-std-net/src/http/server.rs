@@ -597,7 +597,7 @@ impl Drop for Server {
 pub struct Server {
     id: usize,
     me: Weak<Server>,
-    pub(super) owner: Rc<Network>,
+    pub(super) owner: Arc<Network>,
     pub(super) limits: Limits,
     /// Requests queued or running across every connection of the `serve` call.
     admitted: Arc<AtomicUsize>,
@@ -642,7 +642,7 @@ impl Server {
     /// Starts a server without a listener: it serves the connections [`Server::adopt`] hands it,
     /// accepted elsewhere (another thread's accept loop).
     pub fn start_adopting(
-        owner: &Rc<Network>,
+        owner: &Arc<Network>,
         dispatch: Box<dyn Dispatch>,
         options: Options,
     ) -> Result<Rc<Server>, NetErr> {
@@ -653,7 +653,7 @@ impl Server {
     }
 
     fn create(
-        owner: &Rc<Network>,
+        owner: &Arc<Network>,
         dispatch: Box<dyn Dispatch>,
         options: Options,
     ) -> Result<Rc<Server>, NetErr> {
@@ -1750,12 +1750,12 @@ pub(crate) mod tests {
         }
     }
 
-    pub fn start(options: Options) -> (Rc<Network>, Started) {
+    pub fn start(options: Options) -> (Arc<Network>, Started) {
         start_with(Box::new(Buffered(App)), options)
     }
 
     /// Starts a server for `dispatch` fed by a test acceptor.
-    pub fn start_with(dispatch: Box<dyn Dispatch>, options: Options) -> (Rc<Network>, Started) {
+    pub fn start_with(dispatch: Box<dyn Dispatch>, options: Options) -> (Arc<Network>, Started) {
         let net = Network::new_root();
         let server = Server::start_adopting(&net, dispatch, options).unwrap();
         let listener = Rc::new(crate::conn::Listener::new(

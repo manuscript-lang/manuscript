@@ -62,15 +62,15 @@ macro_rules! handle_newtype {
 impl Clone for HeadersH {
     /// An independent copy of the headers, not another handle on the same ones.
     fn clone(&self) -> HeadersH {
-        HeadersH(std::rc::Rc::new(std::cell::RefCell::new(
+        HeadersH(Bound::new(std::rc::Rc::new(std::cell::RefCell::new(
             self.0.borrow().clone(),
-        )))
+        ))))
     }
 }
 
 handle_newtype! {
     /// A `Network` handle.
-    NetH(Bound<std::rc::Rc<crate::net::Network>>);
+    NetH(std::sync::Arc<crate::net::Network>);
     /// A `Connection` handle.
     ConnH(Bound<std::rc::Rc<crate::conn::Connection>>);
     /// A `Listener` handle.
@@ -78,17 +78,17 @@ handle_newtype! {
     /// A `DatagramSocket` handle.
     DgramH(Bound<std::rc::Rc<crate::conn::Datagrams>>);
     /// An `HttpHeaders` handle; `HttpHeaders.clone` copies the headers.
-    HeadersH(crate::http::headers::Shared): clone;
+    HeadersH(Bound<crate::http::headers::Shared>): clone;
     /// The settings every connection of one `serve` call shares.
     ServingH(std::rc::Rc<crate::ffi::http_server::Serving>);
     /// The server of one `serve` worker thread.
-    WorkerH(std::rc::Rc<crate::http::server::Server>);
+    WorkerH(Bound<std::rc::Rc<crate::http::server::Server>>);
     /// An `HttpClient` handle.
     ClientH(Bound<std::rc::Rc<crate::http::client::Client>>);
     /// An `HttpResponseBody` handle.
     BodyH(Bound<std::rc::Rc<crate::http::client::ResponseBody>>);
     /// An `HttpExchange` handle.
-    ExchH(std::rc::Rc<crate::http::exchange::Exchange>);
+    ExchH(Bound<std::rc::Rc<crate::http::exchange::Exchange>>);
     /// A `WebSocket` handle.
     SocketH(Bound<std::rc::Rc<crate::ws::socket::Socket>>);
     /// An `IpAddress` handle.

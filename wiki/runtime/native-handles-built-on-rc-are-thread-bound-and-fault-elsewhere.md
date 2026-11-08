@@ -8,3 +8,7 @@ Apply when: adding a native handle, or moving one to `Arc`/atomics (then drop it
 Evidence: `tests/e2e/testdata/stdlib/net-thread-bound.ms`; plan in `proposals/thread-affinity.md`.
 
 Pinning a promise to the handle's thread (`sched::Pin`) is right for handles tied to an open stream, wrong for a `Network` or client: a live one on the main thread would pin `serve` workers there.
+
+`Network` is the exception and is shared: a promise that captures a network is ordinary (stage 1 bound it by mistake and `net.ms` "resolve returns typed DNS records" failed whenever the promise landed on another thread). Its resources register per thread, so closing it from another thread closes only its children and the resources opened on the closing thread.
+
+Why not `Arc` for the rest (tried 2026-11-08): `Network` registers `Client` and `ResponseBody`, the HTTP stack is per-thread by design (reactor, server, sessions), and a socket shared by threads needs an atomic closed/busy/release handshake. Bind the handle; migrate a type only when a real program must share it across threads. A full `make e2e` (needs `target/debug/ms` built) is the check for a new bound handle: a handle the stdlib itself moves into a promise shows up there.
