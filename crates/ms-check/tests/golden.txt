@@ -680,7 +680,6 @@ fn wrong(cause: Error) String:
         _:
             return cause.message()
 type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	55	extra operation message; Error declares:  (remove it or add it to the interface)
 type	7	5	129	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elseimport JsonError from "@std/data/json.ms"
 import hex_decode from "@std/data/encoding.ms"
 fn general(cause: JsonError) Error:
@@ -875,14 +874,12 @@ fn identity[T](value: T) T: value
 fn consume[T](value: T, cause: Error, optional: T?) Unit: return
 fn first() Unit: consume(value: 1, cause: identity(Cause(2)), optional: identity(3))
 type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	61	extra operation message; Error declares:  (remove it or add it to the interface)
 type	7	43	244	expected Error, found Cause[Int] (in argument 'cause' of consume)type Box[Error: Error]:
     cause: Error
 impl Error for Box[Error]:
     fn message() String: self.cause.message()
 type	1	17	16	a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface
 type	3	1	41	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	75	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsfn recursive[T: T](value: T) Unit: return
 type	1	17	16	a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interfacefn mutual[T: U, U: T](value: T) Unit: return
 type	1	14	13	a bound must be an interface, but U resolves to a type parameter; rename the type parameter or name an interface
@@ -930,7 +927,6 @@ fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
 type	5	21	114	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 type	3	1	33	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	64	extra operation message; Error declares:  (remove it or add it to the interface)
 type	6	32	189	conflicting generic inference; expected result type Result[Int, Error] does not match Result[T, Failure]; give consistent argument and result types or specify the type argumentsfn from_callback[T](factory: fn() T) T: factory()
 fn first() Unit:
     let callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
@@ -948,7 +944,6 @@ fn failing() Result[Int, Failure]: error(Failure(code: 1))
 fn count[T](r: Result[T, Error]) Int: 1
 fn use() Int: count(r: failing())
 type	3	1	28	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	59	extra operation message; Error declares:  (remove it or add it to the interface)
 type	7	21	206	conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)
 type	7	15	200	cannot infer type argument T for count; write count[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
 type	7	24	209	expected Result[<invalid>, Error], found Result[Int, Failure] (in argument 'r' of count)type Pair[A, B = A]:
@@ -1518,7 +1513,6 @@ fn read() Read[Int]: Box(1)
 impl Error for E:
     fn message() String: this.text
 type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	50	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	4	26	68	unknown binding this; the receiver in an impl method is 'self'; write self instead of thisfn error_method() Unit:
     let method = Error.message
 resolution	2	24	47	Error has no member message; a type name is followed only by an enum casefn error_value() Error: Error.message("bad input")
@@ -1538,7 +1532,6 @@ impl Error for E:
     fn message() String: self.text
 fn error_value() Error: E("bad input")
 type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	50	extra operation message; Error declares:  (remove it or add it to the interface)
 type	5	25	102	expected Error, found E (in the return value)fn identity(this: Int) Int: this
 fn f() Int: this
 resolution	1	13	12	unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'export type Sq:
@@ -2127,7 +2120,6 @@ resolution	2	8	46	unknown standard module @std/faults.ms
 type	4	21	170	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 resolution	3	39	112	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 type	20	1	627	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	21	8	658	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	3	57	130	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a module
 resolution	10	30	443	unknown binding panic; add: import panic from "@std/core.ms"fn first() Unit:
     let result: Result[Int, TextError] = fail("empty")resolution	2	29	45	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
@@ -2891,11 +2883,8 @@ fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r
 resolution	2	8	46	unknown standard module @std/faults.ms
 type	28	16	865	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
 type	5	1	97	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	6	8	123	extra operation message; Error declares:  (remove it or add it to the interface)
 type	9	1	169	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	10	8	195	extra operation message; Error declares:  (remove it or add it to the interface)
 type	15	1	288	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	16	8	327	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	23	26	589	unknown binding panic; did you mean 'pair'?fn first() Int:
     let r: Result[Int, Error] = f()
     return h(r)resolution	2	33	48	unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module
@@ -2940,8 +2929,7 @@ fn wrapped(n: Int) Result[Int, Cause]:
 fn twice(n: Int) Result[Int, Cause]:
     let value = try wrapped(n)
     return ok(value)
-type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	58	extra operation message; Error declares:  (remove it or add it to the interface)let alias = affine
+type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'let alias = affine
     resolution	1	13	12	unknown binding affine; declare it with 'let affine = ...' before use, define 'fn affine(...) T:', or import it from a modulefn probe(value: Int) Int: ...
     type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)var sum = 0
     var i = 0
@@ -2978,8 +2966,7 @@ resolution	2	28	65	unknown binding Cause; declare it with 'let Cause = ...' befo
     text: String
 impl Error for Cause:
     fn message() String: self.text
-type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	58	extra operation message; Error declares:  (remove it or add it to the interface)fn probe() Int:
+type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'fn probe() Int:
     var sum = 0
     var i = -1
     while i < 1000:
@@ -4762,7 +4749,6 @@ type Neighbor:
 fn read(item: Neighbor) Int: item.value
 type	1	17	16	a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface
 type	3	1	41	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	75	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsinterface Compare[T]:
     fn compare(other: T) Int
 fn compare[T: Compare[T]](first: T, second: T) Int: first.|
@@ -5338,8 +5324,7 @@ fn classify(result: Result[Int, Failure]) Int:
     match result:
         error(NotFound): return 1
         ok(value): return value
-type	4	1	54	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	8	85	extra operation message; Error declares:  (remove it or add it to the interface)enum Failure:
+type	4	1	54	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'enum Failure:
     NotFound
     Denied
 enum Envelope:
@@ -5381,7 +5366,6 @@ fn use[T](value: Result[Int, Failure[T]]) Int:
         error(NotFound): return 1
         ok(value): return value
 type	4	1	52	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	8	86	extra operation message; Error declares:  (remove it or add it to the interface)
 type	9	9	214	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
     fn describe() String
 enum State:
@@ -5433,8 +5417,7 @@ fn classify(result: Result[Int, Failure]) Int:
     match result:
         error(cause): return failure_code(cause)
         ok(value): return value
-type	4	1	54	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	8	85	extra operation message; Error declares:  (remove it or add it to the interface)export enum Failure:
+type	4	1	54	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'export enum Failure:
     NotFound
     Denied(reason: String)
 impl Error for Failure:
@@ -5442,8 +5425,7 @@ impl Error for Failure:
 export type Item:
     value: Int
 export fn fail() Result[Int, Failure]: error(Failure.Denied("denied"))
-type	4	1	61	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	8	92	extra operation message; Error declares:  (remove it or add it to the interface)"
+type	4	1	61	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'"
 fn use() Int:
     match fail():
         error(NotFound): return 1
@@ -5723,7 +5705,6 @@ impl Error for Box[Error]:
 export fn main() Int: 0
 type	1	17	16	a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface
 type	3	1	41	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	4	8	75	extra operation message; Error declares:  (remove it or add it to the interface)
 resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsimport StringBuilder from "@std/string.ms"
 import Closeable from "@std/cleanup.ms"
 type Resource:
