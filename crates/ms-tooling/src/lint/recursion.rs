@@ -177,7 +177,6 @@ impl Scan<'_> {
         let mut found = false;
         visit(e, &mut |x| {
             if let ExprKind::Call { callee, .. } = &x.kind
-                && matches!(callee.kind, ExprKind::Name(_))
                 && self
                     .module
                     .facts()

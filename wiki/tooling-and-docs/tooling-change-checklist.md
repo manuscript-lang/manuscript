@@ -8,7 +8,7 @@ Apply when: changing `ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, lin
 
 Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../tooling-and-docs/index.md).
 
-- Derive semantics from checked symbols/types and shared traversal. Reuse one source index per request; do not re-lex names for import usage or generate inspection output just to find a receiver.
+- Derive semantics from checked symbols/types and shared traversal. Direct-recursion lint compares the checked callee symbol even when explicit type arguments wrap its syntax; stripping that wrapper can lose the symbol facts. Reuse one source index per request; do not re-lex names for import usage or generate inspection output just to find a receiver.
 - A formatter change that rewraps existing code reformats the repo (`ms fmt stdlib tests tools`; `reject` fixtures stay unparsable) and needs `UPDATE_SNAPSHOTS=1 cargo test -p ms-lsp --test it -- snapshots::`, since navigation snapshots hold stdlib positions. `ms fmt` wraps bare imports over the width into `import (...)`.
 - Formatting preserves semantics and is idempotent for inline/indented suites, defaults, closures, interpolation, and multiline parameters. Use the [compiler checklist](../compiler/compiler-change-checklist.md) for changed syntax/recovery.
 - Test valid source and incomplete snapshots: preserve neighboring declarations and positions; check navigation/completion with malformed input, LF/CRLF, and relevant Unicode positions.
