@@ -117,45 +117,6 @@ struct Wire {
     h2: Option<H2Stream>,
 }
 
-/// A wire that a parking exchange uses, owned by a runtime cleanup: a cancellation or fault
-/// skips destructors, so the cleanup closes the connection (releasing the descriptor) and drops
-/// the wire with the connection state and buffers it holds.
-struct HeldWire {
-    wire: *mut Wire,
-    /// The cleanup handle; none on a test thread without tasks, where nothing can cancel.
-    cleanup: Option<usize>,
-}
-
-unsafe extern "C-unwind" fn abandon_wire(arg: *mut u8) {
-    // SAFETY: the runtime runs this once, only on the path that skips `HeldWire::finish`, and
-    // `arg` is the allocation `HeldWire::new` leaked.
-    let wire = unsafe { Box::from_raw(arg.cast::<Wire>()) };
-    wire.conn.close();
-}
-
-impl HeldWire {
-    fn new(wire: Wire) -> HeldWire {
-        let wire = Box::into_raw(Box::new(wire));
-        // SAFETY: the allocation stays live until the action runs or `finish` discards it.
-        let cleanup =
-            crate::wait::parks().then(|| unsafe { rt::cleanup_push(abandon_wire, wire.cast()) });
-        HeldWire { wire, cleanup }
-    }
-
-    fn wire(&mut self) -> &mut Wire {
-        // SAFETY: this value owns the allocation until `finish` or the cleanup takes it.
-        unsafe { &mut *self.wire }
-    }
-
-    fn finish(self) -> Wire {
-        if let Some(handle) = self.cleanup {
-            rt::cleanup_discard(handle);
-        }
-        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
-        *unsafe { Box::from_raw(self.wire) }
-    }
-}
-
 thread_local! {
     static SCRATCH: Cell<Vec<u8>> = const { Cell::new(Vec::new()) };
 }
@@ -201,17 +162,17 @@ impl Wire {
     /// buffer is taken out for its duration: a request in another task that reads meanwhile
     /// gets a fresh buffer instead of finding this one borrowed.
     fn fill(&mut self, deadline: Deadline) -> Result<usize, IoErr> {
-        let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
-        scratch.get().resize(READ_BUF, 0);
-        let got = self.conn.read_into(scratch.get(), deadline);
+        let mut scratch = SCRATCH.take();
+        scratch.resize(READ_BUF, 0);
+        let got = self.conn.read_into(&mut scratch, deadline);
         if let Ok(n) = got {
             if self.rpos > 0 && self.rpos == self.rbuf.len() {
                 self.rbuf.clear();
                 self.rpos = 0;
             }
-            self.rbuf.extend_from_slice(&scratch.get()[..n]);
+            self.rbuf.extend_from_slice(&scratch[..n]);
         }
-        SCRATCH.set(scratch.finish());
+        SCRATCH.set(scratch);
         got
     }
 }
@@ -219,11 +180,11 @@ impl Wire {
 impl Wire {
     /// Reads up to `max` bytes straight into a new buffer; empty is end of stream.
     fn read_raw(&mut self, deadline: Deadline, max: usize) -> Result<Vec<u8>, IoErr> {
-        let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
-        scratch.get().resize(READ_BUF.max(max), 0);
-        let got = self.conn.read_into(&mut scratch.get()[..max], deadline);
-        let out = got.map(|n| scratch.get()[..n].to_vec());
-        SCRATCH.set(scratch.finish());
+        let mut scratch = SCRATCH.take();
+        scratch.resize(READ_BUF.max(max), 0);
+        let got = self.conn.read_into(&mut scratch[..max], deadline);
+        let out = got.map(|n| scratch[..n].to_vec());
+        SCRATCH.set(scratch);
         out
     }
 }
@@ -568,11 +529,9 @@ impl Client {
     /// streaming response.
     pub fn send(self: &Rc<Self>, request: Request) -> Result<Rc<ResponseBody>, HttpErr> {
         let deadline = request.deadline;
-        // A cancellation parks below this frame and leaves by a jump that skips its destructors,
-        // so the request's owned state lives behind a cleanup instead of in locals.
-        let mut held = rt::Parked::new(Sending::new(request));
-        let result = self.send_inner(held.get());
-        drop(held);
+        let mut sending = Sending::new(request);
+        let result = self.send_inner(&mut sending);
+        drop(sending);
         result.map_err(|e| self.describe(deadline, e))
     }
 
@@ -901,11 +860,8 @@ impl Client {
         hop: &mut Hop<'_>,
         deadline: Deadline,
     ) -> Result<Exchanged, Fail> {
-        // A cancellation leaves by a jump that skips `wire`'s drop; the cleanup behind `HeldWire`
-        // closes its connection and frees it.
-        let mut held = HeldWire::new(wire);
-        let result = self.exchange(held.wire(), hop, deadline);
-        let wire = held.finish();
+        let mut wire = wire;
+        let result = self.exchange(&mut wire, hop, deadline);
         match result {
             Ok((head, added_gzip)) => Ok((head, wire, added_gzip)),
             Err(fail) => {
@@ -978,25 +934,21 @@ impl Client {
             Body::Bytes(bytes) => Some(bytes.len()),
             Body::Stream(_) => None,
         };
-        // Owned by a cleanup too: a cancelled request skips the frame that would free it.
-        let mut headers = rt::Parked::new(h2_request_headers(hop, length, wants_gzip));
+        let headers = h2_request_headers(hop, length, wants_gzip);
         let end = length == Some(0);
         let opened = loop {
             if deadline.expired() {
                 return Err(Fail::Err(HttpErr::Timeout));
             }
-            match session.open(headers.get().clone(), end) {
+            match session.open(headers.clone(), end) {
                 Ok(stream) => break stream,
                 Err(OpenErr::Unavailable) => return Err(Fail::Stale),
                 Err(OpenErr::Invalid(m)) => return Err(Fail::Err(HttpErr::Failed(m))),
                 Err(OpenErr::Full) => session.pump(deadline).map_err(pump_fail)?,
             }
         };
-        // A cancellation parks below and leaves by a jump that skips destructors, which would
-        // leave the stream open on the connection (its slot, queue and the peer's handler).
-        // The cleanup behind `Parked` drops it, and its drop resets the stream.
-        let mut held = rt::Parked::new(opened);
-        let stream = held.get();
+        // A cancelled request returns through here, and dropping the stream resets it.
+        let stream = &opened;
         stream.session().flush(deadline).map_err(pump_fail)?;
         if !end {
             self.upload_h2(stream, hop.body, deadline)?;
@@ -1013,7 +965,7 @@ impl Client {
                 _ => stream.pump(deadline).map_err(pump_fail)?,
             }
         };
-        Ok((head, Wire::for_stream(held.finish()), wants_gzip))
+        Ok((head, Wire::for_stream(opened), wants_gzip))
     }
 
     fn upload_h2(
@@ -1094,8 +1046,8 @@ impl Client {
         deadline: Deadline,
     ) -> Result<(ResponseHead, bool), Fail> {
         let wants_gzip = self.wants_gzip(hop);
-        let mut held = rt::ParkedBuf::new(Vec::with_capacity(512));
-        let out = held.get();
+        let mut buffer = Vec::with_capacity(512);
+        let out = &mut buffer;
         let length = match &*hop.body {
             Body::Bytes(bytes) => Some(bytes.len()),
             Body::Stream(_) => None,
@@ -1234,7 +1186,7 @@ fn io_text(e: IoErr) -> String {
     }
 }
 
-/// The owned state of one `send`, kept on the heap behind a cleanup (see [`rt::Parked`]).
+/// The owned state of one `send`.
 struct Sending {
     method: String,
     url: Url,
@@ -1664,7 +1616,8 @@ pub struct ResponseBody {
     closed: Cell<bool>,
 }
 
-/// State owned by one read. Both ordinary drop and runtime cleanup return it here.
+/// State owned by one read; dropping it (also when a cancelled read returns) puts it back, or
+/// abandons it when the body was closed.
 struct ReadState<'a> {
     body: &'a ResponseBody,
     state: Option<BodyState>,
@@ -1681,50 +1634,6 @@ impl Drop for ReadState<'_> {
         } else {
             *self.body.state.borrow_mut() = Some(state);
         }
-    }
-}
-
-/// The guard owns the allocation until ordinary drop, or transfers it to runtime cleanup
-/// when cancellation/fault skips Rust destructors. The interrupted decoder cannot be resumed.
-struct Held<'a> {
-    state: *mut ReadState<'a>,
-    cleanup: usize,
-}
-
-unsafe extern "C-unwind" fn cancel_read(arg: *mut u8) {
-    // SAFETY: the runtime only runs this action when abandoning the read's frames. Held's
-    // destructor will not run, and the body outlives the read. This takes its allocation once.
-    let state = unsafe { Box::from_raw(arg.cast::<ReadState<'_>>()) };
-    state.body.closed.set(true);
-    drop(state);
-}
-
-impl<'a> Held<'a> {
-    fn new(body: &'a ResponseBody, state: BodyState) -> Self {
-        // The cleanup stack is process-global, including in otherwise polling-only tests.
-        #[cfg(test)]
-        crate::http::server::serialize_tests();
-        let state = Box::into_raw(Box::new(ReadState {
-            body,
-            state: Some(state),
-        }));
-        // SAFETY: the allocation stays live until this action runs or Held discards it.
-        let cleanup = unsafe { rt::cleanup_push(cancel_read, state.cast()) };
-        Self { state, cleanup }
-    }
-
-    fn state(&mut self) -> &mut Option<BodyState> {
-        // SAFETY: Held exclusively owns the state while the read runs. Runtime cleanup
-        // takes ownership only on a non-returning cancellation/fault path.
-        unsafe { &mut (*self.state).state }
-    }
-}
-
-impl Drop for Held<'_> {
-    fn drop(&mut self) {
-        rt::cleanup_discard(self.cleanup);
-        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
-        drop(unsafe { Box::from_raw(self.state) });
     }
 }
 
@@ -1770,8 +1679,11 @@ impl ResponseBody {
             return Ok(None);
         };
         self.reading.set(true);
-        let mut held = Held::new(self, taken);
-        let state = held.state().as_mut().expect("state");
+        let mut held = ReadState {
+            body: self,
+            state: Some(taken),
+        };
+        let state = held.state.as_mut().expect("state");
         let max = max.clamp(1, READ_BUF);
         if state.ready_pos >= state.ready.len() {
             state.ready.clear();
@@ -1799,7 +1711,7 @@ impl ResponseBody {
             return Ok(Some(chunk));
         }
         // End of body: release the connection.
-        let done = held.state().take().expect("state");
+        let done = held.state.take().expect("state");
         drop(held);
         match self.client.upgrade() {
             Some(client) if !self.closed.get() => done.finish(&client),
@@ -1841,8 +1753,11 @@ impl ResponseBody {
             return Ok(Vec::new());
         };
         self.reading.set(true);
-        let mut held = Held::new(self, taken);
-        let state = held.state().as_mut().expect("state");
+        let mut held = ReadState {
+            body: self,
+            state: Some(taken),
+        };
+        let state = held.state.as_mut().expect("state");
         let mut out: Vec<u8> = Vec::new();
         loop {
             if state.ready_pos < state.ready.len() {
@@ -1872,7 +1787,7 @@ impl ResponseBody {
                 return Err(e);
             }
         }
-        let done = held.state().take().expect("state");
+        let done = held.state.take().expect("state");
         drop(held);
         match self.client.upgrade() {
             Some(client) if !self.closed.get() => done.finish(&client),

@@ -6,7 +6,6 @@ use crate::rt;
 use crate::sys::{AsSock, Borrowed};
 use crate::tls::{self, TlsOptions};
 use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
-use ms_rt::fault::with_cleanup;
 use socket2::Socket;
 use std::cell::{Cell, UnsafeCell};
 use std::io::{self, Read, Write};
@@ -103,19 +102,15 @@ impl<T> Deref for Owned<T> {
     }
 }
 
-/// Runs `body`, which may park on a socket, counted in `busy`. A cancellation that leaves it
-/// still counts it out, and `idle` runs when the count reaches zero, so the close of an
-/// enclosing scope can free the descriptor.
+/// Runs `body`, which may park on a socket, counted in `busy`. `idle` runs when the count
+/// reaches zero, so the close of an enclosing scope can free the descriptor.
 fn parked<T>(busy: &Cell<u32>, idle: &dyn Fn(), body: impl FnOnce() -> T) -> T {
     busy.set(busy.get() + 1);
-    let leave = || {
-        busy.set(busy.get() - 1);
-        if busy.get() == 0 {
-            idle();
-        }
-    };
-    let r = with_cleanup(&mut { leave }, body);
-    leave();
+    let r = body();
+    busy.set(busy.get() - 1);
+    if busy.get() == 0 {
+        idle();
+    }
     r
 }
 

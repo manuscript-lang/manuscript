@@ -8,7 +8,6 @@ use crate::ip::ip_text;
 use crate::rt;
 use crate::sys::AsSock;
 use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
-use ms_rt::fault::with_cleanup;
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream, UdpSocket};
 use std::time::Duration;
@@ -240,10 +239,7 @@ fn query_udp(
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                if with_cleanup(&mut || sock.release(), || {
-                    try_wait_fd(sock.as_sock(), Interest::Read, deadline)
-                })? == Wait::TimedOut
-                {
+                if try_wait_fd(sock.as_sock(), Interest::Read, deadline)? == Wait::TimedOut {
                     return Err(NetErr::Timeout);
                 }
             }

@@ -11,7 +11,6 @@ use crate::policy::{Policy, fold_host, host_ok, ip_ok};
 use crate::rt;
 use crate::sys::{self, AsSock};
 use crate::wait::{Deadline, Interest, Lane, Wait, blocking, try_wait_fd};
-use ms_rt::fault::with_cleanup;
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -349,7 +348,7 @@ impl Network {
             }
             return Ok(out);
         }
-        match blocking(Lane::Dns, host.to_string(), resolve, deadline) {
+        match blocking(Lane::Dns, host.to_string(), resolve, deadline)? {
             None => Err(NetErr::Timeout),
             Some(Err(_)) => Err(NetErr::failed(cannot_resolve(host))),
             Some(Ok(mut ips)) => {
@@ -513,13 +512,11 @@ impl Network {
         match sock.connect(&addr) {
             Ok(()) => Ok(unwrap_sock(sock)),
             Err(e) if in_progress(&e) => {
-                with_cleanup(&mut || sock.release(), || finish_connect(&sock, deadline)).map_err(
-                    |e| match e {
-                        ConnectError::Timeout => NetErr::Timeout,
-                        ConnectError::Cancelled => crate::rt::Cancelled.into(),
-                        ConnectError::Io(e) => self.io_failure(&e),
-                    },
-                )?;
+                finish_connect(&sock, deadline).map_err(|e| match e {
+                    ConnectError::Timeout => NetErr::Timeout,
+                    ConnectError::Cancelled => crate::rt::Cancelled.into(),
+                    ConnectError::Io(e) => self.io_failure(&e),
+                })?;
                 Ok(unwrap_sock(sock))
             }
             Err(e) => Err(self.io_failure(&e)),
@@ -749,8 +746,7 @@ pub fn connect_nonblocking(addr: SocketAddr, deadline: Deadline) -> Result<Socke
     match sock.connect(&addr.into()) {
         Ok(()) => Ok(unwrap_sock(sock)),
         Err(e) if in_progress(&e) => {
-            // A cancellation skips the drop of `sock`; release it from the cleanup.
-            with_cleanup(&mut || sock.release(), || finish_connect(&sock, deadline))?;
+            finish_connect(&sock, deadline)?;
             Ok(unwrap_sock(sock))
         }
         Err(e) => Err(ConnectError::Io(e)),

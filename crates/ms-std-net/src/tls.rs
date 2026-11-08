@@ -8,7 +8,6 @@ use crate::conn::{Io, OwnedSock, Step, TlsDetails};
 use crate::error::{NetErr, TlsErr, describe_io_error};
 use crate::sys::{AsSock, Borrowed};
 use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
-use ms_rt::fault::with_cleanup;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerifier};
 use rustls::crypto::{CryptoProvider, WebPkiSupportedAlgorithms, ring};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName, UnixTime};
@@ -848,18 +847,13 @@ impl TlsIo {
                 Handshake::Done => return Ok(io),
                 Handshake::Failed(e) => return Err(e),
                 Handshake::WantWrite => {
-                    if with_cleanup(&mut || io.sock.release(), || {
-                        try_wait_fd(io.sock.as_sock(), Interest::Write, deadline)
-                    })? == Wait::TimedOut
+                    if try_wait_fd(io.sock.as_sock(), Interest::Write, deadline)? == Wait::TimedOut
                     {
                         return Err(NetErr::Timeout);
                     }
                 }
                 Handshake::WantRead => {
-                    if with_cleanup(&mut || io.sock.release(), || {
-                        try_wait_fd(io.sock.as_sock(), Interest::Read, deadline)
-                    })? == Wait::TimedOut
-                    {
+                    if try_wait_fd(io.sock.as_sock(), Interest::Read, deadline)? == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }

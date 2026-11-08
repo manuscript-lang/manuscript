@@ -293,6 +293,25 @@ pub fn run<I: Send + Sync + 'static, O: Send + 'static>(
     f: fn(&I) -> O,
     timeout_ns: i64,
 ) -> Option<O> {
+    match try_run(lane, input, f, timeout_ns) {
+        Ok(output) => output,
+        Err(Cancelled) => crate::glue::cancelled(),
+    }
+}
+
+/// The task was cancelled while it waited.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cancelled;
+
+/// Like [`run`], but a stop request returns `Err(Cancelled)` instead of unwinding, so the
+/// caller's frames return and drop their values; it must then end the call with the runtime's
+/// cancellation.
+pub fn try_run<I: Send + Sync + 'static, O: Send + 'static>(
+    lane: Lane,
+    input: I,
+    f: fn(&I) -> O,
+    timeout_ns: i64,
+) -> Result<Option<O>, Cancelled> {
     let (job, ptr) = submit(lane, input, f);
     let mut value = 0u64;
     // SAFETY: parks the current task on its own token.
@@ -302,9 +321,9 @@ pub fn run<I: Send + Sync + 'static, O: Send + 'static>(
     // SAFETY: not given up, so the job is done.
     let output = if gave_up { None } else { unsafe { take(job) } };
     if got & WAIT_CANCELLED != 0 {
-        crate::glue::cancelled();
+        return Err(Cancelled);
     }
-    output
+    Ok(output)
 }
 
 /// A shielded job's input and the caller's bytes it borrows.
