@@ -10,7 +10,9 @@
 
 Stage 1 (this PR): `Optional` temporaries close at statement end (#2989), list `set`/`insert`/`replace` keep the incoming resource registered through every operand and the bounds check until `element_value` stores it (#3027), including a failing later operand. `replace` now checks its index in lowering, like `set`.
 
-Later stages, in order: source calls and method values (`call_callable`, `eval_args`), interface calls (`contract_call`), record construct, then delete the `later_try` copies of the hold logic and the `copyelim` sub-passes whose copies lowering no longer emits.
+Stage 2: source calls, method values and interface calls stage an owned resource argument with `stage_arg` while later operands (or defaults) evaluate and take it back with `release_staged`, newest first (the cleanup stack discards a registration with every newer one). A staged value already moved out of its place is not read again (`refresh`).
+
+Later stages, in order: record construct and the native call path onto the same helpers, then delete the `later_try` copies of the hold logic and the `copyelim` sub-passes whose copies lowering no longer emits.
 
 ## Problem
 

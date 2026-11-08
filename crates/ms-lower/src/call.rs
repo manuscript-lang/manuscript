@@ -14,6 +14,9 @@ pub(crate) struct Args {
     pub slots: Vec<Option<Val>>,
     /// For `var` parameters: the written place that receives the updated value.
     pub places: Vec<Option<Expr>>,
+    /// Resource arguments registered for fault cleanup while later operands ran, in registration
+    /// order. `release_staged` takes them back once every operand has been evaluated.
+    pub staged: Vec<Value>,
 }
 
 /// A changed argument moved into a slot for a call: its position, the slot, the value's type and
@@ -67,6 +70,7 @@ impl<'a> FnLower<'a> {
                     Args {
                         slots: Vec::new(),
                         places: Vec::new(),
+                        staged: Vec::new(),
                     },
                     e,
                 )?
@@ -152,6 +156,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
+        let mut staged: Vec<Value> = Vec::new();
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
@@ -170,7 +175,11 @@ impl<'a> FnLower<'a> {
             let at = self.b.current();
             let x = self.expr(a.expr)?;
             if self.dead {
-                return Ok(Args { slots, places });
+                return Ok(Args {
+                    slots,
+                    places,
+                    staged,
+                });
             }
             let later_try = view.arguments[n + 1..]
                 .iter()
@@ -184,7 +193,19 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
-            let x = if later_try { self.hold_temp(x) } else { x };
+            let operands_follow =
+                n + 1 < view.arguments.len() || view.arguments.len() < names.len();
+            let x = if let Some(key) = self.stage_arg(
+                x,
+                operands_follow && !vars.contains(&(idx + offset)),
+                &mut staged,
+            )? {
+                key
+            } else if later_try {
+                self.hold_temp(x)
+            } else {
+                x
+            };
             if vars.contains(&(idx + offset)) {
                 places[idx] = Some(a.expr.clone());
             }
@@ -195,6 +216,10 @@ impl<'a> FnLower<'a> {
             let Some(x) = slots[idx] else {
                 continue;
             };
+            // A staged value already moved out of its place; reading the place again would take it twice.
+            if staged.contains(&x.v) {
+                continue;
+            }
             // A `var` argument is the variable itself: it sees what its siblings changed.
             slots[idx] = Some(
                 if vars.contains(&(idx + offset)) && !x.own && self.is_place(expr) {
@@ -236,7 +261,42 @@ impl<'a> FnLower<'a> {
                 slots[i] = Some(d);
             }
         }
-        Ok(Args { slots, places })
+        Ok(Args {
+            slots,
+            places,
+            staged,
+        })
+    }
+
+    /// Keeps an owned resource argument registered for fault and cancellation cleanup while the
+    /// operands after it (`later`) evaluate; the view that stands for it is borrowed until
+    /// `release_staged`. Any other value is the caller's to hold or pass on.
+    pub(crate) fn stage_arg(
+        &mut self,
+        x: Val,
+        later: bool,
+        staged: &mut Vec<Value>,
+    ) -> Result<Option<Val>, Error> {
+        if !later || !x.own {
+            return Ok(None);
+        }
+        let Some(key) = self.hold_resource_temp(x.v)? else {
+            return Ok(None);
+        };
+        staged.push(key);
+        Ok(Some(Val { v: key, own: false }))
+    }
+
+    /// Takes the staged arguments back as owned values, last registered first (the cleanup stack
+    /// discards a registration together with every newer one), and rewrites `slots` to them.
+    pub(crate) fn release_staged(&mut self, staged: &[Value], slots: &mut [Option<Val>]) {
+        for &key in staged.iter().rev() {
+            let (v, _) = self.take_resource_temp(key);
+            self.unhold_temp(key);
+            for slot in slots.iter_mut().flatten().filter(|x| x.v == key) {
+                *slot = Val { v, own: true };
+            }
+        }
     }
 
     /// Whether a place permits writeback: an owned local or shared mutable storage.
@@ -415,6 +475,8 @@ impl<'a> FnLower<'a> {
             self.instance(c, subst)?
         };
         let vars = self.cx.var_positions(c);
+        let mut args = args;
+        self.release_staged(&args.staged.clone(), &mut args.slots);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<VarArgument> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
@@ -836,7 +898,16 @@ impl<'a> FnLower<'a> {
                 .then(|| recv_expr.clone()),
         ];
         places.extend(args.places);
-        self.call_callable(&c, &subst, Args { slots: all, places }, e)
+        self.call_callable(
+            &c,
+            &subst,
+            Args {
+                slots: all,
+                places,
+                staged: args.staged,
+            },
+            e,
+        )
     }
 
     /// The implementation of a contract operation for a concrete receiver type.
@@ -989,6 +1060,7 @@ impl<'a> FnLower<'a> {
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
         let mut places: Vec<Option<Expr>> = vec![None; params.len()];
+        let mut staged: Vec<Value> = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
@@ -1005,22 +1077,28 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
-            let x = if later_try && x.own {
-                self.hold_temp(x)
-            } else {
-                x
-            };
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
                 .ok_or_else(|| {
                     Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
                 })?;
-            if op_vars.get(idx).copied().unwrap_or(false) {
+            let is_var = op_vars.get(idx).copied().unwrap_or(false);
+            let operands_follow =
+                n + 1 < view.arguments.len() || view.arguments.len() < params.len();
+            let x = if let Some(key) = self.stage_arg(x, operands_follow && !is_var, &mut staged)? {
+                key
+            } else if later_try && x.own {
+                self.hold_temp(x)
+            } else {
+                x
+            };
+            if is_var {
                 places[idx] = Some(a.expr.clone());
             }
             slots[idx] = Some(x);
         }
+        self.release_staged(&staged, &mut slots);
         let mut args = Vec::new();
         // A `var` argument moves into a slot the implementation changes, then back.
         let mut slots_out: Vec<VarArgument> = Vec::new();
