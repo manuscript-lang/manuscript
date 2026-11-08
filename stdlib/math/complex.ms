@@ -4,6 +4,8 @@ import (
     cos,
     cosh,
     exp,
+    frexp,
+    ldexp,
     hypot,
     infinity,
     log,
@@ -136,7 +138,26 @@ impl Complex:
 
     // Returns the principal natural logarithm; the imaginary part is the phase.
     fn log() Complex:
-        return Complex(re: log(self.abs()), im: self.phase())
+        let modulus = self.abs()
+
+        if (
+            (not modulus.is_finite() or modulus < 2.2250738585072014e-308)
+            and modulus != 0.0
+            and self.re.is_finite()
+            and self.im.is_finite()
+        ):
+            // Normalize by a power of two before taking a magnitude: both an
+            // overflowed hypot and a rounded subnormal hypot lose log information.
+            let exponent = frexp(self.re.abs().max(self.im.abs())).exponent
+            let scaled = hypot(ldexp(self.re, -exponent), ldexp(self.im, -exponent))
+            return Complex(
+                re: log(
+                    scaled
+                ) + exponent.to_float() * 0.6931471805599453,
+                im: self.phase()
+            )
+
+        return Complex(re: log(modulus), im: self.phase())
 
     // Returns the principal square root, with a non-negative real part.
     fn sqrt() Complex:
@@ -151,6 +172,12 @@ impl Complex:
         // A finite number whose magnitude overflows has a finite root: take the root of the half and scale by sqrt(2).
         if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
             return Complex(re: self.re / 2.0, im: self.im / 2.0).sqrt().scale(sqrt(2.0))
+
+        // Halving a subnormal magnitude can erase it before sqrt. An even
+        // power-of-two scale keeps the root rescaling exact and normalizes it.
+        if modulus < 2.2250738585072014e-308:
+            let scaled = Complex(re: ldexp(self.re, 54), im: ldexp(self.im, 54)).sqrt()
+            return Complex(re: ldexp(scaled.re, -27), im: ldexp(scaled.im, -27))
 
         let real = sqrt(modulus / 2.0 + self.re.abs() / 2.0)
         if self.re >= 0.0:
