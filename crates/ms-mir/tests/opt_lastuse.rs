@@ -303,3 +303,146 @@ fn a_drop_at_the_start_of_a_join_block_counts_as_a_use() {
     let all = ops(&m, "main");
     assert_eq!(all[1], [Op::Drop, Op::Drop]);
 }
+
+/// A chain of records that each hold two lists of the previous one: linear in types, but every
+/// path through it is distinct.
+fn shared_record_chain(depth: usize) -> String {
+    let mut s = String::from("module \"dag\"\nrecord R0 { value: str }\n");
+    for k in 1..=depth {
+        s += &format!(
+            "record R{k} {{ left: list<R{}>, right: list<R{}> }}\n",
+            k - 1,
+            k - 1
+        );
+    }
+    s += &format!(
+        "entry @main\nfn @main() -> int export {{\nb0:\n %x: list<R{depth}> = list.lit\n %z: int = list.len %x\n drop %x\n ret %z\n}}\n"
+    );
+    s
+}
+
+/// Classifying a type once per path made this exponential in the nesting depth.
+#[test]
+fn shared_record_types_are_classified_once() {
+    let mut m = parse_module(&shared_record_chain(60)).expect("parse");
+    verify_module(&m).expect("input verifies");
+    let start = std::time::Instant::now();
+    opt::lastuse::run(&mut m);
+    assert!(start.elapsed().as_secs() < 5, "took {:?}", start.elapsed());
+    verify_module(&m).expect("output verifies");
+}
+
+/// `n` lists, each consumed on one branch and dropped on the other, one after another.
+fn branching_consumers(n: usize) -> String {
+    let mut s = String::from(
+        r#"module "t"
+file 0 "t.ms"
+entry @main
+
+fn @eat(%l: move list<int>) -> int inline(never) {
+b0:
+  %n: int = list.len %l
+  drop %l
+  ret %n
+}
+
+fn @main() -> int export {
+b0:
+  %z: int = iconst 0
+  br b1(%z)
+"#,
+    );
+    for k in 0..n {
+        let (a, b, c, next) = (3 * k + 1, 3 * k + 2, 3 * k + 3, 3 * k + 4);
+        let last = k + 1 == n;
+        s.push_str(&format!(
+            "b{a}(%acc{k}: int):\n  %v{k}: list<int> = list.lit\n  %t{k}: bool = icmp.eq %acc{k}, %z\n  br_if %t{k}, b{b}(), b{c}()\nb{b}():\n  %e{k}: int = call @eat (%v{k})\n  br b{next}(%e{k})\nb{c}():\n  drop %v{k}\n  br b{next}(%z)\n"
+        ));
+        if last {
+            s.push_str(&format!("b{next}(%out: int):\n  ret %out\n"));
+        }
+    }
+    s.push_str("}\n");
+    s
+}
+
+/// A value consumed on one branch used to keep its analysis region running through the rest of
+/// the function, so a chain of them was quadratic (14 s for 4000 in an unoptimized build).
+#[test]
+fn a_chain_of_branch_consumed_values_is_handled_in_linear_time() {
+    let mut m = parse_module(&branching_consumers(6000)).expect("parse");
+    verify_module(&m).expect("input verifies");
+    let start = std::time::Instant::now();
+    opt::lastuse::run(&mut m);
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    verify_module(&m).expect("output verifies");
+}
+
+/// `n` lists, each read once right after it is built and dropped at the end of the function,
+/// with a branch between one list and the next.
+fn long_lived_lists(n: usize) -> String {
+    let mut s = String::from(
+        "module \"t\"\nfile 0 \"t.ms\"\nentry @main\n\nfn @main() -> int export {\nb0:\n  %z: int = iconst 0\n  br b1(%z)\n",
+    );
+    for k in 0..n {
+        let (a, b, c, next) = (3 * k + 1, 3 * k + 2, 3 * k + 3, 3 * k + 4);
+        s.push_str(&format!(
+            "b{a}(%acc{k}: int):\n  %v{k}: list<int> = list.lit\n  %n{k}: int = list.len %v{k}\n  %t{k}: bool = icmp.eq %n{k}, %z\n  br_if %t{k}, b{b}(), b{c}()\nb{b}():\n  br b{next}(%n{k})\nb{c}():\n  br b{next}(%z)\n"
+        ));
+    }
+    s.push_str(&format!("b{}(%out: int):\n", 3 * n + 1));
+    for k in (0..n).rev() {
+        s.push_str(&format!("  drop %v{k}\n"));
+    }
+    s.push_str("  ret %out\n}\n");
+    s
+}
+
+/// The region of a value used only near its definition used to run on to the end of the
+/// function, so a function of many such values was quadratic (45 s for 800 `map`/`filter`
+/// pipelines in an unoptimized build).
+#[test]
+fn a_chain_of_long_lived_values_is_handled_in_linear_time() {
+    let n = 6000;
+    let mut m = parse_module(&long_lived_lists(n)).expect("parse");
+    verify_module(&m).expect("input verifies");
+    let start = std::time::Instant::now();
+    opt::lastuse::run(&mut m);
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    verify_module(&m).expect("output verifies");
+    // Every list is dropped right after its length is read, in the block that built it.
+    let blocks = ops(&m, "main");
+    assert_eq!(blocks[1][..3], [Op::ListLit, Op::ListLen, Op::Drop]);
+    let drops: usize = blocks
+        .iter()
+        .flatten()
+        .filter(|op| **op == Op::Drop)
+        .count();
+    assert_eq!(drops, n);
+}
+
+#[test]
+fn independent_values_in_one_block_keep_their_drop_positions() {
+    let n = 2048;
+    let mut src =
+        String::from("module \"pending\"\nfn @main() -> int export {\nb0:\n  %z: int = iconst 0\n");
+    for k in 0..n {
+        src.push_str(&format!(
+            "  %v{k}: list<int> = list.lit\n  %n{k}: int = list.len %v{k}\n"
+        ));
+    }
+    for k in (0..n).rev() {
+        src.push_str(&format!("  drop %v{k}\n"));
+    }
+    src.push_str("  ret %z\n}\n");
+    let m = optimized(&src);
+    let f = &m.funcs[m.func_by_name("main").unwrap().index()];
+    let insts = &f.blocks[0].insts;
+    assert_eq!(insts.len(), 1 + 3 * n);
+    for group in insts[1..].as_chunks::<3>().0 {
+        assert_eq!(group[0].op, Op::ListLit);
+        assert_eq!(group[1].op, Op::ListLen);
+        assert_eq!(group[2].op, Op::Drop);
+        assert_eq!(group[2].args, [group[0].res.unwrap()]);
+    }
+}

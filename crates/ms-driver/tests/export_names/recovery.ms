@@ -6,3 +6,7 @@ export opaque type Recovered:
 export let (
     AFTER = 2
 )
+
+export enum RecoveredEnum:
+    Present
+    Absent

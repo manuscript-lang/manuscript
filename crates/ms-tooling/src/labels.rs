@@ -29,11 +29,17 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
     };
     walk_module(module, &mut scan);
     let mut cuts = scan.cuts;
-    cuts.sort_by_key(|cut| std::cmp::Reverse(cut.0));
-    let mut edited = source.to_string();
-    for &(from, to) in &cuts {
-        edited.replace_range(from..to, "");
+    if cuts.is_empty() {
+        return (source.to_string(), 0);
     }
+    cuts.sort_by_key(|cut| cut.0);
+    let mut edited = String::with_capacity(source.len());
+    let mut cursor = 0;
+    for &(from, to) in &cuts {
+        edited.push_str(&source[cursor..from]);
+        cursor = to;
+    }
+    edited.push_str(&source[cursor..]);
     (edited, cuts.len())
 }
 

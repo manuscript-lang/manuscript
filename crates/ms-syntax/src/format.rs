@@ -56,21 +56,25 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
         copied = hi;
     }
     masked.push_str(&normalized[copied..]);
-    let mut result = format_lines(file, &masked)?;
+    let formatted = format_lines(file, &masked)?;
+    let mut result = String::with_capacity(normalized.len());
+    let mut copied = 0;
     for (i, &(lo, hi, _)) in spans.iter().enumerate() {
         let text = &normalized[lo..hi];
         let line_start = normalized[..lo].rfind('\n').map_or(0, |n| n + 1);
         let before = indent_of(&normalized[line_start..]);
-        let at = result
-            .find(&placeholder(i))
-            .expect("placeholder survives formatting");
-        let line_start = result[..at].rfind('\n').map_or(0, |n| n + 1);
+        let placeholder = placeholder(i);
+        let at = copied
+            + formatted[copied..]
+                .find(&placeholder)
+                .expect("placeholder survives formatting");
+        result.push_str(&formatted[copied..at]);
+        let line_start = result.rfind('\n').map_or(0, |n| n + 1);
         let after = indent_of(&result[line_start..]);
-        result.replace_range(
-            at..at + placeholder(i).len(),
-            &shift_lines(text, before, after),
-        );
+        result.push_str(&shift_lines(text, before, after));
+        copied = at + placeholder.len();
     }
+    result.push_str(&formatted[copied..]);
     parse(file, &result)?;
     Ok(result)
 }

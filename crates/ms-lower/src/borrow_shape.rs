@@ -53,7 +53,7 @@ impl<'a> FnLower<'a> {
         };
         let recv = self.ety(left);
         let shape = match (self.syms.str(name), args.as_slice()) {
-            ("get", [key]) if key.name.is_none() && recv.is(Builtin::Map) => {
+            ("get", [key]) if recv.is(Builtin::Map) => {
                 // A key the checker converts on the way in (an `Optional` key given a plain
                 // value) takes the ordinary call, which applies the conversion.
                 let map_ty = self.emty(left)?;

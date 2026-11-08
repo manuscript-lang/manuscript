@@ -258,7 +258,7 @@ export fn unified_diff(
             any_change = true
 
             let from = (i - context).max(0)
-            let to = (i + context).min(steps.length() - 1)
+            let to = i + context.min(steps.length() - 1 - i)
             for j in from..to + 1:
                 keep.set(j, true)
 

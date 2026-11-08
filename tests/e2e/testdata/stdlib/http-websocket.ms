@@ -1,4 +1,4 @@
-import send, recv from "./support/conn.ms"
+import send, recv, within from "./support/conn.ms"
 import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import Bytes from "@std/bytes.ms"
 import http_result from "./support/http.ms"
@@ -15,6 +15,8 @@ import (
 import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
 import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
 import TlsOptions from "@std/net/tls.ms"
+import sleep from "@std/time.ms"
+import promise, PromiseOptions from "@std/concurrency/promise.ms"
 
 fn tls_options() TlsOptions:
     return TlsOptions(
@@ -179,3 +181,32 @@ test "HTTP requests reject an empty method":
         ok(_): return fail("empty method accepted")
         error(cause):
             try expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))
+
+fn silent(var exchange: HttpExchange) Unit!:
+    var _socket = (
+        try http_result(
+            upgrade(
+                var exchange, allowed_origins: [], subprotocols: [],
+                max_message_bytes: none
+            )
+        )
+    )
+    let _ = sleep(30.seconds()).wait()
+    return ok(unit)
+
+test "a WebSocket read cancelled by its timeout leaves the socket closable":
+    let server = serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
+    var socket = web_socket("ws://{server.address()}/") | try expect_ok
+    try expect_true(within(var socket.input, 50.milliseconds()).is_error())
+    socket.close() | try expect_ok
+
+test "a promise cancelled while it owns a WebSocket closes it without ending the program":
+    let server = serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
+    var socket = web_socket("ws://{server.address()}/") | try expect_ok
+
+    // The closure takes the socket; its close at the end of the cancelled task parks, which a
+    // cancel still pending on that task used to turn into a process exit.
+    let read = promise(fn: socket.input.next()).with(
+        options: PromiseOptions(timeout: 50.milliseconds())
+    ).wait()
+    try expect_true(read.is_error())

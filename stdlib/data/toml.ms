@@ -62,6 +62,8 @@ type Reader:
     values: Int
     tables: List[Table]
     entries: List[Map[String, Node]]
+    // Table-array contents by slot: appending a table extends one list in place.
+    arrays: List[List[Int]]
 
 // Table flags. A table's entries live at the same index of `Reader.entries`.
 type Table:
@@ -75,7 +77,7 @@ enum Node:
     Leaf(value: TomlValue)
     TableNode(id: Int)
     ArrayNode(values: List[Node])
-    TableArray(ids: List[Int])
+    TableArray(slot: Int)
 
 fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
     reader.tables.append(Table(explicit: explicit, dotted: dotted, sealed: false))
@@ -98,8 +100,9 @@ fn contains_key(reader: Reader, id: Int, key: String) Bool:
 fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
     reader.entries[id].add(key, node)
 
-fn put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) Unit:
-    put(var reader, id, key, Node.TableArray(ids))
+fn put_array(var reader: Reader, id: Int, key: String, first: Int) Unit:
+    reader.arrays.append([first])
+    put(var reader, id, key, Node.TableArray(reader.arrays.length() - 1))
 
 // Byte values the parser tests.
 let TAB = 9
@@ -409,10 +412,10 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
             )
 
             return ok(value)
-        TableArray(ids):
+        TableArray(slot):
             if dotted: return error(invalid(reader, "dotted key extends a table array"))
 
-            return ok(ids.last().get())
+            return ok(reader.arrays.get(slot).last().get())
         _: return error(invalid(reader, "key is already a value"))
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
@@ -422,16 +425,14 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 
     if existing.is_none():
         try allocate(var reader)
-        put_array(var reader, parent, key, [next])
+        put_array(var reader, parent, key, next)
         return ok(unit)
 
     let node = existing.get()
 
     match node:
-        TableArray(ids):
-            var grown = ids.clone()
-            grown.append(next)
-            put_array(var reader, parent, key, grown)
+        TableArray(slot):
+            reader.arrays[slot].append(next)
             return ok(unit)
         _: return error(invalid(reader, "table array conflicts with value"))
 
@@ -858,6 +859,7 @@ type Budget:
 
 fn materialize(
     tables: List[Map[String, Node]],
+    arrays: List[List[Int]],
     node: Node,
     depth: Int,
     var budget: Budget
@@ -879,21 +881,23 @@ fn materialize(
                 entries.add(
                     entry.key.clone(),
                     try materialize(
-                        tables, entry.value, (depth + 1), var budget
+                        tables, arrays, entry.value, (depth + 1), var budget
                     )
                 )
             return ok(TomlValue.TableValue(entries))
         ArrayNode(values):
             var result: List[TomlValue] = []
             for value in values: result.append(
-                try materialize(tables, value, (depth + 1), var budget)
+                try materialize(
+                    tables, arrays, value, (depth + 1), var budget
+                )
             )
             return ok(TomlValue.ArrayValue(result))
-        TableArray(ids):
+        TableArray(slot):
             var result: List[TomlValue] = []
-            for id in ids: result.append(
+            for id in arrays[slot]: result.append(
                 try materialize(
-                    tables, Node.TableNode(id), (depth + 1), var budget
+                    tables, arrays, Node.TableNode(id), (depth + 1), var budget
                 )
             )
             return ok(TomlValue.ArrayValue(result))
@@ -918,7 +922,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
     var reader = Reader(
         data: normalized.to_bytes(), pos: 0, options: options, values: 0, tables: [],
-        entries: []
+        entries: [], arrays: []
     )
 
     if let span = control_pattern().find_span(normalized):
@@ -1009,7 +1013,9 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
         max_depth: reader.options.max_depth, max_values: reader.options.max_values,
         values: 0
     )
-    return materialize(reader.entries, Node.TableNode(root), 1, var budget)
+    return materialize(
+        reader.entries, reader.arrays, Node.TableNode(root), 1, var budget
+    )
 
 type Writer:
     out: StringBuilder

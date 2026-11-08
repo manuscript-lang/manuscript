@@ -502,7 +502,11 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
         Vec::new()
     };
     sched::live_add(-1);
+    // Ending drops the closure, which closes what it captured: like any implicit close that runs
+    // shielded, since a cancelled task would otherwise be cancelled again at its first park.
+    fault::msrt_shield_enter();
     deliver(id, Event::Ended { id, status, report });
+    fault::msrt_shield_exit();
 }
 
 /// Wakes the task waiting on slot `i`, if any.
@@ -1036,11 +1040,11 @@ fn run_unstarted(id: i64) {
 }
 
 /// Runs the deferred work of `id` if it has not run: the caller is the waiter.
-fn run_deferred(id: i64, deadline: Option<i64>) {
+fn run_deferred(id: i64, deadline: Option<i64>) -> bool {
     let t = table();
-    let Some(i) = index(t, id) else { return };
+    let Some(i) = index(t, id) else { return false };
     if t.flags[i] & DEFERRED == 0 {
-        return;
+        return false;
     }
     t.flags[i] &= !DEFERRED;
     let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
@@ -1065,6 +1069,7 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     });
     release();
     task::set_defer_deadline(earlier);
+    true
 }
 
 /// A closure that calls a native entry with the argument it owns.
@@ -1236,11 +1241,15 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
             .position(|&id| index(t, id).is_none_or(|i| t.state[i] != State::Pending))
     };
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
-    for &id in &list {
-        if first_done(&list).is_some() {
-            break;
+    // Eager inputs cannot finish on this thread while this loop runs: their events and timers
+    // advance only when we park. Only a deferred callback can run work here, so rescan after
+    // one runs, not once per input. Otherwise an all-pending list takes quadratic work.
+    if first_done(&list).is_none() {
+        for &id in &list {
+            if run_deferred(id, deadline) && first_done(&list).is_some() {
+                break;
+            }
         }
-        run_deferred(id, deadline);
     }
     loop {
         if let Some(at) = first_done(&list) {
@@ -1399,6 +1408,18 @@ mod tests {
             1
         );
         v
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn wait_any_handles_a_large_eager_pending_list() {
+        let _g = lock();
+        let mut ids: Vec<i64> = (0..40_000).map(|_| msrt_promise_new()).collect();
+        assert_eq!(wait_any_probe(&mut ids, 0), -1);
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        task::teardown();
     }
 
     #[test]
@@ -1721,6 +1742,34 @@ mod tests {
         assert_eq!(winner, 1);
         assert_eq!(calls, 0);
         assert_eq!(DEFERRED_DROPS.load(SeqCst), 1);
+    }
+
+    #[test]
+    fn wait_any_stops_deferred_work_when_a_callback_finishes_another_input() {
+        let _g = lock();
+        use std::sync::atomic::Ordering::SeqCst;
+        DEFERRED_CALLS.store(0, SeqCst);
+        DEFERRED_DROPS.store(0, SeqCst);
+        let completed = msrt_promise_new();
+        let first = msrt_promise_new();
+        // SAFETY: the closure owns the target id after its header; running it completes the
+        // third input rather than its own promise. The first promise owns the closure.
+        unsafe {
+            let closure = crate::obj::new_obj(size_of::<Closure>() + 8, None, drop_deferred_probe)
+                .cast::<Closure>();
+            (*closure).code = probe_deferred as *const u8;
+            closure.add(1).cast::<i64>().write(completed);
+            msrt_promise_defer(first, closure);
+        }
+        let second = deferred_probe();
+        assert_eq!(wait_any_probe(&mut [first, second, completed], -1), 2);
+        assert_eq!(DEFERRED_CALLS.load(SeqCst), 1);
+        assert_eq!(take_int(completed), 42);
+        for id in [first, second, completed] {
+            msrt_promise_drop(id);
+        }
+        task::teardown();
+        assert_eq!(DEFERRED_DROPS.load(SeqCst), 2);
     }
 
     #[test]

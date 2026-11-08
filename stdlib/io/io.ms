@@ -17,8 +17,9 @@ import (
     msrt_pipe_add_writer,
     msrt_pipe_write,
     msrt_pipe_read,
+    msrt_pipe_try,
+    msrt_pipe_ended,
     msrt_pipe_flush,
-    msrt_pipe_buffered,
     msrt_pipe_close_writer,
     msrt_pipe_close_reader,
     msrt_io_write_stdout,
@@ -280,6 +281,12 @@ type PipeSource[T]:
 
 impl Source[T] for PipeSource[T]:
     var fn next() T?!:
+        // Fast path: a queued value or the end needs no promise.
+        if let queued = msrt_pipe_try[T](self.id):
+            return ok(queued)
+        if msrt_pipe_ended(self.id) == 1:
+            return ok(none)
+
         let p = msrt_pipe_read(self.id)
         let code = msrt_promise_wait(p, -1)
 
@@ -303,11 +310,12 @@ type PipeSink[T: Clonable]:
 
 impl Sink[T] for PipeSink[T]:
     var fn write(value: T) Unit!:
-        if msrt_pipe_write[T](self.id, value) != 0:
+        let status = msrt_pipe_write[T](self.id, value)
+        if status == 1:
             return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
-        // Back pressure: a writer that fills the pipe waits for the reader to take it back down to the capacity.
-        if msrt_pipe_buffered(self.id) > self.capacity:
+        // Back pressure: status 2 says the pipe is above its capacity; the writer waits for the reader to take it back down.
+        if status == 2:
             return adopt[Unit](msrt_pipe_flush(self.id)).wait()
 
         return ok(unit)

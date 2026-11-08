@@ -888,6 +888,13 @@ impl Checker {
                 let names = self.session.standard_module_names();
                 let stems: Vec<String> = names.iter().map(|s| stem(s)).collect();
                 let mut hint = did_you_mean(&stem(path), &stems);
+                // The module name without its extension (`@std/os/env`) is the common slip.
+                let with_ext = format!("{path}.ms");
+                if names.iter().any(|name| *name == with_ext) {
+                    return format!(
+                        "unknown standard module {path}; did you mean '{with_ext}'? Import paths end in .ms"
+                    );
+                }
                 // The right module under another folder (`@std/json/json.ms` for `@std/data/json.ms`)
                 // has the same stem, which a spelling suggestion does not report.
                 let base = |p: &str| p.rsplit('/').next().unwrap_or(p).to_string();

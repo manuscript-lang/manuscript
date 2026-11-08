@@ -393,11 +393,20 @@ pub(crate) fn compile_target<L: Lower>(
             tests: names,
             source_root: checked.source_root.clone(),
             project_root: checked.project_root.clone(),
+            // The symbolic links an import passed through are inputs too: retargeting one
+            // changes what the same source files mean while they keep their stamps.
             sources: program
                 .modules
                 .iter()
                 .map(|m| Path::new(&checked.source_root).join(syms.str(m.file)))
                 .filter(|p| p.is_file())
+                .chain(
+                    checked
+                        .inputs
+                        .iter()
+                        .map(std::path::PathBuf::from)
+                        .filter(|p| p.symlink_metadata().is_ok_and(|m| m.is_symlink())),
+                )
                 .collect(),
         }),
         Err(message) => {

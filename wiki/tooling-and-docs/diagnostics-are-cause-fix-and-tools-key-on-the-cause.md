@@ -11,3 +11,8 @@ Verified: a byte scanner can have consumed only the first byte of a rejected Uni
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../../documentation/developer-tooling/source/diagnostics.md), [code classification](../../crates/ms-syntax/src/diag.rs), [checker hints](../../crates/ms-check/src/hints.rs), [recovery](../../crates/ms-syntax/src/partial.rs).
 Verify: run `cargo nextest run -p ms-syntax -p ms-check -p ms-lsp -p ms-cli` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.
+
+Project import hints must recognize every current exported declaration spelling,
+including `export enum` and generic enums. Keep the header fast path and parsed
+recovery path aligned, with enum-shaped text/comment lookalikes excluded by lexer
+positions; test the machine-applicable import fix as well as name collection.

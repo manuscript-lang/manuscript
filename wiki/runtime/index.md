@@ -17,6 +17,7 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Closeable.close() returns a Result](closeable-close-returns-a-result.md): there is one `Closeable` interface and `close()` returns `Unit!` (`Result[Unit, Error]`), so a failed flush or release is a value.
 - [Collection order, failure modes, and stdio cancellation are decided](collection-order-failure-modes-and-stdio-cancellation-are-de.md): Map and Set iterate in insertion order, and keys use the `Hashable` interface with `Equal`.
 - [Collections are constructed from lists, not chained mutation](collections-are-constructed-from-lists-not-chained-mutation.md): `Set[Int]([3, 1, 2])` and `Set([3, 1, 2])` build a Set from a list (insertion order kept, duplicates collapsed); migrate chained `.add` cons…
+- [Native handles built on Rc are thread-bound and fault elsewhere](native-handles-built-on-rc-are-thread-bound-and-fault-elsewhere.md): `Bound` faults on cross-thread use; repo-check ratchets `Rc`/`RefCell` in `ms-std-*`.
 - [Cross-thread cancellation metadata must use atomic accesses](cross-thread-cancellation-metadata-must-use-atomic-accesses.md): a volatile read of `Hdr.shield` raced with the owning task's writes through `Cell<u32>`.
 - [CSV writer defaults can erase a single empty field](csv-writer-defaults-can-erase-a-single-empty-field.md): a naive CSV writer emits the same bare line ending for zero fields and one empty field, while a reader skips blank lines.
 - [Faults and test failures reach the CLI as a record](faults-and-test-failures-reach-the-cli-as-a-record.md): the runtime writes a structured record to `MS_FAULT_RECORD`; the CLI never parses fault text.
@@ -52,3 +53,8 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md): task groups, workers, channels, `Shared`, locks and caches are deleted; state has one owner and changes travel over pipes.
 - [Large write payloads take a pool permit before the copy](large-write-payloads-take-a-pool-permit-before-the-copy.md): `pool::admit` parks the caller before a payload over 64 KiB is cloned, bounding in-flight copies by the pool size.
 - [A Bytes view is a cap-zero borrow that is never freed](a-bytes-view-is-a-cap-zero-borrow-never-freed.md): `Bytes.view` lends the receiver without copying; `slice` still copies.
+- [A pipe read needs no promise when a value is queued](a-pipe-read-needs-no-promise-when-a-value-is-queued.md): `PipeSource.next` takes a queued value or the end directly; a pipeline of 1M values went from 0.33 s to 0.14 s (Go 0.17 s).
+
+- [XML comments validate content at every parser site](xml-comments-validate-content-at-every-parser-site.md)
+
+- [Template numbers preserve exact JSON values](template-numbers-preserve-exact-json-values.md): compare normalized coefficients and decimal orders without Float rounding or expanding exponents.

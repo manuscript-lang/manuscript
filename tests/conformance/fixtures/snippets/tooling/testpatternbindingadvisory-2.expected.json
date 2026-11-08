@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or non-nullary alternative case value of Item; cases:  (cases with payloads need call syntax)",
+        "message": "Item has no member value; a type name is followed only by an enum case",
         "position": {
           "file": "testpatternbindingadvisory-2.ms",
           "line": 9,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testpatternbindingadvisory-2.ms:9:27: resolution: unknown or non-nullary alternative case value of Item; cases:  (cases with payloads need call syntax)\n   |\n 9 |         item: return Item.value\n   |                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testpatternbindingadvisory-2.ms:9:27: resolution: Item has no member value; a type name is followed only by an enum case\n   |\n 9 |         item: return Item.value\n   |                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

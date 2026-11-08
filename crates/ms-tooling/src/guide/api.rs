@@ -38,6 +38,8 @@ pub struct ApiDeclaration {
     pub effects: Vec<String>,
     /// `fn`, `record`, `alternative`, `interface`, `native`, `constant`, `type`.
     pub kind: String,
+    /// Whether the representation is inaccessible outside its declaring module.
+    pub opaque: bool,
     /// The checked type, spelled as the checker prints it.
     pub ty: String,
     /// Type parameters with bounds.
@@ -289,15 +291,17 @@ fn document_declaration(
     keyword: &str,
     name: &str,
     source: Option<&Source>,
+    opaque: bool,
 ) -> String {
     if let Some(f) = decl.func() {
         return fn_declaration(syms, name, f, false, source);
     }
+    let prefix = if opaque { "opaque " } else { "" };
     let mut b = format!(
-        "{keyword} {name}{}:\n",
+        "{prefix}{keyword} {name}{}:\n",
         render::type_parameters(syms, decl.type_params())
     );
-    for field in decl.record_fields() {
+    for field in decl.record_fields().iter().filter(|_| !opaque) {
         b += &format!(
             "    {}: {}",
             syms.str(field.name),
@@ -311,7 +315,7 @@ fn document_declaration(
         }
         b.push('\n');
     }
-    for c in decl.cases() {
+    for c in decl.cases().iter().filter(|_| !opaque) {
         b += &format!("    {}", syms.str(c.name));
         if !c.fields.is_empty() {
             b += &render::parameters(syms, &c.fields, source);
@@ -362,10 +366,11 @@ fn document_members(
     source: Option<&Source>,
     receiver: &Ty,
 ) -> Vec<ApiMember> {
+    let opaque = receiver.opaque_module().is_some();
     let text = source.map_or("", Source::text);
     let comment = |offset: u32| leading_comment(text, offset as usize);
     let mut members = Vec::new();
-    for field in decl.record_fields() {
+    for field in decl.record_fields().iter().filter(|_| !opaque) {
         let mut signature = format!(
             "{}: {}",
             syms.str(field.name),
@@ -386,7 +391,7 @@ fn document_members(
             legacy_contract: String::new(),
         });
     }
-    for c in decl.cases() {
+    for c in decl.cases().iter().filter(|_| !opaque) {
         let mut signature = syms.str(c.name).to_string();
         if !c.fields.is_empty() {
             signature += &render::parameters(syms, &c.fields, None);
@@ -463,6 +468,7 @@ fn document_symbol(
         name: syms.str(symbol.name).to_string(),
         kind: kind.to_string(),
         ty: ty.display(syms).to_string(),
+        opaque: ty.opaque_module().is_some(),
         ..ApiDeclaration::default()
     };
     if symbol.decl.is_none() {
@@ -481,7 +487,8 @@ fn document_symbol(
             }
             _ => "type",
         };
-        d.declaration = document_declaration(syms, decl, keyword, syms.str(symbol.name), source);
+        d.declaration =
+            document_declaration(syms, decl, keyword, syms.str(symbol.name), source, d.opaque);
         if decl.is_constant() {
             d.kind = "constant".into();
             d.ty = ty.result_ty().display(syms).to_string();
@@ -506,7 +513,7 @@ fn document_symbol(
             };
             if index == 0 {
                 d.declaration =
-                    document_declaration(syms, &decl, "type", syms.str(symbol.name), None);
+                    document_declaration(syms, &decl, "type", syms.str(symbol.name), None, false);
             }
             let mut members = document_members(syms, session, &decl, sources.of(module), &ty);
             if !interface.args.is_empty() {
@@ -531,11 +538,11 @@ fn document_symbol(
         if symbol.decl.as_ref().is_some_and(is_interface) {
             d.kind = "interface".into();
         }
-        for f in def.fields.borrow().iter() {
+        for f in def.fields.borrow().iter().filter(|_| !d.opaque) {
             d.fields
                 .push(format!("{}: {}", syms.str(f.name), f.ty.display(syms)));
         }
-        for c in def.cases.borrow().iter() {
+        for c in def.cases.borrow().iter().filter(|_| !d.opaque) {
             let mut value = syms.str(c.name).to_string();
             if !c.fields.is_empty() {
                 let fields: Vec<String> = c

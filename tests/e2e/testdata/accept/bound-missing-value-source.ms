@@ -1,6 +1,6 @@
 import expect_equal, expect_true, expect_fault from "@std/test/test.ms"
 
-fn generic_convert[T](value: T?) T!Error:
+fn generic_convert[T: Clonable](value: T?) T!Error:
     let convert = value.ok_or[Error]
     return convert()
 

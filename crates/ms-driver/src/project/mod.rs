@@ -28,7 +28,7 @@ pub mod pathops;
 pub mod paths;
 pub mod quoting;
 
-pub use discovery::{discover_modules, discover_modules_with_overlay};
+pub use discovery::{discover_modules, discover_modules_with_overlay, discovered_directories};
 pub use error::{Location, ManifestError, PathError, ProjectError};
 pub use manifest::{Assignment, Project, find_manifest, read_project, read_project_partial};
 pub use overlay::{Overlay, canonical_overlay};

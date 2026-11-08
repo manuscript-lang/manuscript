@@ -115,3 +115,15 @@ test "which finds executables on PATH and rejects missing names":
     try expect_true(which("definitely-not-a-command-xyz").is_none())
     try expect_true(which("").is_none())
     try expect_true(which("sh").is_some() or which("cmd").is_some())
+
+test "write_atomic replaces a file whose name is near the name length limit":
+    let directory = try temporary("manuscript-atomic-long-")
+    let root = directory.path()
+    let name = try "ñ".repeat(120)
+    let path = "{root}/{name}"
+    try write_atomic(path, "one").wait()
+    try write_atomic(path, "two").wait()
+    try expect_equal(try text_of(path), "two")
+
+    let names = (try list(root, none)).map(fn e: e.name)
+    try expect_equal(names.length(), 1)

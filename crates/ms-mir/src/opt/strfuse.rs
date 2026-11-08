@@ -18,7 +18,7 @@ use crate::ir::{
     Block, ExternDef, ExternRole, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value,
 };
 use crate::types::Ty;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Only the in-place `s = s + piece` append, which an unoptimized build needs to keep a loop that
 /// grows a string linear.
@@ -159,9 +159,14 @@ fn collect(
     }
 }
 
+/// Fuses every builder append that can be fused independently of the others in one scan. Each
+/// fusion would otherwise cost a rescan and rewrite of the function, and a function with many
+/// interpolated appends would be quadratic.
 fn fuse_one(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let info = info(f);
+    let mut claimed: HashSet<(usize, usize)> = HashSet::new();
+    let mut plans = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate() {
             if ext_role(m, inst) != Some(ExternRole::StrBuilderAppend) {
@@ -181,80 +186,88 @@ fn fuse_one(m: &mut Module, fi: usize) -> bool {
                     .iter()
                     .any(|&(db, di)| db != bi || di < ii)
             });
-            if early || plan.pieces.len() > 8 {
+            if early || plan.pieces.len() > 8 || plan.remove.iter().any(|r| claimed.contains(r)) {
                 continue;
             }
-            apply(m, fi, bi, ii, plan);
-            return true;
+            claimed.extend(plan.remove.iter().copied());
+            plans.push((bi, ii, plan));
         }
     }
-    false
+    if plans.is_empty() {
+        return false;
+    }
+    apply(m, fi, plans);
+    true
 }
 
-fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
-    let app = m.funcs[fi].blocks[bi].insts[ii].clone();
-    let Imm::Ext(append_ext) = app.imm else {
-        return;
-    };
-    let sb = app.args[0];
-    let sb_ty = m.funcs[fi].ty(sb);
-    let int_ext = m.add_extern(ExternDef {
-        name: "msrt_strbuilder_append_int".to_string(),
-        params: vec![
-            Param {
-                ty: sb_ty,
-                mode: Mode::Borrow,
-            },
-            Param {
-                ty: Ty::INT,
-                mode: Mode::Borrow,
-            },
-        ],
-        ret: Ty::UNIT,
-        noreturn: false,
-        pure_: false,
-        fresh: false,
-        role: ExternRole::StrBuilderAppendInt,
-        leaf: true,
-        reads: false,
-    });
-    let f = &mut m.funcs[fi];
-    let last = plan.pieces.len() - 1;
-    let mut calls = Vec::new();
-    for (k, p) in plan.pieces.iter().enumerate() {
-        let res = if k == last {
-            app.res
-        } else {
-            Some(f.new_value(Ty::UNIT))
+/// Replaces each planned append with its piece calls and deletes the constructors and drops the
+/// plans absorb, rewriting every block once.
+fn apply(m: &mut Module, fi: usize, plans: Vec<(usize, usize, Plan)>) {
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    let mut replace: HashMap<(usize, usize), Vec<Inst>> = HashMap::new();
+    for (bi, ii, plan) in plans {
+        let app = m.funcs[fi].blocks[bi].insts[ii].clone();
+        let Imm::Ext(append_ext) = app.imm else {
+            continue;
         };
-        let (ext, arg) = match p {
-            Piece::Int(x) => (int_ext, *x),
-            Piece::Str(s) => (append_ext, *s),
-        };
-        calls.push(Inst {
-            op: Op::CallRt,
-            args: vec![sb, arg],
-            imm: Imm::Ext(ext),
-            res,
-            loc: app.loc,
+        let sb = app.args[0];
+        let sb_ty = m.funcs[fi].ty(sb);
+        let int_ext = m.add_extern(ExternDef {
+            name: "msrt_strbuilder_append_int".to_string(),
+            params: vec![
+                Param {
+                    ty: sb_ty,
+                    mode: Mode::Borrow,
+                },
+                Param {
+                    ty: Ty::INT,
+                    mode: Mode::Borrow,
+                },
+            ],
+            ret: Ty::UNIT,
+            noreturn: false,
+            pure_: false,
+            fresh: false,
+            role: ExternRole::StrBuilderAppendInt,
+            leaf: true,
+            reads: false,
         });
-    }
-    f.blocks[bi].insts.splice(ii..=ii, calls);
-    // Deleting shifts later positions in the append's own block; the splice grew it by
-    // `pieces - 1`, and removals there are all positions other than the replaced one.
-    let grown = plan.pieces.len() - 1;
-    for (b, blk) in f.blocks.iter_mut().enumerate() {
-        let mut k = 0usize;
-        blk.insts.retain(|_| {
-            let orig = if b == bi && k > ii + grown {
-                k - grown
+        let f = &mut m.funcs[fi];
+        let last = plan.pieces.len() - 1;
+        let mut calls = Vec::new();
+        for (k, p) in plan.pieces.iter().enumerate() {
+            let res = if k == last {
+                app.res
             } else {
-                k
+                Some(f.new_value(Ty::UNIT))
             };
-            let drop_it = (b != bi || k < ii || k > ii + grown) && plan.remove.contains(&(b, orig));
-            k += 1;
-            !drop_it
-        });
+            let (ext, arg) = match p {
+                Piece::Int(x) => (int_ext, *x),
+                Piece::Str(s) => (append_ext, *s),
+            };
+            calls.push(Inst {
+                op: Op::CallRt,
+                args: vec![sb, arg],
+                imm: Imm::Ext(ext),
+                res,
+                loc: app.loc,
+            });
+        }
+        replace.insert((bi, ii), calls);
+        removed.extend(plan.remove);
+    }
+    let f = &mut m.funcs[fi];
+    for (b, blk) in f.blocks.iter_mut().enumerate() {
+        let old = std::mem::take(&mut blk.insts);
+        let mut insts = Vec::with_capacity(old.len());
+        for (k, inst) in old.into_iter().enumerate() {
+            if let Some(calls) = replace.remove(&(b, k)) {
+                insts.extend(calls);
+            } else if !removed.contains(&(b, k)) {
+                insts.push(inst);
+            }
+        }
+        blk.insts = insts;
     }
 }
 
@@ -281,24 +294,23 @@ fn fusable(f: &Func, inst: &Inst, role: ExternRole) -> bool {
     }
 }
 
+/// What `chain` has gathered for one root: the leaves, the inner links and drops it absorbs, and
+/// how many concats (the root included) the join spans.
+struct Gather {
+    leaves: Vec<Piece>,
+    remove: HashSet<(usize, usize)>,
+    links: usize,
+}
+
 /// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
 /// links into `remove`. A leaf that is a single-use `int_to_string` becomes the integer itself.
-fn chain(
-    m: &Module,
-    f: &Func,
-    info: &Info,
-    v: Value,
-    at: (usize, usize),
-    leaves: &mut Vec<Piece>,
-    remove: &mut HashSet<(usize, usize)>,
-) {
-    // A chain with more leaves than one call joins is rejected whatever its shape, so stop
-    // descending once it has more inner links than that (each link adds itself and its drop to
-    // `remove`) and keep `v` as a leaf: otherwise every link of a long chain walks the whole
-    // chain below it, and the pass, which restarts after each fusion, is cubic in the chain's
-    // length. The value must stay a leaf, not vanish: the join is built from `leaves`.
-    if remove.len() > 2 * MAX_JOIN {
-        leaves.push(Piece::Str(v));
+fn chain(m: &Module, f: &Func, info: &Info, v: Value, at: (usize, usize), g: &mut Gather) {
+    // A join takes at most MAX_JOIN leaves, so descend into at most MAX_JOIN - 1 links and keep a
+    // deeper concat as a leaf: it is a root of its own, fused in the same scan. Rejecting the whole
+    // chain instead fuses one group per scan, which is quadratic in the length of a long
+    // interpolation. The value must stay a leaf, not vanish: the join is built from `leaves`.
+    if g.links >= MAX_JOIN - 1 {
+        g.leaves.push(Piece::Str(v));
         return;
     }
     let inner = info.defs[v.index()].and_then(|(db, di)| {
@@ -313,18 +325,19 @@ fn chain(
         ok.then_some((db, di, role == ExternRole::StringConcat))
     });
     let Some((db, di, concat)) = inner else {
-        leaves.push(Piece::Str(v));
+        g.leaves.push(Piece::Str(v));
         return;
     };
-    remove.insert((db, di));
-    remove.insert(info.drops[v.index()][0]);
+    g.remove.insert((db, di));
+    g.remove.insert(info.drops[v.index()][0]);
     let args = f.blocks[db].insts[di].args.clone();
     if !concat {
-        leaves.push(Piece::Int(args[0]));
+        g.leaves.push(Piece::Int(args[0]));
         return;
     }
-    chain(m, f, info, args[0], at, leaves, remove);
-    chain(m, f, info, args[1], at, leaves, remove);
+    g.links += 1;
+    chain(m, f, info, args[0], at, g);
+    chain(m, f, info, args[1], at, g);
 }
 
 /// One fused root: the concat at `at` becomes a join of `leaves`, and `remove` holds the links
@@ -348,11 +361,15 @@ fn fuse_concat(m: &mut Module, fi: usize) -> bool {
             if ext_role(m, inst) != Some(ExternRole::StringConcat) || claimed.contains(&(bi, ii)) {
                 continue;
             }
-            let mut leaves = Vec::new();
-            let mut remove = HashSet::new();
+            let mut g = Gather {
+                leaves: Vec::new(),
+                remove: HashSet::new(),
+                links: 1,
+            };
             for &a in &inst.args {
-                chain(m, f, &info, a, (bi, ii), &mut leaves, &mut remove);
+                chain(m, f, &info, a, (bi, ii), &mut g);
             }
+            let Gather { leaves, remove, .. } = g;
             let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
             // Two strings are what `concat` already does; two parts with an integer save the
             // temporary string.
@@ -518,23 +535,26 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         }
     }
     let mut sites = Vec::new();
+    // `next[v]` is `(block, index)` of the first use of `v` after the instruction being visited.
+    // One backward scan per block finds every site's next use, where searching forward from each
+    // site is quadratic when the drops all sit at the end of a long block.
+    let mut next: Vec<(usize, usize)> = vec![(usize::MAX, 0); f.values.len()];
     for (bi, b) in f.blocks.iter().enumerate() {
-        for (ii, inst) in b.insts.iter().enumerate() {
-            let a = inst.args.first().copied();
-            let Some(a) = a.filter(|a| {
-                ext_role(m, inst) == Some(ExternRole::StringConcat) && owned[a.index()]
-            }) else {
-                continue;
-            };
-            if inst.args[1] == a {
-                continue;
+        for (ii, inst) in b.insts.iter().enumerate().rev() {
+            let site = inst
+                .args
+                .first()
+                .copied()
+                .filter(|a| ext_role(m, inst) == Some(ExternRole::StringConcat) && owned[a.index()])
+                .filter(|a| inst.args[1] != *a);
+            if let Some(a) = site {
+                let (nb, j) = next[a.index()];
+                if nb == bi && b.insts[j].op == Op::Drop {
+                    sites.push(((bi, ii), (bi, j)));
+                }
             }
-            let next = b.insts[ii + 1..]
-                .iter()
-                .position(|n| n.args.contains(&a))
-                .map(|k| ii + 1 + k);
-            if let Some(j) = next.filter(|&j| b.insts[j].op == Op::Drop) {
-                sites.push(((bi, ii), (bi, j)));
+            for a in &inst.args {
+                next[a.index()] = (bi, ii);
             }
         }
     }

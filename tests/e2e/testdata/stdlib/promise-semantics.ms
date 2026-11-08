@@ -59,6 +59,27 @@ test "wait_all keeps order and wait_first returns the first result":
     let first = wait_first([promise(fn: ok(forever())), promise(fn: ok(4))])
     first | try expect_ok | try expect_equal(4)
 
+test "wait_all ends at the first failure in time, not list order":
+    let results = wait_all(
+        [
+            promise(fn: ok(forever())),
+            promise[Int](fn: error(Error("boom", kind: "EFAIL")))
+        ]
+    )
+    let reason = results | try expect_error
+    try expect_equal(reason.kind, "EFAIL")
+
+test "wait_all keeps order when later promises finish first":
+    let slow = promise(
+        fn:
+            let _ = sleep(milliseconds(30)).wait()
+            return ok(1)
+    )
+
+    wait_all([slow, promise(fn: ok(2)), promise(fn: ok(3))])
+        | try expect_ok
+        | try expect_equal([1, 2, 3])
+
 test "a second wait reports that the result was taken":
     let work = promise(fn: ok(5))
     work.wait() | try expect_ok | try expect_equal(5)

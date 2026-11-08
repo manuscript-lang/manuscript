@@ -104,6 +104,16 @@ pub fn lex<'a>(file: &'a Arc<str>, source: &'a str) -> PResult<Lexed<'a>> {
     lex_at(file, source, 0, 0)
 }
 
+/// Ends one quoted text literal, including nested interpolations, without lexing
+/// the surrounding declaration (which may be an incomplete editor snapshot).
+pub(crate) fn quoted_text_end(source: &str) -> Option<usize> {
+    debug_assert!(source.starts_with('"'));
+    let file = Arc::from("<documentation>");
+    let mut scanner = Scanner::new(&file, source, 0, 0, Vec::new());
+    scanner.scan_string().ok()?;
+    Some(scanner.offset)
+}
+
 /// Lexes a slice of a larger file: its first byte is at original offset
 /// `base_offset` and it starts on line `base_line + 1`.
 pub(crate) fn lex_at<'a>(

@@ -325,15 +325,24 @@ fn enum_reference_declarations_keep_methods_in_impl_blocks() {
             }
             seen += 1;
             assert!(
-                declaration.declaration.starts_with("enum "),
+                declaration.declaration.starts_with(if declaration.opaque {
+                    "opaque enum "
+                } else {
+                    "enum "
+                }),
                 "{}",
                 declaration.declaration
             );
             // Reference method signatures omit bodies. The enum schema must
             // parse on its own, and methods must follow in a separate impl.
             let schema = declaration.declaration.split("\nimpl ").next().unwrap();
-            let parsed = ms_syntax::parser::parse(&Arc::from("reference.ms"), schema);
-            assert!(parsed.is_ok(), "{schema}: {parsed:?}");
+            if declaration.opaque {
+                // Public opaque excerpts deliberately omit the inaccessible cases.
+                assert_eq!(schema.lines().count(), 1, "{schema}");
+            } else {
+                let parsed = ms_syntax::parser::parse(&Arc::from("reference.ms"), schema);
+                assert!(parsed.is_ok(), "{schema}: {parsed:?}");
+            }
             assert!(!schema.contains("    fn ") && !schema.contains("    var fn "));
             for member in declaration
                 .members

@@ -57,6 +57,7 @@ The result is the compact `header.claims.signature` form, ready for an `Authoriz
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
 Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns an Error with kind `EINVAL`.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 type Session:
     sub: String

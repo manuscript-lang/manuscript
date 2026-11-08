@@ -62,10 +62,14 @@ export extern fn msrt_pipe_write[T](pipe: Int, value: T) Int
 // A promise for the next value (take it with msrt_promise_take[T]); finishes with no value at the end.
 export extern fn msrt_pipe_read(pipe: Int) Int
 
+// The next queued value without a promise; none when nothing is queued right now.
+export extern fn msrt_pipe_try[T](pipe: Int) T?
+
+// 1 when a read would end with no value: every writer closed and nothing is queued.
+export extern fn msrt_pipe_ended(pipe: Int) Int
+
 // A promise that finishes when no more than `capacity` values are queued, or the reader is gone.
 export extern fn msrt_pipe_flush(pipe: Int) Int
-
-export extern fn msrt_pipe_buffered(pipe: Int) Int
 
 export extern fn msrt_pipe_close_writer(pipe: Int) Unit
 

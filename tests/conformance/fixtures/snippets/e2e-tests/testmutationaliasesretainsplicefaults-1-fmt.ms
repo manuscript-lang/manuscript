@@ -8,11 +8,13 @@ test "new count":
     [1].splice(0, 2, [])
 
 test "bound start":
-    let splice = [1].splice
+    var items = [1]
+    let splice = items.splice
     splice(2, 0, [])
 
 test "bound count":
-    let splice = [1].splice
+    var items = [1]
+    let splice = items.splice
     splice(0, -1, [])
 
 test "continues":

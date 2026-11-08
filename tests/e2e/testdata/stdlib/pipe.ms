@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
 import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
+import Promise, PromiseOptions, promise from "@std/concurrency/promise.ms"
 import sleep, milliseconds from "@std/time.ms"
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
@@ -134,3 +134,57 @@ test "a promise keeps the writer it captured after its maker returns":
     try gate.close()
     try expect_equal(try drain(var input), [0, 1, 2, 3, 4])
     try sender.wait()
+
+fn send_many(var out: WriteStream[Int], from: Int, count: Int) Unit!:
+    for i in from..from + count:
+        try out.write(i)
+    try out.flush()
+    return out.close()
+
+test "a reader takes queued values directly and still waits and ends in order":
+    var p = pipe[Int](8)
+    var first = p.writer()
+    var second = p.writer()
+    var input = p.reader()
+    try p.close()
+
+    let a = promise(fn: send_many(var first, 0, 5000))
+    let b = promise(fn: send_many(var second, 5000, 5000))
+    var total = 0
+    var count = 0
+
+    for v in input:
+        total += v
+        count += 1
+
+    try a.wait()
+    try b.wait()
+    try expect_equal(count, 10000)
+    try expect_equal(total, 49995000)
+
+fn endless(var out: WriteStream[Int]) Unit!:
+    var i = 0
+
+    while true:
+        try out.write(i)
+        i += 1
+
+    return ok(unit)
+
+fn sum_mod(var input: ReadStream[Int]) Int!:
+    var n = 0
+    for v in input:
+        n += v % 3
+    return ok(n)
+
+test "a consumer that always finds a value queued still meets its timeout":
+    var p = pipe[Int](1000000)
+    var w = p.writer()
+    var r = p.reader()
+    try p.close()
+
+    let _prod = promise(fn: endless(var w))
+    let cons = promise(fn: sum_mod(var r)).with(
+        options: PromiseOptions(timeout: milliseconds(200))
+    )
+    try expect_true(cons.wait().is_error())

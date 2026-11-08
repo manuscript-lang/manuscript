@@ -10,13 +10,9 @@ use ms_syntax::ast::*;
 fn fold(syms: ms_syntax::Names, e: &Expr, range: (i128, i128)) -> Option<i128> {
     let fits = |v: i128| (range.0..=range.1).contains(&v).then_some(v);
     match &e.kind {
-        ExprKind::Number(t)
-            if !syms.str(t).contains(['.', 'e', 'E']) && !syms.str(t).ends_with('d') =>
-        {
-            ms_syntax::number::canonical(syms.str(t))
-                .parse::<i128>()
-                .ok()
-        }
+        ExprKind::Number(t) => ms_syntax::number::canonical(syms.str(t))
+            .parse::<i128>()
+            .ok(),
         ExprKind::Unary { op, operand } => {
             let v = fold(syms, operand, range)?;
             match op {

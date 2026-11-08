@@ -544,15 +544,18 @@ impl Runner<'_> {
             out.line("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file");
             reason = "no_tests".into();
         }
-        let skipped = document.count(Status::Skipped);
+        let (skipped, not_run) = (
+            document.count(Status::Skipped),
+            document.count(Status::NotRun),
+        );
+        let mut summary = format!("{} {nouns}, {failed} failed", plan.len() as i64 - not_run);
         if skipped > 0 {
-            out.line(format!(
-                "{} {nouns}, {failed} failed, {skipped} skipped",
-                plan.len()
-            ));
-        } else {
-            out.line(format!("{} {nouns}, {failed} failed", plan.len()));
+            summary.push_str(&format!(", {skipped} skipped"));
         }
+        if not_run > 0 {
+            summary.push_str(&format!(", {not_run} not run"));
+        }
+        out.line(summary);
         document.finish(&reason, started.elapsed());
         // Failure counts belong in the summary, not the process status: on Unix
         // 256 failed tests would otherwise wrap to a successful exit status.
@@ -1165,7 +1168,7 @@ esac
 
         let (status, text, document) = run_script(&["--fail-fast", "--timeout=3s"]);
         assert_eq!(status, 1);
-        assert!(text.ends_with("4 tests, 1 failed\n"), "{text}");
+        assert!(text.ends_with("2 tests, 1 failed, 2 not run\n"), "{text}");
         assert_eq!(document.reason.as_deref(), Some("fail_fast"));
         assert_eq!(document.tests.len(), 4);
         assert_eq!(document.tests[2].status, Status::NotRun);

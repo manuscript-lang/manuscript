@@ -181,3 +181,105 @@ fn check_watch_reruns_when_an_imported_link_is_retargeted() {
     assert_eq!(watch.interrupt(), Some(130));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn check_watch_reruns_when_a_link_inside_a_link_chain_is_retargeted() {
+    let dir = scratch("check-link-chain");
+    std::fs::write(dir.join("a.ms"), "export fn value() Int: 3\n").unwrap();
+    // Same size and modification time as `a.ms`: only the middle link's target tells them apart.
+    std::fs::write(dir.join("b.ms"), "export fn value() Int: x\n").unwrap();
+    let modified = std::fs::metadata(dir.join("a.ms"))
+        .unwrap()
+        .modified()
+        .unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(dir.join("b.ms"))
+        .unwrap()
+        .set_modified(modified)
+        .unwrap();
+    std::fs::write(dir.join("main.ms"), include_str!("watch/imports_value.ms")).unwrap();
+    std::os::unix::fs::symlink("a.ms", dir.join("mid.ms")).unwrap();
+    std::os::unix::fs::symlink("mid.ms", dir.join("dep.ms")).unwrap();
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    std::fs::remove_file(dir.join("mid.ms")).unwrap();
+    std::os::unix::fs::symlink("b.ms", dir.join("mid.ms")).unwrap();
+    watch.until("unknown");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn project_check_watch_reruns_when_a_source_file_is_added() {
+    let dir = scratch("check-new-source");
+    std::fs::create_dir_all(dir.join("src/deep")).unwrap();
+    std::fs::write(
+        dir.join("ms.toml"),
+        "[project]\nname = \"p\"\nsource = \"src\"\nentry = \"src/main.ms\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.ms"),
+        "export fn main() Int:\n    return 0\n",
+    )
+    .unwrap();
+    let mut watch = Watch::start(&dir, &["check", "ms.toml", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    // Nothing imports the new file; only discovery finds it, in a nested directory.
+    std::fs::write(
+        dir.join("src/deep/extra.ms"),
+        "export fn extra() Int:\n    return \"s\"\n",
+    )
+    .unwrap();
+    watch.until("extra.ms");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn embed_project(dir: &Path) {
+    std::fs::write(
+        dir.join("ms.toml"),
+        "[project]\nname = \"embedded\"\nsource = \".\"\nentry = \"main.ms\"\n\n[embed]\n\"@assets\" = \"./assets\"\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("main.ms"), include_str!("watch/imports_assets.ms")).unwrap();
+}
+
+#[test]
+fn check_watch_reruns_when_an_embedded_file_is_edited() {
+    let dir = scratch("check-embed-edit");
+    std::fs::create_dir_all(dir.join("assets")).unwrap();
+    std::fs::write(dir.join("assets/message.txt"), "small\n").unwrap();
+    embed_project(&dir);
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    // Only the asset changes: the source and the manifest are untouched.
+    save(
+        &dir.join("assets/message.txt"),
+        &"x".repeat(16 * 1024 * 1024 + 1),
+    );
+    watch.until("larger than 16 MiB");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn check_watch_reruns_when_a_missing_embedded_directory_appears() {
+    let dir = scratch("check-embed-missing");
+    embed_project(&dir);
+    let mut watch = Watch::start(&dir, &["check", "main.ms", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    std::fs::create_dir_all(dir.join("assets")).unwrap();
+    save(&dir.join("assets/message.txt"), "hello\n");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}

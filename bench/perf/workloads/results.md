@@ -95,3 +95,10 @@ Other cases that read 2x or worse against that baseline on 2026-11-07 and reprod
 ## 2026-11-07, a function returning `Map.get` borrows the entry
 
 `JsonValue.get` returned `values.get(key)` through `msrt_map_get`, which deep-copies the value: the checker treated `m.get(k)` returned from a function as a new value, though the stdlib documents the result as a borrow. A returned `m.get(k)` is now a borrow of the receiver (the lowering reads the entry with `msrt_map_get_ptr` and returns `opt.view`), as `xs.get(i)` already was. `json.navigate` 105 to 57 ns (`bench/perf/stdlib`, 5 samples). Callers that hold the result while changing the map now need `.clone()` (two sites in `stdlib/data/toml.ms`); fixture `map-get-result-borrows-map`.
+
+## 2026-11-07, round 9: compile time, peak memory, scaling probe (no change needed)
+
+- Compile time: a hello-world `ms build` is 0.12 s warm (debug and release). A cold cache costs 3 to 4 s, which is the one-time download of the pinned LLVM tools archive, not compilation.
+- Peak RSS (`VmHWM`, ~3 MB stdin) of the ten workloads, ms / Go / Rust in MB: c03 3.0/6.1/5.0, c05 3.0/5.9/2.1, c09 3.0/6.4/4.1, c13 3.2/7.0/9.8, c14 3.0/22.5/2.2, c16 28.0/18.9/27.3, c18 3.1/6.9/16.4, c25 9.2/11.5/5.9, c36 14.8/6.7/10.9, c44 3.2/26.3/12.7. The largest ratio is c36 at 2.2x Go (14.8 MB).
+- Scaling probe (each operation at n, 4n and 16n): append, `sorted`, `Set`, `Map[Int, Int]`, `Map[String, Int]`, `split`/`join`, `replace`, string `+=`, indexing a built string and `json.parse` stay near-linear (`Map[String, Int]` at 1.6M keys 652 ms, 6.8x for 4x the keys from cache misses). `List.insert(0, x)` and `List.remove(0)` are O(n) memmoves, 10.7 s for 320k operations, as in Go and Rust; `Deque` is the queue.
+- 108 MB, 2M-line word count (split, `Map[String, Int]`): 0.78 s in ms against 1.35 s for Go.
