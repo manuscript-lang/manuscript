@@ -636,6 +636,8 @@ impl Walker<'_> {
         if let Some((m, _)) = self.method_value_parts(e)
             && m.name()
                 .is_some_and(|n| crate::effects::discards_entries(self.syms.str(n)))
+            // An operation that also stores its argument was rejected above, with that reason.
+            && !native_method_argument_modes(self.syms, &m).contains(&ParamMode::Move)
         {
             for held in self.cx.m.ty(recv).args.clone() {
                 if held.kind != Kind::Variable && !self.cx.classes.clonable(self.syms, &held) {
