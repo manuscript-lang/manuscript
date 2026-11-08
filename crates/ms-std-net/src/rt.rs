@@ -32,6 +32,57 @@ pub fn cleanup_discard(handle: usize) {
     msrt_cleanup_discard(handle)
 }
 
+/// A reusable buffer taken out of its slot for a read that can park. A cancellation or fault
+/// leaves the task with a jump that skips destructors, so a plain `Vec` on the frame would leak
+/// (64 KiB per cancelled request for the client's read buffer); the box belongs to a runtime
+/// cleanup that frees it on that path. [`ParkedBuf::finish`] hands the buffer back for reuse.
+pub struct ParkedBuf {
+    buf: *mut Vec<u8>,
+    /// The cleanup handle; none on a test thread without tasks, where nothing can cancel.
+    cleanup: Option<usize>,
+}
+
+unsafe extern "C-unwind" fn free_buf(arg: *mut u8) {
+    // SAFETY: the runtime runs this once, only on the path that skips `ParkedBuf::drop`, and
+    // `arg` is the allocation `ParkedBuf::new` leaked.
+    drop(unsafe { Box::from_raw(arg.cast::<Vec<u8>>()) });
+}
+
+impl ParkedBuf {
+    pub fn new(buf: Vec<u8>) -> ParkedBuf {
+        let buf = Box::into_raw(Box::new(buf));
+        // SAFETY: the allocation stays live until the action runs or `finish`/`drop` discards it.
+        let cleanup = crate::wait::parks().then(|| unsafe { cleanup_push(free_buf, buf.cast()) });
+        ParkedBuf { buf, cleanup }
+    }
+
+    pub fn buf(&mut self) -> &mut Vec<u8> {
+        // SAFETY: this value owns the allocation until it ends or the cleanup takes it, and the
+        // cleanup only runs when this frame is abandoned.
+        unsafe { &mut *self.buf }
+    }
+
+    /// The buffer, for the slot it came from.
+    pub fn finish(self) -> Vec<u8> {
+        let this = core::mem::ManuallyDrop::new(self);
+        if let Some(handle) = this.cleanup {
+            cleanup_discard(handle);
+        }
+        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
+        *unsafe { Box::from_raw(this.buf) }
+    }
+}
+
+impl Drop for ParkedBuf {
+    fn drop(&mut self) {
+        if let Some(handle) = self.cleanup {
+            cleanup_discard(handle);
+        }
+        // SAFETY: as in `finish`.
+        drop(unsafe { Box::from_raw(self.buf) });
+    }
+}
+
 /// Whether SIGINT/SIGTERM asked the program to stop.
 pub fn cancel_requested() -> bool {
     // The flag is a static `u8` the runtime updates from a signal handler; atomics have the

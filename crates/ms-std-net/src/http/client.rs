@@ -15,7 +15,6 @@ use crate::rt;
 use crate::tls::{self, TlsOptions};
 use crate::wait::Deadline;
 use flate2::write::MultiGzDecoder;
-use ms_rt::fault::with_cleanup;
 use rustls::ClientConfig;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -118,6 +117,45 @@ struct Wire {
     h2: Option<H2Stream>,
 }
 
+/// A wire that a parking exchange uses, owned by a runtime cleanup: a cancellation or fault
+/// skips destructors, so the cleanup closes the connection (releasing the descriptor) and drops
+/// the wire with the connection state and buffers it holds.
+struct HeldWire {
+    wire: *mut Wire,
+    /// The cleanup handle; none on a test thread without tasks, where nothing can cancel.
+    cleanup: Option<usize>,
+}
+
+unsafe extern "C-unwind" fn abandon_wire(arg: *mut u8) {
+    // SAFETY: the runtime runs this once, only on the path that skips `HeldWire::finish`, and
+    // `arg` is the allocation `HeldWire::new` leaked.
+    let wire = unsafe { Box::from_raw(arg.cast::<Wire>()) };
+    wire.conn.close();
+}
+
+impl HeldWire {
+    fn new(wire: Wire) -> HeldWire {
+        let wire = Box::into_raw(Box::new(wire));
+        // SAFETY: the allocation stays live until the action runs or `finish` discards it.
+        let cleanup =
+            crate::wait::parks().then(|| unsafe { rt::cleanup_push(abandon_wire, wire.cast()) });
+        HeldWire { wire, cleanup }
+    }
+
+    fn wire(&mut self) -> &mut Wire {
+        // SAFETY: this value owns the allocation until `finish` or the cleanup takes it.
+        unsafe { &mut *self.wire }
+    }
+
+    fn finish(self) -> Wire {
+        if let Some(handle) = self.cleanup {
+            rt::cleanup_discard(handle);
+        }
+        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
+        *unsafe { Box::from_raw(self.wire) }
+    }
+}
+
 thread_local! {
     static SCRATCH: Cell<Vec<u8>> = const { Cell::new(Vec::new()) };
 }
@@ -163,17 +201,17 @@ impl Wire {
     /// buffer is taken out for its duration: a request in another task that reads meanwhile
     /// gets a fresh buffer instead of finding this one borrowed.
     fn fill(&mut self, deadline: Deadline) -> Result<usize, IoErr> {
-        let mut scratch = SCRATCH.take();
-        scratch.resize(READ_BUF, 0);
-        let got = self.conn.read_into(&mut scratch, deadline);
+        let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
+        scratch.buf().resize(READ_BUF, 0);
+        let got = self.conn.read_into(scratch.buf(), deadline);
         if let Ok(n) = got {
             if self.rpos > 0 && self.rpos == self.rbuf.len() {
                 self.rbuf.clear();
                 self.rpos = 0;
             }
-            self.rbuf.extend_from_slice(&scratch[..n]);
+            self.rbuf.extend_from_slice(&scratch.buf()[..n]);
         }
-        SCRATCH.set(scratch);
+        SCRATCH.set(scratch.finish());
         got
     }
 }
@@ -181,11 +219,11 @@ impl Wire {
 impl Wire {
     /// Reads up to `max` bytes straight into a new buffer; empty is end of stream.
     fn read_raw(&mut self, deadline: Deadline, max: usize) -> Result<Vec<u8>, IoErr> {
-        let mut scratch = SCRATCH.take();
-        scratch.resize(READ_BUF.max(max), 0);
-        let got = self.conn.read_into(&mut scratch[..max], deadline);
-        let out = got.map(|n| scratch[..n].to_vec());
-        SCRATCH.set(scratch);
+        let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
+        scratch.buf().resize(READ_BUF.max(max), 0);
+        let got = self.conn.read_into(&mut scratch.buf()[..max], deadline);
+        let out = got.map(|n| scratch.buf()[..n].to_vec());
+        SCRATCH.set(scratch.finish());
         out
     }
 }
@@ -858,16 +896,16 @@ impl Client {
 
     fn exchange_h1(
         &self,
-        mut wire: Wire,
+        wire: Wire,
         hop: &mut Hop<'_>,
         deadline: Deadline,
     ) -> Result<Exchanged, Fail> {
-        // A cancellation leaves by a jump that skips `wire`'s drop; close its connection so the
-        // descriptor is released.
-        let conn = wire.conn.clone();
-        match with_cleanup(&mut || conn.close(), || {
-            self.exchange(&mut wire, hop, deadline)
-        }) {
+        // A cancellation leaves by a jump that skips `wire`'s drop; the cleanup behind `HeldWire`
+        // closes its connection and frees it.
+        let mut held = HeldWire::new(wire);
+        let result = self.exchange(held.wire(), hop, deadline);
+        let wire = held.finish();
+        match result {
             Ok((head, added_gzip)) => Ok((head, wire, added_gzip)),
             Err(fail) => {
                 wire.discard();
@@ -1049,13 +1087,14 @@ impl Client {
         deadline: Deadline,
     ) -> Result<(ResponseHead, bool), Fail> {
         let wants_gzip = self.wants_gzip(hop);
-        let mut out = Vec::with_capacity(512);
+        let mut held = rt::ParkedBuf::new(Vec::with_capacity(512));
+        let out = held.buf();
         let length = match &*hop.body {
             Body::Bytes(bytes) => Some(bytes.len()),
             Body::Stream(_) => None,
         };
         encode_head(
-            &mut out,
+            out,
             hop.method,
             hop.url,
             &hop.headers,
@@ -1067,14 +1106,14 @@ impl Client {
             Body::Bytes(bytes) => {
                 if bytes.len() <= READ_BUF {
                     out.extend_from_slice(bytes);
-                    self.write(wire, &out, deadline)?;
+                    self.write(wire, out, deadline)?;
                 } else {
-                    self.write(wire, &out, deadline)?;
+                    self.write(wire, out, deadline)?;
                     self.write(wire, bytes, deadline)?;
                 }
             }
             Body::Stream(source) => {
-                self.write(wire, &out, deadline)?;
+                self.write(wire, out, deadline)?;
                 self.stream_body(wire, &mut **source, deadline)?;
             }
         }
