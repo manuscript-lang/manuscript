@@ -33,6 +33,14 @@ pub(crate) struct Local {
     pub opt: bool,
 }
 
+/// The default-argument frame of a call: the copies of earlier `var` arguments the default may
+/// change, and the bindings of this function it shadows while the default runs (the callee's
+/// parameters are this function's own when it calls itself).
+pub(crate) struct DefaultFrame {
+    pub copies: Vec<Var>,
+    pub shadowed: Vec<(usize, Option<Local>)>,
+}
+
 /// A changed parameter: the slot address it arrives in and leaves through.
 #[derive(Clone, Copy)]
 pub(crate) struct VarSlot {
@@ -97,6 +105,8 @@ pub(crate) struct FnLower<'a> {
     pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
+    /// The copies of earlier `var` arguments a default being evaluated may change, innermost last.
+    pub default_frames: Vec<DefaultFrame>,
     /// Checked place indices retained through the final writeback.
     pub prepared_indices: HashMap<PlaceKey, Value>,
     /// Only receiver-chain indices are captured during a checked place read.
@@ -594,6 +604,7 @@ impl<'a> FnLower<'a> {
             must_move: HashSet::new(),
             list_iters: HashMap::new(),
             temps: Vec::new(),
+            default_frames: Vec::new(),
             prepared_indices: HashMap::new(),
             capture_indices: HashSet::new(),
             resource_temps: HashMap::new(),
@@ -1394,7 +1405,9 @@ impl<'a> FnLower<'a> {
         });
         // A close error returned from inside this unwinding re-enters here with the prologue done.
         let nested = self.prologue_done;
+        let mut default_bindings = Vec::new();
         if !nested {
+            default_bindings = self.leave_default_frames();
             for slot in self.var_slots.clone() {
                 let l = self.locals[&slot.uid];
                 let x = self.local_take(&l);
@@ -1420,7 +1433,48 @@ impl<'a> FnLower<'a> {
                 .emit(Op::DepthLeave, &[], ms_mir::ir::Imm::None, None);
         }
         self.b.ret(v);
+        self.restore_shadowed(default_bindings);
         self.terminated();
+    }
+
+    /// An early return from inside a default argument: the copies the default was still holding
+    /// are released on this path, and the bindings it shadowed are visible again for the
+    /// writeback and scope drops that follow. Returns what `restore_shadowed` needs to put the
+    /// default's bindings back for the paths that continue.
+    pub(crate) fn leave_default_frames(&mut self) -> Vec<(usize, Option<Local>)> {
+        let mut changed = Vec::new();
+        for i in (0..self.default_frames.len()).rev() {
+            for var in self.default_frames[i].copies.clone().into_iter().rev() {
+                let v = self.b.use_var(var);
+                self.drop_value(v);
+            }
+            for (uid, saved) in self.default_frames[i].shadowed.clone().into_iter().rev() {
+                changed.push((uid, self.locals.get(&uid).copied()));
+                match saved {
+                    Some(l) => {
+                        self.locals.insert(uid, l);
+                    }
+                    None => {
+                        self.locals.remove(&uid);
+                    }
+                }
+            }
+        }
+        changed
+    }
+
+    /// Puts back the bindings a default frame replaced.
+    pub(crate) fn restore_shadowed(&mut self, shadowed: Vec<(usize, Option<Local>)>) {
+        for (uid, local) in shadowed.into_iter().rev() {
+            match local {
+                Some(l) => {
+                    self.locals.insert(uid, l);
+                }
+                None => {
+                    self.locals.remove(&uid);
+                }
+            }
+        }
     }
 
     /// A forwarded Result may lend a case this function must own (an implicit close can
