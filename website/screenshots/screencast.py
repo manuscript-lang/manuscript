@@ -85,7 +85,10 @@ def run(cmd, cwd, ms_dir, limit):
         out += textwrap.wrap(l, COLS, subsequent_indent="  ", drop_whitespace=False) or [""]
     return out
 
-def frame(t, title, benefit, code, shown, cmd, out, n_out, step, total):
+def blend(a, b, k):
+    return tuple(int(x + (y - x) * k) for x, y in zip(a, b))
+
+def frame(t, title, benefit, code, shown, cmd, out, n_out, step, total, cursor=None):
     im = Image.new("RGB", (W, H), t["bg"])
     d = ImageDraw.Draw(im)
     d.rectangle([0, 0, W, 44], fill=t["bar"])
@@ -93,18 +96,29 @@ def frame(t, title, benefit, code, shown, cmd, out, n_out, step, total):
         d.ellipse([18 + i * 24, 15, 32 + i * 24, 29], fill=c)
     d.text((W - PAD, 14), "manuscript", font=FONT, fill=t["dim"], anchor="ra")
     y = 64
+    hl = blend(t["bg"], t["fg"], 0.07)
+    newest = shown - 1 if shown and cmd is None else (len(code) + n_out + 1 if False else None)
     for i, line in enumerate(code[:shown]):
+        if i == newest:
+            d.rectangle([0, y - 4, W, y + LH - 6], fill=hl)
         x = PAD
         for s, c in tokens(line, t):
             d.text((x, y), s, font=FONT, fill=c)
             x += CW * len(s)
+        if cursor == "code" and i == shown - 1:
+            d.rectangle([x + 2, y + 1, x + CW * 0.6 + 2, y + 24], fill=t["cap"])
         y += LH
     y = 64 + LH * max(len(code), 0) + (10 if code else 0)
     if cmd is not None:
         d.text((PAD, y), "$ ", font=FONT, fill=t["prompt"])
         d.text((PAD + CW * 2, y), cmd, font=FONT, fill=t["fg"])
+        if cursor == "cmd":
+            cx = PAD + CW * (2 + len(cmd))
+            d.rectangle([cx + 2, y + 1, cx + CW * 0.6 + 2, y + 24], fill=t["cap"])
         y += LH
-        for line in out[:n_out]:
+        for k, line in enumerate(out[:n_out]):
+            if k == n_out - 1 and n_out < len(out) + 1 and cursor == "out":
+                d.rectangle([0, y - 4, W, y + LH - 6], fill=hl)
             col = t["err"] if re.search(r"error|type:|resolution:", line) else t["fg"]
             d.text((PAD, y), line[:int((W - 2 * PAD) / CW)], font=FONT, fill=col)
             y += LH
@@ -133,18 +147,23 @@ def main():
         for i, (title, benefit, srcfile, cmd, limit) in enumerate(SCENES, 1):
             code = open(os.path.join(SRC, srcfile)).read().rstrip("\n").split("\n") if srcfile else []
             out = run(cmd, work, ms_dir, limit)
-            def add(shown, c, n, ms):
-                frames.append(frame(t, title, benefit, code, shown, c, out, n, i, total)); durs.append(ms)
-            # human pacing: a code line every 0.45 s, a short read, then the command and each output line
-            for n in range(1, len(code) + 1):
-                add(n, None, 0, 450)
-            if code: durs[-1] += 900 + sum(len(l) for l in code) * 10
-            add(len(code), cmd, 0, 800)
-            for n in range(1, len(out)):
-                add(len(code), cmd, n, 450)
-            add(len(code), cmd, len(out), 2000 + 250 * len(out))
+            def add(shown, c, n, ms, cursor=None):
+                frames.append(frame(t, title, benefit, code, shown, c, out, n, i, total, cursor)); durs.append(ms)
+            read = lambda text: 300 + 30 * len(text.strip()) if text.strip() else 200
+            # human pacing: read the caption, then each line is held long enough to read before the next appears
+            add(0, None, 0, 2400)
+            for n, line in enumerate(code, 1):
+                add(n, None, 0, read(line), "code")
+            if code: durs[-1] += 900
+            step = max(1, len(cmd) // 8)
+            for k in range(step, len(cmd), step):
+                add(len(code), cmd[:k], 0, 90, "cmd")
+            add(len(code), cmd, 0, 700, "cmd")
+            for n, line in enumerate(out, 1):
+                add(len(code), cmd, n, read(line) + 200, "out")
+            durs[-1] += 1800
         # quantize with a shared adaptive palette per frame; hold the loop point
-        pal = [f.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for f in frames]
+        pal = [f.quantize(colors=32, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for f in frames]
         os.makedirs(os.path.dirname(os.path.abspath(a.output)), exist_ok=True)
         pal[0].save(a.output, save_all=True, append_images=pal[1:], duration=durs, loop=0, optimize=True, disposal=1)
         print(f"{a.output}: {len(frames)} frames, {os.path.getsize(a.output) // 1024} KB")
