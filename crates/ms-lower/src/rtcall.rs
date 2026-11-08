@@ -140,7 +140,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_map_new" => R::MapNew,
         "msrt_bytes_values" => R::BytesValues,
         "msrt_string_eq" => R::StringEq,
-        "msrt_cleanup_discard" => R::CleanupDiscard,
+        "msrt_cleanup_discard" | "msrt_cleanup_remove" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
         "msrt_scope_spawn"
         | "msrt_worker_start"
