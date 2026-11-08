@@ -2,6 +2,20 @@
 fn order[T: Comparable](left: T, right: T) Int:
     return left.compare(right)
 
+// Returns one new list holding `chunks[low]` through `chunks[high - 1]` in order.
+// Halving the range copies each element about log2(chunk count) times; folding left with `concat` would recopy every earlier chunk for each later one.
+fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
+    let count = high - low
+    if count == 0:
+        return []
+    if count == 1:
+        return chunks[low].clone()
+    if count == 2:
+        return chunks[low].concat(chunks[low + 1])
+
+    let middle = low + count / 2
+    return joined(chunks, low, middle).concat(joined(chunks, middle, high))
+
 // One key-value pair of a SortedMap.
 export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
     // The entry's key, which orders it within the map.
@@ -284,17 +298,11 @@ impl SortedMap[K, V]:
 
     // Returns a new list of the keys in ascending order.
     fn keys() List[K]:
-        var out: List[K] = []
-        for chunk in self.key_chunks:
-            out = out.concat(chunk)
-        return out
+        return joined(self.key_chunks, 0, self.key_chunks.length())
 
     // Returns a new list of the values in ascending key order.
     fn values() List[V]:
-        var out: List[V] = []
-        for chunk in self.value_chunks:
-            out = out.concat(chunk)
-        return out
+        return joined(self.value_chunks, 0, self.value_chunks.length())
 
     // Returns a new list of the entries in ascending key order.
     fn entries() List[SortedEntry[K, V]]:
