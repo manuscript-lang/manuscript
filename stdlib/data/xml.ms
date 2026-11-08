@@ -287,7 +287,12 @@ impl Reader:
                     text.append(self.peek())
                     self.at += 1
 
-                children.append(XmlText(try decode(text.build())))
+                let raw = text.build()
+                if raw.contains("]]>"): return error(
+                    Error("XML: invalid data", kind: "EBADMSG")
+                )
+
+                children.append(XmlText(try decode(raw)))
 
 fn is_space(c: String) Bool:
     return c == " " or c == "\t" or c == "\n" or c == "\r"

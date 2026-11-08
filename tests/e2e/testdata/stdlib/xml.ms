@@ -119,3 +119,19 @@ test "literal XML characters obey the same ranges as character references":
         try expect_true(parse("<a>&#{code};</a>").is_ok())
 
     try expect_true(parse("\u{feff}<a/>").is_ok())
+
+test "CDATA terminators are forbidden only in literal character data":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for text in ["]]>right", "left]]>", "left]]>right", "]]]>", "]]>"]:
+        try expect_equal(parse("<a>{text}</a>"), malformed)
+        try expect_equal(parse("<a><b/>{text}</a>"), malformed)
+
+    for text in ["]]&gt;", "&#93;]>", "]&#93;>", "]]<b/>>", "]<!--c-->]>"]:
+        try expect_equal((try parse("<a>{text}</a>")).text(), "]]>")
+
+    let attribute = try parse("<a v=']]>'/>")
+    try expect_equal(attribute.attribute("v").get(""), "]]>")
+    try expect_equal((try parse("<a><![CDATA[]]]]><![CDATA[>]]></a>")).text(), "]]>")
+    for text in ["]]", "]>", "]"]:
+        try expect_equal((try parse("<a>{text}</a>")).text(), text)
