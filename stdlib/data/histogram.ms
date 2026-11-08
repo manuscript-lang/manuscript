@@ -100,7 +100,7 @@ impl Histogram:
         )
         if self.total == 0: return none
 
-        var rank = ceil(p / 100.0 * self.total.to_float()).truncate_to_int().get(1)
+        var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int().get(1)
         if rank < 1: rank = 1
 
         var seen = 0
