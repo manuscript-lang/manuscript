@@ -1650,6 +1650,16 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
         is_sequence = sequence(first)
         has_colon = not is_sequence and boundary(first, colon: true) >= 0
 
+    if (
+        context.split_line >= 0
+        and context.index == context.split_line + 1
+        and (is_sequence or has_colon)
+    ): return error(
+        invalid(
+            context, "block collection must start after the document marker line"
+        )
+    )
+
     if is_sequence:
         try count(var context, depth)
 
