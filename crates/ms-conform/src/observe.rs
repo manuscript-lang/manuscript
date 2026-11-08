@@ -32,8 +32,9 @@ const LEAK_CHECKED: [&str; 3] = ["fuzz/run/", "e2e/", "examples/"];
 const LIVE_BLOCKS: &str = "ms-rt live blocks at exit: ";
 const COUNTS: &str = "ms-rt counts: ";
 const LIVE_BY_SIZE: &str = "ms-rt live blocks by size: ";
+const RUST_HEAP: &str = "ms-rt rust heap at exit: ";
 
-/// `text` without the counting runtime's lines (live blocks and counts), and the sum of their counts.
+/// `text` without the counting runtime's lines (live blocks, Rust heap and counts), and the sum of the live counts.
 fn split_live_blocks(text: &str) -> (String, i64) {
     let mut kept = String::with_capacity(text.len());
     let mut live = 0;
@@ -41,7 +42,10 @@ fn split_live_blocks(text: &str) -> (String, i64) {
         let line_text = line.trim_end();
         if let Some(count) = line_text.strip_prefix(LIVE_BLOCKS) {
             live += count.trim().parse::<i64>().unwrap_or(0);
-        } else if !line_text.starts_with(COUNTS) && !line_text.starts_with(LIVE_BY_SIZE) {
+        } else if !line_text.starts_with(COUNTS)
+            && !line_text.starts_with(LIVE_BY_SIZE)
+            && !line_text.starts_with(RUST_HEAP)
+        {
             kept.push_str(line);
         }
     }
@@ -458,7 +462,7 @@ mod live_block_tests {
     #[test]
     fn live_block_lines_are_removed_and_summed() {
         let (kept, live) = split_live_blocks(
-            "a\nms-rt live blocks at exit: 2\nb\nms-rt counts: allocs=1\nms-rt live blocks at exit: 3\n",
+            "a\nms-rt rust heap at exit: blocks=3 bytes=236\nms-rt live blocks at exit: 2\nb\nms-rt counts: allocs=1\nms-rt live blocks at exit: 3\n",
         );
         assert_eq!((kept.as_str(), live), ("a\nb\n", 5));
     }
