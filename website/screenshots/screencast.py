@@ -45,9 +45,6 @@ SCENES = [
     ("Profile native code in one command.",
      "Sampling profiles with source attribution: top report, folded stacks, pprof.",
      None, "ms profile prof.ms --out-dir pr --top 4", 6),
-    ("One toolchain. Batteries-included stdlib.",
-     "Check, format, lint, test and build, with files, HTTP, JSON and crypto in the box.",
-     None, "ms verify demo/ms.toml", 4),
 ]
 COLS = int((1000 - 64) / 14.4)
 
