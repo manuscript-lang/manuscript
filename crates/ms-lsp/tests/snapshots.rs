@@ -666,7 +666,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("math/decimal.ms", 1),
         ("math/math.ms", 3),
         ("random.ms", 3),
-        ("string.ms", 5),
+        ("string.ms", 6),
     ]);
     for id in [first, second] {
         let locations = responses
