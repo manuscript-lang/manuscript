@@ -271,12 +271,12 @@ impl Walker<'_> {
         for (i, a) in args.iter().enumerate() {
             let mut mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             if mode == ParamMode::Borrow && modes.retained.get(i).copied().unwrap_or(false) {
-                // A native that wraps this argument in a new result (`ok_or(cause)`) cannot copy a value that has no `clone`: the argument moves into the result.
+                // A native that wraps this argument in its result (`ok_or(cause)`) or may hand it back (`get(default)`) cannot copy a value that has no `clone`: the argument moves into the result.
                 let (arg_ty, result_ty) = (self.cx.m.ty(&a.value), self.cx.m.ty(e));
                 if self.class_of(&a.value) != Class::Copy
                     && !holds_variable(&arg_ty)
                     && !self.cx.classes.clonable(self.syms, &arg_ty)
-                    && ty_contains(&result_ty, &arg_ty)
+                    && (crate::types::same(&arg_ty, &result_ty) || ty_contains(&result_ty, &arg_ty))
                 {
                     mode = ParamMode::Move;
                 }

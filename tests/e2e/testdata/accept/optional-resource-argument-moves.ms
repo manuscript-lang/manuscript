@@ -46,7 +46,12 @@ fn heap_cause(path: String) Bool:
     let missing: Int? = none
     return missing.ok_or(cause).is_error()
 
-test "a resource passed to ok_or moves into the result and closes once":
+fn default_resource(path: String) Int:
+    let fallback = Marker(5, path.clone())
+    let missing: Marker? = none
+    return missing.get(fallback).id
+
+test "a resource passed to ok_or or get moves into the result and closes once":
     let directory = try temporary("optional-argument-")
     let path = "{directory.path()}/log"
     try write_file(path, "").wait()
@@ -54,4 +59,5 @@ test "a resource passed to ok_or moves into the result and closes once":
     try expect_equal(present_cause(path), true)
     try expect_equal(temporary_cause(path), true)
     try expect_equal(heap_cause(path), true)
-    try expect_equal(try log_text(path), "1,2,3,4,")
+    try expect_equal(default_resource(path), 5)
+    try expect_equal(try log_text(path), "1,2,3,4,5,")
