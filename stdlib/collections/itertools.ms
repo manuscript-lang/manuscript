@@ -45,8 +45,9 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
     if times < 0:
         panic("cycle: times must not be negative")
 
+    let count = if values.is_empty(): 0 else: times
     var out: List[T] = []
-    for unused1 in 0..times:
+    for unused1 in 0..count:
         for value in values:
             out.append(value.clone())
     return out
