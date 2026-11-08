@@ -17,6 +17,18 @@ fn non_manifest_inputs(graph: &ms_driver::Graph) -> Vec<String> {
         .collect()
 }
 
+/// Every non-manifest input lies under `root`, written either as given or canonically: the loader
+/// reports canonical paths, which differ from a temporary directory's spelling on Windows (short
+/// names, verbatim prefixes).
+fn assert_inside(graph: &ms_driver::Graph, root: &str) {
+    let canonical = ms_driver::project::pathops::eval_symlinks(root).unwrap_or_default();
+    let outside: Vec<String> = non_manifest_inputs(graph)
+        .into_iter()
+        .filter(|p| !p.starts_with(root) && !p.starts_with(&canonical))
+        .collect();
+    assert!(outside.is_empty(), "inputs outside {root}: {outside:?}");
+}
+
 #[test]
 fn initially_missing_import_is_retained_without_a_program() {
     let syms = ms_syntax::Names::global();
@@ -109,11 +121,7 @@ fn missing_import_through_external_directory_link_is_not_a_watch_input() {
     assert!(!graph.diagnostics.is_empty());
     // The link inside the root is watched; nothing behind it outside the root is.
     assert!(graph.inputs.contains(&entry));
-    assert!(
-        non_manifest_inputs(&graph)
-            .iter()
-            .all(|p| p.starts_with(&root))
-    );
+    assert_inside(&graph, &root);
 }
 
 #[test]
@@ -127,11 +135,7 @@ fn dangling_external_file_link_is_not_a_watch_input() {
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(!graph.diagnostics.is_empty());
     assert!(graph.inputs.contains(&entry));
-    assert!(
-        non_manifest_inputs(&graph)
-            .iter()
-            .all(|p| p.starts_with(&root))
-    );
+    assert_inside(&graph, &root);
 }
 
 #[test]
