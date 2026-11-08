@@ -27,6 +27,10 @@ pub fn report<T, E: Status>(
     err: &ms_rt::ffi::ErrOut,
 ) -> Result<T, ms_rt::ffi::StatusCode> {
     r.map_err(|e| {
+        if crate::rt::cancel_pending() {
+            // Every frame that held values across the park has returned and dropped them.
+            crate::rt::cancelled();
+        }
         if let Some(m) = e.failed_message() {
             err.set(m);
         }
@@ -41,6 +45,9 @@ fn opt(has: bool, v: i64) -> Option<i64> {
 
 /// The status byte of a std error.
 pub fn code<E: Status>(e: E) -> ms_rt::ffi::StatusCode {
+    if crate::rt::cancel_pending() {
+        crate::rt::cancelled();
+    }
     ms_rt::ffi::StatusCode(e.code())
 }
 

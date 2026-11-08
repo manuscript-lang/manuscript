@@ -10,7 +10,7 @@ use crate::ip::{Cidr, ip_text, normalize};
 use crate::policy::{Policy, fold_host, host_ok, ip_ok};
 use crate::rt;
 use crate::sys::{self, AsSock};
-use crate::wait::{Deadline, Interest, Lane, Wait, blocking, wait_fd};
+use crate::wait::{Deadline, Interest, Lane, Wait, blocking, try_wait_fd};
 use ms_rt::fault::with_cleanup;
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::cell::RefCell;
@@ -485,6 +485,7 @@ impl Network {
             match connect_nonblocking(SocketAddr::new(ip, port), deadline) {
                 Ok(sock) => return Ok(sock),
                 Err(ConnectError::Timeout) => return Err(NetErr::Timeout),
+                Err(ConnectError::Cancelled) => return Err(crate::rt::Cancelled.into()),
                 Err(ConnectError::Io(e)) => {
                     last = self.io_failure(&e);
                     if self.is_closed() {
@@ -516,6 +517,7 @@ impl Network {
                 with_cleanup(&mut || sock.release(), || finish_connect(&sock, deadline)).map_err(
                     |e| match e {
                         ConnectError::Timeout => NetErr::Timeout,
+                        ConnectError::Cancelled => crate::rt::Cancelled.into(),
                         ConnectError::Io(e) => self.io_failure(&e),
                     },
                 )?;
@@ -717,6 +719,7 @@ pub fn limit(v: Option<i64>) -> Result<u128, NetErr> {
 
 pub enum ConnectError {
     Timeout,
+    Cancelled,
     Io(io::Error),
 }
 
@@ -729,8 +732,10 @@ fn in_progress(e: &io::Error) -> bool {
 }
 
 fn finish_connect(sock: &Socket, deadline: Deadline) -> Result<(), ConnectError> {
-    if wait_fd(sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
-        return Err(ConnectError::Timeout);
+    match try_wait_fd(sock.as_sock(), Interest::Write, deadline) {
+        Err(_) => return Err(ConnectError::Cancelled),
+        Ok(Wait::TimedOut) => return Err(ConnectError::Timeout),
+        Ok(Wait::Ready) => {}
     }
     match sock.take_error() {
         Ok(None) => Ok(()),

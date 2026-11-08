@@ -256,6 +256,28 @@ impl IoErr {
     }
 }
 
+/// A cancelled park carries no message of its own: the FFI boundary turns it into the runtime's
+/// cancellation (`rt::take_cancelled`), so the error only has to reach it.
+const CANCELLED_TEXT: &str = "cancelled";
+
+impl From<crate::rt::Cancelled> for NetErr {
+    fn from(_: crate::rt::Cancelled) -> Self {
+        NetErr::failed(CANCELLED_TEXT)
+    }
+}
+
+impl From<crate::rt::Cancelled> for HttpErr {
+    fn from(_: crate::rt::Cancelled) -> Self {
+        HttpErr::Failed(CANCELLED_TEXT.to_string())
+    }
+}
+
+impl From<crate::rt::Cancelled> for WsErr {
+    fn from(_: crate::rt::Cancelled) -> Self {
+        WsErr::Failed(CANCELLED_TEXT.to_string())
+    }
+}
+
 impl From<NetErr> for HttpErr {
     fn from(e: NetErr) -> Self {
         match e {

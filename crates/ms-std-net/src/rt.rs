@@ -106,6 +106,19 @@ pub fn cancelled() -> ! {
     msrt_cancelled()
 }
 
+/// A park that ended because the task was cancelled. Code that parks returns it as an error, so
+/// the frames above unwind with ordinary returns and run their destructors; the FFI boundary
+/// ([`take_cancelled`]) then runs the runtime's cancellation path once.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cancelled;
+
+/// Whether the error a native call returns means cancellation: a cancelled park leaves the
+/// task's cancel flag set (a shield holds it back), so the boundary asks the flag. It then calls
+/// [`cancelled`].
+pub fn cancel_pending() -> bool {
+    cancel_requested()
+}
+
 /// Shields the running task from SIGINT/SIGTERM cancellation until `unshield`.
 pub fn shield() {
     msrt_shield_enter()
