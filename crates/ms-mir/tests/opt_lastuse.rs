@@ -377,3 +377,46 @@ fn a_chain_of_branch_consumed_values_is_handled_in_linear_time() {
     assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
     verify_module(&m).expect("output verifies");
 }
+
+/// `n` lists, each read once right after it is built and dropped at the end of the function,
+/// with a branch between one list and the next.
+fn long_lived_lists(n: usize) -> String {
+    let mut s = String::from(
+        "module \"t\"\nfile 0 \"t.ms\"\nentry @main\n\nfn @main() -> int export {\nb0:\n  %z: int = iconst 0\n  br b1(%z)\n",
+    );
+    for k in 0..n {
+        let (a, b, c, next) = (3 * k + 1, 3 * k + 2, 3 * k + 3, 3 * k + 4);
+        s.push_str(&format!(
+            "b{a}(%acc{k}: int):\n  %v{k}: list<int> = list.lit\n  %n{k}: int = list.len %v{k}\n  %t{k}: bool = icmp.eq %n{k}, %z\n  br_if %t{k}, b{b}(), b{c}()\nb{b}():\n  br b{next}(%n{k})\nb{c}():\n  br b{next}(%z)\n"
+        ));
+    }
+    s.push_str(&format!("b{}(%out: int):\n", 3 * n + 1));
+    for k in (0..n).rev() {
+        s.push_str(&format!("  drop %v{k}\n"));
+    }
+    s.push_str("  ret %out\n}\n");
+    s
+}
+
+/// The region of a value used only near its definition used to run on to the end of the
+/// function, so a function of many such values was quadratic (45 s for 800 `map`/`filter`
+/// pipelines in an unoptimized build).
+#[test]
+fn a_chain_of_long_lived_values_is_handled_in_linear_time() {
+    let n = 6000;
+    let mut m = parse_module(&long_lived_lists(n)).expect("parse");
+    verify_module(&m).expect("input verifies");
+    let start = std::time::Instant::now();
+    opt::lastuse::run(&mut m);
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    verify_module(&m).expect("output verifies");
+    // Every list is dropped right after its length is read, in the block that built it.
+    let blocks = ops(&m, "main");
+    assert_eq!(blocks[1][..3], [Op::ListLit, Op::ListLen, Op::Drop]);
+    let drops: usize = blocks
+        .iter()
+        .flatten()
+        .filter(|op| **op == Op::Drop)
+        .count();
+    assert_eq!(drops, n);
+}

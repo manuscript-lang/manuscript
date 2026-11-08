@@ -126,6 +126,8 @@ struct Index {
     pending: Vec<Vec<(Option<usize>, Value)>>,
     /// Blocks holding a pending drop of each value.
     pending_blocks: ValueMap<Vec<usize>>,
+    /// Predecessors of each block (once per edge), kept current as edge blocks are added.
+    preds: Vec<Vec<usize>>,
 }
 
 impl Index {
@@ -142,6 +144,7 @@ impl Index {
                 .collect(),
             pending: vec![Vec::new(); f.blocks.len()],
             pending_blocks: ValueMap::new(),
+            preds: vec![Vec::new(); f.blocks.len()],
         };
         for (bi, b) in f.blocks.iter().enumerate() {
             for (ii, i) in b.insts.iter().enumerate() {
@@ -155,6 +158,9 @@ impl Index {
                 }
             }
             b.term.for_each_use(|v| ix.term_uses[v.index()].push(bi));
+            for t in b.term.successors() {
+                ix.preds[t.index()].push(bi);
+            }
         }
         ix
     }
@@ -162,6 +168,7 @@ impl Index {
     fn add_block(&mut self) {
         self.removed.push(Vec::new());
         self.pending.push(Vec::new());
+        self.preds.push(Vec::new());
     }
 
     /// Whether the use at `(bi, ii)` still exists.
@@ -407,23 +414,45 @@ fn candidate(
     if existing.is_empty() {
         return false;
     }
-    // The region the analysis needs: blocks reachable from the definition, not past a block that
-    // holds the original drop or consumes `v` (liveness ends there and `v` is not owned beyond
-    // it; a region that ran on past a consumption would make a long chain of `v`s that each
-    // consume on one branch quadratic). Everything
-    // below is indexed by position in `order`, so a candidate costs its region, not the function.
+    // The region the analysis needs: the blocks on a path from the definition to a place the
+    // family is used or passed on, not through a block that holds the original drop or consumes
+    // `v` (liveness ends there and `v` is not owned beyond it). Found by walking back from those
+    // places: the definition dominates them, so the walk stops at it. A value used only near its
+    // definition then costs those few blocks, where walking forward from the definition would
+    // cost the rest of the function for every value dropped at its end (quadratic). Everything
+    // below is indexed by position in `order`.
     let mut order: Vec<usize> = vec![db];
     {
         let mut seen: HashSet<usize> = HashSet::from([db]);
-        let mut work = vec![db];
-        while let Some(b) = work.pop() {
-            if drop_at.contains_key(&b) || consume_at.contains_key(&b) {
-                continue;
+        let mut work: Vec<usize> = Vec::new();
+        let mut seed = |b: usize, seen: &mut HashSet<usize>, order: &mut Vec<usize>| {
+            if seen.insert(b) {
+                order.push(b);
+                work.push(b);
             }
-            for s in f.blocks[b].term.successors() {
-                if seen.insert(s.index()) {
-                    order.push(s.index());
-                    work.push(s.index());
+        };
+        for w in fam.iter() {
+            for &(bi, ii) in &ix.uses[w.index()] {
+                let i = &f.blocks[bi].insts[ii];
+                if ix.live(bi, ii) && !(i.op == Op::Drop && i.args[0] == v) {
+                    seed(bi, &mut seen, &mut order);
+                }
+            }
+            for &bi in ix.pending_blocks.get(&w).into_iter().flatten() {
+                seed(bi, &mut seen, &mut order);
+            }
+            for &bi in &ix.term_uses[w.index()] {
+                seed(bi, &mut seen, &mut order);
+            }
+        }
+        while let Some(b) = work.pop() {
+            for &p in &ix.preds[b] {
+                if p == db || drop_at.contains_key(&p) || consume_at.contains_key(&p) {
+                    continue;
+                }
+                if seen.insert(p) {
+                    order.push(p);
+                    work.push(p);
                 }
             }
         }
@@ -591,8 +620,9 @@ fn candidate(
             after_uses.push((bi, pos));
         } else {
             for (si, s) in succs[l].iter().enumerate() {
-                let sl = lid[&s.index()];
-                if !live_in[sl] && !edge_consumes(bi, si) {
+                // A successor outside the region reaches no use of the family.
+                let live_next = lid.get(&s.index()).is_some_and(|&sl| live_in[sl]);
+                if !live_next && !edge_consumes(bi, si) {
                     edges.push((bi, si));
                 }
             }
@@ -624,6 +654,11 @@ fn candidate(
             .collect();
         let nbk = f.new_block();
         ix.add_block();
+        // The edge now runs from `pred` through `nbk` to `dest`.
+        ix.preds[nbk.index()].push(pred);
+        if let Some(at) = ix.preds[dest.index()].iter().position(|&p| p == pred) {
+            ix.preds[dest.index()][at] = nbk.index();
+        }
         let mut fwd = Vec::new();
         for (ty, mode) in params {
             let val = f.new_value(ty);
