@@ -136,15 +136,11 @@ fn many_interface_implementations_lower_in_linear_time() {
     // Building the table of each implementing type used to scan every method of the program
     // and copy each name: 8000 types took 3.7 s to lower and 16 000 about 15 s.
     let types = 16_000;
-    let mut source = String::from("interface Shape:\n    fn area() Int\n\n");
+    let mut source = String::from(include_str!("shapes/interface.ms"));
     for i in 0..types {
-        source.push_str(&format!(
-            "type S{i}:\n    a: Int\n\nimpl Shape for S{i}:\n    fn area() Int: self.a + {i}\n\n"
-        ));
+        source.push_str(&include_str!("shapes/impl.ms").replace("{i}", &i.to_string()));
     }
-    source.push_str(
-        "fn total(s: Shape) Int:\n    return s.area()\n\nexport fn main() Int:\n    var t = 0\n",
-    );
+    source.push_str(include_str!("shapes/main_head.ms"));
     for i in 0..types {
         source.push_str(&format!("    t += total(S{i}(1))\n"));
     }
