@@ -101,3 +101,23 @@ fn skips_broken_source() {
         (source.to_string(), 0)
     );
 }
+
+#[test]
+fn many_label_edits_preserve_source_and_are_idempotent() {
+    for newline in ["\n", "\r\n"] {
+        let mut source = include_str!("labels/many-header.ms").to_string();
+        for i in 0..512 {
+            source
+                .push_str(&include_str!("labels/many-entry.ms").replace("NUMBER", &i.to_string()));
+        }
+        let source = source.replace('\n', newline);
+        let program = check(&source);
+        assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+        let (edited, count) = drop_redundant_labels(&program, &source);
+        assert_eq!(count, 512);
+        assert_eq!(edited, source.replace("value: value", "value"));
+        let checked = check(&edited);
+        assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+        assert_eq!(drop_redundant_labels(&checked, &edited), (edited, 0));
+    }
+}
