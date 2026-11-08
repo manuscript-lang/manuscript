@@ -3,6 +3,110 @@
 use super::*;
 
 impl<'a> FnLower<'a> {
+    /// An incoming resource remains in its cleanup slot until the leaf mutator succeeds.
+    pub(super) fn guarded_list_mutation(
+        &mut self,
+        name: &str,
+        old: Value,
+        args: &[NArg],
+    ) -> Result<Option<(Value, Option<Val>)>, Error> {
+        let lt = self.ty_of(old);
+        let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
+            return Ok(None);
+        };
+        let index = match name {
+            "append" | "prepend" => 0,
+            "insert" | "set" | "replace" => 1,
+            _ => return Ok(None),
+        };
+        let Some(arg) = args.get(index) else {
+            return Ok(None);
+        };
+        let Some(incoming) = self.resource_temp_slot(arg.val.v) else {
+            return Ok(None);
+        };
+        let list = self.put_slot(old);
+        let result = self.guarded_list_slot(name, list, elem, (incoming, Some(arg.val.v)), args)?;
+        let new = self.take_slot(list, lt);
+        Ok(Some((new, result)))
+    }
+
+    /// Runtime validation precedes consumption of `incoming`; success hands it to `list`.
+    pub(super) fn guarded_list_slot(
+        &mut self,
+        name: &str,
+        list: Value,
+        elem: MTy,
+        incoming: (Value, Option<Value>),
+        args: &[NArg],
+    ) -> Result<Option<Val>, Error> {
+        let (incoming, key) = incoming;
+        let d = self.type_desc(elem);
+        let mut outgoing = None;
+        match name {
+            "append" => {
+                self.call_runtime("msrt_list_push", &[list, d, incoming], MTy::UNIT)?;
+            }
+            "prepend" | "insert" => {
+                let i = if name == "prepend" {
+                    self.b.iconst(0)
+                } else {
+                    self.borrow(args[0].val)
+                };
+                self.call_runtime("msrt_list_insert", &[list, d, i, incoming], MTy::UNIT)?;
+            }
+            "set" | "replace" => {
+                let i = self.borrow(args[0].val);
+                if name == "set" {
+                    let list_ty = self.b.m.types.list(elem);
+                    let header = self
+                        .b
+                        .emit(
+                            ms_mir::ir::Op::Load,
+                            &[list],
+                            ms_mir::ir::Imm::Ty(list_ty),
+                            Some(list_ty),
+                        )
+                        .expect("list header");
+                    let n = self.b.list_len(header);
+                    let zero = self.b.iconst(0);
+                    let neg = self.b.icmp(ms_mir::ir::Cc::Lt, i, zero);
+                    let shifted = self.b.binop(ms_mir::ir::Op::IAdd, i, n);
+                    let resolved = self.b.select(neg, shifted, i);
+                    self.check_index(2, i, resolved, n, false);
+                }
+                let out = self
+                    .b
+                    .emit(
+                        ms_mir::ir::Op::Slot,
+                        &[],
+                        ms_mir::ir::Imm::Ty(elem),
+                        Some(MTy::PTR),
+                    )
+                    .expect("outgoing list element");
+                // Unlike set's descriptor drop, replace cannot invoke a capture closer before
+                // the incoming slot is consumed. The detached old storage is dropped below.
+                self.call_runtime("msrt_list_replace", &[list, d, i, incoming, out], MTy::UNIT)?;
+                outgoing = Some(out);
+            }
+            _ => unreachable!("guarded list mutator"),
+        }
+        if let Some(key) = key {
+            self.retire_consumed_resource_temp(key);
+        }
+        let result = outgoing.map(|out| Val {
+            v: self.take_slot(out, elem),
+            own: true,
+        });
+        if name == "set" {
+            if let Some(old) = result {
+                self.drop_value(old.v);
+            }
+            return Ok(None);
+        }
+        Ok(result)
+    }
+
     /// `(new list, result)` of a list mutator applied to the owned `old` list.
     pub(super) fn mutate_list(
         &mut self,

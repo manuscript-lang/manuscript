@@ -98,6 +98,14 @@ impl<'a> FnLower<'a> {
 
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
+        self.native_args_protected(view, false)
+    }
+
+    pub(super) fn native_args_protected(
+        &mut self,
+        view: &CallView<'_>,
+        protect_list_elements: bool,
+    ) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
         let mut read_at = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
@@ -113,6 +121,20 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 break;
             }
+            let mut val = val;
+            let mut wrapped = a.wrap_optional.is_some();
+            if protect_list_elements && val.own {
+                let ty = a.wrap_optional.clone().unwrap_or_else(|| self.ety(a.expr));
+                let ty = ct::sub(&ty, &self.subst);
+                if let Some(kind) = self.part_closer(&ty)? {
+                    if wrapped {
+                        val.v = self.b.opt_some(val.v);
+                        wrapped = false;
+                    }
+                    let key = self.hold_resource_temp_with(val.v, kind);
+                    val = Val { v: key, own: false };
+                }
+            }
             read_at.push((a.expr, at));
             let later_try = view.arguments[n + 1..]
                 .iter()
@@ -121,12 +143,14 @@ impl<'a> FnLower<'a> {
             out.push(NArg {
                 name: a.slot.name,
                 val,
-                wrapped: a.wrap_optional.is_some(),
+                wrapped,
                 reader,
             });
         }
         for (arg, (expr, at)) in out.iter_mut().zip(read_at) {
-            arg.val = self.refresh(expr, arg.val, at)?;
+            if self.resource_temp_slot(arg.val.v).is_none() {
+                arg.val = self.refresh(expr, arg.val, at)?;
+            }
         }
         // Written order decides evaluation; callers index by declared parameter position, so
         // `set(value: 8, 0)` must hand them the index before the value.

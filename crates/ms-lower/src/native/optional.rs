@@ -584,6 +584,13 @@ impl<'a> FnLower<'a> {
         copy_result: bool,
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
+        if let Some((new, result)) = self.guarded_list_mutation(name, old, args)? {
+            debug_assert!(
+                !copy_result,
+                "list insertion methods never return the receiver"
+            );
+            return Ok((new, result));
+        }
         // Swapping scalars is two loads and two stores; other elements move through the runtime without a copy.
         let scalar_swap = name == "swap"
             && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if self.b.m.types.is_scalar(*e));

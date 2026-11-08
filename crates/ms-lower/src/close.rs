@@ -367,6 +367,11 @@ impl FnLower<'_> {
         let Some(kind) = self.part_closer_mir(ty)? else {
             return Ok(None);
         };
+        Ok(Some(self.hold_resource_temp_with(v, kind)))
+    }
+
+    pub(crate) fn hold_resource_temp_with(&mut self, v: Value, kind: CloseKind) -> Value {
+        let ty = self.ty_of(v);
         let slot = self
             .b
             .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
@@ -384,7 +389,19 @@ impl FnLower<'_> {
         self.resource_temps
             .insert(key, ResourceTemp { slot, handle, kind });
         self.temps.push(key);
-        Ok(Some(key))
+        key
+    }
+
+    /// The authoritative slot for an intact pending resource.
+    pub(crate) fn resource_temp_slot(&self, key: Value) -> Option<Value> {
+        self.resource_temps.get(&key).map(|owner| owner.slot)
+    }
+
+    /// A leaf operation has consumed the slot on success. Nothing remains to take or drop.
+    pub(crate) fn retire_consumed_resource_temp(&mut self, key: Value) {
+        let handle = self.resource_temps[&key].handle;
+        let _ = self.call_runtime("msrt_cleanup_remove", &[handle], MTy::UNIT);
+        self.unhold_temp(key);
     }
 
     /// Permanently retires only this resource's cleanup and takes its sole owned value.
