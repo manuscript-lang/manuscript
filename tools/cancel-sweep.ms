@@ -31,7 +31,10 @@ fn counted(text: String) List[Counted]:
     var heap = 0
 
     for line in text.split("\n"):
-        if line.starts_with("RUN "): name = line.slice(4, line.length()).get("")
+        if line.starts_with("RUN "):
+            name = line.slice(4, line.length()).get("")
+            parks = 0
+            heap = 0
         else if line.starts_with("ms-rt parks: "):
             parks = line.slice(13, line.length()).get("").trim().parse_int().get(0)
         else if line.starts_with("ms-rt rust heap at exit: blocks="):
