@@ -1455,6 +1455,10 @@ mod tests {
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn waiting_on_a_promise_nobody_took_runs_it_in_the_waiters_task() {
         let _g = lock();
+        // Starting a promise offers it to a new scheduler thread when the limit allows one, and
+        // that thread can take it before the waiter does; one thread leaves nobody to take it.
+        let limit = sched::msrt_runtime_limit();
+        sched::msrt_runtime_set_threads(1);
         let id = msrt_promise_new();
         start(id, note_task);
         // SAFETY: the test runs as a task.
@@ -1465,6 +1469,7 @@ mod tests {
         assert_eq!(take_int(id), 1);
         msrt_promise_drop(id);
         task::teardown();
+        sched::msrt_runtime_set_threads(limit);
     }
 
     #[test]

@@ -615,6 +615,18 @@ impl Walker<'_> {
         recv: &Expr,
         escaping: bool,
     ) -> Vec<(Place, bool)> {
+        if let Some((m, _)) = self.method_value_parts(e)
+            && native_method_argument_modes(self.syms, &m).contains(&ParamMode::Move)
+        {
+            // A function value borrows its arguments, so the stored one would be a copy.
+            for held in self.cx.m.ty(recv).args.clone() {
+                self.require_clonable(
+                    e,
+                    &held,
+                    "this method value stores its argument in the receiver, so it",
+                );
+            }
+        }
         // A temporary receiver has no variable to share, so its updates would be lost.
         let whole = matches!(recv.kind, ExprKind::Name(_));
         let Some((info, _)) = self.place(recv).filter(|_| whole && self.is_place(recv)) else {
