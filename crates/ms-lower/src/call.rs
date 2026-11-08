@@ -409,6 +409,10 @@ impl<'a> FnLower<'a> {
         let offset = usize::from(callee.self_binding.is_some());
         let vars = self.cx.var_positions(callee);
         let mut changed = Vec::new();
+        let mut frame = crate::func::DefaultFrame {
+            copies: Vec::new(),
+            shadowed: Vec::new(),
+        };
         for (j, slot) in earlier.iter().enumerate().take(i) {
             let Some(v) = *slot else {
                 continue;
@@ -420,6 +424,9 @@ impl<'a> FnLower<'a> {
                 let o = self.owned_boundary(v);
                 let var = self.b.declare_var(ty, Mode::Move);
                 self.b.def_var(var, o);
+                frame
+                    .shadowed
+                    .push((binding.uid, self.locals.get(&binding.uid).copied()));
                 self.locals.insert(
                     binding.uid,
                     crate::func::Local {
@@ -429,11 +436,13 @@ impl<'a> FnLower<'a> {
                         opt: false,
                     },
                 );
+                frame.copies.push(var);
                 changed.push((j, var));
             } else {
                 self.bind_borrowed(&binding, v.v);
             }
         }
+        self.default_frames.push(frame);
         // A default reports its own position, not the caller statement\'s.
         let saved_stmt = self.stmt_pos.take();
         let r = self.expr(d);
@@ -442,6 +451,9 @@ impl<'a> FnLower<'a> {
                 let v = self.b.use_var(var);
                 earlier[j] = Some(Val { v, own: true });
             }
+        }
+        if let Some(frame) = self.default_frames.pop() {
+            self.restore_shadowed(frame.shadowed);
         }
         self.stmt_pos = saved_stmt;
         self.hir = saved_hir;
