@@ -1056,6 +1056,9 @@ fn run_one_cleanup() -> bool {
         }
     };
     match action {
+        // A permanently retired interior entry has no action, but still counts as progress
+        // so unwinding continues to the next live registration or its guard boundary.
+        Some((0, _)) => true,
         Some((f, arg)) => {
             // SAFETY: `f` was stored from a valid `CleanupFn` whose provenance `as usize` exposed.
             let f: CleanupFn = unsafe {
@@ -1464,14 +1467,43 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
                 break;
             }
         }
-        // Windows trap entry returns once before running its operation. The caller can then
-        // discard transient registrations that were present when the trap saved its base.
-        // Keep only the remaining caller entries protected, so new operation cleanups run.
-        #[cfg(any(windows, test))]
+        prune_removed_cleanups(stack);
+    }
+}
+
+/// Removes only final-retirement tombstones from the tail. Cancelled entries reserve their
+/// indices until a later discard, so they must never be pruned here.
+fn prune_removed_cleanups(stack: &mut Vec<(usize, usize)>) {
+    while stack.last().is_some_and(|entry| entry.0 == 0) {
+        stack.pop();
+    }
+    // Windows trap entry returns once before running its operation. Retiring transient
+    // registrations can lower its saved base; newly pushed operation cleanups must still run.
+    #[cfg(any(windows, test))]
+    // SAFETY: cleanup stacks and guard frames are owned by the currently executing isolate.
+    unsafe {
         for frame in &mut *GUARDS.ptr() {
             if frame.trap {
                 frame.cleanups = frame.cleanups.min(stack.len());
             }
+        }
+    }
+}
+
+/// Permanently retires exactly this action without running it or disturbing newer owners.
+/// The handle must not be used again: a removed tail index can be reused by the next push.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub extern "C-unwind" fn msrt_cleanup_remove(handle: usize) {
+    // SAFETY: single threaded access to the isolate's cleanup stack. Pushed actions are valid
+    // function pointers, so the null action is reserved exclusively for removed entries.
+    unsafe {
+        let stack = &mut *CLEANUPS.ptr();
+        if handle > 0
+            && let Some(entry) = stack.get_mut(handle - 1)
+        {
+            *entry = (0, 0);
+            prune_removed_cleanups(stack);
         }
     }
 }
@@ -2382,6 +2414,107 @@ mod tests {
             assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[2, 1]);
             msrt_cleanup_run(h1);
             assert_eq!(*LOG_N.ptr(), 2);
+        }
+    }
+
+    #[test]
+    fn cleanup_remove_preserves_newer_owners_and_skips_interior_holes_on_fault() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: serialized runtime state and valid test callbacks.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let removed = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            let newer = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
+            msrt_cleanup_remove(removed);
+            assert_eq!((*CLEANUPS.ptr()).len(), newer);
+            assert_eq!((&*CLEANUPS.ptr())[removed - 1], (0, 0));
+        }
+        assert_eq!(
+            fault_of(|| fault(b"after transfer")).unwrap(),
+            "after transfer"
+        );
+        // SAFETY: test-only state under the global lock.
+        unsafe {
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
+            assert!((*CLEANUPS.ptr()).is_empty());
+        }
+    }
+
+    #[test]
+    fn cleanup_remove_reclaims_tails_without_reusing_reserved_cancelled_handles() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: serialized runtime state and valid test callbacks.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let first = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let reserved = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            msrt_cleanup_cancel(reserved);
+            msrt_cleanup_remove(first);
+            assert_eq!((*CLEANUPS.ptr()).len(), reserved);
+            let newer = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
+            msrt_cleanup_remove(newer);
+            assert_eq!((*CLEANUPS.ptr()).len(), reserved);
+            msrt_cleanup_discard(reserved);
+            assert!((*CLEANUPS.ptr()).is_empty());
+            let reused = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(4));
+            assert_eq!(reused, first);
+            msrt_cleanup_run(reused);
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[4]);
+        }
+    }
+
+    #[test]
+    fn cleanup_remove_is_bounded_across_repeated_temporary_transfers() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: valid no-op callbacks under serialized runtime state.
+        unsafe {
+            let outer = msrt_cleanup_push(cleanup_nothing, core::ptr::null_mut());
+            for _ in 0..10_000 {
+                let old = msrt_cleanup_push(cleanup_nothing, core::ptr::null_mut());
+                let replacement = msrt_cleanup_push(cleanup_nothing, core::ptr::null_mut());
+                msrt_cleanup_remove(old);
+                msrt_cleanup_discard(replacement);
+                assert_eq!((*CLEANUPS.ptr()).len(), outer);
+            }
+            msrt_cleanup_remove(outer);
+            assert!((*CLEANUPS.ptr()).is_empty());
+        }
+    }
+
+    #[test]
+    fn cleanup_remove_clamps_nested_trap_bases_after_tail_retirement() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: manually installed trap frames are removed without jumping to them.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let outer = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let retired = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            for _ in 0..2 {
+                guards_push(GuardFrame {
+                    jmp: 0,
+                    cleanups: retired,
+                    limit: 0,
+                    seg: 0,
+                    shield: 0,
+                    eq_pairs: 0,
+                    trap: true,
+                });
+            }
+            msrt_cleanup_remove(retired);
+            assert!((*GUARDS.ptr()).iter().all(|frame| frame.cleanups == outer));
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
+            assert!(run_one_cleanup());
+            assert!(!run_one_cleanup());
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3]);
+            guards_pop();
+            guards_pop();
+            msrt_cleanup_run(outer);
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
         }
     }
 

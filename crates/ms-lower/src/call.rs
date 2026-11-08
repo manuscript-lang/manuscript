@@ -155,6 +155,7 @@ impl<'a> FnLower<'a> {
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
+        let has_defaults = names.len() > view.arguments.len();
         for (n, a) in view.arguments.iter().enumerate() {
             let idx = names
                 .iter()
@@ -184,7 +185,11 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
-            let x = if later_try { self.hold_temp(x) } else { x };
+            let x = if n + 1 < view.arguments.len() || has_defaults {
+                self.hold_source_arg(x, later_try)?
+            } else {
+                x
+            };
             if vars.contains(&(idx + offset)) {
                 places[idx] = Some(a.expr.clone());
             }
@@ -204,8 +209,10 @@ impl<'a> FnLower<'a> {
                 },
             );
         }
+        let mut defaults_left = slots.iter().filter(|slot| slot.is_none()).count();
         for i in 0..slots.len() {
             if slots[i].is_none() {
+                defaults_left -= 1;
                 // Defaults execute in the callee's lexical frame even though their
                 // instructions live in the caller. Reuse inline-frame metadata so
                 // faults retain both frames without runtime call bookkeeping.
@@ -233,7 +240,11 @@ impl<'a> FnLower<'a> {
                     self.default_argument(callee, i, subst, &mut slots, recv, Some(call_pos));
                 self.source_scope = parent;
                 let d = result?;
-                slots[i] = Some(d);
+                slots[i] = Some(if defaults_left > 0 {
+                    self.hold_source_arg(d, true)?
+                } else {
+                    d
+                });
             }
         }
         Ok(Args { slots, places })
@@ -281,6 +292,20 @@ impl<'a> FnLower<'a> {
             v: self.borrow(x),
             own: false,
         }
+    }
+
+    /// Stages a source argument without forgetting that the caller owns it. Intact resource
+    /// wrappers need their payload closer if a later argument returns early or faults.
+    fn hold_source_arg(&mut self, x: Val, later_try: bool) -> Result<Val, Error> {
+        if x.own
+            && let Some(key) = self.hold_resource_temp(x.v)?
+        {
+            return Ok(Val { v: key, own: true });
+        }
+        if later_try {
+            self.borrow(x);
+        }
+        Ok(x)
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
@@ -424,6 +449,21 @@ impl<'a> FnLower<'a> {
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            // An intact borrowed argument keeps its original registration and acquisition
+            // order. Only a consuming/changed parameter takes its value out of that slot.
+            let guarded = a.own && self.resource_temps.contains_key(&a.v);
+            let taking = vars.contains(&i) || owned_mask.as_ref().is_some_and(|mask| mask[i]);
+            let a = if a.own && (!guarded || taking) {
+                self.unhold_temp(a.v);
+                let v = if self.resource_temps.contains_key(&a.v) {
+                    self.take_resource_temp(a.v).0
+                } else {
+                    a.v
+                };
+                Val { v, own: true }
+            } else {
+                a
+            };
             // A temporary held across a later `try` in the same call is ours again once every
             // argument is evaluated: a consumed parameter takes it instead of a copy.
             let a = if !a.own
@@ -446,6 +486,14 @@ impl<'a> FnLower<'a> {
                         self.owned(a)
                     };
                     vals.push(v);
+                } else if guarded {
+                    vals.push(a.v);
+                } else if a.own
+                    && let Some(key) = self.hold_resource_temp(a.v)?
+                {
+                    // Borrow the intact caller-owned resource through a registered slot.
+                    // Its payload remains ours, unlike a wrapper whose payload was moved.
+                    vals.push(key);
                 } else {
                     vals.push(self.borrow(a));
                 }
@@ -530,6 +578,11 @@ impl<'a> FnLower<'a> {
                     // The result is that temporary: use the argument value itself, which the
                     // MIR knows as owned, and stop dropping it with the statement.
                     self.unhold_temp(arg);
+                    let arg = if self.resource_temps.contains_key(&arg) {
+                        self.take_resource_temp(arg).0
+                    } else {
+                        arg
+                    };
                     return Ok(self.val(arg, true));
                 }
             }
@@ -811,12 +864,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = if view
-            .arguments
-            .iter()
-            .any(|a| crate::mutation::has_try(a.expr))
-        {
-            self.hold_temp(recv)
+        let recv = if !c.parameters.is_empty() {
+            let later_try = view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr));
+            self.hold_source_arg(recv, later_try)?
         } else {
             recv
         };
