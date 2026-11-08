@@ -124,28 +124,25 @@ pub fn link_components(root: &str, path: &str) -> Vec<String> {
     let mut pending = vec![full];
     let mut followed = 0;
     while let Some(next) = pending.pop() {
-        let mut walked = String::new();
-        let parts: Vec<&str> = next.split('/').collect();
-        for (at, part) in parts.iter().enumerate() {
-            if part.is_empty() && walked.is_empty() {
-                walked.push('/');
-                continue;
-            }
-            if part.is_empty() {
-                continue;
-            }
+        // Walk by path component, not by splitting on `/`: a Windows path may carry a drive or
+        // verbatim prefix and backslash separators, which a text split would not see.
+        let components: Vec<_> = std::path::Path::new(&next).components().collect();
+        let mut walked = std::path::PathBuf::new();
+        for (at, component) in components.iter().enumerate() {
             let parent = walked.clone();
-            if !walked.ends_with('/') {
-                walked.push('/');
-            }
-            walked.push_str(part);
-            if !std::fs::symlink_metadata(&walked).is_ok_and(|m| m.file_type().is_symlink()) {
+            walked.push(component.as_os_str());
+            if !matches!(component, std::path::Component::Normal(_))
+                || !std::fs::symlink_metadata(&walked).is_ok_and(|m| m.file_type().is_symlink())
+            {
                 continue;
             }
-            if links.contains(&walked) {
+            let Some(walked_text) = walked.to_str().map(str::to_string) else {
+                break;
+            };
+            if links.contains(&walked_text) {
                 break;
             }
-            links.push(walked.clone());
+            links.push(walked_text);
             followed += 1;
             let Some(target) = std::fs::read_link(&walked)
                 .ok()
@@ -160,13 +157,13 @@ pub fn link_components(root: &str, path: &str) -> Vec<String> {
             let base = if pathops::is_abs(&target) {
                 pathops::clean(&target)
             } else {
-                pathops::join(&[&parent, &target])
+                pathops::join(&[parent.to_str().unwrap_or(""), &target])
             };
-            let rest = parts[at + 1..].join("/");
-            pending.push(if rest.is_empty() {
+            let rest: std::path::PathBuf = components[at + 1..].iter().collect();
+            pending.push(if rest.as_os_str().is_empty() {
                 base
             } else {
-                pathops::join(&[&base, &rest])
+                pathops::join(&[&base, &rest.to_string_lossy()])
             });
             break;
         }
