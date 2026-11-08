@@ -12,6 +12,8 @@ A slot passed to a `call.ind` is covered when every closure of that arity only b
 
 A slot pointer a closure captures by reference (`closure.cap` of type `ptr`) is the enclosing function's slot, like a parameter: a `take` from it is the owner's, not the closure's (#3040). Before, a `promise(fn: input.next())` over a borrowed `var input` dropped the stream's source when its limit cancelled the read, and the caller's later `close` crashed. Fixtures: `net.ms` and `http-websocket.ms` (`a read cancelled by its timeout leaves the stream closable`).
 
+A field moved out of a value taken from the caller's slot and refilled (`self.pending.pop()` before a park) yields the same value again, so the `rec.fill` / `list.fill` result stays the caller's (#3130). Before, cancelling `fs.watch` mid-read dropped the watcher twice (BTreeMap panic, or a segfault in the allocator later). Fixtures: `fs-watch-cancel.ms`, `leaves_a_record_refilled_after_a_field_move_to_the_caller` in `crates/ms-mir/tests/unwind.rs`.
+
 Apply when: changing the unwind pass, inlining of mutable methods, or slot-held cleanup entries.
 Evidence: [lifecycle fixture](../../tests/e2e/testdata/accept/promise-fault-scope-close-unwind.ms), [MIR controls](../../crates/ms-mir/tests/unwind.rs).
 Verify: run the fixture in Debug under valgrind or a counting runtime, and dispatch the full platform matrix.

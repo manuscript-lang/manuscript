@@ -542,3 +542,34 @@ fn registers_a_slot_value_again_once_its_scope_close_is_discarded() {
         print_module(&m)
     );
 }
+
+#[test]
+fn leaves_a_record_refilled_after_a_field_move_to_the_caller() {
+    // `self.items.pop()` then a parking call: the record taken from the caller's slot is refilled
+    // with the shortened field and put back, so a cancellation at the call must not drop the
+    // refilled record; the slot's owner still holds it and drops it.
+    let body = r#"
+record Src { items: list<int>, label: str }
+
+fn @next(%slot: ptr) -> int {
+b0:
+  %s: Src = take Src %slot
+  %l: list<int> = rec.get Src.items %s
+  %m: list<int> = move.out %l
+  %f: Src = rec.fill Src.items %s, %m
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %f
+  ret %r
+}
+
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  ret %z
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(!changed, "{}", print_module(&m));
+    assert_eq!(count(&m, "next", Op::CleanupPush), 0);
+}
