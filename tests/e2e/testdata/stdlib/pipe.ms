@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
 import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
+import Promise, PromiseOptions, promise from "@std/concurrency/promise.ms"
 import sleep, milliseconds from "@std/time.ms"
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
@@ -161,3 +161,25 @@ test "a reader takes queued values directly and still waits and ends in order":
     try b.wait()
     try expect_equal(count, 10000)
     try expect_equal(total, 49995000)
+
+fn endless(var out: WriteStream[Int]) Unit!:
+    var i = 0
+    while true:
+        try out.write(i)
+        i += 1
+    return ok(unit)
+
+fn sum_mod(var input: ReadStream[Int]) Int!:
+    var n = 0
+    for v in input:
+        n += v % 3
+    return ok(n)
+
+test "a consumer that always finds a value queued still meets its timeout":
+    var p = pipe[Int](1000000)
+    var w = p.writer()
+    var r = p.reader()
+    try p.close()
+    let _prod = promise(fn: endless(var w))
+    let cons = promise(fn: sum_mod(var r)).with(options: PromiseOptions(timeout: milliseconds(200)))
+    try expect_true(cons.wait().is_error())
