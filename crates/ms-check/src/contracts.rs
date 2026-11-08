@@ -656,7 +656,8 @@ impl Checker {
                     , contract_t = contract.display(self.syms)),
                 );
             }
-            if !found {
+            // A target that is not an interface was already reported; it has no operations to match.
+            if !found && contract.kind == Kind::Contract {
                 self.type_error(
                     method.pos,
                     format!(
