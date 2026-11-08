@@ -301,6 +301,22 @@ impl<'a> FnLower<'a> {
         if parts.first() != Some(&key_ty) {
             return Ok(None);
         }
+        // A default that changes the map would run between the borrow and the lookup, so that
+        // call takes the ordinary path, which looks up first (#2842).
+        if let Some(uid) = crate::mutation::place_root(self.syms, &self.hir, map)
+            && view.arguments.iter().any(|a| {
+                crate::mutation::mutated_locals(
+                    self.syms,
+                    &self.hir,
+                    ms_check::api::hir::Body::Expr(a.expr),
+                    &self.cx.callables,
+                    &self.cx.mutated,
+                )
+                .contains(&uid)
+            })
+        {
+            return Ok(None);
+        }
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));

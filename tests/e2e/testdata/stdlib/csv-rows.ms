@@ -124,3 +124,9 @@ test "malformed UTF-8 is InvalidData beside valid rows and a split scalar is not
 
     for size in 1..8:
         try expect_equal(try read_rows("a,é,😀\n", size), [["a", "é", "😀"]])
+
+test "row and cell budgets bound parse only, never depending on chunk size":
+    let limits = CsvOptions(max_rows: 1, max_cells: 1)
+    for size in 1..5:
+        try expect_equal(try read_rows("a\nb\n", size, limits.clone()), [["a"], ["b"]])
+    try expect_equal(parse("a\nb\n", limits).is_error(), true)

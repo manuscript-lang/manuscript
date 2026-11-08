@@ -47,6 +47,27 @@ struct Pipe {
     flushes: Vec<i64>,
 }
 
+thread_local! {
+    static OPS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Every 256th transfer on a thread passes a scheduler point and a cancellation check, so a task
+/// that always finds work still sees timers, time limits and cancellation. Call it where the
+/// operation holds nothing, because a cancel unwinds from here.
+fn cancellation_point() {
+    let n = OPS.with(|c| {
+        c.set(c.get().wrapping_add(1));
+        c.get()
+    });
+    if n & 0xff == 0 {
+        // SAFETY: called from a task of this thread's scheduler.
+        unsafe { crate::task::msrt_task_yield() };
+        if crate::fault::cancel_flag().load(core::sync::atomic::Ordering::Relaxed) != 0 {
+            crate::fault::msrt_cancelled();
+        }
+    }
+}
+
 /// A lock held for a few pointer moves, so a waiter spins instead of sleeping: a contended
 /// `std::sync::Mutex` costs a futex wait and wake (microseconds) per hand-over, which made a
 /// pipe between threads run 5 to 10 times slower than between tasks of one thread.
@@ -212,11 +233,14 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
                 Some(reader) => Some(reader),
                 None => {
                     p.queue.push_back(item);
-                    return if p.queue.len() > p.capacity {
+                    let status = if p.queue.len() > p.capacity {
                         FULL
                     } else {
                         WRITTEN
                     };
+                    drop(table);
+                    cancellation_point();
+                    return status;
                 }
             },
             _ => {
@@ -295,6 +319,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_try(
     d: ms_rt_abi::ValueDesc,
     out: *mut u8,
 ) -> u8 {
+    cancellation_point();
     let (item, released) = {
         let mut table = pipes();
         let Some(p) = slot(&mut table, pipe) else {
