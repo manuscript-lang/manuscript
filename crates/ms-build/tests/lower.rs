@@ -124,3 +124,39 @@ fn rsa_source_calls_and_function_values() {
     }
     assert!(mir.contains("alt.tag"));
 }
+
+#[test]
+fn source_function_value_cannot_copy_a_borrowed_resource_result() {
+    let syms = ms_syntax::Names::global();
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/lower-reject/source-function-borrowed-resource.ms");
+    let loaded = check_graph(
+        syms,
+        load_file(syms, &path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
+    assert!(!loaded.success(), "resource callback must not be copied");
+    assert!(format!("{:?}", loaded.diagnostics).contains("cannot be cloned"));
+}
+
+#[test]
+fn source_function_value_cannot_copy_a_borrowed_callback_result() {
+    let syms = ms_syntax::Names::global();
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/lower-reject/source-function-borrowed-callback.ms");
+    let loaded = check_graph(
+        syms,
+        load_file(syms, &path.to_string_lossy(), Default::default()),
+        CheckRequest::default(),
+    );
+    assert!(loaded.success(), "{:?}", loaded.diagnostics);
+    let error = lower_program(
+        syms,
+        &loaded.program.expect("program"),
+        &Options {
+            entry: loaded.entry,
+        },
+    )
+    .expect_err("non-Clonable callback result");
+    assert!(error.to_string().contains("non-Clonable borrow"), "{error}");
+}
