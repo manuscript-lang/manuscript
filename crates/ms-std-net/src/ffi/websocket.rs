@@ -2,6 +2,7 @@
 
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
+use crate::bound::Bound;
 use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
@@ -95,7 +96,7 @@ native! {
                 },
             ),
         };
-        out.write(Object(SocketH(report(result, &err)?)));
+        out.write(Object(SocketH(Bound::new(report(result, &err)?))));
         Ok(())
     }
 
@@ -112,7 +113,7 @@ native! {
         let origins: Vec<String> = origins.into_iter().map(str::to_string).collect();
         let protocols: Vec<String> = subprotocols.into_iter().map(str::to_string).collect();
         let s = x.upgrade(&origins, &protocols, opt(*has_max, max));
-        out.write(Object(SocketH(report(s, &err)?)));
+        out.write(Object(SocketH(Bound::new(report(s, &err)?))));
         Ok(())
     }
 

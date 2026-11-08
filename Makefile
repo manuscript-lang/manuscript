@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check cancel-sweep count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check cancel-sweep scaling-check count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -73,6 +73,10 @@ e2e: build
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
 count-check: build
 	$(MS) run tools/count-check.ms
+
+# Generated inputs at 1k/10k/100k units; fails when the 100k/10k time ratio of linear work exceeds SCALING_BOUND.
+scaling-check: build
+	$(MS) run tools/scaling-check.ms
 
 leak-check: build
 	$(MS) run tools/leak-check.ms

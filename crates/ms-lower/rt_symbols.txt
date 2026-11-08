@@ -55,6 +55,7 @@ msrt_cancelled() -> !
 msrt_cleanup_cancel(handle: usize) @leaf
 msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
+msrt_cleanup_remove(handle: usize) @leaf
 msrt_cleanup_run(handle: usize) @leaf
 msrt_cpu_level() -> i64
 msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf
