@@ -112,3 +112,27 @@ test "an Int-max part limit does not overflow on a partial part":
         let parts = try read_parts(body.clone(), size, 9223372036854775807)
         try expect_equal(parts.length(), 1)
         try expect_equal(parts[0].data, "x".to_bytes())
+
+test "transport padded multipart delimiters survive every chunk size":
+    let body = "preamble\r\n--XyZ \t\r\nX-Label: first\r\n\r\n \tpayload \r\n--XyZ\t \r\n\r\n\r\n--XyZ-- \t\r\nepilogue".to_bytes()
+    let expected = try parse_multipart(body, "XyZ")
+    try expect_equal(expected.length(), 2)
+    try expect_equal(expected[0].data, " \tpayload ".to_bytes())
+    try expect_equal(expected[1].data, "".to_bytes())
+    for size in 1..body.length() + 1:
+        try expect_equal(try read_parts(body.clone(), size), expected)
+
+test "transport padding does not bypass streaming part budget":
+    let padding = " ".repeat(40).get("")
+    let body = "--XyZ{padding}\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
+    for size in 1..body.length() + 1:
+        try expect_equal(read_parts(body.clone(), size, 10).err().kind, "EOVERFLOW")
+
+test "padded multipart sections retain exact raw budget boundary":
+    let body = "--XyZ \t\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
+
+    for size in 1..body.length() + 1:
+        let parts = try read_parts(body.clone(), size, 7)
+        try expect_equal(parts.length(), 1)
+        try expect_equal(parts[0].data, "x".to_bytes())
+        try expect_equal(read_parts(body.clone(), size, 6).err().kind, "EOVERFLOW")
