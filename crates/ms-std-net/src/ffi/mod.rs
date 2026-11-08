@@ -17,6 +17,8 @@ pub mod net;
 pub mod tls;
 pub mod websocket;
 
+pub use crate::bound::Bound;
+
 use crate::error::Status;
 
 /// Records the `Failed` message of `r`'s error and turns it into its status byte.
@@ -68,13 +70,13 @@ impl Clone for HeadersH {
 
 handle_newtype! {
     /// A `Network` handle.
-    NetH(std::rc::Rc<crate::net::Network>);
+    NetH(Bound<std::rc::Rc<crate::net::Network>>);
     /// A `Connection` handle.
-    ConnH(std::rc::Rc<crate::conn::Connection>);
+    ConnH(Bound<std::rc::Rc<crate::conn::Connection>>);
     /// A `Listener` handle.
-    ListenerH(std::rc::Rc<crate::conn::Listener>);
+    ListenerH(Bound<std::rc::Rc<crate::conn::Listener>>);
     /// A `DatagramSocket` handle.
-    DgramH(std::rc::Rc<crate::conn::Datagrams>);
+    DgramH(Bound<std::rc::Rc<crate::conn::Datagrams>>);
     /// An `HttpHeaders` handle; `HttpHeaders.clone` copies the headers.
     HeadersH(crate::http::headers::Shared): clone;
     /// The settings every connection of one `serve` call shares.
@@ -82,13 +84,13 @@ handle_newtype! {
     /// The server of one `serve` worker thread.
     WorkerH(std::rc::Rc<crate::http::server::Server>);
     /// An `HttpClient` handle.
-    ClientH(std::rc::Rc<crate::http::client::Client>);
+    ClientH(Bound<std::rc::Rc<crate::http::client::Client>>);
     /// An `HttpResponseBody` handle.
-    BodyH(std::rc::Rc<crate::http::client::ResponseBody>);
+    BodyH(Bound<std::rc::Rc<crate::http::client::ResponseBody>>);
     /// An `HttpExchange` handle.
     ExchH(std::rc::Rc<crate::http::exchange::Exchange>);
     /// A `WebSocket` handle.
-    SocketH(std::rc::Rc<crate::ws::socket::Socket>);
+    SocketH(Bound<std::rc::Rc<crate::ws::socket::Socket>>);
     /// An `IpAddress` handle.
     IpH(std::net::IpAddr);
 }
