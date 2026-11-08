@@ -335,7 +335,8 @@ fn write_rows(rows: List[List[String]], var out: List[List[String]]) Unit!:
 Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.
 
 Chunks may end anywhere, including inside a quoted cell, a CRLF or a UTF-8 scalar; only the unfinished
-record is buffered. `max_record_bytes` bounds that record and fails the read with `EOVERFLOW`. A
+record is buffered. `options.max_rows` and `options.max_cells` bound `parse` only and are ignored here,
+so the result never depends on chunk boundaries; `max_record_bytes` bounds that record and fails the read with `EOVERFLOW`. A
 malformed record fails the read with `EBADMSG`, and invalid `options` with `EINVAL`. Closing the
 result closes `input`.
 */
@@ -347,8 +348,14 @@ export fn csv_rows(
     return through[Bytes, List[String]](
         input,
         CsvRows(
-            options: options, max_record_bytes: max_record_bytes, tail: join([]),
-            scanned: 0, quoted: false, longest: 0
+            options: CsvOptions(
+                delimiter: options.delimiter, line_ending: options.line_ending
+            ),
+            max_record_bytes: max_record_bytes,
+            tail: join([]),
+            scanned: 0,
+            quoted: false,
+            longest: 0
         )
     )
 

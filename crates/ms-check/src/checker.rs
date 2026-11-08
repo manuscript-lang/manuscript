@@ -207,8 +207,12 @@ pub struct Checker {
     pub(crate) p: Program,
     /// Candidate positions in declaration order; type arguments are matched at use.
     pub(crate) methods_by_receiver: HashMap<Name, Vec<usize>>,
-    /// Method indices by implemented contract id; methods of a contract variable are in `generic_contract_methods`.
-    pub(crate) methods_by_contract: HashMap<Name, Vec<usize>>,
+    /// Method indices by implemented contract id and receiver id, for a receiver that is not a type
+    /// variable; methods of a contract variable are in `generic_contract_methods`. `implements`
+    /// reads one bucket, so it does not scan every implementation of a widely implemented contract.
+    pub(crate) methods_by_contract: HashMap<(Name, Name), Vec<usize>>,
+    /// Method indices by implemented contract id for a receiver that is a type variable.
+    pub(crate) variable_receiver_contract_methods: HashMap<Name, Vec<usize>>,
     pub(crate) generic_contract_methods: Vec<usize>,
     pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
     /// Types whose own `clone` is being looked up; a recursive type meets itself through its
@@ -273,6 +277,7 @@ impl Checker {
             },
             methods_by_receiver: HashMap::new(),
             methods_by_contract: HashMap::new(),
+            variable_receiver_contract_methods: HashMap::new(),
             generic_contract_methods: Vec::new(),
             methods_by_name: HashMap::new(),
             clone_probes: RefCell::new(Vec::new()),

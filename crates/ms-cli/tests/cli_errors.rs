@@ -278,3 +278,22 @@ fn options_without_a_target_use_the_manifest_in_the_current_directory() {
     assert!(fmt.status.success(), "{fmt:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_option_with_no_file_and_no_manifest_says_which_default_is_missing() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-no-manifest-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["lint", "--json"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(2), "{stderr}");
+    assert!(
+        stderr.contains("./ms.toml, which does not exist here"),
+        "{stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

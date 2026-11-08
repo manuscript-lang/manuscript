@@ -91,7 +91,7 @@ impl<'a> FnLower<'a> {
                 self.close_finish(recv);
                 Ok(Val { v, own: false })
             }
-            "get" if args.is_empty() && self.needs_drop(inner) && !recv.own => {
+            "get" if args.is_empty() && self.holds(inner) && !recv.own => {
                 // The payload of a borrowed optional is a borrow of it: a reader uses it in
                 // place and a `let` holds it as a lexical borrow. (An owned optional hands its
                 // payload over below.)
@@ -184,8 +184,9 @@ impl<'a> FnLower<'a> {
                     out,
                     &mut |s| {
                         if keep {
-                            let o = s.owned(Val { v: r, own: false });
-                            s.finish(recv);
+                            // Pass an owned wrapper through; copying a borrowed wrapper is
+                            // the declared Optional boundary, not an implicit ordinary copy.
+                            let o = s.owned_boundary(recv);
                             s.finish(f.val);
                             return Ok(Some(o));
                         }
@@ -241,16 +242,31 @@ impl<'a> FnLower<'a> {
             some,
             out,
             &mut |s| {
-                // An owned optional hands its payload over; a borrowed `Clonable` one is cloned.
-                let o = if recv.own {
-                    s.b.opt_unbox(r)
+                // Closing an unused cause can fault. Keep an owned resource receiver
+                // intact and registered until that cleanup succeeds, before taking its payload.
+                let held = if recv.own && cause.is_some_and(|c| c.val.own) {
+                    s.hold_resource_temp(r)?
                 } else {
-                    let p = s.b.opt_get(r);
-                    s.clone_value(p)
+                    None
                 };
                 if let Some(c) = cause {
-                    s.finish(c.val);
+                    // A borrowed cause remains with its caller.
+                    s.close_finish(c.val);
                 }
+                let receiver = if let Some(key) = held {
+                    let owned = s.take_resource_temp(key).0;
+                    s.unhold_temp(key);
+                    owned
+                } else {
+                    r
+                };
+                // No user evaluation follows retirement of the intact receiver guard.
+                let o = if recv.own {
+                    s.b.opt_unbox(receiver)
+                } else {
+                    let p = s.b.opt_get(receiver);
+                    s.clone_value(p)
+                };
                 Ok(Some(s.b.alt_new(res, ok as u32, &[o])))
             },
             &mut |s| {
@@ -454,10 +470,8 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned_boundary(Val { v: p, own: false });
+                        let po = s.take_alt_field_through(alt, ok, 0, recv);
                         let v = s.b.alt_new(oa, out_ok, &[po]);
-                        s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
                     },
@@ -539,15 +553,13 @@ impl<'a> FnLower<'a> {
                     is_ok,
                     out,
                     &mut |s| {
-                        let p = s.b.alt_get(alt, ok, 0, r);
-                        let po = s.owned_boundary(Val { v: p, own: false });
+                        let po = s.take_alt_field_through(alt, ok, 0, recv);
                         let v = s.b.opt_some(po);
-                        s.finish(recv);
                         Ok(Some(v))
                     },
                     &mut |s| {
                         let v = s.none_owned(out);
-                        s.finish(recv);
+                        s.close_finish(recv);
                         Ok(Some(v))
                     },
                 )
@@ -603,8 +615,17 @@ impl<'a> FnLower<'a> {
     }
 
     /// An owned element for a collection, wrapped when the checker converted it to an optional.
-    pub(super) fn element_value(&mut self, a: &NArg) -> Value {
-        let v = self.owned(a.val);
+    pub(crate) fn element_value(&mut self, a: &NArg) -> Value {
+        // A resource staged by `stage_incoming_resources` leaves its fault registration only
+        // here, when the element is stored: every earlier check faults with it still registered.
+        let v = if self.resource_temps.contains_key(&a.val.v) {
+            let key = a.val.v;
+            let (v, _) = self.take_resource_temp(key);
+            self.unhold_temp(key);
+            v
+        } else {
+            self.owned(a.val)
+        };
         if a.wrapped { self.b.opt_some(v) } else { v }
     }
 }

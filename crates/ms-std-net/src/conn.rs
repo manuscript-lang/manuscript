@@ -293,7 +293,7 @@ impl Io for SharedIo {
 
 /// A connected stream socket.
 pub struct Connection {
-    owner: Rc<Network>,
+    owner: Arc<Network>,
     io: Box<dyn Io>,
     closed: Cell<bool>,
     /// Operations parked on `io`; the descriptor is released once a closed connection has none.
@@ -310,7 +310,7 @@ impl Resource for Connection {
 }
 
 impl Connection {
-    pub fn new(owner: Rc<Network>, io: Box<dyn Io>, local: String, peer: String) -> Connection {
+    pub fn new(owner: Arc<Network>, io: Box<dyn Io>, local: String, peer: String) -> Connection {
         Connection {
             owner,
             io,
@@ -322,7 +322,7 @@ impl Connection {
         }
     }
 
-    pub fn owner(&self) -> &Rc<Network> {
+    pub fn owner(&self) -> &Arc<Network> {
         &self.owner
     }
 
@@ -515,7 +515,7 @@ pub type Upgrade = Box<dyn Fn(Socket, Deadline) -> Result<Box<dyn Io>, NetErr>>;
 
 /// A listening socket.
 pub struct Listener {
-    owner: Rc<Network>,
+    owner: Arc<Network>,
     sock: OwnedSock,
     closed: Cell<bool>,
     /// Accepts parked on `sock`; see `Connection::busy`.
@@ -525,6 +525,10 @@ pub struct Listener {
     upgrade: Option<Upgrade>,
     handshake: Deadline,
     handshake_timeout: Option<i64>,
+    /// The thread that uses the listener. An accept registers its connection with the owning
+    /// network, which is not thread safe, so a promise started where the listener lives must run
+    /// there.
+    pin: ms_rt::sched::Pin,
 }
 
 impl Resource for Listener {
@@ -535,7 +539,7 @@ impl Resource for Listener {
 
 impl Listener {
     pub fn new(
-        owner: Rc<Network>,
+        owner: Arc<Network>,
         sock: Socket,
         unix_path: Option<String>,
         upgrade: Option<Upgrade>,
@@ -550,6 +554,8 @@ impl Listener {
         } else {
             address
         };
+        let pin = ms_rt::sched::Pin::new();
+        pin.touch();
         Listener {
             owner,
             sock: OwnedSock::new(sock),
@@ -560,6 +566,7 @@ impl Listener {
             upgrade,
             handshake: Deadline::none(),
             handshake_timeout,
+            pin,
         }
     }
 
@@ -642,6 +649,7 @@ impl Listener {
     pub fn accept(self: &Rc<Self>, timeout: Option<i64>) -> Result<Rc<Connection>, NetErr> {
         let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
         let _ = (&self.handshake, self.handshake_timeout);
+        self.pin.touch();
         let (sock, peer) = self.accept_socket(deadline)?;
         let local = sock
             .local_addr()
@@ -766,7 +774,7 @@ pub struct Datagram {
 
 /// A connectionless socket.
 pub struct Datagrams {
-    owner: Rc<Network>,
+    owner: Arc<Network>,
     sock: Owned<UdpSocket>,
     closed: Cell<bool>,
     /// Calls parked on `sock`; see `Connection::busy`.
@@ -784,7 +792,7 @@ impl Resource for Datagrams {
 }
 
 impl Datagrams {
-    pub fn new(owner: Rc<Network>, sock: UdpSocket) -> Datagrams {
+    pub fn new(owner: Arc<Network>, sock: UdpSocket) -> Datagrams {
         let address = sock.local_addr().map(|a| a.to_string()).unwrap_or_default();
         Datagrams {
             owner,
@@ -929,7 +937,7 @@ impl Datagrams {
 impl Network {
     /// Opens a TCP connection.
     pub fn connect(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         address: &str,
         timeout: Option<i64>,
     ) -> Result<Rc<Connection>, NetErr> {
@@ -947,7 +955,7 @@ impl Network {
     /// Opens a TCP connection, with a TLS handshake against `server_name` when
     /// `tls` carries a prepared client configuration.
     pub fn dial_stream(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         address: &str,
         tls: Option<(&Arc<rustls::ClientConfig>, &str)>,
         deadline: Deadline,
@@ -968,7 +976,7 @@ impl Network {
 
     /// Opens a Unix domain socket connection.
     pub fn connect_unix(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         path: &str,
         timeout: Option<i64>,
     ) -> Result<Rc<Connection>, NetErr> {
@@ -984,7 +992,7 @@ impl Network {
     }
 
     /// Wraps a connected socket in a connection owned by this network.
-    pub fn adopt(self: &Rc<Self>, sock: Socket, wrap: Wrap) -> Result<Rc<Connection>, NetErr> {
+    pub fn adopt(self: &Arc<Self>, sock: Socket, wrap: Wrap) -> Result<Rc<Connection>, NetErr> {
         let local = sock
             .local_addr()
             .map(|a| socket_addr_text(&a))
@@ -999,7 +1007,7 @@ impl Network {
 
     /// Registers an established stream as a connection of this network.
     pub fn adopt_io(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         io: Box<dyn Io>,
         local: String,
         peer: String,
@@ -1014,7 +1022,7 @@ impl Network {
     }
 
     /// Listens for TCP connections.
-    pub fn listen(self: &Rc<Self>, address: &str) -> Result<Rc<Listener>, NetErr> {
+    pub fn listen(self: &Arc<Self>, address: &str) -> Result<Rc<Listener>, NetErr> {
         if self.is_closed() {
             return Err(NetErr::Closed);
         }
@@ -1027,7 +1035,7 @@ impl Network {
 
     /// Connects over TCP and verifies the server against the system roots.
     pub fn connect_tls(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         address: &str,
         server_name: &str,
         timeout: Option<i64>,
@@ -1047,7 +1055,7 @@ impl Network {
 
     /// Connects over TCP and completes a TLS handshake with `options`.
     pub fn connect_tls_config(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         address: &str,
         options: &TlsOptions,
         timeout: Option<i64>,
@@ -1067,7 +1075,7 @@ impl Network {
 
     /// Listens for TCP connections and handshakes each accepted one.
     pub fn listen_tls(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         address: &str,
         options: &TlsOptions,
         handshake_timeout: Option<i64>,
@@ -1096,7 +1104,7 @@ impl Network {
     }
 
     /// Listens on a Unix domain socket.
-    pub fn listen_unix_socket(self: &Rc<Self>, path: &str) -> Result<Rc<Listener>, NetErr> {
+    pub fn listen_unix_socket(self: &Arc<Self>, path: &str) -> Result<Rc<Listener>, NetErr> {
         if self.is_closed() {
             return Err(NetErr::Closed);
         }
@@ -1113,7 +1121,7 @@ impl Network {
         ))
     }
 
-    pub fn register_listener(self: &Rc<Self>, listener: Listener) -> Result<Rc<Listener>, NetErr> {
+    pub fn register_listener(self: &Arc<Self>, listener: Listener) -> Result<Rc<Listener>, NetErr> {
         let listener = Rc::new(listener);
         let as_resource: Rc<dyn Resource> = listener.clone();
         if !self.own(&as_resource) {
@@ -1124,7 +1132,7 @@ impl Network {
     }
 
     /// Binds a datagram socket.
-    pub fn bind_datagram(self: &Rc<Self>, address: &str) -> Result<Rc<Datagrams>, NetErr> {
+    pub fn bind_datagram(self: &Arc<Self>, address: &str) -> Result<Rc<Datagrams>, NetErr> {
         let sock = self.bind_udp(address)?;
         let d = Rc::new(Datagrams::new(self.clone(), sock));
         let as_resource: Rc<dyn Resource> = d.clone();
@@ -1155,7 +1163,7 @@ mod tests {
 
     const SEC: Option<i64> = Some(2_000_000_000);
 
-    fn pair(n: &Rc<Network>) -> (Rc<Listener>, Rc<Connection>, Rc<Connection>) {
+    fn pair(n: &Arc<Network>) -> (Rc<Listener>, Rc<Connection>, Rc<Connection>) {
         let l = n.listen("127.0.0.1:0").unwrap();
         let client = n.connect(l.address(), SEC).unwrap();
         let server = l.accept(SEC).unwrap();

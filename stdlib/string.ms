@@ -260,6 +260,9 @@ impl StringTextOperations for String:
     // Replaces many patterns in one pass. At each position the first pair, in map order, whose key matches
     // wins and its replacement is not rescanned; empty keys are ignored.
     fn replace_each(pairs: Map[String, String]) String:
+        if pairs.is_empty():
+            return self.clone()
+
         var out = StringBuilder()
         let news = pairs.values()
         var needles = List[List[String]]()

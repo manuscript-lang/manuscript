@@ -40,7 +40,7 @@ impl Source {
         }).contains(&offset)
     }
 
-    /// Token kinds with original start offsets; `None` when the source does not lex.
+    /// Token kinds in nondecreasing original-offset order; `None` when the source does not lex.
     pub fn tokens(&self) -> Option<&[(Tok, usize)]> {
         self.tokens
             .get_or_init(|| {

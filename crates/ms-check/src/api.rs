@@ -31,7 +31,7 @@ pub mod hir {
 pub mod ownership {
     pub use crate::ownership::{
         Access, BindingFact, BindingFlags, BorrowKind, Class, Classifier, Fact, NodeFacts,
-        OwnedBorrow, ParamMode,
+        OwnedBorrow, ParamMode, native_method_argument_modes,
     };
 }
 

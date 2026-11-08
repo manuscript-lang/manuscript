@@ -251,7 +251,7 @@ fn artifact_source_collision<'a>(
     std::iter::once(Path::new(input))
         .chain(sources)
         .find_map(|source| {
-            let canonical = std::fs::canonicalize(source).ok();
+            let canonical = pathops::identity(source);
             // A regular source's canonical path is already its publication entry. Only the
             // requested final symlink needs its own entry checked as well as its target.
             let entry = std::fs::symlink_metadata(source)
@@ -284,7 +284,7 @@ fn artifact_source_collision<'a>(
 fn ambiguous_symlink_alias(source: &Path, artifact: &Path, resolved: &Path) -> bool {
     if source.parent() != artifact.parent()
         || !std::fs::symlink_metadata(artifact).is_ok_and(|m| m.file_type().is_symlink())
-        || std::fs::canonicalize(artifact).ok().as_deref() != Some(resolved)
+        || pathops::identity(artifact).as_deref() != Some(resolved)
     {
         return false;
     }
@@ -327,13 +327,13 @@ fn distinct_names(
 // inode identities: a distinct metadata hard link/symlink to source is safe to replace (#2271).
 fn publication_entry(path: &Path) -> Option<std::path::PathBuf> {
     if std::fs::symlink_metadata(path).is_ok_and(|m| !m.file_type().is_symlink()) {
-        return std::fs::canonicalize(path).ok();
+        return pathops::identity(path);
     }
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
-    Some(std::fs::canonicalize(parent).ok()?.join(path.file_name()?))
+    Some(pathops::identity(parent)?.join(path.file_name()?))
 }
 
 /// Builds the `--json` document from `(source_root, completed, status, reason, diagnostics)`.
@@ -390,8 +390,8 @@ fn same_file(a: &std::fs::Metadata, b: &std::fs::Metadata, a_path: &str, b_path:
     {
         let _ = (a, b);
         matches!(
-            (std::fs::canonicalize(a_path), std::fs::canonicalize(b_path)),
-            (Ok(x), Ok(y)) if x == y
+            (pathops::identity(Path::new(a_path)), pathops::identity(Path::new(b_path))),
+            (Some(x), Some(y)) if x == y
         )
     }
 }
@@ -418,7 +418,7 @@ impl BuildCache {
         let mut inputs = vec![std::env::current_exe().ok()?];
         // The lexical entry name can keep pointing at a different file after a symlink changes.
         // Its selected identity must be part of the key, not only the old graph's source stamps.
-        inputs.push(std::fs::canonicalize(&filename).ok()?);
+        inputs.push(pathops::identity(Path::new(&filename))?);
         if pathops::base(&filename) == "ms.toml" {
             let project = ms_driver::project::read_project(&filename).ok()?;
             inputs.push(std::path::PathBuf::from(project.entry));
@@ -427,8 +427,19 @@ impl BuildCache {
         // source. Include the current selection in the key, resolving directory symlinks as the
         // loader does, so even a previously absent manifest invalidates a cached program.
         let source_dir = pathops::eval_symlinks(&pathops::dir(&filename)).ok()?;
-        inputs
-            .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
+        let manifest = ms_driver::load::enclosing_manifest(&source_dir);
+        inputs.extend(manifest.clone().map(std::path::PathBuf::from));
+        // An alias or the source directory that is a symlink can be retargeted without touching
+        // any recorded source or the manifest, so the key names where each one resolves now.
+        // The directories themselves are not stamped: building into one changes its mtime.
+        let mut resolved = Vec::new();
+        if let Some(manifest) = manifest
+            && let Ok(project) = ms_driver::project::read_project(&manifest)
+        {
+            for target in project.aliases.values().chain([&project.source]) {
+                resolved.push(pathops::identity(Path::new(target))?.display().to_string());
+            }
+        }
         inputs.push(backend.runtime_path().ok()?);
         let options = backend.build_options();
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
@@ -436,6 +447,7 @@ impl BuildCache {
         let build_type = request.build_type.as_str();
         let mut parts = vec![build_type, filename.as_str(), output, crate::VERSION];
         parts.extend(request.link.iter().map(String::as_str));
+        parts.extend(resolved.iter().map(String::as_str));
         parts.push(if options.static_musl { "musl" } else { "libc" });
         let key = ms_build::cache::key(&parts, &inputs, &options)?;
         Some(BuildCache {

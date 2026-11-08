@@ -91,6 +91,18 @@ test "TOML implicit parents dotted keys and arrays of tables":
         2
     )
 
+test "TOML parses a long array of tables in order":
+    var source = ""
+    for i in 0..30000:
+        source += "[[items]]\nid = {i}\n"
+
+    let root = parse(text: source) | try expect_ok | try entries
+    let rows = try items(root.get("items").get())
+    rows.length() | try expect_equal(30000)
+
+    let last = try entries(rows.get(29999).clone())
+    last["id"] | try expect_equal(TomlValue.IntValue(29999))
+
 test "TOML rejects malformed data redefinitions and closed inline tables":
     for text in [
         "a=1\na=2", "[a]\n[a]", "a=1\n[a]", "a=\{b=1\}\na.c=2", "a.b=1\n[a]", "a=[1 2]",

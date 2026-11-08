@@ -3,6 +3,7 @@
 
 mod call_chains;
 mod callable_identity;
+mod diagnostic_wording;
 mod error_values;
 mod follow_on_errors;
 mod generic_recursion;
@@ -18,3 +19,4 @@ mod ownership;
 mod promise_fixes;
 mod subcodes;
 mod type_display;
+mod wrapper_passthrough;

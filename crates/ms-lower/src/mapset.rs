@@ -338,6 +338,22 @@ impl<'a> FnLower<'a> {
         if parts.first() != Some(&key_ty) {
             return Ok(None);
         }
+        // A default that changes the map would run between the borrow and the lookup, so that
+        // call takes the ordinary path, which looks up first (#2842).
+        if let Some(uid) = crate::mutation::place_root(self.syms, &self.hir, map)
+            && view.arguments.iter().any(|a| {
+                crate::mutation::mutated_locals(
+                    self.syms,
+                    &self.hir,
+                    ms_check::api::hir::Body::Expr(a.expr),
+                    &self.cx.callables,
+                    &self.cx.mutated,
+                )
+                .contains(&uid)
+            })
+        {
+            return Ok(None);
+        }
         let mv = self.expr(map)?;
         if self.dead {
             return Ok(Some(mv));
@@ -726,13 +742,25 @@ impl<'a> FnLower<'a> {
             (sym.as_str(), self.b.m.types.kind(mt).clone())
             && let Some(value) = args.iter().find(|a| self.syms.str(a.name) == "value")
             && let Some(index) = args.iter().find(|a| self.syms.str(a.name) == "index")
-            && value.val.own
+            && (value.val.own || self.resource_temps.contains_key(&value.val.v))
             && !value.wrapped
             && value.val.v != old
         {
             let d = self.type_desc(elem);
             let i = self.borrow(index.val);
-            let element = self.put_slot(value.val.v);
+            // A staged resource stays registered for fault cleanup until the bounds check passes.
+            let element = if self.resource_temps.contains_key(&value.val.v) {
+                let n = self.b.list_len(old);
+                let zero = self.b.iconst(0);
+                let neg = self.b.icmp(ms_mir::ir::Cc::Lt, i, zero);
+                let shifted = self.b.binop(ms_mir::ir::Op::IAdd, i, n);
+                let r = self.b.select(neg, shifted, i);
+                self.check_index(0, i, r, n, true);
+                self.element_value(value)
+            } else {
+                value.val.v
+            };
+            let element = self.put_slot(element);
             let slot = self.put_slot(old);
             self.call_runtime("msrt_list_insert", &[slot, d, i, element], MTy::UNIT)?;
             let new = self.take_slot(slot, mt);

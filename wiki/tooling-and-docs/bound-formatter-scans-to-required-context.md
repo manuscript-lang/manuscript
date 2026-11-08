@@ -16,3 +16,9 @@ as long-flow workloads before it is retained.
 Compare complete baseline output around the cutoff and stop boundaries, and
 measure tiny ordinary calls and lists as well as long flows. A fast long case
 does not excuse common-path regressions. See the [measured matrix](../../bench/perf/formatter-flow/results-2026-10-31.md).
+
+Restore multiline literal and block-comment placeholders in source order with a
+forward cursor and an append-only output. Searching and replacing each marker
+from the beginning rescans and shifts an increasingly large document. Compute
+indentation from the restored prefix, not the masked input: an earlier multiline
+literal on the same line can change the prefix seen by a later placeholder.

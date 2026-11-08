@@ -483,8 +483,9 @@ impl FnLower<'_> {
             return Ok(Receiver::Value(recv));
         }
         let t = self.ty_of(recv.v);
-        if !self.needs_drop(t) {
-            // A plain value is as cheap to copy as to point to.
+        if !self.needs_drop(t) && self.part_closer_mir(t)?.is_none() {
+            // A plain value is as cheap to copy as to point to. A resource with no drop glue
+            // still has one owner that closes it, so a borrowed one stays an address.
             return Ok(Receiver::Value(recv));
         }
         let slot = self
@@ -501,6 +502,19 @@ impl FnLower<'_> {
             Receiver::Addr(slot, _) => slot,
             Receiver::Value(v) => self.owned(v),
         }
+    }
+
+    /// A source method environment closes the receiver only when it owns the capture.
+    /// The thunk identity already distinguishes owned captures from borrowed addresses.
+    fn own_receiver_capture(&mut self, thunk: FuncId, recv: Receiver) -> Result<(), Error> {
+        if let Receiver::Value(v) = recv {
+            let ty = self.ty_of(v.v);
+            if let Some(kind) = self.part_closer_mir(ty)? {
+                let close = self.close_thunk(&kind, ty, true);
+                self.b.m.funcs[thunk.index()].capture_closers = vec![(0, close)];
+            }
+        }
+        Ok(())
     }
 
     /// Queues (once per key) the thunk of a source method that changes its receiver, which
@@ -750,6 +764,9 @@ impl FnLower<'_> {
             } else if let Some(thunk) =
                 self.default_thunk(e, fid, &c, &subst, Some(recv_mty), None)?
             {
+                if !changes {
+                    self.own_receiver_capture(thunk, recv)?;
+                }
                 let held = self.captured(recv);
                 let v = self
                     .b
@@ -769,6 +786,12 @@ impl FnLower<'_> {
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
+                // A callee that returns a borrow of its receiver or arguments: the closure's
+                // caller expects an owned result, so the thunk copies it.
+                let copy_result = match callee {
+                    Ok((fid, _)) => self.borrowed_result_copy(fid, ret, &name)?,
+                    Err(_) => false,
+                };
                 let mut ps = vec![Param {
                     ty: MTy::PTR,
                     mode: Mode::Borrow,
@@ -802,6 +825,12 @@ impl FnLower<'_> {
                     }
                     Ok((fid, true)) => call_changing_receiver(&mut b, fid, this, recv_mty, rest),
                 };
+                let r = if copy_result {
+                    b.emit(Op::Clone, &[r], Imm::Int(1), Some(ret))
+                        .expect("copy result")
+                } else {
+                    r
+                };
                 b.ret(Some(r));
                 let f = b.into_func();
                 let id = self.b.m.add_func(f);
@@ -809,11 +838,28 @@ impl FnLower<'_> {
                 id
             }
         };
+        if matches!(callee, Ok((_, false))) {
+            self.own_receiver_capture(thunk, recv)?;
+        }
         let v = self
             .b
             .emit(Op::ClosureNew, &[held], Imm::Func(thunk), Some(fty))
             .expect("closure");
         Ok(Val { v, own: true })
+    }
+
+    /// Whether a bound method's thunk must copy the result of `fid`, a callee returning a borrow.
+    /// A resource result cannot be copied, so that form is reported instead of miscompiled.
+    fn borrowed_result_copy(&mut self, fid: FuncId, ret: MTy, name: &str) -> Result<bool, Error> {
+        if !self.b.m.funcs[fid.index()].ret_borrowed || !self.needs_drop(ret) {
+            return Ok(false);
+        }
+        if self.part_closer_mir(ret)?.is_some() {
+            return Err(Error::new(format!(
+                "method value .{name} returns a borrowed resource; call the method instead"
+            )));
+        }
+        Ok(true)
     }
 
     /// A native function used as a value: a closure forwarding to the native.
@@ -934,6 +980,12 @@ impl FnLower<'_> {
                 f.kind = FuncKind::Closure {
                     captures: vec![held.capture(rty)],
                 };
+                // A receiver the closure owns is closed when the closure is dropped.
+                if matches!(held, Held::Value)
+                    && let Some(kind) = self.part_closer_mir(rty)?
+                {
+                    f.capture_closers = vec![(0, self.close_thunk(&kind, rty, true))];
+                }
                 let id = self.b.m.add_func(f);
                 // Omission adaptation needs the declared payload types, including the
                 // method's own type arguments fixed by its checked function-value type.
@@ -952,6 +1004,12 @@ impl FnLower<'_> {
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
+                        consumed_arguments: ms_check::api::ownership::native_method_argument_modes(
+                            self.syms, m,
+                        )
+                        .into_iter()
+                        .map(|mode| mode == ms_check::api::ownership::ParamMode::Move)
+                        .collect(),
                         method: Rc::new(method),
                         hir: self.hir.clone(),
                         held,
@@ -1240,6 +1298,7 @@ pub(crate) fn build_default_thunk(
     let file = m.add_file(syms.str(job.callable.module.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
+    b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, hir, job.subst.clone(), file, proto.ret);
     let result = lower_default_thunk(&mut fl, job);
     let mut f = fl.b.into_func();
@@ -1316,6 +1375,19 @@ fn lower_default_thunk(
             all.extend(vals);
             fl.b.call(fid, &all)
         }
+    };
+    // A callee returning a borrow points into its receiver or a holder: copy it before the
+    // holders drop.
+    let r = if fl.b.m.funcs[fid.index()].ret_borrowed {
+        let t = fl.ty_of(r);
+        if fl.part_closer_mir(t)?.is_some() {
+            return Err(Error::new(
+                "a method value returns a borrowed resource; call the method instead",
+            ));
+        }
+        fl.clone_value(r)
+    } else {
+        r
     };
     for held in holders {
         fl.drop_value(held);
@@ -1525,6 +1597,7 @@ pub(crate) fn build_bound_native(
     let file = m.add_file(syms.str(job.hir.data.file));
     let mut b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
+    b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), ct::Subst::new(), file, proto.ret);
     fl.scope_override = Some(job.scope);
     let recv_ty = match job.held {
@@ -1601,6 +1674,18 @@ fn lower_bound_native(
     let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
+    debug_assert_eq!(args.len(), job.consumed_arguments.len());
+    debug_assert_eq!(args.len(), job.method.ty.params.len());
+    for ((arg, consumed), param) in args
+        .iter()
+        .zip(&job.consumed_arguments)
+        .zip(&job.method.ty.params)
+    {
+        debug_assert_eq!(arg.name, param.name);
+        if *consumed && !arg.val.own && fl.cx.classes.concretely_clonable(fl.syms, &param.ty) {
+            fl.boundary_reads.insert(arg.val.v);
+        }
+    }
     if let Held::Shared(_) = job.held {
         let out = fl.shared_native_call(&job.method, cap, recv_ty, &args, ret)?;
         fl.emit_return(Some(out));

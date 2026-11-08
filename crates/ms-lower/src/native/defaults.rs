@@ -76,6 +76,9 @@ impl<'a> FnLower<'a> {
                 }
             };
             let mut val = r?;
+            if self.dead {
+                return Ok(());
+            }
             if p.ty.is(Builtin::Optional) {
                 let o = self.owned(val);
                 val = Val {
@@ -95,6 +98,16 @@ impl<'a> FnLower<'a> {
 
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
+        self.native_args_staged(view, false)
+    }
+
+    /// `native_args`; with `stage`, an owned resource stays registered for fault cleanup while
+    /// the later operands run (the callee takes it through `element_value`).
+    pub(crate) fn native_args_staged(
+        &mut self,
+        view: &CallView<'_>,
+        stage: bool,
+    ) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
         let mut read_at = Vec::new();
         let mut held = Vec::new();
@@ -115,8 +128,24 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
-            held.push(later_try && val.own);
-            let val = if later_try { self.hold_temp(val) } else { val };
+            let owned = val.own;
+            let mut staged = false;
+            let val = if stage
+                && val.own
+                && !reader
+                && a.wrap_optional.is_none()
+                && n + 1 < view.arguments.len()
+                && let Some(key) = self.hold_resource_temp(val.v)?
+            {
+                staged = true;
+                Val { v: key, own: false }
+            } else if later_try {
+                self.hold_temp(val)
+            } else {
+                val
+            };
+            // Only a `hold_temp` registration is released below once the later `try` succeeded.
+            held.push(later_try && owned && !staged);
             out.push(NArg {
                 name: a.slot.name,
                 val,

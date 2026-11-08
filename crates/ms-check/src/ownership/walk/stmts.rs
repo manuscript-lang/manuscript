@@ -581,12 +581,7 @@ impl Walker<'_> {
     /// A method used as a value (`xs.append`, `re.find`, or specialized, `log.error[Unit]`):
     /// the method and its receiver expression.
     pub(super) fn method_value_parts<'e>(&self, e: &'e Expr) -> Option<(MethodRef, &'e Expr)> {
-        let member = match &e.kind {
-            ExprKind::Apply { left, .. } if self.cx.m.info(e).native_str(self.syms) != "index" => {
-                left
-            }
-            _ => e,
-        };
+        let member = method_callee(self.syms, self.cx.m, e);
         let ExprKind::Member { left, .. } = &member.kind else {
             return None;
         };
@@ -620,13 +615,9 @@ impl Walker<'_> {
         recv: &Expr,
         escaping: bool,
     ) -> Vec<(Place, bool)> {
-        if !self.is_place(recv) {
-            // A temporary receiver has no other owner: the value keeps its own copy.
-            self.expr(recv, Demand::Read);
-            return Vec::new();
-        }
+        // A temporary receiver has no variable to share, so its updates would be lost.
         let whole = matches!(recv.kind, ExprKind::Name(_));
-        let Some((info, _)) = self.place(recv).filter(|_| whole) else {
+        let Some((info, _)) = self.place(recv).filter(|_| whole && self.is_place(recv)) else {
             self.error(
                 e.pos,
                 "a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closure",
@@ -662,6 +653,17 @@ impl Walker<'_> {
         recv: &Expr,
         escaping: bool,
     ) -> Vec<(Place, bool)> {
+        if let Some((m, _)) = self.method_value_parts(e)
+            && let Some(payload) = wrapper_passthrough(self.syms, &m, &self.cx.m.ty(recv))
+        {
+            // A function value can run repeatedly and cannot move out its captured receiver.
+            // Only the preserved payload needs copying; callback inputs remain borrowed.
+            self.require_clonable(
+                e,
+                &payload,
+                "this method value keeps its receiver for repeated calls, so it",
+            );
+        }
         if self.is_place(recv)
             && let Some((m, _)) = self.method_value_parts(e)
             && takes_element_mutator(&m)

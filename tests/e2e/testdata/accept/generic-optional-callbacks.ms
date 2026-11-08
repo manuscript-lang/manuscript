@@ -28,11 +28,11 @@ fn same_optional(left: Int?, right: Int?) Bool:
 
 fn optional_default(value: Int? = 7) Int: value.get(-1)
 
-fn bound_missing[T](value: T?) T!Error:
+fn bound_missing[T: Clonable](value: T?) T!Error:
     let convert = value.ok_or[Error]
     return convert()
 
-fn nested_bound_missing[T](value: T?) T!Error:
+fn nested_bound_missing[T: Clonable](value: T?) T!Error:
     let convert = fn:
         let bound = value.ok_or[Error]
         return bound()

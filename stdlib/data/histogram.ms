@@ -25,7 +25,7 @@ fn bucket_top(index: Int) Int:
     let offset = index - EXACT
     let shift = offset / 32 + 1
     let low = shift_left(offset % 32 + 32, shift)
-    return low + shift_left(1, shift) - 1
+    return low + (shift_left(1, shift) - 1)
 
 /*
 A latency histogram: records non-negative `Int` values, usually nanoseconds, in fixed memory and
@@ -95,7 +95,7 @@ impl Histogram:
     // Value at or below which `p` percent of observations fall, for `p` in 0.0 through 100.0; none when empty.
     // The answer is the top of the matching bucket, never above `maximum`. A `p` outside the range faults.
     fn percentile(p: Float) Int?:
-        if p < 0.0 or p > 100.0: panic(
+        if not (p >= 0.0 and p <= 100.0): panic(
             "Histogram.percentile: p {p} must be within 0.0 and 100.0"
         )
         if self.total == 0: return none

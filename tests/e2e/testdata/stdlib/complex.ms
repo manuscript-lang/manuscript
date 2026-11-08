@@ -54,3 +54,11 @@ test "complex sqrt stays finite when the magnitude overflows":
 
     let square = root.scale(1e-100).multiply(root.scale(1e-100))
     try expect_true(near(square.scale(1e-108), complex(1.7, 1.7)))
+
+test "complex trig keeps exact zeros and finite limits when parts overflow":
+    try expect_equal(complex(0.0, 1000.0).sin(), complex(0.0, infinity))
+    try expect_equal(complex(0.0, 1000.0).cos(), complex(infinity, -0.0))
+    try expect_equal(complex(0.0, 1000.0).tan(), complex(0.0, 1.0))
+    try expect_equal(complex(0.0, -1000.0).tan(), complex(-0.0, -1.0))
+    try expect_equal(complex(1000.0, 0.0).tanh(), complex(1.0, 0.0))
+    try expect_equal(complex(-1000.0, 0.0).sinh(), complex(-infinity, 0.0))

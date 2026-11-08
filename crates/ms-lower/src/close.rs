@@ -387,12 +387,12 @@ impl FnLower<'_> {
         Ok(Some(key))
     }
 
-    /// Retires the resource's cleanup and takes its sole owned value. Call in reverse
-    /// registration order, with no further operand evaluation before the values are consumed.
-    /// Keep the metadata: emitting an early-return branch must not change the continuing path.
+    /// Permanently retires only this resource's cleanup and takes its sole owned value.
+    /// Newer lexical owners remain registered. Keep the metadata: emitting an early-return
+    /// branch must not change the continuing path, but each runtime path consumes the handle once.
     pub(crate) fn take_resource_temp(&mut self, key: Value) -> (Value, CloseKind) {
         let owner = self.resource_temps[&key].clone();
-        let _ = self.call_runtime("msrt_cleanup_discard", &[owner.handle], MTy::UNIT);
+        let _ = self.call_runtime("msrt_cleanup_remove", &[owner.handle], MTy::UNIT);
         let v = self.move_out(owner.slot, self.ty_of(key));
         (v, owner.kind)
     }
@@ -420,8 +420,7 @@ impl FnLower<'_> {
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(self.syms, &ty) != ms_check::api::ownership::Class::Resource
-            || (self.closeable_impl(&ty).is_none()
-                && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
+            || (self.closeable_impl(&ty).is_none() && ty.is(Builtin::Result))
         {
             return v;
         }

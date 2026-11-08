@@ -45,8 +45,9 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
     if times < 0:
         panic("cycle: times must not be negative")
 
+    let count = if values.is_empty(): 0 else: times
     var out: List[T] = []
-    for unused1 in 0..times:
+    for unused1 in 0..count:
         for value in values:
             out.append(value.clone())
     return out
@@ -158,7 +159,10 @@ fn extend_combinations[T: Clonable](
         out.append(chosen.map(fn i: values[i].clone()))
         return
 
-    for i in start..values.length():
+    // An item is chosen only while enough items remain after it to reach `k`.
+    let last = values.length() - (k - chosen.length())
+
+    for i in start..last + 1:
         chosen.append(i)
         extend_combinations(values, k, i + 1, var chosen, var out)
         chosen.pop()
@@ -169,6 +173,10 @@ No input lists gives one empty combination; any empty input list gives an empty 
 Example: `product([[1, 2], [3, 4]])` is `[[1, 3], [1, 4], [2, 3], [2, 4]]`.
 */
 export fn product[T: Clonable](lists: List[List[T]]) List[List[T]]:
+    // An empty factor empties the product, so no prefix is built before it is found.
+    for choices in lists:
+        if choices.length() == 0: return []
+
     var out: List[List[T]] = [[]]
 
     for choices in lists:

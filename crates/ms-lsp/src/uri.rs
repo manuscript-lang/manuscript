@@ -79,7 +79,17 @@ fn unescape(text: &str) -> Option<String> {
             at += 1;
         }
     }
-    Some(String::from_utf8_lossy(&out).into_owned())
+    // A lossy decode would name a different file (`%FF` as U+FFFD); reject instead.
+    String::from_utf8(out).ok()
+}
+
+/// Whether `uri` claims the `file:` scheme but does not decode to a path (bad escape or
+/// non-UTF-8 bytes). Such a URI must not reach the filesystem: it names no file.
+pub fn is_malformed_file(uri: &str) -> bool {
+    let is_file = uri
+        .get(..5)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("file:"));
+    is_file && parse(uri).is_none()
 }
 
 /// The path of a `file:` URI; any other URI is its own name.
@@ -203,6 +213,18 @@ mod tests {
             windows_file_uri(r"\\?\UNC\host\share\b.ms"),
             "file://host/share/b.ms"
         );
+    }
+
+    #[test]
+    fn invalid_utf8_escapes_are_malformed() {
+        assert!(is_malformed_file("file:///tmp/%FF.ms"));
+        assert!(is_malformed_file("FILE:///tmp/%C0%AF.ms"));
+        assert!(is_malformed_file("file:///tmp/%ED%A0%80.ms"));
+        assert!(is_malformed_file("file:///tmp/%zz.ms"));
+        assert!(!is_malformed_file("file:///tmp/%EF%BF%BD.ms"));
+        assert!(!is_malformed_file("file:///tmp/%25FF.ms"));
+        assert!(!is_malformed_file("untitled:%FF"));
+        assert_eq!(filename("file:///tmp/%EF%BF%BD.ms"), "/tmp/\u{FFFD}.ms");
     }
 
     #[test]
