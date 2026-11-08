@@ -102,6 +102,35 @@ pub fn wait_fd(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait
     }
 }
 
+/// Like [`wait_fd`] but reports a cancellation as `Err(Cancelled)` instead of jumping, so the
+/// caller's frames unwind with ordinary returns and run their destructors. The error must reach
+/// the FFI boundary (`ffi::report`), which then runs the cancellation path.
+pub fn try_wait_fd(
+    fd: Borrowed<'_>,
+    interest: Interest,
+    deadline: Deadline,
+) -> Result<Wait, rt::Cancelled> {
+    if !parks() {
+        return Ok(wait_poll(fd, interest, deadline));
+    }
+    if rt::cancel_requested() {
+        return Err(rt::Cancelled);
+    }
+    let events = match interest {
+        Interest::Read => 1,
+        Interest::Write => 2,
+    };
+    let got = rt::wait_fd(fd, events, timeout_ns(deadline));
+    if got & 16 != 0 {
+        return Err(rt::Cancelled);
+    }
+    Ok(if got & 8 != 0 && got & 7 == 0 {
+        Wait::TimedOut
+    } else {
+        Wait::Ready
+    })
+}
+
 fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     rt::check_cancel();
     let events = match interest {

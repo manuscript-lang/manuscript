@@ -7,7 +7,7 @@ use crate::error::{NetErr, cannot_resolve};
 use crate::ip::ip_text;
 use crate::rt;
 use crate::sys::AsSock;
-use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use ms_rt::fault::with_cleanup;
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream, UdpSocket};
@@ -241,8 +241,8 @@ fn query_udp(
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 if with_cleanup(&mut || sock.release(), || {
-                    wait_fd(sock.as_sock(), Interest::Read, deadline)
-                }) == Wait::TimedOut
+                    try_wait_fd(sock.as_sock(), Interest::Read, deadline)
+                })? == Wait::TimedOut
                 {
                     return Err(NetErr::Timeout);
                 }
@@ -278,7 +278,9 @@ pub fn query(
     qtype: u16,
     deadline: Deadline,
 ) -> Result<Reply, NetErr> {
-    rt::check_cancel();
+    if rt::cancel_pending() {
+        return Err(rt::Cancelled.into());
+    }
     let id = query_id();
     let packet = build_query(id, name, qtype)?;
     let mut raw = query_udp(server, &packet, id, deadline)?;
