@@ -157,7 +157,6 @@ fn source_function_value_cannot_copy_a_borrowed_callback_result() {
             entry: loaded.entry,
         },
     )
-    .err()
-    .expect("non-Clonable callback result");
+    .expect_err("non-Clonable callback result");
     assert!(error.to_string().contains("non-Clonable borrow"), "{error}");
 }
