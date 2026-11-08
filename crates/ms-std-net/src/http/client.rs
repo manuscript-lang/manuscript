@@ -370,7 +370,7 @@ impl From<HttpErr> for Fail {
 
 /// A reusable HTTP client owned by a network.
 pub struct Client {
-    owner: Rc<Network>,
+    owner: Arc<Network>,
     opts: ClientOptions,
     tls: Option<Arc<ClientConfig>>,
     jar: RefCell<Option<Jar>>,
@@ -394,7 +394,7 @@ impl Resource for Client {
 
 impl Client {
     /// A pooled client. Option errors are `InvalidInput`.
-    pub fn new(owner: &Rc<Network>, opts: ClientOptions) -> Result<Rc<Client>, HttpErr> {
+    pub fn new(owner: &Arc<Network>, opts: ClientOptions) -> Result<Rc<Client>, HttpErr> {
         if opts.max_header_bytes == Some(0) {
             return Err(HttpErr::InvalidInput);
         }
@@ -428,7 +428,7 @@ impl Client {
 
     /// The client behind `Network.request`: no pool, redirects, cookies,
     /// proxies or compression.
-    pub fn one_shot(owner: &Rc<Network>) -> Result<Rc<Client>, HttpErr> {
+    pub fn one_shot(owner: &Arc<Network>) -> Result<Rc<Client>, HttpErr> {
         let tls_options = TlsOptions {
             alpn: vec!["http/1.1".to_string()],
             ..TlsOptions::default()
@@ -452,7 +452,7 @@ impl Client {
         }))
     }
 
-    pub fn network(&self) -> &Rc<Network> {
+    pub fn network(&self) -> &Arc<Network> {
         &self.owner
     }
 
@@ -2075,7 +2075,7 @@ mod tests {
         }
     }
 
-    fn client(options: ClientOptions) -> (Rc<Network>, Rc<Client>) {
+    fn client(options: ClientOptions) -> (Arc<Network>, Rc<Client>) {
         let net = Network::new_root();
         let client = Client::new(&net, options).unwrap();
         (net, client)

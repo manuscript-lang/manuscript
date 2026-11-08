@@ -149,6 +149,10 @@ runs:
         done
     # The corpus run also counts live heap blocks (the leak sweep): CONFORM_LEAKS links programs
     # against the counting runtime, so the sweep reuses these runs instead of repeating them.
+    - name: Compile and runtime work scales linearly
+      if: env.GATES == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/scaling-check.ms
     - name: Conformance corpus (LLVM) and leaks
       if: env.CONFORM == 'true'
       env:

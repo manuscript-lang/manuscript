@@ -13,11 +13,13 @@ use crate::sys::{self, AsSock};
 use crate::wait::{Deadline, Interest, Lane, Wait, blocking, wait_fd};
 use ms_rt::fault::with_cleanup;
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use std::rc::{Rc, Weak};
+use std::rc::{Rc, Weak as LocalWeak};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, Weak};
 
 /// Something a network owns and closes with itself.
 pub trait Resource {
@@ -95,13 +97,25 @@ pub struct DnsRecord {
 }
 
 /// The OS-backed network and its derived, restricted children.
+///
+/// A `Network` is shared between threads (a promise may use one), so its own state is atomic or
+/// locked. The resources it opened (`Rc` handles that are bound to their thread) are registered
+/// in the registry of the thread that opened them: closing the network closes the ones opened on
+/// the closing thread at once; the others see `is_closed` at their next operation.
 pub struct Network {
-    pub(crate) policy: Option<Rc<Policy>>,
+    id: u64,
+    pub(crate) policy: Option<Arc<Policy>>,
     resolver: Option<SocketAddr>,
     parent: Option<Weak<Network>>,
-    closed: Cell<bool>,
-    resources: RefCell<Vec<Weak<dyn Resource>>>,
-    servers: RefCell<Vec<Weak<dyn Resource>>>,
+    closed: AtomicBool,
+    children: Mutex<Vec<Weak<Network>>>,
+}
+
+static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+
+thread_local! {
+    /// Resources opened on this thread, by owning network id, oldest first.
+    static LOCAL: RefCell<Vec<(u64, LocalWeak<dyn Resource>)>> = const { RefCell::new(Vec::new()) };
 }
 
 impl Resource for Network {
@@ -111,20 +125,28 @@ impl Resource for Network {
 }
 
 impl Network {
-    /// An unrestricted network over the host's sockets and resolver.
-    pub fn new_root() -> Rc<Network> {
-        Rc::new(Network {
-            policy: None,
-            resolver: None,
-            parent: None,
-            closed: Cell::new(false),
-            resources: RefCell::new(Vec::new()),
-            servers: RefCell::new(Vec::new()),
+    fn make(
+        policy: Option<Arc<Policy>>,
+        resolver: Option<SocketAddr>,
+        parent: Option<Weak<Network>>,
+    ) -> Arc<Network> {
+        Arc::new(Network {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            policy,
+            resolver,
+            parent,
+            closed: AtomicBool::new(false),
+            children: Mutex::new(Vec::new()),
         })
     }
 
+    /// An unrestricted network over the host's sockets and resolver.
+    pub fn new_root() -> Arc<Network> {
+        Network::make(None, None, None)
+    }
+
     pub fn is_closed(&self) -> bool {
-        self.closed.get()
+        self.closed.load(Ordering::Acquire)
     }
 
     /// Whether this network's policy lets requests name `host`.
@@ -132,16 +154,28 @@ impl Network {
         host_ok(&self.policy, host)
     }
 
-    /// Registers a resource; `false` when the network is already closed.
+    /// Registers a resource opened on this thread; `false` when the network is already closed.
     pub fn own(&self, r: &Rc<dyn Resource>) -> bool {
-        if self.closed.get() {
+        if self.is_closed() {
             return false;
         }
-        let mut list = self.resources.borrow_mut();
-        if list.len() >= 64 && list.len().is_power_of_two() {
-            list.retain(|w| w.strong_count() > 0);
+        LOCAL.with(|local| {
+            let mut list = local.borrow_mut();
+            if list.len() >= 64 && list.len().is_power_of_two() {
+                list.retain(|(_, w)| w.strong_count() > 0);
+            }
+            list.push((self.id, Rc::downgrade(r)));
+        });
+        true
+    }
+
+    fn adopt_child(&self, child: &Arc<Network>) -> bool {
+        let mut children = self.children.lock().unwrap_or_else(|e| e.into_inner());
+        if self.is_closed() {
+            return false;
         }
-        list.push(Rc::downgrade(r));
+        children.retain(|w| w.strong_count() > 0);
+        children.push(Arc::downgrade(child));
         true
     }
 
@@ -158,28 +192,49 @@ impl Network {
 
     /// Closes everything this network opened, innermost first. Idempotent.
     pub fn close(&self) {
-        if self.closed.replace(true) {
+        if self.closed.swap(true, Ordering::AcqRel) {
             return;
         }
-        let servers: Vec<_> = self.servers.borrow_mut().drain(..).collect();
-        let resources: Vec<_> = self.resources.borrow_mut().drain(..).collect();
-        for w in servers.iter().rev().chain(resources.iter().rev()) {
+        let children: Vec<_> =
+            std::mem::take(&mut *self.children.lock().unwrap_or_else(|e| e.into_inner()));
+        let mine: Vec<_> = LOCAL.with(|local| {
+            let mut list = local.borrow_mut();
+            let mut taken = Vec::new();
+            list.retain(|(id, w)| {
+                if *id == self.id {
+                    taken.push(w.clone());
+                    false
+                } else {
+                    true
+                }
+            });
+            taken
+        });
+        for w in mine.iter().rev() {
             if let Some(r) = w.upgrade() {
                 r.close_resource();
             }
         }
+        for w in children.iter().rev() {
+            if let Some(c) = w.upgrade() {
+                c.close();
+            }
+        }
         if let Some(p) = self.parent.as_ref().and_then(Weak::upgrade) {
-            p.resources.borrow_mut().retain(|w| {
-                w.upgrade()
-                    .is_some_and(|r| !std::ptr::addr_eq(Rc::as_ptr(&r), self as *const Network))
-            });
+            p.children
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .retain(|w| {
+                    w.upgrade()
+                        .is_some_and(|c| !std::ptr::eq(Arc::as_ptr(&c), self))
+                });
         }
     }
 
     /// Maps a host I/O failure to the error a call reports.
     pub fn io_failure(&self, e: &io::Error) -> NetErr {
         rt::check_cancel();
-        if self.closed.get() {
+        if self.is_closed() {
             return NetErr::Closed;
         }
         match e.kind() {
@@ -191,11 +246,11 @@ impl Network {
 
     /// A derived network limited to `hosts` and CIDR `cidrs`.
     pub fn restrict(
-        self: &Rc<Self>,
+        self: &Arc<Self>,
         hosts: &[&str],
         cidrs: &[&str],
         allow_listen: bool,
-    ) -> Result<Rc<Network>, NetErr> {
+    ) -> Result<Arc<Network>, NetErr> {
         let mut set = HashSet::new();
         for host in hosts {
             if host.is_empty() || host.contains(['/', '\\', '\0', ' ', ':']) {
@@ -207,29 +262,21 @@ impl Network {
         for text in cidrs {
             prefixes.push(Cidr::parse(text).map_err(|_| NetErr::InvalidInput)?);
         }
-        let policy = Rc::new(Policy::new(
+        let policy = Arc::new(Policy::new(
             set,
             prefixes,
             allow_listen,
             self.policy.clone(),
         ));
-        let child = Rc::new(Network {
-            policy: Some(policy),
-            resolver: self.resolver,
-            parent: Some(Rc::downgrade(self)),
-            closed: Cell::new(false),
-            resources: RefCell::new(Vec::new()),
-            servers: RefCell::new(Vec::new()),
-        });
-        let as_resource: Rc<dyn Resource> = child.clone();
-        if !self.own(&as_resource) {
+        let child = Network::make(Some(policy), self.resolver, Some(Arc::downgrade(self)));
+        if !self.adopt_child(&child) {
             return Err(NetErr::Closed);
         }
         Ok(child)
     }
 
     /// A derived network resolving through the DNS server at `address`.
-    pub fn with_resolver(self: &Rc<Self>, address: &str) -> Result<Rc<Network>, NetErr> {
+    pub fn with_resolver(self: &Arc<Self>, address: &str) -> Result<Arc<Network>, NetErr> {
         let host_and_port = split_host_port(address);
         let ip = host_and_port.and_then(|(h, _)| h.parse::<IpAddr>().ok());
         let (Some((host, port)), Some(ip)) = (host_and_port, ip) else {
@@ -239,16 +286,12 @@ impl Network {
             return Err(NetErr::PermissionDenied);
         }
         let port = parse_port(port).ok_or(NetErr::InvalidInput)?;
-        let child = Rc::new(Network {
-            policy: self.policy.clone(),
-            resolver: Some(SocketAddr::new(ip, port)),
-            parent: Some(Rc::downgrade(self)),
-            closed: Cell::new(false),
-            resources: RefCell::new(Vec::new()),
-            servers: RefCell::new(Vec::new()),
-        });
-        let as_resource: Rc<dyn Resource> = child.clone();
-        if !self.own(&as_resource) {
+        let child = Network::make(
+            self.policy.clone(),
+            Some(SocketAddr::new(ip, port)),
+            Some(Arc::downgrade(self)),
+        );
+        if !self.adopt_child(&child) {
             return Err(NetErr::Closed);
         }
         Ok(child)
@@ -325,7 +368,7 @@ impl Network {
         max_records: Option<i64>,
         timeout: Option<i64>,
     ) -> Result<Vec<String>, NetErr> {
-        if self.closed.get() {
+        if self.is_closed() {
             return Err(NetErr::Closed);
         }
         let max = limit(max_records)?;
@@ -338,7 +381,7 @@ impl Network {
         } else {
             let ips = self.lookup_ips(name, deadline, None)?;
             rt::check_cancel();
-            if self.closed.get() {
+            if self.is_closed() {
                 return Err(NetErr::Closed);
             }
             if ips.is_empty() {
@@ -365,7 +408,7 @@ impl Network {
         if !host_ok(&self.policy, name) {
             return Err(NetErr::PermissionDenied);
         }
-        if self.closed.get() {
+        if self.is_closed() {
             return Err(NetErr::Closed);
         }
         let plain = |value: String| DnsRecord {
@@ -408,7 +451,7 @@ impl Network {
                     })),
                     Err(e) => {
                         rt::check_cancel();
-                        if self.closed.get() {
+                        if self.is_closed() {
                             return Err(NetErr::Closed);
                         }
                         return Err(e);
@@ -444,7 +487,7 @@ impl Network {
                 Err(ConnectError::Timeout) => return Err(NetErr::Timeout),
                 Err(ConnectError::Io(e)) => {
                     last = self.io_failure(&e);
-                    if self.closed.get() {
+                    if self.is_closed() {
                         return Err(last);
                     }
                 }
@@ -557,7 +600,7 @@ impl Network {
 
     /// Binds a UDP socket.
     pub fn bind_udp(&self, address: &str) -> Result<std::net::UdpSocket, NetErr> {
-        if self.closed.get() {
+        if self.is_closed() {
             return Err(NetErr::Closed);
         }
         if !self.listen_allowed(address) {
@@ -714,11 +757,11 @@ pub fn connect_nonblocking(addr: SocketAddr, deadline: Deadline) -> Result<Socke
 }
 
 thread_local! {
-    static ROOT: RefCell<Option<Rc<Network>>> = const { RefCell::new(None) };
+    static ROOT: RefCell<Option<Arc<Network>>> = const { RefCell::new(None) };
 }
 
 /// The host's root network; repeated calls return the same one.
-pub fn root() -> Rc<Network> {
+pub fn root() -> Arc<Network> {
     ROOT.with(|r| r.borrow_mut().get_or_insert_with(Network::new_root).clone())
 }
 
@@ -729,7 +772,7 @@ mod tests {
 
     #[test]
     fn root_is_stable() {
-        assert!(Rc::ptr_eq(&root(), &root()));
+        assert!(Arc::ptr_eq(&root(), &root()));
     }
 
     #[test]

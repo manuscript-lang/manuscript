@@ -4,13 +4,13 @@
 use crate::ip::Cidr;
 use std::collections::HashSet;
 use std::net::IpAddr;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Policy {
     hosts: HashSet<String>,
     prefixes: Vec<Cidr>,
     pub listen: bool,
-    parent: Option<Rc<Policy>>,
+    parent: Option<Arc<Policy>>,
 }
 
 /// Lower-cases a host name and drops one trailing dot.
@@ -23,7 +23,7 @@ impl Policy {
         hosts: HashSet<String>,
         prefixes: Vec<Cidr>,
         listen: bool,
-        parent: Option<Rc<Policy>>,
+        parent: Option<Arc<Policy>>,
     ) -> Policy {
         Policy {
             hosts,
@@ -62,12 +62,12 @@ fn unmap(ip: IpAddr) -> IpAddr {
 }
 
 /// `policy.host(name)` where `None` means unrestricted.
-pub fn host_ok(policy: &Option<Rc<Policy>>, name: &str) -> bool {
+pub fn host_ok(policy: &Option<Arc<Policy>>, name: &str) -> bool {
     policy.as_ref().is_none_or(|p| p.host(name))
 }
 
 /// `policy.ip(ip)` where `None` means unrestricted.
-pub fn ip_ok(policy: &Option<Rc<Policy>>, ip: IpAddr) -> bool {
+pub fn ip_ok(policy: &Option<Arc<Policy>>, ip: IpAddr) -> bool {
     policy.as_ref().is_none_or(|p| p.ip(ip))
 }
 
@@ -75,8 +75,8 @@ pub fn ip_ok(policy: &Option<Rc<Policy>>, ip: IpAddr) -> bool {
 mod tests {
     use super::*;
 
-    fn policy(hosts: &[&str], cidrs: &[&str], listen: bool) -> Rc<Policy> {
-        Rc::new(Policy::new(
+    fn policy(hosts: &[&str], cidrs: &[&str], listen: bool) -> Arc<Policy> {
+        Arc::new(Policy::new(
             hosts.iter().map(|h| fold_host(h)).collect(),
             cidrs.iter().map(|c| Cidr::parse(c).unwrap()).collect(),
             listen,
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn parents_narrow_further() {
         let parent = policy(&["a.test", "b.test"], &[], true);
-        let child = Rc::new(Policy::new(
+        let child = Arc::new(Policy::new(
             ["a.test".to_string()].into_iter().collect(),
             vec![],
             true,
