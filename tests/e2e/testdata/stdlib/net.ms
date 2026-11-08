@@ -61,6 +61,22 @@ test "a read cancelled by its timeout leaves the stream closable":
     try expect_true(within(var client.input, 50.milliseconds()).is_error())
     try client.close()
 
+fn accept_all(listener: Listener) Unit!:
+    while true:
+        let _connection = try listener.accept().wait()
+    return ok(unit)
+
+test "a promise that accepts on a listener runs where the listener lives":
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    let _accepting = promise(fn: accept_all(listener))
+
+    // Accepts and connects register their connections with one network, which is not thread
+    // safe: running the accepts on another thread raced these connects and panicked.
+    for i in 0..2000:
+        var client = try connect(address, timeout: 2.seconds()).wait()
+        try client.close()
+
 test "closing the input leaves the output open and closing both ends the connection":
     let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), timeout: 2.seconds()).wait()
