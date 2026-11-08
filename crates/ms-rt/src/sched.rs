@@ -432,11 +432,15 @@ pub(crate) fn steal_wait_ns() -> i64 {
     if me == NONE || SLOTS[me].live.load(Ordering::SeqCst) != 0 {
         return -1;
     }
-    let now = crate::sys::monotonic_ns();
+    // The clock is read only once a queued start exists: an idle thread polls this in a spin.
+    let mut now = 0;
     let mut wait = -1;
     for thread in (0..STARTED.load(Ordering::Acquire)).filter(|&t| t != me) {
         let at = SLOTS[thread].front_at.load(Ordering::SeqCst);
         if at != 0 {
+            if now == 0 {
+                now = crate::sys::monotonic_ns();
+            }
             let w = (at + BEAT_NS - now).max(0);
             wait = if wait < 0 { w } else { wait.min(w) };
         }

@@ -186,7 +186,6 @@ msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8 @le
 msrt_obj_clone(o: *mut Obj) -> *mut Obj
 msrt_obj_drop(o: *mut Obj)
 msrt_pipe_add_writer(pipe: i64)
-msrt_pipe_buffered(pipe: i64) -> i64
 msrt_pipe_close_reader(pipe: i64)
 msrt_pipe_close_writer(pipe: i64)
 msrt_pipe_ended(pipe: i64) -> i64
