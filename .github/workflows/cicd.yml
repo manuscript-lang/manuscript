@@ -1,7 +1,7 @@
 name: CI/CD
 
 # One workflow, four triggers:
-#   pull request  the Linux legs, each split into `tests` and `conformance` (four jobs); the language checks
+#   pull request  the Linux legs (plus windows-amd64 and darwin-arm64 when it touches .github/platform-paths.txt), each split into `tests` and `conformance` (four jobs); the language checks
 #                 and the book run inside linux-arm64 conformance. A green pull request auto-merges; there
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
@@ -66,8 +66,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: read
+      pull-requests: read
     outputs:
       run: ${{ steps.due.outputs.run }}
+      platform: ${{ steps.platform.outputs.platform }}
     steps:
       - id: due
         env:
@@ -82,6 +84,29 @@ jobs:
             if [ "$seen" = "$GITHUB_SHA" ]; then run=false; fi
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
+
+      # A pull request that touches code whose behavior differs by host also runs one Windows and one
+      # macOS leg, so a host-only failure blocks the merge instead of surfacing on main after it (#3067,
+      # #3070, #3076, #3089 each merged green on Linux alone). The paths are in
+      # .github/platform-paths.txt, one extended regex per line.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/platform-paths.txt
+          sparse-checkout-cone-mode: false
+      - id: platform
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          platform=false
+          if [ "$EVENT" = pull_request ]; then
+            if gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' \
+              | grep -qEf .github/platform-paths.txt; then
+              platform=true
+            fi
+          fi
+          echo "platform=$platform" >> "$GITHUB_OUTPUT"
 
   # One job per platform leg and part. Pull requests run the Linux legs; a manual run's `os` input picks
   # one platform; a push runs all six. The matrix is picked in an expression because a job `if`
@@ -107,6 +132,7 @@ jobs:
         part: [a, b]
         leg: >-
           ${{ fromJSON(
+          github.event_name == 'pull_request' && needs.due.outputs.platform == 'true' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}, {"os": "windows", "arch": "amd64", "runner": "windows-2025", "cranelift": "b"}]' ||
           (github.event_name == 'pull_request' || github.event_name == 'merge_group') && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b", "gates": "false"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
           inputs.os == 'linux' && '[{"os": "linux", "arch": "amd64", "runner": "ubuntu-24.04", "lint": true, "cranelift": "b"}, {"os": "linux", "arch": "arm64", "runner": "ubuntu-24.04-arm", "docs": true}]' ||
           inputs.os == 'darwin' && '[{"os": "darwin", "arch": "amd64", "runner": "macos-15-intel"}, {"os": "darwin", "arch": "arm64", "runner": "macos-15", "cranelift": "a"}]' ||
