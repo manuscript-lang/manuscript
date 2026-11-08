@@ -102,3 +102,28 @@ test "dotenv multi-line quotes stay linear":
     values.get("B").get("") | try expect_equal("1")
     values.get("A").get("").scalar_length() | try expect_equal(400003)
     try expect_true(parse_dotenv("A=\"{lines}").is_error())
+
+test "ini detects comments before trimming empty assignment values":
+    for separator in ["=", ":"]:
+        for marker in ["#", ";"]:
+            let text = "empty{separator} {marker} optional\n[設定]\nkey{separator}old\nkey{separator}   {marker} replaced\nplain{separator}\n"
+            let ini = try parse_ini(text)
+            ini.get("").get().get("empty").get() | try expect_equal("")
+
+            let section = ini.get("設定").get()
+            section.keys() | try expect_equal(["key", "plain"])
+            section.get("key").get() | try expect_equal("")
+            section.get("plain").get() | try expect_equal("")
+
+test "ini preserves literal markers and quoted whitespace":
+    let ini = try parse_ini(
+        "hash=#literal\nsemi:;literal\ntab=\t#literal\ninner=x\t;literal\nquoted=  \" # text ; 界 \"  \nsingle:  ' ; text # é '  \nempty= \"\"\n"
+    )
+    let values = ini.get("").get()
+    values.get("hash").get() | try expect_equal("#literal")
+    values.get("semi").get() | try expect_equal(";literal")
+    values.get("tab").get() | try expect_equal("#literal")
+    values.get("inner").get() | try expect_equal("x\t;literal")
+    values.get("quoted").get() | try expect_equal(" # text ; 界 ")
+    values.get("single").get() | try expect_equal(" ; text # é ")
+    values.get("empty").get() | try expect_equal("")

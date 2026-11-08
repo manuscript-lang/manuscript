@@ -9,3 +9,5 @@ Gotchas: a stdlib module is embedded at build, so `cargo build -p ms-cli` is nee
 Apply when: adding an id, token, signed-value or config-format helper.
 Evidence: `tests/e2e/testdata/stdlib/{uuid,config,jwt}.ms`.
 Verify: `ms test` on those fixtures after `cargo build --release --locked -p ms-cli`.
+
+INI inline comments depend on the original assignment suffix: trim only a separate view for matching quotes, then find ` #` / ` ;` before trimming the bare result. Trimming first turns an empty value's comment into data (#3092). `config.ms` fixtures also pin unspaced markers and tabs as literal, avoiding an accidental syntax expansion.
