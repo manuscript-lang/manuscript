@@ -18,3 +18,5 @@ Verify: repeated checks across I/O and dominated blocks collapse; sibling checks
 Verify: nested replacement loops eliminate redundant bounds checks; shrinking and conditional replacement still fault at an invalid index.
 Verify: run the source fixture in Debug and Release; both constant and variable conversions, both signs, and ties to even must agree.
 Verify: `cargo nextest run -p ms-clif`; preserve the long-Debug-function allocator selection.
+
+Radix spellings must be normalized before checking decimal suffixes or exponent markers: `d`, `e`, and `E` are valid hexadecimal digits. Keep literal-context inference and constant-fault folding consistent with ordinary number inference. Cover `Int8` expressions containing `0x1d`/`0x1e`, negated hex literals, and hex zero divisors and list indexes ([checker regressions](../../crates/ms-check/src/radix_literal_tests.rs), [native fixture](../../tests/e2e/testdata/accept/hex-literal-context.ms)).
