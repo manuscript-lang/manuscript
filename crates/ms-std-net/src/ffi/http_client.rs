@@ -3,6 +3,7 @@
 
 use super::tls::TlsOptionsWire;
 use super::{BodyH, ClientH, HeadersH, NetH, code, opt, report};
+use crate::bound::Bound;
 use crate::error::{HttpErr, IoErr};
 use crate::http::client::{
     self, Body, Client, ClientOptions, Request, outgoing_headers, valid_method,
@@ -193,7 +194,7 @@ fn client_send(
         }
         client.send(request_of(call, body))
     });
-    out.write(Object(BodyH(report(result, err)?)));
+    out.write(Object(BodyH(Bound::new(report(result, err)?))));
     Ok(())
 }
 
@@ -291,7 +292,7 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let client = client_options(opts).and_then(|o| Client::new(&net, o));
-        out.write(Object(ClientH(report(client, &err)?)));
+        out.write(Object(ClientH(Bound::new(report(client, &err)?))));
         Ok(())
     }
 

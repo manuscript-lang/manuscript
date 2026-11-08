@@ -1,0 +1,29 @@
+// Files under crates/ms-std-*/src that still use Rc, Weak or RefCell, as `path count` (thread_affinity.rs).
+// Each count only goes down: migrate a file to Arc, atomics or a lock (or a `Bound` handle) and lower it.
+crates/ms-std-archive/src/compress/ffi.rs 5
+crates/ms-std-json/src/lib.rs 1
+crates/ms-std-net/src/conn.rs 41
+crates/ms-std-net/src/ffi/handler.rs 2
+crates/ms-std-net/src/ffi/http_client.rs 9
+crates/ms-std-net/src/ffi/http_server.rs 6
+crates/ms-std-net/src/ffi/mod.rs 11
+crates/ms-std-net/src/ffi/net.rs 2
+crates/ms-std-net/src/ffi/websocket.rs 1
+crates/ms-std-net/src/http/client.rs 55
+crates/ms-std-net/src/http/client_h2_tests.rs 8
+crates/ms-std-net/src/http/exchange.rs 18
+crates/ms-std-net/src/http/h2client.rs 15
+crates/ms-std-net/src/http/headers.rs 3
+crates/ms-std-net/src/http/server.rs 78
+crates/ms-std-net/src/http/server/buffered.rs 2
+crates/ms-std-net/src/http/server/h2serve.rs 19
+crates/ms-std-net/src/http/server/h2serve/tests.rs 2
+crates/ms-std-net/src/net.rs 29
+crates/ms-std-net/src/policy.rs 8
+crates/ms-std-net/src/sys/unix.rs 11
+crates/ms-std-net/src/sys/windows.rs 5
+crates/ms-std-net/src/tls.rs 3
+crates/ms-std-net/src/ws/dial.rs 5
+crates/ms-std-net/src/ws/socket.rs 13
+crates/ms-std-terminal/src/lib.rs 4
+crates/ms-std-terminal/src/raw.rs 10

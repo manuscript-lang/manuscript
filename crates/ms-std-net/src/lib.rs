@@ -6,6 +6,7 @@
 #![allow(unsafe_code)]
 
 pub mod addr;
+pub mod bound;
 pub mod conn;
 pub mod dn;
 pub mod dns;

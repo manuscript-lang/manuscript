@@ -1,6 +1,7 @@
 //! Natives for `@std/net/net.ms`.
 
 use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
+use crate::bound::Bound;
 use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
@@ -119,7 +120,7 @@ native! {
     /// `network() -> Network` (a new handle on the isolate's root network). No handle is cached
     /// in a thread-local: its destructor would run after a worker's arena is gone.
     fn msstd_net_network() -> Object<NetH> {
-        Object(NetH(root()))
+        Object(NetH(Bound::new(root())))
     }
 
     /// `Network.close()`; closing from a handler of a server this network owns faults.
@@ -140,7 +141,7 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let c = report(net.connect(address, opt(*has_timeout, timeout)), &err)?;
-        out.write(Object(ConnH(c)));
+        out.write(Object(ConnH(Bound::new(c))));
         Ok(())
     }
 
@@ -154,7 +155,7 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let c = report(net.connect_unix(path, opt(*has_timeout, timeout)), &err)?;
-        out.write(Object(ConnH(c)));
+        out.write(Object(ConnH(Bound::new(c))));
         Ok(())
     }
 
@@ -165,7 +166,7 @@ native! {
         out: Out<Object<ListenerH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(ListenerH(report(net.listen(address), &err)?)));
+        out.write(Object(ListenerH(Bound::new(report(net.listen(address), &err)?))));
         Ok(())
     }
 
@@ -176,7 +177,7 @@ native! {
         out: Out<Object<ListenerH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(ListenerH(report(net.listen_unix_socket(path), &err)?)));
+        out.write(Object(ListenerH(Bound::new(report(net.listen_unix_socket(path), &err)?))));
         Ok(())
     }
 
@@ -187,7 +188,7 @@ native! {
         out: Out<Object<DgramH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(DgramH(report(net.bind_datagram(address), &err)?)));
+        out.write(Object(DgramH(Bound::new(report(net.bind_datagram(address), &err)?))));
         Ok(())
     }
 
@@ -200,7 +201,7 @@ native! {
         out: Out<Object<NetH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(NetH(report(net.restrict(&hosts, &cidrs, allow_listen), &err)?)));
+        out.write(Object(NetH(Bound::new(report(net.restrict(&hosts, &cidrs, allow_listen), &err)?))));
         Ok(())
     }
 
@@ -211,7 +212,7 @@ native! {
         out: Out<Object<NetH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(NetH(report(net.with_resolver(address), &err)?)));
+        out.write(Object(NetH(Bound::new(report(net.with_resolver(address), &err)?))));
         Ok(())
     }
 
@@ -332,7 +333,7 @@ native! {
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(ConnH(report(l.accept(opt(*has_timeout, timeout)), &err)?)));
+        out.write(Object(ConnH(Bound::new(report(l.accept(opt(*has_timeout, timeout)), &err)?))));
         Ok(())
     }
 
