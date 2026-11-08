@@ -691,7 +691,7 @@ impl Walker<'_> {
         escaping: bool,
     ) -> Vec<(Place, bool)> {
         if let Some((m, _)) = self.method_value_parts(e)
-            && let Some(payload) = bound_passthrough(&m, &self.cx.m.ty(recv))
+            && let Some(payload) = wrapper_passthrough(&m, &self.cx.m.ty(recv))
         {
             // A function value can run repeatedly and cannot move out its captured receiver.
             // Only the preserved payload needs copying; callback inputs remain borrowed.
