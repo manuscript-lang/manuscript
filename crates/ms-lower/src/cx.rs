@@ -73,6 +73,7 @@ pub enum HelperKey {
     JsonTree(ms_check::api::tytable::TyId),
     JsonTreeView(ms_check::api::tytable::TyId),
     CloseParts(ms_check::api::tytable::TyId, bool),
+    CloseOptional(MTy, crate::close::CloseKind),
     CloseIface {
         iface: u32,
         k: u32,
