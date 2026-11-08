@@ -10,6 +10,7 @@ impl Walker<'_> {
             self.expr(e, Demand::Move);
             return;
         }
+        self.returned_promises_own_captures(e);
         let reads = self.returned_promise_reads(e);
         if !reads.is_empty() {
             let names: Vec<&str> = reads.iter().map(|n| self.syms.str(n)).collect();

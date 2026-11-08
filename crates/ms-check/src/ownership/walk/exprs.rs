@@ -202,6 +202,30 @@ impl Walker<'_> {
         out
     }
 
+    /// A promise started in a `return` outlives the function, so its lambda is an escaping closure: it
+    /// owns what it captures and the function moves those bindings (the caller passes `.clone()` to
+    /// keep a value), as for any other returned closure.
+    pub(super) fn returned_promises_own_captures(&mut self, e: &Expr) {
+        let mut parts = Vec::new();
+        collect_parts(
+            e,
+            &|c| matches!(self.cx.m.resolution(c), Resolution::Constructor { .. }),
+            &mut parts,
+        );
+        let lambdas: Vec<NodeId> = parts
+            .into_iter()
+            .filter(|p| self.entry_call(p))
+            .filter_map(|p| match &p.kind {
+                ExprKind::Call { args, .. } => Some(args),
+                _ => None,
+            })
+            .flatten()
+            .filter(|a| matches!(a.value.kind, ExprKind::Lambda(_)))
+            .map(|a| a.value.id)
+            .collect();
+        self.escaped.extend(lambdas);
+    }
+
     /// The names a returned promise would still read after the function ends: the captures of a
     /// promise started in the `return`, or the borrows of a local promise returned by name.
     pub(super) fn returned_promise_reads(&self, e: &Expr) -> Vec<Name> {
@@ -216,12 +240,8 @@ impl Walker<'_> {
         let mut out: Vec<Name> = Vec::new();
         for part in parts {
             if self.entry_call(part) {
-                out.extend(
-                    self.entry_captures(part)
-                        .into_iter()
-                        .filter(|b| self.cx.classes.class(self.syms, &b.ty) == Class::Move)
-                        .map(|b| b.name),
-                );
+                // Its lambda owns its captures (`returned_promises_own_captures`).
+                continue;
             } else if let Resolution::Local(b) = self.cx.m.resolution(part) {
                 out.extend(
                     self.active

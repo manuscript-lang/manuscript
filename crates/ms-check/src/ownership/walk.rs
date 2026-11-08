@@ -747,7 +747,8 @@ impl Walker<'_> {
                 .map(|m| m.class)
                 .unwrap_or(Class::Move);
             if escaping {
-                if changed {
+                // A promise's entry runs once and owns a resource it captures, so it may change it.
+                if changed && !(concurrent && class == Class::Resource) {
                     self.error(
                         e.pos,
                         format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a moving parameter; keep the closure local, or have it return a new value instead of changing `{0}`", self.syms.str(b.name)),
