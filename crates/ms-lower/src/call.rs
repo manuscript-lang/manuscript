@@ -168,14 +168,15 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| {
                     Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
                 })?;
-            // A `var` argument selects its place once, at its written position; the reads and
-            // the writeback below reuse the evaluated indices.
-            if vars.contains(&(idx + offset)) && self.is_place(a.expr) {
-                self.prepare_place(a.expr)?;
-            }
             let at = self.b.current();
-            let x = self.expr(a.expr)?;
+            // The checked read selects the place once, including faults before later arguments.
+            let x = if vars.contains(&(idx + offset)) {
+                self.read_place(a.expr)?
+            } else {
+                self.expr(a.expr)?
+            };
             if self.dead {
+                self.finish_places(&places);
                 return Ok(Args {
                     slots,
                     places,
@@ -262,6 +263,14 @@ impl<'a> FnLower<'a> {
                 } else {
                     d
                 });
+                if self.dead {
+                    self.finish_places(&places);
+                    return Ok(Args {
+                        slots,
+                        places,
+                        borrowed_optional_payloads,
+                    });
+                }
             }
         }
         Ok(Args {
@@ -451,6 +460,7 @@ impl<'a> FnLower<'a> {
         e: &Expr,
     ) -> Result<Val, Error> {
         if self.dead {
+            self.finish_places(&args.places);
             return Ok(self.dummy(MTy::UNIT));
         }
         let owned_mask = self.cx.owned_mask(c);
@@ -739,7 +749,10 @@ impl<'a> FnLower<'a> {
                 }
                 // A changed copy of a place nobody owns is only dropped; a computed value
                 // (`open().advance()`) is a temporary that nothing else closes.
-                Some(place) if self.is_place(&place) => self.drop_value(new),
+                Some(place) if self.is_place(&place) => {
+                    self.drop_value(new);
+                    self.finish_place(&place);
+                }
                 _ => self.drop_temp(new),
             }
         }
@@ -874,15 +887,11 @@ impl<'a> FnLower<'a> {
                 subst.insert(v.id, ct::sub(a, &self.subst));
             }
         }
-        // A changing receiver selects its place once, at its written position; the read below and
-        // the writeback reuse the evaluated indices.
-        if self.cx.var_positions(&c).contains(&0) && self.is_place(recv_expr) {
-            self.prepare_place(recv_expr)?;
-            if self.dead {
-                return Ok(self.dummy(MTy::UNIT));
-            }
-        }
-        let recv = self.expr(recv_expr)?;
+        let recv = if self.cx.var_positions(&c).contains(&0) {
+            self.read_place(recv_expr)?
+        } else {
+            self.expr(recv_expr)?
+        };
         if self.dead {
             return Ok(recv);
         }
@@ -899,6 +908,7 @@ impl<'a> FnLower<'a> {
         let at = self.b.current();
         let args = self.eval_args(view, &names, &c, &subst, Some(recv), e.pos)?;
         if self.dead {
+            self.finish_place(recv_expr);
             return Ok(recv);
         }
         let recv = self.refresh(recv_expr, recv, at)?;
@@ -1076,8 +1086,19 @@ impl<'a> FnLower<'a> {
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
         let mut places: Vec<Option<Expr>> = vec![None; params.len()];
         for (n, a) in view.arguments.iter().enumerate() {
-            let x = self.expr(a.expr)?;
+            let idx = params
+                .iter()
+                .position(|p| p.name == a.slot.name)
+                .ok_or_else(|| {
+                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
+                })?;
+            let x = if op_vars.get(idx).copied().unwrap_or(false) {
+                self.read_place(a.expr)?
+            } else {
+                self.expr(a.expr)?
+            };
             if self.dead {
+                self.finish_places(&places);
                 return Ok(x);
             }
             let owned_payload = x.own;
@@ -1101,12 +1122,6 @@ impl<'a> FnLower<'a> {
             } else {
                 x
             };
-            let idx = params
-                .iter()
-                .position(|p| p.name == a.slot.name)
-                .ok_or_else(|| {
-                    Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
-                })?;
             if op_vars.get(idx).copied().unwrap_or(false) {
                 places[idx] = Some(a.expr.clone());
             }
@@ -1130,6 +1145,10 @@ impl<'a> FnLower<'a> {
                     }
                 }
             };
+            if self.dead {
+                self.finish_places(&places);
+                return Ok(x);
+            }
             if op_vars.get(i).copied().unwrap_or(false) {
                 // A lone `var` field argument changes in place, as for a source function.
                 if lone_var

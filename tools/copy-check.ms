@@ -59,7 +59,7 @@ export fn main() Int:
             continue
 
         if let out = run(
-            ms.clone(), command, RunOptions(timeout: seconds(120), env: env)
+            ms.clone(), command, RunOptions(timeout: seconds(120), env: env.clone())
         ).wait():
             swept += 1
 

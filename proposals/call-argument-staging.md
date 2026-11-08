@@ -10,7 +10,7 @@
 
 Stage 1 (this PR): `Optional` temporaries close at statement end (#2989), list `set`/`insert`/`replace` keep the incoming resource registered through every operand and the bounds check until `element_value` stores it (#3027), including a failing later operand. `replace` now checks its index in lowering, like `set`.
 
-Later stages, in order: source calls and method values (`call_callable`, `eval_args`), interface calls (`contract_call`), record construct, then delete the `later_try` copies of the hold logic and the `copyelim` sub-passes whose copies lowering no longer emits.
+Stages 2 and 3 landed on `main` from other work while this was in review (#2984, #2992, #3004, #3052): source, interface, function-value and list-mutator calls now hold owned resource arguments through later operands, so this change adds no further staging helper. What it adds is below.
 
 ## Problem
 
@@ -22,3 +22,13 @@ Measured on `c6fef864`: the `later_try`-style hold appears in `eval_args`, `nati
 - Validate before evaluating arguments: changes source evaluation order.
 - Close only on the error branch: duplicates ownership policy and risks double close on success.
 - Extend the verifier to model user `close` calls: closes are ordinary calls in MIR, so the check would need a resource role on every close; the e2e log-order fixtures cover it at lower cost.
+
+## Stage 3 findings
+
+Counting how often each `copyelim` sub-pass changes a module over the e2e and conformance corpora (453 and 3887 fixtures): `borrow_local_copies` 396, `move_dead_sources_across_blocks` 327, `move_dead_sources` 318, `borrow_str_phis` 215, `borrow_str_copies_across_blocks` 124, `run_func` 90, `unbox_dead_sources` 62, `unbox_dead_options` 5, `borrow_opt_str_reads` 1. Most still fire because they also elide the copy of a written `.clone()` whose source dies, which is an optimization, not a lowering hack. `borrow_opt_str_reads` (one firing, a refcount-era shape) is deleted. `make copy-check` failed on `tools/copy-check.ms:62` (`env` moved in a loop); fixed with `env.clone()`, and it now reports 0 lowering copies over 717 programs.
+
+## Close failures and bounds checks (#3075, #3076)
+
+A mutator that discards a resource entry (`set`, `remove`, `splice`, map `add`/`remove`) closes it in place; a failed close faulted at once, leaving the entry in the container so the unwind closed it again. The failure is now recorded (`defer_close_failures`) and the fault comes after the mutation removed the entry (`fault_deferred_close`), so each entry closes once and every entry of a `splice` is attempted.
+
+`insert`, `replace` and `remove` took the list out of its variable before the bounds check, so a fault left the variable's cleanup with an empty slot; Windows then closed nothing in the list (#3076). They now check the index while the list is still in the variable (`precheck_list_index`).

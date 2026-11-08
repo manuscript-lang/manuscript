@@ -27,7 +27,7 @@ test "YAML flow EOF columns retain compact and anchor prefixes":
     try error_at("- - [one", 1, 9)
     try error_at("&a [one", 1, 8)
     try error_at("key: &", 1, 7)
-    try error_at("--- key: &", 1, 11)
+    try error_at("--- &", 1, 6)
 
 test "YAML quoted EOF location retains root indentation":
     try error_at("  \"one", 1, 7)
@@ -38,7 +38,7 @@ test "YAML inline document content retains its source row":
     try error_at("--- [one", 1, 9)
     try error_at("--- [one,\n two", 2, 5)
     try error_at("# note\n--- [one", 2, 9)
-    try error_at("--- -\t\tkey: [one", 1, 17)
+    try error_at("---\n-\t\tkey: [one", 2, 13)
 
 test "YAML compact tab rewrites retain original scalar columns":
     try error_at("-\t\tkey: [one", 1, 13)
@@ -70,8 +70,8 @@ test "YAML invalid controls report their physical source position":
     try error_at("first: ok\r\nx: é\u{81}", 2, 5)
 
 test "YAML inline document headers and merges retain source origins":
-    try error_at("--- key: |bad\n  x", 1, 11)
-    try error_at("--- <<: 1", 1, 5)
+    try error_at("--- |bad\n  x", 1, 6)
+    try error_at("--- \{<<: 1\}", 1, 11)
 
 test "YAML source projection preserves compact document values":
     var values = Map[String, YamlValue]()
@@ -79,11 +79,11 @@ test "YAML source projection preserves compact document values":
 
     let expected = YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
     parse("-\t\tkey: value") | try expect_ok | try expect_equal(expected)
-    parse("--- -\t\tkey: value") | try expect_ok | try expect_equal(expected)
+    parse("---\n-\t\tkey: value") | try expect_ok | try expect_equal(expected)
     parse("-\t\t-\t\tkey: value") | try expect_ok | try expect_equal(
         YamlValue.ArrayValue([expected.clone()])
     )
 
 test "YAML block header origins distinguish identical quoted key text":
     try error_at("\"|bad\": |bad\n  x", 1, 10)
-    try error_at("--- \"|bad\": |bad\n  x", 1, 14)
+    try error_at("---\n\"|bad\": |bad\n  x", 2, 10)

@@ -62,3 +62,22 @@ test "a failing later operand closes the incoming resource":
     let fault = try expect_fault(fn: set_operand_fault(log.clone()))
     try expect_contains(fault, "index operand failed")
     try expect_equal(try events(log), "2,1,")
+
+test "set with a negative named index closes the old entry then stores":
+    let temp = try temporary("list-negative-named-")
+    let log = "{temp.path()}/log"
+    var items = [Item(1, log.clone()), Item(2, log.clone())]
+    items.set(value: Item(3, log.clone()), index: -1)
+    try expect_equal(try events(log), "2,")
+    try expect_equal(items.length(), 2)
+
+fn remove_out(log: String) Unit:
+    var items = [Item(1, log)]
+    items.remove(10)
+
+test "remove bounds fault still closes the list's existing resource":
+    let temp = try temporary("list-remove-cleanup-")
+    let log = "{temp.path()}/log"
+    let fault = try expect_fault(fn: remove_out(log.clone()))
+    try expect_contains(fault, "index")
+    try expect_equal(try events(log), "1,")

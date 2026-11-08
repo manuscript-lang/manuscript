@@ -54,6 +54,9 @@ pub(crate) struct LoopCtx {
     pub brk_used: bool,
 }
 
+/// Stable identity of a selected place index, including defaults from another module.
+pub(crate) type PlaceKey = (ct::Name, ms_check::api::NodeId, Pos);
+
 /// Per-function lowering state.
 pub(crate) struct FnLower<'a> {
     pub syms: ms_check::api::Names,
@@ -94,10 +97,10 @@ pub(crate) struct FnLower<'a> {
     pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
-    /// Index expressions of a place already evaluated, by node id and position (the call keeps a
-    /// clone of the place, so the address is not stable), until the place update that selects
-    /// with them takes them.
-    pub prepared_indices: HashMap<(ms_check::api::NodeId, Pos), Value>,
+    /// Checked place indices retained through the final writeback.
+    pub prepared_indices: HashMap<PlaceKey, Value>,
+    /// Only receiver-chain indices are captured during a checked place read.
+    pub capture_indices: HashSet<PlaceKey>,
     /// Intact resource temporaries: their slots own the values while later expressions run.
     /// The keys are borrowed views, consumed only by `take_resource_temp`.
     pub resource_temps: HashMap<Value, crate::close::ResourceTemp>,
@@ -119,6 +122,9 @@ pub(crate) struct FnLower<'a> {
     pub closed_on_path: HashSet<usize>,
     /// A close error is being returned, so a further close failure is dropped.
     pub returning_close_error: bool,
+    /// While a mutator discards entries: set by a failed close, which faults after the mutation
+    /// removed the entry, so the unwind does not close it a second time.
+    pub deferred_close: Option<ms_mir::builder::Var>,
     /// Bindings of the scope being left whose close and drop already ran.
     pub scope_done: Vec<usize>,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
@@ -589,6 +595,7 @@ impl<'a> FnLower<'a> {
             list_iters: HashMap::new(),
             temps: Vec::new(),
             prepared_indices: HashMap::new(),
+            capture_indices: HashSet::new(),
             resource_temps: HashMap::new(),
             loops: Vec::new(),
             dead: false,
@@ -600,6 +607,7 @@ impl<'a> FnLower<'a> {
             prologue_done: false,
             closed_on_path: HashSet::new(),
             returning_close_error: false,
+            deferred_close: None,
             scope_done: Vec::new(),
             var_slots: Vec::new(),
             slotted: HashSet::new(),

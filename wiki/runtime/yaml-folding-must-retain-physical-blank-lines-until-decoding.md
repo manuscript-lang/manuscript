@@ -11,3 +11,8 @@ A supported version directive must accept the same explicit document-start forms
 Apply when: changing YAML scalar gathering, comment removal, whitespace handling, folding, or chomping.
 Evidence: [YAML parser](../../stdlib/data/yaml.ms), [called scalar regressions](../../tests/e2e/testdata/stdlib/yaml.ms), [node/comment regressions](../../tests/e2e/testdata/stdlib/yaml-regressions.ms), [YAML contract](../../stdlib/data/json.ms), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization; preserve plain embedded quotes/brackets, whole-line flow comments, anchored quotes, adjacent quoted keys, and Unicode spaces.
+
+A synthetic split after an inline `---` marker must not admit same-line block
+collections. Use the recorded physical-line boundary and existing structural
+classification, not colon/dash text searches; preserve inline flow/scalar nodes
+and anchor-only marker lines followed by a block collection on the next line.
