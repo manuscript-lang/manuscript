@@ -620,6 +620,10 @@ impl Walker<'_> {
         {
             // A function value borrows its arguments, so the stored one would be a copy.
             for held in self.cx.m.ty(recv).args.clone() {
+                // A type parameter stays accepted, as before; only concrete types are checked.
+                if held.kind == Kind::Variable {
+                    continue;
+                }
                 self.require_clonable(
                     e,
                     &held,
