@@ -24,3 +24,7 @@ Measured on `c6fef864`: the `later_try`-style hold appears in `eval_args`, `nati
 - Validate before evaluating arguments: changes source evaluation order.
 - Close only on the error branch: duplicates ownership policy and risks double close on success.
 - Extend the verifier to model user `close` calls: closes are ordinary calls in MIR, so the check would need a resource role on every close; the e2e log-order fixtures cover it at lower cost.
+
+## Stage 3 findings
+
+Record construct and native calls use `stage_arg`/`release_staged` too. Counting how often each `copyelim` sub-pass changes a module over the e2e and conformance corpora (453 and 3887 fixtures): `borrow_local_copies` 396, `move_dead_sources_across_blocks` 327, `move_dead_sources` 318, `borrow_str_phis` 215, `borrow_str_copies_across_blocks` 124, `run_func` 90, `unbox_dead_sources` 62, `unbox_dead_options` 5, `borrow_opt_str_reads` 1. Most still fire because they also elide the copy of a written `.clone()` whose source dies, which is an optimization, not a lowering hack. `borrow_opt_str_reads` (one firing, a refcount-era shape) is deleted. `make copy-check` currently fails on `main` in `tools/copy-check.ms:62` (`env` moved in a loop), so the lowering-copy count could not be re-measured; that needs its own fix.
