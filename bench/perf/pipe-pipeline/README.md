@@ -24,3 +24,12 @@ Cause: every item took the one table lock of all pipes three times (`msrt_pipe_w
 Changes: the table lock spins (the critical section is a few pointer moves) and yields after 256 spins; `msrt_pipe_write` answers `FULL` when the queue is above capacity, so `PipeSink.write` no longer asks `msrt_pipe_buffered`; `steal_wait_ns` reads the clock only when a start is queued, which an idle thread's spin polls.
 
 Left: with the work on two threads a run is still 0.22 to 0.25 s, and with three threads 0.6 to 0.9 s, against 0.075 s on one. Go channels, same shape: 0.15 to 0.18 s.
+
+## 2026-11-08 (#2926): lock-free first lane
+
+The stage-to-main pipe has one writer and now takes no lock; the two-producer pipe keeps its lock. Wall seconds, sorted, all 40 runs per build, same session. [pipe-chain](../pipe-chain/README.md) is the all-lock-free shape.
+
+| build | runs |
+| --- | --- |
+| `eeecab6d` (main) | 0.068 0.068 0.069 0.069 0.069 0.070 0.071 0.073 0.074 0.074 0.076 0.096 0.098 0.136 0.307 0.321 0.335 0.365 0.384 0.481 0.486 0.514 0.553 0.570 0.572 0.933 1.012 1.182 1.455 1.527 1.552 1.591 1.593 1.681 1.737 1.924 1.969 1.994 2.125 2.139 |
+| this change | 0.064 0.065 0.067 0.067 0.074 0.165 0.170 0.173 0.198 0.201 0.202 0.209 0.215 0.216 0.237 0.256 0.265 0.277 0.297 0.309 0.328 0.328 0.355 0.416 0.495 0.596 0.706 0.866 0.872 0.906 0.922 0.946 0.951 1.005 1.021 1.034 1.043 1.043 1.049 1.101 |
