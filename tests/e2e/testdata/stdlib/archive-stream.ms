@@ -218,6 +218,20 @@ test "tar entries reject a base-256 size that overflows as invalid":
     let got = read_entries(chunked(bad.build(), 4096))
     try expect_equal(got.err().kind, "EBADMSG")
 
+test "decompressed streams reject bytes after the payload as decompress does":
+    let text = "tail check ".repeat(50).get("").to_bytes()
+
+    for format in [
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+    ]:
+        let packed = try compress(text.clone(), format)
+        let junk = packed.concat("junk".to_bytes())
+        try expect_equal((decompress(junk.clone(), format)).err().kind, "EBADMSG")
+
+        for size in [1, 7, 4096]:
+            let got = read_all(decompressed(chunked(junk.clone(), size), format))
+            try expect_equal(got.err().kind, "EBADMSG")
+
 // One member of a tar archive: a file's header and data block, or a directory's header.
 fn member(path: String, directory: Bool) Bytes!:
     let data = if directory: "".to_bytes() else: "x".to_bytes()
