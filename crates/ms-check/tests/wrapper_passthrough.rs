@@ -158,3 +158,11 @@ fn derived_passthrough_covers_result_get_and_discarding_method_values() {
         "{got:?}"
     );
 }
+
+#[test]
+fn source_discard_names_do_not_imply_native_collection_effects() {
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/accept-source-discard-names.ms"
+    ));
+    assert!(got.is_empty(), "{got:?}");
+}

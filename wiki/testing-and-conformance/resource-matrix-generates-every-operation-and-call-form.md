@@ -9,3 +9,5 @@ The method-value check reads from the declaration, not a name list: `bound_passt
 Apply when: adding or changing a standard operation that takes, returns or discards a `T`, or a call form (method value, interface, function value).
 Evidence: [tools/resource-matrix.ms](../../tools/resource-matrix.ms), [wrapper_passthrough tests](../../crates/ms-check/tests/wrapper_passthrough.rs).
 Verify: add a row to `operations()` and run `make resource-matrix`; a combination that must not be accepted is rejected by the checker, never skipped in the tool.
+
+Native discard classifications apply only to native collection methods, not arbitrary source methods named `remove`, `clear`, `set`, `add`, or `splice`. A generic source receiver may hold a resource while such a method only updates a counter (#3106); retain a same-name acceptance control alongside native rejection cases.
