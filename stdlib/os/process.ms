@@ -1,7 +1,7 @@
 import Closeable from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
-import Promise, owned_promise from "@std/concurrency/promise.ms"
+import Promise, owned_task from "@std/concurrency/promise.ms"
 import (
     ReadStream,
     WriteStream,
@@ -246,10 +246,16 @@ fn environment_values(environment: Map[String, String]) List[String]:
         values.append(entry.value.clone())
     return values
 
-type RunArgs:
-    program: String
-    arguments: List[String]
+// The work of `run`: a returned closure owns the program, arguments and options.
+fn run_job(
+    program: String,
+    arguments: List[String],
     options: RunOptions
+) fn() CommandOutput!:
+    return fn: msstd_process_command_run(
+        program, arguments, options.input, options.max_output_bytes, options.timeout,
+        options.cwd, environment_names(options.env), environment_values(options.env)
+    )
 
 /*
 Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `options.input` is written to its standard input, and its output is captured.
@@ -262,16 +268,8 @@ export fn run(
     arguments: List[String],
     options: RunOptions = RunOptions()
 ) Promise[CommandOutput]:
-    return owned_promise[RunArgs, CommandOutput](
-        RunArgs(
-            program: program.clone(), arguments: arguments.clone(),
-            options: options.clone()
-        ),
-        fn a: msstd_process_command_run(
-            a.program, a.arguments, a.options.input, a.options.max_output_bytes,
-            a.options.timeout, a.options.cwd, environment_names(a.options.env),
-            environment_values(a.options.env)
-        )
+    return owned_task[CommandOutput](
+        run_job(program.clone(), arguments.clone(), options.clone())
     )
 
 // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.

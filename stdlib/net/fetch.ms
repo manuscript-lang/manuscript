@@ -20,7 +20,7 @@ import (
     msstd_http_client_request_bytes,
     msstd_http_client_share
 ) from "@std/internal/http.ms"
-import Promise, owned_promise from "@std/concurrency/promise.ms"
+import Promise, owned_task from "@std/concurrency/promise.ms"
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
 export enum FetchBody:
@@ -119,12 +119,11 @@ impl Fetcher:
     // A `Raw` or `Text` body is resent on redirects that keep it.
     // Returns the promise of the response; requests started together are in flight together.
     fn fetch(url: String, options: FetchOptions = FetchOptions()) Promise[FetchResponse]:
-        return owned_promise[SendArgs, FetchResponse](
-            SendArgs(
-                native: msstd_http_client_share(self.client.native), url: url.clone(),
-                options: options.clone()
-            ),
-            fn a: sent(a.native, a.url, a.options)
+        return owned_task[FetchResponse](
+            send_job(
+                msstd_http_client_share(self.client.native), url.clone(),
+                options.clone()
+            )
         )
 
     // Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
@@ -227,23 +226,23 @@ export fn fetch(
     url: String,
     options: FetchOptions = FetchOptions()
 ) Promise[FetchResponse]:
-    return owned_promise[FetchArgs, FetchResponse](
-        FetchArgs(url: url.clone(), options: options.clone()),
-        fn a: fetched(a.url, a.options)
-    )
+    return owned_task[FetchResponse](fetch_job(url.clone(), options.clone()))
 
-type FetchArgs:
-    url: String
-    options: FetchOptions
+// The work of `fetch`: a returned closure owns the URL and options.
+fn fetch_job(url: String, options: FetchOptions) fn() FetchResponse!:
+    return fn: fetched(url, options)
 
 fn fetched(url: String, options: FetchOptions) FetchResponse!:
     let client = try fetcher()
     return sent(client.client.native, url, options)
 
-type SendArgs:
-    native: NativeHttpClient
-    url: String
+// The work of `Fetcher.fetch`: a returned closure owns its handle on the pooled client, the URL and options.
+fn send_job(
+    native: NativeHttpClient,
+    url: String,
     options: FetchOptions
+) fn() FetchResponse!:
+    return fn: sent(native, url, options)
 
 // Sends the request on the pooled client behind `native` and buffers the response body.
 fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:

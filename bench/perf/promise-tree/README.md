@@ -21,4 +21,4 @@ Queue a promise on its creator's thread; a waiter runs a promise nobody took inl
 
 Cost per promise at one thread: about 3.9 us before, 0.2 us after. Heavy fan-out is unchanged: `fan 38 8` takes 1565 / 730 / 346 ms before and 1366 / 704 / 396 ms after on 1 / 2 / 4 threads. `mailbox` (100,000 short promises, window 64): 1,900 to 2,200 ns before, 418 ns after.
 
-Not changed: a wait with a timeout or cancellation still runs the promise as a task, and `owned_promise` and I/O promises start where they were created.
+Not changed: a wait with a timeout or cancellation still runs the promise as a task, and `owned_task` and I/O promises start where they were created.

@@ -2,7 +2,7 @@
 // conform: phase=test
 // conform: timeout=120
 import expect_equal from "@std/test/test.ms"
-import owned_promise, Promise, wait_all from "@std/concurrency/promise.ms"
+import owned_task, Promise, wait_all from "@std/concurrency/promise.ms"
 import sleep, seconds, milliseconds from "@std/time.ms"
 import Bytes from "@std/bytes.ms"
 import read_file, remove, temporary_directory, write_file from "@std/os/fs.ms"
@@ -16,7 +16,7 @@ fn park(a: Int) Int!:
 test "fifty thousand parked promise tasks fit and cancel in bounded time":
     var promises: List[Promise[Int]] = []
     for i in 0..50000:
-        promises.append(owned_promise[Int, Int](i, fn a: park(a)))
+        promises.append(owned_task[Int](fn: park(i)))
     try sleep(milliseconds(500)).wait()
 
     var done = 0

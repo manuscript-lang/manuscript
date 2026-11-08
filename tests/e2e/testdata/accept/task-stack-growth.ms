@@ -1,5 +1,5 @@
 import expect_equal, expect_fault, expect_true from "@std/test/test.ms"
-import Promise, owned_promise, promise, wait_all from "@std/concurrency/promise.ms"
+import Promise, owned_task, promise, wait_all from "@std/concurrency/promise.ms"
 import microseconds, sleep from "@std/time.ms"
 
 fn depth(n: Int) Int:
@@ -14,13 +14,13 @@ fn forever(n: Int) Int:
 // A task starts on a 512 KiB stack slot and grows by guarded segments when a recursion passes
 // it: this chain is about 28 MB of frames in a release build, 80 MB in a debug build.
 test "a promise task recurses far past its first stack slot":
-    let p = owned_promise[Int, Int](200000, fn n: ok(depth(n)))
+    let p = owned_task[Int](fn: ok(depth(200000)))
     try expect_equal(p.wait().get(0), 200000)
 
 // Each call crosses the boundary of the first slot (about 3,200 release frames) and comes
 // back; the task keeps its second segment, so the loop allocates nothing after the first pass.
 test "a loop at a segment boundary runs in bounded time":
-    let p = owned_promise[Int, Int](0, fn n: ok(loop_at_boundary() + n))
+    let p = owned_task[Int](fn: ok(loop_at_boundary()))
     try expect_equal(p.wait().get(0), 3300 * 20000)
 
 fn loop_at_boundary() Int:
@@ -31,13 +31,13 @@ fn loop_at_boundary() Int:
 
 // Growth stops at 256 MiB, the main task's own limit, with the stack overflow report.
 test "a runaway recursion in a task still faults":
-    let p = owned_promise[Int, Int](0, fn n: ok(forever(n)))
+    let p = owned_task[Int](fn: ok(forever(0)))
     try expect_true(p.wait().is_error())
 
 // A fault deep in a grown stack is caught by a guard opened on the first segment, and the task
 // carries on there.
 test "a fault inside a grown segment unwinds to its guard":
-    let p = owned_promise[Int, Int](0, fn n: ok(catch_in_task() + n))
+    let p = owned_task[Int](fn: ok(catch_in_task()))
     try expect_equal(p.wait().get(0), 10000)
 
 fn catch_in_task() Int:

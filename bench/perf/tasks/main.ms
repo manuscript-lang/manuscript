@@ -3,7 +3,7 @@
 // `read`, after a file read), then reports the process's resident set and page tables.
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report
 // (it reads /proc/self/status); the tasks themselves are portable.
-import owned_promise, Promise from "@std/concurrency/promise.ms"
+import owned_task, Promise from "@std/concurrency/promise.ms"
 import sleep, seconds from "@std/time.ms"
 import read_file from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
@@ -48,11 +48,11 @@ export fn main() Int:
 
     for i in 0..n:
         if mode == "sleep":
-            promises.append(owned_promise[Int, Int](i, fn a: park_sleep(a)))
+            promises.append(owned_task[Int](fn: park_sleep(i)))
         else if mode == "deep":
-            promises.append(owned_promise[Int, Int](i, fn a: park_deep(a)))
+            promises.append(owned_task[Int](fn: park_deep(i)))
         else:
-            promises.append(owned_promise[Int, Int](i, fn a: park_read(a)))
+            promises.append(owned_task[Int](fn: park_read(i)))
 
     let t1 = monotonic_time()
 
