@@ -23,7 +23,7 @@ import Timestamp from "@std/time.ms"
 import (
     Promise,
     promise,
-    owned_promise,
+    owned_task,
     deferred,
     complete
 ) from "@std/concurrency/promise.ms"
@@ -247,24 +247,17 @@ impl Listener:
     // Starts waiting for the next incoming connection and returns its promise. A timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`.
     // On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives EIO.
     fn accept(timeout: Duration? = none) Promise[Connection]:
-        return owned_promise[AcceptArgs, Connection](
-            AcceptArgs(
-                native: msstd_net_listener_share(self.native), timeout: timeout
-            ),
-            accepted
+        return owned_task[Connection](
+            accept_job(msstd_net_listener_share(self.native), timeout)
         )
 
     // Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
         return msstd_net_listener_address(self.native)
 
-// What an accepting promise owns: its own handle on the listener, and the time it waits.
-type AcceptArgs:
-    native: NativeListener
-    timeout: Duration?
-
-fn accepted(args: AcceptArgs) Connection!:
-    return ok(connection(try msstd_net_listener_accept(args.native, args.timeout)))
+// The work of `accept`: a returned closure owns its own handle on the listener and the time it waits.
+fn accept_job(native: NativeListener, timeout: Duration?) fn() Connection!:
+    return fn: ok(connection(try msstd_net_listener_accept(native, timeout)))
 
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
@@ -466,34 +459,20 @@ export fn connect(
     tls: TlsOptions? = none,
     timeout: Duration? = none
 ) Promise[Connection]:
-    return owned_promise[ConnectArgs, Connection](
-        ConnectArgs(
-            address: address.clone(), tls: tls.clone(), timeout: timeout
-        ),
-        connected
-    )
+    return owned_task[Connection](connect_job(address.clone(), tls.clone(), timeout))
 
 // Starts connecting to the Unix domain socket at `path` and returns its promise.
 // Any restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and an empty path gives EINVAL. `timeout` bounds the attempt.
 // ms: effect std.net.connect
 export fn connect_unix(path: String, timeout: Duration? = none) Promise[Connection]:
-    return owned_promise[ConnectArgs, Connection](
-        ConnectArgs(address: path.clone(), tls: none, timeout: timeout), connected_unix
-    )
+    return owned_task[Connection](connect_unix_job(path.clone(), timeout))
 
-// What a connecting promise owns: the address (or Unix socket path), the TLS settings, and the time it waits.
-// Manuscript has no way yet to hand a promise the values its closure captures (see the closure-capture rules), so
-// the arguments travel in a record.
-type ConnectArgs:
-    address: String
-    tls: TlsOptions?
-    timeout: Duration?
+// The work of `connect` and `connect_unix`: a returned closure owns its address (or socket path), TLS settings and time.
+fn connect_job(address: String, tls: TlsOptions?, timeout: Duration?) fn() Connection!:
+    return fn: host_network().connect(address, tls, timeout)
 
-fn connected(args: ConnectArgs) Connection!:
-    return host_network().connect(args.address, args.tls, args.timeout)
-
-fn connected_unix(args: ConnectArgs) Connection!:
-    return host_network().connect_unix(args.address, args.timeout)
+fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
+    return fn: host_network().connect_unix(path, timeout)
 
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.

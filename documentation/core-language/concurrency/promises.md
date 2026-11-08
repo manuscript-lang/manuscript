@@ -72,6 +72,8 @@ Cancellation is delivered at the next wait. `cancel()` asks the work to stop the
 
 A promise created with `promise(fn: ...)` reads what it captures, and nothing it captures can be changed from inside it. The exception is a resource (a pipe writer, a file) the promise captures at its last use: the promise owns it from then on, runs once, and may write to it if it is declared `var`, pass it on with `var`, or close it. A promise holding a borrow of a value keeps that value from changing until the promise is dropped or moved into `wait_all`. To change state from several promises, give it one owner and send it values through a [pipe](streams.md#pipes).
 
+A promise a function returns outlives the call, so it owns what it captures instead of borrowing it: the function moves the captured parameters and locals into the promise, and a caller that wants to keep a value passes `.clone()`. A promise returned by name, or kept in a record, still borrows what it captured and cannot outlive those values.
+
 I/O operations copy their small arguments (paths, URLs, headers), so their promises borrow nothing.
 
 ## Faults

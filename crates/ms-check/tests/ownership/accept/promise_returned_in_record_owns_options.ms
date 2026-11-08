@@ -10,4 +10,4 @@ fn count_of(options: Options) Int!:
     return ok(options.count)
 
 fn serve(options: Options) Server:
-    return Server(running: promise(fn: count_of(options)))  // error: this promise reads `options`
+    return Server(running: promise(fn: count_of(options)))

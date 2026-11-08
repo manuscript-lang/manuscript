@@ -283,9 +283,11 @@ impl Walker<'_> {
             }
             let mut held = self.held(&a.value, mode);
             if starts_promise && let ExprKind::Lambda(l) = &a.value.kind {
-                // The entry of a promise reads what it captures, in place, while the promise lives.
+                // The entry of a promise reads what it captures, in place, while the promise lives;
+                // one that is returned owns them (`returned_promises_own_captures`).
                 self.entry_lambda = Some(a.value.id);
-                held.extend(self.lambda(&a.value, l, false));
+                let owned = self.escaped.contains(&a.value.id);
+                held.extend(self.lambda(&a.value, l, owned));
             } else {
                 held.extend(self.argument(a, mode, &modes, i));
             }
