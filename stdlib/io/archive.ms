@@ -424,8 +424,10 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 
 // Reads the entries of a tar byte stream one at a time, for archives too big to hold in memory. Each entry is
 // validated as `unpack` does; `max_entry_bytes` bounds one entry and `max_entries` and `max_bytes` the
-// whole archive, failing the read with `EOVERFLOW`. A truncated archive fails with `EBADMSG`. Closing
-// the result closes `input`.
+// whole archive, failing the read with `EOVERFLOW`. A truncated archive fails with `EBADMSG`. Like `unpack` and
+// `tar`, it stops at the first zero block and ignores what follows (archives are often padded to a blocking
+// factor), and accepts a last member whose data is complete but whose padding is short; unlike compression
+// streams, a tar has no trailer to check. Closing the result closes `input`.
 export fn tar_entries(
     input: ReadStream[Bytes],
     options: ArchiveOptions = ArchiveOptions()
