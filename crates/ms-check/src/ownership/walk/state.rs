@@ -374,10 +374,7 @@ impl Walker<'_> {
                 .parse::<u64>()
                 .ok()
         };
-        if self.cx.m.ty(left).is(Builtin::List)
-            && !self.syms.str(t).contains(['.', 'e', 'E'])
-            && !self.syms.str(t).ends_with('d')
-        {
+        if self.cx.m.ty(left).is(Builtin::List) {
             return literal().map_or(Step::Element, Step::Index);
         }
         Step::Element
