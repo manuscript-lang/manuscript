@@ -476,6 +476,15 @@ fn native_unknown(count: usize) -> CallModes {
     }
 }
 
+/// Declared native parameters consumed by an implementation, before callable adaptation.
+/// Parameter order excludes the receiver and matches `method.ty.params`.
+pub fn native_method_argument_modes(syms: ms_syntax::Names, method: &MethodRef) -> Vec<ParamMode> {
+    native_method_modes(syms, method, method.ty.params.len(), |i| {
+        Some(method.ty.params[i].name)
+    })
+    .arguments
+}
+
 fn native_method_modes(
     syms: ms_syntax::Names,
     method: &MethodRef,

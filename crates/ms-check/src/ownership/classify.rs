@@ -90,19 +90,31 @@ impl Classifier {
     /// rule as the contract checker's `Clonable` property, for the ownership pass, which has no
     /// contract checker.
     pub fn clonable(&self, syms: ms_syntax::Names, t: &Ty) -> bool {
-        self.clonable_in(syms, t, &mut Vec::new())
+        self.clonable_in(syms, t, &mut Vec::new(), false)
     }
 
-    fn clonable_in(&self, syms: ms_syntax::Names, t: &Ty, seen: &mut Vec<Name>) -> bool {
+    /// Whether the concrete type proves a copy is available without an erased payload check.
+    /// Unlike `clonable`, this does not admit interfaces or unresolved type parameters.
+    pub fn concretely_clonable(&self, syms: ms_syntax::Names, t: &Ty) -> bool {
+        self.clonable_in(syms, t, &mut Vec::new(), true)
+    }
+
+    fn clonable_in(
+        &self,
+        syms: ms_syntax::Names,
+        t: &Ty,
+        seen: &mut Vec<Name>,
+        concrete: bool,
+    ) -> bool {
         if self.class(syms, t) == Class::Resource {
             return false;
         }
         match t.kind {
-            Kind::Variable => t.bounds.borrow().iter().any(implies_clonable),
+            Kind::Variable => !concrete && t.bounds.borrow().iter().any(implies_clonable),
             // An interface value's payload has a type the interface does not name; one over a
             // native without a `clone` (an `HttpExchange`) faults when copied, a guard the
             // runtime keeps until wrappers can borrow (middleware `Tap`s copy their exchange).
-            Kind::Contract => !t.is_std(syms, "Closeable"),
+            Kind::Contract => !concrete && !t.is_std(syms, "Closeable"),
             // A function value owns its captures and has no `clone`, so a type holding one
             // cannot be duplicated (walk.rs `no_clone`).
             Kind::Function => false,
@@ -110,17 +122,20 @@ impl Classifier {
                 (self.copyable.contains(&t.id)
                     || self.clonable.contains(&t.id)
                     || native_declares_clone(syms, t))
-                    && t.args.iter().all(|a| self.clonable_in(syms, a, seen))
+                    && t.args
+                        .iter()
+                        .all(|a| self.clonable_in(syms, a, seen, concrete))
             }
             Kind::Record | Kind::Alternative => {
                 if seen.contains(&t.id) {
-                    // A recursive type repeats what is being checked.
-                    return true;
+                    // The concrete proof conservatively excludes recurring nominal types:
+                    // a repeated generic declaration may hide a different payload type.
+                    return !concrete;
                 }
                 seen.push(t.id);
                 let fields_ok = fields(t)
                     .iter()
-                    .all(|f| self.clonable_in(syms, &f.ty, seen));
+                    .all(|f| self.clonable_in(syms, &f.ty, seen, concrete));
                 let cases_ok = t.def.as_ref().is_none_or(|def| {
                     let cases = def.cases.borrow();
                     let mut remaining = cases.iter();
@@ -132,7 +147,7 @@ impl Classifier {
                     cases[first..].iter().all(|case| {
                         case.fields
                             .iter()
-                            .all(|f| self.clonable_in(syms, &sub(&f.ty, &s), seen))
+                            .all(|f| self.clonable_in(syms, &sub(&f.ty, &s), seen, concrete))
                     })
                 });
                 seen.pop();
@@ -336,6 +351,27 @@ mod tests {
         let mut ty = (**template).clone();
         ty.args = vec![left, right];
         Rc::new(ty)
+    }
+
+    #[test]
+    fn concrete_clones_do_not_assume_erased_payloads_are_clonable() {
+        let syms = ms_syntax::Names::global();
+        let classifier = Classifier::new(&Program::default());
+        let interface = Rc::new(Type::new(
+            syms,
+            n("Readable"),
+            n("test/Readable"),
+            Kind::Contract,
+        ));
+        let (_, template) = pair(syms);
+        let aggregate = instance(&template, int(), interface.clone());
+        assert!(classifier.clonable(syms, &interface));
+        assert!(classifier.clonable(syms, &aggregate));
+        assert!(!classifier.concretely_clonable(syms, &interface));
+        assert!(!classifier.concretely_clonable(syms, &aggregate));
+        let nested = instance(&template, aggregate, int());
+        assert!(!classifier.concretely_clonable(syms, &nested));
+        assert!(classifier.concretely_clonable(syms, &instance(&template, int(), int())));
     }
 
     #[test]
