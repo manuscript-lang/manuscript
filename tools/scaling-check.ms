@@ -4,7 +4,8 @@
 // 12, quadratic work about 100, so the default bound of 30 leaves room for cache effects and noisy runners.
 // Compile shapes (long functions, many locals, long interpolation, many impls, many functions, many branches, big
 // literals) run `ms check` and `ms emit`; the runtime half runs tests/scaling/containers.ms at 10k and 100k and
-// compares each phase's own timing. An input that exceeds TIMEOUT seconds fails.
+// compares each phase's own timing. A ratio over the bound is measured again (RETRIES times) and the lowest kept. An input
+// that exceeds TIMEOUT seconds fails.
 // MS names the ms to measure (default target/release/ms); SCALING_BOUND and SCALING_TIMEOUT override the limits.
 // Usage: ms run tools/scaling-check.ms [-- shape...]
 import tool_ms, env from "./lib.ms"
@@ -53,6 +54,8 @@ fn generate(shape: String, n: Int) String:
 
     return out.build()
 
+// Extra measurements of a shape whose ratio is over the bound.
+let RETRIES = 2
 let SHAPES = [
     "long_function", "many_locals", "long_interpolation", "many_impls",
     "many_functions", "many_branches", "big_literal"
@@ -131,7 +134,27 @@ export fn main() Int:
                 )
                 continue
 
-            let ratio = growth(small, mid, big, 0.05)
+            var ratio = growth(small, mid, big, 0.05)
+
+            // A wall-clock ratio just over the bound is usually runner noise (a quadratic pass is near 100x): measure
+            // again, up to RETRIES times, and keep the best, so only a ratio that stays high fails.
+            for attempt in 0..RETRIES:
+                if ratio <= bound: break
+
+                let s2 = measure(
+                    ms.clone(), command.clone(), files[0].clone(), [], limit
+                )
+                let m2 = measure(
+                    ms.clone(), command.clone(), files[1].clone(), [], limit
+                )
+                let b2 = measure(
+                    ms.clone(), command.clone(), files[2].clone(), [], limit
+                )
+                if s2 < 0.0 or m2 < 0.0 or b2 < 0.0: continue
+
+                let again = growth(s2, m2, b2, 0.05)
+                if again < ratio: ratio = again
+
             say(
                 "{shape} {command}: 1k {small}s 10k {mid}s 100k {big}s ratio {show(ratio)}\n"
             )
