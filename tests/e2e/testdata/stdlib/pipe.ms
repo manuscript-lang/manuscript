@@ -134,3 +134,30 @@ test "a promise keeps the writer it captured after its maker returns":
     try gate.close()
     try expect_equal(try drain(var input), [0, 1, 2, 3, 4])
     try sender.wait()
+
+fn send_many(var out: WriteStream[Int], from: Int, count: Int) Unit!:
+    for i in from..from + count:
+        try out.write(i)
+    try out.flush()
+    return out.close()
+
+test "a reader takes queued values directly and still waits and ends in order":
+    var p = pipe[Int](8)
+    var first = p.writer()
+    var second = p.writer()
+    var input = p.reader()
+    try p.close()
+
+    let a = promise(fn: send_many(var first, 0, 5000))
+    let b = promise(fn: send_many(var second, 5000, 5000))
+    var total = 0
+    var count = 0
+
+    for v in input:
+        total += v
+        count += 1
+
+    try a.wait()
+    try b.wait()
+    try expect_equal(count, 10000)
+    try expect_equal(total, 49995000)

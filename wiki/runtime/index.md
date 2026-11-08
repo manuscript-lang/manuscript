@@ -52,3 +52,4 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md): task groups, workers, channels, `Shared`, locks and caches are deleted; state has one owner and changes travel over pipes.
 - [Large write payloads take a pool permit before the copy](large-write-payloads-take-a-pool-permit-before-the-copy.md): `pool::admit` parks the caller before a payload over 64 KiB is cloned, bounding in-flight copies by the pool size.
 - [A Bytes view is a cap-zero borrow that is never freed](a-bytes-view-is-a-cap-zero-borrow-never-freed.md): `Bytes.view` lends the receiver without copying; `slice` still copies.
+- [A pipe read needs no promise when a value is queued](a-pipe-read-needs-no-promise-when-a-value-is-queued.md): `PipeSource.next` takes a queued value or the end directly; a pipeline of 1M values went from 0.33 s to 0.14 s (Go 0.17 s).

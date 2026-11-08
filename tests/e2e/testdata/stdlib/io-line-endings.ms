@@ -42,3 +42,19 @@ test "a line that is not valid UTF-8 is an error, not an empty line":
     )
     let found = collect(lines(from_bytes(bad)), none)
     try expect_equal(found.err().kind, "EBADMSG")
+
+test "lines decode in place across chunks with non-ASCII text and a final unterminated line":
+    var source = ""
+    var expected: List[String] = []
+
+    for i in 0..3000:
+        let text = "ligne {i} é日本"
+        expected.append(text.clone())
+        source += text
+        source += if i % 2 == 0: "\r\n" else: "\n"
+
+    expected.append("last")
+    source += "last"
+
+    let found = try collect(lines(memory(source, 7)), none)
+    try expect_equal(found, expected)

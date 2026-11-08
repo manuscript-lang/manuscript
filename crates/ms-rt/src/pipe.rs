@@ -212,6 +212,44 @@ pub extern "C-unwind" fn msrt_pipe_read(pipe: i64) -> i64 {
     id
 }
 
+/// Takes the next queued value without a promise: moves it to `out` and answers 1, or answers 0
+/// when nothing is queued (the reader then waits through `msrt_pipe_read`, or ends if
+/// `msrt_pipe_ended`). Like `msrt_pipe_read` it makes room for flushes waiting on the capacity.
+///
+/// # Safety
+/// `out` is writable memory for a value of `d`, the descriptor the writer used.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_pipe_try(
+    pipe: i64,
+    d: ms_rt_abi::ValueDesc,
+    out: *mut u8,
+) -> u8 {
+    let (item, released) = {
+        let mut table = pipes();
+        let Some(p) = slot(&mut table, pipe) else {
+            return 0;
+        };
+        let Some(item) = p.queue.pop_front() else {
+            return 0;
+        };
+        (item, take_flushes(p))
+    };
+    complete_flushes(released);
+    // SAFETY: the block holds an owned value of the writer's descriptor, which has the size `d`
+    // names; it moves out and the block is freed.
+    unsafe {
+        core::ptr::copy_nonoverlapping(item.ptr as *const u8, out, (*d).size as usize);
+        alloc::free(item.ptr as *mut u8);
+    }
+    1
+}
+
+/// Whether a read would finish with no value: every writer has closed and nothing is queued.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_pipe_ended(pipe: i64) -> i64 {
+    slot(&mut pipes(), pipe).is_none_or(|p| p.writers == 0 && p.queue.is_empty()) as i64
+}
+
 /// The flushes that no longer wait, once the queue has fallen to its capacity.
 fn take_flushes(p: &mut Pipe) -> Vec<i64> {
     if p.queue.len() <= p.capacity {
@@ -370,6 +408,37 @@ mod tests {
         msrt_pipe_close_writer(pipe);
         assert_eq!(finish(end), None);
         assert_eq!(finish(msrt_pipe_read(pipe)), None);
+        msrt_pipe_close_reader(pipe);
+        crate::task::teardown();
+    }
+
+    fn try_int(pipe: i64) -> Option<i64> {
+        let mut v = 0i64;
+        // SAFETY: `v` is an Int slot.
+        let some = unsafe { msrt_pipe_try(pipe, &msrt_desc_int, (&raw mut v).cast()) } == 1;
+        some.then_some(v)
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn try_takes_queued_values_without_a_promise_and_releases_flushes() {
+        let _g = lock();
+        let pipe = msrt_pipe_new(1);
+        assert_eq!(try_int(pipe), None);
+        assert_eq!(msrt_pipe_ended(pipe), 0);
+        write_int(pipe, 1);
+        write_int(pipe, 2);
+        write_int(pipe, 3);
+        let waiting = msrt_pipe_flush(pipe);
+        assert_eq!(promise::msrt_promise_done(waiting), 0);
+        assert_eq!(try_int(pipe), Some(1));
+        assert_eq!(try_int(pipe), Some(2));
+        assert_eq!(finish_unit(waiting), promise::OK);
+        assert_eq!(try_int(pipe), Some(3));
+        assert_eq!(try_int(pipe), None);
+        msrt_pipe_close_writer(pipe);
+        assert_eq!(msrt_pipe_ended(pipe), 1);
+        assert_eq!(try_int(pipe), None);
         msrt_pipe_close_reader(pipe);
         crate::task::teardown();
     }

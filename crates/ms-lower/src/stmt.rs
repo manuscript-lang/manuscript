@@ -1260,7 +1260,15 @@ impl<'a> FnLower<'a> {
 
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
         let mut root = iter;
-        while let ExprKind::Member { left, .. } = &root.kind {
+        // `xs.field` and `xs[i]` borrow part of `xs` while `xs` is unchanged. A method call may return a new value (`entries()`), so it is not followed.
+        while let ExprKind::Member { left, .. }
+        | ExprKind::Index { left, .. }
+        | ExprKind::Apply {
+            left,
+            value: Some(_),
+            ..
+        } = &root.kind
+        {
             root = left;
         }
         matches!(&root.kind, ExprKind::Name(_))
