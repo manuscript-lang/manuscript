@@ -43,12 +43,8 @@ pub fn now_ns() -> i64 {
 }
 use plat::{Waiter, set_nonblocking, wait_io, would_block};
 
-/// Parks the task `ms` milliseconds so other tasks run meanwhile.
-fn sleep_ms(ms: i64) {
-    ms_rt::glue::task_sleep(ms.max(0) * 1_000_000);
-}
-
-/// [`sleep_ms`] that returns when a stop request ends the sleep, so the caller can unwind by return.
+/// Parks the task `ms` milliseconds so other tasks run meanwhile; `Err` when a stop request ends
+/// the sleep, so the caller returns and drops what it holds.
 fn try_sleep_ms(ms: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
     ms_rt::glue::try_task_sleep(ms.max(0) * 1_000_000)
 }
@@ -320,7 +316,9 @@ impl Subprocess {
     pub fn wait(&mut self, timeout_ns: Option<i64>) -> Res<i64> {
         let deadline = timeout_ns.map(|t| now_ns().saturating_add(t));
         loop {
-            ms_rt::glue::poll_cancel();
+            if ms_rt::glue::cancel_pending() {
+                return Err(Fail::failed("cancelled"));
+            }
             if self.child.poll() {
                 return Ok(self.child.code.unwrap_or(-1));
             }
@@ -328,8 +326,15 @@ impl Subprocess {
             if deadline.is_some_and(|d| now >= d) {
                 return Err(Fail::status(STATUS_TIMEOUT));
             }
-            if !self.child.park_until_exit(deadline.map_or(-1, |d| d - now)) {
-                sleep_ms(deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)));
+            let parked = self
+                .child
+                .park_until_exit(deadline.map_or(-1, |d| d - now))
+                .map_err(|_| Fail::failed("cancelled"))?;
+            if !parked {
+                try_sleep_ms(
+                    deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)),
+                )
+                .map_err(|_| Fail::failed("cancelled"))?;
             }
         }
     }

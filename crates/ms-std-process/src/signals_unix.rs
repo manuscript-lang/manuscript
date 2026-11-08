@@ -7,7 +7,7 @@
 //! cancellation between them.
 use alloc::collections::VecDeque;
 use core::sync::atomic::{AtomicI32, AtomicU64, AtomicUsize, Ordering};
-use ms_rt::glue::poll_cancel;
+use ms_rt::glue::cancel_pending;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::sys;
@@ -186,9 +186,13 @@ impl Watcher {
             if let Some(b) = self.queue.pop_front() {
                 return Ok(b as i64);
             }
-            poll_cancel();
+            if cancel_pending() {
+                return Err(Fail::failed("cancelled"));
+            }
             // Parks until a signal byte arrives; closing the write end on `close` wakes it too.
-            ms_rt::glue::task_wait_fd(self.read, ms_rt::glue::WAIT_READ, -1);
+            if ms_rt::glue::try_task_wait_fd(self.read, ms_rt::glue::WAIT_READ, -1).is_err() {
+                return Err(Fail::failed("cancelled"));
+            }
         }
     }
 

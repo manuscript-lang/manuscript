@@ -5,7 +5,7 @@
 //! counts each event for every observer of that signal, then returns `FALSE` so the handler that
 //! was installed before (the runtime's cancellation) still runs.
 use core::sync::atomic::{AtomicU32, AtomicUsize, Ordering};
-use ms_rt::glue::poll_cancel;
+use ms_rt::glue::cancel_pending;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use ms_std_fs::err::{Fail, Res};
 use ms_std_fs::sys;
@@ -145,8 +145,11 @@ impl Watcher {
             if let Some(sig) = self.take() {
                 return Ok(sig);
             }
-            poll_cancel();
-            ms_rt::glue::task_sleep(i64::from(SLICE_MS) * 1_000_000);
+            if cancel_pending()
+                || ms_rt::glue::try_task_sleep(i64::from(SLICE_MS) * 1_000_000).is_err()
+            {
+                return Err(Fail::failed("cancelled"));
+            }
         }
     }
 

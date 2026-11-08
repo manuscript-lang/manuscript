@@ -27,18 +27,48 @@ pub(crate) fn poll_cancel_errno() -> Result<(), Errno> {
     poll_cancel().map_err(|_| sys::EIO)
 }
 
+/// The result a stop request leaves a job's caller with: the caller returns it, and the FFI
+/// boundary raises the cancel (`fs_status*`, `io::status`), so the value itself is never shown.
+#[cfg_attr(
+    test,
+    allow(dead_code, reason = "only the pool path in a program build uses it")
+)]
+pub(crate) trait Cancelled {
+    fn cancelled() -> Self;
+}
+
+impl<T> Cancelled for Res<T> {
+    fn cancelled() -> Self {
+        Err(Fail::failed("cancelled"))
+    }
+}
+
+impl<T> Cancelled for Result<T, Errno> {
+    fn cancelled() -> Self {
+        Err(sys::EIO)
+    }
+}
+
+impl Cancelled for bool {
+    /// A readiness wait ends not ready; the caller's next stop check returns the failure.
+    fn cancelled() -> Self {
+        false
+    }
+}
+
 /// Runs `f(&input, bytes)` on a blocking-pool thread when other tasks could use the time, so a
 /// slow disk stalls only the calling task; otherwise inline. The wait is shielded, so `bytes`
 /// may be borrowed, and a stop request takes effect once the call is done. `f` must not call
 /// into the runtime (see [`poll_cancel`]). A call made by a job runs inline.
-pub(crate) fn offload<I: Send + Sync + 'static, O: Send + 'static>(
+pub(crate) fn offload<I: Send + Sync + 'static, O: Send + Cancelled + 'static>(
     input: I,
     bytes: &[u8],
     f: fn(&I, &[u8]) -> O,
 ) -> O {
     #[cfg(not(test))]
     if !ms_rt::glue::pool::on_pool_thread() && !ms_rt::glue::pool::alone() {
-        return ms_rt::glue::pool::run_shielded(Lane::General, input, bytes, f);
+        return ms_rt::glue::pool::run_shielded(Lane::General, input, bytes, f)
+            .unwrap_or_else(|_| O::cancelled());
     }
     f(&input, bytes)
 }
@@ -161,7 +191,8 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     #[cfg(not(test))]
     if !ms_rt::glue::pool::alone() {
         let ran =
-            ms_rt::glue::pool::run_shielded(Lane::General, (path.to_vec(), max), &[], read_job);
+            ms_rt::glue::pool::run_shielded(Lane::General, (path.to_vec(), max), &[], read_job)
+                .map_err(|_| Fail::failed("cancelled"))?;
         match ran {
             Offloaded::Done(result) => return result,
             Offloaded::NotRegular => {}
@@ -204,12 +235,10 @@ fn write_all(fd: sys::Fd, mut data: &[u8], path: &[u8], cancellable: bool) -> Re
 fn write_with(path: &[u8], flags: i32, data: &[u8]) -> Res<()> {
     #[cfg(not(test))]
     if !ms_rt::glue::pool::alone() {
-        match ms_rt::glue::pool::run_shielded(
-            Lane::General,
-            (path.to_vec(), flags),
-            data,
-            write_job,
-        ) {
+        let ran =
+            ms_rt::glue::pool::run_shielded(Lane::General, (path.to_vec(), flags), data, write_job)
+                .map_err(|_| Fail::failed("cancelled"))?;
+        match ran {
             Offloaded::Done(result) => return result,
             Offloaded::NotRegular => {}
         }
