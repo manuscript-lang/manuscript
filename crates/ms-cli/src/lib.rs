@@ -96,21 +96,35 @@ fn default_project_target(args: &[String]) -> Option<Vec<String>> {
     if args.len() > 1 && args[1] != "--" && !args[1].starts_with('-') {
         return None;
     }
-    // `ms check -- a.ms` names its input after `--`; the manifest would be an extra one.
-    if TARGET_LIST_COMMANDS.contains(&args[0].as_str())
-        && let Some(split) = args.iter().skip(1).position(|a| a == "--").map(|i| i + 1)
-        && split + 1 < args.len()
-    {
-        // `fmt` and `verify` read options in any position.
-        if split == 1 || matches!(args[0].as_str(), "fmt" | "verify") {
-            return None;
+    // Inputs named after `--` or between options replace the default manifest.
+    if TARGET_LIST_COMMANDS.contains(&args[0].as_str()) {
+        let dashes = args
+            .iter()
+            .skip(1)
+            .position(|a| a == "--")
+            .map_or(args.len(), |i| i + 1);
+        let options: Vec<&String> = args[1..dashes]
+            .iter()
+            .filter(|a| a.starts_with('-'))
+            .collect();
+        let mut inputs: Vec<&String> = args[1..dashes]
+            .iter()
+            .filter(|a| !a.starts_with('-'))
+            .collect();
+        inputs.extend(args.iter().skip(dashes + 1));
+        if !inputs.is_empty() {
+            // `fmt` and `verify` read options in any position; `check` and `lint` want the file first.
+            if matches!(args[0].as_str(), "fmt" | "verify") || dashes == 1 {
+                return None;
+            }
+            let mut out = vec![args[0].clone(), inputs[0].clone()];
+            out.extend(options.into_iter().cloned());
+            if inputs.len() > 1 {
+                out.push("--".to_string());
+                out.extend(inputs[1..].iter().map(|a| (*a).clone()));
+            }
+            return Some(out);
         }
-        // `check` and `lint` want the file first: put the first target ahead of the options.
-        let mut out = vec![args[0].clone(), args[split + 1].clone()];
-        out.extend_from_slice(&args[1..split]);
-        out.push("--".to_string());
-        out.extend_from_slice(&args[split + 2..]);
-        return Some(out);
     }
     if !std::path::Path::new("ms.toml").is_file() {
         return None;
@@ -304,6 +318,14 @@ mod default_target_tests {
         assert_eq!(
             default_project_target(&args(&["fmt", "--check", "--", "a.ms"])),
             None
+        );
+        assert_eq!(
+            default_project_target(&args(&["verify", "--no-test", "a.ms"])),
+            None
+        );
+        assert_eq!(
+            default_project_target(&args(&["check", "--json", "a.ms", "b.ms"])),
+            Some(args(&["check", "a.ms", "--json", "--", "b.ms"]))
         );
     }
 }
