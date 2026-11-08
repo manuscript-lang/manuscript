@@ -255,6 +255,19 @@ impl Walker<'_> {
                 }
             }
             let held = self.held(r, mode);
+            // `xs[i] = v` is a call of `[]=`: on a value no variable holds, nothing would keep the
+            // store.
+            if mode == ParamMode::Mutate
+                && !self.is_place(r)
+                && self.constant_root(r).is_none()
+                && matches!(&callee.kind, ExprKind::Member { name, .. }
+                    if self.syms.str(name) == ms_syntax::parser::INDEX_SET)
+            {
+                self.error(
+                    r.pos,
+                    "an assignment target must be a variable or a field path of one, like `xs[i]` or `p.items[i]`; a call result or literal is dropped after the store, so bind it to a var first",
+                );
+            }
             self.receiver(r, mode);
             operands.push((Operand::Receiver(r), held, Vec::new()));
         } else {
