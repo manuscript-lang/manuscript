@@ -1,5 +1,6 @@
 import panic from "@std/core.ms"
 import sqrt from "@std/math/math.ms"
+import rat_of_float, rat_of_int from "@std/math/big.ms"
 
 /*
 Summary statistics over a `List[Float]`, in binary64 arithmetic.
@@ -30,7 +31,28 @@ export fn mean(values: List[Float]) Float?:
     if values.is_empty():
         return none
 
-    return values.sum() / values.length().to_float()
+    let sum = values.sum()
+    let ordinary = sum / values.length().to_float()
+    if sum.is_finite(): return ordinary
+
+    // Keep the existing NaN/infinity behavior; only a finite-input overflow needs repair.
+    for value in values:
+        if not value.is_finite(): return ordinary
+
+    // Exact accumulation preserves small cancellation residuals that scaling would discard.
+    var total = rat_of_int(0)
+
+    for value in values:
+        if let term = rat_of_float(value):
+            total = total.add(term)
+        else:
+            panic("statistics: finite mean input could not be converted")
+
+    if let average = total.divide(rat_of_int(values.length())):
+        if let result = average.to_float(): return result
+
+    // The exact average of finite inputs lies between their finite extrema.
+    panic("statistics: finite mean could not be represented")
 
 // Returns the median, the middle value of the sorted list or the mean of the two middle values, or none for an empty list.
 // Example: `median([5.0, 1.0, 3.0, 2.0])` is `2.5`.

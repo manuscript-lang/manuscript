@@ -177,3 +177,91 @@ test "median keeps ordinary tiny and nonfinite behavior":
     try expect_equal(try expect_some(median([-inf, 1.0])), -inf)
     try expect_equal((try expect_some(median([-inf, inf]))).is_nan(), true)
     try expect_equal((try expect_some(median([nan, nan]))).is_nan(), true)
+
+type MeanCase:
+    values: List[Float]
+    expected: Float
+
+test "mean recovers finite overflow using exact binary64 rational cases":
+    // Expected values are the rounded exact sum of the binary64 inputs divided by count.
+    for sample in [
+        MeanCase(
+            [1.7976931348623157e+308, 1.7976931348623157e+308], 1.7976931348623157e+308
+        ),
+        MeanCase(
+            [-1.7976931348623157e+308, -1.7976931348623157e+308],
+            -1.7976931348623157e+308
+        ),
+        MeanCase([1e+308, 1e+308, -1e+308], 3.333333333333333e+307),
+        MeanCase(
+            [
+                1.7976931348623157e+308, 1.7976931348623157e+308,
+                -1.7976931348623157e+308, -1.7976931348623157e+308, 1.0
+            ],
+            0.2
+        ),
+        MeanCase(
+            [
+                1.7976931348623157e+308, 1.7976931348623157e+308,
+                -1.7976931348623157e+308, -1.7976931348623157e+308, 1e-300
+            ],
+            2e-301
+        ),
+        MeanCase(
+            [
+                1.7976931348623157e+308, 1.7976931348623157e+308,
+                -1.7976931348623157e+308, -1.7976931348623157e+308, 2.5e-323
+            ],
+            5e-324
+        ),
+        MeanCase(
+            [
+                -1.7976931348623157e+308, -1.7976931348623157e+308,
+                1.7976931348623157e+308, 1.7976931348623157e+308, -2.5e-323
+            ],
+            -5e-324
+        ),
+        MeanCase(
+            [
+                1.7976931348623157e+308, 1.7976931348623157e+308,
+                -1.7976931348623157e+308, -1.7976931348623157e+308
+            ],
+            0.0
+        ),
+        MeanCase(
+            [
+                1.7976931348623157e+308, 1.7976931348623157e+308,
+                -1.7976931348623157e+308, -1.7976931348623157e+308, 1.0000000000000002
+            ],
+            0.20000000000000004
+        ),
+        MeanCase([1e+308, 1e+308, -1.5e+308, -1e+307], 1e+307)
+    ]:
+        try expect_equal(try expect_some(mean(sample.values)), sample.expected)
+
+test "mean keeps the existing finite sum rounding and nonfinite behavior":
+    for values in [
+        [1.0, 2.0, 6.0], [1e16, 1.0, -1e16], [5e-324, 5e-324], [-5e-324, -5e-324],
+        [-0.0, -0.0], [-0.0, 0.0]
+    ]:
+        let original = values.sum() / values.length().to_float()
+        let result = try expect_some(mean(values))
+        try expect_equal(result, original)
+        try expect_equal(1.0 / result, 1.0 / original)
+
+    let inf = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+    try expect_equal(try expect_some(mean([1.0, inf])), inf)
+    try expect_equal(try expect_some(mean([-inf, 1.0])), -inf)
+    try expect_equal(try expect_some(mean([1e308, 1e308, inf])), inf)
+    for values in [[inf, -inf], [nan, 1.0], [1e308, 1e308, -inf]]:
+        try expect_equal((try expect_some(mean(values))).is_nan(), true)
+    try expect_none(mean(List[Float]()))
+
+test "mean overflow recovery rounds tiny cancellation residuals to signed zero":
+    let edge = 1.7976931348623157e308
+
+    for residual in [5e-324, -5e-324]:
+        let result = try expect_some(mean([edge, edge, -edge, -edge, residual]))
+        try expect_equal(result, 0.0)
+        try expect_equal(1.0 / result, 1.0 / residual)
