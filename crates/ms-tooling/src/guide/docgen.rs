@@ -200,6 +200,9 @@ fn declaration_json(d: &ApiDeclaration) -> Json {
         fields.push(("doc".to_string(), Json::str(&d.doc)));
     }
     fields.push(("kind".to_string(), Json::str(&d.kind)));
+    if d.opaque {
+        fields.push(("opaque".to_string(), Json::Bool(true)));
+    }
     fields.push(("type".to_string(), Json::str(&d.ty)));
     for (key, items) in [
         ("type_parameters", &d.parameters),

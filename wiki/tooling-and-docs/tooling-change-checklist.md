@@ -29,3 +29,8 @@ Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line t
 - Source token lists are ordered by offset. Default-expression rendering should
   seek to the parameter before scanning its delimiters, rather than rescan every
   earlier declaration for each default; preserve original text and CRLF offsets.
+
+- Public API snapshots must use checked opacity before projecting fields or cases.
+  Filtering only a renderer leaks representation into search, member pages or JSON;
+  preserve public operations and generics. See the opaque API regressions in
+  `crates/ms-tooling/tests/guide_opaque.rs`.
