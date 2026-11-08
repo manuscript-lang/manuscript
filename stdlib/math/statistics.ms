@@ -280,10 +280,14 @@ export fn percentile(values: List[Float], percent: Float) Float?:
     return percentile_sorted(values.sorted(), percent)
 
 // Interpolates the percentile of an already sorted, non-empty list.
+// The rank is `percent * (n - 1) / 100`, so an integer percent at an exact rank is not displaced by an earlier rounding of `percent / 100`.
 fn percentile_sorted(ordered: List[Float], percent: Float) Float:
-    let position = percent / 100.0 * (ordered.length() - 1).to_float()
+    let position = percent * (ordered.length() - 1).to_float() / 100.0
     let below = position.truncate_to_int().get(0)
-    let fraction = position - below.to_float()
+    return interpolate_sorted(ordered, below, position - below.to_float())
+
+// Blends the neighbours at `below` and `below + 1` by `fraction` in 0 through 1.
+fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
     if below + 1 >= ordered.length():
         return ordered[ordered.length() - 1]
 
@@ -321,8 +325,19 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
         return cuts
 
     let ordered = values.sorted()
+
+    // The rank `i * (n - 1) / parts` is split in integers, so cut points at exact ranks return the element.
+    let span = ordered.length() - 1
+
     for i in 1..parts:
-        cuts.append(percentile_sorted(ordered, 100.0 * i.to_float() / parts.to_float()))
+        let numerator = i * span
+        cuts.append(
+            interpolate_sorted(
+                ordered, numerator / parts,
+                (numerator % parts).to_float() / parts.to_float()
+            )
+        )
+
     return cuts
 
 /*
