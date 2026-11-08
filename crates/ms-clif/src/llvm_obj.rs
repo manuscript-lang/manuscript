@@ -1,6 +1,7 @@
 //! Compiles LLVM IR text to an object file.
 
 use crate::link::llvm_tools;
+use crate::llvm_ir::Unit;
 use crate::{BuildOptions, Error, RtHot};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -40,18 +41,18 @@ impl Drop for LlvmObject {
 
 /// Optimizes and assembles each of `irs` at `-O<level>`, one thread per module.
 pub fn compile_all(
-    irs: &[String],
+    irs: &[Unit],
     level: &str,
     build: &BuildOptions,
 ) -> Result<Vec<LlvmObject>, Error> {
-    if let [ir] = irs {
-        return Ok(vec![compile(ir, level, build, 0)?]);
+    if let [unit] = irs {
+        return Ok(vec![compile(unit, level, build, 0)?]);
     }
     std::thread::scope(|scope| {
         let jobs: Vec<_> = irs
             .iter()
             .enumerate()
-            .map(|(k, ir)| scope.spawn(move || compile(ir, level, build, k)))
+            .map(|(k, unit)| scope.spawn(move || compile(unit, level, build, k)))
             .collect();
         jobs.into_iter()
             .map(|job| {
@@ -63,7 +64,13 @@ pub fn compile_all(
 }
 
 /// Optimizes and assembles `ir`, unit number `unit` of the program, at `-O<level>`.
-fn compile(ir: &str, level: &str, build: &BuildOptions, unit: usize) -> Result<LlvmObject, Error> {
+fn compile(
+    module: &Unit,
+    level: &str,
+    build: &BuildOptions,
+    unit: usize,
+) -> Result<LlvmObject, Error> {
+    let ir = module.ir.as_str();
     let dir: PathBuf = std::env::temp_dir().join(format!(
         "ms-llvm-{}-{}-{unit}",
         std::process::id(),
@@ -108,6 +115,10 @@ fn compile(ir: &str, level: &str, build: &BuildOptions, unit: usize) -> Result<L
         "s" => ("default<O2>", "-O2"),
         _ => (&*format!("default<O{level}>"), &*format!("-O{level}")),
     };
+    // A unit of `optnone` functions is code generated at `-O0` (fast instruction selection and
+    // register allocation, linear in the function's size); `llc -O2` would still run the greedy
+    // allocator, which is superlinear (`Unit::unoptimized`).
+    let codegen = if module.unoptimized { "-O0" } else { codegen };
     let bitcode = dir.join("m.bc");
     let tool =
         |name: &str| Command::new(tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)));
