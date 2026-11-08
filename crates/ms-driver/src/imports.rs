@@ -62,7 +62,7 @@ pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
             continue;
         };
         let rest = rest.trim_start();
-        if !matches!(keyword, "fn" | "type" | "interface" | "let") {
+        if !matches!(keyword, "fn" | "type" | "enum" | "interface" | "let") {
             continue;
         }
         let name: String = rest

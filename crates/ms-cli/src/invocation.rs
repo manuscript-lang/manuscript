@@ -137,8 +137,15 @@ pub fn parse_invocation(args: &[String], io: &mut Io) -> Result<Invocation, i32>
         return Err(usage_error(
             io,
             format!(
-                "unknown option {} for ms {}; run 'ms help {}' for its options (put the file first, then options)",
-                inv.filename, inv.command, inv.command
+                "unknown option {} for ms {}; run 'ms help {}' for its options (put the file first, then options{})",
+                inv.filename,
+                inv.command,
+                inv.command,
+                if std::path::Path::new("ms.toml").is_file() {
+                    ""
+                } else {
+                    "; with no file, ms uses ./ms.toml, which does not exist here, so pass a .ms file or a project ms.toml"
+                }
             ),
         ));
     }

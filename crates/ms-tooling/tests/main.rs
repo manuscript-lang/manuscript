@@ -1,8 +1,10 @@
 //! One integration-test binary for the crate: each file below is a module of it, so the
 //! crate links once instead of once per file.
 
+mod guide_defaults;
 mod guide_docgen;
 mod guide_extensions;
+mod guide_opaque;
 mod guide_pages;
 mod guide_type_display;
 mod labels;

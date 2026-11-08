@@ -373,3 +373,62 @@ fn link_components_follow_link_chains_and_stop_on_loops() {
         vec![left.clone(), right.clone()]
     );
 }
+
+#[test]
+fn manifest_byte_escapes_must_not_select_replacement_character_paths() {
+    let dir = TempDir::new();
+    write(dir.path(), "src/�.ms", "");
+    write(dir.path(), "�/value.ms", "");
+    for escaped in [r"\xff", r"\377", r"\xc3", r"\xed\xa0\x80", r"\xc0\xaf"] {
+        for source in [
+            format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\nentry = \"src/{escaped}.ms\"\n"
+            ),
+            format!("[project]\nname = \"bytes\"\nsource = \"{escaped}\"\n"),
+            format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\n[aliases]\n\"@value\" = \"src/{escaped}.ms\"\n"
+            ),
+        ] {
+            let manifest = write(dir.path(), "ms.toml", &source);
+            let error = read_project(&manifest).unwrap_err().to_string();
+            assert!(error.contains("invalid syntax"), "{source}: {error}");
+        }
+        let manifest = write(
+            dir.path(),
+            "ms.toml",
+            &format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\n[aliases]\n\"@{escaped}\" = \"src/�.ms\"\n"
+            ),
+        );
+        assert!(
+            read_project(&manifest)
+                .unwrap_err()
+                .to_string()
+                .contains("invalid quoted key")
+        );
+    }
+}
+
+#[test]
+fn manifest_valid_byte_escapes_keep_their_exact_paths() {
+    let dir = TempDir::new();
+    let accented = write(dir.path(), "src/é.ms", "");
+    let replacement = write(dir.path(), "src/�.ms", "");
+    for (escaped, expected) in [
+        (r"\xc3\xa9", &accented),
+        (r"\303\251", &accented),
+        (r"\u00e9", &accented),
+        ("é", &accented),
+        (r"\ufffd", &replacement),
+        ("�", &replacement),
+    ] {
+        let manifest = write(
+            dir.path(),
+            "ms.toml",
+            &format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\nentry = \"src/{escaped}.ms\"\n"
+            ),
+        );
+        assert_eq!(&read_project(&manifest).unwrap().entry, expected);
+    }
+}

@@ -412,7 +412,12 @@ pub(super) fn watched_files(syms: ms_syntax::Names, input: &str, checked: &Check
     let mut files = Vec::new();
     files.extend(absolute(input));
     if !checked.project_root.is_empty() {
-        files.push(pathops::join(&[&checked.project_root, "ms.toml"]));
+        let manifest = pathops::join(&[&checked.project_root, "ms.toml"]);
+        // A new source or test file appears in a directory discovery walks, not in the graph.
+        if let Ok(project) = ms_driver::project::read_project(&manifest) {
+            files.extend(ms_driver::project::discovered_directories(&project));
+        }
+        files.push(manifest);
     }
     files.extend(checked.inputs.iter().cloned());
     let Some(program) = &checked.program else {

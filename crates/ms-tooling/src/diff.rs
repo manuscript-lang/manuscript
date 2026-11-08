@@ -1,5 +1,7 @@
 //! Unified diff parsing and reverse application. Never runs git.
 
+use std::borrow::Cow;
+
 /// One `@@` hunk. Lines keep their one-character prefix: ' ' context, '+'
 /// added, '-' removed.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -80,8 +82,10 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
                 have_current = true;
             }
             let current = files.last_mut().expect("a file was just pushed");
-            current.old = diff_path(&line[4..], "a/", git);
-            current.new = diff_path(&lines[i + 1][4..], "b/", git);
+            current.old = diff_path(&line[4..], "a/", git)
+                .map_err(|e| format!("diff line {}: {e}", i + 1))?;
+            current.new = diff_path(&lines[i + 1][4..], "b/", git)
+                .map_err(|e| format!("diff line {}: {e}", i + 2))?;
             if !git
                 && current.old.starts_with("a/")
                 && current.new.starts_with("b/")
@@ -119,15 +123,71 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
     Ok(files)
 }
 
-fn diff_path(field: &str, prefix: &str, git: bool) -> String {
-    let path = field.split('\t').next().unwrap_or("").trim();
+fn diff_path(field: &str, prefix: &str, git: bool) -> Result<String, String> {
+    let path = field.split('\t').next().unwrap_or("");
+    // Git leaves spaces unquoted and uses a tab to delimit such path headers.
+    let path = if git { path } else { path.trim() };
     if path == "/dev/null" {
-        return String::new();
+        return Ok(String::new());
     }
     if git {
-        return path.strip_prefix(prefix).unwrap_or(path).to_string();
+        let path = if path.starts_with('"') {
+            Cow::Owned(git_quoted_path(path)?)
+        } else {
+            Cow::Borrowed(path)
+        };
+        return Ok(path.strip_prefix(prefix).unwrap_or(&path).to_string());
     }
-    path.to_string()
+    Ok(path.to_string())
+}
+
+/// Git quotes unusual path bytes, including UTF-8 bytes as three octal digits.
+/// Decode bytes first: decoding individual octal escapes as Unicode corrupts names.
+fn git_quoted_path(path: &str) -> Result<String, String> {
+    let malformed = || "malformed Git quoted path".to_string();
+    let body = path
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .ok_or_else(malformed)?;
+    let mut input = body.bytes();
+    let mut bytes = Vec::with_capacity(body.len());
+    while let Some(byte) = input.next() {
+        if byte == b'"' {
+            return Err(malformed());
+        }
+        if byte != b'\\' {
+            bytes.push(byte);
+            continue;
+        }
+        let escaped = input.next().ok_or_else(malformed)?;
+        let value = match escaped {
+            b'"' | b'\\' => escaped,
+            b'a' => 7,
+            b'b' => 8,
+            b't' => b'\t',
+            b'n' => b'\n',
+            b'v' => 11,
+            b'f' => 12,
+            b'r' => b'\r',
+            b'0'..=b'3' => {
+                let second = input
+                    .next()
+                    .filter(|b| (b'0'..=b'7').contains(b))
+                    .ok_or_else(malformed)?;
+                let third = input
+                    .next()
+                    .filter(|b| (b'0'..=b'7').contains(b))
+                    .ok_or_else(malformed)?;
+                (escaped - b'0') * 64 + (second - b'0') * 8 + (third - b'0')
+            }
+            _ => return Err(malformed()),
+        };
+        bytes.push(value);
+    }
+    if bytes.contains(&0) {
+        return Err("Git path contains a NUL byte".to_string());
+    }
+    String::from_utf8(bytes).map_err(|_| "Git path is not valid UTF-8".to_string())
 }
 
 fn parse_hunk(lines: &[&str], start: usize) -> Result<(DiffHunk, usize), String> {

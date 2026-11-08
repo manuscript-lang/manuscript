@@ -420,3 +420,29 @@ fn a_chain_of_long_lived_values_is_handled_in_linear_time() {
         .count();
     assert_eq!(drops, n);
 }
+
+#[test]
+fn independent_values_in_one_block_keep_their_drop_positions() {
+    let n = 2048;
+    let mut src =
+        String::from("module \"pending\"\nfn @main() -> int export {\nb0:\n  %z: int = iconst 0\n");
+    for k in 0..n {
+        src.push_str(&format!(
+            "  %v{k}: list<int> = list.lit\n  %n{k}: int = list.len %v{k}\n"
+        ));
+    }
+    for k in (0..n).rev() {
+        src.push_str(&format!("  drop %v{k}\n"));
+    }
+    src.push_str("  ret %z\n}\n");
+    let m = optimized(&src);
+    let f = &m.funcs[m.func_by_name("main").unwrap().index()];
+    let insts = &f.blocks[0].insts;
+    assert_eq!(insts.len(), 1 + 3 * n);
+    for group in insts[1..].as_chunks::<3>().0 {
+        assert_eq!(group[0].op, Op::ListLit);
+        assert_eq!(group[1].op, Op::ListLen);
+        assert_eq!(group[2].op, Op::Drop);
+        assert_eq!(group[2].args, [group[0].res.unwrap()]);
+    }
+}

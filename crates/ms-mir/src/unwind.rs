@@ -679,7 +679,16 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         return false;
     }
     let rc = |v: Value| m.needs_drop(f.ty(v));
-    let slot_params: BTreeSet<u32> = f.blocks[0].params.iter().map(|p| p.value.0).collect();
+    let mut slot_params: BTreeSet<u32> = f.blocks[0].params.iter().map(|p| p.value.0).collect();
+    // A slot pointer a closure captured by reference is the enclosing function's slot, as a
+    // parameter is the caller's: a cancellation inside the closure must not drop what it took.
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::ClosureCap, Some(r)) = (i.op, i.res)
+            && f.ty(r) == Ty::PTR
+        {
+            slot_params.insert(r.0);
+        }
+    }
     let covered_takes = covered_slot_takes(m, f);
     let mut owned_def = vec![false; f.values.len()];
     let mut from_slot: BTreeSet<u32> = BTreeSet::new();

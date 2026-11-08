@@ -96,3 +96,10 @@ test "product with an empty factor is empty wherever the factor sits":
     )
     try expect_equal(product(List[List[Int]]()), [[]])
     try expect_equal(product([some.clone()]), [[1], [2]])
+
+test "cycle empty input skips repetition after validating count":
+    try expect_equal(cycle(List[Int](), 9223372036854775807), List[Int]())
+    try expect_equal(cycle(List[Int](), 0), List[Int]())
+
+    let _invalid = try expect_fault(fn: discard(cycle(List[Int](), -1)))
+    try expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])

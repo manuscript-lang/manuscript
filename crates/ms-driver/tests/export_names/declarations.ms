@@ -16,3 +16,11 @@ export interface Measure:
     fn size() Int
 
 export extern fn native() Int
+
+export enum Color:
+    Red
+    Blue
+
+export enum Outcome[T]:
+    Value(value: T)
+    Empty
