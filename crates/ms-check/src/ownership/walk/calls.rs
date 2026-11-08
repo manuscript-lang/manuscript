@@ -238,6 +238,24 @@ impl Walker<'_> {
                 && (takes_payload || takes_preserved)
                 && self.native_borrow_receiver(e).is_none()
             {
+                let in_collection = {
+                    let held_in = self.cx.m.ty(r);
+                    held_in.is(Builtin::List)
+                        || held_in.is(Builtin::Map)
+                        || held_in.is(Builtin::Set)
+                };
+                if takes_payload && in_collection {
+                    // A collection keeps its other elements, so it cannot hand one over: the result
+                    // would be a second owner of the entry.
+                    let (text, why) = (
+                        self.expr_text(r),
+                        clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`"),
+                    );
+                    self.error(
+                        e.pos,
+                        format!("`{name}` would copy `{result_ty_t}` out of `{text}`, which keeps its elements; {why}, so read it in place (`first()`, `if let`)", result_ty_t = result_ty.display(self.syms)),
+                    );
+                }
                 mode = ParamMode::Move;
                 if (takes_preserved || !args.is_empty())
                     && let Some(source) = self.native_borrow_receiver(r)

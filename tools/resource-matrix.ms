@@ -12,6 +12,7 @@ import temporary, write_file from "@std/os/fs.ms"
 import run from "@std/os/process.ms"
 import arguments, working_directory from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
+import JsonValue, parse from "@std/data/json.ms"
 
 let HEADER = """
 import Closeable, print from "@std/core.ms"
@@ -66,6 +67,8 @@ fn op(
 
 fn list_setup() String: return "var items = [mk(1)]"
 
+fn map_setup() String: return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
+
 fn optional_setup(present: Bool) String:
     if present: return "let held: Marker? = mk(1)"
 
@@ -91,6 +94,26 @@ fn operations() List[Operation]:
         ),
         op("list_remove", list_setup(), "items", "remove", "0", "", ""),
         op(
+            "list_get", list_setup(), "items", "get", "0, @V@", "let r = ", "saw(r)"
+        ),
+        op(
+            "result_map", result_setup(true), "held", "map", "fn m: m.id", "let r = ",
+            "print(\"\{r.is_ok()\}\")"
+        ),
+        op("map_add", map_setup(), "items", "add", "1, @V@", "", ""),
+        op(
+            "map_get", map_setup(), "items", "get", "1", "let r = ",
+            "print(\"\{r.is_some()\}\")"
+        ),
+        op(
+            "optional_or_else", optional_setup(false), "held", "or_else", "fn: @V@",
+            "let r = ", "saw_opt(r)"
+        ),
+        op(
+            "result_err", result_setup(false), "held", "err", "", "let r = ",
+            "print(r.message)"
+        ),
+        op(
             "optional_get_present", optional_setup(true), "held", "get", "@V@",
             "let r = ", "saw(r)"
         ),
@@ -111,6 +134,129 @@ fn operations() List[Operation]:
             "let r = ", "saw_opt(r)"
         )
     ]
+
+// Standard operations that mention a type parameter and need no matrix row, each with the reason. An
+// operation that returns, stores or discards a `T` does not belong here: add a row to `operations()`.
+fn exempt() List[String]:
+    return [
+        "List.max: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
+        "List.min: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
+        "Map.map: the callback borrows each entry and builds new values",
+        "Map.map_keys: declared U: Clonable, so a resource value cannot reach it",
+        "Map.find: declared U: Clonable, so a resource value cannot reach it",
+        "Map.keys: copies Hashable keys into a new list",
+        "Set.add: gap: the matrix has no Hashable resource, so sets are not exercised yet",
+        "Set.clear: gap: the matrix has no Hashable resource, so sets are not exercised yet",
+        "Set.clone: gap: the matrix has no Hashable resource, so sets are not exercised yet",
+        "Set.contains: gap: the matrix has no Hashable resource, so sets are not exercised yet",
+        "Set.difference: gap: the matrix has no Hashable resource, so sets are not exercised yet",
+        "Set.filter: gap: the matrix has no Hashable resource, so sets are not exercised yet",
+        "Set.find: gap: the matrix has no Hashable resource, so sets are not exercised yet"
+    ]
+
+// The type parameters of the standard type `name`, as the declarations write them.
+fn type_parameters(name: String) List[String]:
+    if name == "Map": return ["T", "U"]
+    if name == "Result": return ["T", "E"]
+
+    return ["T"]
+
+// The words of a signature, split at the punctuation of types.
+fn words(text: String) List[String]:
+    var spaced = text.clone()
+    for mark in ["(", ")", "[", "]", ",", ":", "?", "!", "=", "&", "<", ">", ";"]:
+        spaced = spaced.replace(mark, " ")
+
+    var found = List[String]()
+    for word in spaced.split(" "):
+        if word != "": found.append(word.clone())
+    return found
+
+// Whether the declaration `signature` changes its receiver, or takes or returns one of `names` outside a callback.
+fn mentions_parameter(signature: String, names: List[String]) Bool:
+    if signature.contains("var fn"): return true
+
+    let parts = signature.split("fn ")
+    if parts.length() < 2: return false
+
+    var depth = 0
+    var outside = ""
+    var result = ""
+
+    for c in parts[1].chars():
+        if c == "(": depth += 1
+        if depth == 0 and c != ")": result = "{result}{c}"
+        if depth == 1 and c != "(": outside = "{outside}{c}"
+        if c == ")": depth -= 1
+
+    for word in words("{outside} {result}"):
+        if names.contains(word): return true
+    return false
+
+fn field(entry: JsonValue, key: String) String:
+    if let value = entry.get(key):
+        return value.as_string().get("")
+
+    return ""
+
+// Every `Type.operation` of the standard type whose declaration mentions a type parameter.
+fn declared_operations(ms: String, name: String) List[String]!:
+    let ran = try run(
+        ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]
+    ).wait()
+    let page = try parse(ran.stdout.decode_utf8().get(""))
+    var found = List[String]()
+    let names = type_parameters(name.clone())
+
+    if let all = page.get("matches"):
+        for entry in all.as_list().get([]):
+            if field(entry, "kind") != "operation": continue
+            if not mentions_parameter(field(entry, "type"), names.clone()): continue
+
+            let last = field(entry, "name").split(".")
+            found.append("{name}.{last[last.length() - 1]}")
+
+    return ok(found)
+
+// How many standard operations that mention a type parameter have neither a row nor a reason.
+fn uncovered(ms: String, ops: List[Operation]) Int:
+    var known = List[String]()
+    let kinds = ["list", "map", "set", "optional", "result"]
+    let titles = ["List", "Map", "Set", "Optional", "Result"]
+    for o in ops:
+        for i in 0..kinds.length():
+            if o.name.starts_with("{kinds[i]}_"): known.append("{titles[i]}.{o.method}")
+    for line in exempt(): known.append(line.split(":")[0].clone())
+
+    var missing = 0
+
+    for title in titles:
+        let listed = declared_operations(ms.clone(), title.clone())
+
+        if listed.is_error():
+            missing += 1
+            (
+                stdout()
+                .write(
+                    "coverage: could not list {title}: {listed.err().message}\n"
+                )
+                .get()
+            )
+            continue
+
+        for name in listed.get():
+            if known.contains(name): continue
+
+            missing += 1
+            (
+                stdout()
+                .write(
+                    "coverage: {name} mentions a type parameter but has no row in operations() and no reason in exempt()\n"
+                )
+                .get()
+            )
+
+    return missing
 
 // The program for `o`, called as `call_form` (`direct` or `bound`), with its resource argument made as `arg_form`.
 fn program(o: Operation, call_form: String, arg_form: String) String:
@@ -161,7 +307,7 @@ export fn main() Int:
 
     var checked = 0
     var rejected = 0
-    var failures = 0
+    var failures = uncovered(ms.clone(), operations())
 
     for o in operations():
         for call_form in ["direct", "bound"]:

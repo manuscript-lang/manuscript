@@ -477,6 +477,40 @@ pub fn bound_passthrough(method: &MethodRef, receiver: &Ty) -> Option<Ty> {
     receiver.args.get(index).cloned()
 }
 
+/// The element a method value of a read-only collection operation hands out on each call: the
+/// declared result is a receiver type parameter, or an optional of one (`Map.get`, `List.first`,
+/// `List.get`). The direct call returns a borrow of the entry; a function value returns an owned
+/// value, so it copies the element. Operations that change the receiver (`pop`) move the element
+/// out instead, and an operation that returns a new collection clones through its own bound.
+pub fn element_handed_out(syms: ms_syntax::Names, method: &MethodRef, receiver: &Ty) -> Option<Ty> {
+    let collection = method.receiver.is(Builtin::List)
+        || method.receiver.is(Builtin::Map)
+        || method.receiver.is(Builtin::Set);
+    if !collection || collection_mutation(syms, method) {
+        return None;
+    }
+    let decl = method.decl.as_ref()?;
+    let params = decl.decl.type_params();
+    if params.len() != method.receiver.args.len() {
+        return None;
+    }
+    let mut result = &decl.func()?.result;
+    // `T?` is written as a one-argument named type around the parameter.
+    if let TypeKind::Named { args, .. } = &result.kind
+        && let [inner] = args.as_slice()
+    {
+        result = inner;
+    }
+    let TypeKind::Named { name, args } = &result.kind else {
+        return None;
+    };
+    if !args.is_empty() {
+        return None;
+    }
+    let index = params.iter().position(|p| p.name == *name)?;
+    receiver.args.get(index).cloned()
+}
+
 /// Whether the written type `t` names `name` anywhere.
 fn written_mentions(t: &TypeRef, name: ms_syntax::Symbol) -> bool {
     match &t.kind {

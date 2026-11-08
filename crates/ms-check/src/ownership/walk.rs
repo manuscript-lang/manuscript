@@ -5,7 +5,7 @@ use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
     BORROWED_ERROR, BORROWED_OK, CallModes, ParamMode, ResultBorrow, Summaries, Summary,
-    bound_passthrough, call_modes, method_callee, receiver_mode, result_borrow,
+    bound_passthrough, call_modes, element_handed_out, method_callee, receiver_mode, result_borrow,
     takes_element_mutator, wrapper_passthrough,
 };
 use super::places::{Place, Step};

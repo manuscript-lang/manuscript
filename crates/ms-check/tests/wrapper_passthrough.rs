@@ -158,3 +158,27 @@ fn derived_passthrough_covers_result_get_and_discarding_method_values() {
         "{got:?}"
     );
 }
+
+#[test]
+fn bound_collection_reads_copy_the_element_they_hand_out() {
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/reject-bound-map-get-resource.ms"
+    ));
+    assert!(
+        got.iter()
+            .any(|d| d.contains("hands out an element") && d.contains("Marker")),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn a_collection_cannot_hand_over_one_of_its_elements() {
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/reject-list-get-default-resource.ms"
+    ));
+    assert!(
+        got.iter()
+            .any(|d| d.contains("would copy `Marker`") && d.contains("keeps its elements")),
+        "{got:?}"
+    );
+}
