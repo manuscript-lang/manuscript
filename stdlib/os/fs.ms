@@ -825,6 +825,17 @@ fn through_links(path: String) String:
 
     return canonicalize(path).get(path.clone())
 
+// A sibling name for `path` that stays within the 255-byte file name limit: the file name is cut to 32 characters.
+fn temporary_name(path: String, stamp: String) String:
+    var split = 0
+    if let slash = path.last_index_of("/"): split = slash + 1
+    if let slash = path.last_index_of("\\"):
+        if slash + 1 > split: split = slash + 1
+
+    let directory = path.slice(0, split).get("")
+    let name = path.slice(split, path.byte_length()).get("")
+    return "{directory}.{name.take(32)}.{stamp}.tmp"
+
 fn replace_atomically(link: String, data: Bytes) Unit!:
     let path = through_links(link)
     let existing = stat(path)
@@ -835,7 +846,9 @@ fn replace_atomically(link: String, data: Bytes) Unit!:
     var attempt = 0
 
     while attempt < 16:
-        let temporary = "{path}.{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}.tmp"
+        let temporary = temporary_name(
+            path, "{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}"
+        )
         attempt += 1
 
         match open(
