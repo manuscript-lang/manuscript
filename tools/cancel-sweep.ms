@@ -2,7 +2,7 @@
 // (await point) in turn and checks that nothing leaks. A counting runtime (`ms-rt` feature `stats`)
 // numbers the parks of a process; `MS_PARK_COUNT=1` prints how many a test made, and
 // `MS_CANCEL_AT_PARK=k` makes the k-th one report a cancellation, as if the parking task had been
-// cancelled there. The cancelled test must end with no more live blocks than the uncancelled run (a test that leaks without cancellation belongs to `leak-check`). Arguments name the
+// cancelled there. The cancelled test must end with the same live blocks as the uncancelled run (a test that leaks without cancellation belongs to `leak-check`). A run that ends with more Rust heap blocks (`ms-rt rust heap at exit`) is listed as `heap:` but does not fail the sweep: a cancelled test also keeps its failure report, so each hit needs a look. Arguments name the
 // files to sweep (default: tests/e2e/testdata/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
 // test (default 64); MS names the ms to run (default target/release/ms).
 // Usage: ms run tools/cancel-sweep.ms [-- files]
@@ -19,6 +19,7 @@ import stdout from "@std/io/io.ms"
 type Counted:
     name: String
     parks: Int
+    heap: Int
     live: Int
 
 // The tests of one `ms test` run with the parks they made and the blocks left live: each test
@@ -27,14 +28,23 @@ fn counted(text: String) List[Counted]:
     var found = List[Counted]()
     var name = ""
     var parks = 0
+    var heap = 0
 
     for line in text.split("\n"):
         if line.starts_with("RUN "): name = line.slice(4, line.length()).get("")
         else if line.starts_with("ms-rt parks: "):
             parks = line.slice(13, line.length()).get("").trim().parse_int().get(0)
+        else if line.starts_with("ms-rt rust heap at exit: blocks="):
+            heap = line.slice(
+                32, line.length()
+            ).get("").split(" ")[0].parse_int().get(0)
         else if line.starts_with("ms-rt live blocks at exit: "):
             let live = line.slice(27, line.length()).get("").trim().parse_int().get(0)
-            found.append(Counted(name: name.clone(), parks: parks, live: live))
+            found.append(
+                Counted(
+                    name: name.clone(), parks: parks, heap: heap, live: live
+                )
+            )
 
     return found
 
@@ -72,8 +82,12 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
             for k in 1..last + 1:
                 for hit in test_run(ms.clone(), file.clone(), base.name.clone(), k):
                     lines.append("swept")
-                    if hit.live > base.live: lines.append(
+
+                    if hit.live != base.live: lines.append(
                         "leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {hit.live} live blocks (uncancelled run: {base.live})"
+                    )
+                    else if hit.heap > base.heap: lines.append(
+                        "heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {hit.heap} Rust heap blocks (uncancelled run: {base.heap})"
                     )
 
     return lines
@@ -128,16 +142,25 @@ export fn main() Int:
 
     var swept = 0
     var leaks = 0
+    var heaps = 0
 
     for task in tasks:
         for line in task.wait().get(List[String]()):
             if line == "swept": swept += 1
             else:
-                leaks += 1
+                if line.starts_with("heap: "): heaps += 1
+                else: leaks += 1
+
                 stdout().write("{line}\n").get()
 
     change_directory(root).get()
-    stdout().write("cancel-sweep: {swept} cancelled runs, {leaks} leaking\n").get()
+    (
+        stdout()
+        .write(
+            "cancel-sweep: {swept} cancelled runs, {leaks} leaking, {heaps} with extra Rust heap\n"
+        )
+        .get()
+    )
     if leaks > 0: return 1
 
     return 0
