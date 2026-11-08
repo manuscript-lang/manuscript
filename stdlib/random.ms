@@ -210,9 +210,11 @@ impl SeededRandom:
         if min >= max_exclusive:
             panic("random int: min must be below max_exclusive")
 
-        let span = max_exclusive - min
-        if span <= 0:
+        // Checked before subtracting: `max_exclusive - min` overflows exactly when the range is wider than the largest Int.
+        if min < 0 and max_exclusive > max_int + min:
             panic("random int: the range is wider than the largest Int")
+
+        let span = max_exclusive - min
 
         while true:
             let bits = shift_right_unsigned(self.next_bits(), 1)
