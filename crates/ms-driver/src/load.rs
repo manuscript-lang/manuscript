@@ -363,7 +363,7 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
     // The working directory can be spelled differently from the error's path (`/var` and
     // `/private/var`, a Windows short name), so the canonical spelling is tried as well.
     if let Ok(cwd) = std::env::current_dir() {
-        let canonical = std::fs::canonicalize(&cwd).ok();
+        let canonical = pathops::identity(&cwd);
         for base in std::iter::once(&cwd).chain(canonical.as_ref()) {
             if let Ok(relative) = pathops::rel(&slashed(&base.to_string_lossy()), &name)
                 && !relative.starts_with("..")

@@ -134,3 +134,90 @@ fn limits_and_bad_trailers_remain_terminal() {
     assert_eq!(d.push(&packed), Err(Fail::InvalidData));
     assert_eq!(d.end(), Err(Fail::InvalidData));
 }
+
+/// Deterministic xorshift for reproducible random chunk splits.
+fn next(state: &mut u64) -> u64 {
+    *state ^= *state << 13;
+    *state ^= *state >> 7;
+    *state ^= *state << 17;
+    *state
+}
+
+fn decode_split(
+    format: Format,
+    max: Option<i64>,
+    input: &[u8],
+    rng: &mut u64,
+) -> Result<Vec<u8>, Fail> {
+    let mut d = Decoder::new(format, max);
+    let mut out = Vec::new();
+    let mut rest = input;
+    while !rest.is_empty() {
+        let n = (next(rng) % 40 + 1).min(rest.len() as u64) as usize;
+        out.extend(d.push(&rest[..n])?);
+        rest = &rest[n..];
+    }
+    out.extend(d.end()?);
+    Ok(out)
+}
+
+/// The one-shot call and the stream decoder agree on every input, whatever the chunk split:
+/// valid, truncated, with a tail, and with a flipped byte.
+#[test]
+fn one_shot_and_random_chunk_splits_agree() {
+    let text: Vec<u8> = b"differential zlib gzip deflate ".repeat(60);
+    let mut rng = 0x9e37_79b9_7f4a_7c15u64;
+    for name in ["gzip", "zlib", "deflate"] {
+        let format = Format::from_name(name).unwrap();
+        let packed = compress(&text, name, 6, None).unwrap();
+        let mut cases: Vec<Vec<u8>> = vec![
+            packed.clone(),
+            packed[..packed.len() - 1].to_vec(),
+            Vec::new(),
+        ];
+        let mut tail = packed.clone();
+        tail.extend_from_slice(b"junk");
+        cases.push(tail);
+        for i in 0..packed.len() {
+            let mut flipped = packed.clone();
+            flipped[i] ^= 1 << (next(&mut rng) % 8);
+            cases.push(flipped);
+        }
+        for max in [
+            None,
+            Some(0),
+            Some(text.len() as i64 - 1),
+            Some(text.len() as i64),
+        ] {
+            for case in &cases {
+                let whole = decompress_bytes(case, name, max);
+                for _ in 0..4 {
+                    assert_eq!(
+                        decode_split(format, max, case, &mut rng),
+                        whole,
+                        "{name} {max:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// A back-reference that reaches before the start of the output is `InvalidData` in the stream
+/// decoder and the one-shot call alike (the wrapping dictionary alone would read stale bytes).
+#[test]
+fn reference_before_output_start_is_invalid() {
+    let h = "2ac94855283ccd4cce56482aca2fcf5348cbaf5018151b15a3540c100000ffff";
+    let input: Vec<u8> = (0..h.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap())
+        .collect();
+    assert_eq!(
+        decompress_bytes(&input, "deflate", None),
+        Err(Fail::InvalidData)
+    );
+    assert_eq!(
+        decode(Format::Deflate, None, &input, 5).1,
+        "err InvalidData"
+    );
+}

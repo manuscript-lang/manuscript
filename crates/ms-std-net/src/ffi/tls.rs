@@ -1,6 +1,7 @@
 //! Natives for `@std/net/tls.ms` and the TLS entry points of `@std/net/net.ms`.
 
 use super::{ConnH, ListenerH, NetH, opt, report};
+use crate::bound::Bound;
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
 #[cfg(test)]
@@ -105,7 +106,7 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let c = net.connect_tls_config(address, &opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ConnH(report(c, &err)?)));
+        out.write(Object(ConnH(Bound::new(report(c, &err)?))));
         Ok(())
     }
 
@@ -120,7 +121,7 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let l = net.listen_tls(address, &opts.to_options(), opt(*has_timeout, timeout));
-        out.write(Object(ListenerH(report(l, &err)?)));
+        out.write(Object(ListenerH(Bound::new(report(l, &err)?))));
         Ok(())
     }
 

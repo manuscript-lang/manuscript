@@ -918,7 +918,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Faults unless `lo <= i && i < hi_exclusive` (`i` already resolved from the end).
-    pub(super) fn check_index(
+    pub(crate) fn check_index(
         &mut self,
         op: i64,
         original: Value,

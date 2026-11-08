@@ -156,6 +156,13 @@ impl<'a> FnLower<'a> {
             "replace" => {
                 // The element moves out through a slot and the new value moves in; nothing is copied.
                 let idx = self.borrow(args[0].val);
+                // Checked before the incoming element is stored, so a fault leaves it registered.
+                let n = self.b.list_len(old);
+                let zero = self.b.iconst(0);
+                let neg = self.b.icmp(Cc::Lt, idx, zero);
+                let shifted = self.b.binop(Op::IAdd, idx, n);
+                let r = self.b.select(neg, shifted, idx);
+                self.check_index(4, idx, r, n, false);
                 let v = self.element_value(&args[1]);
                 let list = self.put_slot(old);
                 let incoming = self.put_slot(v);
