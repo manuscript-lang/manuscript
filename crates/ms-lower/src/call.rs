@@ -618,6 +618,11 @@ impl<'a> FnLower<'a> {
                     return Ok(self.val(arg, true));
                 }
             }
+            // The callee wrapped the whole temporary (`ok(value)`): the caller's result owns that
+            // temporary, moved into the ordinary alternative, so no resource is copied.
+            if let Some(owned) = self.wrapped_temporary_result(c, owned_args, &vals, v, *how) {
+                return Ok(owned);
+            }
             // The checker recorded this as a clone of a part of the temporary (`OwnedBorrow::Clone`).
             let copy = self.clone_value(v);
             return Ok(self.val(copy, true));
@@ -639,6 +644,51 @@ impl<'a> FnLower<'a> {
             return Ok(self.val(copy, true));
         }
         Ok(self.val(v, true))
+    }
+
+    /// A borrow-returning callee that wraps one whole temporary argument in a borrowed case of
+    /// its `Result` (`ok(value)`): the result built from that temporary, taken out of the
+    /// statement's temporaries. `None` when the call is not of that shape.
+    fn wrapped_temporary_result(
+        &mut self,
+        c: &Rc<Callable>,
+        owned_args: Vec<bool>,
+        vals: &[Value],
+        v: Value,
+        how: ms_check::api::ownership::OwnedBorrow,
+    ) -> Option<Val> {
+        let ms_check::api::ownership::OwnedBorrow::Whole(source) = &how else {
+            return None;
+        };
+        let offset = usize::from(c.self_binding.is_some());
+        let k = match source {
+            None => 0,
+            Some(label) => c.parameters.iter().position(|p| p.name == *label)? + offset,
+        };
+        let arg = *vals.get(k)?;
+        if !owned_args.get(k).copied().unwrap_or(false) {
+            return None;
+        }
+        let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone() else {
+            return None;
+        };
+        let def = self.b.m.alts[a.index()].clone();
+        let arg_ty = self.ty_of(arg);
+        let mut cases = (0..def.cases.len())
+            .filter(|&i| matches!(def.cases[i].fields.as_slice(), [(_, t)] if *t == arg_ty));
+        let case = cases.next()?;
+        if cases.next().is_some() {
+            return None;
+        }
+        let (plain, _) = self.plain_of(a);
+        self.unhold_temp(arg);
+        let arg = if self.resource_temps.contains_key(&arg) {
+            self.take_resource_temp(arg).0
+        } else {
+            arg
+        };
+        let out = self.b.alt_new(plain, case as u32, &[arg]);
+        Some(self.val(out, true))
     }
 
     /// The ordinary alternative a borrowing variant `a` is a variant of.

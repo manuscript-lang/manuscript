@@ -84,13 +84,28 @@ struct Def {
 
 /// Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the
 /// SLP vectorizer and the code generator grow faster than linearly with one function's size, so
-/// a generated function of thousands of statements took minutes. Hand-written functions are far
-/// below this; a function above it is run-once straight-line code in practice.
-const HUGE_FUNCTION_LINES: usize = 100_000;
+/// a generated function of thousands of statements took minutes, and one of 2000 loops (60k lines)
+/// still took about 17 s before the `optsize` tier. Hand-written functions are far below this; a
+/// function above it is run-once straight-line code in practice.
+const HUGE_FUNCTION_LINES: usize = 60_000;
+
+/// Body lines above which a function is optimized for size (`optsize`). The default pipeline's
+/// loop unrolling, induction-variable simplification and GVN are superlinear in one function's
+/// size: 1500 simple loops in `main` (about 42k lines) took 9 to 11 s, and 3000 took 41 s. Under
+/// `optsize` the unroller and inliner stop growing the body and those inputs take about half the
+/// time; the induction-variable pass stays superlinear, which `HUGE_FUNCTION_LINES` bounds.
+/// Hand-written functions are far below this.
+const LARGE_FUNCTION_LINES: usize = 25_000;
+const _: () = assert!(LARGE_FUNCTION_LINES < HUGE_FUNCTION_LINES);
 
 /// Whether a function body is long enough to skip optimization.
 fn is_huge(body: &str) -> bool {
     body.bytes().filter(|&b| b == b'\n').count() > HUGE_FUNCTION_LINES
+}
+
+/// Whether a function body is long enough to be optimized for size.
+fn is_large(body: &str) -> bool {
+    body.bytes().filter(|&b| b == b'\n').count() > LARGE_FUNCTION_LINES
 }
 
 /// Symbol suffix of a function's x86-64-v3 (AVX2, FMA) copy.
@@ -1522,6 +1537,7 @@ impl LlvmModule {
         tail.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         tail.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
         tail.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
+        tail.push_str("attributes #5 = { \"frame-pointer\"=\"all\" nounwind optsize }\n");
         tail.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
         tail.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
@@ -1679,6 +1695,8 @@ impl LlvmModule {
             d.header.replacen(" #0 ", " #1 ", 1)
         } else if is_huge(&d.body) {
             d.header.replacen(" #0 ", " #4 ", 1)
+        } else if is_large(&d.body) {
+            d.header.replacen(" #0 ", " #5 ", 1)
         } else {
             d.header.clone()
         };
@@ -1729,6 +1747,12 @@ mod tests {
     fn only_a_huge_body_skips_optimization() {
         assert!(!is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES)));
         assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
+    }
+
+    #[test]
+    fn a_large_body_is_optimized_for_size() {
+        assert!(!is_large(&"  ret void\n".repeat(LARGE_FUNCTION_LINES)));
+        assert!(is_large(&"  ret void\n".repeat(LARGE_FUNCTION_LINES + 1)));
     }
 
     #[test]

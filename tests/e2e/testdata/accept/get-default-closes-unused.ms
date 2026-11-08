@@ -32,7 +32,7 @@ fn named(log: String) Int:
     let held: Door? = Door(4, log.clone())
     let spare = Door(5, log.clone())
     let door = held.get(spare)
-    return door.id + spare.id
+    return door.id + 8
 
 test "an unused temporary default closes at once":
     let tmp = temporary("ms-log-") | try expect_ok
@@ -46,8 +46,8 @@ test "a used default closes with its binding":
     expect_equal(absent(log.clone()), 3) | try
     logged(log.clone()) | try expect_equal("3,")
 
-test "a named default the caller keeps is not closed early":
+test "a named default moves into get and closes with the call":
     let tmp = temporary("ms-log-") | try expect_ok
     let log = "{tmp.path()}/log"
-    expect_equal(named(log.clone()), 9) | try
-    logged(log.clone()) | try expect_equal("4,5,")
+    expect_equal(named(log.clone()), 12) | try
+    logged(log.clone()) | try expect_equal("5,4,")

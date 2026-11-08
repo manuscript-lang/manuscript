@@ -620,6 +620,8 @@ impl Walker<'_> {
         let inner_info = self.cx.m.info(inner);
         (inner_info.interface_source.is_none()
             && inner_info.wrap_some.is_none()
+            // `ok(x)` into a `T?` field builds a new `some(x)`; it does not lend `x`.
+            && inner_info.optional_argument.is_none()
             && self.class_of(inner) != Class::Copy)
             .then_some(inner)
     }

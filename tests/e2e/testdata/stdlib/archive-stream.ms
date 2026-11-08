@@ -373,6 +373,10 @@ test "tar entries and unpack agree on corrupted and truncated archives":
     for cut in [0, 1, 511, 512, 513, 1024, 1500, 2047, 2048, 2561, 3000]:
         cases.append(archive.slice(0, cut).get("".to_bytes()))
 
+    // Bytes after the end blocks: a tar has no trailer, so both readers stop at the first zero block.
+    cases.append(archive.concat("junk".to_bytes()))
+    cases.append(archive.concat("j".repeat(1024).get("").to_bytes()))
+
     for index in 0..cases.length():
         let expected = outcome(unpack(cases[index].clone(), ArchiveFormat.Tar))
 

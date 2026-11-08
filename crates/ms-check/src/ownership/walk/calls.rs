@@ -269,7 +269,18 @@ impl Walker<'_> {
         }
         let starts_promise = self.entry_call(e);
         for (i, a) in args.iter().enumerate() {
-            let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
+            let mut mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
+            if mode == ParamMode::Borrow && modes.retained.get(i).copied().unwrap_or(false) {
+                // A native that wraps this argument in its result (`ok_or(cause)`) or may hand it back (`get(default)`) cannot copy a value that has no `clone`: the argument moves into the result.
+                let (arg_ty, result_ty) = (self.cx.m.ty(&a.value), self.cx.m.ty(e));
+                if self.class_of(&a.value) != Class::Copy
+                    && !holds_variable(&arg_ty)
+                    && !self.cx.classes.clonable(self.syms, &arg_ty)
+                    && (crate::types::same(&arg_ty, &result_ty) || ty_contains(&result_ty, &arg_ty))
+                {
+                    mode = ParamMode::Move;
+                }
+            }
             let mut held = self.held(&a.value, mode);
             if starts_promise && let ExprKind::Lambda(l) = &a.value.kind {
                 // The entry of a promise reads what it captures, in place, while the promise lives.
@@ -458,11 +469,38 @@ impl Walker<'_> {
         } else {
             self.pure_origins(e)
         };
-        places
+        let mut held: Vec<(Place, bool)> = places
             .unwrap_or_default()
             .into_iter()
             .map(|p| (p, write))
-            .collect()
+            .collect();
+        if self.is_place(e) {
+            self.selecting_keys(e, &mut held);
+        }
+        held
+    }
+
+    /// The keys that select an element of a held place stay read for the whole call: a later
+    /// operand that replaces a borrowed (non-Copy) key would leave the selection dangling.
+    fn selecting_keys(&self, e: &Expr, out: &mut Vec<(Place, bool)>) {
+        match &e.kind {
+            ExprKind::Member { left, .. } => self.selecting_keys(left, out),
+            ExprKind::Index { left, index }
+            | ExprKind::Apply {
+                left,
+                value: Some(index),
+                ..
+            } => {
+                self.selecting_keys(left, out);
+                if self.class_of(index) != Class::Copy
+                    && self.is_place(index)
+                    && let Some(places) = self.pure_places(index)
+                {
+                    out.extend(places.into_iter().map(|p| (p, false)));
+                }
+            }
+            _ => {}
+        }
     }
 
     /// The places changed or moved by the calls inside `e`, closures excluded: a `var` or
