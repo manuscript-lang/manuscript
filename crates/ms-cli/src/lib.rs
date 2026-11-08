@@ -83,6 +83,9 @@ const PROJECT_COMMANDS: &[&str] = &[
     "diagram", "review", "profile",
 ];
 
+/// Commands whose arguments after `--` are more inputs, not program arguments.
+const TARGET_LIST_COMMANDS: &[&str] = &["check", "lint", "fmt", "verify"];
+
 /// Inside a project directory, `ms run` means `ms run ms.toml`: when the command
 /// names no target (nothing after it, or only options and `-- program arguments`), insert
 /// the manifest in the current directory.
@@ -92,6 +95,22 @@ fn default_project_target(args: &[String]) -> Option<Vec<String>> {
     }
     if args.len() > 1 && args[1] != "--" && !args[1].starts_with('-') {
         return None;
+    }
+    // `ms check -- a.ms` names its input after `--`; the manifest would be an extra one.
+    if TARGET_LIST_COMMANDS.contains(&args[0].as_str())
+        && let Some(split) = args.iter().skip(1).position(|a| a == "--").map(|i| i + 1)
+        && split + 1 < args.len()
+    {
+        // `fmt` and `verify` read options in any position.
+        if split == 1 || matches!(args[0].as_str(), "fmt" | "verify") {
+            return None;
+        }
+        // `check` and `lint` want the file first: put the first target ahead of the options.
+        let mut out = vec![args[0].clone(), args[split + 1].clone()];
+        out.extend_from_slice(&args[1..split]);
+        out.push("--".to_string());
+        out.extend_from_slice(&args[split + 2..]);
+        return Some(out);
     }
     if !std::path::Path::new("ms.toml").is_file() {
         return None;
@@ -260,4 +279,31 @@ fn run_source_command<L: Lower>(
         ),
     };
     finish(result, io)
+}
+
+#[cfg(test)]
+mod default_target_tests {
+    use super::default_project_target;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|a| a.to_string()).collect()
+    }
+
+    #[test]
+    fn dash_dash_inputs_replace_the_default_manifest() {
+        for command in ["check", "lint", "fmt", "verify"] {
+            assert_eq!(
+                default_project_target(&args(&[command, "--", "a.ms"])),
+                None
+            );
+        }
+        assert_eq!(
+            default_project_target(&args(&["check", "--json", "--", "a.ms", "b.ms"])),
+            Some(args(&["check", "a.ms", "--json", "--", "b.ms"]))
+        );
+        assert_eq!(
+            default_project_target(&args(&["fmt", "--check", "--", "a.ms"])),
+            None
+        );
+    }
 }
