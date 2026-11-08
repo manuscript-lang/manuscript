@@ -60,7 +60,7 @@ fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Count
     if cancel_at > 0: settings["MS_CANCEL_AT_PARK"] = "{cancel_at}"
 
     var arguments = ["test", file.clone()]
-    if filter != "": arguments = arguments.concat(["--filter", filter.clone()])
+    if filter != "": arguments = arguments.concat(["--test", filter.clone()])
     if let out = run(
         ms.clone(), arguments, RunOptions(timeout: seconds(120), env: settings)
     ).wait(): return counted(
@@ -82,15 +82,21 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 
             let last = if base.parks < most: base.parks else: most
 
+            // The reference is a filtered run too: the filter argument itself stays allocated,
+            // so an unfiltered baseline would differ by that block.
+            var reference = base.clone()
+            for again in test_run(ms.clone(), file.clone(), base.name.clone(), 0):
+                if again.name == base.name: reference = again.clone()
+
             for k in 1..last + 1:
                 for hit in test_run(ms.clone(), file.clone(), base.name.clone(), k):
                     lines.append("swept")
 
-                    if hit.live != base.live: lines.append(
-                        "leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {hit.live} live blocks (uncancelled run: {base.live})"
+                    if hit.live != reference.live: lines.append(
+                        "leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {hit.live} live blocks (uncancelled run: {reference.live})"
                     )
-                    else if hit.heap > base.heap: lines.append(
-                        "heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {hit.heap} Rust heap blocks (uncancelled run: {base.heap})"
+                    else if hit.heap > reference.heap: lines.append(
+                        "heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {hit.heap} Rust heap blocks (uncancelled run: {reference.heap})"
                     )
 
     return lines
