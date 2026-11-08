@@ -274,6 +274,7 @@ impl Walker<'_> {
                 // A native that wraps this argument in a new result (`ok_or(cause)`) cannot copy a value that has no `clone`: the argument moves into the result.
                 let (arg_ty, result_ty) = (self.cx.m.ty(&a.value), self.cx.m.ty(e));
                 if self.class_of(&a.value) != Class::Copy
+                    && !holds_variable(&arg_ty)
                     && !self.cx.classes.clonable(self.syms, &arg_ty)
                     && ty_contains(&result_ty, &arg_ty)
                 {
