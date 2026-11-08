@@ -1,6 +1,6 @@
 import panic from "@std/core.ms"
 import sqrt, frexp, ldexp from "@std/math/math.ms"
-import rat_of_float, rat_of_int from "@std/math/big.ms"
+import BigRat, rat_of_float, rat_of_int from "@std/math/big.ms"
 
 /*
 Summary statistics over a `List[Float]`, in binary64 arithmetic.
@@ -308,6 +308,21 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     let halved = not (high - low).is_finite()
     let origin = if halved: low / 2.0 else: low
     let width = (if halved: high / 2.0 - origin else: high - low) / bins.to_float()
+
+    if (
+        low < high
+        and low.is_finite()
+        and high.is_finite()
+        and width < 2.2250738585072014e-308
+    ):
+        var finite = true
+        for value in values:
+            if not value.is_finite(): finite = false
+        if finite:
+            return BinCounts(
+                low: low, high: high, counts: exact_bin_counts(values, low, high, bins)
+            )
+
     var counts: List[Int] = []
     for index in 0..bins:
         counts.append(0)
@@ -326,6 +341,43 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
         counts.set(bin, counts[bin] + 1)
 
     return BinCounts(low: low, high: high, counts: counts)
+
+// A subnormal width loses bin boundaries. Classify exact binary64 inputs instead.
+fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) List[Int]:
+    let origin = finite_bin_rat(low)
+    let span = finite_bin_rat(high).subtract(origin)
+    var counts: List[Int] = []
+    for index in 0..bins:
+        counts.append(0)
+
+    if let multiplier = rat_of_int(bins).divide(span):
+        for value in values:
+            var bin = 0
+
+            if value >= high:
+                bin = bins - 1
+            else:
+                let position = (
+                    finite_bin_rat(value)
+                    .subtract(origin)
+                    .multiply(multiplier)
+                )
+
+                if let index = position.floor().to_int():
+                    bin = index
+                else:
+                    panic("statistics: finite bin index could not be represented")
+
+            counts.set(bin, counts[bin] + 1)
+
+        return counts
+
+    panic("statistics: finite bin range could not be divided")
+
+fn finite_bin_rat(value: Float) BigRat:
+    if let result = rat_of_float(value): return result
+
+    panic("statistics: finite bin input could not be converted")
 
 // Returns the sum of products of deviations of two lists of equal length, with both sums of squares, or none when there are fewer than two pairs.
 type Spread:

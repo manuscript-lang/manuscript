@@ -267,6 +267,61 @@ test "mean overflow recovery rounds tiny cancellation residuals to signed zero":
         try expect_equal(result, 0.0)
         try expect_equal(1.0 / result, 1.0 / residual)
 
+test "subnormal equal width bins preserve mathematical placement":
+    let step = 5e-324
+    let result = try expect_some(bin_counts([0.0, step, 2.0 * step], 4))
+    try expect_equal(result.counts, [1, 0, 1, 1])
+
+test "rounded subnormal width does not move interior values":
+    let step = 5e-324
+    let result = try expect_some(
+        bin_counts([0.0, step, 2.0 * step, 3.0 * step, 4.0 * step], 3)
+    )
+    try expect_equal(result.counts, [2, 1, 2])
+
+test "subnormal bins match an exact integer grid across signs and shifted ranges":
+    let step = 5e-324
+
+    for base in [0.0, 2.2250738585072014e-308, -2.2250738585072014e-308]:
+        for offset in [-20, 0, 20]:
+            for span in [1, 2, 4, 7, 13]:
+                for bins in [1, 2, 3, 4, 7, 17]:
+                    var values: List[Float] = []
+                    var expected: List[Int] = []
+                    for index in 0..bins: expected.append(0)
+
+                    for position in 0..span + 1:
+                        // Reverse ordering and duplicate values must not change placement.
+                        let coordinate = span - position
+                        let value = base + (offset + coordinate).to_float() * step
+                        values.append(value)
+                        values.append(value)
+
+                        let index = if coordinate == span: bins - 1 else: coordinate * bins / span
+                        expected.set(index, expected[index] + 2)
+
+                    let result = try expect_some(bin_counts(values, bins))
+                    try expect_equal(result.counts, expected)
+
+test "subnormal bin repair preserves nonfinite and degenerate controls":
+    let nan = 0.0 / 0.0
+    let inf = 1.0 / 0.0
+
+    for values in [
+        [0.0, nan, 5e-324, 1e-323], [nan, 0.0, 5e-324, 1e-323],
+        [0.0, 5e-324, 1e-323, nan]
+    ]:
+        let result = try expect_some(bin_counts(values, 4))
+        try expect_equal(result.counts, [4, 0, 0, 0])
+
+    for values in [[0.0, inf], [-inf, 0.0]]:
+        let result = try expect_some(bin_counts(values, 4))
+        try expect_equal(result.counts, [1, 0, 0, 1])
+
+    for values in [[nan, nan], [5e-324, 5e-324], [-5e-324, -5e-324]]:
+        let result = try expect_some(bin_counts(values, 4))
+        try expect_equal(result.counts, [2, 0, 0, 0])
+
 test "standard deviation survives finite range beyond representable variance":
     try expect_equal(try expect_some(population_stdev([-1e200, 1e200])), 1e200)
 
