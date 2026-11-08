@@ -119,6 +119,8 @@ struct Table {
     timers: BinaryHeap<Reverse<(i64, i64)>>,
     /// (limit, id) of the limits armed; an entry whose promise is gone or finished is stale.
     limits: BinaryHeap<Reverse<(i64, i64)>>,
+    /// (slot, token) of waiters on other threads, posted when the slot's promise changes.
+    watchers: Vec<(usize, u64)>,
     free: Vec<usize>,
 }
 
@@ -144,6 +146,7 @@ impl Table {
             retry_state: Vec::new(),
             timers: BinaryHeap::new(),
             limits: BinaryHeap::new(),
+            watchers: Vec::new(),
             free: Vec::new(),
         }
     }
@@ -198,6 +201,147 @@ fn index(t: &Table, id: i64) -> Option<usize> {
 
 fn find(id: i64) -> usize {
     index(table(), id).unwrap_or_else(|| fault::fault(b"promise: no such promise"))
+}
+
+/// Whether promise `id` belongs to another scheduler thread's table.
+fn is_foreign(id: i64) -> bool {
+    id > 0 && owner_of(id) != sched::current()
+}
+
+/// What the owner of a promise answers to a request from another thread.
+enum Answer {
+    /// The promise no longer exists.
+    Missing,
+    /// The promise has not finished; the caller's token is registered and will be posted.
+    Pending,
+    /// The promise finished with this outcome code.
+    Outcome(i64),
+    Flag(bool),
+    /// A result block taken out of the promise (null when there was none).
+    Block(usize, usize),
+    Bytes(Vec<u8>),
+    Unit,
+}
+
+/// Runs `job` on the thread that owns promise `id`, in a task there, and returns its answer. Every
+/// operation on a promise reads or changes its slot, which only the owner's thread may touch, so a
+/// handle used elsewhere (a promise captured by another promise's work, or returned by one)
+/// reaches the slot by asking. The caller parks on a remote token, shielded: the job must not
+/// outlive the answer's destination, and the operations asked for are short or join their work.
+fn ask(id: i64, job: impl FnOnce() -> Answer + Send + 'static) -> Answer {
+    let owner = owner_of(id);
+    if owner >= sched::MAX_THREADS || owner == sched::NONE || owner >= sched::started() {
+        return Answer::Missing;
+    }
+    let reply = std::sync::Arc::new(std::sync::Mutex::new(None::<Answer>));
+    let theirs = reply.clone();
+    // SAFETY: the token is ours until freed; the owner posts it once the answer is stored.
+    let token = unsafe { task::msrt_token_new(task::TOKEN_REMOTE) };
+    sched::post(
+        owner,
+        Event::Call(Box::new(move || {
+            let answer = job();
+            *theirs.lock().unwrap_or_else(|e| e.into_inner()) = Some(answer);
+            task::msrt_token_post_remote(token, 1);
+        })),
+    );
+    fault::msrt_shield_enter();
+    let answer = loop {
+        if let Some(answer) = reply.lock().unwrap_or_else(|e| e.into_inner()).take() {
+            break answer;
+        }
+        let mut value = 0;
+        // SAFETY: single scheduler per isolate; the token is ours.
+        unsafe { task::msrt_token_park(token, -1, &mut value) };
+    };
+    fault::msrt_shield_exit();
+    // SAFETY: the answer arrived, so nothing posts the token again.
+    unsafe { task::msrt_token_free(token) };
+    answer
+}
+
+/// The faulting answer for an id that no longer exists, as a local lookup would give.
+fn missing() -> ! {
+    fault::fault(b"promise: no such promise")
+}
+
+/// Owner side of a foreign wait: the outcome if there is one, else registers `token` to be posted
+/// when the promise changes. The work that only a waiter runs (unstarted, deferred) runs here, in
+/// the job's task, the way the waiter would have run it.
+fn watch(id: i64, token: u64, deadline: Option<i64>) -> Answer {
+    if deadline.is_none() {
+        run_unstarted(id);
+    }
+    run_deferred(id, deadline);
+    let t = table();
+    let Some(i) = index(t, id) else {
+        return Answer::Missing;
+    };
+    match outcome(t, i) {
+        Some(code) => Answer::Outcome(code),
+        None => {
+            t.watchers.push((i, token));
+            Answer::Pending
+        }
+    }
+}
+
+/// Owner side: forgets `token` as a watcher of `id`.
+fn unwatch(id: i64, token: u64) -> Answer {
+    let t = table();
+    if let Some(i) = index(t, id) {
+        t.watchers.retain(|&w| w != (i, token));
+    }
+    Answer::Unit
+}
+
+fn wait_foreign(id: i64, timeout_ns: i64) -> i64 {
+    let own = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    let inherited = task::defer_deadline();
+    let deadline = match (own, inherited) {
+        (o, i64::MAX) => o,
+        (Some(o), i) => Some(o.min(i)),
+        (None, i) => Some(i),
+    };
+    loop {
+        // SAFETY: the token is ours until freed.
+        let token = unsafe { task::msrt_token_new(task::TOKEN_REMOTE) };
+        let answer = ask(id, move || watch(id, token, deadline));
+        let code = match answer {
+            Answer::Outcome(code) => Some(code),
+            Answer::Pending => None,
+            _ => {
+                // SAFETY: no waiter, no registration.
+                unsafe { task::msrt_token_free(token) };
+                missing()
+            }
+        };
+        if let Some(code) = code {
+            // SAFETY: the owner holds no registration of it.
+            unsafe { task::msrt_token_free(token) };
+            return code;
+        }
+        let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
+        let mut value = 0;
+        // SAFETY: single scheduler per isolate; the token is ours.
+        let woke = unsafe { task::msrt_token_park(token, remaining, &mut value) };
+        if woke == task::WAIT_CANCELLED || woke == task::WAIT_TIMEOUT {
+            ask(id, move || unwatch(id, token));
+        }
+        // SAFETY: the owner holds no registration of it any more.
+        unsafe { task::msrt_token_free(token) };
+        if woke == task::WAIT_CANCELLED {
+            msrt_promise_drop(id);
+            fault::msrt_cancelled();
+        }
+        if woke == task::WAIT_TIMEOUT {
+            ask(id, move || {
+                request_cancel(id);
+                Answer::Unit
+            });
+            return TIMEOUT;
+        }
+    }
 }
 
 fn release_result(t: &mut Table, i: usize) {
@@ -443,7 +587,18 @@ fn apply(event: Event) {
             unsafe { task::msrt_task_cancel(task) };
         }
         Event::Stop { id } => stop(id),
+        Event::Call(job) => {
+            let job = Box::into_raw(Box::new(job));
+            // SAFETY: the entry takes the job; the task is detached and ends by itself.
+            unsafe { task::msrt_task_spawn(call_entry, job.cast(), task::SPAWN_DETACHED, 0) };
+        }
     }
+}
+
+unsafe extern "C-unwind" fn call_entry(arg: *mut u8) {
+    // SAFETY: `arg` is the job `apply` leaked for this task.
+    let job = *unsafe { Box::from_raw(arg.cast::<Box<dyn FnOnce() + Send>>()) };
+    job();
 }
 
 /// Asks for the work of promise `id` to stop at its next wait. Work that has not started is
@@ -516,6 +671,14 @@ fn wake(t: &mut Table, i: usize) {
         // SAFETY: the waiter owns the token until it is woken or leaves.
         unsafe { task::msrt_token_post(token, 1) };
     }
+    if !t.watchers.is_empty() {
+        t.watchers.retain(|&(slot, token)| {
+            if slot == i {
+                task::msrt_token_post_remote(token, 1);
+            }
+            slot != i
+        });
+    }
 }
 
 /// Moves the result of a promise whose `wait` returned 0 or 1 into `out` and answers 1; the promise
@@ -529,9 +692,20 @@ pub unsafe extern "C-unwind" fn msrt_promise_take(
     d: ms_rt_abi::ValueDesc,
     out: *mut u8,
 ) -> u8 {
-    let t = table();
-    let Some(i) = index(t, id) else { return 0 };
-    let r = core::mem::replace(&mut t.result[i], NO_RESULT);
+    let r = if is_foreign(id) {
+        match ask(id, move || {
+            let r = take_block(id);
+            Answer::Block(r.ptr as usize, r.desc as usize)
+        }) {
+            Answer::Block(ptr, desc) => Result {
+                ptr: ptr as *mut u8,
+                desc: desc as *const TypeDesc,
+            },
+            _ => NO_RESULT,
+        }
+    } else {
+        take_block(id)
+    };
     if r.ptr.is_null() {
         return 0;
     }
@@ -540,13 +714,34 @@ pub unsafe extern "C-unwind" fn msrt_promise_take(
         core::ptr::copy_nonoverlapping(r.ptr, out, (*d).size as usize);
         alloc::free(r.ptr);
     }
-    t.state[i] = State::Taken;
     1
+}
+
+/// Takes the result block out of promise `id` and marks it taken; null when there is none.
+fn take_block(id: i64) -> Result {
+    let t = table();
+    let Some(i) = index(t, id) else {
+        return NO_RESULT;
+    };
+    let r = core::mem::replace(&mut t.result[i], NO_RESULT);
+    if !r.ptr.is_null() {
+        t.state[i] = State::Taken;
+    }
+    r
 }
 
 /// Whether `id` has finished (any outcome). A closed id reads as done.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_done(id: i64) -> u8 {
+    if is_foreign(id) {
+        return match ask(id, move || {
+            let t = table();
+            Answer::Flag(index(t, id).is_none_or(|i| t.state[i] != State::Pending))
+        }) {
+            Answer::Flag(done) => u8::from(done),
+            _ => 1,
+        };
+    }
     let t = table();
     match index(t, id) {
         Some(i) if t.state[i] == State::Pending => {
@@ -875,6 +1070,10 @@ fn stop(id: i64) {
 /// a cancellation. It never waits itself; dropping the promise joins the work.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_cancel(id: i64) {
+    if is_foreign(id) {
+        deliver(id, Event::Stop { id });
+        return;
+    }
     stop(id);
 }
 
@@ -883,6 +1082,13 @@ pub extern "C-unwind" fn msrt_promise_cancel(id: i64) {
 /// cancels it now. Call it after the work has started.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_on_cancel(id: i64, cancel: i64) {
+    if is_foreign(id) {
+        ask(id, move || {
+            msrt_promise_on_cancel(id, cancel);
+            Answer::Unit
+        });
+        return;
+    }
     let t = table();
     let Some(i) = index(t, id) else { return };
     let previous = core::mem::replace(&mut t.cancel[i], cancel);
@@ -904,6 +1110,13 @@ pub(crate) fn stop_on_owner(id: i64) {
 /// nothing; a second call replaces the first.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_limit(id: i64, timeout_ns: i64) {
+    if is_foreign(id) {
+        ask(id, move || {
+            msrt_promise_limit(id, timeout_ns);
+            Answer::Unit
+        });
+        return;
+    }
     let t = table();
     let Some(i) = index(t, id) else { return };
     let limit = crate::sys::monotonic_ns().saturating_add(timeout_ns.max(0));
@@ -1171,6 +1384,9 @@ fn park_on(id: i64, timeout_ns: i64) -> u32 {
 /// cancelled, it unwinds; dropping the promise then cancels and joins the work.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
+    if is_foreign(id) {
+        return wait_foreign(id, timeout_ns);
+    }
     let own = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
     // The promise's own limit also bounds the wait, which is how deferred work (it runs on this
     // stack) notices it.
@@ -1235,6 +1451,9 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
     // SAFETY: forwarded contract; the list is borrowed for the call and not mutated by it.
     let list: Vec<i64> =
         unsafe { core::slice::from_raw_parts((*ids).ptr.cast::<i64>(), (*ids).len) }.to_vec();
+    if list.iter().any(|&id| is_foreign(id)) {
+        return wait_any_mixed(&list, timeout_ns);
+    }
     let first_done = |list: &[i64]| {
         let t = table();
         list.iter()
@@ -1296,14 +1515,100 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
     }
 }
 
+/// `msrt_promise_wait_any` over a list that holds promises of other threads: the local ones are
+/// watched through their token slot as usual, the others by registering the waiter's token with
+/// their owners, which post it when the promise changes.
+fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
+    let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    let mut timed_out = false;
+    loop {
+        // SAFETY: the token is ours until freed.
+        let token = unsafe { task::msrt_token_new(task::TOKEN_REMOTE) };
+        let mut finished = None;
+        let mut watched = Vec::new();
+        for (at, &id) in list.iter().enumerate() {
+            let done = if is_foreign(id) {
+                match ask(id, move || watch(id, token, deadline)) {
+                    Answer::Pending => {
+                        watched.push(id);
+                        false
+                    }
+                    _ => true,
+                }
+            } else {
+                let t = table();
+                index(t, id).is_none_or(|i| t.state[i] != State::Pending)
+            };
+            if done {
+                finished = Some(at);
+                break;
+            }
+        }
+        if finished.is_none() {
+            let t = table();
+            for &id in list.iter().filter(|&&id| !is_foreign(id)) {
+                if let Some(i) = index(t, id) {
+                    if t.token[i] != 0 {
+                        fault::fault(b"promise: another task is already waiting on this promise");
+                    }
+                    t.token[i] = token;
+                }
+            }
+            let remaining = deadline.map_or(-1, |d| (d - crate::sys::monotonic_ns()).max(0));
+            let mut value = 0;
+            // SAFETY: single scheduler per isolate; the token is ours.
+            let woke = unsafe { task::msrt_token_park(token, remaining, &mut value) };
+            let t = table();
+            for &id in list.iter().filter(|&&id| !is_foreign(id)) {
+                if let Some(i) = index(t, id)
+                    && t.token[i] == token
+                {
+                    t.token[i] = 0;
+                }
+            }
+            timed_out = woke == task::WAIT_TIMEOUT;
+            if woke == task::WAIT_CANCELLED {
+                finished = Some(usize::MAX);
+            }
+        }
+        for id in watched {
+            ask(id, move || unwatch(id, token));
+        }
+        // SAFETY: no owner holds a registration of it any more.
+        unsafe { task::msrt_token_free(token) };
+        match finished {
+            Some(usize::MAX) => fault::msrt_cancelled(),
+            Some(at) => return at as i64,
+            None if timed_out => return -1,
+            None => {}
+        }
+    }
+}
+
 /// The report of a fault that ended `id` (empty otherwise).
 ///
 /// # Safety
 /// `out` is writable memory for a string.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_rt_abi::StrVal) {
+    let foreign;
     let t = table();
-    let report = index(t, id).map(|i| t.report[i].as_slice()).unwrap_or(&[]);
+    let report = if is_foreign(id) {
+        foreign = match ask(id, move || {
+            let t = table();
+            Answer::Bytes(
+                index(t, id)
+                    .map(|i| t.report[i].clone())
+                    .unwrap_or_default(),
+            )
+        }) {
+            Answer::Bytes(bytes) => bytes,
+            _ => Vec::new(),
+        };
+        foreign.as_slice()
+    } else {
+        index(t, id).map(|i| t.report[i].as_slice()).unwrap_or(&[])
+    };
     // SAFETY: `out` is uninitialised memory for a string.
     unsafe { *out = crate::string::from_bytes(report) };
 }
@@ -1312,6 +1617,13 @@ pub unsafe extern "C-unwind" fn msrt_promise_fault_report(id: i64, out: *mut ms_
 /// result not taken are released. An id that no longer exists does nothing.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
+    if is_foreign(id) {
+        ask(id, move || {
+            msrt_promise_drop(id);
+            Answer::Unit
+        });
+        return;
+    }
     let t = table();
     let Some(i) = index(t, id) else { return };
     if t.cancel[i] != 0 {
@@ -1353,6 +1665,7 @@ pub extern "C-unwind" fn msrt_promise_drop(id: i64) {
     let t = table();
     let Some(i) = index(t, id) else { return };
     release_result(t, i);
+    t.watchers.retain(|&(slot, _)| slot != i);
     t.state[i] = State::Free;
     t.free.push(i);
 }
@@ -2145,6 +2458,111 @@ mod tests {
         // SAFETY: as above.
         let counts = unsafe { *RETRIES.ptr() };
         assert_eq!((counts[1], counts[2]), (1, 1));
+        task::teardown();
+    }
+
+    /// The sleep promise the cross-thread tests wait on from the promise's work, set by the test.
+    static TARGET: crate::global::Process<i64> = crate::global::Process::new(0);
+
+    /// Waits for `TARGET` (a promise of the main thread) and answers `10 * thread + outcome`; the
+    /// thread number tells the test where the work ran.
+    unsafe extern "C-unwind" fn wait_target(closure: *mut Closure) {
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            let code = msrt_promise_wait(*TARGET.ptr(), -1);
+            let mut v = sched::current() as i64 * 10 + code;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    /// Waits for `TARGET` with a limit that passes first.
+    unsafe extern "C-unwind" fn wait_target_briefly(closure: *mut Closure) {
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            let code = msrt_promise_wait(*TARGET.ptr(), 5_000_000);
+            let mut v = sched::current() as i64 * 10 + code;
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    /// Waits for `TARGET` and a promise of its own thread together: answers
+    /// `100 * thread + 10 * index + done`.
+    unsafe extern "C-unwind" fn wait_any_target(closure: *mut Closure) {
+        // SAFETY: called from a running task with the closure `start_with_id` made.
+        unsafe {
+            let own = msrt_promise_sleep(3_600_000_000_000);
+            let ids = [own, *TARGET.ptr()];
+            let list = ms_rt_abi::VecVal {
+                ptr: ids.as_ptr() as *mut u8,
+                len: 2,
+                cap: 2,
+            };
+            let at = msrt_promise_wait_any(&list, -1);
+            let done = msrt_promise_done(*TARGET.ptr());
+            msrt_promise_drop(own);
+            let mut v = sched::current() as i64 * 100 + at * 10 + i64::from(done);
+            msrt_promise_put(id_of(closure), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    /// Runs `work` as a promise that waits on a sleep promise of the main thread, until an idle
+    /// thread has taken it; returns the work's answer, whose thread number is the answer divided
+    /// by `scale`. The placement is up to the scheduler, so it tries again.
+    fn run_away(work: unsafe extern "C-unwind" fn(*mut Closure), sleep_ns: i64, scale: i64) -> i64 {
+        sched::msrt_runtime_set_threads(4);
+        sched::warm(4);
+        for _ in 0..40 {
+            // SAFETY: a plain Int slot.
+            let target = unsafe {
+                *TARGET.ptr() = msrt_promise_sleep(sleep_ns);
+                *TARGET.ptr()
+            };
+            // The work is the oldest start, so an idle thread takes it once it has waited a beat
+            // while the main thread runs the spinner itself.
+            let id = msrt_promise_new();
+            start_with_id(id, work);
+            let spinner = msrt_promise_new();
+            start_with_id(spinner, spin_thread);
+            assert_eq!(msrt_promise_wait(spinner, -1), OK);
+            assert_eq!(msrt_promise_wait(id, -1), OK);
+            let got = take_int(id);
+            msrt_promise_drop(id);
+            msrt_promise_drop(spinner);
+            msrt_promise_drop(target);
+            if got / scale != 0 {
+                return got;
+            }
+        }
+        panic!("the work never ran off the main thread");
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn a_promise_of_another_thread_can_be_waited_and_taken() {
+        let _g = lock();
+        let got = run_away(wait_target, 60_000_000, 10);
+        assert_eq!(got % 10, OK, "outcome {got}");
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn waiting_on_a_promise_of_another_thread_honors_the_timeout() {
+        let _g = lock();
+        let got = run_away(wait_target_briefly, 3_600_000_000_000, 10);
+        assert_eq!(got % 10, TIMEOUT, "outcome {got}");
+        sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn wait_any_over_promises_of_several_threads_finds_the_foreign_one() {
+        let _g = lock();
+        let got = run_away(wait_any_target, 60_000_000, 100);
+        assert_eq!(got % 100, 11, "result {got}");
+        sched::shutdown();
         task::teardown();
     }
 }
