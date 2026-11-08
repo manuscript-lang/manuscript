@@ -51,6 +51,16 @@ test "TCP loopback writes reads half close and EOF":
     try client.output.close()
     try expect_true((try within(var server.input, 2.seconds())).is_none())
 
+test "a read cancelled by its timeout leaves the stream closable":
+    let listener = try listen("127.0.0.1:0")
+    var client = try connect(listener.address(), timeout: 2.seconds()).wait()
+    let _server = try listener.accept(2.seconds()).wait()
+
+    // The peer is silent, so the limit cancels the read mid-park. The borrowed stream still
+    // belongs to the caller: closing it afterwards frees the socket once.
+    try expect_true(within(var client.input, 50.milliseconds()).is_error())
+    try client.close()
+
 test "closing the input leaves the output open and closing both ends the connection":
     let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), timeout: 2.seconds()).wait()
