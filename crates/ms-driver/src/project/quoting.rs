@@ -2,7 +2,7 @@
 
 /// `strconv.Unquote` restricted to double-quoted strings (the manifest form).
 /// Returns `None` where Go returns `ErrSyntax`. `\xNN` and octal escapes may
-/// produce bytes that are not UTF-8; those become U+FFFD.
+/// produce bytes; the complete decoded string must be valid UTF-8.
 pub fn unquote(input: &str) -> Option<String> {
     let bytes = input.as_bytes();
     if bytes.len() < 2 || bytes[0] != b'"' {
@@ -28,7 +28,7 @@ pub fn unquote(input: &str) -> Option<String> {
     if i != bytes.len() {
         return None;
     }
-    Some(String::from_utf8_lossy(&out).into_owned())
+    String::from_utf8(out).ok()
 }
 
 fn hex(bytes: &[u8], at: usize, count: usize) -> Option<u32> {
