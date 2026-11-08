@@ -29,6 +29,6 @@ Use these four sections, in this order, then Documentation and Compatibility lin
 
 - Open every PR ready for review, not as a draft, and enable squash auto-merge in the same step so it lands when required checks pass. The owner does not review PRs; an independent reviewer subagent challenges a structural proposal before implementation (see [AGENTS.md](../../AGENTS.md#shared-guidance-and-checks)).
 - Auto-merge only waits for green CI, so keep the PR green: watch it, merge or rebase `main` on conflicts, and fix failures from the cause rather than re-running.
-- For host-specific changes, dispatch `cicd.yml` on the branch (its `os` input picks one platform) and read the Windows result before closing the issue ([why](../../wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
+- A PR that touches a path in `.github/platform-paths.txt` also runs windows-amd64 and darwin-arm64, and auto-merge waits for them. For a host-specific change outside those paths, or to read windows-arm64 and darwin-amd64, dispatch `cicd.yml` on the branch (its `os` input picks one platform) ([why](../../wiki/repository/pr-checks-skip-windows-so-dispatch-the-full-matrix.md)).
 - If the user holds a PR, turn off its auto-merge and say so.
-- Pull requests run the Linux legs and squash auto-merge when they pass; do not merge by hand while checks are pending. macOS and Windows run on `main` after merge.
+- Pull requests run the Linux legs (plus one Windows and one macOS leg for platform-sensitive paths) and squash auto-merge when they pass; do not merge by hand while checks are pending. The other platform legs run on `main` after merge.
