@@ -297,12 +297,42 @@ impl Reader:
 fn is_space(c: String) Bool:
     return c == " " or c == "\t" or c == "\n" or c == "\r"
 
+// XML 1.0 (Fifth Edition), productions [4] NameStartChar and [4a] NameChar.
 fn is_name_char(c: String, first: Bool) Bool:
-    if c.is_empty() or is_space(c): return false
-    if c.contains_any("<>/=\"'&!?;,()[]\{\}"): return false
-    if first and (c.contains_any("-.0123456789")): return false
+    if c.is_empty(): return false
 
-    return true
+    let code = c.scalar_at(0)
+    if is_name_start(code): return true
+    if first: return false
+
+    return (
+        code == 0x2d
+        or code == 0x2e
+        or (code >= 0x30 and code <= 0x39)
+        or code == 0xb7
+        or (code >= 0x300 and code <= 0x36f)
+        or (code >= 0x203f and code <= 0x2040)
+    )
+
+fn is_name_start(code: Int) Bool:
+    return (
+        code == 0x3a
+        or (code >= 0x41 and code <= 0x5a)
+        or code == 0x5f
+        or (code >= 0x61 and code <= 0x7a)
+        or (code >= 0xc0 and code <= 0xd6)
+        or (code >= 0xd8 and code <= 0xf6)
+        or (code >= 0xf8 and code <= 0x2ff)
+        or (code >= 0x370 and code <= 0x37d)
+        or (code >= 0x37f and code <= 0x1fff)
+        or (code >= 0x200c and code <= 0x200d)
+        or (code >= 0x2070 and code <= 0x218f)
+        or (code >= 0x2c00 and code <= 0x2fef)
+        or (code >= 0x3001 and code <= 0xd7ff)
+        or (code >= 0xf900 and code <= 0xfdcf)
+        or (code >= 0xfdf0 and code <= 0xfffd)
+        or (code >= 0x10000 and code <= 0xeffff)
+    )
 
 // Decodes the five predefined entities and numeric references; any other `&name;` is invalid.
 fn decode(text: String) String!:

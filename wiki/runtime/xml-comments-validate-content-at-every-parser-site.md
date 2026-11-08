@@ -9,3 +9,5 @@ Evidence: [issue #2948](https://github.com/manuscript-lang/manuscript/issues/294
 The XML 1.0 `Char` production applies to the entire literal input too (#2950), not only numeric references. Reuse `is_xml_char` before constructing `Reader` so discarded comments/instructions and DTD text cannot hide forbidden scalars. Preserve permitted whitespace, C1 controls, supplementary-plane noncharacters, and BOM; do not substitute a broader Unicode noncharacter ban.
 
 Raw character data must also reject literal `]]>` (#2951) before entity decoding. A delimiter assembled by references or separate nodes remains legal; attributes and CDATA follow their own grammar.
+
+XML names use the exact [XML 1.0 Fifth Edition NameStartChar/NameChar ranges](https://www.w3.org/TR/xml/#NT-NameStartChar), not a punctuation denylist or Unicode alphabetic predicate (#2952). Colon stays legal because this parser does not resolve namespaces; supplementary names end at U+EFFFF even though later scalars are legal document text.

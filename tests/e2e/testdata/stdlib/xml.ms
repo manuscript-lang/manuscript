@@ -1,3 +1,4 @@
+import from_scalars from "@std/string.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
 import parse, stringify, escape_text, XmlNode from "@std/data/xml.ms"
 
@@ -135,3 +136,47 @@ test "CDATA terminators are forbidden only in literal character data":
     try expect_equal((try parse("<a><![CDATA[]]]]><![CDATA[>]]></a>")).text(), "]]>")
     for text in ["]]", "]>", "]"]:
         try expect_equal((try parse("<a>{text}</a>")).text(), text)
+
+test "XML name starts follow every XML 1.0 range boundary":
+    for code in [
+        0x3a, 0x41, 0x5a, 0x5f, 0x61, 0x7a, 0xc0, 0xd6, 0xd8, 0xf6, 0xf8, 0x2ff, 0x370,
+        0x37d, 0x37f, 0x1fff, 0x200c, 0x200d, 0x2070, 0x218f, 0x2c00, 0x2fef, 0x3001,
+        0xd7ff, 0xf900, 0xfdcf, 0xfdf0, 0xfffd, 0x10000, 0xeffff
+    ]:
+        let scalar = try from_scalars([code])
+
+        for name in [scalar.clone(), "a{scalar}"]:
+            let element = try parse("<{name}></{name}>")
+            try expect_equal(element.tag(), name)
+
+            let attribute = try parse("<a {name}='value'/>")
+            try expect_equal(attribute.attribute(name).get(""), "value")
+
+test "XML continuation-only scalars cannot start a name":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for code in [0x2d, 0x2e, 0x30, 0x39, 0xb7, 0x300, 0x36f, 0x203f, 0x2040]:
+        let scalar = try from_scalars([code])
+        try expect_equal(parse("<{scalar}/>"), malformed)
+        try expect_equal(parse("<a {scalar}='value'/>"), malformed)
+
+        let name = "a{scalar}"
+        try expect_equal((try parse("<{name}></{name}>")).tag(), name)
+        try expect_equal(
+            (try parse("<a {name}='value'/>")).attribute(name).get(""), "value"
+        )
+
+test "XML names reject punctuation and excluded Unicode gaps":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for code in [
+        0x23, 0x24, 0x25, 0x2b, 0x40, 0x5b, 0x5c, 0x5d, 0x5e, 0x60, 0x7b, 0x7c, 0x7d,
+        0x7e, 0x7f, 0xb6, 0xb8, 0xbf, 0xd7, 0xf7, 0x37e, 0x2000, 0x200b, 0x200e, 0x203e,
+        0x2041, 0x206f, 0x2190, 0x2bff, 0x2ff0, 0x3000, 0xe000, 0xf8ff, 0xfdd0, 0xfdef,
+        0xf0000, 0x10ffff
+    ]:
+        let scalar = try from_scalars([code])
+
+        for name in [scalar.clone(), "a{scalar}"]:
+            try expect_equal(parse("<{name}/>"), malformed)
+            try expect_equal(parse("<a {name}='value'/>"), malformed)
