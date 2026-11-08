@@ -369,6 +369,19 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         name: &str,
     ) -> Result<Val, Error> {
+        let out = self.mutator_call_inner(e, view, m, recv_expr, name);
+        self.fault_deferred_close();
+        out
+    }
+
+    fn mutator_call_inner(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        m: &ct::MethodRef,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Val, Error> {
         // A map or set mutator returns its receiver; copy it only when something reads it.
         let discarded = self.discard == Some(e as *const Expr as usize);
         let result_ty = self.ety(e);
@@ -436,6 +449,12 @@ impl<'a> FnLower<'a> {
         if let Some(key) = receiver_resource {
             return self.mutate_computed_resource_list(name, key, &args, recv_expr);
         }
+        if matches!(name, "insert" | "replace" | "remove") && self.is_place(recv_expr) {
+            self.precheck_list_index(recv_expr, name, &args[0])?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
+        }
         if discards {
             // The incoming owned arguments stay registered while the old entry closes: a close
             // that faults unwinds them with the statement instead of leaking them.
@@ -454,6 +473,7 @@ impl<'a> FnLower<'a> {
                     held.push((i, false));
                 }
             }
+            self.defer_close_failures();
             self.close_discarded_entry(recv_expr, name, &args)?;
             if self.dead {
                 self.finish_place(recv_expr);
@@ -516,6 +536,40 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: u, own: false })
             }
         }
+    }
+
+    /// Faults on an index the mutator would reject while the list still sits in its variable: the
+    /// mutation takes the list out first, and a fault after that leaves the variable's cleanup
+    /// with nothing to close (the entries stay unclosed on targets whose slot is not left intact).
+    fn precheck_list_index(
+        &mut self,
+        recv_expr: &Expr,
+        name: &str,
+        index: &NArg,
+    ) -> Result<(), Error> {
+        use ms_mir::ir::{Cc, Op};
+        if !self.ety(recv_expr).is(Builtin::List) {
+            return Ok(());
+        }
+        let x = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(());
+        }
+        let list = self.borrow(x);
+        let i = self.borrow(index.val);
+        let n = self.b.list_len(list);
+        let zero = self.b.iconst(0);
+        let neg = self.b.icmp(Cc::Lt, i, zero);
+        let shifted = self.b.binop(Op::IAdd, i, n);
+        let r = self.b.select(neg, shifted, i);
+        let (op, allow_end) = match name {
+            "insert" => (0, true),
+            "remove" => (1, false),
+            _ => (4, false),
+        };
+        self.check_index(op, i, r, n, allow_end);
+        self.finish(x);
+        Ok(())
     }
 
     /// A temporary resource receiver stays in its authoritative cleanup slot throughout mutation.

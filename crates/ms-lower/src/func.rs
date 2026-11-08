@@ -122,6 +122,9 @@ pub(crate) struct FnLower<'a> {
     pub closed_on_path: HashSet<usize>,
     /// A close error is being returned, so a further close failure is dropped.
     pub returning_close_error: bool,
+    /// While a mutator discards entries: set by a failed close, which faults after the mutation
+    /// removed the entry, so the unwind does not close it a second time.
+    pub deferred_close: Option<ms_mir::builder::Var>,
     /// Bindings of the scope being left whose close and drop already ran.
     pub scope_done: Vec<usize>,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
@@ -604,6 +607,7 @@ impl<'a> FnLower<'a> {
             prologue_done: false,
             closed_on_path: HashSet::new(),
             returning_close_error: false,
+            deferred_close: None,
             scope_done: Vec::new(),
             var_slots: Vec::new(),
             slotted: HashSet::new(),
