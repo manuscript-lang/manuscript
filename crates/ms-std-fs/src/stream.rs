@@ -251,11 +251,20 @@ impl Stream {
         offload(self.fd, bytes, |&fd, bytes| sys::write(fd, bytes))
     }
 
+    #[cfg(windows)]
+    fn pipe_fail(&self, op: &str, stop: ms_rt::glue::pipe::Stop) -> IoFail {
+        match stop {
+            ms_rt::glue::pipe::Stop::Cancelled => IoFail::cancelled(),
+            ms_rt::glue::pipe::Stop::Io(e) => {
+                IoFail::os(op, &self.name, e.raw_os_error().unwrap_or(0))
+            }
+        }
+    }
+
     fn read_fd(&mut self, buf: &mut [u8]) -> IoRes<usize> {
         #[cfg(windows)]
         if self.adopted {
-            return ms_rt::glue::pipe::read(self.fd, buf)
-                .map_err(|e| IoFail::os("read", &self.name, e.raw_os_error().unwrap_or(0)));
+            return ms_rt::glue::pipe::read(self.fd, buf).map_err(|e| self.pipe_fail("read", e));
         }
         self.wait(Interest::Read)?;
         self.read_raw(buf)
@@ -300,8 +309,7 @@ impl Stream {
         }
         #[cfg(windows)]
         if self.adopted {
-            return ms_rt::glue::pipe::write(self.fd, data)
-                .map_err(|e| IoFail::os("write", &self.name, e.raw_os_error().unwrap_or(0)));
+            return ms_rt::glue::pipe::write(self.fd, data).map_err(|e| self.pipe_fail("write", e));
         }
         while !data.is_empty() {
             self.wait_write()?;

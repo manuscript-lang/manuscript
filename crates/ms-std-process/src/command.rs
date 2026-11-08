@@ -48,6 +48,11 @@ fn sleep_ms(ms: i64) {
     ms_rt::glue::task_sleep(ms.max(0) * 1_000_000);
 }
 
+/// [`sleep_ms`] that returns when a stop request ends the sleep, so the caller can unwind by return.
+fn try_sleep_ms(ms: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
+    ms_rt::glue::try_task_sleep(ms.max(0) * 1_000_000)
+}
+
 /// A descriptor closed on drop.
 pub struct Fd(pub sys::Fd);
 
@@ -177,14 +182,14 @@ pub fn run(
                 .flatten()
                 .min();
             if let Some(w) = &waiter {
-                w.park(until.map_or(-1, |u| u - now));
+                w.park(until.map_or(-1, |u| u - now))
             } else {
-                sleep_ms(until.map_or(POLL_MS, |u| ((u - now) / 1_000_000).clamp(1, POLL_MS)));
+                try_sleep_ms(until.map_or(POLL_MS, |u| ((u - now) / 1_000_000).clamp(1, POLL_MS)))
             }
         };
         let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
         if !ready.contains(&true) {
-            park();
+            park().map_err(|_| Fail::status(STATUS_FAILED))?;
             continue;
         }
 
@@ -230,7 +235,7 @@ pub fn run(
             break;
         }
         if !progressed {
-            park();
+            park().map_err(|_| Fail::status(STATUS_FAILED))?;
         }
     }
     let code = child.0.wait();

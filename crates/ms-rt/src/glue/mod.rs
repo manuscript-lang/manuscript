@@ -109,9 +109,22 @@ pub fn try_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> Result<u32, po
 /// until the pipe is ready, with no polling. A pipe handle is adopted once and then owned here.
 #[cfg(windows)]
 pub mod pipe {
-    use super::{WAIT_READ, WAIT_WRITE, cancelled};
+    use super::{WAIT_READ, WAIT_WRITE};
     use crate::task::{WAIT_CANCELLED, msrt_task_wait_fd};
     use std::io::ErrorKind;
+
+    /// Why a parking pipe operation stopped: a stop request (the caller returns, then raises the
+    /// cancel) or an I/O error.
+    pub enum Stop {
+        Cancelled,
+        Io(std::io::Error),
+    }
+
+    impl From<std::io::Error> for Stop {
+        fn from(e: std::io::Error) -> Stop {
+            Stop::Io(e)
+        }
+    }
 
     /// Takes over the overlapped pipe `handle`. False (and the handle still the caller's) when
     /// it was not opened for overlapped I/O.
@@ -124,36 +137,41 @@ pub mod pipe {
         unsafe { crate::poller::pipe_adopt(handle as usize) }
     }
 
-    fn park(key: isize, events: u32) {
+    fn park(key: isize, events: u32) -> Result<(), Stop> {
         // SAFETY: parks the current task; no Rust borrow is held across the call.
         if unsafe { msrt_task_wait_fd(key as i32, events, -1) } & WAIT_CANCELLED != 0 {
-            cancelled();
+            return Err(Stop::Cancelled);
         }
+        Ok(())
     }
 
     /// Reads up to `buf.len()` bytes, parking until some arrive; 0 at end of stream (the other
     /// end closed).
-    pub fn read(handle: isize, buf: &mut [u8]) -> std::io::Result<usize> {
+    pub fn read(handle: isize, buf: &mut [u8]) -> Result<usize, Stop> {
         loop {
-            super::poll_cancel();
+            if super::cancel_pending() {
+                return Err(Stop::Cancelled);
+            }
             match crate::poller::pipe_read(handle as usize, buf) {
-                Err(e) if e.kind() == ErrorKind::WouldBlock => park(handle, WAIT_READ),
+                Err(e) if e.kind() == ErrorKind::WouldBlock => park(handle, WAIT_READ)?,
                 Err(e) if e.kind() == ErrorKind::BrokenPipe => return Ok(0),
-                r => return r,
+                r => return Ok(r?),
             }
         }
     }
 
     /// Writes all of `data`, parking while the pipe is busy. `BrokenPipe` once the other end
     /// closed.
-    pub fn write(handle: isize, mut data: &[u8]) -> std::io::Result<()> {
+    pub fn write(handle: isize, mut data: &[u8]) -> Result<(), Stop> {
         while !data.is_empty() {
-            super::poll_cancel();
+            if super::cancel_pending() {
+                return Err(Stop::Cancelled);
+            }
             match crate::poller::pipe_write(handle as usize, data) {
                 Ok(n) => data = &data[n..],
                 // The writer waits on the handle plus one, so a reader can wait at the same time.
-                Err(e) if e.kind() == ErrorKind::WouldBlock => park(handle + 1, WAIT_WRITE),
-                Err(e) => return Err(e),
+                Err(e) if e.kind() == ErrorKind::WouldBlock => park(handle + 1, WAIT_WRITE)?,
+                Err(e) => return Err(e.into()),
             }
         }
         Ok(())
@@ -203,17 +221,32 @@ pub mod object {
     /// # Safety
     /// `handle` is an open waitable handle that stays open until [`forget`].
     pub unsafe fn wait(handle: isize, timeout_ns: i64) -> Option<u32> {
+        // SAFETY: forwarded from the caller.
+        match unsafe { try_wait(handle, timeout_ns) } {
+            Ok(got) => got,
+            Err(_) => cancelled(),
+        }
+    }
+
+    /// [`wait`] that returns `Err(Cancelled)` when a stop request ends the wait.
+    ///
+    /// # Safety
+    /// As for [`wait`].
+    pub unsafe fn try_wait(
+        handle: isize,
+        timeout_ns: i64,
+    ) -> Result<Option<u32>, super::pool::Cancelled> {
         crate::task::ensure_poller();
         // SAFETY: forwarded from the caller.
         if !unsafe { crate::poller::object_watch(handle as usize) } {
-            return None;
+            return Ok(None);
         }
         // SAFETY: parks the current task; no Rust borrow is held across the call.
         let got = unsafe { msrt_task_wait_fd(handle as i32, WAIT_READ, timeout_ns) };
         if got & WAIT_CANCELLED != 0 {
-            cancelled();
+            return Err(super::pool::Cancelled);
         }
-        Some(got & (WAIT_READ | WAIT_TIMEOUT))
+        Ok(Some(got & (WAIT_READ | WAIT_TIMEOUT)))
     }
 
     /// Ends the watch [`wait`] started; call before closing `handle`.
@@ -225,12 +258,20 @@ pub mod object {
 /// Parks the running task for `ns` nanoseconds so other tasks keep running, and unwinds the
 /// program when a stop request (or task cancellation) ends the wait early.
 pub fn task_sleep(ns: i64) {
+    if try_task_sleep(ns).is_err() {
+        cancelled();
+    }
+}
+
+/// [`task_sleep`] that returns `Err(Cancelled)` when a stop request ends the sleep.
+pub fn try_task_sleep(ns: i64) -> Result<(), pool::Cancelled> {
     /// The runtime's `WAIT_CANCELLED` bit.
     const WAIT_CANCELLED: u32 = 16;
     // SAFETY: parks the current task; no Rust borrow is held across the call.
     if unsafe { msrt_task_sleep(ns) } & WAIT_CANCELLED != 0 {
-        cancelled();
+        return Err(pool::Cancelled);
     }
+    Ok(())
 }
 
 /// Aborts the program when a stop request is pending (call between blocking steps of long operations).
