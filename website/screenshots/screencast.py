@@ -18,8 +18,8 @@ SCENES = [
     ("One owner per value. No garbage collector.",
      "Use-after-move is a compile error: no GC pauses, no refcounts.",
      "own.ms", "ms run own.ms", 1),
-    ("Native speed. Faster than Go on all 7 kernels.",
-     "5M sieve: 26 ms vs Go 65 ms, Rust 30 ms (bench/perf, 2026-11-05).",
+    ("Native speed, comparable to C.",
+     "5M sieve: Manuscript 26 ms, C 26 ms, Go 65 ms (bench/perf, 2026-11-05).",
      None, "ms build sieve.ms -o sieve && ./sieve", 4),
     ("No async. No await.",
      "Any function can run concurrently, so no colored functions to rewrite.",
@@ -36,6 +36,15 @@ SCENES = [
     ("See what the agent built.",
      "Call graphs and code maps come from checked source, not guesses.",
      None, "ms diagram conc.ms --format ascii", 7),
+    ("Tests live beside the code.",
+     "test blocks run under ms test: no framework to install or configure.",
+     "tb.ms", "ms test tb.ms", 3),
+    ("Benchmarks are part of the language.",
+     "bench blocks report min, median, mean and stddev per iteration.",
+     None, "ms bench tb.ms --time 20ms --samples 3", 4),
+    ("Profile native code in one command.",
+     "Sampling profiles with source attribution: top report, folded stacks, pprof.",
+     None, "ms profile prof.ms --out-dir pr --top 4", 6),
     ("One toolchain. Batteries-included stdlib.",
      "Check, format, lint, test and build, with files, HTTP, JSON and crypto in the box.",
      None, "ms verify demo/ms.toml", 4),
@@ -136,7 +145,7 @@ def main():
             add(len(code), cmd, 0, 800)
             for n in range(1, len(out)):
                 add(len(code), cmd, n, 450)
-            add(len(code), cmd, len(out), 2200 + 300 * len(out))
+            add(len(code), cmd, len(out), 2000 + 250 * len(out))
         # quantize with a shared adaptive palette per frame; hold the loop point
         pal = [f.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for f in frames]
         os.makedirs(os.path.dirname(os.path.abspath(a.output)), exist_ok=True)
