@@ -11,6 +11,7 @@ mod optional_defaults;
 mod portability;
 mod release;
 mod stream_names;
+mod thread_affinity;
 mod unsafe_boundary;
 
 use ms_syntax::parser::parse;
@@ -67,9 +68,10 @@ fn run(syms: ms_syntax::Names) -> ExitCode {
     issues.extend(internal_externs::check(&files));
     issues.extend(optional_defaults::check(syms, &files));
     issues.extend(layering::check(&files));
+    issues.extend(thread_affinity::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, internal externs, optional defaults, and crate layering agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, internal externs, optional defaults, crate layering, and thread affinity agree."
         );
         return ExitCode::SUCCESS;
     }

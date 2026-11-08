@@ -243,7 +243,7 @@ fn serve(
     (address, accepted, log)
 }
 
-fn h2_client(opts: ClientOptions, settings: Settings) -> (Rc<Network>, Rc<Client>) {
+fn h2_client(opts: ClientOptions, settings: Settings) -> (Arc<Network>, Rc<Client>) {
     let net = Network::new_root();
     let client = Client::new(&net, opts).unwrap();
     *client.h2_prior.borrow_mut() = Some(settings);
@@ -251,7 +251,7 @@ fn h2_client(opts: ClientOptions, settings: Settings) -> (Rc<Network>, Rc<Client
 }
 
 /// A client with large windows.
-fn client(opts: ClientOptions) -> (Rc<Network>, Rc<Client>) {
+fn client(opts: ClientOptions) -> (Arc<Network>, Rc<Client>) {
     h2_client(opts, h2client::client_settings(None))
 }
 

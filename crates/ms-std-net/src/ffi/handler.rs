@@ -3,6 +3,7 @@
 
 use super::ExchH;
 use super::http_client::http_from_code;
+use crate::bound::Bound;
 use crate::error::HttpErr;
 use crate::http::exchange::Exchange;
 use crate::http::server::{Dispatch, Outcome};
@@ -72,7 +73,7 @@ impl Dispatch for Program {
         // SAFETY: the thunk borrows the exchange handle (it takes its own reference for the
         // handler); the status and optional message string come back owned.
         let mut status = 0;
-        let handle = Object(ExchH(exchange)).into_raw().cast();
+        let handle = Object(ExchH(Bound::new(exchange))).into_raw().cast();
         // SAFETY: the thunk contract; the handle is live for the call.
         let call = || status = unsafe { thunk(self.env, handle, &mut message) };
         let stop = guarded(call);

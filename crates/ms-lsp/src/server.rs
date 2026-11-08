@@ -209,8 +209,12 @@ impl Params {
             if !matches!(document, Json::Obj(_)) {
                 return Err(());
             }
+            let uri = string_field(document, "uri")?;
+            if uri::is_malformed_file(&uri) {
+                return Err(());
+            }
             p.document = Document {
-                uri: string_field(document, "uri")?,
+                uri,
                 text: string_field(document, "text")?,
                 version: integer_field(document, "version")?,
             };
@@ -728,6 +732,7 @@ impl Server<'_> {
             .unwrap_or(false);
         if let Some(root) = params.get("rootUri").and_then(|u| u.as_str())
             && !root.is_empty()
+            && !uri::is_malformed_file(root)
         {
             self.roots.push(uri::filename(root));
         }
@@ -736,7 +741,9 @@ impl Server<'_> {
             .and_then(|f| f.as_array())
             .unwrap_or(&[])
         {
-            if let Some(root) = folder.get("uri").and_then(|u| u.as_str()) {
+            if let Some(root) = folder.get("uri").and_then(|u| u.as_str())
+                && !uri::is_malformed_file(root)
+            {
                 self.roots.push(uri::filename(root));
             }
         }

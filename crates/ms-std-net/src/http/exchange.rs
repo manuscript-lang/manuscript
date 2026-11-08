@@ -804,6 +804,7 @@ mod tests {
     use super::server::{Dispatch, Limits, Outcome};
     use super::*;
     use crate::net::Network;
+    use std::sync::Arc;
 
     struct Streamer;
 
@@ -882,7 +883,7 @@ mod tests {
         }
     }
 
-    fn start(limits: Limits) -> (Rc<Network>, super::server::tests::Started) {
+    fn start(limits: Limits) -> (Arc<Network>, super::server::tests::Started) {
         super::server::tests::start_with(Box::new(Streamer), super::server::tests::opts(limits))
     }
 
