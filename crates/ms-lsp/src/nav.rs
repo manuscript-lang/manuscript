@@ -10,6 +10,7 @@ use ms_check::api::types::{Name, SymRef};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -45,6 +46,9 @@ struct Finder<'a> {
     cursor: Result<usize, Position>,
     best: Option<Hit>,
     hidden: HashMap<NodeId, bool>,
+    /// Line index and cursor position for the mismatched-snapshot fallback, built on first use
+    /// so each expression costs a lookup instead of a scan of the source prefix.
+    lines: OnceCell<(text::SourcePositions<'a>, Position)>,
 }
 
 impl Finder<'_> {
@@ -68,12 +72,12 @@ impl Finder<'_> {
         } else {
             // Invalid positions and mismatched/recovered snapshots retain the
             // original clamped UTF-16 comparison.
-            let p = self
-                .cursor
-                .map(|at| text::position(self.source, at))
-                .unwrap_or_else(|p| p);
-            let start = text::position(self.source, offset);
-            let end = text::position(self.source, end);
+            let (lines, p) = self.lines.get_or_init(|| {
+                let lines = text::SourcePositions::new(self.source);
+                let p = self.cursor.map_or_else(|p| p, |at| lines.position(at));
+                (lines, p)
+            });
+            let (start, end) = (lines.position(offset), lines.position(end));
             p.line == start.line && p.character >= start.character && p.character < end.character
         };
         if inside && self.best.as_ref().is_none_or(|b| text.len() < b.text.len()) {
@@ -129,6 +133,7 @@ pub fn at(
         cursor: text::offset(&d.text, p).map_err(|_| p),
         best: None,
         hidden: HashMap::new(),
+        lines: OnceCell::new(),
     };
     for decl in &module.decls {
         visit::walk_decl(&mut finder, decl.decl());

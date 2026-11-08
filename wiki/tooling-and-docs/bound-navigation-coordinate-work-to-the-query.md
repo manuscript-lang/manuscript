@@ -15,3 +15,7 @@ production patches; retain output assertions rather than filtering changed facts
 The [matched preflight](../../bench/perf/tooling-preflight-2026-10-31/README.md)
 records this correction and keeps the rejected comparison separate. Required CI
 and an actual merged-main replay still gate completion.
+
+The mismatched-snapshot fallback must also use one shared line index and cursor position per query: three prefix scans per expression took 19 s for the first hover after an edit in a 36,000-line file (#3137).
+
+The name-table limit counts growth past the size settled after the last start, not absolute size: with an absolute 1 MiB cap, one large document's own names made every request drop all caches and reload the standard library (0.9 s per hover, 13 ms cached; #3136).
