@@ -1260,16 +1260,31 @@ impl<'a> FnLower<'a> {
 
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
         let mut root = iter;
-        // `xs.field` and `xs[i]` borrow part of `xs` while `xs` is unchanged. A method call may return a new value (`entries()`), so it is not followed.
-        while let ExprKind::Member { left, .. }
-        | ExprKind::Index { left, .. }
-        | ExprKind::Apply {
-            left,
-            value: Some(_),
-            ..
-        } = &root.kind
-        {
-            root = left;
+        // `xs.field`, `xs[i]` and `xs.get(i)` borrow part of `xs` while `xs` is unchanged. Other method calls may return a new value (`entries()`), so they are not followed.
+        loop {
+            match &root.kind {
+                ExprKind::Member { left, .. }
+                | ExprKind::Index { left, .. }
+                | ExprKind::Apply {
+                    left,
+                    value: Some(_),
+                    ..
+                } => root = left,
+                ExprKind::Call { callee, .. } => {
+                    match (&callee.kind, self.hir.resolution(callee)) {
+                        (
+                            ExprKind::Member { left, .. },
+                            ms_check::api::hir::Resolution::Method(m),
+                        ) if m.name().is_some_and(|n| self.syms.str(n) == "get")
+                            && self.hir.ty(left).is(ms_check::api::types::Builtin::List) =>
+                        {
+                            root = left
+                        }
+                        _ => break,
+                    }
+                }
+                _ => break,
+            }
         }
         matches!(&root.kind, ExprKind::Name(_))
             && matches!(
