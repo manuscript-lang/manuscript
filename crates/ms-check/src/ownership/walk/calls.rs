@@ -260,6 +260,7 @@ impl Walker<'_> {
             if mode == ParamMode::Mutate
                 && !self.is_place(r)
                 && self.constant_root(r).is_none()
+                && !self.returns_borrow(r)
                 && matches!(&callee.kind, ExprKind::Member { name, .. }
                     if self.syms.str(name) == ms_syntax::parser::INDEX_SET)
             {
@@ -756,6 +757,17 @@ impl Walker<'_> {
                     if let Some((info, _)) = self.place(r) {
                         self.mutate(r.pos, &info, "change");
                     }
+                } else if matches!(r.kind, ExprKind::Call { .. }) && self.returns_borrow(r) {
+                    // The result is a reference into another value, not a temporary of its own:
+                    // changing it would change (or copy out of) the lender.
+                    let text = self.expr_text(r);
+                    self.error(
+                        r.pos,
+                        format!(
+                            "cannot change the result of `{text}`: it is a read-only reference into another value; change the owner itself, or copy it into a `var` first with `.{CLONE}()`"
+                        ),
+                    );
+                    self.expr(r, Demand::Read);
                 } else if let Some(constant) = self.constant_root(r) {
                     // Each use of a constant runs its initializer, so the change would land on a
                     // fresh value and vanish.
