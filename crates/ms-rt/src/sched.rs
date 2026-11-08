@@ -338,6 +338,22 @@ pub(crate) fn remove_pending(id: i64) -> Option<usize> {
     Some(start.closure)
 }
 
+/// Frees the buffers of this thread's mailbox, whose capacity grows with the promises it queued:
+/// the leak sweep's exit teardown, so kept capacity does not read as a leak.
+pub(crate) fn release_mail() {
+    let me = current();
+    if me == NONE {
+        return;
+    }
+    let mut mail = lock(&SLOTS[me].mail);
+    if mail.pending.is_empty() {
+        mail.pending = VecDeque::new();
+    }
+    if mail.events.is_empty() {
+        mail.events = Vec::new();
+    }
+}
+
 /// Sends `event` to `thread` and wakes it.
 pub(crate) fn post(thread: usize, event: Event) {
     {
