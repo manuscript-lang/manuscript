@@ -26,6 +26,13 @@ pub fn collection_mutation(syms: ms_syntax::Names, method: &Method) -> bool {
             .is_some_and(|m| m.mutating)
 }
 
+/// Whether the mutator `name` can discard an entry the receiver holds (`set`, `add`, `remove`,
+/// `clear`, `splice`). A direct call closes a resource entry it discards; a method value cannot,
+/// so the checker rejects one over one-owner elements and lowering closes only at the call.
+pub fn discards_entries(name: &str) -> bool {
+    matches!(name, "set" | "add" | "remove" | "clear" | "splice")
+}
+
 /// `StringBuilder` and `BytesBuilder`: owned values whose `build` moving_params them.
 pub fn is_text_builder(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.is_std(syms, "StringBuilder") || t.is(Builtin::BytesBuilder)

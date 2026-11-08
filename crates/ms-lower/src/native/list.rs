@@ -634,9 +634,7 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         name: &str,
     ) -> Result<bool, Error> {
-        if !matches!(name, "set" | "add" | "remove" | "clear" | "splice")
-            || !self.is_place(recv_expr)
-        {
+        if !ms_check::api::effects::discards_entries(name) || !self.is_place(recv_expr) {
             return Ok(false);
         }
         let ty = self.ety(recv_expr);

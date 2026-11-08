@@ -46,7 +46,7 @@ pub mod checker {
 pub mod effects {
     pub use crate::effect_directives::matches;
     pub use crate::effect_reach::Violation;
-    pub use crate::effects::{collection_mutation, is_text_builder};
+    pub use crate::effects::{collection_mutation, discards_entries, is_text_builder};
 }
 
 pub mod stdlib {

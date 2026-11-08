@@ -179,6 +179,10 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/count-check.ms
+    - name: Every accepted resource operation closes each resource once
+      if: env.GATES == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/resource-matrix.ms
     - name: Package and run the distribution on a hello project
       if: env.GATES == 'true'
       shell: bash
