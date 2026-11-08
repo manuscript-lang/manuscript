@@ -3,10 +3,11 @@ import pipe, WriteStream from "@std/io/io.ms"
 import promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms"
 import create_directory, temporary, watch from "@std/os/fs.ms"
 
-// Reads events until `last` shows up, tells the test, then waits for more inside the native watcher.
+// Tells the test the watch is registered, reads events until `last` shows up, tells the test again, then waits for more inside the native watcher.
 fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
     var events = try watch(root, recursive: true)
     var out = seen
+    try out.write(0)
 
     while true:
         let event = try events.next()
@@ -28,10 +29,11 @@ test "cancelling a recursive watch after a burst of events releases the watcher 
     var ready = pipe[Int](4)
     var reader = ready.reader()
     let switch = cancel_switch()
-    let last = "{path}/d19/e/f"
+    let last = "{path}/d19"
     let work = promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
         options: PromiseOptions(cancel: switch.signal())
     )
+    let _registered = try reader.next()
     var i = 0
 
     while i < 20:
