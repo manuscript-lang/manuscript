@@ -419,6 +419,42 @@ pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
     sched().live - sched().waiting_roots
 }
 
+/// Whether no other task could run while the current one blocks its thread: each is parked on a
+/// token with no deadline and not on a descriptor, so nothing but a post wakes it. A program that
+/// waits for one promise at a time is in this state, and a blocking call then gains nothing from
+/// a pool thread. A post from another thread is noticed when the call returns. Answers false past
+/// a handful of tasks, so the check stays a few loads.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_task_others_stalled() -> bool {
+    const LOOK: usize = 4;
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let cur = ensure_init();
+        let s = sched();
+        if s.live - s.waiting_roots > LOOK {
+            return false;
+        }
+        for slot in &s.slots {
+            let t = slot.task;
+            if t.is_null() || t == cur {
+                continue;
+            }
+            let t = &*t;
+            let stalled = match t.state {
+                State::Done => true,
+                State::Waiting => {
+                    t.wait_token != 0 && t.deadline == NO_DEADLINE && t.kill_at == NO_DEADLINE
+                }
+                _ => false,
+            };
+            if !stalled {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 /// Requests cancellation of a task: a parked task wakes with `WAIT_CANCELLED`, and the task's
 /// cancellation checks fire. A handle that no longer exists is ignored.
 #[unsafe(no_mangle)]

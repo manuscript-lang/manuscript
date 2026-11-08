@@ -263,6 +263,14 @@ pub(super) unsafe fn reactor_wait() {
                 };
                 break;
             }
+            let steal = crate::sched::steal_wait_ns();
+            if steal >= 0 {
+                timeout_ns = if timeout_ns < 0 {
+                    steal
+                } else {
+                    timeout_ns.min(steal)
+                };
+            }
             if let Some(deadline) = crate::promise::next_deadline() {
                 let ns = (deadline - now).max(0);
                 timeout_ns = if timeout_ns < 0 {
