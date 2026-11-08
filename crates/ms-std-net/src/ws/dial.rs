@@ -10,6 +10,7 @@ use crate::net::Network;
 use crate::tls::{self, TlsOptions};
 use crate::wait::Deadline;
 use std::rc::Rc;
+use std::sync::Arc;
 
 /// Settings of `WebSocketOptions` plus the caller's headers and subprotocols.
 pub struct Dial<'a> {
@@ -36,7 +37,7 @@ fn io_error(e: IoErr) -> WsErr {
 }
 
 /// Opens a client connection to a `ws` or `wss` URL.
-pub fn connect(owner: &Rc<Network>, dial: &Dial<'_>) -> Result<Rc<Socket>, WsErr> {
+pub fn connect(owner: &Arc<Network>, dial: &Dial<'_>) -> Result<Rc<Socket>, WsErr> {
     let max = match dial.max_message_bytes {
         Some(n) if n <= 0 => return Err(WsErr::InvalidInput),
         Some(n) => Some(n as u64),
@@ -72,7 +73,7 @@ pub fn connect(owner: &Rc<Network>, dial: &Dial<'_>) -> Result<Rc<Socket>, WsErr
 }
 
 fn handshake_on(
-    owner: &Rc<Network>,
+    owner: &Arc<Network>,
     dial: &Dial<'_>,
     target: &url::Url,
     config: &std::sync::Arc<rustls::ClientConfig>,

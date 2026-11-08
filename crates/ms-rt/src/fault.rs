@@ -1342,6 +1342,7 @@ pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: 
         0 => ("List.insert", len),
         1 => ("List.remove", len - 1),
         3 => ("List.swap", len - 1),
+        4 => ("List.replace", len - 1),
         _ => ("List.set", len - 1),
     };
     if operation != 0 && len == 0 {

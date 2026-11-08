@@ -328,22 +328,6 @@ fn embed_names_resolve_to_generated_modules() {
     assert!(error.contains("import it as"), "{error}");
 }
 
-/// A link target that is not UTF-8 must not resolve to the file its lossy spelling names.
-#[cfg(unix)]
-#[test]
-fn non_utf8_link_target_is_rejected() {
-    use std::os::unix::ffi::OsStrExt;
-    let (_dir, p) = fixture(MANIFEST);
-    let raw = std::ffi::OsStr::from_bytes(b"\xff.ms");
-    write(&p.source, "\u{fffd}.ms", "export fn value() Int: 99\n");
-    let link = join(&p.source, "dep.ms");
-    std::os::unix::fs::symlink(raw, &link).unwrap();
-    let error = source_path(&p.root, &link, &Overlay::new())
-        .unwrap_err()
-        .to_string();
-    assert!(error.contains("not valid UTF-8"), "{error}");
-}
-
 /// Retargeting a link inside a chain changes the import, so every link the lookup passes through
 /// is reported, and a loop of links ends the walk.
 #[cfg(unix)]

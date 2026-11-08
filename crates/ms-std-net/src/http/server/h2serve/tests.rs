@@ -136,7 +136,7 @@ impl Dispatch for Streamer {
     }
 }
 
-fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Rc<Network>, Started) {
+fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Arc<Network>, Started) {
     let options = Options {
         limits,
         admitted: Default::default(),

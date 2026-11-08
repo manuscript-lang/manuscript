@@ -191,15 +191,9 @@ fn map_io(e: IoErr) -> PumpErr {
 }
 
 /// Ownership of the socket for one drive; ending it wakes the waiting tasks. A fault or
-/// cancellation that leaves the task's guard skips destructors, so the same release is
-/// also registered on the task's cleanup stack.
-struct Turn<'a> {
-    session: &'a Session,
-    id: u64,
-    cleanup: usize,
-    /// What the cleanup action reads; freed with the turn, leaked with abandoned frames.
-    _release: Box<Release>,
-}
+/// cancellation that leaves the task's guard skips destructors, so the release runs from the
+/// drop of a value that `rt::Parked` also drops on the cleanup stack, which frees it too.
+struct Turn(#[allow(dead_code)] rt::Parked<Release>);
 
 impl Session {
     /// Ends turn `id` unless it already ended.
@@ -215,24 +209,17 @@ impl Session {
     }
 }
 
-/// What the cleanup action needs to end a turn.
+/// What ends a turn: dropping it releases the session's socket, however the frame is left.
 struct Release {
     session: *const Session,
     id: u64,
 }
 
-unsafe extern "C-unwind" fn release_turn(arg: *mut u8) {
-    // SAFETY: `arg` is the `Release` a live `Turn` owns, or one its abandoned frame leaked; the
-    // session outlives it, since abandoned frames keep their `Rc` (nothing frees them).
-    let r = unsafe { &*arg.cast::<Release>() };
-    // SAFETY: as above, the session is alive.
-    unsafe { (*r.session).release(r.id) };
-}
-
-impl Drop for Turn<'_> {
+impl Drop for Release {
     fn drop(&mut self) {
-        rt::cleanup_discard(self.cleanup);
-        self.session.release(self.id);
+        // SAFETY: the session outlives it, since abandoned frames keep their `Rc` (nothing frees
+        // them) and a live turn borrows the session.
+        unsafe { (*self.session).release(self.id) };
     }
 }
 
@@ -292,20 +279,11 @@ impl Session {
         self.flush_owned(deadline)
     }
 
-    fn turn(&self) -> Turn<'_> {
+    fn turn(&self) -> Turn {
         self.driving.set(true);
         let id = self.turn_id.get() + 1;
         self.turn_id.set(id);
-        let mut release = Box::new(Release { session: self, id });
-        let arg: *mut Release = &mut *release;
-        // SAFETY: the box lives as long as the turn; `Turn::drop` discards the action first.
-        let cleanup = unsafe { rt::cleanup_push(release_turn, arg.cast()) };
-        Turn {
-            session: self,
-            id,
-            cleanup,
-            _release: release,
-        }
+        Turn(rt::Parked::new(Release { session: self, id }))
     }
 
     /// The core's output after what is still pending.
