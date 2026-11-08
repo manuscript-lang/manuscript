@@ -19,7 +19,7 @@ use crate::conn::Connection;
 use crate::error::IoErr;
 use crate::h2::{self, Event, Header, Settings, StreamId, error_code};
 use crate::rt::{self, Token};
-use crate::wait::{Deadline, Wait, wait_token};
+use crate::wait::{Deadline, Wait, try_wait_token};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
@@ -73,8 +73,15 @@ pub(crate) fn reset_text(id: StreamId, code: u32) -> String {
 /// Why a pump failed.
 pub(crate) enum PumpErr {
     Timeout,
+    Cancelled,
     Closed,
     Failed(String),
+}
+
+impl From<rt::Cancelled> for PumpErr {
+    fn from(_: rt::Cancelled) -> Self {
+        PumpErr::Cancelled
+    }
 }
 
 /// Why a stream could not be opened.
@@ -320,6 +327,10 @@ impl Session {
     }
 
     fn failed(&self, e: IoErr) -> PumpErr {
+        // A cancelled park is not a failure of the connection: the session stays usable.
+        if rt::cancel_pending() {
+            return PumpErr::Cancelled;
+        }
         let e = map_io(e);
         if matches!(e, PumpErr::Failed(_)) {
             self.mark_dead();
@@ -332,9 +343,9 @@ impl Session {
     fn await_driver(&self, deadline: Deadline) -> Result<(), PumpErr> {
         let token = Token::new();
         self.waiters.borrow_mut().push(token.id());
-        let got = wait_token(&token, deadline);
+        let got = try_wait_token(&token, deadline);
         self.waiters.borrow_mut().retain(|&w| w != token.id());
-        match got {
+        match got? {
             Wait::Ready => Ok(()),
             Wait::TimedOut => Err(PumpErr::Timeout),
         }
@@ -513,6 +524,8 @@ pub(crate) struct H2Stream {
 
 impl Drop for H2Stream {
     fn drop(&mut self) {
+        // The reset flush parks, and this drop runs while a cancelled request unwinds.
+        let _shield = rt::Shield::new();
         self.session.cancel(self.id);
     }
 }

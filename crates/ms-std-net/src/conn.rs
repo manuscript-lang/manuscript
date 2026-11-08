@@ -5,7 +5,7 @@ use crate::net::{Network, Resource, limit};
 use crate::rt;
 use crate::sys::{AsSock, Borrowed};
 use crate::tls::{self, TlsOptions};
-use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use ms_rt::fault::with_cleanup;
 use socket2::Socket;
 use std::cell::{Cell, UnsafeCell};
@@ -246,12 +246,12 @@ fn drive<T>(
             Step::Eof => return Ok(eof()),
             Step::Err(e) => return Err(DriveError::Io(e)),
             Step::WantRead => {
-                if wait_fd(io.fd(), Interest::Read, deadline) == Wait::TimedOut {
+                if try_wait_fd(io.fd(), Interest::Read, deadline)? == Wait::TimedOut {
                     return Err(DriveError::Timeout);
                 }
             }
             Step::WantWrite => {
-                if wait_fd(io.fd(), Interest::Write, deadline) == Wait::TimedOut {
+                if try_wait_fd(io.fd(), Interest::Write, deadline)? == Wait::TimedOut {
                     return Err(DriveError::Timeout);
                 }
             }
@@ -261,11 +261,18 @@ fn drive<T>(
 
 pub enum DriveError {
     Timeout,
+    Cancelled,
     Io(io::Error),
 }
 
 /// A stream shared with its previous owner (a hijacked server connection).
 pub struct SharedIo(pub Rc<dyn Io>);
+
+impl From<rt::Cancelled> for DriveError {
+    fn from(_: rt::Cancelled) -> Self {
+        DriveError::Cancelled
+    }
+}
 
 impl Io for SharedIo {
     fn fd(&self) -> Borrowed<'_> {
@@ -376,6 +383,7 @@ impl Connection {
     fn failure(&self, e: DriveError) -> IoErr {
         match e {
             DriveError::Timeout => IoErr::failed("operation timed out"),
+            DriveError::Cancelled => rt::Cancelled.into(),
             DriveError::Io(e) => {
                 if self.closed.get() {
                     IoErr::Closed
@@ -424,10 +432,7 @@ impl Connection {
         let r = self.parked(|| drive(&*self.io, deadline, || self.io.read(buf), |n| n, || 0));
         match r {
             Ok(count) => Ok(count),
-            Err(e) => {
-                rt::check_cancel();
-                Err(self.failure(e))
-            }
+            Err(e) => Err(self.failure(e)),
         }
     }
 
@@ -475,7 +480,7 @@ impl Connection {
         }
         let mut rest = data;
         while !rest.is_empty() {
-            rt::check_cancel();
+            rt::check()?;
             let r = self.parked(|| drive(&*self.io, deadline, || self.io.write(rest), |n| n, || 0));
             match r {
                 Ok(0) => return Err(IoErr::failed("short write")),
@@ -595,9 +600,9 @@ impl Listener {
         }
     }
 
-    fn parked_wait(&self, deadline: Deadline) -> Wait {
+    fn parked_wait(&self, deadline: Deadline) -> Result<Wait, rt::Cancelled> {
         parked(&self.busy, &|| self.release_if_idle(), || {
-            wait_fd(self.sock.as_sock(), Interest::Read, deadline)
+            try_wait_fd(self.sock.as_sock(), Interest::Read, deadline)
         })
     }
 
@@ -608,7 +613,7 @@ impl Listener {
     /// Waits for the next incoming socket; a timeout leaves the listener usable.
     fn accept_socket(&self, deadline: Deadline) -> Result<(Socket, socket2::SockAddr), NetErr> {
         loop {
-            rt::check_cancel();
+            rt::check()?;
             if self.closed.get() {
                 return Err(NetErr::Closed);
             }
@@ -623,8 +628,7 @@ impl Listener {
                     return Ok((sock, peer));
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if self.parked_wait(deadline) == Wait::TimedOut {
-                        rt::check_cancel();
+                    if self.parked_wait(deadline)? == Wait::TimedOut {
                         return Err(if self.closed.get() {
                             NetErr::Closed
                         } else {
@@ -634,7 +638,6 @@ impl Listener {
                 }
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
                 Err(e) => {
-                    rt::check_cancel();
                     return Err(if self.closed.get() {
                         NetErr::Closed
                     } else {
@@ -822,10 +825,10 @@ impl Datagrams {
         }
     }
 
-    fn parked_wait(&self, interest: Interest, deadline: Deadline) -> Wait {
+    fn parked_wait(&self, interest: Interest, deadline: Deadline) -> Result<Wait, rt::Cancelled> {
         self.pin.touch();
         parked(&self.busy, &|| self.release_if_idle(), || {
-            wait_fd(self.sock.as_sock(), interest, deadline)
+            try_wait_fd(self.sock.as_sock(), interest, deadline)
         })
     }
 
@@ -862,7 +865,7 @@ impl Datagrams {
         deadline: Deadline,
     ) -> Result<Datagram, NetErr> {
         loop {
-            rt::check_cancel();
+            rt::check()?;
             match self.sock.recv_from(buf) {
                 Ok((n, from)) => {
                     if n > max {
@@ -874,7 +877,7 @@ impl Datagrams {
                     });
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if self.parked_wait(Interest::Read, deadline) == Wait::TimedOut {
+                    if self.parked_wait(Interest::Read, deadline)? == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                     if self.closed.get() {
@@ -918,12 +921,12 @@ impl Datagrams {
             }
         };
         loop {
-            rt::check_cancel();
+            rt::check()?;
             match self.sock.send_to(data, target) {
                 Ok(n) if n == data.len() => return Ok(()),
                 Ok(_) => return Err(NetErr::failed("partial datagram")),
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if self.parked_wait(Interest::Write, deadline) == Wait::TimedOut {
+                    if self.parked_wait(Interest::Write, deadline)? == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }

@@ -276,6 +276,12 @@ enum Fail {
     Refused,
 }
 
+impl From<rt::Cancelled> for Fail {
+    fn from(c: rt::Cancelled) -> Fail {
+        Fail::Err(c.into())
+    }
+}
+
 /// A response head with the wire that carries its body, and whether the
 /// request added `Accept-Encoding: gzip`.
 type Exchanged = (ResponseHead, Wire, bool);
@@ -285,6 +291,7 @@ fn pump_fail(e: PumpErr) -> Fail {
         PumpErr::Timeout => HttpErr::Timeout,
         PumpErr::Closed => HttpErr::Closed,
         PumpErr::Failed(m) => HttpErr::Failed(m),
+        PumpErr::Cancelled => rt::Cancelled.into(),
     })
 }
 
@@ -546,7 +553,6 @@ impl Client {
 
     /// Maps a failure to the error a request reports.
     fn describe(&self, deadline: Deadline, e: HttpErr) -> HttpErr {
-        rt::check_cancel();
         if self.is_closed() {
             return HttpErr::Closed;
         }
@@ -1024,7 +1030,7 @@ impl Client {
             Body::Stream(source) => source,
         };
         loop {
-            rt::check_cancel();
+            rt::check()?;
             let piece = source
                 .next(32 * 1024)
                 .map_err(|m| Fail::Err(HttpErr::Failed(m)))?;
@@ -1140,7 +1146,7 @@ impl Client {
         deadline: Deadline,
     ) -> Result<(), Fail> {
         loop {
-            rt::check_cancel();
+            rt::check()?;
             let piece = source
                 .next(32 * 1024)
                 .map_err(|m| Fail::Err(HttpErr::Failed(m)))?;
@@ -1612,6 +1618,7 @@ fn h2_next(
                 PumpErr::Timeout => IoErr::Failed("context deadline exceeded".into()),
                 PumpErr::Closed => IoErr::Closed,
                 PumpErr::Failed(m) => IoErr::Failed(m),
+                PumpErr::Cancelled => rt::Cancelled.into(),
             })?,
             _ => {
                 return Err(IoErr::Failed(
@@ -1756,7 +1763,7 @@ impl ResponseBody {
                 "response body is being read by another task".into(),
             ));
         }
-        rt::check_cancel();
+        rt::check()?;
         // The read can park, so the state is out of the cell meanwhile; the cell is never
         // borrowed across the park.
         let Some(taken) = self.state.borrow_mut().take() else {
@@ -1808,7 +1815,13 @@ impl ResponseBody {
         if self.deadline.expired() {
             return Err(IoErr::Failed("context deadline exceeded".into()));
         }
-        state.produce(self.deadline)
+        let produced = state.produce(self.deadline);
+        if produced.is_err() && rt::cancel_pending() {
+            // The interrupted decoder cannot be resumed: close the body, so the read's state is
+            // dropped (which resets an HTTP/2 stream) instead of returned.
+            self.closed.set(true);
+        }
+        produced
     }
 
     /// The rest of the body in one buffer. A fixed-length or until-close HTTP/1 body without
@@ -1823,7 +1836,7 @@ impl ResponseBody {
                 "response body is being read by another task".into(),
             ));
         }
-        rt::check_cancel();
+        rt::check()?;
         let Some(taken) = self.state.borrow_mut().take() else {
             return Ok(Vec::new());
         };
@@ -2204,8 +2217,14 @@ mod tests {
         unsafe extern "C-unwind" fn read(arg: *mut u8) {
             // SAFETY: the caller retains the job until this task has joined.
             let job = unsafe { &*arg.cast::<Job<'_>>() };
-            let _sentinel = Unwound(&job.unwound);
-            let _ = job.body.read(1);
+            let failed = {
+                let _sentinel = Unwound(&job.unwound);
+                job.body.read(1).is_err()
+            };
+            // The FFI boundary ends a cancelled call with the runtime's cancellation.
+            if failed && rt::cancel_pending() {
+                rt::cancelled();
+            }
         }
         let mut job = Job {
             body: &body,
@@ -2224,8 +2243,8 @@ mod tests {
             assert_eq!(ms_rt::task::msrt_task_join(task, std::ptr::null_mut()), 2);
         }
         assert!(
-            !job.unwound.get(),
-            "cancellation must skip Rust destructors"
+            job.unwound.get(),
+            "a cancelled park returns, so Rust destructors run"
         );
         assert!(body.is_closed());
         assert!(!body.reading.get());

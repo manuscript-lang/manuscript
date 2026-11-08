@@ -7,7 +7,7 @@
 use crate::conn::{Io, OwnedSock, Step, TlsDetails};
 use crate::error::{NetErr, TlsErr, describe_io_error};
 use crate::sys::{AsSock, Borrowed};
-use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use ms_rt::fault::with_cleanup;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerifier};
 use rustls::crypto::{CryptoProvider, WebPkiSupportedAlgorithms, ring};
@@ -849,16 +849,16 @@ impl TlsIo {
                 Handshake::Failed(e) => return Err(e),
                 Handshake::WantWrite => {
                     if with_cleanup(&mut || io.sock.release(), || {
-                        wait_fd(io.sock.as_sock(), Interest::Write, deadline)
-                    }) == Wait::TimedOut
+                        try_wait_fd(io.sock.as_sock(), Interest::Write, deadline)
+                    })? == Wait::TimedOut
                     {
                         return Err(NetErr::Timeout);
                     }
                 }
                 Handshake::WantRead => {
                     if with_cleanup(&mut || io.sock.release(), || {
-                        wait_fd(io.sock.as_sock(), Interest::Read, deadline)
-                    }) == Wait::TimedOut
+                        try_wait_fd(io.sock.as_sock(), Interest::Read, deadline)
+                    })? == Wait::TimedOut
                     {
                         return Err(NetErr::Timeout);
                     }
@@ -1051,6 +1051,7 @@ pub fn accept(
 mod tests {
     use super::*;
     use crate::net::Network;
+    use crate::wait::wait_fd;
 
     const CERT: &str = include_str!("../testdata/stdlib.test.crt.pem");
     const KEY: &str = include_str!("../testdata/stdlib.test.key.pem");

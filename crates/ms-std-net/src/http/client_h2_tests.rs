@@ -750,7 +750,10 @@ fn cancelled_body_read_releases_the_stream_and_session_driver() {
     unsafe extern "C-unwind" fn read(arg: *mut u8) {
         // SAFETY: the caller retains the body until this task has joined.
         let body = unsafe { &*arg.cast::<ResponseBody>() };
-        let _ = body.read(1);
+        // The FFI boundary ends a cancelled call with the runtime's cancellation.
+        if body.read(1).is_err() && rt::cancel_pending() {
+            rt::cancelled();
+        }
     }
     // SAFETY: serialized runtime access; the body outlives the joined task.
     let task =

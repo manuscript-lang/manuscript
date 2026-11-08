@@ -112,6 +112,15 @@ pub fn cancelled() -> ! {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Cancelled;
 
+/// `Err(Cancelled)` while a cancel is pending: the check at the top of a loop that parks.
+pub fn check() -> Result<(), Cancelled> {
+    if cancel_requested() {
+        Err(Cancelled)
+    } else {
+        Ok(())
+    }
+}
+
 /// Whether the error a native call returns means cancellation: a cancelled park leaves the
 /// task's cancel flag set (a shield holds it back), so the boundary asks the flag. It then calls
 /// [`cancelled`].
@@ -122,6 +131,30 @@ pub fn cancel_pending() -> bool {
 /// Shields the running task from SIGINT/SIGTERM cancellation until `unshield`.
 pub fn shield() {
     msrt_shield_enter()
+}
+
+/// Holds the task's cancellation back while it lives. A `Drop` that parks takes one: it runs while
+/// a cancelled call unwinds, when the cancel is still pending and an unshielded park would fail
+/// at once.
+pub struct Shield(());
+
+impl Shield {
+    pub fn new() -> Shield {
+        msrt_shield_enter();
+        Shield(())
+    }
+}
+
+impl Default for Shield {
+    fn default() -> Shield {
+        Shield::new()
+    }
+}
+
+impl Drop for Shield {
+    fn drop(&mut self) {
+        msrt_shield_exit();
+    }
 }
 
 /// Ends one `shield`.

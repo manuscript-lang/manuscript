@@ -278,6 +278,12 @@ impl From<crate::rt::Cancelled> for WsErr {
     }
 }
 
+impl From<crate::rt::Cancelled> for IoErr {
+    fn from(_: crate::rt::Cancelled) -> Self {
+        IoErr::failed(CANCELLED_TEXT)
+    }
+}
+
 impl From<NetErr> for HttpErr {
     fn from(e: NetErr) -> Self {
         match e {
