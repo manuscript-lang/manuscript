@@ -225,7 +225,7 @@ impl Walker<'_> {
             // parameter copies as its bound allows.
             let result_ty = self.cx.m.ty(e);
             let passthrough = match self.cx.m.resolution(e) {
-                Resolution::Method(m) => wrapper_passthrough(self.syms, &m, &self.cx.m.ty(r)),
+                Resolution::Method(m) => wrapper_passthrough(&m, &self.cx.m.ty(r)),
                 _ => None,
             };
             let takes_payload = self.class_of(e) != Class::Copy
