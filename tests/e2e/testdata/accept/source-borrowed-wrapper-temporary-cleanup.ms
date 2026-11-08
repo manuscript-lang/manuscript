@@ -264,3 +264,92 @@ test "a failed temporary close leaves older lexical cleanup registered":
 
     let _fault = try expect_fault(fn: close_fault(path))
     try expect_equal(try log_text(path), "98,99,")
+
+fn pair(first: Resource?, second: Resource?) Bool:
+    return first.is_some() or second.is_some()
+
+fn with_default(value: Resource?, tail: Int = 1) Bool:
+    return value.is_some() or tail > 0
+
+type Observer:
+    tag: Int
+
+impl Observer:
+    fn sees(value: Resource?) Bool: value.is_some()
+
+fn borrowed_conversion_calls(path: String) Unit!:
+    let named = Resource(120, path.clone())
+    try expect_equal(observed(named), true)
+    try expect_equal(mapped(named), 120)
+    try expect_equal(with_default(named), true)
+    try expect_equal(Observer(1).sees(named), true)
+    try expect_equal(checked(named).is_error(), true)
+    try expect_equal(try log_text(path), "")
+    try expect_equal(pair(second: present(path, 121), first: named), true)
+    try expect_equal(pair(second: named, first: present(path, 122)), true)
+    try expect_equal(try log_text(path), "121,122,")
+    try expect_equal(named.id, 120)
+    return ok(unit)
+
+test "borrowed payload optional conversions do not acquire close duty":
+    let directory = try temporary("source-wrapper-")
+    let path = "{directory.path()}/log"
+    try write_file(path, "").wait()
+    try borrowed_conversion_calls(path)
+    try expect_equal(try log_text(path), "121,122,120,")
+
+fn no_resource() Resource?!: error(Error("expected"))
+
+fn borrowed_conversion_error(path: String) Unit!:
+    let named = Resource(123, path.clone())
+    let _used = pair(named, try no_resource())
+    return ok(unit)
+
+fn borrowed_conversion_fault(path: String) Unit:
+    let named = Resource(124, path.clone())
+    let _used = pair(named, present(path, [1].get(3)))
+
+test "borrowed optional transport copies leave fault cleanup with original owner":
+    let directory = try temporary("source-wrapper-")
+    let path = "{directory.path()}/log"
+    try write_file(path, "").wait()
+    try expect_equal(borrowed_conversion_error(path).is_error(), true)
+
+    let _fault = try expect_fault(fn: borrowed_conversion_fault(path))
+    try expect_equal(try log_text(path), "123,124,")
+
+fn optional_identity(value: Resource?) Resource?: value
+
+fn with_borrowed_default(value: Resource?, same: Resource? = value) Bool:
+    return value.is_some() or same.is_some()
+
+fn with_faulting_default(value: Resource?, tail: Int = [1].get(3)) Bool:
+    return value.is_some() or tail > 0
+
+fn retained_conversion(path: String) Unit!:
+    let named = Resource(130, path.clone())
+    let retained = optional_identity(named)
+    try expect_equal(observed(retained), true)
+    try expect_equal(try log_text(path), "")
+    return ok(unit)
+
+fn borrowed_default_fault(path: String) Unit:
+    let named = Resource(131, path.clone())
+    let _used = with_faulting_default(named)
+
+fn named_default_reads(path: String) Unit!:
+    let named = Resource(132, path.clone())
+    try expect_equal(with_borrowed_default(named), true)
+    try expect_equal(with_borrowed_default(named), true)
+    try expect_equal(try log_text(path), "130,131,")
+    return ok(unit)
+
+test "optional conversion provenance distinguishes retained moves from borrowed defaults":
+    let directory = try temporary("source-wrapper-")
+    let path = "{directory.path()}/log"
+    try write_file(path, "").wait()
+    try retained_conversion(path)
+
+    let _fault = try expect_fault(fn: borrowed_default_fault(path))
+    try named_default_reads(path)
+    try expect_equal(try log_text(path), "130,131,132,")

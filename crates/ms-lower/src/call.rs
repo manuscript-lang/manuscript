@@ -14,6 +14,9 @@ pub(crate) struct Args {
     pub slots: Vec<Option<Val>>,
     /// For `var` parameters: the written place that receives the updated value.
     pub places: Vec<Option<Expr>>,
+    /// An implicit optional made from a borrowed payload owns transport storage only.
+    /// It must not acquire the original resource's close obligation.
+    pub borrowed_optional_payloads: Vec<bool>,
 }
 
 /// A changed argument moved into a slot for a call: its position, the slot, the value's type and
@@ -67,6 +70,7 @@ impl<'a> FnLower<'a> {
                     Args {
                         slots: Vec::new(),
                         places: Vec::new(),
+                        borrowed_optional_payloads: Vec::new(),
                     },
                     e,
                 )?
@@ -152,6 +156,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
+        let mut borrowed_optional_payloads = vec![false; names.len()];
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
@@ -171,8 +176,13 @@ impl<'a> FnLower<'a> {
             let at = self.b.current();
             let x = self.expr(a.expr)?;
             if self.dead {
-                return Ok(Args { slots, places });
+                return Ok(Args {
+                    slots,
+                    places,
+                    borrowed_optional_payloads,
+                });
             }
+            borrowed_optional_payloads[idx] = !x.own && a.wrap_optional.is_some();
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
@@ -186,7 +196,14 @@ impl<'a> FnLower<'a> {
                 None => x,
             };
             let x = if n + 1 < view.arguments.len() || has_defaults {
-                self.hold_source_arg(x, later_try)?
+                if borrowed_optional_payloads[idx] {
+                    if later_try {
+                        self.borrow(x);
+                    }
+                    x
+                } else {
+                    self.hold_source_arg(x, later_try)?
+                }
             } else {
                 x
             };
@@ -247,7 +264,11 @@ impl<'a> FnLower<'a> {
                 });
             }
         }
-        Ok(Args { slots, places })
+        Ok(Args {
+            slots,
+            places,
+            borrowed_optional_payloads,
+        })
     }
 
     /// Whether a place permits writeback: an owned local or shared mutable storage.
@@ -489,6 +510,7 @@ impl<'a> FnLower<'a> {
                 } else if guarded {
                     vals.push(a.v);
                 } else if a.own
+                    && !args.borrowed_optional_payloads[i]
                     && let Some(key) = self.hold_resource_temp(a.v)?
                 {
                     // Borrow the intact caller-owned resource through a registered slot.
@@ -889,7 +911,18 @@ impl<'a> FnLower<'a> {
                 .then(|| recv_expr.clone()),
         ];
         places.extend(args.places);
-        self.call_callable(&c, &subst, Args { slots: all, places }, e)
+        let mut borrowed_optional_payloads = vec![false];
+        borrowed_optional_payloads.extend(args.borrowed_optional_payloads);
+        self.call_callable(
+            &c,
+            &subst,
+            Args {
+                slots: all,
+                places,
+                borrowed_optional_payloads,
+            },
+            e,
+        )
     }
 
     /// The implementation of a contract operation for a concrete receiver type.
@@ -1047,6 +1080,7 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(x);
             }
+            let owned_payload = x.own;
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -1060,9 +1094,7 @@ impl<'a> FnLower<'a> {
                 .any(|l| crate::mutation::has_try(l.expr));
             // Interface parameters borrow too: keep intact resources registered in
             // written order through later operands and through the dispatch itself.
-            let x = if x.own
-                && let Some(key) = self.hold_resource_temp(x.v)?
-            {
+            let x = if owned_payload && let Some(key) = self.hold_resource_temp(x.v)? {
                 Val { v: key, own: true }
             } else if later_try && x.own {
                 self.hold_temp(x)

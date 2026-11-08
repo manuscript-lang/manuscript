@@ -89,7 +89,7 @@ test "interface borrows intact temporary wrappers in written order":
     try write_file(path, "").wait()
 
     let reader: Observer = Reader(1)
-    try expect_equal(reader.observe(present(path, 1), present(path, 2)), true)
+    try expect_equal(reader.observe(Resource(1, path.clone()), present(path, 2)), true)
     try expect_equal(try log_text(path), "2,1,")
     try expect_equal(
         reader.observe(second: present(path, 3), first: present(path, 4)), true
