@@ -336,6 +336,19 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
     Ok(clean(&String::from_utf8_lossy(&dest)))
 }
 
+/// The canonical identity of an existing path, for comparing what two names refer to: symlinks
+/// resolved as the loader resolves them, always absolute. `None` when the path cannot be resolved. A path that is
+/// not UTF-8 cannot go through [`eval_symlinks`], so it is resolved natively instead of
+/// silently comparing as unresolvable.
+pub fn identity(path: &std::path::Path) -> Option<std::path::PathBuf> {
+    match path.to_str() {
+        Some(text) => eval_symlinks(&abs(text).ok()?)
+            .ok()
+            .map(std::path::PathBuf::from),
+        None => std::fs::canonicalize(path).ok(),
+    }
+}
+
 /// Windows canonicalization resolves native drive roots and junctions. Convert
 /// only the canonicalizer's disk/UNC namespace, and verify the ordinary spelling
 /// still names exactly the same filesystem entry before using it as an identity.
@@ -406,6 +419,26 @@ fn canonicalize_with_prefix_error(path: &str) -> Result<std::path::PathBuf, Proj
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identity_is_absolute_and_resolves_links() {
+        let root = std::env::temp_dir().join(format!("ms-identity-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("real")).unwrap();
+        std::fs::write(root.join("real/a.ms"), "").unwrap();
+        let real = identity(&root.join("real/a.ms")).unwrap();
+        assert!(real.is_absolute());
+        assert_eq!(
+            identity(&root.join("real/../real/a.ms")),
+            Some(real.clone())
+        );
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(root.join("real"), root.join("alias")).unwrap();
+            assert_eq!(identity(&root.join("alias/a.ms")), Some(real));
+        }
+        assert_eq!(identity(&root.join("missing.ms")), None);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn canonicalization_reports_first_missing_component() {
