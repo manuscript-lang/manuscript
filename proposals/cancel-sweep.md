@@ -13,7 +13,7 @@ Implemented 2026-11-08 against `c6fef864`.
 ## Problem
 
 - `msrt_cancelled` leaves a task by a jump; `ms-mir/src/unwind.rs` registers cleanups per live owned value, and native code needs `rt::Parked` per local. A value neither covers leaks.
-- Measured: 182 of 191 stdlib fixtures, 17,088 cancelled runs (up to 16 parks per test), 0 live blocks. The remaining fixtures (HTTP, mail, router) are slower and listed in the PR.
+- Measured 2026-11-08: 191 stdlib fixtures cancelled at up to 16 parks each (a first driver ran every test of the file at each park, 17,088 runs), no run left more live blocks than its uncancelled run; `http-hardening.ms` rerun per test at 24 parks, 28 runs, clean. One uncancelled 16 B leak in that file predates the sweep.
 - The sweep sees `ms-rt` blocks only. Rust-heap leaks in native code (what `Parked` covers) need `memory_usage().heap_used` fixtures such as `http-fault-leak.ms`.
 
 ## Design

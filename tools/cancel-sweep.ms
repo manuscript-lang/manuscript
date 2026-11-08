@@ -50,7 +50,9 @@ fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Count
     if filter != "": arguments = arguments.concat(["--filter", filter.clone()])
     if let out = run(
         ms.clone(), arguments, RunOptions(timeout: seconds(120), env: settings)
-    ).wait(): return counted(out.stderr.decode_utf8().get(""))
+    ).wait(): return counted(
+        out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
+    )
 
     return List[Counted]()
 
