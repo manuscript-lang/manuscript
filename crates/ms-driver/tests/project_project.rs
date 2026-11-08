@@ -335,11 +335,8 @@ fn non_utf8_link_target_is_rejected() {
     use std::os::unix::ffi::OsStrExt;
     let (_dir, p) = fixture(MANIFEST);
     let raw = std::ffi::OsStr::from_bytes(b"\xff.ms");
-    std::fs::write(
-        std::path::Path::new(&p.source).join(raw),
-        "export fn value() Int: 7\n",
-    )
-    .unwrap();
+    // The target need not exist: it must be rejected before traversal. APFS
+    // rejects a non-UTF-8 filename, while a symlink can store its target bytes.
     write(&p.source, "\u{fffd}.ms", "export fn value() Int: 99\n");
     let link = join(&p.source, "dep.ms");
     std::os::unix::fs::symlink(raw, &link).unwrap();
