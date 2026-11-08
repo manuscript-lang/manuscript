@@ -152,6 +152,16 @@ impl<'m> FuncBuilder<'m> {
             .and_then(|i| i.args.first().copied())
     }
 
+    /// The operands of the instruction that defined `v`, looking through every block.
+    pub fn defining_args_anywhere(&self, v: Value) -> Option<&[Value]> {
+        self.f
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .find(|i| i.res == Some(v))
+            .map(|i| i.args.as_slice())
+    }
+
     /// Sets the source location attached to subsequently emitted instructions.
     pub fn set_loc(&mut self, loc: Loc) {
         self.loc = loc;

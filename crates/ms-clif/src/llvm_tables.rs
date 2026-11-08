@@ -157,6 +157,50 @@ fn dwarf_sections(obj: &File, layout: &Layout) -> Result<HashMap<String, Vec<u8>
     Ok(out)
 }
 
+/// The innermost inlined scope covering an address, for addresses asked in ascending order: a
+/// sweep over the ranges sorted by start, so a program with many inlined calls costs the number of
+/// ranges plus the nesting depth at each point, not their product.
+struct ScopeSweep {
+    /// `(start, end, depth, order, scope id)`, by start.
+    ranges: Vec<(u64, u64, u32, usize, u32)>,
+    next: usize,
+    /// The ranges started and not yet ended.
+    active: Vec<(u64, u32, usize, u32)>,
+}
+
+impl ScopeSweep {
+    fn new(inlined: &[Inlined]) -> ScopeSweep {
+        let mut ranges: Vec<_> = inlined
+            .iter()
+            .enumerate()
+            .flat_map(|(order, s)| {
+                s.ranges
+                    .iter()
+                    .map(move |r| (r.0, r.1, s.depth, order, s.id))
+            })
+            .collect();
+        ranges.sort_unstable_by_key(|r| r.0);
+        ScopeSweep {
+            ranges,
+            next: 0,
+            active: Vec::new(),
+        }
+    }
+
+    /// The scope id of the deepest range covering `addr` (the later one among equals), or 0.
+    fn at(&mut self, addr: u64) -> u32 {
+        while let Some(r) = self.ranges.get(self.next).filter(|r| r.0 <= addr) {
+            self.active.push((r.1, r.2, r.3, r.4));
+            self.next += 1;
+        }
+        self.active.retain(|a| addr < a.0);
+        self.active
+            .iter()
+            .max_by_key(|a| (a.1, a.2))
+            .map_or(0, |a| a.3)
+    }
+}
+
 /// Rebuilds the tables from the DWARF in the object file `object`.
 pub fn read(
     object: &Path,
@@ -403,13 +447,7 @@ pub fn read(
         let s = spans.get(i.checked_sub(1)?)?;
         (addr < s.1).then_some((s.0, s.2))
     };
-    let scope_at = |addr: u64| -> u32 {
-        inlined
-            .iter()
-            .filter(|s| s.ranges.iter().any(|r| r.0 <= addr && addr < r.1))
-            .max_by_key(|s| s.depth)
-            .map_or(0, |s| s.id)
-    };
+    let mut scope_at = ScopeSweep::new(&inlined);
     // Cut points: every row start and every inlined-range boundary, so a range never spans a
     // change of scope. A point takes its line from the row covering it.
     let mut points: Vec<u64> = rows.iter().map(|r| r.0).collect();
@@ -433,7 +471,7 @@ pub fn read(
         else {
             continue;
         };
-        let mut scope = scope_at(addr);
+        let mut scope = scope_at.at(addr);
         // Code without a position inside an inlined callee (a thunk, glue) belongs to the
         // call site that gave it a position.
         while line == 0 && scope != 0 {
@@ -538,5 +576,51 @@ mod tests {
             assert_eq!(got.0, elf.0, "{triple}: lines");
             assert_eq!(got.1, elf.1, "{triple}: scopes");
         }
+    }
+}
+
+#[cfg(test)]
+mod sweep_tests {
+    use super::*;
+
+    fn scope(id: u32, depth: u32, ranges: &[(u64, u64)]) -> Inlined {
+        Inlined {
+            ranges: ranges.to_vec(),
+            id,
+            depth,
+        }
+    }
+
+    /// What a scan of every scope answers: the deepest covering range, the later one among equals.
+    fn scan(inlined: &[Inlined], addr: u64) -> u32 {
+        inlined
+            .iter()
+            .filter(|s| s.ranges.iter().any(|r| r.0 <= addr && addr < r.1))
+            .max_by_key(|s| s.depth)
+            .map_or(0, |s| s.id)
+    }
+
+    #[test]
+    fn the_sweep_agrees_with_a_scan_of_every_scope() {
+        let inlined = [
+            scope(1, 1, &[(10, 50), (70, 90)]),
+            scope(2, 2, &[(20, 30)]),
+            scope(3, 2, &[(20, 30), (75, 80)]),
+            scope(4, 3, &[(22, 25)]),
+            scope(5, 1, &[(100, 110)]),
+        ];
+        let mut sweep = ScopeSweep::new(&inlined);
+        for addr in 0..120 {
+            assert_eq!(sweep.at(addr), scan(&inlined, addr), "address {addr}");
+        }
+    }
+
+    #[test]
+    fn the_sweep_skips_addresses_between_questions() {
+        let inlined = [scope(1, 1, &[(10, 20)]), scope(2, 2, &[(12, 15)])];
+        let mut sweep = ScopeSweep::new(&inlined);
+        assert_eq!(sweep.at(5), 0);
+        assert_eq!(sweep.at(13), 2);
+        assert_eq!(sweep.at(40), 0);
     }
 }
