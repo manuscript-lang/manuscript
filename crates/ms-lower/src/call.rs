@@ -14,6 +14,9 @@ pub(crate) struct Args {
     pub slots: Vec<Option<Val>>,
     /// For `var` parameters: the written place that receives the updated value.
     pub places: Vec<Option<Expr>>,
+    /// An implicit optional made from a borrowed payload owns transport storage only.
+    /// It must not acquire the original resource's close obligation.
+    pub borrowed_optional_payloads: Vec<bool>,
 }
 
 /// A changed argument moved into a slot for a call: its position, the slot, the value's type and
@@ -67,6 +70,7 @@ impl<'a> FnLower<'a> {
                     Args {
                         slots: Vec::new(),
                         places: Vec::new(),
+                        borrowed_optional_payloads: Vec::new(),
                     },
                     e,
                 )?
@@ -152,9 +156,11 @@ impl<'a> FnLower<'a> {
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
+        let mut borrowed_optional_payloads = vec![false; names.len()];
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
+        let has_defaults = names.len() > view.arguments.len();
         for (n, a) in view.arguments.iter().enumerate() {
             let idx = names
                 .iter()
@@ -170,8 +176,13 @@ impl<'a> FnLower<'a> {
             let at = self.b.current();
             let x = self.expr(a.expr)?;
             if self.dead {
-                return Ok(Args { slots, places });
+                return Ok(Args {
+                    slots,
+                    places,
+                    borrowed_optional_payloads,
+                });
             }
+            borrowed_optional_payloads[idx] = !x.own && a.wrap_optional.is_some();
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
@@ -184,7 +195,18 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
-            let x = if later_try { self.hold_temp(x) } else { x };
+            let x = if n + 1 < view.arguments.len() || has_defaults {
+                if borrowed_optional_payloads[idx] {
+                    if later_try {
+                        self.borrow(x);
+                    }
+                    x
+                } else {
+                    self.hold_source_arg(x, later_try)?
+                }
+            } else {
+                x
+            };
             if vars.contains(&(idx + offset)) {
                 places[idx] = Some(a.expr.clone());
             }
@@ -204,8 +226,10 @@ impl<'a> FnLower<'a> {
                 },
             );
         }
+        let mut defaults_left = slots.iter().filter(|slot| slot.is_none()).count();
         for i in 0..slots.len() {
             if slots[i].is_none() {
+                defaults_left -= 1;
                 // Defaults execute in the callee's lexical frame even though their
                 // instructions live in the caller. Reuse inline-frame metadata so
                 // faults retain both frames without runtime call bookkeeping.
@@ -233,10 +257,18 @@ impl<'a> FnLower<'a> {
                     self.default_argument(callee, i, subst, &mut slots, recv, Some(call_pos));
                 self.source_scope = parent;
                 let d = result?;
-                slots[i] = Some(d);
+                slots[i] = Some(if defaults_left > 0 {
+                    self.hold_source_arg(d, true)?
+                } else {
+                    d
+                });
             }
         }
-        Ok(Args { slots, places })
+        Ok(Args {
+            slots,
+            places,
+            borrowed_optional_payloads,
+        })
     }
 
     /// Whether a place permits writeback: an owned local or shared mutable storage.
@@ -281,6 +313,20 @@ impl<'a> FnLower<'a> {
             v: self.borrow(x),
             own: false,
         }
+    }
+
+    /// Stages a source argument without forgetting that the caller owns it. Intact resource
+    /// wrappers need their payload closer if a later argument returns early or faults.
+    fn hold_source_arg(&mut self, x: Val, later_try: bool) -> Result<Val, Error> {
+        if x.own
+            && let Some(key) = self.hold_resource_temp(x.v)?
+        {
+            return Ok(Val { v: key, own: true });
+        }
+        if later_try {
+            self.borrow(x);
+        }
+        Ok(x)
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
@@ -424,6 +470,21 @@ impl<'a> FnLower<'a> {
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            // An intact borrowed argument keeps its original registration and acquisition
+            // order. Only a consuming/changed parameter takes its value out of that slot.
+            let guarded = a.own && self.resource_temps.contains_key(&a.v);
+            let taking = vars.contains(&i) || owned_mask.as_ref().is_some_and(|mask| mask[i]);
+            let a = if a.own && (!guarded || taking) {
+                self.unhold_temp(a.v);
+                let v = if self.resource_temps.contains_key(&a.v) {
+                    self.take_resource_temp(a.v).0
+                } else {
+                    a.v
+                };
+                Val { v, own: true }
+            } else {
+                a
+            };
             // A temporary held across a later `try` in the same call is ours again once every
             // argument is evaluated: a consumed parameter takes it instead of a copy.
             let a = if !a.own
@@ -446,6 +507,15 @@ impl<'a> FnLower<'a> {
                         self.owned(a)
                     };
                     vals.push(v);
+                } else if guarded {
+                    vals.push(a.v);
+                } else if a.own
+                    && !args.borrowed_optional_payloads[i]
+                    && let Some(key) = self.hold_resource_temp(a.v)?
+                {
+                    // Borrow the intact caller-owned resource through a registered slot.
+                    // Its payload remains ours, unlike a wrapper whose payload was moved.
+                    vals.push(key);
                 } else {
                     vals.push(self.borrow(a));
                 }
@@ -530,6 +600,11 @@ impl<'a> FnLower<'a> {
                     // The result is that temporary: use the argument value itself, which the
                     // MIR knows as owned, and stop dropping it with the statement.
                     self.unhold_temp(arg);
+                    let arg = if self.resource_temps.contains_key(&arg) {
+                        self.take_resource_temp(arg).0
+                    } else {
+                        arg
+                    };
                     return Ok(self.val(arg, true));
                 }
             }
@@ -811,12 +886,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = if view
-            .arguments
-            .iter()
-            .any(|a| crate::mutation::has_try(a.expr))
-        {
-            self.hold_temp(recv)
+        let recv = if !c.parameters.is_empty() {
+            let later_try = view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr));
+            self.hold_source_arg(recv, later_try)?
         } else {
             recv
         };
@@ -836,7 +911,18 @@ impl<'a> FnLower<'a> {
                 .then(|| recv_expr.clone()),
         ];
         places.extend(args.places);
-        self.call_callable(&c, &subst, Args { slots: all, places }, e)
+        let mut borrowed_optional_payloads = vec![false];
+        borrowed_optional_payloads.extend(args.borrowed_optional_payloads);
+        self.call_callable(
+            &c,
+            &subst,
+            Args {
+                slots: all,
+                places,
+                borrowed_optional_payloads,
+            },
+            e,
+        )
     }
 
     /// The implementation of a contract operation for a concrete receiver type.

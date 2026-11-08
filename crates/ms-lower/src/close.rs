@@ -387,12 +387,12 @@ impl FnLower<'_> {
         Ok(Some(key))
     }
 
-    /// Retires the resource's cleanup and takes its sole owned value. Call in reverse
-    /// registration order, with no further operand evaluation before the values are consumed.
-    /// Keep the metadata: emitting an early-return branch must not change the continuing path.
+    /// Permanently retires only this resource's cleanup and takes its sole owned value.
+    /// Newer lexical owners remain registered. Keep the metadata: emitting an early-return
+    /// branch must not change the continuing path, but each runtime path consumes the handle once.
     pub(crate) fn take_resource_temp(&mut self, key: Value) -> (Value, CloseKind) {
         let owner = self.resource_temps[&key].clone();
-        let _ = self.call_runtime("msrt_cleanup_discard", &[owner.handle], MTy::UNIT);
+        let _ = self.call_runtime("msrt_cleanup_remove", &[owner.handle], MTy::UNIT);
         let v = self.move_out(owner.slot, self.ty_of(key));
         (v, owner.kind)
     }
