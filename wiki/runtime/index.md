@@ -55,3 +55,5 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [A pipe read needs no promise when a value is queued](a-pipe-read-needs-no-promise-when-a-value-is-queued.md): `PipeSource.next` takes a queued value or the end directly; a pipeline of 1M values went from 0.33 s to 0.14 s (Go 0.17 s).
 
 - [XML comments validate content at every parser site](xml-comments-validate-content-at-every-parser-site.md)
+
+- [Template numbers preserve exact JSON values](template-numbers-preserve-exact-json-values.md): compare normalized coefficients and decimal orders without Float rounding or expanding exponents.
