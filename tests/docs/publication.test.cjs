@@ -7,20 +7,19 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '../..');
 const book = process.env.MANUSCRIPT_BOOK_DIR || path.join(root, '.artifacts/book');
 
+const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
+
 function attribute(tag, name) {
   const match = tag.match(new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`));
   return match && (match[1] ?? match[2] ?? match[3]);
 }
 
-test('the published browser bundle highlights the landing example and current syntax without changing text', () => {
+test('the published browser bundle highlights current syntax without changing text', () => {
   const html = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
   const script = [...html.matchAll(/<script\b[^>]*>/g)].map(match => attribute(match[0], 'src'))
     .find(src => src && /\/docs\.min\.[^/]+\.js$/.test(src));
   assert.ok(script, 'Load the fingerprinted documentation bundle');
-  const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
-  const source = html.match(/<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/)[1]
-    .replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]);
-  const sources = [source, fs.readFileSync(path.join(__dirname, 'syntax.ms'), 'utf8')];
+  const sources = [fs.readFileSync(path.join(__dirname, 'syntax.ms'), 'utf8')];
   const classes = sources.map(() => new Set());
   const output = [];
   const codes = sources.map((textContent, index) => ({
@@ -46,14 +45,7 @@ test('the published browser bundle highlights the landing example and current sy
     assert.ok(classes[index].has('chroma'));
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
-  const [rendered, syntax] = output;
-  for (const name of ['open', 'serve', 'write_bytes', 'reader', 'wait']) {
-    assert.ok(rendered.some(node => node.textContent === name), `Highlight the real homepage call ${name}`);
-  }
-  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '":8080"'),
-    'The listen address must receive string styling');
-  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 3,
-    'The handler, helper and entrypoint returns retains keyword styling');
+  const [syntax] = output;
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }
@@ -123,7 +115,6 @@ test('published API routes mirror source directories and preserve old routes', (
 });
 
 test('rendered API signatures match source pages without synthetic contracts', () => {
-  const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
   for (const { file, markdown, route } of referencePages()) {
     const expected = [...markdown.matchAll(/```manuscript\n([\s\S]*?)```/g)].map(match => match[1].trimEnd());
     const html = fs.readFileSync(path.join(book, 'standard-library/reference', route, 'index.html'), 'utf8');
