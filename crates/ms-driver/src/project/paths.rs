@@ -136,7 +136,8 @@ pub fn link_components(root: &str, path: &str) -> Vec<String> {
             {
                 continue;
             }
-            let Some(walked_text) = walked.to_str().map(str::to_string) else {
+            // Reported with `/` separators, like every other project path.
+            let Some(walked_text) = walked.to_str().map(pathops::clean) else {
                 break;
             };
             if links.contains(&walked_text) {
