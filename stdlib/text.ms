@@ -10,6 +10,11 @@ Scalar classification lives in `@std/unicode.ms`; whole-string operations such a
     import quote, parse_int_radix from "@std/text.ms"
     quote("a\tb")                  # a double-quoted literal with the escape written out
     parse_int_radix("-ff", 16)     # -255
+
+    import cursor from "@std/text.ms"
+    var at = cursor("héllo wörld")      # scan long non-ASCII text in constant time per scalar
+    while not at.is_done():
+        if at.read().get() == "ö": break
 */
 
 // Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
@@ -213,11 +218,6 @@ A position in text that moves one scalar at a time in constant time. `String.get
 count scalars from the start, so a loop over indexes is quadratic on non-ASCII text; a cursor
 decodes the UTF-8 bytes where it stands instead. Positions are byte offsets: `offset()` marks one,
 `seek` returns to it and `since` reads the text between a mark and here.
-
-    import cursor from "@std/text.ms"
-    var at = cursor("héllo wörld")
-    while not at.is_done():
-        if at.read().get() == "ö": break
 */
 export type TextCursor:
     // The UTF-8 text; built once by `cursor`.
