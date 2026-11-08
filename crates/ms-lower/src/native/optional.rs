@@ -615,8 +615,17 @@ impl<'a> FnLower<'a> {
     }
 
     /// An owned element for a collection, wrapped when the checker converted it to an optional.
-    pub(super) fn element_value(&mut self, a: &NArg) -> Value {
-        let v = self.owned(a.val);
+    pub(crate) fn element_value(&mut self, a: &NArg) -> Value {
+        // A resource staged by `stage_incoming_resources` leaves its fault registration only
+        // here, when the element is stored: every earlier check faults with it still registered.
+        let v = if self.resource_temps.contains_key(&a.val.v) {
+            let key = a.val.v;
+            let (v, _) = self.take_resource_temp(key);
+            self.unhold_temp(key);
+            v
+        } else {
+            self.owned(a.val)
+        };
         if a.wrapped { self.b.opt_some(v) } else { v }
     }
 }
