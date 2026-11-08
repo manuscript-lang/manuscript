@@ -1494,6 +1494,75 @@ fn cached_project_build_notices_entry_symlink_retargeting() {
     entry_symlink_build(true);
 }
 
+/// `alias`: the import goes through a manifest alias instead of a relative path.
+fn directory_symlink_build(alias: bool) {
+    let dir = scratch(&format!("cache-directory-symlink-{alias}"));
+    for (name, code) in [("one", 3), ("two", 4)] {
+        std::fs::create_dir_all(dir.join(name)).unwrap();
+        write(
+            &dir.join(name),
+            "value.ms",
+            &format!("export fn value() Int:\n    return {code}\n"),
+        );
+    }
+    let link = dir.join("current");
+    common::symlink_dir(&dir.join("one"), &link).unwrap();
+    let path = if alias {
+        write(
+            &dir,
+            "ms.toml",
+            "[project]\nname = \"p\"\nsource = \".\"\nentry = \"main.ms\"\n[aliases]\n\"@cur\" = \"./current\"\n",
+        );
+        "@cur/value.ms"
+    } else {
+        "./current/value.ms"
+    };
+    let main = write(
+        &dir,
+        "main.ms",
+        &format!("import value from \"{path}\"\nexport fn main() Int:\n    return value()\n"),
+    );
+    let input = if alias {
+        dir.join("ms.toml").to_str().unwrap().to_string()
+    } else {
+        main
+    };
+    let output = dir.join("program");
+    let backend = Engine::new(Native);
+    let build = || {
+        let (status, stdout, stderr) = ms(
+            &backend,
+            &[
+                "build",
+                &input,
+                "-o",
+                output.to_str().unwrap(),
+                "--build-type",
+                "Debug",
+            ],
+        );
+        assert_eq!(status, 0, "{stdout}{stderr}");
+        Command::new(&output).status().unwrap().code()
+    };
+    assert_eq!(build(), Some(3));
+    assert_eq!(build(), Some(3));
+    std::fs::remove_file(&link).ok();
+    std::fs::remove_dir(&link).ok();
+    common::symlink_dir(&dir.join("two"), &link).unwrap();
+    assert_eq!(build(), Some(4));
+    assert_eq!(build(), Some(4));
+}
+
+#[test]
+fn cached_build_notices_an_imported_directory_link_retargeting() {
+    directory_symlink_build(false);
+}
+
+#[test]
+fn cached_build_notices_an_alias_directory_link_retargeting() {
+    directory_symlink_build(true);
+}
+
 #[test]
 fn build_output_must_not_replace_an_explicit_link_input() {
     let dir = scratch("output-is-link-input");
