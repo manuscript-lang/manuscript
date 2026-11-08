@@ -1080,6 +1080,9 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(x);
             }
+            // An implicit optional made from a borrowed payload owns transport storage only: it
+            // must not acquire the payload's close duty (see `close_temp`).
+            let payload_own = x.own;
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -1091,7 +1094,11 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
-            let x = if later_try && x.own {
+            // The caller owns an intact temporary resource through the call: guard it, as for a
+            // source function, so its payload closes even though its optional transport does not.
+            let x = if x.own && payload_own {
+                self.hold_source_arg(x, later_try)?
+            } else if later_try && x.own {
                 self.hold_temp(x)
             } else {
                 x
@@ -1142,7 +1149,11 @@ impl<'a> FnLower<'a> {
                 args.push(slot);
                 continue;
             }
-            args.push(self.borrow(x));
+            if x.own && self.resource_temps.contains_key(&x.v) {
+                args.push(x.v);
+            } else {
+                args.push(self.borrow(x));
+            }
         }
         let r = self.borrow(recv);
         self.at(e.pos);
