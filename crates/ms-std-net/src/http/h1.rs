@@ -113,8 +113,14 @@ pub fn parse_response(buf: &[u8], limit: usize) -> Parsed<ResponseHead> {
             if length > limit {
                 return Parsed::Bad(BadMessage::new(0, "response headers too large"));
             }
+            // A bare CR or LF splits the head differently for a lenient proxy or cache; a status
+            // below 100 (`099`) is not one of the three-digit codes HTTP defines.
+            let status = res.code.unwrap_or(0);
+            if !strict_line_endings(&buf[..length]) || status < 100 {
+                return Parsed::Bad(BadMessage::new(0, "malformed HTTP response"));
+            }
             Parsed::Complete(ResponseHead {
-                status: res.code.unwrap_or(0),
+                status,
                 minor: res.version.unwrap_or(1),
                 fields: collect(res.headers),
                 length,
@@ -238,6 +244,14 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
         Ok(Some(n)) => Ok(Framing::Length(n)),
         Ok(None) => Ok(Framing::UntilClose),
     }
+}
+
+/// Whether a response claims both chunked coding and a length. The two framings disagree about
+/// where the body ends whenever an intermediary or the server itself reads the other one, so
+/// the connection must not carry a later exchange (RFC 9112 section 6.1).
+pub fn conflicting_framing(fields: &[(String, Vec<u8>)]) -> bool {
+    field(fields, "Transfer-Encoding").next().is_some()
+        && field(fields, "Content-Length").next().is_some()
 }
 
 /// Whether the connection stays open after this message.
@@ -772,6 +786,38 @@ mod tests {
         assert!(!keep_alive(h.minor, &h.fields));
         let h = request("GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n");
         assert!(keep_alive(h.minor, &h.fields));
+    }
+
+    #[test]
+    fn response_heads_refuse_bare_line_feeds_and_codes_below_100() {
+        let bad = |t: &str| {
+            matches!(
+                parse_response(t.as_bytes(), DEFAULT_HEAD_LIMIT),
+                Parsed::Bad(_)
+            )
+        };
+        assert!(!bad("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n"));
+        assert!(bad("HTTP/1.1 200 OK\nContent-Length: 2\n\n"));
+        assert!(bad("HTTP/1.1 200 OK\r\nX: a\nY: b\r\n\r\n"));
+        assert!(bad("HTTP/1.1 200 OK\r\nX: a\rY: b\r\n\r\n"));
+        assert!(bad("HTTP/1.1 099 Early\r\nContent-Length: 0\r\n\r\n"));
+        assert!(!bad("HTTP/1.1 100 Continue\r\n\r\n"));
+        assert!(!bad("HTTP/1.1 999 Custom\r\nContent-Length: 0\r\n\r\n"));
+    }
+
+    #[test]
+    fn a_response_with_both_framings_does_not_keep_its_connection() {
+        let parse = |t: &str| match parse_response(t.as_bytes(), DEFAULT_HEAD_LIMIT) {
+            Parsed::Complete(h) => h,
+            _ => panic!("bad"),
+        };
+        let both =
+            parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n");
+        assert!(conflicting_framing(&both.fields));
+        let one = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
+        assert!(!conflicting_framing(&one.fields));
+        let other = parse("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n");
+        assert!(!conflicting_framing(&other.fields));
     }
 
     #[test]
