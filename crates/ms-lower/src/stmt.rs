@@ -563,12 +563,14 @@ impl<'a> FnLower<'a> {
             }
             let at = self.place_index(index)?;
             let mut new = Some(self.owned(x));
-            return self.place_update(left, &mut |s, list| {
+            let result = self.place_update_prepared(left, &mut |s, list| {
                 s.update_elem(list, at, &mut |s, elem| {
                     let new = new.take().expect("one update");
                     s.set_path(elem, true, &path, new)
                 })
             });
+            self.finish_place(target);
+            return result;
         }
         let ExprKind::Name(_) = &cur.kind else {
             // A field of a computed value (`f().n = 1`): values do not alias, so the update
@@ -610,56 +612,90 @@ impl<'a> FnLower<'a> {
             .collect()
     }
 
-    /// Replaces the place `target` (a variable or a field chain from one) by `f(current)`.
-    /// Evaluates the index expressions selecting `e`, receiver first and each once, so a nested
-    /// place (`grid[a()][b()].n`) runs `a()` before `b()`. The place update takes the results.
+    pub(crate) fn place_key(&self, e: &Expr) -> crate::func::PlaceKey {
+        (self.hir.data.file, e.id, e.pos)
+    }
+
+    /// Indices only on the receiver chain, not indices inside its index expressions.
+    fn place_indices(&self, e: &Expr, out: &mut Vec<crate::func::PlaceKey>) {
+        if let ExprKind::Member { left, .. } = &e.kind {
+            self.place_indices(left, out);
+        } else if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, e) {
+            self.place_indices(left, out);
+            out.push(self.place_key(index));
+        }
+    }
+
+    /// Read the receiver in ordinary checked order while retaining its selected indices.
+    /// The result is a read, never a storage pointer retained across later arguments.
+    pub(crate) fn read_place(&mut self, e: &Expr) -> Result<Val, Error> {
+        if !self.is_place(e) {
+            return self.expr(e);
+        }
+        let mut keys = Vec::new();
+        self.place_indices(e, &mut keys);
+        let added: Vec<_> = keys
+            .into_iter()
+            .filter(|k| self.capture_indices.insert(*k))
+            .collect();
+        let result = self.expr(e);
+        for k in added {
+            self.capture_indices.remove(&k);
+        }
+        if self.dead || result.is_err() {
+            self.finish_place(e);
+        }
+        result
+    }
+
+    pub(crate) fn finish_place(&mut self, e: &Expr) {
+        let mut keys = Vec::new();
+        self.place_indices(e, &mut keys);
+        for key in keys {
+            self.prepared_indices.remove(&key);
+        }
+    }
+
+    pub(crate) fn finish_places(&mut self, places: &[Option<Expr>]) {
+        for place in places.iter().flatten() {
+            self.finish_place(place);
+        }
+    }
+
+    /// Perform the checked read before taking an owner for mutation. A prepared selection
+    /// is reused until the complete update, including intermediate resource closes, finishes.
     pub(crate) fn prepare_place(&mut self, e: &Expr) -> Result<(), Error> {
+        let mut keys = Vec::new();
+        self.place_indices(e, &mut keys);
+        if keys.iter().all(|k| self.prepared_indices.contains_key(k)) {
+            return Ok(());
+        }
+        if self.is_place(e) {
+            let x = self.read_place(e)?;
+            self.borrow(x);
+            return Ok(());
+        }
+        // Defensive support for computed update targets: keep their old index-only behavior.
         let mut cur = e;
         while let ExprKind::Member { left, .. } = &cur.kind {
             cur = left;
         }
-        let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) else {
-            return Ok(());
-        };
-        self.prepare_place(left)?;
-        let key = (index.id, index.pos);
-        if self.dead || self.prepared_indices.contains_key(&key) {
-            return Ok(());
-        }
-        self.access_receiver(left)?;
-        if self.dead {
-            return Ok(());
-        }
-        let i = self.expr(index)?;
-        if self.dead {
-            return Ok(());
-        }
-        let at = self.borrow(i);
-        self.prepared_indices.insert(key, at);
-        Ok(())
-    }
-
-    /// Reads the receiver `left` of an index inside a place (`grid[0]` in `grid[0][later()]`), so
-    /// its bounds or missing-key fault comes before the next index runs. A receiver that is a
-    /// plain variable or a field of one cannot fault and is skipped.
-    pub(crate) fn access_receiver(&mut self, left: &Expr) -> Result<(), Error> {
-        let mut root = left;
-        while let ExprKind::Member { left, .. } = &root.kind {
-            root = left;
-        }
-        if crate::mutation::index_parts(self.syms, &self.hir, root).is_none() {
-            return Ok(());
-        }
-        let read = self.expr(left)?;
-        if !self.dead && read.own {
-            self.drop_value(read.v);
+        if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) {
+            self.prepare_place(left)?;
+            if !self.dead {
+                let i = self.expr(index)?;
+                if !self.dead {
+                    let at = self.borrow(i);
+                    self.prepared_indices.insert(self.place_key(index), at);
+                }
+            }
         }
         Ok(())
     }
 
-    /// The value of a place's index expression: the one `prepare_place` evaluated, else evaluated now.
-    fn place_index(&mut self, index: &Expr) -> Result<ms_mir::ir::Value, Error> {
-        if let Some(at) = self.prepared_indices.remove(&(index.id, index.pos)) {
+    /// A selection remains available to every read until the final owner writeback.
+    fn place_index(&mut self, index: &Expr) -> Result<Value, Error> {
+        if let Some(&at) = self.prepared_indices.get(&self.place_key(index)) {
             return Ok(at);
         }
         let i = self.expr(index)?;
@@ -671,6 +707,21 @@ impl<'a> FnLower<'a> {
         target: &Expr,
         f: &mut dyn FnMut(&mut Self, ms_mir::ir::Value) -> Result<ms_mir::ir::Value, Error>,
     ) -> Result<(), Error> {
+        self.prepare_place(target)?;
+        let result = if self.dead {
+            Ok(())
+        } else {
+            self.place_update_prepared(target, f)
+        };
+        self.finish_place(target);
+        result
+    }
+
+    pub(crate) fn place_update_prepared(
+        &mut self,
+        target: &Expr,
+        f: &mut dyn FnMut(&mut Self, Value) -> Result<Value, Error>,
+    ) -> Result<(), Error> {
         let mut path: Vec<&Expr> = Vec::new();
         let mut cur = target;
         while let ExprKind::Member { left, .. } = &cur.kind {
@@ -680,12 +731,8 @@ impl<'a> FnLower<'a> {
         path.reverse();
         if let Some((left, index)) = crate::mutation::index_parts(self.syms, &self.hir, cur) {
             // A list element changes in place: the list receives the updated element.
-            self.prepare_place(target)?;
-            if self.dead {
-                return Ok(());
-            }
             let at = self.place_index(index)?;
-            return self.place_update(left, &mut |s, list| {
+            return self.place_update_prepared(left, &mut |s, list| {
                 s.update_elem(list, at, &mut |s, elem| s.update_path(elem, &path, f))
             });
         }

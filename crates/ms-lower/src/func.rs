@@ -54,6 +54,9 @@ pub(crate) struct LoopCtx {
     pub brk_used: bool,
 }
 
+/// Stable identity of a selected place index, including defaults from another module.
+pub(crate) type PlaceKey = (ct::Name, ms_check::api::NodeId, Pos);
+
 /// Per-function lowering state.
 pub(crate) struct FnLower<'a> {
     pub syms: ms_check::api::Names,
@@ -94,10 +97,10 @@ pub(crate) struct FnLower<'a> {
     pub list_iters: HashMap<usize, ms_mir::builder::Var>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
-    /// Index expressions of a place already evaluated, by node id and position (the call keeps a
-    /// clone of the place, so the address is not stable), until the place update that selects
-    /// with them takes them.
-    pub prepared_indices: HashMap<(ms_check::api::NodeId, Pos), Value>,
+    /// Checked place indices retained through the final writeback.
+    pub prepared_indices: HashMap<PlaceKey, Value>,
+    /// Only receiver-chain indices are captured during a checked place read.
+    pub capture_indices: HashSet<PlaceKey>,
     /// Intact resource temporaries: their slots own the values while later expressions run.
     /// The keys are borrowed views, consumed only by `take_resource_temp`.
     pub resource_temps: HashMap<Value, crate::close::ResourceTemp>,
@@ -589,6 +592,7 @@ impl<'a> FnLower<'a> {
             list_iters: HashMap::new(),
             temps: Vec::new(),
             prepared_indices: HashMap::new(),
+            capture_indices: HashSet::new(),
             resource_temps: HashMap::new(),
             loops: Vec::new(),
             dead: false,

@@ -1187,14 +1187,19 @@ impl FnLower<'_> {
         let mut slots_out: Vec<crate::call::VarArgument> = Vec::new();
         let mut places: Vec<Option<Expr>> = vec![None; ptys.len()];
         for (i, a) in view.arguments.iter().enumerate() {
-            let x = self.expr(a.expr)?;
-            if self.dead {
-                return Ok(x);
-            }
             let at = declared
                 .iter()
                 .position(|p| p.name == a.slot.name)
                 .unwrap_or(i);
+            let x = if declared.get(at).is_some_and(|p| p.mutable) {
+                self.read_place(a.expr)?
+            } else {
+                self.expr(a.expr)?
+            };
+            if self.dead {
+                self.finish_places(&places);
+                return Ok(x);
+            }
             if declared.get(at).is_some_and(|p| p.mutable) {
                 places[at] = Some(a.expr.clone());
                 slots[at] = Some(self.var_argument(e, at, x, Some(a.expr), &mut slots_out));
