@@ -86,3 +86,36 @@ test "valid comments preserve text and leave other delimited constructs alone":
     let node = try parse("<a><!----><!--a-b--><![CDATA[x--y]]><?p x--y?></a>")
     try expect_equal(node.children().length(), 3)
     try expect_equal(node.text(), "x--y")
+
+test "literal XML characters obey the same ranges as character references":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for invalid in [
+        "\u{0}", "\u{1}", "\u{8}", "\u{b}", "\u{c}", "\u{e}", "\u{1f}", "\u{fffe}",
+        "\u{ffff}"
+    ]:
+        try expect_equal(parse("<a>{invalid}</a>"), malformed)
+        try expect_equal(parse("<a v='{invalid}'/>"), malformed)
+        try expect_equal(parse("<a><![CDATA[{invalid}]]></a>"), malformed)
+        try expect_equal(parse("<!--{invalid}--><a/>"), malformed)
+        try expect_equal(parse("<a/><?p {invalid}?>"), malformed)
+        try expect_equal(parse("<!DOCTYPE a [<!ENTITY x '{invalid}'>]><a/>"), malformed)
+
+        let code = invalid.scalar_values()[0]
+        try expect_equal(parse("<a>&#{code};</a>"), malformed)
+
+    for valid in [
+        "\t", "\n", "\r", " ", "\u{7f}", "\u{85}", "\u{9f}", "\u{d7ff}", "\u{e000}",
+        "\u{fffd}", "\u{10000}", "\u{10ffff}"
+    ]:
+        try expect_true(parse("<a>{valid}</a>").is_ok())
+        try expect_true(parse("<a v='{valid}'/>").is_ok())
+        try expect_true(parse("<a><![CDATA[{valid}]]></a>").is_ok())
+        try expect_true(parse("<!--{valid}--><a/>").is_ok())
+        try expect_true(parse("<a/><?p {valid}?>").is_ok())
+        try expect_true(parse("<!DOCTYPE a [<!ENTITY x '{valid}'>]><a/>").is_ok())
+
+        let code = valid.scalar_values()[0]
+        try expect_true(parse("<a>&#{code};</a>").is_ok())
+
+    try expect_true(parse("\u{feff}<a/>").is_ok())

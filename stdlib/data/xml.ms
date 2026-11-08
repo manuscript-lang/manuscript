@@ -370,6 +370,12 @@ A document with several roots, text outside the root, or any syntax error is `EB
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(Error("XML: invalid input", kind: "EINVAL"))
 
+    // XML's Char production applies even to discarded comments and instructions.
+    for code in text.scalar_values():
+        if not is_xml_char(code): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
     var reader = Reader(chars: text.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
     try reader.skip_misc()
