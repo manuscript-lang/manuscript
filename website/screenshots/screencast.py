@@ -15,30 +15,24 @@ SRC = os.path.join(HERE, "screencast")
 
 # (caption, source file or None, command run in a scratch copy of screencast/ and the demo project)
 SCENES = [
-    ("Failures are values, not exceptions",
-     "Every error path is in the signature. Nothing throws behind your back.",
-     "errors.ms", "ms run errors.ms", 4),
-    ("Memory safety without a garbage collector",
-     "One owner per value: no GC pauses, no use-after-move. Checked at compile time.",
+    ("One owner per value. No garbage collector.",
+     "Use-after-move is a compile error, so no GC pauses and no refcounts.",
      "own.ms", "ms run own.ms", 1),
-    ("Resources close themselves",
-     "Files and sockets close at scope end, even on early return. No defer, no leaks.",
+    ("Failure is a value. Cleanup is automatic.",
+     "T! and try keep errors in the signature; files close at scope end.",
      "scope.ms", "ms run scope.ms", 2),
-    ("No async, no await",
-     "Any function can run concurrently, so there are no colored functions to rewrite.",
+    ("No async. No await.",
+     "Any function can run concurrently, so no colored functions to rewrite.",
      "conc.ms", "ms run conc.ms", 4),
-    ("Errors that tell you the fix",
-     "Diagnostics carry cause and remedy; --json gives agents the same as data.",
+    ("Errors that tell you the fix.",
+     "Cause and remedy in every diagnostic; --json gives agents the same data.",
      "fixme.ms", "ms check fixme.ms", 1),
-    ("One command, one verdict",
-     "Check, format, lint and test in a single pass/fail for engineers, agents and CI.",
-     None, "ms verify demo/ms.toml", 4),
-    ("Review what the agent built",
-     "Call graphs and code maps come from checked source, not from guesses.",
+    ("See what the agent built.",
+     "Call graphs and code maps come from checked source, not guesses.",
      None, "ms diagram conc.ms --format ascii", 7),
-    ("Fast to iterate, one binary to ship",
-     "Quick debug builds while you work; a standalone native executable at the end.",
-     None, "ms build conc.ms -o conc && ./conc", 4),
+    ("One binary: verify, build, ship.",
+     "Check, format, lint and test in one verdict, then a native executable.",
+     None, "ms verify demo/ms.toml && ms build conc.ms -o conc && ./conc", 7),
 ]
 COLS = int((1000 - 64) / 14.4)
 
@@ -129,15 +123,14 @@ def main():
             out = run(cmd, work, ms_dir, limit)
             def add(shown, c, n, ms):
                 frames.append(frame(t, title, benefit, code, shown, c, out, n, i, total)); durs.append(ms)
-            # human pacing: a line of code every 0.6 s, a pause to read it, then the command and each output line
+            # human pacing: a code line every 0.45 s, a short read, then the command and each output line
             for n in range(1, len(code) + 1):
-                add(n, None, 0, 600)
-            read = 1500 + 60 * sum(len(l) for l in code) // 4 if code else 0
-            frames[-1:] = frames[-1:]; durs[-1] += read
-            add(len(code), cmd, 0, 1200)
+                add(n, None, 0, 450)
+            if code: durs[-1] += 900 + sum(len(l) for l in code) * 10
+            add(len(code), cmd, 0, 800)
             for n in range(1, len(out)):
-                add(len(code), cmd, n, 700)
-            add(len(code), cmd, len(out), 3500 + 450 * len(out))
+                add(len(code), cmd, n, 450)
+            add(len(code), cmd, len(out), 2200 + 300 * len(out))
         # quantize with a shared adaptive palette per frame; hold the loop point
         pal = [f.quantize(colors=40, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for f in frames]
         os.makedirs(os.path.dirname(os.path.abspath(a.output)), exist_ok=True)
