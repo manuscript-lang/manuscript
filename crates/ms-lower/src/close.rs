@@ -393,6 +393,18 @@ impl FnLower<'_> {
         key
     }
 
+    /// The authoritative slot for an intact pending resource.
+    pub(crate) fn resource_temp_slot(&self, key: Value) -> Option<Value> {
+        self.resource_temps.get(&key).map(|owner| owner.slot)
+    }
+
+    /// A leaf operation has consumed the slot on success. Nothing remains to take or drop.
+    pub(crate) fn retire_consumed_resource_temp(&mut self, key: Value) {
+        let handle = self.resource_temps[&key].handle;
+        let _ = self.call_runtime("msrt_cleanup_remove", &[handle], MTy::UNIT);
+        self.unhold_temp(key);
+    }
+
     /// Permanently retires only this resource's cleanup and takes its sole owned value.
     /// Newer lexical owners remain registered. Keep the metadata: emitting an early-return
     /// branch must not change the continuing path, but each runtime path consumes the handle once.
