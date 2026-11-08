@@ -22,7 +22,14 @@ pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
 }
 
 /// `x` of `x.clone()`.
-fn clone_receiver(syms: ms_check::api::Names, e: &Expr) -> Option<&Expr> {
+fn clone_receiver<'e>(
+    syms: ms_check::api::Names,
+    hir: &ms_check::api::hir::ModuleHir,
+    e: &'e Expr,
+) -> Option<&'e Expr> {
+    if hir.info(e).native_str(syms) != "clone" {
+        return None;
+    }
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
@@ -58,7 +65,7 @@ impl<'a> FnLower<'a> {
         let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
         // `m.add(w.clone(), m.get(w).get(0) + 1)`: the explicit copy is only needed when the key
         // is absent, so the runtime makes it then and the lookup borrows `w`.
-        let key = clone_receiver(self.syms, key).unwrap_or(key);
+        let key = clone_receiver(self.syms, &self.hir, key).unwrap_or(key);
         let ExprKind::Binary { op, left, right } = &value.kind else {
             return Ok(None);
         };
@@ -79,7 +86,28 @@ impl<'a> FnLower<'a> {
             }
             _ => return Ok(None),
         };
+        // The insertion key and later lookup must select the same value. A literal operand
+        // cannot change or consume even a mutable key; other operands require an immutable key.
+        let literal_operand = matches!(other.kind, ExprKind::Number(_));
+        let stable_key = match &key.kind {
+            ExprKind::Number(_) => true,
+            ExprKind::Name(_) => matches!(
+                self.hir.resolution(key),
+                Resolution::Local(b) if !b.mutable || literal_operand
+            ),
+            _ => false,
+        };
+        if !stable_key {
+            return Ok(None);
+        }
         if crate::mutation::uses_of(&self.hir, other, recv.uid) != 0 {
+            return Ok(None);
+        }
+        // Immutable keys can still be moved by the other operand. Keep their last use
+        // in source order rather than retaining a borrowed key past that move.
+        if let Resolution::Local(binding) = self.hir.resolution(key)
+            && crate::mutation::uses_of(&self.hir, other, binding.uid) != 0
+        {
             return Ok(None);
         }
         let mt = self.emty(recv_expr)?;
@@ -87,6 +115,11 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         };
         if n != Native::Map || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
+            return Ok(None);
+        }
+        // As in map_get_chain, checked key conversions (such as Int to Optional[Int])
+        // need the ordinary argument path rather than a slot of the raw expression's type.
+        if a.first() != Some(&self.emty(key)?) {
             return Ok(None);
         }
         // The fused update checks 64-bit overflow only; sized integers take the general path.
@@ -156,14 +189,18 @@ impl<'a> FnLower<'a> {
             return Ok(None);
         }
         let (key_e, value_e) = (view.arguments[0].expr, view.arguments[1].expr);
-        let Some(inner) = clone_receiver(self.syms, key_e) else {
+        let Some(inner) = clone_receiver(self.syms, &self.hir, key_e) else {
             return Ok(None);
         };
         if !self.is_place(recv_expr) || !self.is_place(inner) {
             return Ok(None);
         }
         let base = crate::mutation::place_base(self.syms, &self.hir, inner);
-        if !matches!(self.hir.resolution(base), Resolution::Local(b) if !b.mutable) {
+        let Resolution::Local(binding) = self.hir.resolution(base) else {
+            return Ok(None);
+        };
+        // The key is borrowed until the add, so the value must not consume its owner.
+        if binding.mutable || crate::mutation::uses_of(&self.hir, value_e, binding.uid) != 0 {
             return Ok(None);
         }
         let mt = self.emty(recv_expr)?;
