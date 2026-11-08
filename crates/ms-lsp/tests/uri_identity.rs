@@ -22,14 +22,8 @@ fn malformed_file_uri_documents_are_rejected_and_roots_ignored() {
     assert_eq!(code, Some(-32602), "{reply:?}");
 }
 
-#[test]
-fn malformed_workspace_root_is_not_scanned() {
-    let ws = Workspace::new("uri-root");
-    let literal = ws.root.join("%FF");
-    std::fs::create_dir_all(&literal).unwrap();
-    std::fs::write(literal.join("a.ms"), "export fn a() Int: 1\n").unwrap();
-    let root = format!("{}/%FF", ms_lsp::uri::file_uri(&ws.root.to_string_lossy()));
-    assert!(ms_lsp::uri::is_malformed_file(&root));
+/// Names found by `workspace/symbol` for a session rooted at `root`.
+fn symbols_under(root: String) -> String {
     let mut s = Script::new();
     s.request(
         "initialize",
@@ -39,6 +33,29 @@ fn malformed_workspace_root_is_not_scanned() {
         ]),
     );
     s.notify("initialized", ms_lsp::json::obj([]));
+    let id = s.request(
+        "workspace/symbol",
+        ms_lsp::json::obj([("query", "zzliteral".into())]),
+    );
     let replies = s.rust();
-    assert!(!replies.is_empty());
+    let reply = replies
+        .iter()
+        .find(|m| m.get("id").and_then(Json::as_i64) == Some(id))
+        .expect("symbol reply");
+    format!("{reply:?}")
+}
+
+#[test]
+fn malformed_workspace_root_is_not_scanned() {
+    let ws = Workspace::new("uri-root");
+    let literal = ws.root.join("%FF");
+    std::fs::create_dir_all(&literal).unwrap();
+    std::fs::write(literal.join("a.ms"), "export fn zzliteral() Int: 1\n").unwrap();
+    // The valid spelling of the literal-percent directory finds the symbol.
+    let valid = ms_lsp::uri::file_uri(&literal.to_string_lossy());
+    assert!(symbols_under(valid).contains("zzliteral"));
+    // The malformed spelling is not decoded, matched raw, or scanned.
+    let malformed = format!("{}/%FF", ms_lsp::uri::file_uri(&ws.root.to_string_lossy()));
+    assert!(ms_lsp::uri::is_malformed_file(&malformed));
+    assert!(!symbols_under(malformed).contains("zzliteral"));
 }
