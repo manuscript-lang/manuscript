@@ -1,0 +1,9 @@
+[Wiki](../index.md) › [Testing and conformance](index.md)
+
+# Scaling gate compares growth ratios, not wall time
+
+Verified: about 30 bugs were passes or containers that rescan or copy per unit. `make scaling-check` (`tools/scaling-check.ms`, a gate step in CI) generates inputs at 1k, 10k and 100k and fails when `(t100k - t1k) / (t10k - t1k)` exceeds 30 (linear is about 10, quadratic about 100). The first run showed 12 to 21x for the largest compile shapes (many functions, many impls), mildly superlinear but not failing. A new pass that walks the whole function, file or list per instruction, token or element must anchor its lookups to an index-anchored side table built once, as #2979 did, never a rescan.
+
+Apply when: adding a compiler pass, a formatter or LSP feature that visits a whole file, or a stdlib container operation.
+Evidence: [tools/scaling-check.ms](../../tools/scaling-check.ms), [containers.ms](../../tests/scaling/containers.ms), [proposal](../../proposals/scaling-gate.md).
+Verify: `make scaling-check`; add a shape to `generate` or a phase to `containers.ms` for new unbounded input.

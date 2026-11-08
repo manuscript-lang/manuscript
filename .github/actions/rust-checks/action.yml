@@ -175,6 +175,10 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/count-check.ms
+    - name: Compile and runtime work scales linearly
+      if: env.GATES == 'true'
+      shell: bash
+      run: MS=target/debug/ms target/debug/ms run tools/scaling-check.ms
     - name: Package and run the distribution on a hello project
       if: env.GATES == 'true'
       shell: bash
