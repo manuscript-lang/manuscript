@@ -660,7 +660,14 @@ impl<'a> FnLower<'a> {
             }
         }
         match acc {
-            Some(a) => Ok(a),
+            Some(a) => {
+                // A lone `"{s}"` is a new string, but reading it borrows `s` until an owning
+                // position needs a value: that copy is the interpolation's, not a lowering gap.
+                if parts.len() == 1 && !a.own {
+                    self.boundary_reads.insert(a.v);
+                }
+                Ok(a)
+            }
             None => {
                 let v = self.b.str_lit("");
                 Ok(Val { v, own: false })
