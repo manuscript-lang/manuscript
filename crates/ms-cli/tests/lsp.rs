@@ -46,3 +46,29 @@ fn lsp_initializes_and_exits_cleanly() {
     drop(stdin);
     assert!(child.wait().expect("wait").success());
 }
+
+#[test]
+fn lsp_exit_without_shutdown_fails() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("lsp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn ms lsp");
+    let mut stdin = child.stdin.take().expect("stdin");
+    let initialize =
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}"#;
+    stdin
+        .write_all(&frame(initialize))
+        .expect("write initialize");
+    stdin
+        .write_all(&frame(r#"{"jsonrpc":"2.0","method":"exit"}"#))
+        .expect("write exit");
+    stdin.flush().expect("flush");
+    drop(stdin);
+    let output = child.wait_with_output().expect("wait");
+    // The protocol requires a nonzero status when `exit` arrives before `shutdown`.
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("exit before shutdown"));
+}

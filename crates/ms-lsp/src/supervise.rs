@@ -315,12 +315,18 @@ impl<W: Write> Supervisor<'_, W> {
         Ok(())
     }
 
-    /// Closes the worker's input and waits for it to end.
+    /// Closes the worker's input and waits for it to end. After the client's `exit` the worker's
+    /// failure status is the session's: `exit` without `shutdown` must not end with success.
     fn finish(&mut self) -> Result<(), String> {
-        if let Some(mut worker) = self.worker.take() {
-            drop(worker.stdin.take());
-            let _ = worker.child.wait();
+        let Some(mut worker) = self.worker.take() else {
+            return Ok(());
+        };
+        drop(worker.stdin.take());
+        match worker.child.wait() {
+            Ok(status) if self.exiting && !status.success() => {
+                Err(format!("worker exited with {status}"))
+            }
+            _ => Ok(()),
         }
-        Ok(())
     }
 }
