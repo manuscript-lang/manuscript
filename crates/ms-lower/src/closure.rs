@@ -415,7 +415,14 @@ impl FnLower<'_> {
             if self.dead {
                 return Ok(Some(x));
             }
+            // A borrowed payload wrapped into an `Optional` stays its owner's; a temporary is ours.
+            let borrowed_payload = !x.own && a.wrap_optional.is_some();
             let x = match &a.wrap_optional {
+                // The thunk only borrows, so a borrowed payload is shown, not copied.
+                Some(_) if borrowed_payload => Val {
+                    v: self.b.opt_view(x.v),
+                    own: false,
+                },
                 Some(_) => {
                     let o = self.owned(x);
                     let v = self.b.opt_some(o);
@@ -430,6 +437,20 @@ impl FnLower<'_> {
                 .ok_or_else(|| {
                     Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
                 })?;
+            // The thunk only borrows its arguments, so a temporary resource stays registered here
+            // and closes with its statement, as in an ordinary call. The thunk sees it through an
+            // `opt.view`, which neither copies nor drops the resource it shows.
+            if x.own
+                && !borrowed_payload
+                && let Some(key) = self.hold_resource_temp(x.v)?
+            {
+                let shown = match self.b.m.types.kind(ptys[at]).clone() {
+                    TyKind::Opt(inner) if inner == self.ty_of(key) => self.b.opt_view(key),
+                    _ => key,
+                };
+                slots[at] = Some(shown);
+                continue;
+            }
             let x = self.lift_argument(x, ptys[at]);
             slots[at] = Some(self.borrow(x));
         }
@@ -1351,6 +1372,8 @@ fn lower_default_thunk(
                 let mut earlier = earlier.clone();
                 s.default_argument(&callee, i, &job.subst, &mut earlier, recv, None)
             })?;
+            // A `try` in a later default returns early: the holder must drop on that path too.
+            fl.temps.push(held);
             holders.push(held);
             val
         });
@@ -1390,6 +1413,7 @@ fn lower_default_thunk(
         r
     };
     for held in holders {
+        fl.unhold_temp(held);
         fl.drop_value(held);
     }
     let out = fl.val(r, true);
