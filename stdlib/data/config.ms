@@ -111,7 +111,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
         if key.is_empty(): return error(config_error(number, "empty key"))
 
         if var section = sections.get(current):
-            section.add(key, ini_value(entry.drop(at + 1).trim()))
+            section.add(key, ini_value(entry.drop(at + 1)))
 
     return ok(sections)
 
@@ -151,13 +151,14 @@ fn first_assignment(entry: String) Int?:
     return eq.get(0).min(colon.get(0))
 
 fn ini_value(value: String) String:
-    let quote = value.take(1)
+    let trimmed = value.trim()
+    let quote = trimmed.take(1)
     if (
-        value.length() >= 2
+        trimmed.length() >= 2
         and (quote == "\"" or quote == "'")
-        and value.ends_with(quote)
+        and trimmed.ends_with(quote)
     ):
-        return value.drop(1).take(value.length() - 2)
+        return trimmed.drop(1).take(trimmed.length() - 2)
 
     var cut = value.length()
     for marker in [" #", " ;"]:
