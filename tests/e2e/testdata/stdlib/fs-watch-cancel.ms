@@ -1,0 +1,41 @@
+import expect_true, expect_ok from "@std/test/test.ms"
+import pipe, WriteStream from "@std/io/io.ms"
+import promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms"
+import create_directory, temporary, watch from "@std/os/fs.ms"
+
+// Reads events until `last` shows up, tells the test, then waits for more inside the native watcher.
+fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
+    var events = try watch(root, recursive: true)
+    var out = seen
+    while true:
+        let event = try events.next()
+        if let found = event:
+            if found.path == last:
+                try out.write(1)
+        else:
+            break
+
+    return ok(unit)
+
+// A cancelled read inside the native watcher must leave the watcher to the stream that owns it. The
+// frame of `WatchSource.next` held the source it took out of the stream, refilled after `pending.pop()`,
+// and unwinding dropped that copy too, so the watcher (and its map of watch descriptors) was freed twice.
+test "cancelling a recursive watch after a burst of events releases the watcher once":
+    let temp = temporary("ms-watch-cancel-") | try expect_ok
+    let path = temp.path()
+    var ready = pipe[Int](4)
+    var reader = ready.reader()
+    let switch = cancel_switch()
+    let last = "{path}/d19/e/f"
+    let work = promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
+        options: PromiseOptions(cancel: switch.signal())
+    )
+    var i = 0
+
+    while i < 20:
+        try create_directory("{path}/d{i}/e/f", recursive: true)
+        i += 1
+
+    let _arrived = try reader.next()
+    switch.cancel()
+    try expect_true(work.wait().is_error())

@@ -750,6 +750,16 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                         owned_def[r.index()] = false;
                         moved = true;
                     }
+                    // Refilling a field moved out of a caller's value yields that same value
+                    // again (`self.items.pop()` before a park), so it stays the caller's.
+                    (Op::RecFill | Op::ListFill, Some(r))
+                        if from_slot.contains(&i.args[0].0)
+                            && caller_values.insert(r.0)
+                            && from_slot.insert(r.0) =>
+                    {
+                        owned_def[r.index()] = false;
+                        moved = true;
+                    }
                     _ => {}
                 }
             }
