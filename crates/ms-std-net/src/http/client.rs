@@ -202,14 +202,14 @@ impl Wire {
     /// gets a fresh buffer instead of finding this one borrowed.
     fn fill(&mut self, deadline: Deadline) -> Result<usize, IoErr> {
         let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
-        scratch.buf().resize(READ_BUF, 0);
-        let got = self.conn.read_into(scratch.buf(), deadline);
+        scratch.get().resize(READ_BUF, 0);
+        let got = self.conn.read_into(scratch.get(), deadline);
         if let Ok(n) = got {
             if self.rpos > 0 && self.rpos == self.rbuf.len() {
                 self.rbuf.clear();
                 self.rpos = 0;
             }
-            self.rbuf.extend_from_slice(&scratch.buf()[..n]);
+            self.rbuf.extend_from_slice(&scratch.get()[..n]);
         }
         SCRATCH.set(scratch.finish());
         got
@@ -220,9 +220,9 @@ impl Wire {
     /// Reads up to `max` bytes straight into a new buffer; empty is end of stream.
     fn read_raw(&mut self, deadline: Deadline, max: usize) -> Result<Vec<u8>, IoErr> {
         let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
-        scratch.buf().resize(READ_BUF.max(max), 0);
-        let got = self.conn.read_into(&mut scratch.buf()[..max], deadline);
-        let out = got.map(|n| scratch.buf()[..n].to_vec());
+        scratch.get().resize(READ_BUF.max(max), 0);
+        let got = self.conn.read_into(&mut scratch.get()[..max], deadline);
+        let out = got.map(|n| scratch.get()[..n].to_vec());
         SCRATCH.set(scratch.finish());
         out
     }
@@ -562,58 +562,53 @@ impl Client {
     /// streaming response.
     pub fn send(self: &Rc<Self>, request: Request) -> Result<Rc<ResponseBody>, HttpErr> {
         let deadline = request.deadline;
-        self.send_inner(request)
-            .map_err(|e| self.describe(deadline, e))
+        // A cancellation parks below this frame and leaves by a jump that skips its destructors,
+        // so the request's owned state lives behind a cleanup instead of in locals.
+        let mut held = rt::Parked::new(Sending::new(request));
+        let result = self.send_inner(held.get());
+        drop(held);
+        result.map_err(|e| self.describe(deadline, e))
     }
 
-    fn send_inner(self: &Rc<Self>, request: Request) -> Result<Rc<ResponseBody>, HttpErr> {
-        let Request {
-            mut method,
-            url: first_url,
-            headers: initial,
-            mut body,
-            max_response,
-            deadline,
-        } = request;
-        let mut url = first_url.clone();
-        let mut previous = first_url.clone();
-        let mut sent = 0u64;
-        let mut hop_headers = initial.clone();
+    fn send_inner(self: &Rc<Self>, st: &mut Sending) -> Result<Rc<ResponseBody>, HttpErr> {
         loop {
             if self.is_closed() {
                 return Err(HttpErr::Closed);
             }
+            st.wire_headers = self.with_cookies(&st.url, &st.hop_headers);
             let mut hop = Hop {
-                method: &method,
-                url: &url,
-                headers: self.with_cookies(&url, &hop_headers),
-                body: &mut body,
+                method: &st.method,
+                url: &st.url,
+                headers: &st.wire_headers,
+                body: &mut st.body,
             };
-            let (head, wire, key, added_gzip) = self.roundtrip(&mut hop, deadline)?;
-            self.store_cookies(&url, &head);
-            let redirect = self.redirect_target(&method, &url, &head, &body, sent)?;
+            st.key = Self::pool_key(hop.url);
+            let (head, wire, added_gzip) = self.roundtrip(&st.key, &mut hop, st.deadline)?;
+            let key = st.key.clone();
+            self.store_cookies(&st.url, &head);
+            let redirect = self.redirect_target(&st.method, &st.url, &head, &st.body, st.sent)?;
             let Some((next_method, next_url, keep_body)) = redirect else {
-                return self.deliver(head, wire, key, &method, max_response, deadline, added_gzip);
+                let (method, max, deadline) = (st.method.clone(), st.max_response, st.deadline);
+                return self.deliver(head, wire, key, &method, max, deadline, added_gzip);
             };
             // Read a little of the body so a small one lets the connection be
             // reused, then drop it.
-            self.discard(head, wire, key, &method, deadline);
-            sent += 1;
+            self.discard(head, wire, key, &st.method, st.deadline);
+            st.sent += 1;
             // Once a hop strips a header, later redirects must not restore it.
             let mut next_headers =
-                self.redirect_headers(&hop_headers, &previous, &url, &next_url, keep_body);
+                self.redirect_headers(&st.hop_headers, &st.previous, &st.url, &next_url, keep_body);
             // Recompute an automatic Referer for this hop rather than forwarding the last one.
             next_headers.retain(|(name, _)| !name.eq_ignore_ascii_case("Referer"));
-            if let Some(referer) = referer_for(&url, &next_url, &initial) {
+            if let Some(referer) = referer_for(&st.url, &next_url, &st.initial) {
                 set_header(&mut next_headers, "Referer", referer.into_bytes());
             }
             if !keep_body {
-                body = Body::Bytes(Rc::new(Vec::new()));
+                st.body = Body::Bytes(Rc::new(Vec::new()));
             }
-            hop_headers = next_headers;
-            method = next_method;
-            previous = url;
-            url = next_url;
+            st.hop_headers = next_headers;
+            st.method = next_method;
+            st.previous = std::mem::replace(&mut st.url, next_url);
         }
     }
 
@@ -842,10 +837,10 @@ impl Client {
     /// response head.
     fn roundtrip(
         &self,
+        key: &str,
         hop: &mut Hop<'_>,
         deadline: Deadline,
-    ) -> Result<(ResponseHead, Wire, String, bool), HttpErr> {
-        let key = Self::pool_key(hop.url);
+    ) -> Result<(ResponseHead, Wire, bool), HttpErr> {
         let replayable = matches!(hop.body, Body::Bytes(_))
             && matches!(hop.method, "GET" | "HEAD" | "OPTIONS" | "TRACE");
         let mut retried = false;
@@ -853,9 +848,9 @@ impl Client {
             if deadline.expired() {
                 return Err(HttpErr::Timeout);
             }
-            let (outcome, reused) = self.attempt(&key, hop, deadline)?;
+            let (outcome, reused) = self.attempt(key, hop, deadline)?;
             match outcome {
-                Ok((head, wire, added_gzip)) => return Ok((head, wire, key, added_gzip)),
+                Ok((head, wire, added_gzip)) => return Ok((head, wire, added_gzip)),
                 Err(Fail::Stale) if reused && !retried && replayable => retried = true,
                 // The server did not process a refused stream: any request
                 // whose body can be sent again may follow.
@@ -1076,8 +1071,8 @@ impl Client {
     fn wants_gzip(&self, hop: &Hop<'_>) -> bool {
         self.opts.decompress
             && hop.method != "HEAD"
-            && !has_header(&hop.headers, "Accept-Encoding")
-            && !has_header(&hop.headers, "Range")
+            && !has_header(hop.headers, "Accept-Encoding")
+            && !has_header(hop.headers, "Range")
     }
 
     fn exchange(
@@ -1088,7 +1083,7 @@ impl Client {
     ) -> Result<(ResponseHead, bool), Fail> {
         let wants_gzip = self.wants_gzip(hop);
         let mut held = rt::ParkedBuf::new(Vec::with_capacity(512));
-        let out = held.buf();
+        let out = held.get();
         let length = match &*hop.body {
             Body::Bytes(bytes) => Some(bytes.len()),
             Body::Stream(_) => None,
@@ -1097,7 +1092,7 @@ impl Client {
             out,
             hop.method,
             hop.url,
-            &hop.headers,
+            hop.headers,
             length,
             wants_gzip,
             self.single_use,
@@ -1227,11 +1222,48 @@ fn io_text(e: IoErr) -> String {
     }
 }
 
+/// The owned state of one `send`, kept on the heap behind a cleanup (see [`rt::Parked`]).
+struct Sending {
+    method: String,
+    url: Url,
+    previous: Url,
+    /// The request's own headers, which a redirect's Referer is judged against.
+    initial: Vec<(String, Vec<u8>)>,
+    /// The headers of the current hop before cookies.
+    hop_headers: Vec<(String, Vec<u8>)>,
+    /// The headers on the wire for the current hop.
+    wire_headers: Vec<(String, Vec<u8>)>,
+    /// The pool key of the current hop.
+    key: String,
+    body: Body,
+    sent: u64,
+    max_response: u64,
+    deadline: Deadline,
+}
+
+impl Sending {
+    fn new(request: Request) -> Sending {
+        Sending {
+            previous: request.url.clone(),
+            hop_headers: request.headers.clone(),
+            method: request.method,
+            url: request.url,
+            initial: request.headers,
+            wire_headers: Vec::new(),
+            key: String::new(),
+            body: request.body,
+            sent: 0,
+            max_response: request.max_response,
+            deadline: request.deadline,
+        }
+    }
+}
+
 /// One request on the wire: the pieces that vary per redirect hop.
 struct Hop<'a> {
     method: &'a str,
     url: &'a Url,
-    headers: Vec<(String, Vec<u8>)>,
+    headers: &'a [(String, Vec<u8>)],
     body: &'a mut Body,
 }
 
