@@ -1058,7 +1058,13 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
-            let x = if later_try && x.own {
+            // Interface parameters borrow too: keep intact resources registered in
+            // written order through later operands and through the dispatch itself.
+            let x = if x.own
+                && let Some(key) = self.hold_resource_temp(x.v)?
+            {
+                Val { v: key, own: true }
+            } else if later_try && x.own {
                 self.hold_temp(x)
             } else {
                 x
@@ -1105,11 +1111,24 @@ impl<'a> FnLower<'a> {
                     in_place = Some((i, place, self.ty_of(x.v)));
                     continue;
                 }
+                let x = if x.own && self.resource_temps.contains_key(&x.v) {
+                    self.unhold_temp(x.v);
+                    Val {
+                        v: self.take_resource_temp(x.v).0,
+                        own: true,
+                    }
+                } else {
+                    x
+                };
                 let slot = self.var_argument(e, i, x, places[i].as_ref(), &mut slots_out);
                 args.push(slot);
                 continue;
             }
-            args.push(self.borrow(x));
+            args.push(if x.own && self.resource_temps.contains_key(&x.v) {
+                x.v
+            } else {
+                self.borrow(x)
+            });
         }
         let r = self.borrow(recv);
         self.at(e.pos);
