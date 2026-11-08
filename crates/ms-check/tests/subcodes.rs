@@ -72,6 +72,11 @@ fn every_sub_code_is_reached_by_a_real_diagnostic() {
         ),
         (
             "type",
+            "extra operation g; Show declares: f (remove it or add it to the interface)",
+            "MS3000.15",
+        ),
+        (
+            "type",
             "non-exhaustive match; missing cases: A, or add a final 'case _:' arm",
             "MS3050.1",
         ),
