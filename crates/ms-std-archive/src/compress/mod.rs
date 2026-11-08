@@ -343,7 +343,9 @@ impl Decoder {
     fn step(&mut self, out: &mut Vec<u8>) -> Result<(), Fail> {
         loop {
             match self.phase {
-                Phase::Done => return Ok(()),
+                // Nothing may follow the payload, whether it arrived with it or in a later chunk.
+                Phase::Done if self.input.is_empty() => return Ok(()),
+                Phase::Done => return Err(Fail::InvalidData),
                 Phase::Header => {
                     if self.format == Format::Zlib {
                         if self.input.len() < 2 {
@@ -629,6 +631,39 @@ mod tests {
         assert_eq!(compress(TEXT, "bz2", 6, None), Err(Fail::Unsupported));
         assert_eq!(decompress_bytes(TEXT, "gzip", None), Err(Fail::InvalidData));
         assert_eq!(decompress_bytes(TEXT, "bz2", None), Err(Fail::Unsupported));
+    }
+
+    #[test]
+    fn stream_decoder_rejects_bytes_after_the_payload() {
+        for f in [Format::Zlib, Format::Deflate, Format::Gzip] {
+            let name = match f {
+                Format::Zlib => "zlib",
+                Format::Deflate => "deflate",
+                Format::Gzip => "gzip",
+            };
+            let packed = compress(TEXT, name, 6, None).unwrap();
+            let mut with_tail = packed.clone();
+            with_tail.extend_from_slice(b"tail");
+
+            let mut d = Decoder::new(f, None);
+            let r = d.push(&with_tail).and_then(|_| d.end());
+            assert_eq!(r, Err(Fail::InvalidData), "{name} joined");
+
+            let mut d = Decoder::new(f, None);
+            let mut r = d.push(&packed);
+            if r.is_ok() {
+                r = d.push(b"x");
+            }
+            if r.is_ok() {
+                r = d.end();
+            }
+            assert_eq!(r, Err(Fail::InvalidData), "{name} later chunk");
+
+            let mut d = Decoder::new(f, None);
+            let mut got = d.push(&packed).unwrap();
+            got.extend(d.end().unwrap());
+            assert_eq!(got, TEXT, "{name} clean");
+        }
     }
 
     #[test]

@@ -168,7 +168,7 @@ impl Transform[Bytes, Bytes] for Decompressing:
         self.decoder = none
         return ok(unit)
 
-// Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated data fails the read with
+// Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated data, or bytes after the payload, fail the read with
 // `EBADMSG`; `max_bytes` bounds the total output and exceeding it fails with `EOVERFLOW`. Closing the
 // result closes `input`.
 export fn decompressed(
