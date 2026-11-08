@@ -4,28 +4,79 @@
 use crate::checker::Checker;
 use crate::types::*;
 use ms_syntax::ast::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
-/// The value of an integer expression built from literals and `+ - * / %`, or none when an
-/// operand is not constant, a division is by zero, or an intermediate leaves `range`.
-fn fold(syms: ms_syntax::Names, e: &Expr, range: (i128, i128)) -> Option<i128> {
-    let fits = |v: i128| (range.0..=range.1).contains(&v).then_some(v);
-    match &e.kind {
-        ExprKind::Number(t) => ms_syntax::number::canonical(syms.str(t))
-            .parse::<i128>()
-            .ok(),
-        ExprKind::Unary { op, operand } => {
-            let v = fold(syms, operand, range)?;
-            match op {
+/// Memoized facts about arithmetic trees over literals, keyed by file and node. Each fact of a
+/// node reads only the facts of its operands, so every node is visited once however deep the tree.
+#[derive(Default)]
+pub(crate) struct LiteralFacts {
+    folded: RefCell<HashMap<Folding, Option<i128>>>,
+    fractional: RefCell<HashMap<(Name, NodeId), Option<bool>>>,
+}
+
+/// A node folded within an inclusive value range.
+type Folding = (Name, NodeId, i128, i128);
+
+impl Checker {
+    /// The value of an integer expression built from literals and `+ - * / %`, or none when an
+    /// operand is not constant, a division is by zero, or an intermediate leaves `range`.
+    pub(crate) fn fold(&self, e: &Expr, range: (i128, i128)) -> Option<i128> {
+        let key = (self.current_file(), e.id, range.0, range.1);
+        if let Some(&known) = self.literal_facts.folded.borrow().get(&key) {
+            return known;
+        }
+        let fits = |v: i128| (range.0..=range.1).contains(&v).then_some(v);
+        let value = match &e.kind {
+            ExprKind::Number(t) => ms_syntax::number::canonical(self.syms.str(t))
+                .parse::<i128>()
+                .ok(),
+            ExprKind::Unary { op, operand } => self.fold(operand, range).and_then(|v| match op {
                 UnaryOp::Neg => fits(-v),
                 UnaryOp::Plus => Some(v),
                 _ => None,
+            }),
+            ExprKind::Binary { op, left, right } => {
+                let a = self.fold(left, range);
+                let b = self.fold(right, range);
+                a.zip(b).and_then(|(a, b)| fits(apply(*op, a, b)?))
             }
+            _ => None,
+        };
+        self.literal_facts.folded.borrow_mut().insert(key, value);
+        value
+    }
+
+    /// Whether `e` is a plain literal or arithmetic over plain literals only, and if so whether its
+    /// literals are fractional. Mixed integer and fractional literals have no common kind.
+    pub(crate) fn literal_tree_fractional(&self, e: &Expr) -> Option<bool> {
+        let key = (self.current_file(), e.id);
+        if let Some(&known) = self.literal_facts.fractional.borrow().get(&key) {
+            return known;
         }
-        ExprKind::Binary { op, left, right } => {
-            let (a, b) = (fold(syms, left, range)?, fold(syms, right, range)?);
-            fits(apply(*op, a, b)?)
-        }
-        _ => None,
+        let kind = match &e.kind {
+            ExprKind::Number(t) => {
+                let text = ms_syntax::number::canonical(self.syms.str(t));
+                (!ms_syntax::number::is_decimal(&text))
+                    .then(|| ms_syntax::number::is_fractional(&text))
+            }
+            ExprKind::Unary {
+                op: UnaryOp::Neg | UnaryOp::Plus,
+                operand,
+            } => self.literal_tree_fractional(operand),
+            ExprKind::Binary {
+                op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem,
+                left,
+                right,
+            } => {
+                let l = self.literal_tree_fractional(left);
+                let r = self.literal_tree_fractional(right);
+                l.zip(r).and_then(|(l, r)| (l == r).then_some(l))
+            }
+            _ => None,
+        };
+        self.literal_facts.fractional.borrow_mut().insert(key, kind);
+        kind
     }
 }
 
@@ -53,15 +104,14 @@ impl Checker {
         let Some(range) = int_range(self.syms, ty) else {
             return;
         };
-        if matches!(op, BinaryOp::Div | BinaryOp::Rem) && fold(self.syms, right, range) == Some(0) {
+        if matches!(op, BinaryOp::Div | BinaryOp::Rem) && self.fold(right, range) == Some(0) {
             self.type_error(
                 e.pos,
                 "division by zero always faults; guard the divisor or use a nonzero constant",
             );
             return;
         }
-        let (Some(a), Some(b)) = (fold(self.syms, left, range), fold(self.syms, right, range))
-        else {
+        let (Some(a), Some(b)) = (self.fold(left, range), self.fold(right, range)) else {
             return;
         };
         if apply(op, a, b).is_some_and(|v| !(range.0..=range.1).contains(&v)) {
@@ -80,11 +130,7 @@ impl Checker {
         let ExprKind::List(items) = &left.kind else {
             return;
         };
-        let Some(i) = fold(
-            self.syms,
-            index,
-            int_range(self.syms, &int()).unwrap_or_default(),
-        ) else {
+        let Some(i) = self.fold(index, int_range(self.syms, &int()).unwrap_or_default()) else {
             return;
         };
         let len = items.len() as i128;

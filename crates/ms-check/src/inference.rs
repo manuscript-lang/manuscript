@@ -2,7 +2,7 @@
 //! callback return inference it shares.
 
 use crate::checker::{CheckedArgument, Checker};
-use crate::exprs::{is_plain_literal, literal_hint};
+use crate::exprs::is_plain_literal;
 use crate::hints::arity_mismatch_hint;
 use crate::syntax::*;
 use crate::types::Param;
@@ -189,7 +189,7 @@ impl Checker {
             let bound = parameter_type(params, &arg).map(|p| sub(&p, s));
             let adopts = bound
                 .as_ref()
-                .is_some_and(|t| literal_hint(self.syms, arg.value, t).is_some());
+                .is_some_and(|t| self.literal_hint(arg.value, t).is_some());
             if !adopts
                 && !self.contextual(arg.value)
                 && let Some(actual) = self.independent_argument(arg.value)

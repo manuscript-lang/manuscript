@@ -82,51 +82,27 @@ pub(crate) fn is_plain_literal(syms: ms_syntax::Names, e: &Expr) -> bool {
     }
 }
 
-/// Whether `e` is a plain literal or arithmetic over plain literals only, and if so whether its
-/// literals are fractional. Mixed integer and fractional literals have no common kind.
-fn literal_tree_fractional(syms: ms_syntax::Names, e: &Expr) -> Option<bool> {
-    match &e.kind {
-        ExprKind::Number(t) => {
-            let text = ms_syntax::number::canonical(syms.str(t));
-            (!ms_syntax::number::is_decimal(&text)).then(|| ms_syntax::number::is_fractional(&text))
-        }
-        ExprKind::Unary {
-            op: UnaryOp::Neg | UnaryOp::Plus,
-            operand,
-        } => literal_tree_fractional(syms, operand),
-        ExprKind::Binary {
-            op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem,
-            left,
-            right,
-        } => {
-            let l = literal_tree_fractional(syms, left)?;
-            (l == literal_tree_fractional(syms, right)?).then_some(l)
-        }
-        _ => None,
-    }
-}
-
 /// The sized number type a literal operand takes from the other operand, if any. Only a literal
 /// (or arithmetic over literals) of the same kind adopts it, so a mismatch keeps the ordinary
 /// operand-type diagnostic.
-pub(crate) fn literal_hint<'a>(
-    syms: ms_syntax::Names,
-    literal: &Expr,
-    other: &'a Ty,
-) -> Option<&'a Ty> {
-    if let ExprKind::List(items) = &literal.kind {
-        // A list of plain literals takes the element type of a `List` of a sized number.
-        let element = (other.is(Builtin::List) && other.args.len() == 1).then(|| &other.args[0])?;
-        let all = !items.is_empty()
-            && items
-                .iter()
-                .all(|i| literal_hint(syms, i, element).is_some());
-        return all.then_some(other);
+impl Checker {
+    pub(crate) fn literal_hint<'a>(&self, literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+        let syms = self.syms;
+        if let ExprKind::List(items) = &literal.kind {
+            // A list of plain literals takes the element type of a `List` of a sized number.
+            let element =
+                (other.is(Builtin::List) && other.args.len() == 1).then(|| &other.args[0])?;
+            let all = !items.is_empty()
+                && items
+                    .iter()
+                    .all(|i| self.literal_hint(i, element).is_some());
+            return all.then_some(other);
+        }
+        let fractional = self.literal_tree_fractional(literal)?;
+        let sized_int = int_bits(syms, other).is_some() && syms.str(other.id) != "Int";
+        let sized_float = float_bits(syms, other).is_some() && syms.str(other.id) != "Float";
+        ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
     }
-    let fractional = literal_tree_fractional(syms, literal)?;
-    let sized_int = int_bits(syms, other).is_some() && syms.str(other.id) != "Int";
-    let sized_float = float_bits(syms, other).is_some() && syms.str(other.id) != "Float";
-    ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
 }
 
 /// Whether the decimal integer literal `text`, negated when `negated`, fits the integer type `t`.
@@ -1046,7 +1022,7 @@ impl Checker {
         }
         let hint = expected
             .filter(|_| matches!(op, UnaryOp::Neg | UnaryOp::Plus))
-            .filter(|t| literal_hint(self.syms, operand, t).is_some());
+            .filter(|t| self.literal_hint(operand, t).is_some());
         let v = self.expression(operand, hint);
         i.no_return = v.no_return;
         let vt = v.t();
@@ -1163,19 +1139,18 @@ impl Checker {
             BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
         );
         let (a, b) = if let Some(hint) = expected.filter(|_| arithmetic).filter(|t| {
-            literal_hint(self.syms, left, t).is_some()
-                && literal_hint(self.syms, right, t).is_some()
+            self.literal_hint(left, t).is_some() && self.literal_hint(right, t).is_some()
         }) {
             (
                 self.expression(left, Some(hint)),
                 self.expression(right, Some(hint)),
             )
-        } else if literal_tree_fractional(self.syms, left).is_some()
-            && literal_tree_fractional(self.syms, right).is_none()
+        } else if self.literal_tree_fractional(left).is_some()
+            && self.literal_tree_fractional(right).is_none()
         {
             let b = self.expression(right, None);
             let bt = b.t();
-            (self.expression(left, literal_hint(self.syms, left, &bt)), b)
+            (self.expression(left, self.literal_hint(left, &bt)), b)
         } else {
             let a = self.expression(left, None);
             let at = a.t();
@@ -1186,7 +1161,7 @@ impl Checker {
             let hint = if wraps {
                 Some(&at)
             } else {
-                literal_hint(self.syms, right, &at)
+                self.literal_hint(right, &at)
             };
             (a, self.expression(right, hint))
         };

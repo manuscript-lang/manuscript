@@ -743,11 +743,37 @@ impl Walker<'_> {
                     if let Some((info, _)) = self.place(r) {
                         self.mutate(r.pos, &info, "change");
                     }
+                } else if let Some(constant) = self.constant_root(r) {
+                    // Each use of a constant runs its initializer, so the change would land on a
+                    // fresh value and vanish.
+                    self.error(
+                        r.pos,
+                        format!(
+                            "cannot change constant `{constant}`: every use of a constant evaluates a fresh value, so the change would be lost; copy it into a `var` first, as in `var copy = {constant}.{CLONE}()`"
+                        ),
+                    );
+                    self.expr(r, Demand::Read);
                 } else {
                     // A temporary changed in place: nothing keeps it.
                     self.expr(r, Demand::Read);
                 }
             }
+        }
+    }
+
+    /// The module constant a field, element or whole-value chain starts from, as written.
+    fn constant_root(&self, e: &Expr) -> Option<String> {
+        match &e.kind {
+            ExprKind::Name(n) => matches!(self.cx.m.resolution(e), Resolution::Constant(_))
+                .then(|| self.syms.str(n).to_string()),
+            ExprKind::Member { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => self.constant_root(left),
+            _ => None,
         }
     }
 
