@@ -77,3 +77,16 @@ test "multipart rejects a missing closing delimiter":
         multipart_boundary("multipart/form-data; boundary=abc").get(""), "abc"
     )
     try expect_true(not multipart_boundary("text/plain").is_some())
+
+test "multipart accepts only transport padding before delimiter line endings":
+    for padding in ["", " ", "\t", " \t \t"]:
+        let body = "--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
+        let parts = try parse_multipart(body, "b")
+        try expect_equal(parts.length(), 2)
+        try expect_equal(parts[0].headers.get("X-Label"), "first")
+        try expect_equal(parts[0].data, " \tpayload ".to_bytes())
+        try expect_equal(parts[1].data, "".to_bytes())
+
+    for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"]:
+        let body = "--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
+        try expect_equal(parse_multipart(body, "b").err().kind, "EBADMSG")

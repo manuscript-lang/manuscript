@@ -16,6 +16,7 @@ Aligned text columns for terminal output. `columns` gives one alignment per colu
 number of spaces between columns (default 2, negative counts as 0) and `indent` the spaces before each
 non-blank line. Rows are added one at a time and rendered as LF-separated lines with no final LF.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Align, Table from "@std/cli/table.ms"
 
@@ -23,7 +24,7 @@ fn render() String!:
     var table = Table(columns: [Align.Left, Align.Right])
     try table.add(["tea", "2"])
     try table.add(["coffee", "30"])
-    return table.render()
+    return ok(table.render())
 ```
 
 Unicode widths use `String.display_width`: cell bytes stay intact and widths are estimates, not a promise

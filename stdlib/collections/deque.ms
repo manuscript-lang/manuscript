@@ -114,12 +114,22 @@ impl Deque[T]:
         if self.size < 2:
             return
 
-        var steps = (count % self.size + self.size) % self.size
+        var steps = count % self.size
+
+        // Keep the short forward route for negative counts near a whole turn.
+        // The remainder is bounded before negation; even-sized ties go backward.
+        if steps < -(self.size / 2):
+            steps += self.size
 
         while steps > 0:
             if let value = self.pop_front():
                 self.push_back(value)
             steps -= 1
+
+        while steps < 0:
+            if let value = self.pop_back():
+                self.push_front(value)
+            steps += 1
 
 interface DequeCopy[T: Clonable]:
     fn to_list() List[T]

@@ -46,12 +46,17 @@ pub fn stamp(path: &Path) -> Option<Stamp> {
     if !meta.is_file() && !meta.is_dir() {
         return None;
     }
-    let mtime = meta
-        .modified()
-        .ok()?
-        .duration_since(UNIX_EPOCH)
-        .ok()?
-        .as_nanos();
+    let mut modified = meta.modified().ok()?;
+    // A symbolic link retargeted at an older file would otherwise keep the old stamp; its own
+    // modification time is when it was last created or replaced.
+    if let Some(link) = std::fs::symlink_metadata(path)
+        .ok()
+        .filter(|link| link.is_symlink())
+        .and_then(|link| link.modified().ok())
+    {
+        modified = modified.max(link);
+    }
+    let mtime = modified.duration_since(UNIX_EPOCH).ok()?.as_nanos();
     Some(Stamp {
         mtime,
         size: meta.len(),

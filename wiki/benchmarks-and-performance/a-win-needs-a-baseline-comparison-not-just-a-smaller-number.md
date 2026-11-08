@@ -79,3 +79,9 @@ Unicode rejection tens of times slower. Retain non-ASCII rejection controls when
 eliminating scalar conversions. The direct-conversion candidate also repeatedly slowed a 4 KiB rejection
 control; the fresh-main repeat reached 7.8%, so it was rejected despite valid-input
 gains. Preserve the counterexample rather than labeling it noise. [Report and rejected candidate](../../bench/perf/ascii-decode/README.md).
+
+For empty repetition, preserve the common allocation/return path: an early return
+in `itertools.cycle` removed empty work but slowed the singleton control; setting
+the loop bound to zero avoided that regression. Keep count validation before the
+shortcut. Keep [reusable cycle controls](../../bench/perf/itertools-cycle/main.ms)
+for the empty and nonempty cases (#3028).

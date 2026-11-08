@@ -247,14 +247,25 @@ export fn multipart_boundary(content_type: String) String?:
 
     return media.params.get("boundary")
 
-// Builds one part from the bytes after a delimiter line's boundary: a CRLF, headers, a blank line and the body.
+// Builds one part from the bytes after a delimiter line's boundary: optional SP/HT, a CRLF, headers, a blank line and the body.
 fn make_part(section: Bytes) Part!:
     let crlf = "\r\n".to_bytes()
-    if not section.starts_with(crlf): return error(
+
+    // RFC 2046 permits transport-added SP/HT before this delimiter line's CRLF.
+    var padding = 0
+
+    while padding < section.length():
+        let byte = section.get(padding)
+        if byte != 32 and byte != 9: break
+
+        padding += 1
+
+    let framed = try section.slice(padding, section.length())
+    if not framed.starts_with(crlf): return error(
         Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
-    let inner = section.slice(2, section.length()).get("".to_bytes())
+    let inner = try framed.slice(2, framed.length())
     let blank = if inner.starts_with(crlf): 0 else: inner.index_of(
         "\r\n\r\n".to_bytes()
     ).get(-1)

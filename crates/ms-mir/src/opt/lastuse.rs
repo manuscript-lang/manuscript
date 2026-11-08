@@ -108,6 +108,54 @@ impl Pos {
     };
 }
 
+/// One group is the common case for a block. Keep it inline rather than allocating a
+/// hash table; additional anchors use the same indexed representation as larger blocks.
+#[derive(Clone)]
+struct PendingDrops {
+    first: (Option<usize>, Vec<Value>),
+    rest: HashMap<Option<usize>, Vec<Value>>,
+}
+
+impl PendingDrops {
+    fn new(pos: Pos, v: Value) -> Self {
+        debug_assert_eq!(pos.after, 0);
+        Self {
+            first: (pos.idx, vec![v]),
+            rest: HashMap::new(),
+        }
+    }
+
+    fn insert(&mut self, pos: Pos, v: Value) {
+        let drops = if self.first.0 == pos.idx {
+            &mut self.first.1
+        } else {
+            self.rest.entry(pos.idx).or_default()
+        };
+        drops.insert(pos.after, v);
+    }
+
+    fn get(&self, anchor: Option<usize>) -> Option<&Vec<Value>> {
+        if self.first.0 == anchor {
+            Some(&self.first.1)
+        } else {
+            self.rest.get(&anchor)
+        }
+    }
+
+    fn positions(&self, v: Value) -> impl Iterator<Item = Pos> + '_ {
+        std::iter::once((&self.first.0, &self.first.1))
+            .chain(self.rest.iter())
+            .flat_map(move |(anchor, drops)| {
+                drops.iter().enumerate().filter_map(move |(n, w)| {
+                    (*w == v).then_some(Pos {
+                        idx: *anchor,
+                        after: n + 1,
+                    })
+                })
+            })
+    }
+}
+
 /// Where a value is read, built once per function so each candidate costs its own footprint
 /// rather than a scan of the function. Instruction indices are those of the original function:
 /// the pass never inserts or removes instructions while it analyses, it records the drops it
@@ -122,8 +170,8 @@ struct Index {
     slots: Vec<bool>,
     /// Original drops deleted so far, per block and instruction index.
     removed: Vec<Vec<bool>>,
-    /// Drops to insert, per block: (after instruction or block start, value), in emission order.
-    pending: Vec<Vec<(Option<usize>, Value)>>,
+    /// Drops to insert, per block and anchor, in emission order at that anchor.
+    pending: Vec<Option<Box<PendingDrops>>>,
     /// Blocks holding a pending drop of each value.
     pending_blocks: ValueMap<Vec<usize>>,
     /// Predecessors of each block (once per edge), kept current as edge blocks are added.
@@ -142,7 +190,7 @@ impl Index {
                 .iter()
                 .map(|b| vec![false; b.insts.len()])
                 .collect(),
-            pending: vec![Vec::new(); f.blocks.len()],
+            pending: vec![None; f.blocks.len()],
             pending_blocks: ValueMap::new(),
             preds: vec![Vec::new(); f.blocks.len()],
         };
@@ -167,7 +215,7 @@ impl Index {
 
     fn add_block(&mut self) {
         self.removed.push(Vec::new());
-        self.pending.push(Vec::new());
+        self.pending.push(None);
         self.preds.push(Vec::new());
     }
 
@@ -178,29 +226,17 @@ impl Index {
 
     /// Positions in `bi` of the pending drops of `v`.
     fn pending_drops(&self, bi: usize, v: Value) -> impl Iterator<Item = Pos> + '_ {
-        let pending = &self.pending[bi];
-        pending
-            .iter()
-            .enumerate()
-            .filter(move |(_, (_, w))| *w == v)
-            .map(move |(n, (anchor, _))| Pos {
-                idx: *anchor,
-                after: 1 + pending[..n].iter().filter(|(a, _)| a == anchor).count(),
-            })
+        self.pending[bi].iter().flat_map(move |p| p.positions(v))
     }
 
     /// Records a drop of `v` directly behind `pos`: behind the instruction, ahead of the drops
     /// already placed there, or behind the pending drop `pos` names.
     fn insert_pending(&mut self, bi: usize, pos: Pos, v: Value) {
-        let group: Vec<usize> = (0..self.pending[bi].len())
-            .filter(|&n| self.pending[bi][n].0 == pos.idx)
-            .collect();
-        let at = if pos.after == 0 {
-            group.first().copied().unwrap_or(self.pending[bi].len())
+        if let Some(pending) = &mut self.pending[bi] {
+            pending.insert(pos, v);
         } else {
-            group[pos.after - 1] + 1
-        };
-        self.pending[bi].insert(at, (pos.idx, v));
+            self.pending[bi] = Some(Box::new(PendingDrops::new(pos, v)));
+        }
         let blocks = self.pending_blocks.get_or_default(v);
         if !blocks.contains(&bi) {
             blocks.push(bi);
@@ -210,8 +246,8 @@ impl Index {
     /// Writes the recorded removals and insertions into the function.
     fn apply(self, f: &mut Func) {
         for (bi, b) in f.blocks.iter_mut().enumerate() {
-            let pending = &self.pending[bi];
-            if pending.is_empty() && !self.removed[bi].iter().any(|r| *r) {
+            let pending = self.pending[bi].as_deref();
+            if pending.is_none() && !self.removed[bi].iter().any(|r| *r) {
                 continue;
             }
             let drop_inst = |v: Value, loc: Loc| Inst {
@@ -222,13 +258,9 @@ impl Index {
                 loc,
             };
             let old = std::mem::take(&mut b.insts);
-            let mut out = Vec::with_capacity(old.len() + pending.len());
-            // Group by anchor once so a block costs its instructions plus its pending drops.
-            let mut by_anchor: HashMap<Option<usize>, Vec<Value>> = HashMap::new();
-            for (anchor, v) in pending {
-                by_anchor.entry(*anchor).or_default().push(*v);
-            }
-            for v in by_anchor.get(&None).into_iter().flatten() {
+            let mut out = Vec::with_capacity(old.len() + pending.map_or(0, |p| 1 + p.rest.len()));
+            let by_anchor = pending;
+            for v in by_anchor.and_then(|p| p.get(None)).into_iter().flatten() {
                 out.push(drop_inst(*v, b.term_loc));
             }
             for (k, inst) in old.into_iter().enumerate() {
@@ -236,7 +268,7 @@ impl Index {
                 if !self.removed[bi][k] {
                     out.push(inst);
                 }
-                for v in by_anchor.get(&Some(k)).into_iter().flatten() {
+                for v in by_anchor.and_then(|p| p.get(Some(k))).into_iter().flatten() {
                     out.push(drop_inst(*v, loc));
                 }
             }
@@ -694,4 +726,70 @@ fn candidate(
         });
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pending_drop_positions_preserve_anchor_order() {
+        let f = Func::new("pending", Vec::new(), crate::types::Ty::UNIT);
+        let mut ix = Index::new(&f);
+        ix.add_block();
+        // Interleave block-start and instruction anchors; inserting before or after an
+        // existing drop must update its ordinal only within that anchor's group.
+        let a = Value(0);
+        let b = Value(1);
+        let c = Value(2);
+        ix.insert_pending(0, Pos::at(5), a);
+        ix.insert_pending(0, Pos::START, b);
+        ix.insert_pending(0, Pos::at(2), a);
+        ix.insert_pending(0, Pos::at(5), b);
+        ix.insert_pending(
+            0,
+            Pos {
+                idx: Some(5),
+                after: 1,
+            },
+            c,
+        );
+        ix.insert_pending(
+            0,
+            Pos {
+                idx: None,
+                after: 1,
+            },
+            a,
+        );
+        assert_eq!(
+            *ix.pending[0].as_ref().unwrap().get(Some(5)).unwrap(),
+            [b, c, a]
+        );
+        assert_eq!(*ix.pending[0].as_ref().unwrap().get(Some(2)).unwrap(), [a]);
+        assert_eq!(*ix.pending[0].as_ref().unwrap().get(None).unwrap(), [b, a]);
+        let mut positions: Vec<_> = ix.pending_drops(0, a).collect();
+        positions.sort_unstable();
+        assert_eq!(
+            positions,
+            [
+                Pos {
+                    idx: None,
+                    after: 2
+                },
+                Pos {
+                    idx: Some(2),
+                    after: 1
+                },
+                Pos {
+                    idx: Some(5),
+                    after: 3
+                },
+            ]
+        );
+        assert_eq!(ix.pending_blocks.get(&a).unwrap(), &[0]);
+        ix.add_block();
+        ix.insert_pending(1, Pos::START, a);
+        assert_eq!(ix.pending_blocks.get(&a).unwrap(), &[0, 1]);
+    }
 }

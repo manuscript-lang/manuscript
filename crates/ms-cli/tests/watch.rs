@@ -212,6 +212,35 @@ fn check_watch_reruns_when_a_link_inside_a_link_chain_is_retargeted() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn project_check_watch_reruns_when_a_source_file_is_added() {
+    let dir = scratch("check-new-source");
+    std::fs::create_dir_all(dir.join("src/deep")).unwrap();
+    std::fs::write(
+        dir.join("ms.toml"),
+        "[project]\nname = \"p\"\nsource = \"src\"\nentry = \"src/main.ms\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.ms"),
+        "export fn main() Int:\n    return 0\n",
+    )
+    .unwrap();
+    let mut watch = Watch::start(&dir, &["check", "ms.toml", "--watch"]);
+    watch.until("ms: waiting for changes");
+
+    // Nothing imports the new file; only discovery finds it, in a nested directory.
+    std::fs::write(
+        dir.join("src/deep/extra.ms"),
+        "export fn extra() Int:\n    return \"s\"\n",
+    )
+    .unwrap();
+    watch.until("extra.ms");
+    watch.until("ms: waiting for changes");
+    assert_eq!(watch.interrupt(), Some(130));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 fn embed_project(dir: &Path) {
     std::fs::write(
         dir.join("ms.toml"),

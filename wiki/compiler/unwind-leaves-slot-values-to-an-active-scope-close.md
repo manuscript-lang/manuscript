@@ -10,6 +10,8 @@ The 1000-line #2281 pass was reverted (#2350) because the faulting fixtures lost
 
 A slot passed to a `call.ind` is covered when every closure of that arity only borrows the pointer at that position (`closures_borrow`). The compiler-built `serve.stream` thunk keeps the exchange in such a slot, so before this a faulting HTTP handler leaked one 8-byte block per fault (fixture `http-fault-handler-frees-exchange-view`).
 
+A slot pointer a closure captures by reference (`closure.cap` of type `ptr`) is the enclosing function's slot, like a parameter: a `take` from it is the owner's, not the closure's (#3040). Before, a `promise(fn: input.next())` over a borrowed `var input` dropped the stream's source when its limit cancelled the read, and the caller's later `close` crashed. Fixtures: `net.ms` and `http-websocket.ms` (`a read cancelled by its timeout leaves the stream closable`).
+
 Apply when: changing the unwind pass, inlining of mutable methods, or slot-held cleanup entries.
 Evidence: [lifecycle fixture](../../tests/e2e/testdata/accept/promise-fault-scope-close-unwind.ms), [MIR controls](../../crates/ms-mir/tests/unwind.rs).
 Verify: run the fixture in Debug under valgrind or a counting runtime, and dispatch the full platform matrix.

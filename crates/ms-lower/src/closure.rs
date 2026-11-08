@@ -1004,6 +1004,12 @@ impl FnLower<'_> {
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::BoundNative(Rc::new(BoundNativeJob {
+                        consumed_arguments: ms_check::api::ownership::native_method_argument_modes(
+                            self.syms, m,
+                        )
+                        .into_iter()
+                        .map(|mode| mode == ms_check::api::ownership::ParamMode::Move)
+                        .collect(),
                         method: Rc::new(method),
                         hir: self.hir.clone(),
                         held,
@@ -1668,6 +1674,18 @@ fn lower_bound_native(
     let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
+    debug_assert_eq!(args.len(), job.consumed_arguments.len());
+    debug_assert_eq!(args.len(), job.method.ty.params.len());
+    for ((arg, consumed), param) in args
+        .iter()
+        .zip(&job.consumed_arguments)
+        .zip(&job.method.ty.params)
+    {
+        debug_assert_eq!(arg.name, param.name);
+        if *consumed && !arg.val.own && fl.cx.classes.concretely_clonable(fl.syms, &param.ty) {
+            fl.boundary_reads.insert(arg.val.v);
+        }
+    }
     if let Held::Shared(_) = job.held {
         let out = fl.shared_native_call(&job.method, cap, recv_ty, &args, ret)?;
         fl.emit_return(Some(out));
