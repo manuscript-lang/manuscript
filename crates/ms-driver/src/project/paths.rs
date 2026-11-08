@@ -41,6 +41,12 @@ pub fn import_target(
     }
     let target;
     if path.starts_with("./") || path.starts_with("../") {
+        let last = path.rsplit('/').next().unwrap_or("");
+        if matches!(last, "" | "." | "..") {
+            return Err(ProjectError::msg(format!(
+                "import path {path:?} names a directory, not a module; end it with a file such as \"./name.ms\""
+            )));
+        }
         if pathops::ext(path) != ".ms" {
             let stem = &path[..path.len() - pathops::ext(path).len()];
             return Err(ProjectError::msg(format!(
@@ -90,8 +96,13 @@ pub fn import_target(
             "absolute import paths are not supported; write a relative path such as \"../name.ms\" from this file, or declare an alias under [aliases] in ms.toml",
         ));
     } else {
+        let sample = if matches!(path, "" | "." | "..") {
+            "name.ms"
+        } else {
+            path
+        };
         return Err(ProjectError::msg(format!(
-            "imports require a relative path or alias; write \"./{path}\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml"
+            "imports require a relative path or alias; write \"./{sample}\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml"
         )));
     }
     Ok(Target::Path(target))

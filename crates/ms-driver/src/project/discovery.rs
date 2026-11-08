@@ -142,6 +142,30 @@ pub fn discover_modules(
     Ok(files.into_iter().collect())
 }
 
+/// The directories [`discover_modules`] walks (with `include_source`): a new or removed file in
+/// one changes what discovery returns, so a watch follows them.
+pub fn discovered_directories(project: &Project) -> Vec<String> {
+    let mut directories = BTreeSet::new();
+    let mut scan = |root: &str, all: bool| {
+        let _ = walk(root, all, &mut |path, name, is_dir| {
+            if !is_dir {
+                return true;
+            }
+            if path == root
+                || path == project.root
+                || !(skipped_name(name) || is_nested_project(path))
+            {
+                directories.insert(path.to_string());
+                return true;
+            }
+            false
+        });
+    };
+    scan(&project.source, true);
+    scan(&project.root, false);
+    directories.into_iter().collect()
+}
+
 /// Like [`discover_modules`], also including new editor files that meet the
 /// same rules. Overlay keys must already be confined and canonicalized.
 pub fn discover_modules_with_overlay(
