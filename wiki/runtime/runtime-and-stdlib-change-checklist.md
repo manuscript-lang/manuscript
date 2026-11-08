@@ -55,3 +55,7 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
 - A native that declares `; err: ErrOut` can explain any failure status, not only `Failed`: text it sets (a path, a program, a line and column) is appended after the status words, `JSON: invalid data: line 1, column 7: ...`. Regenerate the signature table with `cargo xtask symbols` whenever a native's parameters change; a stale table makes the call omit the slot and the native writes through garbage.
 - A typed JSON decoder (`ms-lower/src/json.rs`) returns `none` on a mismatch; `jfail` first records the node and reason in the document (`msstd_json_mismatch`) and the caller builds `at $.a[0].b: ...` from it (`msstd_json_mismatch_text`). A parent that only propagates a child's `none` sets `jwhy = (-1, ..)` so it does not overwrite the child's record.
 - Tests do not sleep to order events. A handler or task under test announces readiness (a stdout line, a promise, a file) and the test waits on that; a sleep stays only where elapsed time is the behavior (timers, cooldowns, deadlines, polling an OS facility with no wait primitive such as `flock`).
+- Deque rotation reduces signed counts before choosing moves. Small negative
+  turns use back-to-front moves; near-whole negative turns keep the shorter
+  forward route. Test wrapped and partially filled rings, half-turn boundaries,
+  and Int limits; a faster negative-unit case must not regress near-size counts.
