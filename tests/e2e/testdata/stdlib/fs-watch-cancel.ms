@@ -7,8 +7,10 @@ import create_directory, temporary, watch from "@std/os/fs.ms"
 fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
     var events = try watch(root, recursive: true)
     var out = seen
+
     while true:
         let event = try events.next()
+
         if let found = event:
             if found.path == last:
                 try out.write(1)
