@@ -1599,15 +1599,10 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };
-                let frozen = self
-                    .hir
-                    .stmt(s)
-                    .loop_binding
-                    .is_some_and(|b| self.cx.shared(b.uid));
-                let var = if !it.own && (frozen || self.iterates_untouched_local(iter, body)) {
-                    // The checker keeps the list unchanged while the loop variable borrows it
-                    // (or the body never names it): walk it in place instead of copying it, so
-                    // a borrow-returning function can hand back its elements.
+                let var = if !it.own {
+                    // The checker holds the iterable's source origins for the entire loop,
+                    // even when its scalar elements need no shared binding. Preserve the
+                    // lowered borrow, including results of source functions and methods.
                     let ty = self.ty_of(it.v);
                     let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
                     self.b.def_var(var, it.v);
