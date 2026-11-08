@@ -340,3 +340,44 @@ test "tar entries frame members by a PAX size override as unpack does":
     try expect_equal(expected[0].data, "x".to_bytes())
     for size in [1, 512, 1536, 4096]:
         try expect_equal(try read_entries(chunked(bytes.clone(), size)), expected)
+
+// Replaces the byte at `at` with `value`.
+fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
+    var out = BytesBuilder()
+    out.append_bytes(data.slice(0, at).get("".to_bytes()))
+    out.append(value.to_uint8().get(0))
+    out.append_bytes(data.slice(at + 1, data.length()).get("".to_bytes()))
+    return out.build()
+
+// "ok" with the entries' paths and sizes, or the error kind.
+fn outcome(entries: List[ArchiveEntry]!) String:
+    if entries.is_error(): return entries.err().kind.get("none")
+
+    var text = "ok"
+    for entry in entries.get():
+        text += " {entry.path}:{entry.data.length()}:{entry.directory}"
+    return text
+
+test "tar entries and unpack agree on corrupted and truncated archives":
+    let archive = try pack(sample(), ArchiveFormat.Tar)
+    var cases: List[Bytes] = []
+
+    // Header fields (name, size, checksum, type) and data bytes of each member, set to boundary values.
+    for at in [
+        0, 1, 100, 124, 125, 130, 135, 148, 155, 156, 257, 512, 700, 1024, 1536, 2048
+    ]:
+        for value in [0, 55, 56, 120, 255]:
+            cases.append(with_byte(archive.clone(), at, value))
+
+    // Truncations, including mid-block and exactly on member boundaries.
+    for cut in [0, 1, 511, 512, 513, 1024, 1500, 2047, 2048, 2561, 3000]:
+        cases.append(archive.slice(0, cut).get("".to_bytes()))
+
+    for index in 0..cases.length():
+        let expected = outcome(unpack(cases[index].clone(), ArchiveFormat.Tar))
+
+        for size in [1, 97, 512, 4096]:
+            let got = outcome(read_entries(chunked(cases[index].clone(), size)))
+            if got != expected: return fail(
+                "case {index}, chunk {size}: unpack {expected}, stream {got}"
+            )
