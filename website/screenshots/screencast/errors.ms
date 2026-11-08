@@ -1,6 +1,7 @@
 fn half(text: String) Int!:
     if let n = text.parse_int():
         return ok(n / 2)
+
     return error(Error("not a number"))
 
 export fn main() Int:
