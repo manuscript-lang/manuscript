@@ -6,6 +6,8 @@ Verified: stripping continuation lines before joining loses paragraph breaks and
 
 Block-scalar indentation is relative to the containing mapping/sequence (zero at the root), not the header column or plain-scalar continuation threshold. Preserve that structural base through standalone headers and anchor-only lines; it determines both automatic indentation and explicit indicators. See [indentation regressions](../../tests/e2e/testdata/stdlib/yaml-block-indentation.ms) (#2977). When detecting indentation, leading empty lines may not exceed the first nonempty content line; apply that validation only to implicit indentation, preserving explicit-indicator spaces and empty-only scalars (#2982).
 
+A supported version directive must accept the same explicit document-start forms as a directive-free document; validate same-line content before the existing source-projected split (#2985).
+
 Apply when: changing YAML scalar gathering, comment removal, whitespace handling, folding, or chomping.
 Evidence: [YAML parser](../../stdlib/data/yaml.ms), [called scalar regressions](../../tests/e2e/testdata/stdlib/yaml.ms), [node/comment regressions](../../tests/e2e/testdata/stdlib/yaml-regressions.ms), [YAML contract](../../stdlib/data/json.ms), and [YAML 1.2 folding](https://yaml.org/spec/1.2.2/#65-line-folding).
 Verify: run all five issue examples plus escaped continuations, whitespace-only blank lines, more-indented blocks, all chomping modes, and missing final terminators under LF/CRLF/CR normalization; preserve plain embedded quotes/brackets, whole-line flow comments, anchored quotes, adjacent quoted keys, and Unicode spaces.

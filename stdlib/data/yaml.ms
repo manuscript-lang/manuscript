@@ -1872,7 +1872,12 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
         skip(var context)
         if (
             context.index >= context.lines.length()
-            or uncomment((context.lines.get(context.index))) != "---"
+            or (
+                uncomment(context.lines.get(context.index)) != "---"
+                and not context.lines.get(context.index).starts_with(
+                    "--- "
+                )
+            )
         ): return error(invalid(context, "directive requires document start"))
 
     // Content after the marker on the same line starts the document body.

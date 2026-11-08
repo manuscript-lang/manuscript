@@ -80,3 +80,15 @@ test "YAML implicit indentation rejects overindented leading empty lines":
             }
         )
     )
+
+test "YAML version directive composes with same-line document content":
+    for header in ["%YAML 1.2", "%YAML 1.2 # supported"]:
+        try text("{header}\n--- word\n", "word")
+        try field("{header}\n--- \{value: word\}\n", "word")
+        try text("{header}\n--- |2\n  word\n", "word\n")
+        try text("{header}\n--- # comment\nword\n", "word")
+        try text("{header}\n---\nword\n", "word")
+        try expect_equal(parse("{header}\nword\n").is_error(), true)
+        try expect_equal(parse("{header}\n---word\n").is_error(), true)
+
+    try expect_equal(parse("%YAML 1.1\n--- word\n").is_error(), true)
