@@ -1,12 +1,14 @@
 //! Symbol lookup for `ms search_symbol`: project declarations found by name,
 //! each described with the hover, definition and references the server gives.
 
-use crate::analysis::{Document, Documents, analyze};
+use crate::analysis::{Analysis, Document, Documents, analyze};
 use crate::json::Json;
 use crate::nav::{self, Navigate};
 use crate::text::{Position, utf16_length};
 use crate::uri;
 use crate::workspace::{workspace_references, workspace_symbols_matching};
+use std::collections::HashMap;
+use std::rc::Rc;
 
 /// One project declaration found by name.
 #[derive(Clone, Debug)]
@@ -39,9 +41,11 @@ pub fn search_symbols(
     if let Some(manifest) = ms_driver::project::find_manifest(&format!("{root}/x.ms")) {
         root = ms_driver::project::pathops::dir(&manifest);
     }
+    // One session checks the standard library once for the scan and every described match.
+    let session = ms_check::Session::new();
     let symbols = workspace_symbols_matching(
         syms,
-        &ms_check::Session::new(),
+        &session,
         &Documents::new(),
         &[root],
         &|name| name_rank(name, query) >= 0,
@@ -71,11 +75,12 @@ pub fn search_symbols(
     found.sort_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)));
     let total = found.len();
     let mut matches = Vec::new();
+    let mut analyzed: HashMap<String, (Document, Rc<Analysis>)> = HashMap::new();
     for (_, name, kind, location) in found.into_iter().take(limit) {
         let Some((file, line, column)) = split_location(&location) else {
             continue;
         };
-        let Ok(info) = query_symbol(syms, file, line, column) else {
+        let Ok(info) = query_symbol(syms, &session, &mut analyzed, file, line, column) else {
             continue;
         };
         matches.push(SymbolMatch {
@@ -121,28 +126,35 @@ fn split_location(location: &str) -> Option<(&str, usize, usize)> {
 /// Hover text and references for a 1-based line and character column.
 fn query_symbol(
     syms: ms_syntax::Names,
+    session: &Rc<ms_check::Session>,
+    analyzed: &mut HashMap<String, (Document, Rc<Analysis>)>,
     path: &str,
     line: usize,
     column: usize,
 ) -> Result<(String, Vec<String>), String> {
-    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let absolute = std::path::absolute(path).map_err(|e| e.to_string())?;
-    let d = Document::new(uri::file_uri(&absolute.to_string_lossy()), text);
-    let at = character_position(&d.text, line, column)?;
     let docs = Documents::new();
-    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+    // Matches in one file share its analysis.
+    if !analyzed.contains_key(path) {
+        let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        let absolute = std::path::absolute(path).map_err(|e| e.to_string())?;
+        let d = Document::new(uri::file_uri(&absolute.to_string_lossy()), text);
+        let checked = analyze(syms, session, &d, &docs);
+        analyzed.insert(path.to_string(), (d, checked));
+    }
+    let (d, checked) = &analyzed[path];
+    let at = character_position(&d.text, line, column)?;
     if checked.program.is_none() {
         return Err(format!("cannot analyze {path}; run check for diagnostics"));
     }
     let index = checked.occurrence_index(syms);
-    let hover = nav::navigation(syms, &checked, &d, at, Navigate::Hover, index);
+    let hover = nav::navigation(syms, checked, d, at, Navigate::Hover, index);
     let hover = hover
         .get("contents")
         .and_then(|c| c.get("value"))
         .and_then(Json::as_str)
         .unwrap_or_default()
         .to_string();
-    let references = workspace_references(syms, &checked, index, &d, &docs, at, true, None);
+    let references = workspace_references(syms, checked, index, d, &docs, at, true, None);
     Ok((hover, references.iter().flat_map(flatten).collect()))
 }
 

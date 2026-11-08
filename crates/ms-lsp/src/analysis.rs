@@ -91,6 +91,7 @@ pub struct Analysis {
     /// Loading, parse and checker diagnostics in report order.
     pub diagnostics: Vec<Diagnostic>,
     pub(crate) index: OnceCell<Vec<Occurrence>>,
+    pub(crate) project_index: OnceCell<Vec<Occurrence>>,
     pub(crate) lints: OnceCell<Vec<LintFinding>>,
 }
 
@@ -102,6 +103,16 @@ impl Analysis {
         }
         self.index
             .get_or_init(|| crate::index::source_index(syms, self))
+    }
+
+    /// The occurrence index of the project's own modules. It skips the bundled standard
+    /// modules, whose checking and indexing dominate a request that never reports them.
+    pub fn project_occurrence_index(&self, syms: ms_syntax::Names) -> &[Occurrence] {
+        if self.program.is_none() {
+            return &[];
+        }
+        self.project_index
+            .get_or_init(|| crate::index::build_index(syms, self, false))
     }
 
     /// Program lint findings, computed once per analysis.
@@ -155,17 +166,24 @@ impl Analysis {
     /// declarations are immutable virtual documents from the compiler that
     /// checked this workspace, so navigation cannot drift to another version.
     pub fn source_modules(&self, syms: ms_syntax::Names) -> Vec<ModRef> {
+        let mut modules = self.project_modules(syms);
+        if self.program.is_some() {
+            modules.extend(self.session.standard_modules());
+        }
+        modules
+    }
+
+    /// The program's own modules, without the bundled standard library.
+    pub fn project_modules(&self, syms: ms_syntax::Names) -> Vec<ModRef> {
         let Some(program) = &self.program else {
             return Vec::new();
         };
-        let mut modules: Vec<ModRef> = program
+        program
             .modules
             .iter()
             .filter(|m| !syms.str(m.file).starts_with("@std/"))
             .cloned()
-            .collect();
-        modules.extend(self.session.standard_modules());
-        modules
+            .collect()
     }
 
     /// The module whose source a document is, if the program contains it.

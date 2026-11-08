@@ -295,7 +295,7 @@ pub(crate) fn workspace_symbols_matching(
         if canceled(cancel).is_err() {
             return None;
         }
-        for entry in checked.occurrence_index(syms) {
+        for entry in checked.project_occurrence_index(syms) {
             if canceled(cancel).is_err() {
                 return None;
             }
