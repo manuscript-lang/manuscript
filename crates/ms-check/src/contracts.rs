@@ -547,6 +547,23 @@ impl Checker {
                     ),
                 );
             }
+            // An inherent method is reachable only as `value.name()`, which a field of the
+            // same name always shadows; an interface operation stays reachable through a view.
+            if d.decl().synthetic
+                && receiver
+                    .def
+                    .as_ref()
+                    .is_some_and(|d| d.fields.borrow().iter().any(|f| f.name == method.func.name))
+            {
+                let name = self.syms.str(method.func.name);
+                self.type_error(
+                    method.pos,
+                    format!(
+                        "operation {name} has the same name as a field of {}; `value.{name}` always reads the field, so rename one of them",
+                        receiver.display(self.syms)
+                    ),
+                );
+            }
             let own = self.method_variables(method);
             self.type_defaults(&method.func.type_params, &own);
             let mut t = (*self.signature(&method.func.params, Some(&method.func.result))).clone();
