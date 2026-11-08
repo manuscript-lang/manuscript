@@ -222,15 +222,16 @@ pub fn blocking<I: Send + Sync + 'static, O: Send + 'static>(
     input: I,
     f: fn(&I) -> O,
     deadline: Deadline,
-) -> Option<O> {
+) -> Result<Option<O>, rt::Cancelled> {
     if !parks() {
-        return Some(f(&input));
+        return Ok(Some(f(&input)));
     }
-    rt::check_cancel();
+    rt::check()?;
     let timeout = deadline
         .remaining()
         .map_or(-1, |left| left.as_nanos().min(i64::MAX as u128) as i64);
-    ms_rt::glue::pool::run(lane, input, f, rt::within_waiter(timeout))
+    ms_rt::glue::pool::try_run(lane, input, f, rt::within_waiter(timeout))
+        .map_err(|_| rt::Cancelled)
 }
 
 #[cfg(test)]

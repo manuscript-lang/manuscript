@@ -6,86 +6,13 @@
 use crate::sys::{self, Borrowed};
 use std::sync::atomic::Ordering;
 
-use ms_rt::fault::{
-    cancel_flag, msrt_cancelled, msrt_cleanup_discard, msrt_cleanup_push, msrt_shield_enter,
-    msrt_shield_exit,
-};
+use ms_rt::fault::{cancel_flag, msrt_cancelled, msrt_shield_enter, msrt_shield_exit};
 #[cfg(unix)]
 use ms_rt::task::msrt_task_forget_fd;
 use ms_rt::task::{
     msrt_task_current, msrt_task_sleep, msrt_task_spawn, msrt_task_wait_fd, msrt_token_free,
     msrt_token_new, msrt_token_park, msrt_token_post,
 };
-
-/// Registers `f(arg)` on the running task's cleanup stack: it runs if a fault or cancellation
-/// leaves the task's guard, which skips destructors. Call [`cleanup_discard`] on normal exit.
-///
-/// # Safety
-/// `arg` must stay valid for `f` until the action is discarded or the task's guard is left.
-pub unsafe fn cleanup_push(f: unsafe extern "C-unwind" fn(*mut u8), arg: *mut u8) -> usize {
-    // SAFETY: plain call on the runtime thread; validity of `arg` is the caller's contract.
-    unsafe { msrt_cleanup_push(f, arg) }
-}
-
-/// Drops the action behind `handle` (and newer pending ones) without running it.
-pub fn cleanup_discard(handle: usize) {
-    msrt_cleanup_discard(handle)
-}
-
-/// A value held across a call that can park. A cancellation or fault leaves the task with a jump
-/// that skips destructors, so a plain local on the frame would leak (64 KiB per cancelled request
-/// for the client's read buffer, a few hundred bytes for the request itself); the box belongs to a
-/// runtime cleanup that drops it on that path. [`Parked::finish`] hands the value back.
-pub struct Parked<T> {
-    value: *mut T,
-    /// The cleanup handle; none on a test thread without tasks, where nothing can cancel.
-    cleanup: Option<usize>,
-}
-
-/// A reusable buffer taken out of its slot for a read that can park.
-pub type ParkedBuf = Parked<Vec<u8>>;
-
-unsafe extern "C-unwind" fn drop_box<T>(arg: *mut u8) {
-    // SAFETY: the runtime runs this once, only on the path that skips `Parked::drop`, and
-    // `arg` is the allocation `Parked::new` leaked.
-    drop(unsafe { Box::from_raw(arg.cast::<T>()) });
-}
-
-impl<T> Parked<T> {
-    pub fn new(value: T) -> Parked<T> {
-        let value = Box::into_raw(Box::new(value));
-        // SAFETY: the allocation stays live until the action runs or `finish`/`drop` discards it.
-        let cleanup =
-            crate::wait::parks().then(|| unsafe { cleanup_push(drop_box::<T>, value.cast()) });
-        Parked { value, cleanup }
-    }
-
-    pub fn get(&mut self) -> &mut T {
-        // SAFETY: this value owns the allocation until it ends or the cleanup takes it, and the
-        // cleanup only runs when this frame is abandoned.
-        unsafe { &mut *self.value }
-    }
-
-    /// The value, for the slot it came from.
-    pub fn finish(self) -> T {
-        let this = core::mem::ManuallyDrop::new(self);
-        if let Some(handle) = this.cleanup {
-            cleanup_discard(handle);
-        }
-        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
-        *unsafe { Box::from_raw(this.value) }
-    }
-}
-
-impl<T> Drop for Parked<T> {
-    fn drop(&mut self) {
-        if let Some(handle) = self.cleanup {
-            cleanup_discard(handle);
-        }
-        // SAFETY: as in `finish`.
-        drop(unsafe { Box::from_raw(self.value) });
-    }
-}
 
 /// Whether SIGINT/SIGTERM asked the program to stop.
 pub fn cancel_requested() -> bool {

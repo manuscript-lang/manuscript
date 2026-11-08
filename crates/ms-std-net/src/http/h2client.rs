@@ -197,10 +197,8 @@ fn map_io(e: IoErr) -> PumpErr {
     }
 }
 
-/// Ownership of the socket for one drive; ending it wakes the waiting tasks. A fault or
-/// cancellation that leaves the task's guard skips destructors, so the release runs from the
-/// drop of a value that `rt::Parked` also drops on the cleanup stack, which frees it too.
-struct Turn(#[allow(dead_code)] rt::Parked<Release>);
+/// Ownership of the socket for one drive; dropping it ends the turn and wakes the waiting tasks.
+struct Turn(#[allow(dead_code)] Release);
 
 impl Session {
     /// Ends turn `id` unless it already ended.
@@ -224,8 +222,7 @@ struct Release {
 
 impl Drop for Release {
     fn drop(&mut self) {
-        // SAFETY: the session outlives it, since abandoned frames keep their `Rc` (nothing frees
-        // them) and a live turn borrows the session.
+        // SAFETY: a live turn borrows the session, so the session outlives it.
         unsafe { (*self.session).release(self.id) };
     }
 }
@@ -290,7 +287,7 @@ impl Session {
         self.driving.set(true);
         let id = self.turn_id.get() + 1;
         self.turn_id.set(id);
-        Turn(rt::Parked::new(Release { session: self, id }))
+        Turn(Release { session: self, id })
     }
 
     /// The core's output after what is still pending.
@@ -364,23 +361,23 @@ impl Session {
             return Ok(());
         }
         // The read parks, so nothing shared is borrowed across it.
-        let mut held = rt::ParkedBuf::new(self.scratch.take());
-        held.get().resize(READ_BUF, 0);
-        let got = self.conn.read_into(held.get(), deadline);
+        let mut held = self.scratch.take();
+        held.resize(READ_BUF, 0);
+        let got = self.conn.read_into(&mut held, deadline);
         let n = match got {
             Ok(n) => n,
             Err(e) => {
-                self.scratch.set(held.finish());
+                self.scratch.set(held);
                 return Err(self.failed(e));
             }
         };
         if n == 0 {
-            self.scratch.set(held.finish());
+            self.scratch.set(held);
             self.mark_dead();
             return Ok(());
         }
-        let fed = self.state.borrow_mut().core.feed(&held.get()[..n]);
-        self.scratch.set(held.finish());
+        let fed = self.state.borrow_mut().core.feed(&held[..n]);
+        self.scratch.set(held);
         let Ok(events) = fed else {
             // The core queued a GOAWAY; push it out, then give up.
             let _ = self.flush_owned(Deadline::after(CANCEL_FLUSH));
