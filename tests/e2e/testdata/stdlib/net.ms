@@ -17,7 +17,7 @@ import (
     Connection
 ) from "@std/net/net.ms"
 import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
-import owned_task, promise from "@std/concurrency/promise.ms"
+import promise from "@std/concurrency/promise.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -198,7 +198,8 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-    let query = (try within(var served.input, 2.seconds())).get()
+    // Read directly: `within` runs its read in a promise that may hop threads, which a thread-bound socket faults on.
+    let query = (try served.input.next()).get()
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
@@ -226,7 +227,7 @@ test "resolve returns typed DNS records from the configured resolver":
 
     let server = try bind_datagram("127.0.0.1:0")
     let derived = try with_resolver(server.address.clone())
-    let asking = owned_task(
+    let asking = promise(
         fn: derived.resolve(
             "example.test", DnsKind.MX, DnsOptions(timeout: 2.seconds())
         )
