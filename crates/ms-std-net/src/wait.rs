@@ -163,6 +163,22 @@ pub fn wait_token(token: &rt::Token, deadline: Deadline) -> Wait {
     }
 }
 
+/// Like [`wait_token`] but reports a cancellation as `Err(Cancelled)` (see [`try_wait_fd`]).
+pub fn try_wait_token(token: &rt::Token, deadline: Deadline) -> Result<Wait, rt::Cancelled> {
+    if rt::cancel_pending() {
+        return Err(rt::Cancelled);
+    }
+    let got = token.park(timeout_ns(deadline));
+    if got & 16 != 0 {
+        return Err(rt::Cancelled);
+    }
+    Ok(if got == 0 {
+        Wait::Ready
+    } else {
+        Wait::TimedOut
+    })
+}
+
 /// The runtime's timeout for `deadline`: nanoseconds left, or -1 for none.
 fn timeout_ns(deadline: Deadline) -> i64 {
     deadline

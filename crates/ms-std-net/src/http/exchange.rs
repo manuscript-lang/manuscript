@@ -9,7 +9,7 @@ use crate::conn::SharedIo;
 use crate::conn::{Io, Step};
 use crate::error::{HttpErr, IoErr, WsErr};
 use crate::rt;
-use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use crate::wait::{Deadline, Interest, Wait, try_wait_fd};
 use crate::ws::handshake::{self, Rejected};
 use crate::ws::socket::{Config, Role, Socket};
 use std::cell::RefCell;
@@ -236,7 +236,7 @@ impl Exchange {
                 Step::Eof => return Ok(false),
                 Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
                 Step::WantRead | Step::WantWrite => {
-                    if wait_fd(io.fd(), Interest::Read, deadline) == Wait::TimedOut {
+                    if try_wait_fd(io.fd(), Interest::Read, deadline)? == Wait::TimedOut {
                         return Err(IoErr::failed("operation timed out"));
                     }
                 }
@@ -255,7 +255,7 @@ impl Exchange {
                 Step::Eof => return Err(IoErr::failed("connection closed")),
                 Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
                 Step::WantRead | Step::WantWrite => {
-                    if wait_fd(io.fd(), Interest::Write, deadline) == Wait::TimedOut {
+                    if try_wait_fd(io.fd(), Interest::Write, deadline)? == Wait::TimedOut {
                         return Err(IoErr::failed("operation timed out"));
                     }
                 }
@@ -266,7 +266,7 @@ impl Exchange {
                 Step::Done(_) => return Ok(()),
                 Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
                 _ => {
-                    if wait_fd(io.fd(), Interest::Write, deadline) == Wait::TimedOut {
+                    if try_wait_fd(io.fd(), Interest::Write, deadline)? == Wait::TimedOut {
                         return Err(IoErr::failed("operation timed out"));
                     }
                 }

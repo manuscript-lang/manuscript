@@ -233,7 +233,6 @@ impl Network {
 
     /// Maps a host I/O failure to the error a call reports.
     pub fn io_failure(&self, e: &io::Error) -> NetErr {
-        rt::check_cancel();
         if self.is_closed() {
             return NetErr::Closed;
         }
@@ -380,7 +379,7 @@ impl Network {
             vec![name.to_string()]
         } else {
             let ips = self.lookup_ips(name, deadline, None)?;
-            rt::check_cancel();
+            rt::check()?;
             if self.is_closed() {
                 return Err(NetErr::Closed);
             }
@@ -450,7 +449,7 @@ impl Network {
                         port: r.port,
                     })),
                     Err(e) => {
-                        rt::check_cancel();
+                        rt::check()?;
                         if self.is_closed() {
                             return Err(NetErr::Closed);
                         }
@@ -634,10 +633,7 @@ impl Network {
                 Err(e)
             }
         });
-        let sock = bound.map_err(|e| {
-            rt::check_cancel();
-            NetErr::Failed(describe_io_error(&e))
-        })?;
+        let sock = bound.map_err(|e| NetErr::Failed(describe_io_error(&e)))?;
         sock.set_nonblocking(true)
             .map_err(|e| self.io_failure(&e))?;
         Ok(sock)

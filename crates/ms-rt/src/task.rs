@@ -61,12 +61,12 @@ pub mod sweep {
     }
 
     /// Counts one park; true when this is the park to cancel.
-    /// A real cancel leaves the task's cancel flag set, so this one does too: code that swallows
+    /// A real cancel stays recorded on the task (and survives shields), so this one does too: code that swallows
     /// the error of a cancelled park then fails at its next park, as it would under a real cancel.
     pub fn cancel_here() -> bool {
         let hit = PARKS.fetch_add(1, Ordering::Relaxed) + 1 == target();
         if hit {
-            crate::fault::cancel_flag().store(1, Ordering::Relaxed);
+            crate::fault::set_live_task_cancel(1);
         }
         hit
     }
