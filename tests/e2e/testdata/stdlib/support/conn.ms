@@ -1,5 +1,5 @@
 import Bytes, join from "@std/bytes.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
+import local_promise, PromiseOptions from "@std/concurrency/promise.ms"
 import Connection from "@std/net/net.ms"
 import Duration from "@std/time.ms"
 import ReadStream from "@std/io/io.ms"
@@ -20,7 +20,7 @@ export fn recv(var connection: Connection, timeout: Duration) Bytes?!:
 
 // The next item of `input`; a wait longer than `timeout` fails and cancels the read.
 export fn within[T](var input: ReadStream[T], timeout: Duration) T?!:
-    return promise(fn: input.next()).with(
+    return local_promise(fn: input.next()).with(
         options: PromiseOptions(timeout: timeout)
     ).wait()
 

@@ -12,3 +12,4 @@ mod project_filenames;
 mod project_library;
 mod project_project;
 mod project_windows_paths;
+mod watch_inputs;

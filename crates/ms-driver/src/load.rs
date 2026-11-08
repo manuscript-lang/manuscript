@@ -137,7 +137,8 @@ fn load_entries(
     options: LoadOptions,
     editor: &EditorOptions,
 ) -> Graph {
-    let (mut config, manifest) = match source_project(filename) {
+    let mut seen = Vec::new();
+    let (mut config, manifest) = match source_project(filename, &mut seen) {
         Ok(found) => found,
         Err((root, error, inputs)) => {
             let file: Arc<str> = Arc::from(filename);
@@ -151,6 +152,7 @@ fn load_entries(
     };
     let mut graph = Graph {
         source_root: config.root.clone(),
+        inputs: seen,
         ..Graph::default()
     };
     if manifest {
@@ -263,17 +265,57 @@ fn manifest_pos(config: &Project) -> Pos {
     )
 }
 
-/// `(project, is_manifest)`, or the root and the error.
+/// Resolution reports the first missing component, not necessarily the complete
+/// import. Watch that component so directory creation can advance resolution.
+fn missing_input(root: &str, error: &ProjectError) -> Option<String> {
+    if let ProjectError::Manifest(error) = error {
+        return missing_input(root, &error.cause);
+    }
+    if root.is_empty() || !error.is_not_exist() {
+        return None;
+    }
+    let ProjectError::Path(error) = error else {
+        return None;
+    };
+    // A reported missing prefix must really be absent, not an unresolved link.
+    // Its existing canonical parent determines whether it is inside the root.
+    if std::fs::symlink_metadata(&error.path).is_ok_and(|meta| meta.file_type().is_symlink()) {
+        return None;
+    }
+    let parent = pathops::eval_symlinks(&pathops::dir(&error.path)).ok()?;
+    let path = pathops::join(&[&parent, &pathops::base(&error.path)]);
+    let relative = pathops::rel(root, &path).ok()?;
+    (!pathops::escapes(&relative)).then_some(path)
+}
+
+/// Alias diagnostics keep their explanation as text. Recover the failed target
+/// from its assignment location and reuse the resolver, without parsing messages.
+fn missing_project_input(config: &Project, error: &ProjectError) -> Option<String> {
+    if let Some(path) = missing_input(&config.root, error) {
+        return Some(path);
+    }
+    let error = error.manifest_error()?;
+    config.aliases.iter().find_map(|(name, target)| {
+        let assignment = config.assignments.get(&format!("aliases.{name}"))?;
+        if assignment.value != error.location {
+            return None;
+        }
+        let error = crate::project::source_path(&config.root, target, &Overlay::new()).err()?;
+        missing_input(&config.root, &error)
+    })
+}
+
 /// The project of `filename`, or the failure with the root and the embedded directories the
 /// manifest named, which stay watched so creating one reruns the load.
 type Rejected = (String, ProjectError, Vec<String>);
 
-fn source_project(filename: &str) -> Result<(Project, bool), Rejected> {
+fn source_project(filename: &str, inputs: &mut Vec<String>) -> Result<(Project, bool), Rejected> {
     let absolute = pathops::abs(filename).map_err(|e| (String::new(), e, Vec::new()))?;
     if pathops::base(&absolute) == "ms.toml" {
+        push_input(inputs, absolute.clone());
         let (config, error) = crate::project::read_project_partial(&absolute);
         return match error {
-            Some(error) => Err(rejected(config, error)),
+            Some(error) => Err(rejected(config, error, inputs)),
             None => Ok((config, true)),
         };
     }
@@ -281,10 +323,12 @@ fn source_project(filename: &str) -> Result<(Project, bool), Rejected> {
         .map_err(|e| (String::new(), e, Vec::new()))?;
     // The nearest enclosing ms.toml supplies the import root and aliases, so entry
     // files can share a library above them. The file stays the sole entry.
-    if let Some(manifest) = enclosing_manifest(&root) {
+    if let Some(manifest) =
+        enclosing_manifest_with(&root, |path| push_input(inputs, path.to_string()))
+    {
         let (mut config, error) = crate::project::read_project_partial(&manifest);
         if let Some(error) = error {
-            return Err(rejected(config, error));
+            return Err(rejected(config, error, inputs));
         }
         config.entry = absolute;
         return Ok((config, false));
@@ -297,8 +341,8 @@ fn source_project(filename: &str) -> Result<(Project, bool), Rejected> {
     Ok((config, false))
 }
 
-fn rejected(config: Project, error: ProjectError) -> Rejected {
-    let embedded = config
+fn rejected(config: Project, error: ProjectError, seen: &mut Vec<String>) -> Rejected {
+    let mut embedded: Vec<String> = config
         .embed
         .values()
         .map(|directory| {
@@ -309,14 +353,30 @@ fn rejected(config: Project, error: ProjectError) -> Rejected {
             }
         })
         .collect();
+    if let Some(path) = missing_project_input(&config, &error) {
+        push_input(seen, path);
+    }
+    embedded.extend(std::mem::take(seen));
     (config.root, error, embedded)
+}
+
+fn push_input(inputs: &mut Vec<String>, path: String) {
+    if !inputs.contains(&path) {
+        inputs.push(path);
+    }
 }
 
 /// The nearest `ms.toml` in `dir` or an ancestor.
 pub fn enclosing_manifest(dir: &str) -> Option<String> {
+    enclosing_manifest_with(dir, |_| {})
+}
+
+/// Record negative lookups too: creating a nearer manifest changes resolution.
+fn enclosing_manifest_with(dir: &str, mut record: impl FnMut(&str)) -> Option<String> {
     let mut current = dir.to_string();
     loop {
         let candidate = pathops::join(&[&current, "ms.toml"]);
+        record(&candidate);
         if std::fs::metadata(&candidate).is_ok_and(|m| m.is_file()) {
             return Some(candidate);
         }
@@ -436,6 +496,7 @@ impl Loader<'_> {
             }
             return Err(failure.clone());
         }
+        self.add_input(canonical.to_string());
         self.active.insert(canonical.to_string());
         let result = self.load(syms, canonical, &file);
         self.active.remove(canonical);
@@ -527,9 +588,7 @@ impl Loader<'_> {
     }
 
     fn add_input(&mut self, path: String) {
-        if !self.graph.inputs.contains(&path) {
-            self.graph.inputs.push(path);
-        }
+        push_input(&mut self.graph.inputs, path);
     }
 
     /// Resolves a local import, noting the symbolic links its path passes through.
@@ -557,6 +616,9 @@ impl Loader<'_> {
             target.clone()
         } else {
             let target = self.resolve(importer, &item.path).map_err(|e| {
+                if let Some(path) = missing_input(&self.config.root, &e) {
+                    self.add_input(path);
+                }
                 Failure::diagnostic(Box::new(resolution(
                     file,
                     item.pos,

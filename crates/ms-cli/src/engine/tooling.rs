@@ -407,7 +407,7 @@ fn checked_line(syms: ms_syntax::Names, input: &AnalysisInput, checked: &Checked
 pub(super) const WATCH_INTERVAL: Duration = Duration::from_millis(10);
 pub(super) const WATCH_SETTLE: Duration = Duration::from_millis(10);
 
-/// The input, its manifest, and every local module the analysis loaded.
+/// The input, its manifest, and local source paths attempted by the loader.
 pub(super) fn watched_files(syms: ms_syntax::Names, input: &str, checked: &Checked) -> Vec<String> {
     let mut files = Vec::new();
     files.extend(absolute(input));
