@@ -130,3 +130,33 @@ test "row and cell budgets bound parse only, never depending on chunk size":
     for size in 1..5:
         try expect_equal(try read_rows("a\nb\n", size, limits.clone()), [["a"], ["b"]])
     try expect_equal(parse("a\nb\n", limits).is_error(), true)
+
+// The rows joined for comparison, or the error kind.
+fn csv_outcome(result: List[List[String]]!) String:
+    if result.is_error(): return result.err().kind.get("none")
+
+    var text = "ok"
+
+    for row in result.get():
+        text += " ["
+        for cell in row:
+            text += "<{cell}>"
+        text += "]"
+
+    return text
+
+test "rows and parse agree on malformed and odd inputs under every chunk size":
+    let inputs = [
+        "", "\n", "\r\n", "\r", "a", "a\r", "a\rb", "a\r\n\r\nb", "\"", "\"a", "\"a\"",
+        "\"a\"\"", "\"a\"b", "a\"b", "a,\"b\"c,d", "\"a\n\"\"\n", ",,\n,,",
+        "a,b\r\nc\n", "\"\"\"\"", "x,\"y\r\nz\",w\r\n", "é,\"😀\"\n"
+    ]
+
+    for text in inputs:
+        let expected = csv_outcome(parse(text))
+
+        for size in 1..text.to_bytes().length() + 2:
+            let got = csv_outcome(read_rows(text, size))
+            if got != expected: return fail(
+                "{text.to_bytes().length()} bytes, chunk {size}: parse {expected}, stream {got}"
+            )

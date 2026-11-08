@@ -62,3 +62,38 @@ test "complex trig keeps exact zeros and finite limits when parts overflow":
     try expect_equal(complex(0.0, -1000.0).tan(), complex(-0.0, -1.0))
     try expect_equal(complex(1000.0, 0.0).tanh(), complex(1.0, 0.0))
     try expect_equal(complex(-1000.0, 0.0).sinh(), complex(-infinity, 0.0))
+
+test "complex divide keeps a finite quotient when the operands are near the Float limits":
+    let big = complex(1.0e308, 1.0e308)
+    try expect_equal(big.divide(big), complex(1.0, 0.0))
+
+    let tiny = complex(5.0e-324, 5.0e-324)
+    try expect_equal(tiny.divide(tiny), complex(1.0, 0.0))
+    try expect_equal(
+        complex(1.0e308, 0.0).divide(complex(0.0, 1.0e308)), complex(0.0, -1.0)
+    )
+    try expect_equal(
+        complex(1.0e308, 0.0).divide(complex(1.0e308, 0.0)), complex(1.0, 0.0)
+    )
+    try expect_equal(
+        complex(0.0, 1.0e308).divide(complex(0.0, -1.0e308)), complex(-1.0, 0.0)
+    )
+
+test "complex log is finite when the magnitude overflows":
+    let result = complex(1.7e308, 1.7e308).log()
+    try expect_true(result.re.is_finite())
+    try expect_true(near(result, complex(710.0734104835082, 0.7853981633974483)))
+
+    let axis = complex(-1.7e308, 0.0).log()
+    try expect_true(near(axis, complex(709.7268368932282, 3.141592653589793)))
+    try expect_true(near(complex(1.0, 0.0).log(), complex(0.0, 0.0)))
+
+test "complex sqrt keeps a finite root for a subnormal input":
+    let root = complex(0.0, 5.0e-324).sqrt()
+    try expect_true(root.re > 0.0 and root.re.is_finite())
+    try expect_true(root.im > 0.0 and root.im.is_finite())
+    try expect_true(root.re / 1.5717277847026288e-162 > 0.999999999)
+    try expect_true(root.re / 1.5717277847026288e-162 < 1.000000001)
+
+    let below = complex(0.0, -5.0e-324).sqrt()
+    try expect_true(below.re > 0.0 and below.im < 0.0)
