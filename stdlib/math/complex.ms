@@ -98,10 +98,15 @@ impl Complex:
         let sn = self.re.abs().max(self.im.abs())
         let sd = other.re.abs().max(other.im.abs())
 
-        if sd > 0.0 and sn.is_finite() and sd.is_finite() and (
-            sn.max(sd) > 3.273390607896142e150
-            or sd < 3.054936363499605e-151
-            or sn > 0.0 and sn < 3.054936363499605e-151
+        if (
+            sd > 0.0
+            and sn.is_finite()
+            and sd.is_finite()
+            and (
+                sn.max(sd) > 3.273390607896142e150
+                or sd < 3.054936363499605e-151
+                or sn > 0.0 and sn < 3.054936363499605e-151
+            )
         ):
             let numerator_exponent = frexp(sn).exponent
             let divisor_exponent = frexp(sd).exponent
@@ -171,7 +176,9 @@ impl Complex:
         // A finite number whose magnitude overflows still has a finite logarithm: log(m) = log(m/2) + ln 2.
         if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
             return Complex(
-                re: log(hypot(self.re / 2.0, self.im / 2.0)) + 0.6931471805599453,
+                re: log(
+                    hypot(self.re / 2.0, self.im / 2.0)
+                ) + 0.6931471805599453,
                 im: self.phase()
             )
 

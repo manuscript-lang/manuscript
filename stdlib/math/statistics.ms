@@ -108,6 +108,7 @@ fn centered_moments(values: List[Float]) Moments?:
         return none
 
     var scale = 0.0
+
     for value in values:
         if not value.is_finite(): return none
 
@@ -118,7 +119,6 @@ fn centered_moments(values: List[Float]) Moments?:
     let exponent = frexp(scale).exponent
     let origin = ldexp(values[0], -exponent)
     var total = DeviationSum()
-
     for value in values:
         total.add(ldexp(value, -exponent) - origin)
 
@@ -156,6 +156,7 @@ export fn population_variance(values: List[Float]) Float?:
 export fn variance(values: List[Float]) Float?:
     if values.length() < 2:
         return none
+
     return spread_variance(values, values.length() - 1)
 
 // Returns the population standard deviation, or none for an empty list.
@@ -463,6 +464,7 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 // Returns the values multiplied by the power of two that brings the greatest magnitude into [0.5, 1); lists with a nonfinite value or only zeros are unchanged.
 fn unit_scaled(values: List[Float]) List[Float]:
     var scale = 0.0
+
     for value in values:
         if not value.is_finite(): return values.clone()
 
@@ -474,7 +476,6 @@ fn unit_scaled(values: List[Float]) List[Float]:
     var scaled: List[Float] = []
     for value in values:
         scaled.append(ldexp(value, -exponent))
-
     return scaled
 
 /*

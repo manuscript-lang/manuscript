@@ -444,14 +444,26 @@ test "a large common offset does not change variation":
     try expect_equal(try expect_some(population_stdev([1e16, 1e16 + 2.0])), 1.0)
 
 test "variance keeps tiny scales":
-    try expect_close(try expect_some(population_variance([1e-150, 3e-150])) / 1e-300, 1.0, 1e-12)
+    try expect_close(
+        try expect_some(population_variance([1e-150, 3e-150])) / 1e-300, 1.0, 1e-12
+    )
 
 test "variance of nonfinite input follows Float rules":
     let result = try expect_some(population_variance([1.0, 1.0 / 0.0]))
     try expect_true(result.is_nan())
 
 test "correlation of large and tiny perfectly correlated values":
-    try expect_close(try expect_some(correlation([1e100, 2e100], [1e100, 2e100])), 1.0, 1e-12)
-    try expect_close(try expect_some(correlation([1e-200, 2e-200], [-1e-200, -2e-200])), -1.0, 1e-12)
-    try expect_close(try expect_some(correlation([1e300, 2e300, 4e300], [1e-300, 2e-300, 4e-300])), 1.0, 1e-12)
+    try expect_close(
+        try expect_some(correlation([1e100, 2e100], [1e100, 2e100])), 1.0, 1e-12
+    )
+    try expect_close(
+        try expect_some(correlation([1e-200, 2e-200], [-1e-200, -2e-200])), -1.0, 1e-12
+    )
+    try expect_close(
+        try expect_some(
+            correlation([1e300, 2e300, 4e300], [1e-300, 2e-300, 4e-300])
+        ),
+        1.0,
+        1e-12
+    )
     try expect_none(correlation([1e100, 1e100], [1e100, 2e100]))

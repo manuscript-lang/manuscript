@@ -69,9 +69,15 @@ test "complex divide keeps a finite quotient when the operands are near the Floa
 
     let tiny = complex(5.0e-324, 5.0e-324)
     try expect_equal(tiny.divide(tiny), complex(1.0, 0.0))
-    try expect_equal(complex(1.0e308, 0.0).divide(complex(0.0, 1.0e308)), complex(0.0, -1.0))
-    try expect_equal(complex(1.0e308, 0.0).divide(complex(1.0e308, 0.0)), complex(1.0, 0.0))
-    try expect_equal(complex(0.0, 1.0e308).divide(complex(0.0, -1.0e308)), complex(-1.0, 0.0))
+    try expect_equal(
+        complex(1.0e308, 0.0).divide(complex(0.0, 1.0e308)), complex(0.0, -1.0)
+    )
+    try expect_equal(
+        complex(1.0e308, 0.0).divide(complex(1.0e308, 0.0)), complex(1.0, 0.0)
+    )
+    try expect_equal(
+        complex(0.0, 1.0e308).divide(complex(0.0, -1.0e308)), complex(-1.0, 0.0)
+    )
 
 test "complex log is finite when the magnitude overflows":
     let result = complex(1.7e308, 1.7e308).log()
