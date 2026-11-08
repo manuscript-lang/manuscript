@@ -142,6 +142,9 @@ interface StringTextOperations:
     fn find_char(predicate: fn(String) Bool) Int?
     fn replace_each(pairs: Map[String, String]) String
 
+// Scalars read per step by the prefix scans below; each step doubles, so a scan costs its distance.
+let SCAN_WINDOW = 32
+
 impl StringTextOperations for String:
     // Splits around runs of characters (one-scalar strings) the predicate accepts; no empty items.
     fn fields_by(is_separator: fn(String) Bool) List[String]:
@@ -181,19 +184,44 @@ impl StringTextOperations for String:
 
     // Removes every leading scalar that occurs in set.
     fn trim_start_chars(set: String) String:
-        let cs = self.chars()
-        var i = 0
-        while i < cs.length() and set.contains(cs[i]):
-            i += 1
-        return self.drop(i)
+        var skipped = 0
+        var window = SCAN_WINDOW
+
+        while true:
+            // Scalars are read in doubling windows, so the cost follows the trimmed run, not the text length.
+            let cs = self.take(skipped + window).drop(skipped).chars()
+            var i = 0
+            while i < cs.length() and set.contains(cs[i]):
+                i += 1
+            skipped += i
+            if i < cs.length() or cs.length() < window:
+                break
+
+            window *= 2
+
+        return self.drop(skipped)
 
     // Removes every trailing scalar that occurs in set.
     fn trim_end_chars(set: String) String:
-        let cs = self.chars()
-        var n = cs.length()
-        while n > 0 and set.contains(cs[n - 1]):
-            n -= 1
-        return self.take(n)
+        var kept = self.length()
+        var window = SCAN_WINDOW
+
+        while kept > 0:
+            var low = kept - window
+            if low < 0:
+                low = 0
+
+            let cs = self.slice(low, kept).get("").chars()
+            var i = cs.length()
+            while i > 0 and set.contains(cs[i - 1]):
+                i -= 1
+            kept = low + i
+            if i > 0:
+                break
+
+            window *= 2
+
+        return self.take(kept)
 
     // Reports whether any scalar of set occurs in the text.
     fn contains_any(set: String) Bool:
@@ -251,10 +279,20 @@ impl StringTextOperations for String:
 
     // Scalar index of the first scalar the predicate accepts, or none.
     fn find_char(predicate: fn(String) Bool) Int?:
-        let cs = self.chars()
-        for i in 0..cs.length():
-            if predicate(cs[i]):
-                return i
+        var from = 0
+        var window = SCAN_WINDOW
+
+        while true:
+            let cs = self.take(from + window).drop(from).chars()
+            for i in 0..cs.length():
+                if predicate(cs[i]):
+                    return from + i
+            if cs.length() < window:
+                return none
+
+            from += window
+            window *= 2
+
         return none
 
     // Replaces many patterns in one pass. At each position the first pair, in map order, whose key matches
