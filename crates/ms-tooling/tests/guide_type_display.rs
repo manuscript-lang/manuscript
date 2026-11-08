@@ -23,6 +23,10 @@ fn assert_same_type(expected: &TypeRef, actual: &TypeRef) {
         ) => {
             assert_eq!(a.len(), b.len());
             for (a, b) in a.iter().zip(b) {
+                assert_eq!(
+                    a.mutable, b.mutable,
+                    "function parameter mutability changed"
+                );
                 assert_same_type(a.ty.as_ref().unwrap(), b.ty.as_ref().unwrap());
             }
             assert_same_type(ar, br);
@@ -50,6 +54,8 @@ fn source_type_compositions_preserve_the_parsed_structure() {
         "Int??",
         "List[Int?]",
         "fn(Int) String?",
+        "fn(var Int) Unit",
+        "fn(var List[Int], fn(var Int) Unit) Unit",
         "(fn(Int) String)?",
         "Result[Int?, Error]",
     ] {
@@ -119,5 +125,25 @@ fn standard_source_signatures_do_not_teach_rejected_optional_syntax() {
         !read_file.signature.contains("Optional["),
         "{}",
         read_file.signature
+    );
+}
+
+#[test]
+fn standard_callback_signatures_keep_mutable_parameters() {
+    let syms = ms_syntax::Names::global();
+    let text = page(syms, "router.Router.get").unwrap();
+    assert!(text.contains("fn(var HttpExchange, RouteParams)"), "{text}");
+    let module = ms_tooling::guide::standard_library(syms)
+        .iter()
+        .find(|module| module.path == "@std/net/router.ms")
+        .unwrap();
+    let generated = ms_tooling::guide::docgen::render_site_module(module);
+    assert!(
+        generated.contains("handler: fn(var HttpExchange, RouteParams)"),
+        "{generated}"
+    );
+    assert!(
+        generated.contains("fn(var HttpExchange, fn(var HttpExchange)"),
+        "{generated}"
     );
 }
