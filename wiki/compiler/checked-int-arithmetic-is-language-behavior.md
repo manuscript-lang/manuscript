@@ -20,3 +20,5 @@ Verify: run the source fixture in Debug and Release; both constant and variable 
 Verify: `cargo nextest run -p ms-clif`; preserve the long-Debug-function allocator selection.
 
 Radix spellings must be normalized before checking decimal suffixes or exponent markers: `d`, `e`, and `E` are valid hexadecimal digits. Keep literal-context inference and constant-fault folding consistent with ordinary number inference. Cover `Int8` expressions containing `0x1d`/`0x1e`, negated hex literals, and hex zero divisors and list indexes ([checker regressions](../../crates/ms-check/src/radix_literal_tests.rs), [native fixture](../../tests/e2e/testdata/accept/hex-literal-context.ms)).
+
+Unary identity signs belong to literal trees too. Propagate sized context through `+`/`-` only when `literal_hint` proves a same-kind literal tree; never narrow a named value implicitly. Keep unsigned-negative and intermediate-overflow rejection and single-rounding Float32 behavior ([regression](../../tests/e2e/testdata/accept/unary-plus-literal-context.ms)).

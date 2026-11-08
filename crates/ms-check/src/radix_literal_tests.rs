@@ -81,3 +81,40 @@ fn decimal_and_fractional_spelling_keep_their_kind() {
         assert!(!got.is_empty(), "{source} must remain rejected");
     }
 }
+
+#[test]
+fn unary_identity_sign_preserves_sized_literal_context() {
+    for source in [
+        "fn f() Int8: +1\n",
+        "fn f() Int8: +(100 + 27)\n",
+        "fn f() Int8: +(-128)\n",
+        "fn f() Int8: -(+127)\n",
+        "fn f() UInt8: +255\n",
+        "fn f() Float32: +0.1\n",
+        "fn f(x: Int8) Int8: x + +1\n",
+        "fn f(x: Float32) Float32: x + +(0.1 + 0.2)\n",
+        "fn f(x: List[Int8]) Bool: x == [+1, +2]\n",
+    ] {
+        let got = diagnostics(source);
+        assert!(got.is_empty(), "{source}: {got:?}");
+    }
+}
+
+#[test]
+fn unary_literal_context_keeps_kind_range_and_named_values() {
+    for source in [
+        "fn f() Int8: +128\n",
+        "fn f() Int8: -(+128)\n",
+        "fn f() UInt8: +256\n",
+        "fn f() UInt8: +(-1)\n",
+        "fn f() UInt8: -(+1)\n",
+        "fn f() Int8: +(100 + 28)\n",
+        "fn f() Float32: +1\n",
+        "fn f(x: Int) Int8: +x\n",
+        "fn f(x: Float) Float32: +x\n",
+        "fn f() Float32: +340282356779733661637539395458142568448.0\n",
+    ] {
+        let got = diagnostics(source);
+        assert!(!got.is_empty(), "{source} must remain rejected");
+    }
+}
