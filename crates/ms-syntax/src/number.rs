@@ -25,6 +25,18 @@ pub fn canonical(text: &str) -> Cow<'_, str> {
     }
 }
 
+/// Whether canonical literal text is a `Decimal` (`d` suffix). Hex digits `d` and `e` never reach
+/// this: `canonical` has already written a `0x` value in base 10.
+pub fn is_decimal(canonical: &str) -> bool {
+    canonical.ends_with('d')
+}
+
+/// Whether canonical literal text is a fractional float (a point or exponent), not an integer or a
+/// `Decimal`.
+pub fn is_fractional(canonical: &str) -> bool {
+    !is_decimal(canonical) && canonical.contains(['.', 'e', 'E'])
+}
+
 /// A decimal float literal rounded once, directly to binary32 (a contextual `Float32` literal),
 /// widened to `f64` for immediates. Parsing as binary64 first would round twice; the result is
 /// infinite when the literal is beyond the finite binary32 range.
@@ -34,7 +46,17 @@ pub fn float32(text: &str) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{canonical, float32};
+    use super::{canonical, float32, is_decimal, is_fractional};
+
+    #[test]
+    fn hex_digits_d_and_e_are_not_decimal_or_fractional() {
+        for hex in ["0xd", "0xe", "0xde", "0xE", "0x1e5", "0xfd"] {
+            let text = canonical(hex);
+            assert!(!is_decimal(&text) && !is_fractional(&text), "{hex}");
+        }
+        assert!(is_decimal("1.5d") && !is_fractional("1.5d"));
+        assert!(is_fractional("1e5") && is_fractional("1.5") && !is_fractional("15"));
+    }
 
     #[test]
     fn float32_rounds_once() {

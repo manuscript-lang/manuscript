@@ -623,8 +623,8 @@ impl<'a> FnLower<'a> {
 
     /// An owned element for a collection, wrapped when the checker converted it to an optional.
     pub(crate) fn element_value(&mut self, a: &NArg) -> Value {
-        // A resource staged by `native_args_protected` leaves its fault registration only
-        // here, when the element is stored: every earlier check faults with it still registered.
+        // Fallback ownership extraction. Protected direct-list stores bypass this helper and
+        // retain the registered incoming slot until the native mutation succeeds.
         let v = if self.resource_temps.contains_key(&a.val.v) {
             let key = a.val.v;
             let (v, _) = self.take_resource_temp(key);
