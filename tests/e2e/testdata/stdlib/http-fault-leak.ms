@@ -61,7 +61,6 @@ test "a fetch cancelled by its timeout releases its read buffer":
 test "a fetch cancelled by its timeout frees the request state its frames own":
     let server = serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
     let url = "http://{server.address()}/"
-
     for i in 0..200:
         let _ = fetch(url).with(
             options: PromiseOptions(timeout: 5.milliseconds())
@@ -77,4 +76,6 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 
     // The method, URLs, header vectors and pool key leaked about 340 bytes per cancelled fetch.
     let grown = (memory_usage() | try expect_ok).heap_used - before
-    if grown > 2000 * 64: return error(Error("heap grew {grown} bytes over 2000 cancelled fetches"))
+    if grown > 2000 * 64: return error(
+        Error("heap grew {grown} bytes over 2000 cancelled fetches")
+    )
