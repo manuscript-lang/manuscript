@@ -19,10 +19,10 @@ The script needs Playwright with Chromium on the machine that runs it; the repos
 
 ## Feature screencast
 
-`website/static/images/screencast.gif` is the docs home screencast and is reusable in the README. Regenerate it with a built `ms`:
+`website/static/images/screencast.gif` is the docs home screencast and is reusable in the README. Regenerate it with a built `ms` (add `--mp4 out.mp4` for a social-media video; needs ffmpeg):
 
 ```sh
-python3 website/screenshots/screencast.py --ms target/release/ms [--theme light]
+python3 website/screenshots/screencast.py --ms target/release/ms
 ```
 
 Scenes and captions are listed in `SCENES` in the script; sources live in `website/screenshots/screencast/`. Every command runs for real, so the output shown is current compiler output. The script needs Python 3 with Pillow and DejaVu Sans Mono (not project dependencies). Re-run it when a shown diagnostic or command output changes.

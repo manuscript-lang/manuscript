@@ -1,172 +1,259 @@
 #!/usr/bin/env python3
-"""Renders the feature screencast GIF used on the docs home page (and reusable in the README).
+"""Renders the feature screencast used on the docs home page, the README and social posts.
 
-Usage: python3 website/screenshots/screencast.py [--ms target/release/ms] [--theme dark|light] [-o out.gif]
+Usage: python3 website/screenshots/screencast.py [--ms target/release/ms] [-o out.gif] [--mp4 out.mp4]
 
-Every command in SCENES runs for real with the given `ms`, so the output shown is what the
-compiler prints. Needs Python 3 with Pillow and the DejaVu Sans Mono font; neither is a
-project dependency (see README.md).
+Every command runs for real with the given `ms`, so the output shown is what the compiler prints.
+Needs Python 3 with Pillow and the DejaVu Sans Mono font (and ffmpeg for --mp4); none are project
+dependencies (see README.md). Scenes are listed in SCENES below; sources live in screencast/.
 """
-import argparse, os, re, textwrap, shutil, subprocess, sys, tempfile
+import argparse, os, re, shutil, subprocess, sys, tempfile, textwrap
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "screencast")
 
-# (caption, source file or None, command run in a scratch copy of screencast/ and the demo project)
+# title: "*word*" is highlighted. steps: (command, keep(lines) -> lines shown).
+def first(n): return lambda ls: ls[:n]
+def last(n): return lambda ls: ls[-n:]
 SCENES = [
-    ("One owner per value. No garbage collector.",
-     "Use-after-move is a compile error: no GC pauses, no refcounts.",
-     "own.ms", "ms run own.ms", 1),
-    ("Native speed, comparable to C.",
-     "No GC, minimal runtime. 5M sieve: 26 ms, C 26 ms (bench/perf, 2026-11-05).",
-     None, "ms build sieve.ms -o sieve && ./sieve", 4),
-    ("No async. No await.",
-     "Any function can run concurrently, so no colored functions to rewrite.",
-     "conc.ms", "ms run conc.ms", 4),
-    ("Effects are checked. Pure means pure.",
-     "A function that prints, reads files or calls out must say so, or lint flags it.",
-     "effects.ms", "ms lint effects.ms", 1),
-    ("Failure is a value. Cleanup is automatic.",
-     "T! and try keep errors in the signature; files close at scope end.",
-     "scope.ms", "ms run scope.ms", 2),
-    ("Errors that tell you the fix.",
-     "Cause and remedy in every diagnostic; --json gives agents the same data.",
-     "fixme.ms", "ms check fixme.ms", 1),
-    ("See what the agent built.",
-     "Call graphs and code maps come from checked source, not guesses.",
-     None, "ms diagram conc.ms --format ascii", 7),
-    ("Tests live beside the code.",
-     "test blocks run under ms test: no framework to install or configure.",
-     "tb.ms", "ms test tb.ms", 3),
-    ("Benchmarks are part of the language.",
-     "bench blocks report min, median, mean and stddev per iteration.",
-     None, "ms bench tb.ms --time 20ms --samples 3", 4),
-    ("Profile native code in one command.",
-     "Sampling profiles with source attribution: top report, folded stacks, pprof.",
-     None, "ms profile prof.ms --out-dir pr --top 4", 6),
+    dict(title="*One owner.* No garbage collector.",
+         sub="Use-after-move is a compile error. No GC pauses, no refcounts.",
+         src="own.ms", steps=[("ms run own.ms", first(1))], cut=";"),
+    dict(title="*C-class speed.* No GC, no heavy runtime.",
+         sub="5M sieve: 26 ms, C 26 ms (bench/perf, 2026-11-05).",
+         src=None, steps=[("ms build sieve.ms -o sieve && ./sieve", first(2))]),
+    dict(title="*No async.* No await.",
+         sub="Any function can run concurrently. Nothing to color or rewrite.",
+         src="conc.ms", steps=[("ms run conc.ms", first(1))]),
+    dict(title="*Every core*, no threads to manage.",
+         sub="Four CPU-bound promises, spread across the machine by the runtime.",
+         src=None, steps=[("ms run par.ms", first(1))]),
+    dict(title="*Effects* are checked.",
+         sub="A function that prints or touches files has to say so.",
+         src="effects.ms", steps=[("ms lint effects.ms", first(1))], cut=";"),
+    dict(title="Errors that tell you *the fix*.",
+         sub="Cause and remedy in every diagnostic. --json for agents.",
+         src="fixme.ms", steps=[("ms check fixme.ms", first(1))], cut=";"),
+    dict(title="*Test. Bench. Profile.* Built in.",
+         sub="No framework, no harness, no extra tools to install.",
+         src=None, steps=[
+             ("ms test tb.ms", last(1)),
+             ("ms bench tb.ms --time 20ms --samples 3", lambda ls: [l for l in ls if l.startswith("BENCH")]),
+             ("ms profile prof.ms --out-dir pr --top 3", lambda ls: ls[1:4]),
+         ], cut=" ("),
+    dict(title="*See what the agent built.*",
+         sub="Call graphs and code maps come from checked source.",
+         src=None, steps=[("ms diagram conc.ms --format ascii", first(6))]),
 ]
-COLS = int((1000 - 64) / 14.4)
+URL = "manuscript-lang.github.io/manuscript"
 
-THEMES = {
-    "dark": dict(bg=(24, 26, 32), bar=(36, 39, 48), fg=(220, 223, 230), dim=(130, 136, 150), kw=(198, 120, 221),
-                 st=(152, 195, 121), nu=(209, 154, 102), co=(110, 118, 135), cap=(97, 175, 239), err=(224, 108, 117), prompt=(152, 195, 121)),
-    "light": dict(bg=(250, 249, 245), bar=(236, 233, 224), fg=(40, 42, 54), dim=(120, 120, 130), kw=(160, 50, 160),
-                  st=(30, 130, 60), nu=(190, 100, 20), co=(140, 140, 150), cap=(20, 90, 170), err=(190, 40, 50), prompt=(30, 130, 60)),
-}
-KEYWORDS = set("fn let var if else for in return try import from export type impl while match and or not true false none ok error".split())
-W, H, PAD, FS = 1000, 620, 32, 24
-FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", FS)
-BOLD = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 26)
-LH = 34
-SMALL = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 17)
-CW = FONT.getlength("M")
+W, H = 1280, 720
+C = dict(top=(13, 15, 30), bot=(34, 17, 52), card=(18, 20, 32), bar=(30, 33, 50), edge=(60, 66, 96),
+         fg=(232, 235, 247), dim=(146, 152, 178), acc=(86, 214, 255), pink=(255, 95, 170), ok=(120, 230, 150),
+         err=(255, 110, 125), kw=(255, 121, 198), st=(150, 235, 160), nu=(255, 184, 108), co=(110, 118, 150))
+KEYWORDS = set("fn let var if else for in return try import from export type impl while match and or not true false none ok error test bench".split())
+D = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono"
+CODE, HEAD, SUB, SMALL = (ImageFont.truetype(D + ".ttf", 27), ImageFont.truetype(D + "-Bold.ttf", 47),
+                          ImageFont.truetype(D + ".ttf", 22), ImageFont.truetype(D + ".ttf", 17))
+BIG = ImageFont.truetype(D + "-Bold.ttf", 104)
+CW, LH, CARD = CODE.getlength("M"), 37, (60, 196, 1220, 650)
+COLS = int((CARD[2] - CARD[0] - 64) / CW)
+_bg = None
 
-def tokens(line, t):
+def background():
+    global _bg
+    if _bg is None:
+        _bg = Image.new("RGB", (W, H))
+        d = ImageDraw.Draw(_bg)
+        for y in range(H):
+            k = y / H
+            d.line([(0, y), (W, y)], fill=tuple(int(a + (b - a) * k) for a, b in zip(C["top"], C["bot"])))
+    return _bg.copy()
+
+def rich(d, x, y, text, font, color, accent):
+    """Draw text where *marked* spans use the accent colour."""
+    for i, part in enumerate(text.split("*")):
+        if part:
+            d.text((x, y), part, font=font, fill=accent if i % 2 else color)
+            x += font.getlength(part)
+
+def tokens(line):
     if line.lstrip().startswith("//"):
-        return [(line, t["co"])]
+        return [(line, C["co"])]
     out = []
     for m in re.finditer(r'"(?:[^"\\]|\\.)*"|\w+|\s+|.', line):
         s = m.group(0)
-        c = t["fg"]
-        if s.startswith('"'): c = t["st"]
-        elif s in KEYWORDS: c = t["kw"]
-        elif s.isdigit(): c = t["nu"]
+        c = C["fg"]
+        if s.startswith('"'): c = C["st"]
+        elif s in KEYWORDS: c = C["kw"]
+        elif s.isdigit(): c = C["nu"]
         out.append((s, c))
     return out
 
-def run(cmd, cwd, ms_dir, limit):
+def chrome(d, n, total):
+    d.rectangle([60, H - 36, 74, H - 22], fill=C["acc"])
+    d.text((88, H - 40), "manuscript", font=SUB, fill=C["fg"])
+    gap = 22
+    x0 = W - 60 - gap * (total - 1)
+    for i in range(total):
+        r = 6 if i == n else 4
+        d.ellipse([x0 + i * gap - r, H - 29 - r, x0 + i * gap + r, H - 29 + r], fill=C["acc"] if i == n else C["edge"])
+
+def header(d, title, sub):
+    rich(d, 60, 56, title, HEAD, C["fg"], C["acc"])
+    d.text((60, 124), sub, font=SUB, fill=C["dim"])
+
+def terminal(d):
+    d.rounded_rectangle(CARD, 18, fill=C["card"], outline=C["edge"], width=2)
+    d.rounded_rectangle([CARD[0], CARD[1], CARD[2], CARD[1] + 40], 18, fill=C["bar"])
+    d.rectangle([CARD[0] + 2, CARD[1] + 22, CARD[2] - 2, CARD[1] + 40], fill=C["bar"])
+    for i, c in enumerate([(237, 106, 94), (245, 191, 79), (97, 197, 84)]):
+        d.ellipse([CARD[0] + 20 + i * 24, CARD[1] + 13, CARD[0] + 34 + i * 24, CARD[1] + 27], fill=c)
+
+def scene_frame(sc, n, total, code, shown, rows, cursor):
+    """rows: list of (kind, text) below the code: 'cmd', 'out', 'err'."""
+    im = background()
+    d = ImageDraw.Draw(im)
+    header(d, sc["title"], sc["sub"])
+    terminal(d)
+    x0, y = CARD[0] + 32, CARD[1] + 62
+    last_y = None
+    for i, line in enumerate(code[:shown]):
+        x = x0
+        for s, c in tokens(line):
+            d.text((x, y), s, font=CODE, fill=c)
+            x += CW * len(s)
+        last_y, last_x = y, x
+        y += LH
+    if code: y += 12
+    for kind, text in rows:
+        if kind == "cmd":
+            d.text((x0, y), "$", font=CODE, fill=C["ok"])
+            d.text((x0 + CW * 2, y), text, font=CODE, fill=C["fg"])
+            last_y, last_x = y, x0 + CW * (2 + len(text))
+        else:
+            d.text((x0, y), text, font=CODE, fill=C["err"] if kind == "err" else C["fg"])
+            last_y, last_x = None, 0
+        y += LH
+    if cursor and last_y is not None:
+        d.rectangle([last_x + 3, last_y + 3, last_x + CW * 0.55 + 3, last_y + 29], fill=C["acc"])
+    chrome(d, n, total)
+    return im
+
+def card_frame(kind, n, total, typed="", chips=0):
+    im = background()
+    d = ImageDraw.Draw(im)
+    if kind == "intro":
+        d.text((W // 2, 250), "Manuscript", font=BIG, fill=C["fg"], anchor="mm")
+        d.text((W // 2, 345), "The language for the agentic era.", font=HEAD, fill=C["acc"], anchor="mm")
+        names = ["no GC", "no async", "checked effects", "native speed"]
+    else:
+        d.text((W // 2, 200), "Try it.", font=BIG, fill=C["fg"], anchor="mm")
+        d.rounded_rectangle([250, 280, W - 250, 360], 14, fill=C["card"], outline=C["edge"], width=2)
+        d.text((290, 298), "$", font=HEAD, fill=C["ok"])
+        d.text((345, 298), typed, font=HEAD, fill=C["fg"])
+        d.text((W // 2, 410), URL, font=SUB, fill=C["dim"], anchor="mm")
+        names = ["verify", "test", "bench", "profile", "diagram", "build"]
+    x = W // 2 - sum(SUB.getlength(t) + 52 for t in names) // 2
+    y = 500
+    for i, t in enumerate(names):
+        w = SUB.getlength(t) + 36
+        shown = i < chips
+        d.rounded_rectangle([x, y, x + w, y + 46], 23, fill=C["bar"] if shown else None, outline=C["acc"] if shown else C["edge"], width=2)
+        if shown:
+            d.text((x + 18, y + 10), t, font=SUB, fill=C["fg"])
+        x += w + 16
+    chrome(d, n, total)
+    return im
+
+def run(cmd, cwd, ms_dir):
     env = dict(os.environ, PATH=ms_dir + os.pathsep + os.environ["PATH"], NO_COLOR="1")
     p = subprocess.run(cmd, shell=True, cwd=cwd, env=env, capture_output=True, text=True)
-    text = (p.stdout + p.stderr).replace(cwd + "/", "")
-    lines = [l.rstrip() for l in text.splitlines()][:limit]
+    return [l.rstrip() for l in (p.stdout + p.stderr).replace(cwd + "/", "").splitlines()]
+
+def wrap(lines, cut):
     out = []
     for l in lines:
+        if cut and cut in l:
+            l = l.split(cut)[0] + (" …" if cut == ";" else "")
         out += textwrap.wrap(l, COLS, subsequent_indent="  ", drop_whitespace=False) or [""]
     return out
-
-def blend(a, b, k):
-    return tuple(int(x + (y - x) * k) for x, y in zip(a, b))
-
-def frame(t, title, benefit, code, shown, cmd, out, n_out, step, total, cursor=None):
-    im = Image.new("RGB", (W, H), t["bg"])
-    d = ImageDraw.Draw(im)
-    d.rectangle([0, 0, W, 44], fill=t["bar"])
-    for i, c in enumerate([(237, 106, 94), (245, 191, 79), (97, 197, 84)]):
-        d.ellipse([18 + i * 24, 15, 32 + i * 24, 29], fill=c)
-    d.text((W - PAD, 14), "manuscript", font=FONT, fill=t["dim"], anchor="ra")
-    y = 64
-    hl = blend(t["bg"], t["fg"], 0.07)
-    newest = shown - 1 if shown and cmd is None else (len(code) + n_out + 1 if False else None)
-    for i, line in enumerate(code[:shown]):
-        if i == newest:
-            d.rectangle([0, y - 4, W, y + LH - 6], fill=hl)
-        x = PAD
-        for s, c in tokens(line, t):
-            d.text((x, y), s, font=FONT, fill=c)
-            x += CW * len(s)
-        if cursor == "code" and i == shown - 1:
-            d.rectangle([x + 2, y + 1, x + CW * 0.6 + 2, y + 24], fill=t["cap"])
-        y += LH
-    y = 64 + LH * max(len(code), 0) + (10 if code else 0)
-    if cmd is not None:
-        d.text((PAD, y), "$ ", font=FONT, fill=t["prompt"])
-        d.text((PAD + CW * 2, y), cmd, font=FONT, fill=t["fg"])
-        if cursor == "cmd":
-            cx = PAD + CW * (2 + len(cmd))
-            d.rectangle([cx + 2, y + 1, cx + CW * 0.6 + 2, y + 24], fill=t["cap"])
-        y += LH
-        for k, line in enumerate(out[:n_out]):
-            if k == n_out - 1 and n_out < len(out) + 1 and cursor == "out":
-                d.rectangle([0, y - 4, W, y + LH - 6], fill=hl)
-            col = t["err"] if re.search(r"error|type:|resolution:", line) else t["fg"]
-            d.text((PAD, y), line[:int((W - 2 * PAD) / CW)], font=FONT, fill=col)
-            y += LH
-    d.rectangle([0, H - 104, W, H], fill=t["bar"])
-    d.text((PAD, H - 72), title, font=BOLD, fill=t["cap"], anchor="lm")
-    d.text((PAD, H - 34), benefit, font=SMALL, fill=t["fg"], anchor="lm")
-    d.text((W - PAD, H - 72), f"{step}/{total}", font=FONT, fill=t["dim"], anchor="rm")
-    return im
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ms", default="target/release/ms")
-    ap.add_argument("--theme", default="dark", choices=THEMES)
     ap.add_argument("-o", "--output", default=os.path.join(HERE, "../static/images/screencast.gif"))
+    ap.add_argument("--mp4", help="also write an H.264 MP4 (needs ffmpeg)")
+    ap.add_argument("--width", type=int, default=1024, help="GIF width in pixels")
     a = ap.parse_args()
-    t = THEMES[a.theme]
     ms_dir = os.path.dirname(os.path.abspath(a.ms))
     work = tempfile.mkdtemp()
     try:
         for f in os.listdir(SRC):
             shutil.copy(os.path.join(SRC, f), work)
-        env = dict(os.environ, PATH=ms_dir + os.pathsep + os.environ["PATH"])
-        subprocess.run("ms init demo", shell=True, cwd=work, env=env, capture_output=True, check=True)
         frames, durs = [], []
-        total = len(SCENES)
-        for i, (title, benefit, srcfile, cmd, limit) in enumerate(SCENES, 1):
-            code = open(os.path.join(SRC, srcfile)).read().rstrip("\n").split("\n") if srcfile else []
-            out = run(cmd, work, ms_dir, limit)
-            def add(shown, c, n, ms, cursor=None):
-                frames.append(frame(t, title, benefit, code, shown, c, out, n, i, total, cursor)); durs.append(ms)
-            read = lambda text: 300 + 30 * len(text.strip()) if text.strip() else 200
-            # human pacing: read the caption, then each line is held long enough to read before the next appears
-            add(0, None, 0, 2400)
-            for n, line in enumerate(code, 1):
-                add(n, None, 0, read(line), "code")
-            if code: durs[-1] += 900
-            step = max(1, len(cmd) // 8)
-            for k in range(step, len(cmd), step):
-                add(len(code), cmd[:k], 0, 90, "cmd")
-            add(len(code), cmd, 0, 700, "cmd")
-            for n, line in enumerate(out, 1):
-                add(len(code), cmd, n, read(line) + 200, "out")
-            durs[-1] += 1800
-        # quantize with a shared adaptive palette per frame; hold the loop point
-        pal = [f.quantize(colors=32, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE) for f in frames]
+        def add(im, ms): frames.append(im); durs.append(ms)
+        total = len(SCENES) + 2
+        read = lambda text: 220 + 18 * len(text.strip()) if text.strip() else 120
+        add(card_frame("intro", 0, total), 1200)
+        for i, chips in enumerate(range(1, 5)):
+            add(card_frame("intro", 0, total, chips=chips), 350)
+        durs[-1] += 1400
+        for n, sc in enumerate(SCENES, 1):
+            code = open(os.path.join(SRC, sc["src"])).read().rstrip("\\n".replace("\\n", "\n")).split("\n") if sc["src"] else []
+            add(scene_frame(sc, n, total, code, 0, [], False), 1100)
+            for k, line in enumerate(code, 1):
+                add(scene_frame(sc, n, total, code, k, [], True), read(line))
+            if code: durs[-1] += 700
+            rows = []
+            for cmd, keep in sc["steps"]:
+                step = max(1, len(cmd) // 6)
+                for k in range(step, len(cmd), step):
+                    add(scene_frame(sc, n, total, code, len(code), rows + [("cmd", cmd[:k])], True), 70)
+                rows = rows + [("cmd", cmd)]
+                add(scene_frame(sc, n, total, code, len(code), rows, True), 450)
+                out = wrap(keep(run(cmd, work, ms_dir)), sc.get("cut"))
+                for line in out:
+                    kind = "err" if re.search(r"error|warning|type:|resolution:", line) else "out"
+                    rows = rows + [(kind, line)]
+                    add(scene_frame(sc, n, total, code, len(code), rows, False), 400 + 10 * len(line))
+            durs[-1] += 1300
+        add(card_frame("outro", total - 1, total), 900)
+        cmd = "ms init hello"
+        for k in range(2, len(cmd) + 1, 2):
+            add(card_frame("outro", total - 1, total, cmd[:k]), 80)
+        add(card_frame("outro", total - 1, total, cmd), 500)
+        for chips in range(1, 7):
+            add(card_frame("outro", total - 1, total, cmd, chips), 280)
+        durs[-1] += 2800
+        # GIF: scale, quantize, write
+        h = int(a.width * H / W)
+        scaled = [f.resize((a.width, h), Image.LANCZOS) for f in frames]
+        # one fixed palette made from the theme (exact colours plus anti-aliasing blends) keeps accents vivid
+        mix = lambda x, y, k: tuple(int(p + (q - p) * k) for p, q in zip(x, y))
+        entries = [mix(C["top"], C["bot"], i / 31) for i in range(32)]
+        entries += [C["card"], C["bar"], C["edge"], (237, 106, 94), (245, 191, 79), (97, 197, 84)]
+        for name in ("fg", "dim", "acc", "pink", "ok", "err", "kw", "st", "nu", "co"):
+            for base in (C["card"], C["top"], C["bot"], C["bar"]):
+                entries += [mix(base, C[name], k) for k in (0.25, 0.5, 0.75, 1.0)]
+        entries = list(dict.fromkeys(entries))[:256]
+        pal = Image.new("P", (1, 1))
+        pal.putpalette([c for e in entries + [entries[0]] * (256 - len(entries)) for c in e])
+        small = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in scaled]
         os.makedirs(os.path.dirname(os.path.abspath(a.output)), exist_ok=True)
-        pal[0].save(a.output, save_all=True, append_images=pal[1:], duration=durs, loop=0, optimize=True, disposal=1)
-        print(f"{a.output}: {len(frames)} frames, {os.path.getsize(a.output) // 1024} KB")
+        small[0].save(a.output, save_all=True, append_images=small[1:], duration=durs, loop=0, optimize=True, disposal=1)
+        print(f"{a.output}: {len(frames)} frames, {sum(durs) / 1000:.0f} s, {os.path.getsize(a.output) // 1024} KB")
+        if a.mp4:
+            fl = os.path.join(work, "frames.txt")
+            with open(fl, "w") as f:
+                for i, (im, ms) in enumerate(zip(frames, durs)):
+                    p = os.path.join(work, f"f{i:04d}.png"); im.save(p)
+                    f.write(f"file '{p}'\nduration {ms / 1000}\n")
+                f.write(f"file '{p}'\n")
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", fl, "-vf", "fps=30,format=yuv420p",
+                            "-c:v", "libx264", "-crf", "20", "-movflags", "+faststart", a.mp4], check=True)
+            print(f"{a.mp4}: {os.path.getsize(a.mp4) // 1024} KB")
     finally:
         shutil.rmtree(work)
 
