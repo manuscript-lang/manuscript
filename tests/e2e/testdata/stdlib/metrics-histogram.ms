@@ -64,3 +64,11 @@ test "histogram rejects invalid percentiles whether empty or populated":
                 try expect_true(h.percentile(p).is_none())
 
         try expect_equal(h.count(), if populated: 1 else: 0)
+
+test "histogram percentile returns the observation at an exact rank":
+    for count in [25, 50]:
+        var h = histogram()
+        for value in 1..(count + 1):
+            h.record(value)
+        for p in [14, 28, 56]:
+            try expect_equal(h.percentile(p.to_float()), (p * count + 99) / 100)
