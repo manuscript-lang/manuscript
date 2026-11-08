@@ -164,9 +164,11 @@ test "a reader takes queued values directly and still waits and ends in order":
 
 fn endless(var out: WriteStream[Int]) Unit!:
     var i = 0
+
     while true:
         try out.write(i)
         i += 1
+
     return ok(unit)
 
 fn sum_mod(var input: ReadStream[Int]) Int!:
@@ -180,6 +182,9 @@ test "a consumer that always finds a value queued still meets its timeout":
     var w = p.writer()
     var r = p.reader()
     try p.close()
+
     let _prod = promise(fn: endless(var w))
-    let cons = promise(fn: sum_mod(var r)).with(options: PromiseOptions(timeout: milliseconds(200)))
+    let cons = promise(fn: sum_mod(var r)).with(
+        options: PromiseOptions(timeout: milliseconds(200))
+    )
     try expect_true(cons.wait().is_error())
