@@ -97,11 +97,24 @@ pub fn parse_request(buf: &[u8], limit: usize) -> Parsed<RequestHead> {
         Err(httparse::Error::TooManyHeaders) => {
             Parsed::Bad(BadMessage::new(431, "Request Header Fields Too Large"))
         }
-        Err(httparse::Error::Version) => {
+        Err(httparse::Error::Version) if names_other_version(buf) => {
             Parsed::Bad(BadMessage::new(505, "HTTP Version Not Supported"))
         }
         Err(_) => Parsed::Bad(BadMessage::new(400, "Bad Request")),
     }
+}
+
+/// Whether the request line is `method target HTTP/x` with a version other than 1.0 or 1.1, the
+/// only case 505 describes; a line with extra tokens (`GET /a b HTTP/1.1`) is malformed, not a
+/// request in some other version.
+fn names_other_version(buf: &[u8]) -> bool {
+    let line = buf
+        .split(|&c| c == b'\r' || c == b'\n')
+        .next()
+        .unwrap_or_default();
+    let mut tokens = line.split(|&c| c == b' ');
+    let version = tokens.nth(2);
+    tokens.next().is_none() && version.is_some_and(|v| v.starts_with(b"HTTP/"))
 }
 
 /// Parses a response head from the front of `buf`.
@@ -786,6 +799,19 @@ mod tests {
         assert!(!keep_alive(h.minor, &h.fields));
         let h = request("GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n");
         assert!(keep_alive(h.minor, &h.fields));
+    }
+
+    #[test]
+    fn only_a_named_http_version_is_505() {
+        let status = |t: &str| match parse_request(t.as_bytes(), DEFAULT_HEAD_LIMIT) {
+            Parsed::Bad(b) => b.status,
+            _ => panic!("accepted {t:?}"),
+        };
+        assert_eq!(status("GET / HTTP/2.0\r\nHost: x\r\n\r\n"), 505);
+        assert_eq!(status("GET / HTTP/1.2\r\nHost: x\r\n\r\n"), 505);
+        assert_eq!(status("GET /a b HTTP/1.1\r\nHost: x\r\n\r\n"), 400);
+        assert_eq!(status("GET / b\r\nHost: x\r\n\r\n"), 400);
+        assert_eq!(status("GET /\r\nHost: x\r\n\r\n"), 400);
     }
 
     #[test]
