@@ -103,3 +103,77 @@ test "invalid arguments fault":
     let _second = try expect_fault(fn: discard(quantiles([1.0], 1)))
     let _third = try expect_fault(fn: discard(bin_counts([1.0], 0)))
     let _fourth = try expect_fault(fn: discard(correlation([1.0, 2.0], [1.0])))
+
+test "percentile finite spans do not overflow during interpolation":
+    let values = [-1e308, 1e308]
+    try expect_equal(try expect_some(percentile(values, 0.0)), -1e308)
+    try expect_equal(try expect_some(percentile(values, 50.0)), 0.0)
+    try expect_equal(try expect_some(percentile(values, 100.0)), 1e308)
+
+    let cuts = quantiles(values, 4)
+    try expect_close(cuts[0] / 1e308, -0.5, 1e-15)
+    try expect_equal(cuts[1], 0.0)
+    try expect_close(cuts[2] / 1e308, 0.5, 1e-15)
+    try expect_close(
+        (try expect_some(percentile([-1.5e308, 1e308], 40.0))) / 1e308, -0.5, 1e-15
+    )
+
+test "percentile stays finite ordered and bounded across the widest finite span":
+    let edge = 1.7976931348623157e308
+    var previous = -edge
+
+    for percent in 0..101:
+        let result = try expect_some(percentile([-edge, edge], percent.to_float()))
+        try expect_equal(result.is_finite(), true)
+        try expect_equal(result >= previous and result <= edge, true)
+        previous = result
+
+    try expect_equal(previous, edge)
+
+test "percentile preserves finite small spans and special-value behavior":
+    try expect_close(
+        (try expect_some(percentile([1e308, 1.5e308], 50.0))) / 1e308, 1.25, 1e-15
+    )
+    try expect_close(
+        (try expect_some(percentile([-1.5e308, -1e308], 50.0))) / 1e308, -1.25, 1e-15
+    )
+    try expect_equal(try expect_some(percentile([-1e-300, 1e-300], 50.0)), 0.0)
+    try expect_equal(try expect_some(percentile([-1e-323, 5e-324], 50.0)), 0.0)
+
+    let inf = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+    try expect_equal(try expect_some(percentile([1.0, inf], 50.0)), inf)
+    try expect_equal(try expect_some(percentile([-inf, 1.0], 50.0)), -inf)
+
+    let opposite = try expect_some(percentile([-inf, inf], 50.0))
+    try expect_equal(opposite.is_nan(), true)
+
+    let unordered = try expect_some(percentile([nan, nan], 50.0))
+    try expect_equal(unordered.is_nan(), true)
+
+test "median finite middle values do not overflow their sum":
+    let edge = 1.7976931348623157e308
+    try expect_equal(try expect_some(median([edge, edge])), edge)
+    try expect_equal(try expect_some(median([-edge, -edge])), -edge)
+    try expect_close((try expect_some(median([1e308, 1.5e308]))) / 1e308, 1.25, 1e-15)
+    try expect_close(
+        (try expect_some(median([-1.5e308, -1e308]))) / 1e308, -1.25, 1e-15
+    )
+    try expect_equal(try expect_some(median([-edge, edge])), 0.0)
+    try expect_equal(try expect_some(median([edge, edge, edge, edge])), edge)
+
+test "median keeps ordinary tiny and nonfinite behavior":
+    try expect_equal(try expect_some(median([5e-324, 5e-324])), 5e-324)
+    try expect_equal(try expect_some(median([-5e-324, -5e-324])), -5e-324)
+    try expect_equal(try expect_some(median([-5e-324, 5e-324])), 0.0)
+    try expect_equal(try expect_some(median([1e-300, 3e-300])), 2e-300)
+    try expect_equal(try expect_some(median([-0.0, 0.0])), 0.0)
+
+    let inf = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+    try expect_equal(try expect_some(median([inf, inf])), inf)
+    try expect_equal(try expect_some(median([-inf, -inf])), -inf)
+    try expect_equal(try expect_some(median([1.0, inf])), inf)
+    try expect_equal(try expect_some(median([-inf, 1.0])), -inf)
+    try expect_equal((try expect_some(median([-inf, inf]))).is_nan(), true)
+    try expect_equal((try expect_some(median([nan, nan]))).is_nan(), true)

@@ -43,7 +43,15 @@ export fn median(values: List[Float]) Float?:
     if ordered.length() % 2 == 1:
         return ordered[middle]
 
-    return (ordered[middle - 1] + ordered[middle]) / 2.0
+    let low = ordered[middle - 1]
+    let high = ordered[middle]
+    let sum = low + high
+
+    // Only overflowing finite sums need halves; halving tiny values would lose precision.
+    if not sum.is_finite() and low.is_finite() and high.is_finite():
+        return low / 2.0 + high / 2.0
+
+    return sum / 2.0
 
 // Returns the most frequent value, or none for an empty list. When several values are equally frequent the least one wins.
 // Example: `mode([2.0, 1.0, 2.0, 1.0, 3.0])` is `1.0`.
@@ -141,7 +149,14 @@ fn percentile_sorted(ordered: List[Float], percent: Float) Float:
     if not low.is_finite() and high != -low:
         return low
 
-    return low + (high - low) * fraction
+    let span = high - low
+
+    // Finite opposite-sign endpoints can overflow their difference, not their weighted mean.
+    // Keep the original formula for finite spans to preserve small/subnormal rounding.
+    if not span.is_finite() and low.is_finite() and high.is_finite():
+        return low * (1.0 - fraction) + high * fraction
+
+    return low + span * fraction
 
 /*
 Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.
