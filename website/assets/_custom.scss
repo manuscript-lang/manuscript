@@ -197,6 +197,8 @@ html:root[data-theme="dark"] .docs-shot.has-dark .shot-dark { display: block; }
 .markdown .home-example-intro p { margin: .5rem 0 0; font-size: .78rem; line-height: 1.6; color: var(--docs-muted); }
 .home-example .docs-code { margin: 0; border: 0; border-radius: 0; }
 .home-example .docs-code-heading { border-radius: 0; }
+.home-screencast { margin: 0; }
+.home-screencast img { display: block; width: 100%; height: auto; }
 .home-code-hint { display: none; }
 .home-inputs { border-top: 1px solid var(--gray-200); padding: 1rem 1.5rem; font: .75rem/1.6 var(--docs-mono); }
 .home-inputs summary { cursor: pointer; color: var(--docs-prose-link); }

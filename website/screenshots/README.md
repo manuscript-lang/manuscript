@@ -16,3 +16,13 @@ node website/screenshots/capture.cjs map.html run_command code-map Behavior Call
 ```
 
 The script needs Playwright with Chromium on the machine that runs it; the repository does not depend on it. Reduce each PNG before committing (for example to 128 colors); screenshots are about 150 KB.
+
+## Feature screencast
+
+`website/static/images/screencast.gif` is the docs home screencast and is reusable in the README. Regenerate it with a built `ms`:
+
+```sh
+python3 website/screenshots/screencast.py --ms target/release/ms [--theme light]
+```
+
+Scenes and captions are listed in `SCENES` in the script; sources live in `website/screenshots/screencast/`. Every command runs for real, so the output shown is current compiler output. The script needs Python 3 with Pillow and DejaVu Sans Mono (not project dependencies). Re-run it when a shown diagnostic or command output changes.
