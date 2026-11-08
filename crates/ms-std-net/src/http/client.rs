@@ -972,22 +972,28 @@ impl Client {
             Body::Bytes(bytes) => Some(bytes.len()),
             Body::Stream(_) => None,
         };
-        let headers = h2_request_headers(hop, length, wants_gzip);
+        // Owned by a cleanup too: a cancelled request skips the frame that would free it.
+        let mut headers = rt::Parked::new(h2_request_headers(hop, length, wants_gzip));
         let end = length == Some(0);
-        let stream = loop {
+        let opened = loop {
             if deadline.expired() {
                 return Err(Fail::Err(HttpErr::Timeout));
             }
-            match session.open(headers.clone(), end) {
+            match session.open(headers.get().clone(), end) {
                 Ok(stream) => break stream,
                 Err(OpenErr::Unavailable) => return Err(Fail::Stale),
                 Err(OpenErr::Invalid(m)) => return Err(Fail::Err(HttpErr::Failed(m))),
                 Err(OpenErr::Full) => session.pump(deadline).map_err(pump_fail)?,
             }
         };
+        // A cancellation parks below and leaves by a jump that skips destructors, which would
+        // leave the stream open on the connection (its slot, queue and the peer's handler).
+        // The cleanup behind `Parked` drops it, and its drop resets the stream.
+        let mut held = rt::Parked::new(opened);
+        let stream = held.get();
         stream.session().flush(deadline).map_err(pump_fail)?;
         if !end {
-            self.upload_h2(&stream, hop.body, deadline)?;
+            self.upload_h2(stream, hop.body, deadline)?;
         }
         let head = loop {
             match stream.poll_head() {
@@ -1001,7 +1007,7 @@ impl Client {
                 _ => stream.pump(deadline).map_err(pump_fail)?,
             }
         };
-        Ok((head, Wire::for_stream(stream), wants_gzip))
+        Ok((head, Wire::for_stream(held.finish()), wants_gzip))
     }
 
     fn upload_h2(
