@@ -36,8 +36,8 @@ SCENES = [
     ("See what the agent built.",
      "Call graphs and code maps come from checked source, not guesses.",
      None, "ms diagram conc.ms --format ascii", 7),
-    ("One command, one verdict.",
-     "Check, format, lint and test together, for engineers, agents and CI.",
+    ("One toolchain. Batteries-included stdlib.",
+     "Check, format, lint, test and build, with files, HTTP, JSON and crypto in the box.",
      None, "ms verify demo/ms.toml", 4),
 ]
 COLS = int((1000 - 64) / 14.4)
