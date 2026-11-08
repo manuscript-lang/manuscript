@@ -926,7 +926,19 @@ fn number_text(value: JsonValue) String?:
         NumberValue(text): return text.clone()
         _: return none
 
+// 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are never equal.
+fn kind_of(value: JsonValue) Int:
+    if value.is_null(): return 0
+    if value.as_bool().is_some(): return 1
+    if value.as_float().is_some(): return 2
+    if value.as_string().is_some(): return 3
+    if value.as_list().is_some(): return 4
+
+    return 5
+
 fn equal(left: JsonValue, right: JsonValue) Bool:
+    if kind_of(left) != kind_of(right): return false
+
     if let a = left.as_float():
         if let b = right.as_float(): return a == b
 
