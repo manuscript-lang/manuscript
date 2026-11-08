@@ -390,6 +390,9 @@ impl<'a> FnLower<'a> {
                 return Ok(done);
             }
         }
+        let protect_list = self.ety(recv_expr).is(Builtin::List)
+            && matches!(name, "append" | "prepend" | "insert" | "set" | "replace");
+        let mut receiver_resource = None;
         // A receiver that is not a place is evaluated before the arguments, as written. An owned
         // receiver stays registered as a temporary while a later argument can leave through `try`.
         let mut receiver: Option<(Val, bool)> = None;
@@ -398,6 +401,16 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(x);
             }
+            let x = if protect_list && x.own {
+                if let Some(key) = self.hold_resource_temp(x.v)? {
+                    receiver_resource = Some(key);
+                    Val { v: key, own: false }
+                } else {
+                    x
+                }
+            } else {
+                x
+            };
             let held = view
                 .arguments
                 .iter()
@@ -416,13 +429,12 @@ impl<'a> FnLower<'a> {
                 return Ok(self.dummy(MTy::UNIT));
             }
         }
-        let stores = ty_is_list_store(self, recv_expr, name);
-        let mut args = self.native_args_staged(view, stores)?;
+        let mut args = self.native_args_protected(view, protect_list)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        if stores {
-            self.stage_incoming_resources(&mut args)?;
+        if let Some(key) = receiver_resource {
+            return self.mutate_computed_resource_list(name, key, &args, recv_expr);
         }
         if discards {
             // The incoming owned arguments stay registered while the old entry closes: a close
@@ -504,15 +516,59 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// Registers each incoming owned resource for fault and cancellation cleanup until
-    /// `element_value` stores it, so a bounds fault or a later operand's failure closes it.
-    fn stage_incoming_resources(&mut self, args: &mut [NArg]) -> Result<(), Error> {
-        for arg in args.iter_mut().filter(|a| a.val.own && !a.reader) {
-            if let Some(key) = self.hold_resource_temp(arg.val.v)? {
-                arg.val = Val { v: key, own: false };
-            }
+    /// A temporary resource receiver stays in its authoritative cleanup slot throughout mutation.
+    fn mutate_computed_resource_list(
+        &mut self,
+        name: &str,
+        key: Value,
+        args: &[NArg],
+        recv_expr: &Expr,
+    ) -> Result<Val, Error> {
+        let ty = self.ety(recv_expr);
+        let lt = self.ty_of(key);
+        let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
+            unreachable!("resource list")
+        };
+        if name == "set" {
+            self.close_list_entry_value(&ty.args[0], Val { v: key, own: false }, &args[0])?;
         }
-        Ok(())
+        let index = if matches!(name, "append" | "prepend") {
+            0
+        } else {
+            1
+        };
+        let arg = &args[index];
+        let guard = self
+            .resource_temp_slot(arg.val.v)
+            .map(|slot| (slot, Some(arg.val.v)));
+        let (incoming, incoming_key) = match guard {
+            Some(pair) => pair,
+            None => {
+                let v = self.element_value(arg);
+                (self.put_slot(v), None)
+            }
+        };
+        let slot = self
+            .resource_temp_slot(key)
+            .expect("computed receiver slot");
+        let result = self.guarded_list_slot(name, slot, elem, (incoming, incoming_key), args)?;
+        let mut result_guard = None;
+        if let Some(r) = result
+            && r.own
+        {
+            result_guard = self.hold_resource_temp(r.v)?;
+        }
+        self.unhold_temp(key);
+        self.drop_temp(key);
+        if let Some(key) = result_guard {
+            let v = self.take_resource_temp(key).0;
+            self.unhold_temp(key);
+            return Ok(Val { v, own: true });
+        }
+        Ok(result.unwrap_or(Val {
+            v: self.b.unit(),
+            own: false,
+        }))
     }
 
     /// Whether `name` on the place `recv_expr` discards a resource entry of a list or map:
@@ -683,7 +739,6 @@ impl<'a> FnLower<'a> {
     /// `xs.set(i, v)` and `xs.remove(i)` discard the element at `i`: a resource in it closes
     /// first. An index out of range closes nothing and faults in the mutator.
     pub(super) fn close_list_entry(&mut self, recv_expr: &Expr, index: &NArg) -> Result<(), Error> {
-        use ms_mir::ir::{Cc, Op};
         let list_ty = self.ety(recv_expr);
         let Some(elem) = list_ty.args.first().filter(|_| list_ty.is(Builtin::List)) else {
             return Ok(());
@@ -695,6 +750,11 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(());
         }
+        self.close_list_entry_value(elem, x, index)
+    }
+
+    fn close_list_entry_value(&mut self, elem: &ct::Ty, x: Val, index: &NArg) -> Result<(), Error> {
+        use ms_mir::ir::{Cc, Op};
         let list = self.borrow(x);
         let i = self.borrow(index.val);
         let n = self.b.list_len(list);
@@ -735,6 +795,12 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
     ) -> Result<Option<Val>, Error> {
         use ms_mir::ir::{Cc, Imm, Op};
+        if args
+            .get(1)
+            .is_some_and(|a| self.resource_temp_slot(a.val.v).is_some())
+        {
+            return Ok(None);
+        }
         let ExprKind::Name(_) = &recv_expr.kind else {
             return Ok(None);
         };
@@ -900,10 +966,4 @@ impl<'a> FnLower<'a> {
         let out = self.duration_of(nanos)?;
         Ok(Val { v: out, own: false })
     }
-}
-
-/// Whether `name` stores its element argument into a list through `element_value`.
-fn ty_is_list_store(cx: &mut FnLower<'_>, recv_expr: &Expr, name: &str) -> bool {
-    matches!(name, "set" | "insert" | "replace" | "append" | "prepend")
-        && cx.ety(recv_expr).is(Builtin::List)
 }

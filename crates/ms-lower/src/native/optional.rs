@@ -584,6 +584,13 @@ impl<'a> FnLower<'a> {
         copy_result: bool,
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
+        if let Some((new, result)) = self.guarded_list_mutation(name, old, args)? {
+            debug_assert!(
+                !copy_result,
+                "list insertion methods never return the receiver"
+            );
+            return Ok((new, result));
+        }
         // Swapping scalars is two loads and two stores; other elements move through the runtime without a copy.
         let scalar_swap = name == "swap"
             && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if self.b.m.types.is_scalar(*e));
@@ -616,8 +623,8 @@ impl<'a> FnLower<'a> {
 
     /// An owned element for a collection, wrapped when the checker converted it to an optional.
     pub(crate) fn element_value(&mut self, a: &NArg) -> Value {
-        // A resource staged by `stage_incoming_resources` leaves its fault registration only
-        // here, when the element is stored: every earlier check faults with it still registered.
+        // Fallback ownership extraction. Protected direct-list stores bypass this helper and
+        // retain the registered incoming slot until the native mutation succeeds.
         let v = if self.resource_temps.contains_key(&a.val.v) {
             let key = a.val.v;
             let (v, _) = self.take_resource_temp(key);
