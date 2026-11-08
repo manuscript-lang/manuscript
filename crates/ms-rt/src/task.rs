@@ -47,6 +47,19 @@ pub mod sweep {
 
     static PARKS: AtomicU64 = AtomicU64::new(0);
 
+    std::thread_local! {
+        /// The next park of this thread is the scheduler's own (a worker's root task waiting for
+        /// work), which no program awaits: it is neither counted nor cancelled. The park takes the
+        /// mark as it starts, before any other task runs.
+        static INTERNAL: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
+    }
+
+    /// Marks this thread's next park as the scheduler's own; `internal(false)` after it clears a
+    /// mark the park did not need to take.
+    pub fn internal(on: bool) {
+        INTERNAL.with(|i| i.set(on));
+    }
+
     fn target() -> u64 {
         static TARGET: AtomicU64 = AtomicU64::new(u64::MAX);
         static READ: AtomicU64 = AtomicU64::new(0);
@@ -64,6 +77,9 @@ pub mod sweep {
     /// A real cancel stays recorded on the task (and survives shields), so this one does too: code that swallows
     /// the error of a cancelled park then fails at its next park, as it would under a real cancel.
     pub fn cancel_here() -> bool {
+        if INTERNAL.with(|i| i.replace(false)) {
+            return false;
+        }
         let hit = PARKS.fetch_add(1, Ordering::Relaxed) + 1 == target();
         if hit {
             crate::fault::set_live_task_cancel(1);
@@ -78,11 +94,14 @@ pub mod sweep {
 }
 
 #[cfg(not(feature = "stats"))]
-mod sweep {
+pub mod sweep {
     #[inline(always)]
     pub fn cancel_here() -> bool {
         false
     }
+
+    #[inline(always)]
+    pub fn internal(_: bool) {}
 }
 /// Request bit: keep the descriptor registered between waits instead of re-arming it. Only for
 /// a descriptor whose owner drains it before every wait and keeps it open for good.
