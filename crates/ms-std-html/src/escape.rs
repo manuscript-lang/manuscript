@@ -56,43 +56,34 @@ fn unescape_entity(s: &[u8], out: &mut Vec<u8>, attribute: bool) -> usize {
     }
     let mut i = 1;
     if s[i] == b'#' {
-        if s.len() <= 3 {
-            return literal(out, 1);
-        }
         i += 1;
-        let mut c = s[i];
-        let mut hex = false;
-        if c == b'x' || c == b'X' {
-            hex = true;
+        let hex = matches!(s.get(i), Some(b'x' | b'X'));
+        if hex {
             i += 1;
         }
-        let mut x: i32 = 0;
-        while i < s.len() {
-            c = s[i];
+        let radix = if hex { 16 } else { 10 };
+        let digits_start = i;
+        // Saturate above U+10FFFF so a long digit run maps to U+FFFD instead of wrapping into a scalar.
+        let mut x: u32 = 0;
+        while let Some(d) = s.get(i).and_then(|&c| char::from(c).to_digit(radix)) {
+            x = (x * radix + d).min(0x11_0000);
             i += 1;
-            if hex {
-                if let Some(d) = char::from(c).to_digit(16) {
-                    x = x.wrapping_mul(16).wrapping_add(d as i32);
-                    continue;
-                }
-            } else if c.is_ascii_digit() {
-                x = x.wrapping_mul(10).wrapping_add(i32::from(c - b'0'));
-                continue;
-            }
-            if c != b';' {
-                i -= 1;
-            }
-            break;
         }
-        if i <= 3 {
+        let terminated = s.get(i) == Some(&b';');
+        // The tokenizer oracle (Go's x/net/html) decodes a digitless `&#x;` as U+FFFD; `unescape_string`
+        // keeps that one spelling literal. Every other digitless reference stays literal.
+        if i == digits_start && !(hex && terminated) {
             return literal(out, 1);
+        }
+        if terminated {
+            i += 1;
         }
         let r = if (0x80..=0x9F).contains(&x) {
             REPLACEMENT[(x - 0x80) as usize]
-        } else if x <= 0 || (0xD800..=0xDFFF).contains(&x) || x > 0x10FFFF {
+        } else if x == 0 || (0xD800..=0xDFFF).contains(&x) || x > 0x10FFFF {
             0xFFFD
         } else {
-            x as u32
+            x
         };
         push_rune(out, r);
         return i;
