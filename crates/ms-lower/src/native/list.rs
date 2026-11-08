@@ -507,9 +507,9 @@ impl<'a> FnLower<'a> {
     /// Registers each incoming owned resource for fault and cancellation cleanup until
     /// `element_value` stores it, so a bounds fault or a later operand's failure closes it.
     fn stage_incoming_resources(&mut self, args: &mut [NArg]) -> Result<(), Error> {
-        for arg in args.iter_mut().filter(|a| a.val.own && !a.reader) {
-            if let Some(key) = self.hold_resource_temp(arg.val.v)? {
-                arg.val = Val { v: key, own: false };
+        for arg in args.iter_mut().filter(|a| !a.reader) {
+            if let Some(key) = self.stage_arg(arg.val, true, &mut Vec::new())? {
+                arg.val = key;
             }
         }
         Ok(())

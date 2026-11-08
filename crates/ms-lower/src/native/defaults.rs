@@ -127,14 +127,11 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
-            let val = if stage
-                && val.own
-                && !reader
-                && a.wrap_optional.is_none()
-                && n + 1 < view.arguments.len()
-                && let Some(key) = self.hold_resource_temp(val.v)?
-            {
-                Val { v: key, own: false }
+            let later =
+                stage && !reader && a.wrap_optional.is_none() && n + 1 < view.arguments.len();
+            // The callee takes a staged resource itself, through `element_value`.
+            let val = if let Some(key) = self.stage_arg(val, later, &mut Vec::new())? {
+                key
             } else if later_try {
                 self.hold_temp(val)
             } else {
