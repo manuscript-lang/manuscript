@@ -269,7 +269,17 @@ impl Walker<'_> {
         }
         let starts_promise = self.entry_call(e);
         for (i, a) in args.iter().enumerate() {
-            let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
+            let mut mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
+            if mode == ParamMode::Borrow && modes.retained.get(i).copied().unwrap_or(false) {
+                // A native that wraps this argument in a new result (`ok_or(cause)`) cannot copy a value that has no `clone`: the argument moves into the result.
+                let (arg_ty, result_ty) = (self.cx.m.ty(&a.value), self.cx.m.ty(e));
+                if self.class_of(&a.value) != Class::Copy
+                    && !self.cx.classes.clonable(self.syms, &arg_ty)
+                    && ty_contains(&result_ty, &arg_ty)
+                {
+                    mode = ParamMode::Move;
+                }
+            }
             let mut held = self.held(&a.value, mode);
             if starts_promise && let ExprKind::Lambda(l) = &a.value.kind {
                 // The entry of a promise reads what it captures, in place, while the promise lives.

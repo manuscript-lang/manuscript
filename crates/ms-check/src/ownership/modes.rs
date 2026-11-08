@@ -442,7 +442,7 @@ pub fn wrapper_passthrough(
     let name = syms.str(method.native);
     let index = if method.receiver.is(Builtin::Optional) {
         match name {
-            "or_else" | "ok_or" | "ok_or_else" => 0,
+            "get" | "get_or_else" | "or_else" | "ok_or" | "ok_or_else" => 0,
             _ => return None,
         }
     } else if method.receiver.is(Builtin::Result) {
