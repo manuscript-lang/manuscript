@@ -136,3 +136,44 @@ test "padded multipart sections retain exact raw budget boundary":
         try expect_equal(parts.length(), 1)
         try expect_equal(parts[0].data, "x".to_bytes())
         try expect_equal(read_parts(body.clone(), size, 6).err().kind, "EOVERFLOW")
+
+// Replaces the byte at `at` with `value`.
+fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
+    var out = BytesBuilder()
+    out.append_bytes(data.slice(0, at).get("".to_bytes()))
+    out.append(value.to_uint8().get(0))
+    out.append_bytes(data.slice(at + 1, data.length()).get("".to_bytes()))
+    return out.build()
+
+// Compares the two parsers on one body: the same error kind, or the same parts.
+fn agree(body: Bytes, size: Int) String:
+    let whole = parse_multipart(body.clone(), "XyZ")
+    let stream = read_parts(body.clone(), size)
+
+    if whole.is_error() or stream.is_error():
+        if whole.is_error() != stream.is_error(): return "one failed: parse {whole.is_error()}, stream {stream.is_error()}"
+        if whole.err().kind != stream.err().kind: return "kinds differ: {whole.err().kind}, {stream.err().kind}"
+
+        return ""
+
+    if whole.get() != stream.get(): return "parts differ"
+
+    return ""
+
+test "parts and parse_multipart agree on corrupted and truncated bodies":
+    let body = sample()
+    var cases: List[Bytes] = []
+
+    for at in 0..body.length():
+        if at % 5 != 0: continue
+
+        for value in [13, 10, 45, 0]:
+            cases.append(with_byte(body.clone(), at, value))
+
+    for cut in 0..body.length():
+        if cut % 7 == 0: cases.append(body.slice(0, cut).get("".to_bytes()))
+
+    for index in 0..cases.length():
+        for size in [1, 3, 64]:
+            let verdict = agree(cases[index].clone(), size)
+            if verdict != "": return fail("case {index}, chunk {size}: {verdict}")

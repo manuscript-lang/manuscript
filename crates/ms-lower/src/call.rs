@@ -334,18 +334,6 @@ impl<'a> FnLower<'a> {
         Ok(Some(Val { v: key, own: false }))
     }
 
-    /// Takes the staged arguments back as owned values, last registered first (the cleanup stack
-    /// discards a registration together with every newer one), and rewrites `slots` to them.
-    pub(crate) fn release_staged(&mut self, staged: &[Value], slots: &mut [Option<Val>]) {
-        for &key in staged.iter().rev() {
-            let (v, _) = self.take_resource_temp(key);
-            self.unhold_temp(key);
-            for slot in slots.iter_mut().flatten().filter(|x| x.v == key) {
-                *slot = Val { v, own: true };
-            }
-        }
-    }
-
     /// Stages a source argument without forgetting that the caller owns it. Intact resource
     /// wrappers need their payload closer if a later argument returns early or faults.
     fn hold_source_arg(&mut self, x: Val, later_try: bool) -> Result<Val, Error> {
@@ -1106,15 +1094,12 @@ impl<'a> FnLower<'a> {
         let params = m.ty.params.clone();
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
         let mut places: Vec<Option<Expr>> = vec![None; params.len()];
-        let mut staged: Vec<Value> = Vec::new();
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
             if self.dead {
                 return Ok(x);
             }
-            // An optional made from a borrowed payload owns transport storage only; it must not
-            // take over the original resource's close duty.
-            let borrowed_payload = !x.own && a.wrap_optional.is_some();
+            let owned_payload = x.own;
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -1126,6 +1111,15 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
+            // Interface parameters borrow too: keep intact resources registered in
+            // written order through later operands and through the dispatch itself.
+            let x = if owned_payload && let Some(key) = self.hold_resource_temp(x.v)? {
+                Val { v: key, own: true }
+            } else if later_try && x.own {
+                self.hold_temp(x)
+            } else {
+                x
+            };
             let idx = params
                 .iter()
                 .position(|p| p.name == a.slot.name)
@@ -1133,25 +1127,11 @@ impl<'a> FnLower<'a> {
                     Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
                 })?;
             let is_var = op_vars.get(idx).copied().unwrap_or(false);
-            let operands_follow =
-                n + 1 < view.arguments.len() || view.arguments.len() < params.len();
-            let x = if let Some(key) = self.stage_arg(
-                x,
-                operands_follow && !is_var && !borrowed_payload,
-                &mut staged,
-            )? {
-                key
-            } else if later_try && x.own {
-                self.hold_temp(x)
-            } else {
-                x
-            };
             if is_var {
                 places[idx] = Some(a.expr.clone());
             }
             slots[idx] = Some(x);
         }
-        self.release_staged(&staged, &mut slots);
         let mut args = Vec::new();
         // A `var` argument moves into a slot the implementation changes, then back.
         let mut slots_out: Vec<VarArgument> = Vec::new();
@@ -1183,11 +1163,24 @@ impl<'a> FnLower<'a> {
                     in_place = Some((i, place, self.ty_of(x.v)));
                     continue;
                 }
+                let x = if x.own && self.resource_temps.contains_key(&x.v) {
+                    self.unhold_temp(x.v);
+                    Val {
+                        v: self.take_resource_temp(x.v).0,
+                        own: true,
+                    }
+                } else {
+                    x
+                };
                 let slot = self.var_argument(e, i, x, places[i].as_ref(), &mut slots_out);
                 args.push(slot);
                 continue;
             }
-            args.push(self.borrow(x));
+            args.push(if x.own && self.resource_temps.contains_key(&x.v) {
+                x.v
+            } else {
+                self.borrow(x)
+            });
         }
         let r = self.borrow(recv);
         self.at(e.pos);
