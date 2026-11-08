@@ -23,7 +23,7 @@ fn render() String!:
     var table = Table(columns: [Align.Left, Align.Right])
     try table.add(["tea", "2"])
     try table.add(["coffee", "30"])
-    return table.render()
+    return ok(table.render())
 ```
 
 Unicode widths use `String.display_width`: cell bytes stay intact and widths are estimates, not a promise
