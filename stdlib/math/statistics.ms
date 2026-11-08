@@ -96,33 +96,67 @@ export fn mode(values: List[Float]) Float?:
 
     return best
 
-// Returns the sum of squared distances from the mean, or none for an empty list.
-fn squared_deviations(values: List[Float]) Float?:
+// The sum of squared deviations from the mean as `squares * 2^(2 * exponent)`, so a representable variance never overflows or underflows on the way.
+type Moments:
+    squares: Float
+    exponent: Int
+
+// Returns the centered second moment, or none for an empty list or any nonfinite value (which keeps plain Float rules).
+// Values are scaled by a power of two to at most 1 in magnitude, shifted by the first value, then summed with compensation, so a large common offset keeps its variation.
+fn centered_moments(values: List[Float]) Moments?:
+    if values.is_empty():
+        return none
+
+    var scale = 0.0
+    for value in values:
+        if not value.is_finite(): return none
+
+        scale = scale.max(value.abs())
+
+    if scale == 0.0: return Moments(squares: 0.0, exponent: 0)
+
+    let exponent = frexp(scale).exponent
+    let origin = ldexp(values[0], -exponent)
+    var total = DeviationSum()
+
+    for value in values:
+        total.add(ldexp(value, -exponent) - origin)
+
+    let center = total.value() / values.length().to_float()
+    var squares = DeviationSum()
+
+    for value in values:
+        let delta = (ldexp(value, -exponent) - origin) - center
+        squares.add(delta * delta)
+
+    return Moments(squares: squares.value(), exponent: exponent)
+
+// Returns the sum of squared distances from the mean divided by `divisor`, or none for an empty list.
+fn spread_variance(values: List[Float], divisor: Int) Float?:
+    if let moments = centered_moments(values):
+        let result = moments.squares / divisor.to_float()
+        return ldexp(ldexp(result, moments.exponent), moments.exponent)
+
+    // Nonfinite input follows Float rules around the plain mean.
     if let center = mean(values):
         var total = 0.0
         for value in values:
             total += (value - center) * (value - center)
-        return total
+        return total / divisor.to_float()
 
     return none
 
 // Returns the population variance (divide by n), or none for an empty list.
 // Example: `population_variance([1.0, 2.0, 3.0, 4.0])` is `1.25`.
 export fn population_variance(values: List[Float]) Float?:
-    if let total = squared_deviations(values):
-        return total / values.length().to_float()
-
-    return none
+    return spread_variance(values, values.length())
 
 // Returns the sample variance (divide by n - 1), or none when the list has fewer than two values.
 // Example: `variance([1.0, 2.0, 3.0, 4.0])` is `1.6666666666666667`.
 export fn variance(values: List[Float]) Float?:
     if values.length() < 2:
         return none
-    if let total = squared_deviations(values):
-        return total / (values.length() - 1).to_float()
-
-    return none
+    return spread_variance(values, values.length() - 1)
 
 // Returns the population standard deviation, or none for an empty list.
 export fn population_stdev(values: List[Float]) Float?:
@@ -414,13 +448,34 @@ Lists of different lengths fault.
 Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
 */
 export fn correlation(xs: List[Float], ys: List[Float]) Float?:
-    if let s = spread(xs, ys):
+    if xs.length() != ys.length():
+        panic("statistics: the lists must have the same length")
+
+    // Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
+    if let s = spread(unit_scaled(xs), unit_scaled(ys)):
         if s.xx == 0.0 or s.yy == 0.0:
             return none
 
-        return s.xy / sqrt(s.xx * s.yy)
+        return s.xy / (sqrt(s.xx) * sqrt(s.yy))
 
     return none
+
+// Returns the values multiplied by the power of two that brings the greatest magnitude into [0.5, 1); lists with a nonfinite value or only zeros are unchanged.
+fn unit_scaled(values: List[Float]) List[Float]:
+    var scale = 0.0
+    for value in values:
+        if not value.is_finite(): return values.clone()
+
+        scale = scale.max(value.abs())
+
+    if scale == 0.0: return values.clone()
+
+    let exponent = frexp(scale).exponent
+    var scaled: List[Float] = []
+    for value in values:
+        scaled.append(ldexp(value, -exponent))
+
+    return scaled
 
 /*
 Returns the least-squares line through paired values, or none when there are fewer than two pairs or the `xs` are all equal.

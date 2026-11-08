@@ -5,7 +5,8 @@ import (
     expect_equal,
     expect_fault,
     expect_none,
-    expect_some
+    expect_some,
+    expect_true
 ) from "@std/test/test.ms"
 import (
     correlation,
@@ -433,3 +434,24 @@ test "standard deviation infinite sample threshold":
 
     let s = try expect_some(stdev(values))
     try expect_equal(s, 1.0 / 0.0)
+
+test "variance survives an intermediate sum overflow":
+    try expect_equal(try expect_some(population_variance([-1e154, 1e154])), 1e308)
+
+test "a large common offset does not change variation":
+    try expect_equal(try expect_some(population_variance([1e16, 1e16 + 2.0])), 1.0)
+    try expect_equal(try expect_some(variance([1e16, 1e16 + 2.0])), 2.0)
+    try expect_equal(try expect_some(population_stdev([1e16, 1e16 + 2.0])), 1.0)
+
+test "variance keeps tiny scales":
+    try expect_close(try expect_some(population_variance([1e-150, 3e-150])) / 1e-300, 1.0, 1e-12)
+
+test "variance of nonfinite input follows Float rules":
+    let result = try expect_some(population_variance([1.0, 1.0 / 0.0]))
+    try expect_true(result.is_nan())
+
+test "correlation of large and tiny perfectly correlated values":
+    try expect_close(try expect_some(correlation([1e100, 2e100], [1e100, 2e100])), 1.0, 1e-12)
+    try expect_close(try expect_some(correlation([1e-200, 2e-200], [-1e-200, -2e-200])), -1.0, 1e-12)
+    try expect_close(try expect_some(correlation([1e300, 2e300, 4e300], [1e-300, 2e-300, 4e-300])), 1.0, 1e-12)
+    try expect_none(correlation([1e100, 1e100], [1e100, 2e100]))

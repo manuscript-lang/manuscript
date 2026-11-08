@@ -4,7 +4,9 @@ import (
     cos,
     cosh,
     exp,
+    frexp,
     hypot,
+    ldexp,
     infinity,
     log,
     sign_bit,
@@ -49,6 +51,26 @@ fn product(left: Float, right: Float) Float:
 
     return left * right
 
+// Divides by the larger part of the divisor (Smith's algorithm).
+fn smith_divide(numerator: Complex, other: Complex) Complex:
+    let abs_re = other.re.abs()
+    let abs_im = other.im.abs()
+
+    if abs_re >= abs_im:
+        let ratio = other.im / other.re
+        let denominator = other.re + other.im * ratio
+        return Complex(
+            re: (numerator.re + numerator.im * ratio) / denominator,
+            im: (numerator.im - numerator.re * ratio) / denominator
+        )
+
+    let ratio = other.re / other.im
+    let denominator = other.re * ratio + other.im
+    return Complex(
+        re: (numerator.re * ratio + numerator.im) / denominator,
+        im: (numerator.im * ratio - numerator.re) / denominator
+    )
+
 impl Complex:
     // Returns the sum, adding real and imaginary parts separately with Float rounding.
     fn add(other: Complex) Complex:
@@ -71,24 +93,32 @@ impl Complex:
 
     // Returns the quotient. Dividing by zero follows Float rules and gives infinities or NaN, never a fault.
     // The divisor is scaled by its larger part to avoid overflow in the intermediate squares.
+    // Finite operands whose parts are near the Float range limits are first scaled by exact powers of two so the quotient keeps its precision.
     fn divide(other: Complex) Complex:
-        let abs_re = other.re.abs()
-        let abs_im = other.im.abs()
+        let sn = self.re.abs().max(self.im.abs())
+        let sd = other.re.abs().max(other.im.abs())
 
-        if abs_re >= abs_im:
-            let ratio = other.im / other.re
-            let denominator = other.re + other.im * ratio
-            return Complex(
-                re: (self.re + self.im * ratio) / denominator,
-                im: (self.im - self.re * ratio) / denominator
+        if sd > 0.0 and sn.is_finite() and sd.is_finite() and (
+            sn.max(sd) > 3.273390607896142e150
+            or sd < 3.054936363499605e-151
+            or sn > 0.0 and sn < 3.054936363499605e-151
+        ):
+            let numerator_exponent = frexp(sn).exponent
+            let divisor_exponent = frexp(sd).exponent
+            let quotient = smith_divide(
+                Complex(
+                    re: ldexp(self.re, -numerator_exponent),
+                    im: ldexp(self.im, -numerator_exponent)
+                ),
+                Complex(
+                    re: ldexp(other.re, -divisor_exponent),
+                    im: ldexp(other.im, -divisor_exponent)
+                )
             )
+            let shift = numerator_exponent - divisor_exponent
+            return Complex(re: ldexp(quotient.re, shift), im: ldexp(quotient.im, shift))
 
-        let ratio = other.re / other.im
-        let denominator = other.re * ratio + other.im
-        return Complex(
-            re: (self.re * ratio + self.im) / denominator,
-            im: (self.im * ratio - self.re) / denominator
-        )
+        return smith_divide(self, other)
 
     // Returns the number with both parts negated.
     fn negate() Complex:
@@ -136,7 +166,16 @@ impl Complex:
 
     // Returns the principal natural logarithm; the imaginary part is the phase.
     fn log() Complex:
-        return Complex(re: log(self.abs()), im: self.phase())
+        let modulus = self.abs()
+
+        // A finite number whose magnitude overflows still has a finite logarithm: log(m) = log(m/2) + ln 2.
+        if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
+            return Complex(
+                re: log(hypot(self.re / 2.0, self.im / 2.0)) + 0.6931471805599453,
+                im: self.phase()
+            )
+
+        return Complex(re: log(modulus), im: self.phase())
 
     // Returns the principal square root, with a non-negative real part.
     fn sqrt() Complex:
@@ -151,6 +190,11 @@ impl Complex:
         // A finite number whose magnitude overflows has a finite root: take the root of the half and scale by sqrt(2).
         if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
             return Complex(re: self.re / 2.0, im: self.im / 2.0).sqrt().scale(sqrt(2.0))
+
+        // Halving a subnormal modulus loses its low bits: scale up by 2^200, take the root, and scale back by 2^-100.
+        if modulus < 4.450147717014403e-308:
+            let root = Complex(re: ldexp(self.re, 200), im: ldexp(self.im, 200)).sqrt()
+            return Complex(re: ldexp(root.re, -100), im: ldexp(root.im, -100))
 
         let real = sqrt(modulus / 2.0 + self.re.abs() / 2.0)
         if self.re >= 0.0:
