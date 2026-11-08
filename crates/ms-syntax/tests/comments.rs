@@ -79,3 +79,16 @@ fn formatter_is_idempotent_on_block_before_declaration() {
     let out = format(source);
     assert_eq!(out, source);
 }
+
+#[test]
+fn formatter_restores_many_comment_and_text_spans_in_order() {
+    let mut source = String::new();
+    for i in 0..128 {
+        source.push_str(&format!(
+            "/* docs {i}\n    keep this indentation\n*/\nfn text_{i}() String:\n    /* inside {i} */\n    return \"\"\"\n        first {i}\n        second\n        \"\"\"\n\n"
+        ));
+    }
+    let formatted = format(&source);
+    assert_eq!(formatted, source.trim_end().to_string() + "\n");
+    assert_eq!(format(&formatted), formatted);
+}
