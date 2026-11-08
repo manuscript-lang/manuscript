@@ -458,11 +458,38 @@ impl Walker<'_> {
         } else {
             self.pure_origins(e)
         };
-        places
+        let mut held: Vec<(Place, bool)> = places
             .unwrap_or_default()
             .into_iter()
             .map(|p| (p, write))
-            .collect()
+            .collect();
+        if self.is_place(e) {
+            self.selecting_keys(e, &mut held);
+        }
+        held
+    }
+
+    /// The keys that select an element of a held place stay read for the whole call: a later
+    /// operand that replaces a borrowed (non-Copy) key would leave the selection dangling.
+    fn selecting_keys(&self, e: &Expr, out: &mut Vec<(Place, bool)>) {
+        match &e.kind {
+            ExprKind::Member { left, .. } => self.selecting_keys(left, out),
+            ExprKind::Index { left, index }
+            | ExprKind::Apply {
+                left,
+                value: Some(index),
+                ..
+            } => {
+                self.selecting_keys(left, out);
+                if self.class_of(index) != Class::Copy
+                    && self.is_place(index)
+                    && let Some(places) = self.pure_places(index)
+                {
+                    out.extend(places.into_iter().map(|p| (p, false)));
+                }
+            }
+            _ => {}
+        }
     }
 
     /// The places changed or moved by the calls inside `e`, closures excluded: a `var` or
