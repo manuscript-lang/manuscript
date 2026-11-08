@@ -1,3 +1,5 @@
+import Bytes from "@std/bytes.ms"
+import panic from "@std/core.ms"
 import StringBuilder, from_scalars from "@std/string.ms"
 
 /*
@@ -205,3 +207,75 @@ export fn unquote(text: String) String!:
                 return error(Error("string: invalid input", kind: "EINVAL"))
 
     return from_scalars(out)
+
+/*
+A position in text that moves one scalar at a time in constant time. `String.get(i)` and `slice`
+count scalars from the start, so a loop over indexes is quadratic on non-ASCII text; a cursor
+decodes the UTF-8 bytes where it stands instead. Positions are byte offsets: `offset()` marks one,
+`seek` returns to it and `since` reads the text between a mark and here.
+
+    import cursor from "@std/text.ms"
+    var at = cursor("héllo wörld")
+    while not at.is_done():
+        if at.read().get() == "ö": break
+*/
+export type TextCursor:
+    // The UTF-8 text; built once by `cursor`.
+    bytes: Bytes
+    // Byte offset of the next scalar, always on a scalar boundary.
+    at: Int
+
+// Starts a cursor at the beginning of `text`, which it copies once.
+export fn cursor(text: String) TextCursor:
+    return TextCursor(text.to_bytes(), 0)
+
+impl TextCursor:
+    // The byte offset of the next scalar, a mark for `seek` and `since`.
+    fn offset() Int: self.at
+
+    // Reports whether every scalar has been read.
+    fn is_done() Bool: self.at >= self.bytes.length()
+
+    // The next scalar as text without moving, or none at the end.
+    fn peek() String?:
+        if self.is_done(): return none
+
+        let stop = self.at + utf8_width(self.bytes.get(self.at).to_int())
+        return self.bytes.decode_utf8_range(self.at, stop)
+
+    // Reads the next scalar and moves past it, or returns none at the end.
+    var fn read() String?:
+        if self.is_done(): return none
+
+        let stop = self.at + utf8_width(self.bytes.get(self.at).to_int())
+        let scalar = self.bytes.decode_utf8_range(self.at, stop)
+        self.at = stop
+        return scalar
+
+    // Moves to a mark returned by `offset()`; any other offset faults.
+    var fn seek(mark: Int) Unit:
+        if mark < 0 or mark > self.bytes.length():
+            panic("TextCursor.seek: mark is not an offset of this cursor")
+        if (
+            mark < self.bytes.length()
+            and is_continuation(self.bytes.get(mark).to_int())
+        ):
+            panic("TextCursor.seek: mark is not on a scalar boundary")
+        self.at = mark
+
+    // The text from a mark returned by `offset()` up to the current position; a mark after here faults.
+    fn since(mark: Int) String:
+        if mark < 0 or mark > self.at:
+            panic("TextCursor.since: mark must be an earlier offset of this cursor")
+        return self.bytes.decode_utf8_range(mark, self.at).get()
+
+// Whether a byte continues a scalar begun earlier (10xxxxxx).
+fn is_continuation(byte: Int) Bool: byte >= 128 and byte < 192
+
+// Bytes in the scalar a lead byte starts; a continuation byte cannot start one.
+fn utf8_width(lead: Int) Int:
+    if lead < 128: return 1
+    if lead < 224: return 2
+    if lead < 240: return 3
+
+    return 4

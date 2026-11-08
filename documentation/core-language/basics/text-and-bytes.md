@@ -86,7 +86,7 @@ The built-in method wins over any field or interface operation named `to_string`
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slice syntax: scalar position is not a constant-time offset in UTF-8, so use `get(index)` or `for c in text.chars()`. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
+There is no `text[index]` or slice syntax: scalar position is not a constant-time offset in UTF-8, so use `get(index)` or `for c in text.chars()`. Each `get(index)` walks the text from the start, so a loop over indexes of long non-ASCII text is quadratic; `cursor(text)` from `@std/text.ms` reads scalars in constant time and `since(mark)` slices between byte offsets. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
 - `get`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use scalar indexes. `get(index, default:)` returns a one-scalar String; `scalar_at(index, default:)` its code point as an Int. Negative indexes count from the end; out of range gives the default, or a fault without one.
 - Searches return the first or last scalar index or `none`. An empty search matches at 0 (`index_of`) or `scalar_length()` (`last_index_of`).
