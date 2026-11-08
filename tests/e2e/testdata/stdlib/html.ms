@@ -1,6 +1,6 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 import monotonic from "@std/time.ms"
-import (escape, parse, HtmlNode, HtmlAttribute, HtmlOptions) from "@std/data/html.ms"
+import (escape, unescape, parse, HtmlNode, HtmlAttribute, HtmlOptions) from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
@@ -157,3 +157,23 @@ test "HTML parse applies default limits and none lifts them":
 
     let lifted = parse(nested, HtmlOptions(max_depth: none, max_nodes: none))
     try expect_false(lifted.is_error())
+
+test "unescape maps overflowing numeric references to U+FFFD instead of wrapping":
+    try expect_equal(unescape("&#4294967361;"), "\u{fffd}")
+    try expect_equal(unescape("&#x100000041;"), "\u{fffd}")
+    try expect_equal(unescape("&#99999999999999999999999"), "\u{fffd}")
+    try expect_equal(unescape("&#1114111;&#1114112;"), "\u{10ffff}\u{fffd}")
+
+test "unescape decodes one-digit numeric references without a semicolon":
+    try expect_equal(unescape("&#9F"), "\u{9}F")
+    try expect_equal(unescape("&#1"), "\u{1}")
+    try expect_equal(unescape("&#0"), "\u{fffd}")
+    try expect_equal(unescape("&#x4"), "\u{4}")
+    try expect_equal(unescape("&#65x"), "Ax")
+
+test "unescape keeps references without digits literal":
+    try expect_equal(unescape("&#"), "&#")
+    try expect_equal(unescape("&#;"), "&#;")
+    try expect_equal(unescape("&#x"), "&#x")
+    try expect_equal(unescape("&#xg"), "&#xg")
+    try expect_equal(unescape("&#x;"), "&#x;")
