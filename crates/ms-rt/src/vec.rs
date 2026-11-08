@@ -1888,7 +1888,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
-        if core::str::from_utf8(s).is_err() {
+        if !s.is_ascii() && core::str::from_utf8(s).is_err() {
             return 0;
         }
         out.write(from_bytes(s));
@@ -1916,7 +1916,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
             ));
         }
         let part = &s[start as usize..end as usize];
-        if core::str::from_utf8(part).is_err() {
+        if !part.is_ascii() && core::str::from_utf8(part).is_err() {
             return 0;
         }
         out.write(from_bytes(part));

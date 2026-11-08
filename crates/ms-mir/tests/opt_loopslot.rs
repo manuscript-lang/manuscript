@@ -61,3 +61,32 @@ fn a_loop_carried_buffer_lives_in_one_slot() {
     assert_eq!(count(&m, Op::Take), 0);
     assert!(!opt::loopslot::run(&mut m));
 }
+
+/// `n` blocks in a row, each taking an owned list parameter it drops and replacing it.
+fn owned_params(n: usize) -> String {
+    let mut s = String::from(
+        "module \"t\"\nfile 0 \"t.ms\"\nentry @main\n\nfn @main() -> int export {\nb0:\n  %l0: list<int> = list.lit\n  br b1(%l0)\n",
+    );
+    for k in 1..=n {
+        s.push_str(&format!(
+            "b{k}(%p{k}: move list<int>):\n  drop %p{k}\n  %l{k}: list<int> = list.lit\n  br b{}(%l{k})\n",
+            k + 1
+        ));
+    }
+    s.push_str(&format!(
+        "b{}(%p: move list<int>):\n  drop %p\n  %z: int = iconst 0\n  ret %z\n}}\n",
+        n + 1
+    ));
+    s
+}
+
+/// Looking for the puts of each owned parameter used to scan the whole function, so a function
+/// with many such parameters was quadratic.
+#[test]
+fn many_owned_block_parameters_take_linear_time() {
+    let mut m = parse_module(&owned_params(60_000)).expect("parse");
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let start = std::time::Instant::now();
+    assert!(!opt::loopslot::run(&mut m));
+    assert!(start.elapsed().as_secs() < 3, "took {:?}", start.elapsed());
+}

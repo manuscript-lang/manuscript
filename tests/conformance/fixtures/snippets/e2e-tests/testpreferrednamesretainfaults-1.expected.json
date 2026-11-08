@@ -19,31 +19,31 @@
           "index": 1,
           "name": "testpreferrednamesretainfaults-1.ms::bound set",
           "status": "failed",
-          "failure": "List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:9 in test bound set"
+          "failure": "List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:10 in test bound set"
         },
         {
           "index": 2,
           "name": "testpreferrednamesretainfaults-1.ms::new remove",
           "status": "failed",
-          "failure": "List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:12 in test new remove"
+          "failure": "List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:13 in test new remove"
         },
         {
           "index": 3,
           "name": "testpreferrednamesretainfaults-1.ms::bound remove",
           "status": "failed",
-          "failure": "List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:16 in test bound remove"
+          "failure": "List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:18 in test bound remove"
         },
         {
           "index": 4,
           "name": "testpreferrednamesretainfaults-1.ms::empty set",
           "status": "failed",
-          "failure": "List.set: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:20 in test empty set"
+          "failure": "List.set: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:22 in test empty set"
         },
         {
           "index": 5,
           "name": "testpreferrednamesretainfaults-1.ms::empty remove",
           "status": "failed",
-          "failure": "List.remove: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:24 in test empty remove"
+          "failure": "List.remove: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:26 in test empty remove"
         },
         {
           "index": 6,
@@ -61,7 +61,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testpreferrednamesretainfaults-1.ms::new set\nFAIL testpreferrednamesretainfaults-1.ms::new set: List.set: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:5 in test new set\nRUN testpreferrednamesretainfaults-1.ms::bound set\nFAIL testpreferrednamesretainfaults-1.ms::bound set: List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:9 in test bound set\nRUN testpreferrednamesretainfaults-1.ms::new remove\nFAIL testpreferrednamesretainfaults-1.ms::new remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:12 in test new remove\nRUN testpreferrednamesretainfaults-1.ms::bound remove\nFAIL testpreferrednamesretainfaults-1.ms::bound remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:16 in test bound remove\nRUN testpreferrednamesretainfaults-1.ms::empty set\nFAIL testpreferrednamesretainfaults-1.ms::empty set: List.set: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:20 in test empty set\nRUN testpreferrednamesretainfaults-1.ms::empty remove\nFAIL testpreferrednamesretainfaults-1.ms::empty remove: List.remove: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:24 in test empty remove\nRUN testpreferrednamesretainfaults-1.ms::continues\nPASS testpreferrednamesretainfaults-1.ms::continues\n7 tests, 6 failed\n",
+      "stdout": "RUN testpreferrednamesretainfaults-1.ms::new set\nFAIL testpreferrednamesretainfaults-1.ms::new set: List.set: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:5 in test new set\nRUN testpreferrednamesretainfaults-1.ms::bound set\nFAIL testpreferrednamesretainfaults-1.ms::bound set: List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:10 in test bound set\nRUN testpreferrednamesretainfaults-1.ms::new remove\nFAIL testpreferrednamesretainfaults-1.ms::new remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at testpreferrednamesretainfaults-1.ms:13 in test new remove\nRUN testpreferrednamesretainfaults-1.ms::bound remove\nFAIL testpreferrednamesretainfaults-1.ms::bound remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at testpreferrednamesretainfaults-1.ms:18 in test bound remove\nRUN testpreferrednamesretainfaults-1.ms::empty set\nFAIL testpreferrednamesretainfaults-1.ms::empty set: List.set: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:22 in test empty set\nRUN testpreferrednamesretainfaults-1.ms::empty remove\nFAIL testpreferrednamesretainfaults-1.ms::empty remove: List.remove: index has no valid value for an empty collection, found 0\n  at testpreferrednamesretainfaults-1.ms:26 in test empty remove\nRUN testpreferrednamesretainfaults-1.ms::continues\nPASS testpreferrednamesretainfaults-1.ms::continues\n7 tests, 6 failed\n",
       "diagnostics": []
     },
     "shape": [

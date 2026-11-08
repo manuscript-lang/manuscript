@@ -620,6 +620,7 @@ impl<T> Global<T> {
                 b"this part of the standard library is only available on the main thread, not in a worker or in a promise running on another thread",
             );
         }
+        crate::sched::pin_main();
         &self.0
     }
 }

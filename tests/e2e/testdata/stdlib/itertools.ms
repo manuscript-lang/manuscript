@@ -66,3 +66,40 @@ test "invalid sizes fault":
     let _first = try expect_fault(fn: discard(permutations([1, 2], 3)))
     let _second = try expect_fault(fn: discard(combinations([1, 2], -1)))
     let _third = try expect_fault(fn: discard(cycle([1], -1)))
+
+test "combinations of every size keep their order":
+    let values = [10, 20, 30, 40]
+    try expect_equal(combinations(values.clone(), 4), [[10, 20, 30, 40]])
+    try expect_equal(
+        combinations(values.clone(), 3),
+        [[10, 20, 30], [10, 20, 40], [10, 30, 40], [20, 30, 40]]
+    )
+    try expect_equal(combinations(values.clone(), 1), [[10], [20], [30], [40]])
+    try expect_equal(combinations(values.clone(), 0), [[]])
+    try expect_equal(combinations(List[Int](), 0), [[]])
+
+    var many: List[Int] = []
+    for i in 0..30: many.append(i)
+    try expect_equal(combinations(many.clone(), 30), [many.clone()])
+    try expect_equal(combinations(many.clone(), 29).length(), 30)
+
+test "product with an empty factor is empty wherever the factor sits":
+    let some = [1, 2]
+    try expect_equal(
+        product([List[Int](), some.clone(), some.clone()]), List[List[Int]]()
+    )
+    try expect_equal(
+        product([some.clone(), List[Int](), some.clone()]), List[List[Int]]()
+    )
+    try expect_equal(
+        product([some.clone(), some.clone(), List[Int]()]), List[List[Int]]()
+    )
+    try expect_equal(product(List[List[Int]]()), [[]])
+    try expect_equal(product([some.clone()]), [[1], [2]])
+
+test "cycle empty input skips repetition after validating count":
+    try expect_equal(cycle(List[Int](), 9223372036854775807), List[Int]())
+    try expect_equal(cycle(List[Int](), 0), List[Int]())
+
+    let _invalid = try expect_fault(fn: discard(cycle(List[Int](), -1)))
+    try expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])

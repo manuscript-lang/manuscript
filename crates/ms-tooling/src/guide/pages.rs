@@ -283,7 +283,12 @@ fn module_page(m: &ApiModule) -> String {
             b.push('\n');
             continue;
         }
-        b += &format!("{} {}", d.kind, bare(&d.name));
+        b += &format!(
+            "{}{} {}",
+            if d.opaque { "opaque " } else { "" },
+            d.kind,
+            bare(&d.name)
+        );
         let doc = first_line(&d.doc, 90);
         if !doc.is_empty() {
             b += &format!(" // {doc}");
@@ -295,7 +300,13 @@ fn module_page(m: &ApiModule) -> String {
 }
 
 fn declaration_page(m: &ApiModule, d: &ApiDeclaration) -> String {
-    let mut b = format!("{} {} ({})\n", d.kind, d.name, m.path);
+    let mut b = format!(
+        "{}{} {} ({})\n",
+        if d.opaque { "opaque " } else { "" },
+        d.kind,
+        d.name,
+        m.path
+    );
     if m.path != "prelude" {
         b += &format!("import {} from {:?}\n", bare(&d.name), m.path);
     }

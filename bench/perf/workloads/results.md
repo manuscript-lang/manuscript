@@ -91,3 +91,14 @@ Other cases that read 2x or worse against that baseline on 2026-11-07 and reprod
 ## 2026-11-07, blocking file calls run inline when every other task is parked
 
 `read_file(path).wait()` runs its work in a task, so the program has two tasks and `pool::alone()` (task count at most 1) was false: every whole-file read and write was handed to a pool thread and back, two thread wake-ups. A 64 KiB `read_file(...).wait()` took 48 us, of which the read is under 9 us (`fs.read_file_64k` 8.2 to 63 us against `baseline-2026-10-28.md`). `alone()` now also holds when every other task is parked on a token with no deadline and no descriptor, so nothing else could run during an inline call (`msrt_task_others_stalled`, checked only up to 4 tasks). `read_file` 64 KiB: 48.0 us to 8.6 us. Programs with another runnable task, a timer or a descriptor wait still offload. `fs.write_file_64k` stays near 220 us: that is the file system's cost (truncate and write on this VM's `/tmp`), not the hop.
+
+## 2026-11-07, a function returning `Map.get` borrows the entry
+
+`JsonValue.get` returned `values.get(key)` through `msrt_map_get`, which deep-copies the value: the checker treated `m.get(k)` returned from a function as a new value, though the stdlib documents the result as a borrow. A returned `m.get(k)` is now a borrow of the receiver (the lowering reads the entry with `msrt_map_get_ptr` and returns `opt.view`), as `xs.get(i)` already was. `json.navigate` 105 to 57 ns (`bench/perf/stdlib`, 5 samples). Callers that hold the result while changing the map now need `.clone()` (two sites in `stdlib/data/toml.ms`); fixture `map-get-result-borrows-map`.
+
+## 2026-11-07, round 9: compile time, peak memory, scaling probe (no change needed)
+
+- Compile time: a hello-world `ms build` is 0.12 s warm (debug and release). A cold cache costs 3 to 4 s, which is the one-time download of the pinned LLVM tools archive, not compilation.
+- Peak RSS (`VmHWM`, ~3 MB stdin) of the ten workloads, ms / Go / Rust in MB: c03 3.0/6.1/5.0, c05 3.0/5.9/2.1, c09 3.0/6.4/4.1, c13 3.2/7.0/9.8, c14 3.0/22.5/2.2, c16 28.0/18.9/27.3, c18 3.1/6.9/16.4, c25 9.2/11.5/5.9, c36 14.8/6.7/10.9, c44 3.2/26.3/12.7. The largest ratio is c36 at 2.2x Go (14.8 MB).
+- Scaling probe (each operation at n, 4n and 16n): append, `sorted`, `Set`, `Map[Int, Int]`, `Map[String, Int]`, `split`/`join`, `replace`, string `+=`, indexing a built string and `json.parse` stay near-linear (`Map[String, Int]` at 1.6M keys 652 ms, 6.8x for 4x the keys from cache misses). `List.insert(0, x)` and `List.remove(0)` are O(n) memmoves, 10.7 s for 320k operations, as in Go and Rust; `Deque` is the queue.
+- 108 MB, 2M-line word count (split, `Map[String, Int]`): 0.78 s in ms against 1.35 s for Go.

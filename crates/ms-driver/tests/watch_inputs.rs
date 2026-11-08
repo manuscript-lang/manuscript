@@ -10,7 +10,7 @@ const DEP: &str = include_str!("watch_inputs/dep.ms");
 
 fn non_manifest_inputs(graph: &ms_driver::Graph) -> Vec<String> {
     graph
-        .input_paths
+        .inputs
         .iter()
         .filter(|path| ms_driver::project::pathops::base(path) != "ms.toml")
         .cloned()
@@ -27,11 +27,11 @@ fn initially_missing_import_is_retained_without_a_program() {
     assert!(graph.modules.is_empty());
     assert!(!graph.diagnostics.is_empty());
     assert_eq!(non_manifest_inputs(&graph).len(), 2);
-    assert!(graph.input_paths.contains(&entry));
-    assert!(graph.input_paths.contains(&dep));
+    assert!(graph.inputs.contains(&entry));
+    assert!(graph.inputs.contains(&dep));
     let checked = check_graph(syms, graph, CheckRequest::default());
     assert!(checked.program.is_none());
-    assert!(checked.input_paths.contains(&dep));
+    assert!(checked.inputs.contains(&dep));
 
     write(dir.path(), "dep.ms", DEP);
     let graph = load_file(syms, &entry, LoadOptions::default());
@@ -48,10 +48,10 @@ fn initially_broken_import_is_retained_without_a_program() {
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.modules.is_empty());
     assert!(!graph.diagnostics.is_empty());
-    assert!(graph.input_paths.contains(&dep));
+    assert!(graph.inputs.contains(&dep));
     let checked = check_graph(syms, graph, CheckRequest::default());
     assert!(checked.program.is_none());
-    assert!(checked.input_paths.contains(&dep));
+    assert!(checked.inputs.contains(&dep));
 }
 
 #[test]
@@ -65,10 +65,10 @@ fn missing_directories_advance_to_the_missing_file() {
     );
     let nested = join(dir.path(), "nested");
     let graph = load_file(syms, &entry, LoadOptions::default());
-    assert!(graph.input_paths.contains(&nested));
+    assert!(graph.inputs.contains(&nested));
     std::fs::create_dir(&nested).unwrap();
     let graph = load_file(syms, &entry, LoadOptions::default());
-    assert!(graph.input_paths.contains(&join(&nested, "dep.ms")));
+    assert!(graph.inputs.contains(&join(&nested, "dep.ms")));
 }
 
 #[test]
@@ -107,7 +107,13 @@ fn missing_import_through_external_directory_link_is_not_a_watch_input() {
     symlink_dir(Path::new(&outside), Path::new(&join(&root, "nested")));
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(!graph.diagnostics.is_empty());
-    assert_eq!(non_manifest_inputs(&graph), [entry]);
+    // The link inside the root is watched; nothing behind it outside the root is.
+    assert!(graph.inputs.contains(&entry));
+    assert!(
+        non_manifest_inputs(&graph)
+            .iter()
+            .all(|p| p.starts_with(&root))
+    );
 }
 
 #[test]
@@ -120,7 +126,12 @@ fn dangling_external_file_link_is_not_a_watch_input() {
     symlink_file(Path::new(&outside), Path::new(&join(&root, "dep.ms")));
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(!graph.diagnostics.is_empty());
-    assert_eq!(non_manifest_inputs(&graph), [entry]);
+    assert!(graph.inputs.contains(&entry));
+    assert!(
+        non_manifest_inputs(&graph)
+            .iter()
+            .all(|p| p.starts_with(&root))
+    );
 }
 
 #[test]
@@ -144,7 +155,7 @@ fn dangling_in_root_import_links_retain_the_missing_target() {
             symlink_file(Path::new(&missing), Path::new(&join(dir.path(), "dep.ms")));
         }
         let graph = load_file(syms, &entry, LoadOptions::default());
-        assert!(graph.input_paths.contains(&missing));
+        assert!(graph.inputs.contains(&missing));
         if directory {
             write(&missing, "dep.ms", DEP);
         } else {
@@ -172,11 +183,11 @@ fn missing_alias_target_is_retained_when_manifest_loading_fails() {
     let dep = join(dir.path(), "dep.ms");
     let graph = load_file(syms, &manifest, LoadOptions::default());
     assert!(!graph.diagnostics.is_empty());
-    assert!(graph.input_paths.contains(&manifest));
-    assert!(graph.input_paths.contains(&dep));
+    assert!(graph.inputs.contains(&manifest));
+    assert!(graph.inputs.contains(&dep));
     let checked = check_graph(syms, graph, CheckRequest::default());
     assert!(checked.program.is_none());
-    assert!(checked.input_paths.contains(&dep));
+    assert!(checked.inputs.contains(&dep));
     write(dir.path(), "dep.ms", DEP);
     let graph = load_file(syms, &manifest, LoadOptions::default());
     let checked = check_graph(syms, graph, CheckRequest::default());
@@ -200,13 +211,13 @@ fn bare_file_retains_its_enclosing_manifest_even_when_invalid() {
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
     assert!(graph.project_root.is_empty());
-    assert!(graph.input_paths.contains(&manifest));
+    assert!(graph.inputs.contains(&manifest));
     std::fs::write(&manifest, "[project]\nname\n").unwrap();
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(!graph.diagnostics.is_empty());
     let checked = check_graph(syms, graph, CheckRequest::default());
     assert!(checked.program.is_none());
-    assert!(checked.input_paths.contains(&manifest));
+    assert!(checked.inputs.contains(&manifest));
 }
 
 #[test]
@@ -225,10 +236,7 @@ fn missing_external_alias_target_is_not_a_watch_input() {
     );
     let graph = load_file(syms, &manifest, LoadOptions::default());
     assert!(!graph.diagnostics.is_empty());
-    assert_eq!(
-        graph.input_paths.into_iter().collect::<Vec<_>>(),
-        [manifest]
-    );
+    assert_eq!(graph.inputs.into_iter().collect::<Vec<_>>(), [manifest]);
 }
 
 #[test]
@@ -248,10 +256,10 @@ fn missing_nearer_manifests_are_retained_until_the_selected_ancestor() {
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
     for path in [&nearest, &nearer, &selected] {
-        assert!(graph.input_paths.contains(path), "missing {path}");
+        assert!(graph.inputs.contains(path), "missing {path}");
     }
     let parent = ms_driver::project::pathops::dir(dir.path());
-    assert!(!graph.input_paths.contains(&join(&parent, "ms.toml")));
+    assert!(!graph.inputs.contains(&join(&parent, "ms.toml")));
     write(dir.path(), "project/main.ms", DEP);
     write(
         dir.path(),
@@ -261,7 +269,7 @@ fn missing_nearer_manifests_are_retained_until_the_selected_ancestor() {
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
     assert_eq!(graph.source_root, join(dir.path(), "project"));
-    assert!(graph.input_paths.contains(&nearest));
-    assert!(graph.input_paths.contains(&nearer));
-    assert!(!graph.input_paths.contains(&selected));
+    assert!(graph.inputs.contains(&nearest));
+    assert!(graph.inputs.contains(&nearer));
+    assert!(!graph.inputs.contains(&selected));
 }

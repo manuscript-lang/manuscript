@@ -64,7 +64,80 @@ fn the_fix_waits_for_a_dropped_call() {
         &fix.replacement,
     );
     assert!(
-        fixed.contains("let _ = promise(fn: work()).wait()\n"),
+        fixed.contains("let _ = promise(fn: work()) | .wait()\n"),
         "{fixed}"
     );
+}
+
+#[test]
+fn promise_fixes_preserve_written_call_expressions() {
+    let syms = ms_syntax::Names::global();
+    let file: Arc<str> = Arc::from("lint.ms");
+    for expression in [
+        "make(1)",
+        "1 | make",
+        "1 | make()",
+        "(1 | make)",
+        "(make(1))",
+        "_factory.make(1)",
+        "1 | _factory.make",
+        "1\n        | make",
+        "promise(fn() Int!:\n        return ok(1)\n    )",
+    ] {
+        for binding in ["", "let _ = ", "let _: Promise[Int] = "] {
+            for newline in ["\n", "\r\n"] {
+                let source = source("factories.ms")
+                    .replace("EXPRESSION", &format!("{binding}{expression}"))
+                    .replace('\n', newline);
+                let module = ms_syntax::parser::parse(&file, &source).expect(&source);
+                let program = ms_check::check(
+                    syms,
+                    vec![ms_check::load_module(syms, &module)],
+                    ImportMap::default(),
+                    CheckOptions::default(),
+                );
+                assert!(
+                    program.diagnostics.is_empty(),
+                    "{source}\n{:?}",
+                    program.diagnostics
+                );
+                let findings = lint_program(syms, &program);
+                let finding = findings
+                    .iter()
+                    .find(|f| f.code == "MSL115")
+                    .expect("promise warning");
+                if binding.contains(":") {
+                    assert!(
+                        finding.fix.is_none(),
+                        "typed discard must keep its annotation"
+                    );
+                    continue;
+                }
+                let fix = finding.fix.as_ref().expect("fix");
+                let mut fixed = source.clone();
+                fixed.replace_range(
+                    fix.pos.offset as usize..fix.end.offset as usize,
+                    &fix.replacement,
+                );
+                let module = ms_syntax::parser::parse(&file, &fixed).expect(&fixed);
+                let program = ms_check::check(
+                    syms,
+                    vec![ms_check::load_module(syms, &module)],
+                    ImportMap::default(),
+                    CheckOptions::default(),
+                );
+                assert!(
+                    program.diagnostics.is_empty(),
+                    "{fixed}\n{:?}",
+                    program.diagnostics
+                );
+                assert!(
+                    !lint_program(syms, &program)
+                        .iter()
+                        .any(|f| f.code == "MSL115"),
+                    "{fixed}"
+                );
+            }
+        }
+    }
 }

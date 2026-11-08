@@ -716,6 +716,21 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
                 all.append(name, value).get(unit)
     return all
 
+impl Tap:
+    // The body bytes the exchange transmits: none for HEAD or a status that forbids a body.
+    fn sent_length(status: Int, length: Int) Int:
+        if self.inner.method() == HttpMethod.Head or not has_body(status): return 0
+
+        return length
+
+    // The status the response headers went out with, or 200 before any are sent.
+    fn status_so_far() Int:
+        if let state = self.state:
+            let seen = snapshot(state).status
+            if seen != 0: return seen
+
+        return 200
+
 impl HttpExchange for Tap:
     var fn close() Unit:
         self.inner.close()
@@ -745,7 +760,7 @@ impl HttpExchange for Tap:
 
     var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.inner.send(status, with_extra(headers, self.extra), body)
-        counted(self.state, status, body.length())
+        counted(self.state, status, self.sent_length(status, body.length()))
         return ok(unit)
 
     var fn upgrade(
@@ -757,12 +772,14 @@ impl HttpExchange for Tap:
 
     var fn write(data: String) Unit!:
         try self.inner.write(data)
-        counted(self.state, 0, data.byte_length())
+        counted(
+            self.state, 0, self.sent_length(self.status_so_far(), data.byte_length())
+        )
         return ok(unit)
 
     var fn write_bytes(data: Bytes) Unit!:
         try self.inner.write_bytes(data)
-        counted(self.state, 0, data.length())
+        counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
         return ok(unit)
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128

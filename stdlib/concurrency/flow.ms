@@ -8,6 +8,7 @@ import float from "@std/random.ms"
 How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
 with `jitter` the wait is a random share of that, so many callers do not retry in step.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
 let body = retry(policy, fn attempt: fetch(url).wait())
@@ -30,6 +31,11 @@ impl RetryPolicy:
 
         for round in 1..attempt:
             if wait.compare(self.max_delay) >= 0:
+                break
+
+            // Doubling would reach the cap: stop before the product can overflow.
+            if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2:
+                wait = Duration(nanos: self.max_delay.nanos)
                 break
 
             wait = wait.multiply(2)
@@ -76,6 +82,7 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
@@ -150,6 +157,7 @@ export enum CircuitError[E]:
 Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens and calls fail at once with `Open`;
 after `cooldown` one call is let through, and its result closes the circuit (success) or opens it again (failure).
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
 let reply = breaker.call(fn: send(request))
@@ -193,6 +201,7 @@ impl CircuitBreaker:
 // Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
 // A failed worker promise cancels the others. If `work` returns a Result, that Result is an item in the returned list; inspect each outcome.
 //
+// <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
 // let doubled = try map_concurrent([1, 2, 3], 2, fn n: n * 2)  // [2, 4, 6]
 // ```
@@ -231,6 +240,7 @@ fn stripe_results[T, U](items: List[T], first: Int, step: Int, work: fn(T) U) Li
 /*
 A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 var spacing = Throttle(interval: milliseconds(200))
 for event in events:

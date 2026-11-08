@@ -1224,6 +1224,7 @@ fn block_string(
 
     if explicit == 0:
         var blank_indent = base + 1
+        var blank_line = scan_start
 
         while (
             probe < context.lines.length()
@@ -1233,13 +1234,25 @@ fn block_string(
             ).get("") == ""
         ):
             let spaces = indent(context.lines.get(probe))
-            if spaces > blank_indent: blank_indent = spaces
+
+            if spaces > blank_indent:
+                blank_indent = spaces
+                blank_line = probe
+
             probe += 1
 
         if probe < context.lines.length(): content_indent = indent(
             (context.lines.get(probe))
         )
+
         if content_indent <= base: content_indent = blank_indent
+        else if blank_indent > content_indent:
+            return error(
+                yaml_invalid(
+                    line: source_line(context, blank_line), column: content_indent + 1,
+                    reason: "leading empty line exceeds block scalar indentation"
+                )
+            )
 
     var parts: List[String] = []
 
@@ -1325,9 +1338,11 @@ fn may_continue(context: Context, base: Int) Bool:
 
     return false
 
+// Standalone plain scalars may continue at their header column, but block scalars
+// measure content from their containing collection (column zero at the document root).
 fn block_value(
     var context: Context, text: String, base: Int, depth: Int, indentless: Bool,
-    column: Int
+    column: Int, block_base: Int? = none
 ) YamlValue!:
     let start_line = source_line(context, context.index - 1)
     var origin = source_column(context, context.index - 1, column)
@@ -1352,8 +1367,8 @@ fn block_value(
     if lead == 124 or lead == 62:
         try count(var context, depth)
         result = try block_string(
-            var context, blank_trim_end(remainder), base, header_line: start_line,
-            header_column: origin
+            var context, blank_trim_end(remainder), base: block_base.get(base),
+            header_line: start_line, header_column: origin
         )
     else if remainder != "":
         if not structured_lead(lead):
@@ -1436,7 +1451,9 @@ fn block_value(
                     and sequence(blank_trim_start(line))
                 )
             ):
-                result = try block(var context, next_indent, depth)
+                result = try block(
+                    var context, next_indent, depth, scalar_base: block_base.get(base)
+                )
             else:
                 try count(var context, depth)
         else:
@@ -1594,7 +1611,11 @@ fn sequence_items(
                 )
 
             context.lines.set(context.index, rewritten)
-            values.append(try block(var context, column, (depth + 1)))
+            values.append(
+                try block(
+                    var context, column, (depth + 1), scalar_base: base
+                )
+            )
         else:
             context.index += 1
             values.append(
@@ -1607,7 +1628,7 @@ fn sequence_items(
 
     return ok(unit)
 
-fn block(var context: Context, base: Int, depth: Int) YamlValue!:
+fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValue!:
     skip(var context)
 
     var first = ""
@@ -1767,7 +1788,8 @@ fn block(var context: Context, base: Int, depth: Int) YamlValue!:
         base: base - 1,
         depth: depth,
         indentless: false,
-        column: base + 1
+        column: base + 1,
+        block_base: scalar_base
     )
 
 // A flow value needs only the limits, counters and anchors, so it gets a context without the document
@@ -1850,7 +1872,12 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
         skip(var context)
         if (
             context.index >= context.lines.length()
-            or uncomment((context.lines.get(context.index))) != "---"
+            or (
+                uncomment(context.lines.get(context.index)) != "---"
+                and not context.lines.get(context.index).starts_with(
+                    "--- "
+                )
+            )
         ): return error(invalid(context, "directive requires document start"))
 
     // Content after the marker on the same line starts the document body.
@@ -1879,7 +1906,8 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
         and uncomment((context.lines.get(context.index))) != "..."
     ):
         result = try block(
-            var context, try indentation(context, (context.lines.get(context.index))), 1
+            var context, try indentation(context, (context.lines.get(context.index))),
+            1, scalar_base: 0
         )
     skip(var context)
 

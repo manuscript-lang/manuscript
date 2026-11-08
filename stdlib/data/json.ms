@@ -34,6 +34,7 @@ mismatch. `get` and `at` borrow the selected part; keep the document available a
 while using it. `as_string`, `as_list` and `as_map` explicitly clone their payloads. Nested reads
 bind each level with `if let`:
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 if let user = doc.get("user"):
     if let name = user.get("name"):
@@ -193,7 +194,10 @@ The default encoding of an alternative is externally tagged, `{"Created":{"id":1
 encoding round-trips. This implementation writes an internal `type` discriminator instead, a common
 protocol shape:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
+import JsonEncode, JsonValue from "@std/data/json.ms"
+
 enum Event:
     Created(id: Int)
     Deleted(id: Int)
@@ -249,6 +253,7 @@ containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bound
 indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent returns
 `EINVAL`.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 type Request:
     model: String

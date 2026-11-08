@@ -400,11 +400,13 @@ pub fn declaration_documentation(
     file: Name,
     pos: Pos,
 ) -> String {
-    let Some(module) = analysis
-        .source_modules(syms)
-        .into_iter()
-        .find(|m| m.file == file)
-    else {
+    declaration_documentation_in(&analysis.source_modules(syms), file, pos)
+}
+
+/// [`declaration_documentation`] over modules the caller already listed, for a caller that asks
+/// about many declarations.
+pub fn declaration_documentation_in(modules: &[ModRef], file: Name, pos: Pos) -> String {
+    let Some(module) = modules.iter().find(|m| m.file == file) else {
         return String::new();
     };
     let source = module.source.as_ref();
@@ -468,7 +470,12 @@ pub fn hover_documentation(syms: ms_syntax::Names, analysis: &Analysis, info: &O
 
 /// Documentation of a declaration as an LSP markup value, or `null`.
 pub fn description(syms: ms_syntax::Names, analysis: &Analysis, file: Name, pos: Pos) -> Json {
-    let notes = declaration_documentation(syms, analysis, file, pos);
+    description_in(&analysis.source_modules(syms), file, pos)
+}
+
+/// [`description`] over modules the caller already listed.
+pub fn description_in(modules: &[ModRef], file: Name, pos: Pos) -> Json {
+    let notes = declaration_documentation_in(modules, file, pos);
     if notes.is_empty() {
         Json::Null
     } else {

@@ -55,6 +55,7 @@ msrt_cancelled() -> !
 msrt_cleanup_cancel(handle: usize) @leaf
 msrt_cleanup_discard(handle: usize) @leaf
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize @leaf
+msrt_cleanup_remove(handle: usize) @leaf
 msrt_cleanup_run(handle: usize) @leaf
 msrt_cpu_level() -> i64
 msrt_eq_enter(a: *const u8, b: *const u8) -> u8 @leaf
@@ -186,12 +187,13 @@ msrt_numbers_parse_int(text: *const StrVal, radix: i64, out: *mut i64) -> u8 @le
 msrt_obj_clone(o: *mut Obj) -> *mut Obj
 msrt_obj_drop(o: *mut Obj)
 msrt_pipe_add_writer(pipe: i64)
-msrt_pipe_buffered(pipe: i64) -> i64
 msrt_pipe_close_reader(pipe: i64)
 msrt_pipe_close_writer(pipe: i64)
+msrt_pipe_ended(pipe: i64) -> i64
 msrt_pipe_flush(pipe: i64) -> i64
 msrt_pipe_new(capacity: i64) -> i64
 msrt_pipe_read(pipe: i64) -> i64
+msrt_pipe_try(pipe: i64, d: ValueDesc, out: *mut u8) -> u8
 msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64
 msrt_process_exit(code: i64) -> !
 msrt_process_on_exit(hook: extern "C" fn())
@@ -312,11 +314,11 @@ msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_upper(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_task_cancel(handle: u64)
 msrt_task_count() -> usize
-msrt_task_others_stalled() -> bool
 msrt_task_current() -> u64
 msrt_task_forget_fd(fd: i32)
 msrt_task_grow(shim: unsafe extern "C-unwind" fn(*mut u8), block: *mut u8)
 msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8
+msrt_task_others_stalled() -> bool
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_spawn(entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize) -> u64
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32

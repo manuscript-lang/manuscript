@@ -167,6 +167,71 @@ test "tar entries enforce limits and report truncation":
     let cut = read_entries(chunked(archive.slice(0, 1000).get("".to_bytes()), 300))
     try expect_equal(cut.err().kind, "EBADMSG")
 
+// Sends its bytes once, then fails every read, so a reader that waits for data it should have refused sees `EIO`.
+type HeaderThenFail:
+    head: Bytes
+    sent: Bool
+
+impl Source[Bytes] for HeaderThenFail:
+    var fn next() Bytes?!:
+        if self.sent: return error(Error("pulled past the header", kind: "EIO"))
+
+        self.sent = true
+        return ok(self.head.clone())
+
+    var fn close() Unit!:
+        return ok(unit)
+
+test "tar entries refuse an oversized member from its header":
+    let archive = try pack(
+        [
+            ArchiveEntry(
+                "f", "x".repeat(4000).get("").to_bytes(), directory: false
+            )
+        ],
+        ArchiveFormat.Tar
+    )
+    let header = try archive.slice(0, 512)
+    let entry = read_entries(
+        ReadStream[Bytes](HeaderThenFail(header.clone(), false)),
+        ArchiveOptions(max_entry_bytes: 10)
+    )
+    try expect_equal(entry.err().kind, "EOVERFLOW")
+
+    let total = read_entries(
+        ReadStream[Bytes](HeaderThenFail(header.clone(), false)),
+        ArchiveOptions(max_bytes: 10)
+    )
+    try expect_equal(total.err().kind, "EOVERFLOW")
+
+test "tar entries reject a base-256 size that overflows as invalid":
+    let archive = try pack(
+        [ArchiveEntry("f", "hi".to_bytes(), directory: false)], ArchiveFormat.Tar
+    )
+    var bad = BytesBuilder()
+
+    for index in 0..archive.length():
+        var byte = archive[index]
+        if index >= 124 and index < 136: byte = 255
+        bad.append(byte)
+
+    let got = read_entries(chunked(bad.build(), 4096))
+    try expect_equal(got.err().kind, "EBADMSG")
+
+test "decompressed streams reject bytes after the payload as decompress does":
+    let text = "tail check ".repeat(50).get("").to_bytes()
+
+    for format in [
+        CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+    ]:
+        let packed = try compress(text.clone(), format)
+        let junk = packed.concat("junk".to_bytes())
+        try expect_equal((decompress(junk.clone(), format)).err().kind, "EBADMSG")
+
+        for size in [1, 7, 4096]:
+            let got = read_all(decompressed(chunked(junk.clone(), size), format))
+            try expect_equal(got.err().kind, "EBADMSG")
+
 // One member of a tar archive: a file's header and data block, or a directory's header.
 fn member(path: String, directory: Bool) Bytes!:
     let data = if directory: "".to_bytes() else: "x".to_bytes()

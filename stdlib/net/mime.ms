@@ -166,22 +166,28 @@ fn split_params(text: String) List[String]:
     pieces.append(current.drain())
     return pieces
 
-// Returns the unquoted value, or none for an unterminated quote.
+// Returns the unquoted value, or none unless an unescaped quote closes it at the very end.
 fn unquote(raw: String) String?:
     if not raw.starts_with("\""): return raw.clone()
-    if raw.length() < 2 or not raw.ends_with("\""): return none
 
     var out = StringBuilder()
     var escaped = false
+    var closed = false
 
-    for c in raw.slice(1, raw.length() - 1).get("").chars():
+    for c in raw.drop(1).chars():
+        if closed: return none
+
         if escaped:
             out.append(c)
             escaped = false
         else if c == "\\":
             escaped = true
+        else if c == "\"":
+            closed = true
         else:
             out.append(c)
+
+    if not closed: return none
 
     return out.build()
 
@@ -241,14 +247,25 @@ export fn multipart_boundary(content_type: String) String?:
 
     return media.params.get("boundary")
 
-// Builds one part from the bytes after a delimiter line's boundary: a CRLF, headers, a blank line and the body.
+// Builds one part from the bytes after a delimiter line's boundary: optional SP/HT, a CRLF, headers, a blank line and the body.
 fn make_part(section: Bytes) Part!:
     let crlf = "\r\n".to_bytes()
-    if not section.starts_with(crlf): return error(
+
+    // RFC 2046 permits transport-added SP/HT before this delimiter line's CRLF.
+    var padding = 0
+
+    while padding < section.length():
+        let byte = section.get(padding)
+        if byte != 32 and byte != 9: break
+
+        padding += 1
+
+    let framed = try section.slice(padding, section.length())
+    if not framed.starts_with(crlf): return error(
         Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
-    let inner = section.slice(2, section.length()).get("".to_bytes())
+    let inner = try framed.slice(2, framed.length())
     let blank = if inner.starts_with(crlf): 0 else: inner.index_of(
         "\r\n\r\n".to_bytes()
     ).get(-1)
@@ -342,7 +359,7 @@ impl Transform[Bytes, Part] for MultipartParts:
                     break
 
                 if let limit = self.max_part_bytes:
-                    if self.buffer.length() > limit + self.delimiter.length():
+                    if self.buffer.length() - self.delimiter.length() > limit:
                         return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
                 break
 

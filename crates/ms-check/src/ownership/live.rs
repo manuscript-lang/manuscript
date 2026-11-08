@@ -160,9 +160,12 @@ impl Pass<'_> {
         live.insert((b.uid, path), node);
     }
 
-    /// The store to `uid` ends the life of the old value of the whole binding.
+    /// The store to `uid` ends the life of the old value of the whole binding. Its "assigned
+    /// again" marks go too: nothing before the definition captures the binding, and leaving them
+    /// grows the live set by one entry per assigned binding, so every statement after a long run
+    /// of bindings costs the run (quadratic).
     fn kill(live: &mut Live, uid: usize) {
-        live.retain(|(u, _), _| *u != uid);
+        live.retain(|(u, _), _| *u != uid && *u != uid | STORED);
     }
 
     /// Marks `uid` as assigned at `node`, for closures created before it.

@@ -31,6 +31,7 @@ const LEAK_CHECKED: [&str; 3] = ["fuzz/run/", "e2e/", "examples/"];
 
 const LIVE_BLOCKS: &str = "ms-rt live blocks at exit: ";
 const COUNTS: &str = "ms-rt counts: ";
+const LIVE_BY_SIZE: &str = "ms-rt live blocks by size: ";
 
 /// `text` without the counting runtime's lines (live blocks and counts), and the sum of their counts.
 fn split_live_blocks(text: &str) -> (String, i64) {
@@ -40,7 +41,7 @@ fn split_live_blocks(text: &str) -> (String, i64) {
         let line_text = line.trim_end();
         if let Some(count) = line_text.strip_prefix(LIVE_BLOCKS) {
             live += count.trim().parse::<i64>().unwrap_or(0);
-        } else if !line_text.starts_with(COUNTS) {
+        } else if !line_text.starts_with(COUNTS) && !line_text.starts_with(LIVE_BY_SIZE) {
             kept.push_str(line);
         }
     }

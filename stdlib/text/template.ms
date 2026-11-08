@@ -21,7 +21,7 @@ Actions sit between `{{` and `}}`:
   default(value) escape raw first last reverse keys contains(x) replace(old, new) truncate(n)`.
 - `{{ if cond }}…{{ else if cond }}…{{ else }}…{{ end }}` with `== != < <= > >= and or not` and
   parentheses. Empty text, zero, null, false, and empty lists and objects are false; a missing path
-  in a condition is false.
+  in a condition is false. Numbers compare by their exact JSON decimal value, without Float rounding.
 - `{{ for item in items }}…{{ else }}…{{ end }}` loops a list (the `else` branch runs when it is empty).
   `for i, item in items` adds the position; for an object, `for key, value in object`; a single name over
   an object binds `{key, value}`. Inside a loop `loop.index`, `loop.first`, `loop.last` and `loop.length` exist.
@@ -700,7 +700,7 @@ type Run:
 
 impl Run:
     var fn write(text: String) Unit!Error:
-        self.written += text.length()
+        self.written += text.byte_length()
         if self.written > self.limit: return error(
             Error("template: output limit exceeded", kind: "EOVERFLOW")
         )
@@ -903,13 +903,185 @@ fn rows_of(
 
     return rows
 
+// A coefficient and decimal order, never an expanded power of ten. The order is
+// itself decimal text because JSON exponents need not fit in an Int.
+type ExactNumber:
+    negative: Bool
+    coefficient: String
+    order: String
+
+fn unsigned_digits(text: String) String:
+    let chars = text.chars()
+    var first = 0
+    while first < chars.length() and chars[first] == "0": first += 1
+    return if first == chars.length(): "0" else: text.drop(first)
+
+fn magnitude_compare(a: String, b: String) Int:
+    if a.length() != b.length(): return if a.length() < b.length(): -1 else: 1
+
+    return a.compare(b)
+
+// Add or subtract unsigned decimal magnitudes. Subtraction requires a >= b.
+fn magnitude_sum(a: String, b: String, subtract: Bool) String:
+    let left = a.chars()
+    let right = b.chars()
+    var i = left.length() - 1
+    var j = right.length() - 1
+    var carry = 0
+    var out = StringBuilder()
+
+    while i >= 0 or j >= 0:
+        let x = if i >= 0: left[i].parse_int().get(0) else: 0
+        let y = if j >= 0: right[j].parse_int().get(0) else: 0
+        var digit = x + (if subtract: -y else: y) + carry
+        carry = 0
+
+        if digit < 0:
+            digit += 10
+            carry = -1
+        else if digit >= 10:
+            digit -= 10
+            carry = 1
+
+        out.append("{digit}")
+        i -= 1
+        j -= 1
+
+    if carry > 0: out.append("1")
+    return unsigned_digits(out.build().reverse())
+
+fn decimal_order(exponent: String, offset: Int) String:
+    if exponent == "0": return "{offset}"
+
+    let negative = exponent.starts_with("-")
+    let magnitude = unsigned_digits(
+        if negative or exponent.starts_with("+"): exponent.drop(
+            1
+        ) else: exponent.clone()
+    )
+    let delta_text = "{offset}"
+    let delta = if offset < 0: delta_text.drop(1) else: delta_text.clone()
+    var result = ""
+    var result_negative = negative
+
+    if negative == (offset < 0):
+        result = magnitude_sum(magnitude, delta, false)
+    else if magnitude_compare(magnitude, delta) >= 0:
+        result = magnitude_sum(magnitude, delta, true)
+    else:
+        result = magnitude_sum(delta, magnitude, true)
+        result_negative = offset < 0
+
+    return if result_negative and result != "0": "-{result}" else: result
+
+fn order_compare(a: String, b: String) Int:
+    let an = a.starts_with("-")
+    let bn = b.starts_with("-")
+    if an != bn: return if an: -1 else: 1
+
+    let comparison = magnitude_compare(
+        if an: a.drop(1) else: a.clone(), if bn: b.drop(1) else: b.clone()
+    )
+    return if an: -comparison else: comparison
+
+fn number_digit(byte: UInt8) Bool:
+    return byte >= 48 and byte <= 57
+
+fn exact_number(text: String) ExactNumber?:
+    // Validate a JSON number while locating its coefficient and exponent. Raw
+    // NumberValue constructors need not have passed through the JSON parser.
+    let chars = text.to_bytes()
+    if chars.is_empty(): return none
+
+    let negative = chars.get(0) == 45
+    var at = if negative: 1 else: 0
+    if at == chars.length(): return none
+
+    let start = at
+
+    if chars.get(at) == 48:
+        at += 1
+    else:
+        if chars.get(at) < 49 or chars.get(at) > 57: return none
+
+        while at < chars.length() and number_digit(chars.get(at)): at += 1
+
+    let before_point = at - start
+
+    if at < chars.length() and chars.get(at) == 46:
+        at += 1
+
+        let fraction_start = at
+        while at < chars.length() and number_digit(chars.get(at)): at += 1
+        if at == fraction_start: return none
+
+    let coefficient_end = at
+    var exponent = "0"
+
+    if at < chars.length():
+        if chars.get(at) != 101 and chars.get(at) != 69: return none
+
+        at += 1
+
+        let exponent_start = at
+        if at < chars.length() and (chars.get(at) == 43 or chars.get(at) == 45): at += 1
+
+        let digits_start = at
+        while at < chars.length() and number_digit(chars.get(at)): at += 1
+        if at == digits_start or at != chars.length(): return none
+
+        exponent = text.drop(exponent_start)
+
+    let digits = if start == 0 and coefficient_end == chars.length(): text.replace(
+        ".", ""
+    ) else: text.drop(start).take(coefficient_end - start).replace(".", "")
+    let coefficient_chars = digits.to_bytes()
+    var first = 0
+    while first < coefficient_chars.length() and coefficient_chars.get(first) == 48: first += 1
+    if first == coefficient_chars.length(): return ExactNumber(
+        negative: false, coefficient: "0", order: "0"
+    )
+
+    var end = coefficient_chars.length()
+    while end > first + 1 and coefficient_chars.get(end - 1) == 48: end -= 1
+
+    let unchanged = first == 0 and end == coefficient_chars.length()
+    let coefficient = if unchanged: digits else: digits.drop(first).take(end - first)
+    return ExactNumber(
+        negative: negative, coefficient: coefficient,
+        order: decimal_order(exponent, before_point - first)
+    )
+
+fn number_compare(a: ExactNumber, b: ExactNumber) Int:
+    if a.negative != b.negative: return if a.negative: -1 else: 1
+
+    var comparison = 0
+
+    if a.coefficient == "0" or b.coefficient == "0":
+        comparison = if a.coefficient == b.coefficient: 0 else if a.coefficient == "0": -1 else: 1
+    else:
+        comparison = order_compare(a.order, b.order)
+        if comparison == 0: comparison = a.coefficient.compare(b.coefficient)
+
+    return if a.negative: -comparison else: comparison
+
+// Common integer tokens compare directly without losing precision. Noncanonical
+// or out-of-range text continues through the general exact-number path.
+fn exact_integer(text: String) Int?:
+    if let integer = text.parse_int():
+        if text == "{integer}" or text == "-0": return integer
+    return none
+
 fn truthy(value: JsonValue) Bool:
     if value.is_null(): return false
     if let flag = value.as_bool(): return flag
     if let list = value.as_list(): return not list.is_empty()
     if let members = value.as_map(): return not members.is_empty()
     if let text = value.as_string(): return not text.is_empty()
-    if let number = value.as_float(): return number != 0.0
+
+    if let text = number_text(value):
+        if let integer = exact_integer(text): return integer != 0
+        if let number = exact_number(text): return number.coefficient != "0"
 
     return true
 
@@ -917,29 +1089,49 @@ fn to_text(value: JsonValue) String:
     if value.is_null(): return ""
     if let text = value.as_string(): return text
     if let flag = value.as_bool(): return if flag: "true" else: "false"
-    if let found = number_text(value): return found
+    if let found = number_text(value): return found.clone()
 
     return stringify(value: value).get("")
 
 fn number_text(value: JsonValue) String?:
     match value:
-        NumberValue(text): return text.clone()
+        NumberValue(text): return text
         _: return none
 
-fn equal(left: JsonValue, right: JsonValue) Bool:
-    if let a = left.as_float():
-        if let b = right.as_float(): return a == b
+// 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are never equal.
+fn kind_of(value: JsonValue) Int:
+    if value.is_null(): return 0
+    if value.as_bool().is_some(): return 1
+    if number_text(value).is_some(): return 2
+    if value.as_string().is_some(): return 3
+    if value.as_list().is_some(): return 4
 
-        return false
+    return 5
+
+fn equal(left: JsonValue, right: JsonValue) Bool:
+    if kind_of(left) != kind_of(right): return false
+    if number_text(left).is_some(): return compare_values(left, right) == 0
 
     return to_text(left) == to_text(right) and left.is_null() == right.is_null()
 
 // -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
 fn compare_values(left: JsonValue, right: JsonValue) Int:
-    if let a = left.as_float():
-        if let b = right.as_float(): return if a < b: -1 else if a > b: 1 else: 0
+    if let text = number_text(left):
+        let other = number_text(right)
+        if not other.is_some(): return 2
 
-        return 2
+        let right_text = other.get("")
+        if let integer = exact_integer(text):
+            if let other_integer = exact_integer(right_text):
+                return if integer < other_integer: -1 else if integer > other_integer: 1 else: 0
+
+        let a = exact_number(text)
+        if not a.is_some(): return 2
+
+        let b = exact_number(right_text)
+        if not b.is_some(): return 2
+
+        return number_compare(a.get(), b.get())
 
     if let a = left.as_string():
         if let b = right.as_string(): return a.compare(b)

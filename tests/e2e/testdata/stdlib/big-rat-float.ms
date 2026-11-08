@@ -7,6 +7,8 @@ import (
     rat_of_float,
     rat_of_int,
     big_float_of_int,
+    big_float_of_rat,
+    rat_of_binary,
     big_float_of_float,
     parse_big_float
 ) from "@std/math/big.ms"
@@ -125,3 +127,50 @@ test "big float errors":
     let limit: BigFloat! = error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse_big_float("1e999999", 64), limit)
     try expect_true(big_float_of_float(0.0 / 0.0, 64).is_none())
+
+test "decimal text rejects a sign anywhere but the front of the digits and the exponent":
+    let bad: BigRat! = error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
+    for text in ["1e++2", "1e+-2", "1e-+2", ".-5", ".+5", "1.-5"]:
+        try expect_equal(parse_rat(text), bad)
+        try expect_true(parse_big_float(text, 64).is_error())
+
+    try expect_equal((try parse_rat("1e+2")).format(), "100")
+    try expect_equal((try parse_rat("1e-2")).format(), "1/100")
+    try expect_equal((try parse_rat("-.5")).format(), "-1/2")
+    try expect_equal((try parse_rat("+1.5e+1")).format(), "15")
+
+test "big floats compare across a huge exponent gap":
+    var far = big_float_of_int(2, 1)
+    for round in 0..24:
+        far = far.multiply(far)
+
+    let one = big_float_of_int(1, 1)
+    try expect_equal(far.compare(one), 1)
+    try expect_equal(one.compare(far), -1)
+    try expect_equal(far.negate().compare(one.negate()), -1)
+    try expect_equal(one.negate().compare(far.negate()), 1)
+    try expect_equal(far.compare(far), 0)
+    try expect_equal(far.min(one).compare(one), 0)
+    try expect_equal(far.max(one).compare(far), 0)
+
+test "to_float rounds once, onto the subnormal grid":
+    let tiny = 4.9406564584124654e-324
+
+    // 2^-1075 + 2^-1129 is above the midpoint between zero and the least subnormal.
+    let above = rat_of_binary(from_int(18014398509481985), -1129)
+    try expect_equal(above.to_float(), tiny)
+    try expect_equal(above.negate().to_float(), -tiny)
+    try expect_equal(big_float_of_rat(above, 55).to_float(), tiny)
+
+    // Exactly 2^-1075 is a tie and goes to even, zero; 3 * 2^-1075 goes to 2 * 2^-1074.
+    try expect_equal(rat_of_binary(from_int(1), -1075).to_float(), 0.0)
+    try expect_equal(rat_of_binary(from_int(3), -1075).to_float(), 2.0 * tiny)
+    try expect_equal(rat_of_binary(from_int(1), -1074).to_float(), tiny)
+
+    // Normal values and the boundary are unchanged.
+    try expect_equal(
+        rat_of_binary(from_int(1), -1022).to_float(), 2.2250738585072014e-308
+    )
+    try expect_equal(rat_of_int(3).to_float(), 3.0)
+    try expect_equal(rat_of_binary(from_int(1), 1024).to_float(), none)

@@ -240,6 +240,17 @@ pub fn escapes(rel: &str) -> bool {
     rel == ".." || rel.starts_with("../")
 }
 
+#[cfg(not(windows))]
+/// The bytes of a link target. A lossy copy would name a different file, so a target that is not text is rejected.
+fn link_text(link_path: &str, target: &std::path::Path) -> Result<Vec<u8>, ProjectError> {
+    match target.to_str() {
+        Some(text) => Ok(text.as_bytes().to_vec()),
+        None => Err(ProjectError::msg(format!(
+            "symlink {link_path} points to a path that is not valid UTF-8; point it at a UTF-8 name"
+        ))),
+    }
+}
+
 /// `filepath.EvalSymlinks`: every component is resolved with `lstat`, errors
 /// carry the failing prefix.
 #[cfg(not(windows))]
@@ -303,7 +314,7 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
         }
         let link = std::fs::read_link(&dest_text)
             .map_err(|e| ProjectError::path("readlink", &dest_text, &e))?;
-        let link = link.to_string_lossy().into_owned().into_bytes();
+        let link = link_text(&dest_text, &link)?;
         let mut next = link.clone();
         next.extend_from_slice(&path[end..]);
         path = next;
@@ -323,6 +334,19 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
         start = 0;
     }
     Ok(clean(&String::from_utf8_lossy(&dest)))
+}
+
+/// The canonical identity of an existing path, for comparing what two names refer to: symlinks
+/// resolved as the loader resolves them, always absolute. `None` when the path cannot be resolved. A path that is
+/// not UTF-8 cannot go through [`eval_symlinks`], so it is resolved natively instead of
+/// silently comparing as unresolvable.
+pub fn identity(path: &std::path::Path) -> Option<std::path::PathBuf> {
+    match path.to_str() {
+        Some(text) => eval_symlinks(&abs(text).ok()?)
+            .ok()
+            .map(std::path::PathBuf::from),
+        None => std::fs::canonicalize(path).ok(),
+    }
 }
 
 /// Windows canonicalization resolves native drive roots and junctions. Convert
@@ -426,6 +450,26 @@ fn canonicalize_with_prefix_error_at(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identity_is_absolute_and_resolves_links() {
+        let root = std::env::temp_dir().join(format!("ms-identity-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("real")).unwrap();
+        std::fs::write(root.join("real/a.ms"), "").unwrap();
+        let real = identity(&root.join("real/a.ms")).unwrap();
+        assert!(real.is_absolute());
+        assert_eq!(
+            identity(&root.join("real/../real/a.ms")),
+            Some(real.clone())
+        );
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(root.join("real"), root.join("alias")).unwrap();
+            assert_eq!(identity(&root.join("alias/a.ms")), Some(real));
+        }
+        assert_eq!(identity(&root.join("missing.ms")), None);
+        std::fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn canonicalization_reports_first_missing_component() {
@@ -575,5 +619,37 @@ mod tests {
     fn join_ignores_empty() {
         assert_eq!(join(&["", ""]), "");
         assert_eq!(join(&["/a", "../b"]), "/b");
+    }
+
+    #[cfg(not(windows))]
+    use super::link_text;
+    #[cfg(not(windows))]
+    use std::ffi::OsString;
+    #[cfg(not(windows))]
+    use std::path::PathBuf;
+
+    #[cfg(not(windows))]
+    /// A name that is not UTF-8, built in memory so no file system has to accept it (APFS rejects such names).
+    fn non_utf8() -> OsString {
+        use std::os::unix::ffi::OsStringExt;
+        OsString::from_vec(vec![0xff, b'.', b'm', b's'])
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_link_target_that_is_not_utf8_is_rejected() {
+        let error = link_text("dep.ms", &PathBuf::from(non_utf8()))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("not valid UTF-8"), "{error}");
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_utf8_link_target_keeps_its_bytes() {
+        assert_eq!(
+            link_text("dep.ms", &PathBuf::from("a.ms")).unwrap(),
+            b"a.ms"
+        );
     }
 }

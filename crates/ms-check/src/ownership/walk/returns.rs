@@ -86,7 +86,7 @@ impl Walker<'_> {
                     self.plain_result_borrowed = true;
                     self.borrow_not_clonable |=
                         !self.cx.classes.clonable(self.syms, &self.cx.m.ty(e));
-                } else if !self.list_get(e) {
+                } else if !self.list_get(e) && !self.map_get(e) {
                     // `xs.get(i)` beside a new value is withdrawn like a wrapper, and the
                     // element is copied out; any other reference has no owned form.
                     self.plain_borrowed = true;
@@ -517,9 +517,10 @@ impl Walker<'_> {
             return Some(Vec::new());
         };
         let mut out = Vec::new();
+        let member = method_callee(self.syms, self.cx.m, callee);
         if ret_borrow.receiver
             && let (ExprKind::Member { left, .. }, Resolution::Method(_)) =
-                (&callee.kind, self.cx.m.resolution(e))
+                (&member.kind, self.cx.m.resolution(e))
         {
             out.push(&**left);
         }
@@ -808,11 +809,12 @@ impl Walker<'_> {
                 _ => None,
             };
         }
-        // `xs.get(i)` is the element itself, a part of the receiver's sources whose field
-        // chain ends there. The other native borrows (`m.get(k)`, `xs.first()`) wrap the element
-        // in an `Optional` the caller owns, so a function returning one owns its result.
+        // `xs.get(i)` is the element itself and `m.get(k)` its entry in an `Optional` view: parts
+        // of the receiver's sources whose field chain ends there, so a function returning one
+        // returns a borrow (Chinmay, 2026-11-07). `xs.first()` / `xs.last()` wrap the element in
+        // an `Optional` the caller owns, so a function returning one owns its result.
         if let Some(recv) = self.native_borrow_receiver(e)
-            && self.list_get(e)
+            && (self.list_get(e) || self.map_get(e))
         {
             let mut src = self.borrow_source(recv)?;
             if src.view {

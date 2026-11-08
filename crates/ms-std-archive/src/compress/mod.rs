@@ -136,75 +136,28 @@ pub fn inflate(input: &[u8], room: usize) -> Result<(Vec<u8>, usize), Fail> {
     }
 }
 
-fn gzip_header_len(data: &[u8]) -> Result<usize, Fail> {
-    match gzip_header(data) {
-        Header::Len(n) => Ok(n),
-        Header::Need | Header::Bad => Err(Fail::InvalidData),
-    }
-}
-
 /// Decompresses exactly one gzip/zlib/deflate payload (gzip members may be concatenated); trailing
-/// bytes are `InvalidData`, and `max_bytes` bounds the cumulative output.
+/// bytes are `InvalidData`, and `max_bytes` bounds the cumulative output. This is the streaming
+/// `Decoder` run over `data`, so the two calls cannot disagree.
 pub fn decompress_bytes(
     data: &[u8],
     format: &str,
     max_bytes: Option<i64>,
 ) -> Result<Vec<u8>, Fail> {
-    let max = match max_bytes {
-        None => usize::MAX,
-        Some(n) if n < 0 => return Err(Fail::InvalidInput),
-        Some(n) => n as usize,
-    };
-    match Format::from_name(format).ok_or(Fail::Unsupported)? {
-        Format::Deflate => {
-            let (out, used) = inflate(data, max)?;
-            if used != data.len() {
-                return Err(Fail::InvalidData);
-            }
-            Ok(out)
-        }
-        Format::Zlib => {
-            if data.len() < 2 {
-                return Err(Fail::InvalidData);
-            }
-            let h = u16::from_be_bytes([data[0], data[1]]);
-            if data[0] & 0x0f != 8
-                || data[0] >> 4 > 7
-                || !h.is_multiple_of(31)
-                || data[1] & 0x20 != 0
-            {
-                return Err(Fail::InvalidData);
-            }
-            let (out, used) = inflate(&data[2..], max)?;
-            let tail = &data[2 + used..];
-            if tail.len() != 4
-                || u32::from_be_bytes([tail[0], tail[1], tail[2], tail[3]]) != adler32(&out)
-            {
-                return Err(Fail::InvalidData);
-            }
-            Ok(out)
-        }
-        Format::Gzip => {
-            let mut out: Vec<u8> = Vec::new();
-            let mut pos = 0;
-            loop {
-                pos += gzip_header_len(&data[pos..])?;
-                let (member, used) = inflate(&data[pos..], max - out.len())?;
-                pos += used;
-                let foot = data.get(pos..pos + 8).ok_or(Fail::InvalidData)?;
-                let crc = u32::from_le_bytes([foot[0], foot[1], foot[2], foot[3]]);
-                let size = u32::from_le_bytes([foot[4], foot[5], foot[6], foot[7]]);
-                if crc != crc32(0, &member) || size != member.len() as u32 {
-                    return Err(Fail::InvalidData);
-                }
-                pos += 8;
-                out.extend_from_slice(&member);
-                if pos == data.len() {
-                    return Ok(out);
-                }
-            }
-        }
+    if max_bytes.is_some_and(|n| n < 0) {
+        return Err(Fail::InvalidInput);
     }
+    let mut decoder = Decoder::new(
+        Format::from_name(format).ok_or(Fail::Unsupported)?,
+        max_bytes,
+    );
+    let mut out = Vec::new();
+    // Chunked so the decoder's input buffer is drained a bounded amount at a time.
+    for chunk in data.chunks(1 << 16) {
+        out.extend(decoder.push(chunk)?);
+    }
+    out.extend(decoder.end()?);
+    Ok(out)
 }
 
 // ---- incremental coding ----
@@ -213,7 +166,8 @@ pub fn decompress_bytes(
 // output each one completes. Malformed data is `InvalidData`, exceeding `max_bytes` is `LimitExceeded`, and an
 // out-of-range level is `InvalidInput`.
 
-const _: () = assert!(TINFL_LZ_DICT_SIZE.is_power_of_two());
+/// Output room per inflate call, beyond the history window.
+const WINDOW_ROOM: usize = 1 << 16;
 
 enum Header {
     Need,
@@ -281,8 +235,10 @@ pub struct Decoder {
     /// Gzip members completed so far.
     members: usize,
     inflate: Box<DecompressorOxide>,
-    dict: Box<[u8; TINFL_LZ_DICT_SIZE]>,
-    dict_pos: usize,
+    /// The last `hist` output bytes followed by room for the next call's output. Inflating into a
+    /// non-wrapping buffer makes a distance that reaches before the start of the output an error.
+    window: Vec<u8>,
+    hist: usize,
     /// Running check of the current payload: CRC-32 (gzip) or Adler-32 (zlib).
     check: u32,
     size: u32,
@@ -305,8 +261,8 @@ impl Decoder {
             },
             members: 0,
             inflate: Box::new(DecompressorOxide::new()),
-            dict: Box::new([0; TINFL_LZ_DICT_SIZE]),
-            dict_pos: 0,
+            window: alloc::vec![0; TINFL_LZ_DICT_SIZE + WINDOW_ROOM],
+            hist: 0,
             check: 0,
             size: 0,
             failed: None,
@@ -343,7 +299,9 @@ impl Decoder {
     fn step(&mut self, out: &mut Vec<u8>) -> Result<(), Fail> {
         loop {
             match self.phase {
-                Phase::Done => return Ok(()),
+                // Nothing may follow the payload, whether it arrived with it or in a later chunk.
+                Phase::Done if self.input.is_empty() => return Ok(()),
+                Phase::Done => return Err(Fail::InvalidData),
                 Phase::Header => {
                     if self.format == Format::Zlib {
                         if self.input.len() < 2 {
@@ -374,23 +332,23 @@ impl Decoder {
                     }
                     self.size = 0;
                     *self.inflate = DecompressorOxide::new();
-                    self.dict_pos = 0;
+                    self.hist = 0;
                     self.phase = Phase::Body;
                 }
                 Phase::Body => {
-                    let mut flags = 0;
+                    let mut flags = inflate_flags::TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF;
                     if !self.eof {
                         flags |= inflate_flags::TINFL_FLAG_HAS_MORE_INPUT;
                     }
                     let (status, used, made) = decompress(
                         &mut self.inflate,
                         &self.input,
-                        &mut self.dict[..],
-                        self.dict_pos,
+                        &mut self.window[..],
+                        self.hist,
                         flags,
                     );
                     self.input.drain(..used);
-                    let produced = &self.dict[self.dict_pos..self.dict_pos + made];
+                    let produced = &self.window[self.hist..self.hist + made];
                     match self.format {
                         Format::Gzip => self.check = crc32(self.check, produced),
                         Format::Zlib => self.check = adler32_update(self.check, produced),
@@ -402,7 +360,13 @@ impl Decoder {
                         return Err(Fail::LimitExceeded);
                     }
                     out.extend_from_slice(produced);
-                    self.dict_pos = (self.dict_pos + made) & (TINFL_LZ_DICT_SIZE - 1);
+                    let end = self.hist + made;
+                    if end > TINFL_LZ_DICT_SIZE {
+                        self.window.copy_within(end - TINFL_LZ_DICT_SIZE..end, 0);
+                        self.hist = TINFL_LZ_DICT_SIZE;
+                    } else {
+                        self.hist = end;
+                    }
                     match status {
                         TINFLStatus::Done => {
                             self.phase = if self.format == Format::Deflate {
@@ -629,6 +593,39 @@ mod tests {
         assert_eq!(compress(TEXT, "bz2", 6, None), Err(Fail::Unsupported));
         assert_eq!(decompress_bytes(TEXT, "gzip", None), Err(Fail::InvalidData));
         assert_eq!(decompress_bytes(TEXT, "bz2", None), Err(Fail::Unsupported));
+    }
+
+    #[test]
+    fn stream_decoder_rejects_bytes_after_the_payload() {
+        for f in [Format::Zlib, Format::Deflate, Format::Gzip] {
+            let name = match f {
+                Format::Zlib => "zlib",
+                Format::Deflate => "deflate",
+                Format::Gzip => "gzip",
+            };
+            let packed = compress(TEXT, name, 6, None).unwrap();
+            let mut with_tail = packed.clone();
+            with_tail.extend_from_slice(b"tail");
+
+            let mut d = Decoder::new(f, None);
+            let r = d.push(&with_tail).and_then(|_| d.end());
+            assert_eq!(r, Err(Fail::InvalidData), "{name} joined");
+
+            let mut d = Decoder::new(f, None);
+            let mut r = d.push(&packed);
+            if r.is_ok() {
+                r = d.push(b"x");
+            }
+            if r.is_ok() {
+                r = d.end();
+            }
+            assert_eq!(r, Err(Fail::InvalidData), "{name} later chunk");
+
+            let mut d = Decoder::new(f, None);
+            let mut got = d.push(&packed).unwrap();
+            got.extend(d.end().unwrap());
+            assert_eq!(got, TEXT, "{name} clean");
+        }
     }
 
     #[test]

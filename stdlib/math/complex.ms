@@ -40,6 +40,15 @@ export type PolarParts:
     // The angle in radians, from -pi through pi.
     theta: Float
 
+// Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic value. An exact zero times such an infinity stays a signed zero, where plain `*` would give NaN.
+fn product(left: Float, right: Float) Float:
+    if left == 0.0 and not right.is_finite() and not right.is_nan():
+        return left * copy_sign(1.0, right)
+    if right == 0.0 and not left.is_finite() and not left.is_nan():
+        return right * copy_sign(1.0, left)
+
+    return left * right
+
 impl Complex:
     // Returns the sum, adding real and imaginary parts separately with Float rounding.
     fn add(other: Complex) Complex:
@@ -117,7 +126,13 @@ impl Complex:
 
     // Returns `e` raised to this number.
     fn exp() Complex:
-        return complex_polar(exp(self.re), self.im)
+        let radius = exp(self.re)
+
+        // A zero imaginary part stays zero where the radius overflows; `inf * sin(0)` would be NaN.
+        if self.im == 0.0:
+            return Complex(re: radius, im: self.im)
+
+        return complex_polar(radius, self.im)
 
     // Returns the principal natural logarithm; the imaginary part is the phase.
     fn log() Complex:
@@ -132,7 +147,12 @@ impl Complex:
             return Complex(re: 0.0, im: copy_sign(sqrt(-self.re), self.im))
 
         let modulus = self.abs()
-        let real = sqrt((modulus + self.re.abs()) / 2.0)
+
+        // A finite number whose magnitude overflows has a finite root: take the root of the half and scale by sqrt(2).
+        if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
+            return Complex(re: self.re / 2.0, im: self.im / 2.0).sqrt().scale(sqrt(2.0))
+
+        let real = sqrt(modulus / 2.0 + self.re.abs() / 2.0)
         if self.re >= 0.0:
             return Complex(re: real, im: self.im / (2.0 * real))
 
@@ -153,33 +173,53 @@ impl Complex:
     // Returns the complex sine, `sin(a)cosh(b) + cos(a)sinh(b)i` for `a+bi`.
     fn sin() Complex:
         return Complex(
-            re: sin(self.re) * cosh(self.im), im: cos(self.re) * sinh(self.im)
+            re: product(sin(self.re), cosh(self.im)),
+            im: product(cos(self.re), sinh(self.im))
         )
 
     // Returns the complex cosine, `cos(a)cosh(b) - sin(a)sinh(b)i` for `a+bi`.
     fn cos() Complex:
         return Complex(
-            re: cos(self.re) * cosh(self.im), im: -(sin(self.re) * sinh(self.im))
+            re: product(cos(self.re), cosh(self.im)),
+            im: -product(sin(self.re), sinh(self.im))
         )
 
     // Returns the complex tangent, sine divided by cosine; poles give infinities or NaN.
     fn tan() Complex:
+        // Past |b| = 40 sine and cosine overflow into inf / inf; the quotient is `sign(b) * i` plus a real part below 1e-34.
+        if self.im.abs() > 40.0:
+            return Complex(
+                re: 2.0 * sin(2.0 * self.re) * exp(
+                    -2.0 * self.im.abs()
+                ),
+                im: copy_sign(1.0, self.im)
+            )
+
         return self.sin().divide(self.cos())
 
     // Returns the hyperbolic sine.
     fn sinh() Complex:
         return Complex(
-            re: sinh(self.re) * cos(self.im), im: cosh(self.re) * sin(self.im)
+            re: product(sinh(self.re), cos(self.im)),
+            im: product(cosh(self.re), sin(self.im))
         )
 
     // Returns the hyperbolic cosine.
     fn cosh() Complex:
         return Complex(
-            re: cosh(self.re) * cos(self.im), im: sinh(self.re) * sin(self.im)
+            re: product(cosh(self.re), cos(self.im)),
+            im: product(sinh(self.re), sin(self.im))
         )
 
     // Returns the hyperbolic tangent.
     fn tanh() Complex:
+        // Past |a| = 40 the quotient is `sign(a)` plus an imaginary part below 1e-34.
+        if self.re.abs() > 40.0:
+            return Complex(
+                re: copy_sign(1.0, self.re),
+                im: 2.0 * sin(2.0 * self.im) * exp(-2.0 * self.re.abs())
+            )
+
         return self.sinh().divide(self.cosh())
 
     // Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.

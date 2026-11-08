@@ -17,7 +17,7 @@ pub(crate) mod places;
 mod walk;
 
 pub use classify::{Class, Classifier};
-pub use modes::{CallModes, ParamMode};
+pub use modes::{CallModes, ParamMode, native_method_argument_modes};
 pub use places::Place;
 
 /// How the caller comes to own the result of a borrow-returning call over a temporary.
@@ -206,6 +206,8 @@ pub struct CallableOwnership {
     /// Conditional and match expressions whose value is a reference on every arm: lowering
     /// joins the arms without copying.
     pub borrowed_matches: HashSet<NodeId>,
+    /// Native reads used in place from origins that remain held.
+    pub borrowed_reads: HashSet<NodeId>,
 }
 
 impl CallableOwnership {
@@ -274,6 +276,7 @@ impl Hir<'_> {
         // Parameter modes, closure escapes and result slots feed each other, and each step
         // carries a fact one call further, so a chain needs about one round per callable.
         let rounds = callables.len() + 16;
+        let contract_methods = walk::ContractMethods::new(&self.program().methods);
         for round in 0..=rounds {
             outcomes.clear();
             let mut changed = false;
@@ -285,7 +288,7 @@ impl Hir<'_> {
                     c,
                     classes: &classes,
                     summaries: &summaries,
-                    methods: &self.program().methods,
+                    methods: &contract_methods,
                     live: l,
                     escaped: &known,
                 });
@@ -319,6 +322,9 @@ impl Hir<'_> {
             let file = c.module.file;
             for n in &out.facts.borrowed_matches {
                 node_facts.set(file, *n, Fact::BorrowedMatch);
+            }
+            for n in &out.facts.borrowed_reads {
+                node_facts.set(file, *n, Fact::BorrowedRead);
             }
             if out.facts.returns_borrow && out.facts.view {
                 node_facts.set(c.module.file, c.id(), Fact::ReturnsView);

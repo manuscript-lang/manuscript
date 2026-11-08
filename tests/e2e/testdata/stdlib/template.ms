@@ -117,6 +117,31 @@ test "strict missing values and limits":
         ).is_error()
     )
 
+test "the output limit counts UTF-8 bytes":
+    let accent = compile("é").get()
+    try expect_equal(
+        accent.render(data("null"), RenderOptions(max_output: 2)).get(), "é"
+    )
+    try expect_equal(
+        accent.render(data("null"), RenderOptions(max_output: 1)).err().kind,
+        "EOVERFLOW"
+    )
+
+    let emoji = compile("😀").get()
+    try expect_equal(
+        emoji.render(data("null"), RenderOptions(max_output: 3)).err().kind, "EOVERFLOW"
+    )
+    try expect_equal(
+        emoji.render(data("null"), RenderOptions(max_output: 4)).get(), "😀"
+    )
+
+    let value = compile("\{\{ v \}\}\{\{ v \}\}").get()
+    let input = data("\{\"v\":\"é\"\}")
+    try expect_equal(value.render(input, RenderOptions(max_output: 4)).get(), "éé")
+    try expect_equal(
+        value.render(input, RenderOptions(max_output: 3)).err().kind, "EOVERFLOW"
+    )
+
 test "compile errors name the line":
     for bad in [
         "\{\{ if x \}\}", "\{\{ end \}\}", "\{\{ x | nope \}\}",
@@ -146,3 +171,15 @@ test "lexing handles openers inside actions and large sources":
     // A quadratic lexer would take minutes on this many actions.
     let big = compile("\{\{ x \}\},".repeat(60000).get()).get()
     try expect_equal(big.render(d).get().scalar_length(), 120000)
+
+test "equality never crosses value kinds":
+    let d = data("\{\"one\":1,\"text\":\"1\",\"yes\":true\}")
+    try expect_equal(
+        render(
+            "\{\{ one == text \}\}|\{\{ text == \"1\" \}\}|\{\{ one == 1 \}\}", d
+        ).get(),
+        "false|true|true"
+    )
+    try expect_equal(
+        render("\{\{ yes == \"true\" \}\}|\{\{ one != text \}\}", d).get(), "false|true"
+    )

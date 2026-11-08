@@ -16,31 +16,60 @@ impl<'a> FnLower<'a> {
         // The receiver is evaluated first: an argument that reassigns its variable must not
         // change what the call reads.
         let snapshot = self.argument_reassigns(recv_expr, view);
+        let func = m.decl.as_ref().and_then(|d| d.func());
+        let later_try = view
+            .arguments
+            .iter()
+            .any(|a| crate::mutation::has_try(a.expr))
+            || func.is_some_and(|f| {
+                m.ty.params.iter().zip(&f.params).any(|(p, d)| {
+                    !view.arguments.iter().any(|a| a.slot.name == p.name)
+                        && d.default.as_ref().is_some_and(crate::mutation::has_try)
+                })
+            });
         let recv = if snapshot {
-            let v = self.owned(recv);
-            self.hold_temp(Val { v, own: true })
-        } else if recv.own
-            && view
-                .arguments
-                .iter()
-                .any(|a| crate::mutation::has_try(a.expr))
-        {
-            // A `try` in an argument may return early: the receiver is released by then.
-            self.hold_temp(recv)
+            Val {
+                v: self.owned(recv),
+                own: true,
+            }
         } else {
             recv
+        };
+        // Record only the owner held by this call, never an enclosing borrowed temporary.
+        // Intact wrappers need their payload closer on an expected-error return too.
+        let (recv, held) = if recv.own && (snapshot || later_try) {
+            if let Some(key) = self.hold_resource_temp(recv.v)? {
+                (Val { v: key, own: false }, Some(true))
+            } else {
+                (self.hold_temp(recv), Some(false))
+            }
+        } else {
+            (recv, None)
         };
         let mut args = self.native_args(view)?;
         if self.dead {
             return Ok(recv);
         }
-        let recv = if snapshot {
+        let recv = if held.is_some() {
             recv
         } else {
             self.refresh(recv_expr, recv, at)?
         };
-        let func = m.decl.as_ref().and_then(|d| d.func());
         self.fill_native_defaults(m.module, func, &m.ty.params, &mut args)?;
+        if self.dead {
+            return Ok(recv);
+        }
+        let recv = if let Some(resource) = held {
+            let v = if resource {
+                self.take_resource_temp(recv.v).0
+            } else {
+                recv.v
+            };
+            self.unhold_temp(recv.v);
+            Val { v, own: true }
+        } else {
+            recv
+        };
         self.at(e.pos);
         let str_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str);
         // `NormalizationForm` is the only alternative whose native `normalize` this lowers.

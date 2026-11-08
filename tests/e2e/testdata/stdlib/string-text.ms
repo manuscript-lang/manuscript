@@ -27,3 +27,20 @@ test "string text helpers":
     "héllo".find_char(fn c: c == "l") | try expect_equal(2)
     "aaa".replace_each({"aa": "b", "a": "c"}) | try expect_equal("bc")
     "x".replace_each(Map[String, String]()) | try expect_equal("x")
+
+test "replace_each without replacements preserves exact text":
+    let pairs = Map[String, String]()
+
+    for text in ["", "a", "héllo 🦀", "a\u{0}b", "e\u{301}"]:
+        text.replace_each(pairs) | try expect_equal(text)
+        text.replace_each({"": "ignored"}) | try expect_equal(text)
+
+    var source = "héllo 🦀"
+    let copied = source.replace_each(pairs)
+    source = "changed"
+    copied | try expect_equal("héllo 🦀")
+    source | try expect_equal("changed")
+    pairs.is_empty() | try expect_equal(true)
+    "".replace_each({"a": "b"}) | try expect_equal("")
+    "🦀é🦀".replace_each({"🦀": "x", "é": "y"}) | try expect_equal("xyx")
+    "ab".replace_each({"a": "ab"}) | try expect_equal("abb")

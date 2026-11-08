@@ -57,6 +57,7 @@ The result is the compact `header.claims.signature` form, ready for an `Authoriz
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
 Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library does not add any. A key that does not suit the algorithm returns an Error with kind `EINVAL`.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 type Session:
     sub: String
@@ -208,13 +209,13 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
         moment = now().seconds
 
     if let exp = claims.get("exp"):
-        let limit = exp.as_float().get(0.0)
+        let limit = try numeric_date(exp, "exp")
         if limit + check.leeway.to_float() <= moment.to_float(): return error(
             Error("jwt: token expired", kind: "EBADMSG")
         )
 
     if let nbf = claims.get("nbf"):
-        let start = nbf.as_float().get(0.0)
+        let start = try numeric_date(nbf, "nbf")
         if start - check.leeway.to_float() > moment.to_float(): return error(
             Error("jwt: token not yet valid", kind: "EBADMSG")
         )
@@ -225,11 +226,33 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
             Error("jwt: wrong issuer", kind: "EBADMSG")
         )
 
+    if let aud = claims.get("aud"):
+        if aud.as_string().is_none():
+            if let many = aud.as_list():
+                if many.any(fn item: item.as_string().is_none()): return error(
+                    Error(
+                        "jwt: aud must hold only strings", kind: "EBADMSG"
+                    )
+                )
+            else:
+                return error(
+                    Error(
+                        "jwt: aud must be a string or a list of strings",
+                        kind: "EBADMSG"
+                    )
+                )
+
     if let audience = check.audience:
         if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
             Error("jwt: wrong audience", kind: "EBADMSG")
         )
     return ok(unit)
+
+// A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
+fn numeric_date(claim: JsonValue, name: String) Float!:
+    if let value = claim.as_float(): return ok(value)
+
+    return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
     if let single = claim.as_string():

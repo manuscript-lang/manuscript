@@ -146,6 +146,17 @@ impl Reader:
 
         return error(Error("XML: invalid data", kind: "EBADMSG"))
 
+    // XML comments cannot contain a double hyphen or end with a hyphen.
+    var fn comment() String!:
+        try self.expect("<!--")
+
+        let text = try self.take_until("-->")
+        if text.contains("--") or text.ends_with("-"): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        return ok(text)
+
     var fn name() String!:
         var out = StringBuilder()
         var first = true
@@ -172,9 +183,7 @@ impl Reader:
 
                 let _pi = try self.take_until("?>")
             else if self.looking_at("<!--"):
-                self.at += 4
-
-                let _comment = try self.take_until("-->")
+                let _comment = try self.comment()
             else if self.looking_at("<!DOCTYPE"):
                 var depth = 0
 
@@ -261,8 +270,7 @@ impl Reader:
                 return ok(XmlElement(name, attributes, children))
 
             if self.looking_at("<!--"):
-                self.at += 4
-                children.append(XmlComment(try self.take_until("-->")))
+                children.append(XmlComment(try self.comment()))
             else if self.looking_at("<![CDATA["):
                 self.at += 9
                 children.append(XmlText(try self.take_until("]]>")))
@@ -279,17 +287,52 @@ impl Reader:
                     text.append(self.peek())
                     self.at += 1
 
-                children.append(XmlText(try decode(text.build())))
+                let raw = text.build()
+                if raw.contains("]]>"): return error(
+                    Error("XML: invalid data", kind: "EBADMSG")
+                )
+
+                children.append(XmlText(try decode(raw)))
 
 fn is_space(c: String) Bool:
     return c == " " or c == "\t" or c == "\n" or c == "\r"
 
+// XML 1.0 (Fifth Edition), productions [4] NameStartChar and [4a] NameChar.
 fn is_name_char(c: String, first: Bool) Bool:
-    if c.is_empty() or is_space(c): return false
-    if c.contains_any("<>/=\"'&!?;,()[]\{\}"): return false
-    if first and (c.contains_any("-.0123456789")): return false
+    if c.is_empty(): return false
 
-    return true
+    let code = c.scalar_at(0)
+    if is_name_start(code): return true
+    if first: return false
+
+    return (
+        code == 0x2d
+        or code == 0x2e
+        or (code >= 0x30 and code <= 0x39)
+        or code == 0xb7
+        or (code >= 0x300 and code <= 0x36f)
+        or (code >= 0x203f and code <= 0x2040)
+    )
+
+fn is_name_start(code: Int) Bool:
+    return (
+        code == 0x3a
+        or (code >= 0x41 and code <= 0x5a)
+        or code == 0x5f
+        or (code >= 0x61 and code <= 0x7a)
+        or (code >= 0xc0 and code <= 0xd6)
+        or (code >= 0xd8 and code <= 0xf6)
+        or (code >= 0xf8 and code <= 0x2ff)
+        or (code >= 0x370 and code <= 0x37d)
+        or (code >= 0x37f and code <= 0x1fff)
+        or (code >= 0x200c and code <= 0x200d)
+        or (code >= 0x2070 and code <= 0x218f)
+        or (code >= 0x2c00 and code <= 0x2fef)
+        or (code >= 0x3001 and code <= 0xd7ff)
+        or (code >= 0xf900 and code <= 0xfdcf)
+        or (code >= 0xfdf0 and code <= 0xfffd)
+        or (code >= 0x10000 and code <= 0xeffff)
+    )
 
 // Decodes the five predefined entities and numeric references; any other `&name;` is invalid.
 fn decode(text: String) String!:
@@ -361,6 +404,12 @@ A document with several roots, text outside the root, or any syntax error is `EB
 */
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(Error("XML: invalid input", kind: "EINVAL"))
+
+    // XML's Char production applies even to discarded comments and instructions.
+    for code in text.scalar_values():
+        if not is_xml_char(code): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
 
     var reader = Reader(chars: text.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1

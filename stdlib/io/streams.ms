@@ -21,9 +21,9 @@ impl Lines:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
         return ok(unit)
 
-    // Decodes one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line.
-    fn decode(line: Bytes) String!:
-        if let text = line.decode_utf8():
+    // Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line. The range is decoded in place, with no `Bytes` copy of the line first.
+    fn decode(start: Int, stop: Int) String!:
+        if let text = self.data.decode_utf8_range(start, stop):
             return ok(text)
 
         return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
@@ -40,16 +40,16 @@ impl Source[String] for Lines:
                     stop -= 1
                 try self.check(stop - self.start)
 
-                let line = try self.data.slice(self.start, stop)
+                let from = self.start
                 self.start = found + 1
-                return ok(try self.decode(line))
+                return ok(try self.decode(from, stop))
 
             if self.ended:
                 if self.start < self.data.length():
-                    let held = try self.data.slice(self.start, self.data.length())
-                    try self.check(held.length())
+                    let from = self.start
+                    try self.check(self.data.length() - from)
                     self.start = self.data.length()
-                    return ok(try self.decode(held))
+                    return ok(try self.decode(from, self.data.length()))
 
                 return ok(none)
 

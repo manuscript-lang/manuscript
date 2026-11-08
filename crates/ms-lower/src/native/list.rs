@@ -406,16 +406,56 @@ impl<'a> FnLower<'a> {
                 self.hold_temp(x);
             }
             receiver = Some((x, held));
-        } else if !discards {
-            // The receiver's own index expressions run before the arguments.
+        } else {
+            // The receiver place is selected and read before the arguments, once: its index
+            // expressions and its bounds or missing-key fault come first, and the entry closing
+            // and the mutation below reuse the selection.
             self.prepare_place(recv_expr)?;
+            self.access_receiver(recv_expr)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
         }
-        let args = self.native_args(view)?;
+        let stores = ty_is_list_store(self, recv_expr, name);
+        let mut args = self.native_args_staged(view, stores)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
+        if stores {
+            self.stage_incoming_resources(&mut args)?;
+        }
         if discards {
+            // The incoming owned arguments stay registered while the old entry closes: a close
+            // that faults unwinds them with the statement instead of leaking them.
+            // A resource is registered for fault and cancellation cleanup; other owned values
+            // wait as ordinary temporaries.
+            let mut held = Vec::new();
+            for (i, arg) in args.iter_mut().enumerate() {
+                if !arg.val.own {
+                    continue;
+                }
+                if let Some(key) = self.hold_resource_temp(arg.val.v)? {
+                    arg.val = Val { v: key, own: false };
+                    held.push((i, true));
+                } else {
+                    arg.val = self.hold_temp(arg.val);
+                    held.push((i, false));
+                }
+            }
             self.close_discarded_entry(recv_expr, name, &args)?;
+            if self.dead {
+                return Ok(self.dummy(MTy::UNIT));
+            }
+            for (i, resource) in held.into_iter().rev() {
+                let key = args[i].val.v;
+                let v = if resource {
+                    self.take_resource_temp(key).0
+                } else {
+                    key
+                };
+                self.unhold_temp(key);
+                args[i].val = Val { v, own: true };
+            }
         }
         if name == "set"
             && !hands_back
@@ -462,6 +502,17 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: u, own: false })
             }
         }
+    }
+
+    /// Registers each incoming owned resource for fault and cancellation cleanup until
+    /// `element_value` stores it, so a bounds fault or a later operand's failure closes it.
+    fn stage_incoming_resources(&mut self, args: &mut [NArg]) -> Result<(), Error> {
+        for arg in args.iter_mut().filter(|a| a.val.own && !a.reader) {
+            if let Some(key) = self.hold_resource_temp(arg.val.v)? {
+                arg.val = Val { v: key, own: false };
+            }
+        }
+        Ok(())
     }
 
     /// Whether `name` on the place `recv_expr` discards a resource entry of a list or map:
@@ -742,7 +793,16 @@ impl<'a> FnLower<'a> {
         } else {
             Mode::Borrow
         };
-        self.two_ways_mode(cond, ty, mode, yes, no)
+        let out = self.two_ways_mode(cond, ty, mode, yes, no)?;
+        // A scalar resource has no drop glue, so its storage mode is a borrow, but the join
+        // still owns it: its parent must close.
+        if mode == Mode::Borrow && !self.dead && self.part_closer_mir(ty)?.is_some() {
+            return Ok(Val {
+                v: out.v,
+                own: true,
+            });
+        }
+        Ok(out)
     }
 
     /// `two_ways` with the result's ownership chosen by the caller: `Borrow` joins two values
@@ -792,7 +852,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Faults unless `lo <= i && i < hi_exclusive` (`i` already resolved from the end).
-    pub(super) fn check_index(
+    pub(crate) fn check_index(
         &mut self,
         op: i64,
         original: Value,
@@ -840,4 +900,10 @@ impl<'a> FnLower<'a> {
         let out = self.duration_of(nanos)?;
         Ok(Val { v: out, own: false })
     }
+}
+
+/// Whether `name` stores its element argument into a list through `element_value`.
+fn ty_is_list_store(cx: &mut FnLower<'_>, recv_expr: &Expr, name: &str) -> bool {
+    matches!(name, "set" | "insert" | "replace" | "append" | "prepend")
+        && cx.ety(recv_expr).is(Builtin::List)
 }

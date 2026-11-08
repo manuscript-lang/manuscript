@@ -327,3 +327,87 @@ fn embed_names_resolve_to_generated_modules() {
         .to_string();
     assert!(error.contains("import it as"), "{error}");
 }
+
+/// Retargeting a link inside a chain changes the import, so every link the lookup passes through
+/// is reported, and a loop of links ends the walk.
+#[cfg(unix)]
+#[test]
+fn link_components_follow_link_chains_and_stop_on_loops() {
+    use ms_driver::project::link_components;
+    let (_dir, p) = fixture(MANIFEST);
+    write(&p.source, "a.ms", "export fn value() Int: 7\n");
+    let (mid, dep) = (join(&p.source, "mid.ms"), join(&p.source, "dep.ms"));
+    std::os::unix::fs::symlink("a.ms", &mid).unwrap();
+    std::os::unix::fs::symlink("mid.ms", &dep).unwrap();
+    assert_eq!(
+        link_components(&p.root, &dep),
+        vec![dep.clone(), mid.clone()]
+    );
+
+    let (left, right) = (join(&p.source, "left.ms"), join(&p.source, "right.ms"));
+    std::os::unix::fs::symlink("right.ms", &left).unwrap();
+    std::os::unix::fs::symlink("left.ms", &right).unwrap();
+    assert_eq!(
+        link_components(&p.root, &left),
+        vec![left.clone(), right.clone()]
+    );
+}
+
+#[test]
+fn manifest_byte_escapes_must_not_select_replacement_character_paths() {
+    let dir = TempDir::new();
+    write(dir.path(), "src/�.ms", "");
+    write(dir.path(), "�/value.ms", "");
+    for escaped in [r"\xff", r"\377", r"\xc3", r"\xed\xa0\x80", r"\xc0\xaf"] {
+        for source in [
+            format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\nentry = \"src/{escaped}.ms\"\n"
+            ),
+            format!("[project]\nname = \"bytes\"\nsource = \"{escaped}\"\n"),
+            format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\n[aliases]\n\"@value\" = \"src/{escaped}.ms\"\n"
+            ),
+        ] {
+            let manifest = write(dir.path(), "ms.toml", &source);
+            let error = read_project(&manifest).unwrap_err().to_string();
+            assert!(error.contains("invalid syntax"), "{source}: {error}");
+        }
+        let manifest = write(
+            dir.path(),
+            "ms.toml",
+            &format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\n[aliases]\n\"@{escaped}\" = \"src/�.ms\"\n"
+            ),
+        );
+        assert!(
+            read_project(&manifest)
+                .unwrap_err()
+                .to_string()
+                .contains("invalid quoted key")
+        );
+    }
+}
+
+#[test]
+fn manifest_valid_byte_escapes_keep_their_exact_paths() {
+    let dir = TempDir::new();
+    let accented = write(dir.path(), "src/é.ms", "");
+    let replacement = write(dir.path(), "src/�.ms", "");
+    for (escaped, expected) in [
+        (r"\xc3\xa9", &accented),
+        (r"\303\251", &accented),
+        (r"\u00e9", &accented),
+        ("é", &accented),
+        (r"\ufffd", &replacement),
+        ("�", &replacement),
+    ] {
+        let manifest = write(
+            dir.path(),
+            "ms.toml",
+            &format!(
+                "[project]\nname = \"bytes\"\nsource = \"src\"\nentry = \"src/{escaped}.ms\"\n"
+            ),
+        );
+        assert_eq!(&read_project(&manifest).unwrap().entry, expected);
+    }
+}

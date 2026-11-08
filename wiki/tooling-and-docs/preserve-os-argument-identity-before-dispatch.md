@@ -7,3 +7,5 @@ Verified: lossy OS argument conversion can map a nonexistent byte path to a diff
 Apply when: changing CLI argument decoding or path identity.
 Evidence: [entry point](../../crates/ms-cli/src/main.rs), [collision regression](../../crates/ms-cli/tests/cli_errors.rs), [argument requirement](../../documentation/developer-tooling/implementation.md).
 Verify: an invalid-byte argument returns usage status 2 even when its lossy spelling exists; a genuine UTF-8 replacement-character filename remains accepted.
+
+The same boundary applies after manifest escape decoding: hex/octal bytes must form valid UTF-8 before becoming source, entry or alias paths. Lossy decoding can otherwise select a real U+FFFD filename. [Manifest regressions](../../crates/ms-driver/tests/project_project.rs) preserve valid multibyte byte escapes and explicit replacement characters while rejecting invalid encodings.

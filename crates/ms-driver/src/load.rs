@@ -4,7 +4,7 @@
 //! once in dependency order, and records which module each import names.
 //! Standard (`@std/`) imports belong to the checker.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::project::{Overlay, Project, ProjectError, pathops};
@@ -39,9 +39,6 @@ pub struct EditorOptions {
 pub struct Graph {
     pub modules: Vec<ModRef>,
     pub imports: ImportMap,
-    /// Local inputs: manifests, attempted source files and first missing path prefixes.
-    /// Retained when a strict load discards the module graph, so watchers can recover.
-    pub input_paths: BTreeSet<String>,
     /// Logical path (relative to `source_root`) of the entry module; empty for a library.
     pub entry: String,
     /// A project manifest without an entry.
@@ -53,6 +50,9 @@ pub struct Graph {
     pub project_root: String,
     pub configuration: String,
     pub diagnostics: Vec<Diagnostic>,
+    /// Paths besides the modules that the load depended on: symbolic links an import passed
+    /// through, and embedded directories and files. A change to one is a source change.
+    pub inputs: Vec<String>,
 }
 
 /// Diagnostics pass through import edges unchanged; plain errors and cycles
@@ -137,14 +137,14 @@ fn load_entries(
     options: LoadOptions,
     editor: &EditorOptions,
 ) -> Graph {
-    let mut input_paths = BTreeSet::new();
-    let (mut config, manifest) = match source_project(filename, &mut input_paths) {
+    let mut seen = Vec::new();
+    let (mut config, manifest) = match source_project(filename, &mut seen) {
         Ok(found) => found,
-        Err((root, error)) => {
+        Err((root, error, inputs)) => {
             let file: Arc<str> = Arc::from(filename);
             return Graph {
                 source_root: root,
-                input_paths,
+                inputs,
                 diagnostics: vec![from_error(&file, &error)],
                 ..Graph::default()
             };
@@ -152,7 +152,7 @@ fn load_entries(
     };
     let mut graph = Graph {
         source_root: config.root.clone(),
-        input_paths,
+        inputs: seen,
         ..Graph::default()
     };
     if manifest {
@@ -305,33 +305,30 @@ fn missing_project_input(config: &Project, error: &ProjectError) -> Option<Strin
     })
 }
 
-/// `(project, is_manifest)`, or the root and the error.
-fn source_project(
-    filename: &str,
-    input_paths: &mut BTreeSet<String>,
-) -> Result<(Project, bool), (String, ProjectError)> {
-    let absolute = pathops::abs(filename).map_err(|e| (String::new(), e))?;
+/// The project of `filename`, or the failure with the root and the embedded directories the
+/// manifest named, which stay watched so creating one reruns the load.
+type Rejected = (String, ProjectError, Vec<String>);
+
+fn source_project(filename: &str, inputs: &mut Vec<String>) -> Result<(Project, bool), Rejected> {
+    let absolute = pathops::abs(filename).map_err(|e| (String::new(), e, Vec::new()))?;
     if pathops::base(&absolute) == "ms.toml" {
-        input_paths.insert(absolute.clone());
+        push_input(inputs, absolute.clone());
         let (config, error) = crate::project::read_project_partial(&absolute);
         return match error {
-            Some(error) => {
-                input_paths.extend(missing_project_input(&config, &error));
-                Err((config.root, error))
-            }
+            Some(error) => Err(rejected(config, error, inputs)),
             None => Ok((config, true)),
         };
     }
-    let root = pathops::eval_symlinks(&pathops::dir(&absolute)).map_err(|e| (String::new(), e))?;
+    let root = pathops::eval_symlinks(&pathops::dir(&absolute))
+        .map_err(|e| (String::new(), e, Vec::new()))?;
     // The nearest enclosing ms.toml supplies the import root and aliases, so entry
     // files can share a library above them. The file stays the sole entry.
-    if let Some(manifest) = enclosing_manifest_with(&root, |path| {
-        input_paths.insert(path.to_string());
-    }) {
+    if let Some(manifest) =
+        enclosing_manifest_with(&root, |path| push_input(inputs, path.to_string()))
+    {
         let (mut config, error) = crate::project::read_project_partial(&manifest);
         if let Some(error) = error {
-            input_paths.extend(missing_project_input(&config, &error));
-            return Err((config.root, error));
+            return Err(rejected(config, error, inputs));
         }
         config.entry = absolute;
         return Ok((config, false));
@@ -342,6 +339,31 @@ fn source_project(
         ..Project::default()
     };
     Ok((config, false))
+}
+
+fn rejected(config: Project, error: ProjectError, seen: &mut Vec<String>) -> Rejected {
+    let mut embedded: Vec<String> = config
+        .embed
+        .values()
+        .map(|directory| {
+            if pathops::is_abs(directory) {
+                directory.clone()
+            } else {
+                pathops::join(&[&config.root, directory])
+            }
+        })
+        .collect();
+    if let Some(path) = missing_project_input(&config, &error) {
+        push_input(seen, path);
+    }
+    embedded.extend(std::mem::take(seen));
+    (config.root, error, embedded)
+}
+
+fn push_input(inputs: &mut Vec<String>, path: String) {
+    if !inputs.contains(&path) {
+        inputs.push(path);
+    }
 }
 
 /// The nearest `ms.toml` in `dir` or an ancestor.
@@ -401,7 +423,7 @@ pub fn explain_path_error(error: &ProjectError, import_path: &str) -> String {
     // The working directory can be spelled differently from the error's path (`/var` and
     // `/private/var`, a Windows short name), so the canonical spelling is tried as well.
     if let Ok(cwd) = std::env::current_dir() {
-        let canonical = std::fs::canonicalize(&cwd).ok();
+        let canonical = pathops::identity(&cwd);
         for base in std::iter::once(&cwd).chain(canonical.as_ref()) {
             if let Ok(relative) = pathops::rel(&slashed(&base.to_string_lossy()), &name)
                 && !relative.starts_with("..")
@@ -474,7 +496,7 @@ impl Loader<'_> {
             }
             return Err(failure.clone());
         }
-        self.graph.input_paths.insert(canonical.to_string());
+        self.add_input(canonical.to_string());
         self.active.insert(canonical.to_string());
         let result = self.load(syms, canonical, &file);
         self.active.remove(canonical);
@@ -495,9 +517,15 @@ impl Loader<'_> {
         } else if let Some((name, directory)) =
             crate::project::embed::name_of(&self.config.embed, &self.config.root, canonical)
         {
-            crate::project::embed::generate(name, directory)
-                .map_err(Failure::Error)?
-                .into_bytes()
+            // The directory stays an input when generation fails, so repairing it reruns.
+            self.add_input(directory.to_string());
+            let generated = crate::project::embed::generate(name, directory);
+            if let Ok(inputs) = crate::project::embed::inputs(directory) {
+                for input in inputs {
+                    self.add_input(input.to_string_lossy().into_owned());
+                }
+            }
+            generated.map_err(Failure::Error)?.into_bytes()
         } else {
             std::fs::read(canonical)
                 .map_err(|e| Failure::Error(ProjectError::path("open", canonical, &e)))?
@@ -559,6 +587,23 @@ impl Loader<'_> {
         Ok(key)
     }
 
+    fn add_input(&mut self, path: String) {
+        push_input(&mut self.graph.inputs, path);
+    }
+
+    /// Resolves a local import, noting the symbolic links its path passes through.
+    fn resolve(&mut self, importer: &str, path: &str) -> Result<String, ProjectError> {
+        use crate::project::Target;
+        let target = match crate::project::import_target(self.config, importer, path)? {
+            Target::Generated(module) => return Ok(module),
+            Target::Path(target) => target,
+        };
+        for link in crate::project::link_components(&self.config.root, &target) {
+            self.add_input(link);
+        }
+        crate::project::source_path(&self.config.root, &target, self.overlay)
+    }
+
     fn import_module(
         &mut self,
         syms: ms_syntax::Names,
@@ -570,18 +615,16 @@ impl Loader<'_> {
         let target = if let Some(target) = self.resolved.get(&request) {
             target.clone()
         } else {
-            let target =
-                crate::project::resolve_import(self.config, importer, &item.path, self.overlay)
-                    .map_err(|e| {
-                        self.graph
-                            .input_paths
-                            .extend(missing_input(&self.config.root, &e));
-                        Failure::diagnostic(Box::new(resolution(
-                            file,
-                            item.pos,
-                            explain_path_error(&e, &item.path),
-                        )))
-                    })?;
+            let target = self.resolve(importer, &item.path).map_err(|e| {
+                if let Some(path) = missing_input(&self.config.root, &e) {
+                    self.add_input(path);
+                }
+                Failure::diagnostic(Box::new(resolution(
+                    file,
+                    item.pos,
+                    explain_path_error(&e, &item.path),
+                )))
+            })?;
             self.resolved.insert(request, target.clone());
             target
         };

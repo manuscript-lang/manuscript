@@ -94,18 +94,17 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
     loop {
         if due.is_some_and(|at| Instant::now() >= at) {
             due = None;
+            let started = SystemTime::now();
             let (_, files) = analysis_once(syms, request, io);
             // A file that dropped out of the graph (a broken import loads no modules) stays
             // watched, so repairing it reruns the check.
-            let kept = std::mem::take(&mut watched);
-            watched = files
-                .into_iter()
-                .chain(request.targets.iter().filter_map(|t| absolute(t)))
-                .map(|path| (path.clone(), file_state(&path)))
-                .collect();
-            for (path, state) in kept {
-                watched.entry(path).or_insert(state);
-            }
+            watched = observed(
+                std::mem::take(&mut watched),
+                files
+                    .into_iter()
+                    .chain(request.targets.iter().filter_map(|t| absolute(t))),
+                started,
+            );
             let _ = writeln!(io.stderr, "ms: waiting for changes");
             let _ = io.stdout.flush();
         }
@@ -413,9 +412,14 @@ pub(super) fn watched_files(syms: ms_syntax::Names, input: &str, checked: &Check
     let mut files = Vec::new();
     files.extend(absolute(input));
     if !checked.project_root.is_empty() {
-        files.push(pathops::join(&[&checked.project_root, "ms.toml"]));
+        let manifest = pathops::join(&[&checked.project_root, "ms.toml"]);
+        // A new source or test file appears in a directory discovery walks, not in the graph.
+        if let Ok(project) = ms_driver::project::read_project(&manifest) {
+            files.extend(ms_driver::project::discovered_directories(&project));
+        }
+        files.push(manifest);
     }
-    files.extend(checked.input_paths.iter().cloned());
+    files.extend(checked.inputs.iter().cloned());
     let Some(program) = &checked.program else {
         return files;
     };
@@ -435,10 +439,16 @@ pub(super) fn absolute(path: &str) -> Option<String> {
     Some(path.to_string_lossy().into_owned())
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(super) struct FileState {
     size: u64,
     modified: Option<SystemTime>,
+    /// Where a symbolic link points: retargeting it changes what an import resolves to.
+    link: Option<std::path::PathBuf>,
+    /// Mode bits (or the read-only flag): repairing a permission rereads a failed source.
+    permissions: std::fs::Permissions,
+    /// Set for a file changed after the analysis began, which the analysis may not have read.
+    unobserved: bool,
 }
 
 /// `None` for a file that does not exist.
@@ -447,7 +457,41 @@ pub(super) fn file_state(path: &str) -> Option<FileState> {
     Some(FileState {
         size: meta.len(),
         modified: meta.modified().ok(),
+        link: std::fs::read_link(path).ok(),
+        permissions: meta.permissions(),
+        unobserved: false,
     })
+}
+
+/// The watched states after an analysis that began at `started`. A file watched before keeps
+/// its earlier state, so an edit made while the analysis ran still differs at the next poll.
+/// A file the analysis found is stamped against `started`. A file that dropped out of the graph
+/// (a broken import loads no modules) stays watched, so repairing it reruns.
+pub(super) fn observed(
+    mut before: BTreeMap<String, Option<FileState>>,
+    paths: impl Iterator<Item = String>,
+    started: SystemTime,
+) -> BTreeMap<String, Option<FileState>> {
+    let mut now = BTreeMap::new();
+    for path in paths {
+        let state = match before.remove(&path) {
+            Some(known) => known,
+            None => state_after(&path, started),
+        };
+        now.insert(path, state);
+    }
+    for (path, state) in before {
+        now.entry(path).or_insert(state);
+    }
+    now
+}
+
+/// The state of `path` as the analysis that began at `started` saw it. A file modified since
+/// may have been read before its edit, so its state never matches: the next poll reruns.
+pub(super) fn state_after(path: &str, started: SystemTime) -> Option<FileState> {
+    let mut state = file_state(path)?;
+    state.unobserved = state.modified.is_some_and(|modified| modified > started);
+    Some(state)
 }
 
 /// A compiler diagnostic with its positions in the display form of a collection.
@@ -885,4 +929,60 @@ pub fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFa
     let name: std::sync::Arc<str> = file.display.as_str().into();
     ms_syntax::format::format(&name, source)
         .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))
+}
+
+#[cfg(test)]
+mod watch_state_tests {
+    use super::{file_state, observed, state_after};
+    use std::time::{Duration, SystemTime};
+
+    fn scratch(name: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("ms-watch-state-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_permission_change_alone_changes_the_state() {
+        let dir = scratch("permissions");
+        let path = dir.join("main.ms");
+        std::fs::write(&path, "export fn main() Int: 0\n").unwrap();
+        let name = path.to_str().unwrap();
+        let before = file_state(name);
+        let mut permissions = std::fs::metadata(&path).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&path, permissions).unwrap();
+        assert!(file_state(name) != before);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_file_modified_during_analysis_never_matches_its_state() {
+        let dir = scratch("during");
+        let path = dir.join("early.ms");
+        let name = path.to_str().unwrap();
+        let started = SystemTime::now();
+        std::thread::sleep(Duration::from_millis(50));
+        std::fs::write(&path, "export fn value() Int: 3\n").unwrap();
+        assert!(state_after(name, started) != file_state(name));
+        let settled = SystemTime::now() + Duration::from_secs(60);
+        assert!(state_after(name, settled) == file_state(name));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_watched_file_keeps_the_state_from_before_the_analysis() {
+        let dir = scratch("before");
+        let path = dir.join("early.ms");
+        let name = path.to_str().unwrap().to_string();
+        std::fs::write(&path, "export fn value() Int: 3\n").unwrap();
+        let before = std::collections::BTreeMap::from([(name.clone(), file_state(&name))]);
+        let started = SystemTime::now();
+        std::fs::write(&path, "export fn value() Int: \"bad\"\n").unwrap();
+        let after = observed(before, std::iter::once(name.clone()), started);
+        assert!(after[&name] != file_state(&name));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

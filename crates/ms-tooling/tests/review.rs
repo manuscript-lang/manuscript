@@ -789,3 +789,81 @@ fn types_mermaid_only_links_declared_nodes_at_the_cap() {
         "{diagram}"
     );
 }
+
+#[test]
+fn git_quoted_diff_paths_preserve_exact_filename_bytes() {
+    for (quoted, expected) in [
+        (r"caf\303\251.ms", "café.ms"),
+        (r"\360\237\246\200.ms", "🦀.ms"),
+        (r#"a\"b\\c\td\ne.ms"#, "a\"b\\c\td\ne.ms"),
+        (r"\a\b\v\f\r.ms", "\x07\x08\x0b\x0c\r.ms"),
+        ("café.ms", "café.ms"),
+        (" with spaces .ms ", " with spaces .ms "),
+    ] {
+        let diff = format!(
+            "diff --git \"a/{quoted}\" \"b/{quoted}\"\n--- \"a/{quoted}\"\n+++ \"b/{quoted}\"\n@@ -1 +1 @@\n-old\n+new\n"
+        );
+        let files = parse_diff(&diff).unwrap();
+        assert_eq!(files[0].old, expected);
+        assert_eq!(files[0].new, expected);
+        assert_eq!(reverse_apply("new\n", &files[0].hunks).unwrap(), "old\n");
+    }
+}
+
+#[test]
+fn git_quoted_paths_preserve_additions_deletions_and_rename_rejection() {
+    let added = parse_diff(
+        "diff --git \"a/caf\\303\\251.ms\" \"b/caf\\303\\251.ms\"\n--- /dev/null\n+++ \"b/caf\\303\\251.ms\"\n@@ -0,0 +1 @@\n+new\n"
+    ).unwrap();
+    assert!(added[0].old.is_empty());
+    assert_eq!(added[0].new, "café.ms");
+    let removed = parse_diff(
+        "diff --git \"a/caf\\303\\251.ms\" \"b/caf\\303\\251.ms\"\n--- \"a/caf\\303\\251.ms\"\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n"
+    ).unwrap();
+    assert!(removed[0].new.is_empty());
+    assert_eq!(removed[0].old, "café.ms");
+    let renamed =
+        parse_diff("diff --git \"a/old.ms\" \"b/new.ms\"\n--- \"a/old.ms\"\n+++ \"b/new.ms\"\n")
+            .unwrap_err();
+    assert!(renamed.contains("renamed files are not supported"));
+}
+
+#[test]
+fn malformed_git_quoted_paths_are_errors_not_guessed_names() {
+    for path in [
+        r#""a/unterminated"#,
+        r#""a/embedded"quote.ms""#,
+        r#""a/bad\q.ms""#,
+        r#""a/short\30.ms""#,
+        r#""a/high\400.ms""#,
+        r#""a/invalid\377.ms""#,
+        r#""a/nul\000.ms""#,
+    ] {
+        let error = parse_diff(&format!("diff --git a/x b/x\n--- {path}\n+++ b/x\n")).unwrap_err();
+        assert!(error.starts_with("diff line 2:"), "{error}");
+    }
+}
+
+#[test]
+fn unquoted_git_and_plain_diff_paths_keep_existing_spelling() {
+    for header in ["diff --git a/café.ms b/café.ms\n", ""] {
+        let files = parse_diff(&format!("{header}--- a/café.ms\n+++ b/café.ms\n")).unwrap();
+        assert_eq!(files[0].path(), "café.ms");
+    }
+    let files =
+        parse_diff("--- \"literal.ms\"\told timestamp\n+++ \"literal.ms\"\tnew timestamp\n")
+            .unwrap();
+    assert_eq!(files[0].path(), "\"literal.ms\"");
+}
+
+#[test]
+fn unquoted_git_paths_preserve_spaces_before_the_header_tab() {
+    for path in [" space.ms", "space.ms ", "sp ace.ms"] {
+        let files = parse_diff(&format!(
+            "diff --git a/{path} b/{path}\n--- a/{path}\t\n+++ b/{path}\t\n"
+        ))
+        .unwrap();
+        assert_eq!(files[0].old, path);
+        assert_eq!(files[0].new, path);
+    }
+}
