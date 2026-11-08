@@ -1200,6 +1200,7 @@ impl FnLower<'_> {
                 slots[at] = Some(self.var_argument(e, at, x, Some(a.expr), &mut slots_out));
                 continue;
             }
+            let owned_payload = x.own;
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned_boundary(x);
@@ -1208,8 +1209,25 @@ impl FnLower<'_> {
                 }
                 None => x,
             };
+            // Resolve cleanup before the ABI lift: its extra optional has no checker
+            // type, and a transport copy of a named borrow must not acquire close duty.
+            let payload_ty = self.ty_of(x.v);
+            let closer = if owned_payload {
+                self.part_closer_mir(payload_ty)?
+            } else {
+                None
+            };
             let x = self.lift_argument(x, ptys[at]);
-            slots[at] = Some(self.borrow(x));
+            slots[at] = Some(if let Some(kind) = closer {
+                let kind = if self.ty_of(x.v) != payload_ty {
+                    self.optional_resource_closer(self.ty_of(x.v), payload_ty, kind)
+                } else {
+                    kind
+                };
+                self.hold_resource_temp_with(x.v, kind)
+            } else {
+                self.borrow(x)
+            });
         }
         // Native invocation defaults are prepared here; other omissions cross as `none`.
         let mut args = Vec::new();

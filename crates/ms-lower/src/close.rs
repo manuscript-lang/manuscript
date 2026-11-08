@@ -13,7 +13,7 @@ use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, IfaceId, Native, RecId, Std, Ty as MTy, TyKind};
 
 /// How a binding is closed.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum CloseKind {
     /// An interface value: the vtable entry.
     Iface(IfaceId, u32),
@@ -367,6 +367,12 @@ impl FnLower<'_> {
         let Some(kind) = self.part_closer_mir(ty)? else {
             return Ok(None);
         };
+        Ok(Some(self.hold_resource_temp_with(v, kind)))
+    }
+
+    /// Registers an intact owned value with its already-resolved closer.
+    pub(crate) fn hold_resource_temp_with(&mut self, v: Value, kind: CloseKind) -> Value {
+        let ty = self.ty_of(v);
         let slot = self
             .b
             .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
@@ -384,7 +390,7 @@ impl FnLower<'_> {
         self.resource_temps
             .insert(key, ResourceTemp { slot, handle, kind });
         self.temps.push(key);
-        Ok(Some(key))
+        key
     }
 
     /// Permanently retires only this resource's cleanup and takes its sole owned value.
@@ -420,7 +426,8 @@ impl FnLower<'_> {
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(self.syms, &ty) != ms_check::api::ownership::Class::Resource
-            || (self.closeable_impl(&ty).is_none() && ty.is(Builtin::Result))
+            || (self.closeable_impl(&ty).is_none()
+                && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
             return v;
         }
@@ -436,6 +443,41 @@ impl FnLower<'_> {
             return Ok(None);
         };
         self.part_closer(&ct)
+    }
+
+    /// The extra ABI optional around an owned function-value argument closes that
+    /// argument in place. The resolved payload closer keeps module-local evidence.
+    pub(crate) fn optional_resource_closer(
+        &mut self,
+        ty: MTy,
+        inner: MTy,
+        kind: CloseKind,
+    ) -> CloseKind {
+        debug_assert_eq!(self.b.m.types.kind(ty), &TyKind::Opt(inner));
+        let key = HelperKey::CloseOptional(ty, kind.clone());
+        if let Some(fid) = self.cx.helpers.get(&key) {
+            return CloseKind::Func {
+                fid: *fid,
+                writes_back: true,
+            };
+        }
+        let params = vec![Param {
+            ty: MTy::PTR,
+            mode: Mode::Borrow,
+        }];
+        let mut b = FuncBuilder::new(self.b.m, "close_optional", params, MTy::UNIT);
+        b.func_mut().linkage = Linkage::Internal;
+        let ptr = b.params()[0];
+        emit_parts(&mut b, ptr, Shape::Opt(inner, kind));
+        let unit = b.unit();
+        b.ret(Some(unit));
+        let func = b.into_func();
+        let fid = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, fid);
+        CloseKind::Func {
+            fid,
+            writes_back: true,
+        }
     }
 
     /// Closes the value the local `l` holds, in place; the close's result.
