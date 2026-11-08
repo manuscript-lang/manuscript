@@ -38,3 +38,20 @@ fn a_move_repeated_by_a_loop_says_so_instead_of_naming_its_own_position() {
         "{got:?}"
     );
 }
+
+#[test]
+fn loop_borrow_remedy_clones_the_iterable_not_its_root() {
+    let template = include_str!("diagnostic_wording/loop-clone-remedy.ms");
+    for iterable in ["rows.get(0)", "rows[0]", "first(rows)"] {
+        let source = template.replace("rows.get(0)", iterable);
+        let got = messages(&source);
+        assert_eq!(got.len(), 1, "{iterable}: {got:?}");
+        assert!(
+            got[0].contains("appending `.clone()` to the loop's iterable expression"),
+            "{iterable}: {got:?}"
+        );
+        assert!(!got[0].contains("in rows.clone()"), "{iterable}: {got:?}");
+        let fixed = template.replace("rows.get(0)", &format!("{iterable}.clone()"));
+        assert!(messages(&fixed).is_empty(), "{iterable}");
+    }
+}

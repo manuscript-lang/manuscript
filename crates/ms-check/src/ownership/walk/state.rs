@@ -247,7 +247,9 @@ impl Walker<'_> {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
             let held_ty = self.meta.get(&a.holder).map(|m| m.binding.ty.clone());
             let remedy = if self.syms.str(holder) == "for" {
-                format!("iterate over a clone instead: `for ... in {shown}.{CLONE}()`")
+                format!(
+                    "iterate over a clone instead by appending `.{CLONE}()` to the loop's iterable expression"
+                )
             } else if why == PROMISE_WHY {
                 String::new()
             } else if held_ty.as_ref().and_then(clone_blocker).is_some() {
