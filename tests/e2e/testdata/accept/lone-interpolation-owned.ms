@@ -13,6 +13,7 @@ test "a lone interpolation of a borrowed string is a new string wherever it is o
     let t = Titled("a")
     var xs = List[String]()
     xs.append("{t.title}")
+
     let h = Holder("{t.title}")
     let f = fn: "{t.title}"
     try expect_equal(quoted(t), "a")
