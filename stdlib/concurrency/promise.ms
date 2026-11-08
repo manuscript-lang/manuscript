@@ -205,6 +205,19 @@ export fn promise[U](
     limit(id, options)
     return Promise[U](id: id)
 
+// Like `promise`, but the entry runs as a task on the calling thread, so it may use values that belong to that thread (a
+// network handle, a connection, a socket) which `promise` would fault on if it ran elsewhere. It reads what `entry`
+// captures the same way, so wait for it before those values change or go out of scope. The entry should only wait (on a
+// file, a socket, a child process): a task that computes blocks its thread.
+export fn local_promise[U](
+    entry: fn() U!,
+    options: PromiseOptions = PromiseOptions()
+) Promise[U]:
+    let id = msrt_promise_new()
+    msrt_promise_start_here(id, fn: complete(id, entry()))
+    limit(id, options)
+    return Promise[U](id: id)
+
 // The values an operation copied for its promise, with the function that uses them. It is a resource, so the promise
 // moves it in and owns it: the promise borrows nothing from the caller.
 type Owned[A, U]:

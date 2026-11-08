@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check scaling-check count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check cancel-sweep scaling-check count-check copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -80,6 +80,10 @@ scaling-check: build
 
 leak-check: build
 	$(MS) run tools/leak-check.ms
+
+# Cancels each e2e stdlib test at every park in turn and fails when cancellation leaves more blocks live than the uncancelled run.
+cancel-sweep: build
+	$(MS) run tools/cancel-sweep.ms
 
 copy-check: build
 	$(MS) run tools/copy-check.ms

@@ -1,0 +1,7 @@
+[project]
+name = "watch-inputs"
+source = "."
+entry = "main.ms"
+
+[aliases]
+"@dep" = "dep.ms"

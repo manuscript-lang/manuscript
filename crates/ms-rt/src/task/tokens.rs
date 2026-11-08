@@ -148,7 +148,7 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         if take(value_out) {
             return 0;
         }
-        if cancel_flag().load(Ordering::Relaxed) != 0 {
+        if cancel_flag().load(Ordering::Relaxed) != 0 || super::sweep::cancel_here() {
             return WAIT_CANCELLED;
         }
         let mut s = sched();

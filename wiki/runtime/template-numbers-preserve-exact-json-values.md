@@ -7,11 +7,18 @@ Float makes `1e-400` false, merges neighboring large integers, and loses orderin
 when exponents overflow. Truth, equality, ordering, `default`, and list `contains`
 must agree on the same exact value.
 
-Normalize a valid token into sign, coefficient with insignificant zeros removed,
-and decimal order. Keep the order as signed decimal text: even the exponent need
-not fit in an Int. Compare order then coefficient; never materialize powers of
-ten or introduce Float, Decimal, or rational-parser range limits. Canonical Int
-tokens can use exact machine-integer comparisons as a common-case fast path.
+Keep validated coefficient bytes with a significant span and a decimal-order
+offset. Ordinary values without exponents compare offsets directly. Normalize
+signed decimal order only for exponent-bearing comparisons: even the exponent
+need not fit in an Int. Compare order then coefficient, treating trailing zeros
+as insignificant; never expand powers of ten or impose conversion range limits.
+Canonical Int tokens can use exact machine-integer comparisons.
+
+Avoid normalizing every coefficient eagerly. Different first significant digits
+already decide coefficient order; shared prefixes use native string comparison
+after lazy normalization. A source-level byte-at-a-time comparison regresses long
+shared prefixes. Keep ordinary, equivalent, negative, extreme-exponent and long
+coefficient controls alongside integer performance checks.
 
 Regression coverage includes underflow, neighboring integers, equivalent decimal
 forms, signed zero, negative order reversal, machine boundaries, and exponents

@@ -253,7 +253,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
-        if cancel_flag().load(Ordering::Relaxed) != 0 {
+        if cancel_flag().load(Ordering::Relaxed) != 0 || super::sweep::cancel_here() {
             return WAIT_CANCELLED;
         }
         let mut s = sched();

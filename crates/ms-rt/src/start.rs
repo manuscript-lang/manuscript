@@ -114,6 +114,9 @@ unsafe fn run_main() {
 #[cfg(feature = "stats")]
 fn report_leaks() {
     {
+        if std::env::var_os("MS_PARK_COUNT").is_some() {
+            eprintln!("ms-rt parks: {}", crate::task::sweep::parks());
+        }
         eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
         if crate::alloc::live_blocks() != 0 {
             // Which size classes still hold blocks: a flaky leak names its blocks by size.

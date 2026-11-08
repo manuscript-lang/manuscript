@@ -1,4 +1,5 @@
 import Data from "@std/core.ms"
+import Bytes from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 import WriteStream from "@std/io/io.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
@@ -903,12 +904,15 @@ fn rows_of(
 
     return rows
 
-// A coefficient and decimal order, never an expanded power of ten. The order is
-// itself decimal text because JSON exponents need not fit in an Int.
+// Keep validated coefficient bytes and a small decimal-order offset. Only
+// exponent-bearing comparisons need arbitrary signed decimal-order arithmetic.
 type ExactNumber:
     negative: Bool
-    coefficient: String
-    order: String
+    coefficient: Bytes
+    first: Int
+    end: Int
+    offset: Int
+    exponent: String
 
 fn unsigned_digits(text: String) String:
     let chars = text.chars()
@@ -1032,38 +1036,64 @@ fn exact_number(text: String) ExactNumber?:
 
         exponent = text.drop(exponent_start)
 
-    let digits = if start == 0 and coefficient_end == chars.length(): text.replace(
-        ".", ""
-    ) else: text.drop(start).take(coefficient_end - start).replace(".", "")
-    let coefficient_chars = digits.to_bytes()
-    var first = 0
-    while first < coefficient_chars.length() and coefficient_chars.get(first) == 48: first += 1
-    if first == coefficient_chars.length(): return ExactNumber(
-        negative: false, coefficient: "0", order: "0"
-    )
+    var first = start
+    var leading_zeros = 0
 
-    var end = coefficient_chars.length()
-    while end > first + 1 and coefficient_chars.get(end - 1) == 48: end -= 1
+    while first < coefficient_end:
+        let byte = chars.get(first)
+        if byte != 48 and byte != 46: break
 
-    let unchanged = first == 0 and end == coefficient_chars.length()
-    let coefficient = if unchanged: digits else: digits.drop(first).take(end - first)
+        if byte == 48: leading_zeros += 1
+        first += 1
+
     return ExactNumber(
-        negative: negative, coefficient: coefficient,
-        order: decimal_order(exponent, before_point - first)
+        negative: negative and first != coefficient_end, coefficient: chars,
+        first: first, end: coefficient_end, offset: before_point - leading_zeros,
+        exponent: exponent
     )
 
 fn number_compare(a: ExactNumber, b: ExactNumber) Int:
     if a.negative != b.negative: return if a.negative: -1 else: 1
 
-    var comparison = 0
+    let az = a.first == a.end
+    let bz = b.first == b.end
+    if az or bz:
+        return if az == bz: 0 else if az: -1 else: 1
 
-    if a.coefficient == "0" or b.coefficient == "0":
-        comparison = if a.coefficient == b.coefficient: 0 else if a.coefficient == "0": -1 else: 1
+    var order = 0
+
+    if a.exponent == "0" and b.exponent == "0":
+        order = if a.offset < b.offset: -1 else if a.offset > b.offset: 1 else: 0
     else:
-        comparison = order_compare(a.order, b.order)
-        if comparison == 0: comparison = a.coefficient.compare(b.coefficient)
+        order = order_compare(
+            decimal_order(a.exponent, a.offset), decimal_order(b.exponent, b.offset)
+        )
 
-    return if a.negative: -comparison else: comparison
+    if order == 0: order = coefficient_compare(a, b)
+    return if a.negative: -order else: order
+
+// Most unequal coefficients differ immediately. For a shared prefix, use the
+// native string comparison instead of inspecting every byte in Manuscript.
+fn coefficient_compare(a: ExactNumber, b: ExactNumber) Int:
+    let x = a.coefficient.get(a.first)
+    let y = b.coefficient.get(b.first)
+    if x != y: return if x < y: -1 else: 1
+
+    return coefficient_text(a).compare(coefficient_text(b))
+
+fn coefficient_text(number: ExactNumber) String:
+    var end = number.end
+
+    while end > number.first + 1:
+        let last = number.coefficient.get(end - 1)
+        if last != 48 and last != 46: break
+
+        end -= 1
+
+    // The lexical scan already validated ASCII; these byte ranges are UTF-8.
+    return number.coefficient.decode_utf8_range(number.first, end).get("").replace(
+        ".", ""
+    )
 
 // Common integer tokens compare directly without losing precision. Noncanonical
 // or out-of-range text continues through the general exact-number path.
@@ -1081,7 +1111,7 @@ fn truthy(value: JsonValue) Bool:
 
     if let text = number_text(value):
         if let integer = exact_integer(text): return integer != 0
-        if let number = exact_number(text): return number.coefficient != "0"
+        if let number = exact_number(text): return number.first != number.end
 
     return true
 

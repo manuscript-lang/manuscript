@@ -125,3 +125,21 @@ test "malformed raw number payloads cannot acquire numeric ordering":
         let value = JsonValue.ObjectValue(fields)
         try expect_equal((try condition.render(value)), "unordered")
         try expect_equal((try truth.render(value)), "true")
+
+test "coefficient spans preserve decimal points and implicit trailing zeros":
+    let pairs = [
+        ["1.2", "1.2000"], ["0.01200", "0.012"], ["120.000", "1.2e2"], ["-0.000", "0"],
+        ["-0.00e99", "0.0"]
+    ]
+    for pair in pairs:
+        try check(
+            "left == right and left <= right and right <= left",
+            "\{\"left\":{pair[0]},\"right\":{pair[1]}\}", "yes"
+        )
+    try check("left < right", "\{\"left\":1.2,\"right\":1.2001\}", "yes")
+    try check("left > right", "\{\"left\":-1.2,\"right\":-1.2001\}", "yes")
+
+test "long shared coefficient prefixes retain exact order":
+    let prefix = try "23456789".repeat(125)
+    let values = "\{\"left\":1.{prefix},\"right\":1.{prefix}1\}"
+    try check("left < right and right > left and left != right", values, "yes")
