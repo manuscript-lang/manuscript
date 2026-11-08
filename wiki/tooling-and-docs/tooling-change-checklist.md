@@ -23,3 +23,6 @@ Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line t
 - CLI text, JSON shape, and exit codes are pinned by the conformance corpus (`make conform`); update `tests/conformance/` expectations deliberately.
 - Run affected crate tests (`cargo nextest run -p ms-tooling` etc.); client changes need extension tests with pinned Node dependencies. Standalone claims need `make dist-check`.
 - `tools/e2e.ms` builds a debug `ms` with MIR verification on, so a fixture can fail there and pass in a release `ms`. Reproduce with `target/debug/ms test <file>`. The verifier exempts calls and closures of `keeps_scoped` functions, so inlining and specializing them is safe.
+- Source token lists are ordered by offset. Default-expression rendering should
+  seek to the parameter before scanning its delimiters, rather than rescan every
+  earlier declaration for each default; preserve original text and CRLF offsets.
