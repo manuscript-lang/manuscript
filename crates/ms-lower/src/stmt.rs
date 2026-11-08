@@ -1378,13 +1378,24 @@ impl<'a> FnLower<'a> {
         body: &[Stmt],
     ) -> Result<(), Error> {
         let item = if scalars { MTy::INT } else { MTy::STR };
-        // The checker keeps a borrowed text unchanged while the loop reads it: walk it in place.
+        // Scan borrowed text in place only when the body cannot change its source.
+        // Unlike plain-list iteration, chars()/scalar_values() promise a fresh snapshot.
         let text_var = if !text.own && untouched {
             let var = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
             self.b.def_var(var, text.v);
             var
         } else {
-            self.bind_hidden(text)
+            // This copy supplies the snapshot of the list-producing operation we removed.
+            // A borrowed helper result may alias storage that the loop body replaces.
+            let snapshot = if text.own {
+                text
+            } else {
+                Val {
+                    v: self.clone_value(text.v),
+                    own: true,
+                }
+            };
+            self.bind_hidden(snapshot)
         };
         let empty = self.b.str_lit("");
         let keep = self.bind_hidden(Val {
