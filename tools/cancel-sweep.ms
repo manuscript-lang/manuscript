@@ -2,7 +2,7 @@
 // (await point) in turn and checks that nothing leaks. A counting runtime (`ms-rt` feature `stats`)
 // numbers the parks of a process; `MS_PARK_COUNT=1` prints how many a test made, and
 // `MS_CANCEL_AT_PARK=k` makes the k-th one report a cancellation, as if the parking task had been
-// cancelled there. The cancelled test must end with the same live blocks as the uncancelled run (a test that leaks without cancellation belongs to `leak-check`). A run that ends with more Rust heap blocks (`ms-rt rust heap at exit`) is listed as `heap:` but does not fail the sweep: a cancelled test also keeps its failure report, so each hit needs a look. Arguments name the
+// cancelled there. The cancelled test must end with the same live blocks as the uncancelled run (a test that leaks without cancellation belongs to `leak-check`). A run that ends with more Rust heap blocks (`ms-rt rust heap at exit`) is a `heap:` hit and fails too. A hit must reproduce: it is re-run twice, and counts the uncancelled run itself shows over five runs (worker buffers vary with timing) are not hits. A cancel that ends the process (status 143) prints no counts and is not swept. Arguments name the
 // files to sweep (default: tests/e2e/testdata/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
 // test (default 64); MS names the ms to run (default target/release/ms).
 // Usage: ms run tools/cancel-sweep.ms [-- files]
@@ -88,15 +88,52 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
             for again in test_run(ms.clone(), file.clone(), base.name.clone(), 0):
                 if again.name == base.name: reference = again.clone()
 
+            // Counts the uncancelled run shows on any of five runs are normal for this test: worker threads
+            // leave buffers of timing-dependent size behind, which is not a leaked frame.
+            var normal_live = [reference.live]
+            var normal_heap = [reference.heap]
+            var ceiling = reference.heap
+
+            for repeat in 0..4:
+                for r in test_run(ms.clone(), file.clone(), base.name.clone(), 0):
+                    if r.name == base.name:
+                        normal_live.append(r.live)
+                        normal_heap.append(r.heap)
+                        if r.heap > ceiling: ceiling = r.heap
+
             for k in 1..last + 1:
                 for hit in test_run(ms.clone(), file.clone(), base.name.clone(), k):
                     lines.append("swept")
 
-                    if hit.live != reference.live: lines.append(
-                        "leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {hit.live} live blocks (uncancelled run: {reference.live})"
+                    var live = hit.live
+                    var heap = hit.heap
+                    var bad_live = not normal_live.contains(live)
+                    var bad_heap = heap > ceiling
+                    var tries = 0
+
+                    while (bad_live or bad_heap) and tries < 2:
+                        tries += 1
+
+                        var ran = false
+
+                        for r in test_run(
+                            ms.clone(), file.clone(), base.name.clone(), k
+                        ):
+                            ran = true
+
+                            if not normal_live.contains(r.live): live = r.live
+                            else: bad_live = false
+
+                            if r.heap <= ceiling: bad_heap = false
+                            else if r.heap < heap: heap = r.heap
+
+                        if not ran: break
+
+                    if bad_live: lines.append(
+                        "leak: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} left {live} live blocks (uncancelled run: {reference.live})"
                     )
-                    else if hit.heap > reference.heap: lines.append(
-                        "heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {hit.heap} Rust heap blocks (uncancelled run: {reference.heap})"
+                    else if bad_heap: lines.append(
+                        "heap: {f} \"{hit.name}\" cancelled at park {k} of {base.parks} ended with {heap} Rust heap blocks (uncancelled runs: at most {ceiling})"
                     )
 
     return lines
@@ -170,6 +207,6 @@ export fn main() Int:
         )
         .get()
     )
-    if leaks > 0: return 1
+    if leaks + heaps > 0: return 1
 
     return 0

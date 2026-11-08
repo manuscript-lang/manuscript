@@ -1,6 +1,6 @@
 import from_scalars from "@std/string.ms"
 import expect_equal, expect_true from "@std/test/test.ms"
-import parse, stringify, escape_text, XmlNode from "@std/data/xml.ms"
+import parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms"
 
 test "parse reads elements attributes and text":
     let doc = parse(
@@ -180,3 +180,22 @@ test "XML names reject punctuation and excluded Unicode gaps":
         for name in [scalar.clone(), "a{scalar}"]:
             try expect_equal(parse("<{name}/>"), malformed)
             try expect_equal(parse("<a {name}='value'/>"), malformed)
+
+test "line ends normalize to newline and attribute whitespace to spaces":
+    let doc = parse("<a k=\"x\ny\tz\r\nw\">t\r\nu\rv<![CDATA[c\r\nd]]></a>").get()
+    try expect_equal(doc.text(), "t\nu\nvc\nd")
+    try expect_equal(doc.attribute("k").get(""), "x y z w")
+
+test "character references keep whitespace that normalization would change":
+    let doc = parse("<a k=\"x&#10;y&#9;z&#13;\">&#13;&#10;</a>").get()
+    try expect_equal(doc.attribute("k").get(""), "x\ny\tz\r")
+    try expect_equal(doc.text(), "\r\n")
+
+test "carriage returns survive a stringify and parse round trip":
+    let source = XmlElement("a", [XmlAttribute("k", "p\rq\nr\ts")], [XmlText("t\r\nu")])
+    let text = stringify(source)
+    try expect_true(not text.contains("\r"))
+
+    let back = parse(text).get()
+    try expect_equal(back.text(), "t\r\nu")
+    try expect_equal(back.attribute("k").get(""), "p\rq\nr\ts")

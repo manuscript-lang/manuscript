@@ -432,46 +432,26 @@ fn method_modes(
     native_method_modes(syms, method, count, label)
 }
 
-/// The payload a checked native wrapper operation passes through unchanged.
-/// Callback-created values, even of the same type, do not imply passthrough.
-pub fn wrapper_passthrough(
-    syms: ms_syntax::Names,
-    method: &MethodRef,
-    receiver: &Ty,
-) -> Option<Ty> {
-    let name = syms.str(method.native);
-    let index = if method.receiver.is(Builtin::Optional) {
-        match name {
-            "get" | "get_or_else" | "or_else" | "ok_or" | "ok_or_else" => 0,
-            _ => return None,
-        }
-    } else if method.receiver.is(Builtin::Result) {
-        match name {
-            "or_else" | "map_error" | "to_optional" => 0,
-            "map" | "and_then" => 1,
-            _ => return None,
-        }
-    } else {
-        return None;
-    };
-    receiver.args.get(index).cloned()
-}
-
-/// The payload a method value of a wrapper operation hands out on each call: the first type
+/// The payload a checked native wrapper operation passes through unchanged: the first type
 /// argument of the wrapper (`T?`, `T!E`) that the declared result mentions. It is read from the
 /// declaration, so a new operation (`Result.get`, `Result.err`) cannot be left off a name list.
 /// A callback's own type parameter (`map[U]`) is not an argument of the wrapper, so values the
 /// callback creates do not imply passthrough.
-pub fn bound_passthrough(method: &MethodRef, receiver: &Ty) -> Option<Ty> {
-    if !(method.receiver.is(Builtin::Optional) || method.receiver.is(Builtin::Result)) {
+pub fn wrapper_passthrough(method: &MethodRef, receiver: &Ty) -> Option<Ty> {
+    // A contract operation (`clone`, `equals`) makes a new value; it does not hand out the payload.
+    if method.contract.is_some()
+        || !(method.receiver.is(Builtin::Optional) || method.receiver.is(Builtin::Result))
+    {
         return None;
     }
     // The wrapper's operations are folded into its enum declaration (`Optional[T]`, `Result[T, E]`).
     let decl = method.decl.as_ref()?;
     let result = &decl.func()?.result;
-    let index = decl
-        .decl
-        .type_params()
+    let params = decl.decl.type_params();
+    if params.len() != method.receiver.args.len() {
+        return None;
+    }
+    let index = params
         .iter()
         .position(|p| written_mentions(result, p.name))?;
     receiver.args.get(index).cloned()

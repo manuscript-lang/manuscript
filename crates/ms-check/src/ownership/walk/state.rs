@@ -237,11 +237,13 @@ impl Walker<'_> {
         shown: &str,
         ignore: Option<usize>,
     ) {
+        // Test the cheap place overlap before the holder-relation walk, which hashes: a long
+        // list of live borrows is scanned for every access.
         let found = self.active.iter().find(|a| {
-            !ignore.is_some_and(|i| self.related(a.holder, i))
-                && a.origins
-                    .iter()
-                    .any(|(o, _)| places.iter().any(|p| p.overlaps(o)))
+            a.origins
+                .iter()
+                .any(|(o, _)| places.iter().any(|p| p.overlaps(o)))
+                && !ignore.is_some_and(|i| self.related(a.holder, i))
         });
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
@@ -287,10 +289,10 @@ impl Walker<'_> {
     /// exclusively; `reader` is the binding the read goes through.
     pub(super) fn check_read(&mut self, pos: Pos, places: &[Place], shown: &str, reader: usize) {
         let found = self.active.iter().find(|a| {
-            !self.related(a.holder, reader)
-                && a.origins
-                    .iter()
-                    .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
+            a.origins
+                .iter()
+                .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
+                && !self.related(a.holder, reader)
         });
         if let Some(a) = found {
             let (holder, bpos, why) = (a.holder_name, a.pos, a.why.clone());

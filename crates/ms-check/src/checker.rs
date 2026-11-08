@@ -194,6 +194,9 @@ impl ImportMap {
 
 /// The checker.
 pub struct Checker {
+    /// Facts about literal arithmetic trees, memoized per node so a long `a + b + c ...` chain is
+    /// examined once per node, not once per enclosing operator.
+    pub(crate) literal_facts: crate::constfaults::LiteralFacts,
     /// The session this checker reads the standard library from.
     pub(crate) session: Rc<Session>,
     /// Where the next checked expression is used, e.g. "argument 'a' of f".
@@ -263,6 +266,7 @@ impl Checker {
     /// A fresh checker.
     pub fn new(session: &Rc<Session>, options: &CheckOptions) -> Checker {
         Checker {
+            literal_facts: Default::default(),
             session: session.clone(),
             mismatch_context: None,
             scope_marker: options.scope_marker.clone(),

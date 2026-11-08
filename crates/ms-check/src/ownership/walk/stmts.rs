@@ -632,8 +632,10 @@ impl Walker<'_> {
             }
         }
         // A call closes a resource entry the mutator discards; a method value does not, so the
-        // entry would leak.
+        // entry would leak. Source-defined methods with the same names keep their own semantics.
         if let Some((m, _)) = self.method_value_parts(e)
+            && !self.syms.str(m.native).is_empty()
+            && crate::effects::collection_mutation(self.syms, &m)
             && m.name()
                 .is_some_and(|n| crate::effects::discards_entries(self.syms.str(n)))
             // An operation that also stores its argument was rejected above, with that reason.
@@ -691,7 +693,7 @@ impl Walker<'_> {
         escaping: bool,
     ) -> Vec<(Place, bool)> {
         if let Some((m, _)) = self.method_value_parts(e)
-            && let Some(payload) = bound_passthrough(&m, &self.cx.m.ty(recv))
+            && let Some(payload) = wrapper_passthrough(&m, &self.cx.m.ty(recv))
         {
             // A function value can run repeatedly and cannot move out its captured receiver.
             // Only the preserved payload needs copying; callback inputs remain borrowed.

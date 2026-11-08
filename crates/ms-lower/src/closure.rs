@@ -263,6 +263,13 @@ impl FnLower<'_> {
             Some(t) => *t,
             None => {
                 let proto = self.b.m.funcs[fid.index()].clone();
+                let copy_result = self.borrowed_result_copy(fid, proto.ret, &proto.name)?;
+                let result_ty = self.ety(e).result_ty();
+                if copy_result && !self.cx.classes.concretely_clonable(self.syms, &result_ty) {
+                    return Err(Error::new(
+                        "a function value returns a non-Clonable borrow; call the function directly",
+                    ));
+                }
                 let mut ps = vec![Param {
                     ty: MTy::PTR,
                     mode: Mode::Borrow,
@@ -274,6 +281,12 @@ impl FnLower<'_> {
                 };
                 let args: Vec<_> = b.params().into_iter().skip(1).collect();
                 let r = b.call(fid, &args);
+                let r = if copy_result {
+                    b.emit(Op::Clone, &[r], Imm::Int(1), Some(proto.ret))
+                        .expect("copy result")
+                } else {
+                    r
+                };
                 b.ret(Some(r));
                 let f = b.into_func();
                 let id = self.b.m.add_func(f);
@@ -869,7 +882,7 @@ impl FnLower<'_> {
         Ok(Val { v, own: true })
     }
 
-    /// Whether a bound method's thunk must copy the result of `fid`, a callee returning a borrow.
+    /// Whether a source callable's thunk must copy the result of `fid`, a callee returning a borrow.
     /// A resource result cannot be copied, so that form is reported instead of miscompiled.
     fn borrowed_result_copy(&mut self, fid: FuncId, ret: MTy, name: &str) -> Result<bool, Error> {
         if !self.b.m.funcs[fid.index()].ret_borrowed || !self.needs_drop(ret) {
@@ -877,7 +890,7 @@ impl FnLower<'_> {
         }
         if self.part_closer_mir(ret)?.is_some() {
             return Err(Error::new(format!(
-                "method value .{name} returns a borrowed resource; call the method instead"
+                "callable value {name} returns a borrowed resource; call it directly instead"
             )));
         }
         Ok(true)

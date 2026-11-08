@@ -137,6 +137,9 @@ pub(crate) enum Event {
     Stop { id: i64 },
     /// To the runner: cancel the promise's task `task` (a stale handle is ignored).
     Cancel { task: u64 },
+    /// To the owner of a promise another thread uses: run the job in a task of its own. The job
+    /// answers the caller through a token it holds (see `promise::ask`).
+    Call(Box<dyn FnOnce() + Send>),
 }
 
 struct Mail {
@@ -518,7 +521,10 @@ fn root(_: *mut u8) {
         SLOTS[current()].root.store(token, Ordering::SeqCst);
         let mut value = 0;
         while STOP.load(Ordering::Acquire) == 0 {
+            // The root task's wait is the scheduler's, not an await point of the program.
+            crate::task::sweep::internal(true);
             crate::task::msrt_token_park(token, -1, &mut value);
+            crate::task::sweep::internal(false);
         }
         crate::task::msrt_token_free(token);
     }
@@ -569,9 +575,10 @@ pub fn shutdown() {
     STOP.store(0, Ordering::Release);
     for slot in SLOTS.iter() {
         slot.root.store(0, Ordering::SeqCst);
+        // Fresh buffers, not `clear`: the capacity grew with the promises queued and would stay.
         let mut mail = lock(&slot.mail);
-        mail.pending.clear();
-        mail.events.clear();
+        mail.pending = VecDeque::new();
+        mail.events = Vec::new();
         slot.pending.store(0, Ordering::SeqCst);
         slot.front_at.store(0, Ordering::SeqCst);
         slot.signalled.store(0, Ordering::SeqCst);

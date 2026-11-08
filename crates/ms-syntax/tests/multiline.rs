@@ -117,6 +117,32 @@ fn formatting_moves_text_with_the_line_it_lands_on() {
 }
 
 #[test]
+fn formatting_keeps_whitespace_only_text_lines() {
+    let file: Arc<str> = Arc::from("m.ms");
+    let source = include_str!("data/multiline/blank_wrapping.ms");
+    for raw in [false, true] {
+        for newline in ["\n", "\r\n"] {
+            for blank in ["", "  ", "            ", "            \t", "        \u{a0}"] {
+                let source = source.replace("            \n", &format!("{blank}\n"));
+                let source = if raw {
+                    source.replacen("\"\"\"", "r\"\"\"", 1)
+                } else {
+                    source
+                };
+                let source = source.replace('\n', newline);
+                let once = format(&file, &source).unwrap();
+                assert_eq!(
+                    parts_of(&dump(&source).unwrap()),
+                    parts_of(&dump(&once).unwrap()),
+                    "{once}"
+                );
+                assert_eq!(format(&file, &once).unwrap(), once);
+            }
+        }
+    }
+}
+
+#[test]
 fn names_and_paths_stay_one_line() {
     let file: Arc<str> = Arc::from("m.ms");
     for source in [

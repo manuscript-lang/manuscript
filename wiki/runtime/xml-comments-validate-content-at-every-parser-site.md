@@ -11,3 +11,5 @@ The XML 1.0 `Char` production applies to the entire literal input too (#2950), n
 Raw character data must also reject literal `]]>` (#2951) before entity decoding. A delimiter assembled by references or separate nodes remains legal; attributes and CDATA follow their own grammar.
 
 XML names use the exact [XML 1.0 Fifth Edition NameStartChar/NameChar ranges](https://www.w3.org/TR/xml/#NT-NameStartChar), not a punctuation denylist or Unicode alphabetic predicate (#2952). Colon stays legal because this parser does not resolve namespaces; supplementary names end at U+EFFFF even though later scalars are legal document text.
+
+Line ends and attribute whitespace are normalized per XML 1.0 sections 2.11 and 3.3.3 (#3124). `parse` converts `\r\n` and a lone `\r` to `\n` once on the whole input, before the reader sees it, so CDATA and text agree; attribute values turn literal tab and newline into spaces before references decode, so `&#10;` and `&#13;` survive. `escape_text` and `escape_attribute` write `\r` as `&#13;` to round-trip through any conforming parser.
