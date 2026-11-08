@@ -29,6 +29,7 @@ import (
 // the values it uses. A promise only reads what it captures: concurrent code never changes a shared value (to change
 // shared state, give it one owner and send it values over a `pipe`).
 //
+// <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
 // let config = read_file("config.json")  // Promise[Bytes], already running
 // let words = promise(
