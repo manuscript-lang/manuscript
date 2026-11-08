@@ -16,14 +16,18 @@
 //! it, like any other writer.
 use crate::desc::slot_drop;
 use crate::{alloc, promise};
+use core::cell::UnsafeCell;
 use ms_rt_abi::TypeDesc;
 use std::collections::VecDeque;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Status of `msrt_pipe_write`: the value was taken.
 pub const WRITTEN: i64 = 0;
 /// Status of `msrt_pipe_write`: the reader is gone, so the value was dropped.
 pub const CLOSED: i64 = 1;
+/// Status of `msrt_pipe_write`: the value is queued and the queue is above its capacity, so the
+/// writer should wait on a flush (back pressure) without asking the pipe again.
+pub const FULL: i64 = 2;
 
 struct Item {
     ptr: usize,
@@ -43,10 +47,73 @@ struct Pipe {
     flushes: Vec<i64>,
 }
 
-static PIPES: Mutex<Vec<Pipe>> = Mutex::new(Vec::new());
+/// A lock held for a few pointer moves, so a waiter spins instead of sleeping: a contended
+/// `std::sync::Mutex` costs a futex wait and wake (microseconds) per hand-over, which made a
+/// pipe between threads run 5 to 10 times slower than between tasks of one thread.
+struct Spin<T> {
+    locked: AtomicBool,
+    value: UnsafeCell<T>,
+}
 
-fn pipes() -> std::sync::MutexGuard<'static, Vec<Pipe>> {
-    PIPES.lock().unwrap_or_else(|e| e.into_inner())
+// SAFETY: the flag admits one holder at a time.
+unsafe impl<T: Send> Sync for Spin<T> {}
+
+struct SpinGuard<'a, T>(&'a Spin<T>);
+
+impl<T> Spin<T> {
+    const fn new(value: T) -> Spin<T> {
+        Spin {
+            locked: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    fn lock(&self) -> SpinGuard<'_, T> {
+        let mut spins = 0u32;
+        while self
+            .locked
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            // The holder may have been descheduled: give its core back after a short spin.
+            while self.locked.load(Ordering::Relaxed) {
+                spins += 1;
+                if spins < 256 {
+                    core::hint::spin_loop();
+                } else {
+                    std::thread::yield_now();
+                }
+            }
+        }
+        SpinGuard(self)
+    }
+}
+
+impl<T> core::ops::Deref for SpinGuard<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        // SAFETY: this guard holds the lock.
+        unsafe { &*self.0.value.get() }
+    }
+}
+
+impl<T> core::ops::DerefMut for SpinGuard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: this guard holds the lock.
+        unsafe { &mut *self.0.value.get() }
+    }
+}
+
+impl<T> Drop for SpinGuard<'_, T> {
+    fn drop(&mut self) {
+        self.0.locked.store(false, Ordering::Release);
+    }
+}
+
+static PIPES: Spin<Vec<Pipe>> = Spin::new(Vec::new());
+
+fn pipes() -> SpinGuard<'static, Vec<Pipe>> {
+    PIPES.lock()
 }
 
 fn slot(table: &mut [Pipe], id: i64) -> Option<&mut Pipe> {
@@ -116,7 +183,7 @@ pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
     }
 }
 
-/// Moves `value` into the pipe and answers `WRITTEN`, or `CLOSED` (the value is dropped) when the
+/// Moves `value` into the pipe and answers `WRITTEN` (`FULL` when the queue now exceeds the capacity), or `CLOSED` (the value is dropped) when the
 /// reader is gone. It never waits.
 ///
 /// # Safety
@@ -145,7 +212,11 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
                 Some(reader) => Some(reader),
                 None => {
                     p.queue.push_back(item);
-                    return WRITTEN;
+                    return if p.queue.len() > p.capacity {
+                        FULL
+                    } else {
+                        WRITTEN
+                    };
                 }
             },
             _ => {
@@ -448,11 +519,11 @@ mod tests {
     fn a_flush_waits_above_capacity_and_a_closed_reader_refuses_writes() {
         let _g = lock();
         let pipe = msrt_pipe_new(1);
-        write_int(pipe, 1);
+        assert_eq!(write_int(pipe, 1), WRITTEN);
         let at_capacity = msrt_pipe_flush(pipe);
         assert_eq!(finish_unit(at_capacity), promise::OK);
-        write_int(pipe, 2);
-        write_int(pipe, 3);
+        assert_eq!(write_int(pipe, 2), FULL);
+        assert_eq!(write_int(pipe, 3), FULL);
         let waiting = msrt_pipe_flush(pipe);
         assert_eq!(promise::msrt_promise_done(waiting), 0);
         assert_eq!(finish(msrt_pipe_read(pipe)), Some(1));
