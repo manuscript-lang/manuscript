@@ -17,7 +17,7 @@ import (
     Connection
 ) from "@std/net/net.ms"
 import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
-import promise from "@std/concurrency/promise.ms"
+import owned_task, promise from "@std/concurrency/promise.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -226,7 +226,7 @@ test "resolve returns typed DNS records from the configured resolver":
 
     let server = try bind_datagram("127.0.0.1:0")
     let derived = try with_resolver(server.address.clone())
-    let asking = promise(
+    let asking = owned_task(
         fn: derived.resolve(
             "example.test", DnsKind.MX, DnsOptions(timeout: 2.seconds())
         )
