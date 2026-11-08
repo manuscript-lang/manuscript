@@ -502,7 +502,11 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
         Vec::new()
     };
     sched::live_add(-1);
+    // Ending drops the closure, which closes what it captured: like any implicit close that runs
+    // shielded, since a cancelled task would otherwise be cancelled again at its first park.
+    fault::msrt_shield_enter();
     deliver(id, Event::Ended { id, status, report });
+    fault::msrt_shield_exit();
 }
 
 /// Wakes the task waiting on slot `i`, if any.

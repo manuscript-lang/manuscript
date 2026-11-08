@@ -4,6 +4,9 @@ import HttpExchange from "@std/net/http.ms"
 import connect, serve from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 import memory_usage from "@std/os/system.ms"
+import PromiseOptions from "@std/concurrency/promise.ms"
+import fetch from "@std/net/fetch.ms"
+import sleep from "@std/time.ms"
 
 fn faulting(var exchange: HttpExchange) Unit!:
     let big = "x".repeat(1000000).get("")
@@ -28,3 +31,51 @@ test "a faulting handler releases the values its frames own":
     // Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.
     let grown = (memory_usage() | try expect_ok).resident - before
     if grown > 20000000: return error(Error("resident memory grew {grown} bytes"))
+
+fn hanging(var exchange: HttpExchange) Unit!:
+    try sleep(30.seconds()).wait()
+    return ok(unit)
+
+test "a fetch cancelled by its timeout releases its read buffer":
+    let server = serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
+    let url = "http://{server.address()}/"
+
+    // Warm up the thread's buffers and the connection pool before measuring.
+    for i in 0..20:
+        let _ = fetch(url).with(
+            options: PromiseOptions(timeout: 5.milliseconds())
+        ).wait()
+
+    let before = (memory_usage() | try expect_ok).resident
+
+    for i in 0..300:
+        let timed_out = fetch(url).with(
+            options: PromiseOptions(timeout: 5.milliseconds())
+        ).wait()
+        if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+
+    // Each cancelled read leaked a 64 KiB buffer, so 300 fetches grew the process by about 19 MB.
+    let grown = (memory_usage() | try expect_ok).resident - before
+    if grown > 8000000: return error(Error("resident memory grew {grown} bytes"))
+
+test "a fetch cancelled by its timeout frees the request state its frames own":
+    let server = serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
+    let url = "http://{server.address()}/"
+    for i in 0..200:
+        let _ = fetch(url).with(
+            options: PromiseOptions(timeout: 5.milliseconds())
+        ).wait()
+
+    let before = (memory_usage() | try expect_ok).heap_used
+
+    for i in 0..2000:
+        let timed_out = fetch(url).with(
+            options: PromiseOptions(timeout: 5.milliseconds())
+        ).wait()
+        if timed_out.is_ok(): return error(Error("a hanging handler answered"))
+
+    // The method, URLs, header vectors and pool key leaked about 340 bytes per cancelled fetch.
+    let grown = (memory_usage() | try expect_ok).heap_used - before
+    if grown > 2000 * 64: return error(
+        Error("heap grew {grown} bytes over 2000 cancelled fetches")
+    )

@@ -11,6 +11,7 @@ tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk`
 Paths in a tree are `/`-separated and relative to the tree's root. `.` and empty parts are ignored and `..` steps
 up; a path that would leave the root is `EINVAL`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import FileTree, walk from "@std/os/tree.ms"
 

@@ -68,12 +68,12 @@ pub(crate) fn numeric(syms: ms_syntax::Names, t: &Ty) -> bool {
         || t.is(Builtin::BigInt)
 }
 
-/// An unsuffixed number literal, possibly negated.
+/// An unsuffixed number literal, possibly signed.
 pub(crate) fn is_plain_literal(syms: ms_syntax::Names, e: &Expr) -> bool {
     match &e.kind {
-        ExprKind::Number(t) => !syms.str(t).ends_with('d'),
+        ExprKind::Number(t) => !ms_syntax::number::canonical(syms.str(t)).ends_with('d'),
         ExprKind::Unary {
-            op: UnaryOp::Neg,
+            op: UnaryOp::Neg | UnaryOp::Plus,
             operand,
         } => is_plain_literal(syms, operand),
         _ => false,
@@ -84,11 +84,12 @@ pub(crate) fn is_plain_literal(syms: ms_syntax::Names, e: &Expr) -> bool {
 /// literals are fractional. Mixed integer and fractional literals have no common kind.
 fn literal_tree_fractional(syms: ms_syntax::Names, e: &Expr) -> Option<bool> {
     match &e.kind {
-        ExprKind::Number(t) if !syms.str(t).ends_with('d') => {
-            Some(syms.str(t).contains(['.', 'e', 'E']))
+        ExprKind::Number(t) => {
+            let text = ms_syntax::number::canonical(syms.str(t));
+            (!text.ends_with('d')).then(|| text.contains(['.', 'e', 'E']))
         }
         ExprKind::Unary {
-            op: UnaryOp::Neg,
+            op: UnaryOp::Neg | UnaryOp::Plus,
             operand,
         } => literal_tree_fractional(syms, operand),
         ExprKind::Binary {
@@ -1028,7 +1029,7 @@ impl Checker {
         // A negated literal takes its sized type from the expected type; -128 fits Int8.
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
-            && !self.syms.str(t).ends_with('d')
+            && !ms_syntax::number::canonical(self.syms.str(t)).ends_with('d')
         {
             let literal = self.infer_number(
                 operand,
@@ -1042,7 +1043,7 @@ impl Checker {
             return finish_info(self.syms, i);
         }
         let hint = expected
-            .filter(|_| op == UnaryOp::Neg && matches!(operand.kind, ExprKind::Binary { .. }))
+            .filter(|_| matches!(op, UnaryOp::Neg | UnaryOp::Plus))
             .filter(|t| literal_hint(self.syms, operand, t).is_some());
         let v = self.expression(operand, hint);
         i.no_return = v.no_return;

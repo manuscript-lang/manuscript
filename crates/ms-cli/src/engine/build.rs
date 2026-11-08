@@ -427,8 +427,19 @@ impl BuildCache {
         // source. Include the current selection in the key, resolving directory symlinks as the
         // loader does, so even a previously absent manifest invalidates a cached program.
         let source_dir = pathops::eval_symlinks(&pathops::dir(&filename)).ok()?;
-        inputs
-            .extend(ms_driver::load::enclosing_manifest(&source_dir).map(std::path::PathBuf::from));
+        let manifest = ms_driver::load::enclosing_manifest(&source_dir);
+        inputs.extend(manifest.clone().map(std::path::PathBuf::from));
+        // An alias or the source directory that is a symlink can be retargeted without touching
+        // any recorded source or the manifest, so the key names where each one resolves now.
+        // The directories themselves are not stamped: building into one changes its mtime.
+        let mut resolved = Vec::new();
+        if let Some(manifest) = manifest
+            && let Ok(project) = ms_driver::project::read_project(&manifest)
+        {
+            for target in project.aliases.values().chain([&project.source]) {
+                resolved.push(std::fs::canonicalize(target).ok()?.display().to_string());
+            }
+        }
         inputs.push(backend.runtime_path().ok()?);
         let options = backend.build_options();
         inputs.extend(request.link.iter().map(std::path::PathBuf::from));
@@ -436,6 +447,7 @@ impl BuildCache {
         let build_type = request.build_type.as_str();
         let mut parts = vec![build_type, filename.as_str(), output, crate::VERSION];
         parts.extend(request.link.iter().map(String::as_str));
+        parts.extend(resolved.iter().map(String::as_str));
         parts.push(if options.static_musl { "musl" } else { "libc" });
         let key = ms_build::cache::key(&parts, &inputs, &options)?;
         Some(BuildCache {

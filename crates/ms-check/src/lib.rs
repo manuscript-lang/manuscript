@@ -37,6 +37,8 @@ mod unused;
 #[cfg(test)]
 mod generic_defaults_tests;
 #[cfg(test)]
+mod radix_literal_tests;
+#[cfg(test)]
 mod record_fields_tests;
 #[cfg(test)]
 mod type_argument_defaults_tests;

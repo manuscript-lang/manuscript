@@ -1,0 +1,8 @@
+diff --git "a/caf\303\251.ms" "b/caf\303\251.ms"
+--- "a/caf\303\251.ms"
++++ "b/caf\303\251.ms"
+@@ -1,2 +1,2 @@
+-export fn value() Int:
+-    return 1
++export fn value() String:
++    return "new"

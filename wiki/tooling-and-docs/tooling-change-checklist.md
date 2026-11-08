@@ -9,8 +9,13 @@ Apply when: changing `ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, lin
 Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line tables/profiling. Read [implementation/limits](../../documentation/developer-tooling/implementation.md) and [lessons](../tooling-and-docs/index.md).
 
 - Derive semantics from checked symbols/types and shared traversal. Reuse one source index per request; do not re-lex names for import usage or generate inspection output just to find a receiver.
+- Apply disjoint label-removal spans with one forward source copy; repeated in-place removals shift the remaining suffix for every label. Preserve binding decisions, Unicode/CRLF text and the unchanged-source fast path.
 - A formatter change that rewraps existing code reformats the repo (`ms fmt stdlib tests tools`; `reject` fixtures stay unparsable) and needs `UPDATE_SNAPSHOTS=1 cargo test -p ms-lsp --test it -- snapshots::`, since navigation snapshots hold stdlib positions. `ms fmt` wraps bare imports over the width into `import (...)`.
 - Formatting preserves semantics and is idempotent for inline/indented suites, defaults, closures, interpolation, and multiline parameters. Use the [compiler checklist](../compiler/compiler-change-checklist.md) for changed syntax/recovery.
+- Trailing-comment extraction must skip quoted text with the lexer scanner,
+  including nested interpolations; quote toggles mistake nested URLs for docs.
+  Scan only the literal so incomplete surrounding editor code remains usable.
+- Machine fixes use written source spans, not call anchor positions: pipes and member calls can begin before the callee. Apply fixes and recheck direct/member/piped calls, discarded bindings, parentheses, multiline closures and CRLF.
 - Test valid source and incomplete snapshots: preserve neighboring declarations and positions; check navigation/completion with malformed input, LF/CRLF, and relevant Unicode positions.
 - Analysis/completion/workspace discovery share nearest-manifest and canonical identity. Confine overlays; malformed nested manifests cannot inherit parent aliases silently. Edits respect versions, shadowing, and binding identity.
 - Standard virtual documents are checked source: navigate workspace → stdlib, within stdlib, and across modules, including signature types/hover. Keep documents immutable/outside overlays; register their scheme with the client and test restarts.
@@ -23,3 +28,11 @@ Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line t
 - CLI text, JSON shape, and exit codes are pinned by the conformance corpus (`make conform`); update `tests/conformance/` expectations deliberately.
 - Run affected crate tests (`cargo nextest run -p ms-tooling` etc.); client changes need extension tests with pinned Node dependencies. Standalone claims need `make dist-check`.
 - `tools/e2e.ms` builds a debug `ms` with MIR verification on, so a fixture can fail there and pass in a release `ms`. Reproduce with `target/debug/ms test <file>`. The verifier exempts calls and closures of `keeps_scoped` functions, so inlining and specializing them is safe.
+- Source token lists are ordered by offset. Default-expression rendering should
+  seek to the parameter before scanning its delimiters, rather than rescan every
+  earlier declaration for each default; preserve original text and CRLF offsets.
+
+- Public API snapshots must use checked opacity before projecting fields or cases.
+  Filtering only a renderer leaks representation into search, member pages or JSON;
+  preserve public operations and generics. See the opaque API regressions in
+  `crates/ms-tooling/tests/guide_opaque.rs`.

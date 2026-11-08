@@ -5,9 +5,9 @@
 use super::{Finding, finding, module_file};
 use crate::walk::walk_module;
 use ms_check::ModuleData;
-use ms_syntax::DiagnosticFix;
 use ms_syntax::ast::*;
 use ms_syntax::visit::Visitor;
+use ms_syntax::{DiagnosticFix, Pos};
 
 pub(super) fn lint(syms: ms_syntax::Names, module: &ModuleData, findings: &mut Vec<Finding>) {
     let file = module_file(syms, module);
@@ -37,7 +37,7 @@ impl Scan<'_> {
             .is_some_and(|t| t.is_source_type(syms, "@std/concurrency/promise.ms", "Promise"))
     }
 
-    fn report(&mut self, e: &Expr, statement: bool) {
+    fn report(&mut self, e: &Expr, statement_start: Option<Pos>, allow_fix: bool) {
         let mut found = finding(
             "MSL115",
             "This promise is dropped as soon as it is made, which cancels it; bind it and call wait() on it, or pass it to wait_all",
@@ -46,22 +46,24 @@ impl Scan<'_> {
         );
         // A call that used to wait for its result and ignored it: wait for it, still ignoring the result. As a
         // statement the result must be dropped on purpose, since `wait()` gives a `Result`.
-        if matches!(e.kind, ExprKind::Call { .. }) {
-            let text = self
-                .module
-                .source
-                .get(e.pos.offset as usize..e.end.offset as usize);
-            found.fix = match (statement, text) {
-                (true, Some(text)) => Some(DiagnosticFix {
-                    pos: e.pos,
-                    end: e.end,
-                    replacement: format!("let _ = {text}.wait()"),
-                }),
-                _ => Some(DiagnosticFix {
+        // Call positions anchor the callee, not a written pipe or member receiver.
+        // Use the statement span and a receiver pipe so every original call form survives.
+        if allow_fix && matches!(e.kind, ExprKind::Call { .. }) {
+            found.fix = if let Some(start) = statement_start {
+                self.module
+                    .source
+                    .get(start.offset as usize..e.end.offset as usize)
+                    .map(|text| DiagnosticFix {
+                        pos: start,
+                        end: e.end,
+                        replacement: format!("let _ = {text} | .wait()"),
+                    })
+            } else {
+                Some(DiagnosticFix {
                     pos: e.end,
                     end: e.end,
-                    replacement: ".wait()".to_string(),
-                }),
+                    replacement: " | .wait()".to_string(),
+                })
             };
         }
         self.findings.push(found);
@@ -72,12 +74,14 @@ impl Visitor for Scan<'_> {
     fn stmt(&mut self, stmt: &Stmt) {
         let syms = self.syms;
         match &stmt.kind {
-            StmtKind::Call(e) if self.is_promise(syms, e) => self.report(e, true),
-            StmtKind::Bind { pattern, value, .. }
-                if matches!(&pattern.kind, PatternKind::Name(n) if syms.str(n) == "_")
-                    && self.is_promise(syms, value) =>
+            StmtKind::Call(e) if self.is_promise(syms, e) => self.report(e, Some(stmt.pos), true),
+            StmtKind::Bind {
+                pattern, value, ty, ..
+            } if matches!(&pattern.kind, PatternKind::Name(n) if syms.str(n) == "_")
+                && self.is_promise(syms, value) =>
             {
-                self.report(value, false);
+                // Waiting changes Promise to Result; retain an explicit annotation.
+                self.report(value, None, ty.is_none());
             }
             _ => {}
         }
