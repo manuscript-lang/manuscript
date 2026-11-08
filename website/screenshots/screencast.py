@@ -15,12 +15,30 @@ SRC = os.path.join(HERE, "screencast")
 
 # (caption, source file or None, command run in a scratch copy of screencast/ and the demo project)
 SCENES = [
-    ("Failure is a value: T! results, no exceptions.", "errors.ms", "ms run errors.ms", 4),
-    ("One owner per value. Moves are caught at compile time.", "own.ms", "ms run own.ms", 1),
-    ("Concurrency without async or await.", "conc.ms", "ms run conc.ms", 4),
-    ("One command: check, format, lint, test.", None, "ms verify demo/ms.toml", 4),
-    ("See what an agent built: the call graph.", None, "ms diagram conc.ms --format ascii", 7),
-    ("Ship one native binary.", None, "ms build conc.ms -o conc && ./conc", 4),
+    ("Failures are values, not exceptions",
+     "Every error path is in the signature. Nothing throws behind your back.",
+     "errors.ms", "ms run errors.ms", 4),
+    ("Memory safety without a garbage collector",
+     "One owner per value: no GC pauses, no use-after-move. Checked at compile time.",
+     "own.ms", "ms run own.ms", 1),
+    ("Resources close themselves",
+     "Files and sockets close at scope end, even on early return. No defer, no leaks.",
+     "scope.ms", "ms run scope.ms", 2),
+    ("No async, no await",
+     "Any function can run concurrently, so there are no colored functions to rewrite.",
+     "conc.ms", "ms run conc.ms", 4),
+    ("Errors that tell you the fix",
+     "Diagnostics carry cause and remedy; --json gives agents the same as data.",
+     "fixme.ms", "ms check fixme.ms", 1),
+    ("One command, one verdict",
+     "Check, format, lint and test in a single pass/fail for engineers, agents and CI.",
+     None, "ms verify demo/ms.toml", 4),
+    ("Review what the agent built",
+     "Call graphs and code maps come from checked source, not from guesses.",
+     None, "ms diagram conc.ms --format ascii", 7),
+    ("Fast to iterate, one binary to ship",
+     "Quick debug builds while you work; a standalone native executable at the end.",
+     None, "ms build conc.ms -o conc && ./conc", 4),
 ]
 COLS = int((1000 - 64) / 14.4)
 
@@ -35,6 +53,7 @@ W, H, PAD, FS = 1000, 620, 32, 24
 FONT = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", FS)
 BOLD = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 26)
 LH = 34
+SMALL = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 17)
 CW = FONT.getlength("M")
 
 def tokens(line, t):
@@ -60,7 +79,7 @@ def run(cmd, cwd, ms_dir, limit):
         out += textwrap.wrap(l, COLS, subsequent_indent="  ", drop_whitespace=False) or [""]
     return out
 
-def frame(t, caption, code, shown, cmd, out, n_out, step, total):
+def frame(t, title, benefit, code, shown, cmd, out, n_out, step, total):
     im = Image.new("RGB", (W, H), t["bg"])
     d = ImageDraw.Draw(im)
     d.rectangle([0, 0, W, 44], fill=t["bar"])
@@ -83,9 +102,10 @@ def frame(t, caption, code, shown, cmd, out, n_out, step, total):
             col = t["err"] if re.search(r"error|type:|resolution:", line) else t["fg"]
             d.text((PAD, y), line[:int((W - 2 * PAD) / CW)], font=FONT, fill=col)
             y += LH
-    d.rectangle([0, H - 64, W, H], fill=t["bar"])
-    d.text((PAD, H - 32), caption, font=BOLD, fill=t["cap"], anchor="lm")
-    d.text((W - PAD, H - 32), f"{step}/{total}", font=FONT, fill=t["dim"], anchor="rm")
+    d.rectangle([0, H - 104, W, H], fill=t["bar"])
+    d.text((PAD, H - 72), title, font=BOLD, fill=t["cap"], anchor="lm")
+    d.text((PAD, H - 34), benefit, font=SMALL, fill=t["fg"], anchor="lm")
+    d.text((W - PAD, H - 72), f"{step}/{total}", font=FONT, fill=t["dim"], anchor="rm")
     return im
 
 def main():
@@ -104,11 +124,11 @@ def main():
         subprocess.run("ms init demo", shell=True, cwd=work, env=env, capture_output=True, check=True)
         frames, durs = [], []
         total = len(SCENES)
-        for i, (caption, srcfile, cmd, limit) in enumerate(SCENES, 1):
+        for i, (title, benefit, srcfile, cmd, limit) in enumerate(SCENES, 1):
             code = open(os.path.join(SRC, srcfile)).read().rstrip("\n").split("\n") if srcfile else []
             out = run(cmd, work, ms_dir, limit)
             def add(shown, c, n, ms):
-                frames.append(frame(t, caption, code, shown, c, out, n, i, total)); durs.append(ms)
+                frames.append(frame(t, title, benefit, code, shown, c, out, n, i, total)); durs.append(ms)
             # human pacing: a line of code every 0.6 s, a pause to read it, then the command and each output line
             for n in range(1, len(code) + 1):
                 add(n, None, 0, 600)
