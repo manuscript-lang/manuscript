@@ -4,6 +4,7 @@
 mod guide_defaults;
 mod guide_docgen;
 mod guide_extensions;
+mod guide_opaque;
 mod guide_pages;
 mod guide_type_display;
 mod labels;
