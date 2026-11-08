@@ -281,8 +281,10 @@ impl TarEntries:
             if self.total + size > most: return over
         return ok(unit)
 
-    // Bytes of the member at the start of the buffer, or 0 while its end has not arrived.
-    fn member_length() Int!:
+    // Bytes of the member at the start of the buffer, or 0 while its end has not arrived. Once the input has
+    // ended (`ended`), a final member whose data is complete but whose padding is short counts as whole,
+    // as `unpack` accepts it.
+    fn member_length(ended: Bool) Int!:
         var at = 0
 
         // A PAX `size` record replaces the size field of the header that follows it.
@@ -319,7 +321,11 @@ impl TarEntries:
             ):
                 padded = 0
             at += padded
-            if self.buffer.length() < at: return ok(0)
+            if self.buffer.length() < at:
+                let slack = if padded > 0: padded - size else: 0
+                if ended and not extension and self.buffer.length() >= at - slack:
+                    return ok(self.buffer.length())
+                return ok(0)
             if not extension: return ok(at)
 
             if flag == 120:
@@ -353,12 +359,9 @@ impl TarEntries:
         self.names.add(path)
         return ok(unit)
 
-impl Transform[Bytes, ArchiveEntry] for TarEntries:
-    var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
-        if self.done: return ok(unit)
-
-        self.buffer = self.buffer.concat(value)
-
+impl TarEntries:
+    // Emits the members the buffer holds completely; `ended` says no more input will come.
+    var fn drain(var out: List[ArchiveEntry], ended: Bool) Unit!:
         while true:
             if (
                 self.buffer.length() >= 512
@@ -368,11 +371,17 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
                 self.buffer = join([])
                 break
 
-            let length = try self.member_length()
+            let length = try self.member_length(ended)
             if length == 0: break
 
-            let member = try self.buffer.slice(0, length)
+            var member = try self.buffer.slice(0, length)
             self.buffer = try self.buffer.slice(length, self.buffer.length())
+
+            // Padding the archive ended inside is restored so the end blocks stay block-aligned.
+            let short = length % 512
+            if short != 0: member = member.concat(
+                try self.end.slice(0, 512 - short)
+            )
 
             let end = member.concat(self.end)
 
@@ -397,7 +406,17 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 
         return ok(unit)
 
+impl Transform[Bytes, ArchiveEntry] for TarEntries:
+    var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
+        if self.done: return ok(unit)
+
+        self.buffer = self.buffer.concat(value)
+        return self.drain(var out, false)
+
     var fn finish(var out: List[ArchiveEntry]) Unit!:
+        if self.done: return ok(unit)
+
+        try self.drain(var out, true)
         if self.done or self.buffer.is_empty(): return ok(unit)
 
         return error(Error("archive: truncated tar", kind: "EBADMSG"))
