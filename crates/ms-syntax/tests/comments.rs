@@ -92,3 +92,31 @@ fn formatter_restores_many_comment_and_text_spans_in_order() {
     assert_eq!(formatted, source.trim_end().to_string() + "\n");
     assert_eq!(format(&formatted), formatted);
 }
+
+#[test]
+fn trailing_documentation_skips_nested_interpolated_text() {
+    let source = include_str!("data/doc-trailing-interpolation.ms");
+    for source in [source.to_string(), source.replace('\n', "\r\n")] {
+        parse(&source).expect("valid nested text fixture");
+        for (field, expected) in [
+            ("annotated:", "the real note"),
+            ("unannotated:", ""),
+            ("nested:", "deeply nested"),
+            ("escaped:", "escaped quote"),
+        ] {
+            let offset = source.find(field).unwrap();
+            assert_eq!(ms_syntax::doc::trailing_comment(&source, offset), expected);
+        }
+    }
+}
+
+#[test]
+fn trailing_documentation_tolerates_incomplete_surrounding_code() {
+    let complete_text = "fn unfinished(text: String = \"{\"http://x\"}\", // argument note";
+    assert_eq!(
+        ms_syntax::doc::trailing_comment(complete_text, 0),
+        "argument note"
+    );
+    let incomplete_text = "fn unfinished(text: String = \"{\"http://x\"} // still text";
+    assert_eq!(ms_syntax::doc::trailing_comment(incomplete_text, 0), "");
+}

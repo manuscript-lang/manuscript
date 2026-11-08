@@ -136,13 +136,21 @@ pub fn trailing_comment(source: &str, offset: usize) -> String {
         .next()
         .unwrap_or("")
         .trim_end_matches('\r');
+    if !line.contains("//") {
+        return String::new();
+    }
     let bytes = line.as_bytes();
-    let (mut i, mut quoted) = (0, false);
+    let mut i = 0;
     while i < bytes.len() {
         match bytes[i] {
-            b'\\' if quoted => i += 1,
-            b'"' => quoted = !quoted,
-            b'/' if !quoted && bytes.get(i + 1) == Some(&b'/') => {
+            b'"' => {
+                let Some(end) = crate::lexer::quoted_text_end(&line[i..]) else {
+                    return String::new();
+                };
+                i += end;
+                continue;
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'/') => {
                 if i == 0 || line[..i].trim().is_empty() {
                     return String::new();
                 }
