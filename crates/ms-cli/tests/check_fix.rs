@@ -167,11 +167,7 @@ fn fix_repeats_until_later_diagnostics_are_fixed() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     // The checker reports the immutable `xs` only after the misspelled member is fixed.
-    std::fs::write(
-        dir.join("a.ms"),
-        "export fn main() Int:\n    let xs = [1, 2]\n    xs.push(3)\n    return xs.len()\n",
-    )
-    .unwrap();
+    std::fs::write(dir.join("a.ms"), include_str!("check_fix/repeat_passes.ms")).unwrap();
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
