@@ -198,7 +198,15 @@ fn discovered_below(root: &str, file: &str) -> bool {
     if pathops::escapes(&rel) || pathops::is_abs(&rel) {
         return false;
     }
-    pathops::dir(&rel)
-        .split('/')
-        .all(|dir| dir == "." || !skipped_name(dir))
+    let mut directory = root.to_string();
+    for component in pathops::dir(&rel).split('/') {
+        if component == "." {
+            continue;
+        }
+        directory = pathops::join(&[&directory, component]);
+        if skipped_name(component) || is_nested_project(&directory) {
+            return false;
+        }
+    }
+    true
 }
