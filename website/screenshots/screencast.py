@@ -19,7 +19,7 @@ SCENES = [
      "Use-after-move is a compile error: no GC pauses, no refcounts.",
      "own.ms", "ms run own.ms", 1),
     ("Native speed, comparable to C.",
-     "5M sieve: Manuscript 26 ms, C 26 ms, Go 65 ms (bench/perf, 2026-11-05).",
+     "No GC, minimal runtime. 5M sieve: 26 ms, C 26 ms (bench/perf, 2026-11-05).",
      None, "ms build sieve.ms -o sieve && ./sieve", 4),
     ("No async. No await.",
      "Any function can run concurrently, so no colored functions to rewrite.",
