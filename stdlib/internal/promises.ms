@@ -71,8 +71,6 @@ export extern fn msrt_pipe_ended(pipe: Int) Int
 // A promise that finishes when no more than `capacity` values are queued, or the reader is gone.
 export extern fn msrt_pipe_flush(pipe: Int) Int
 
-export extern fn msrt_pipe_buffered(pipe: Int) Int
-
 export extern fn msrt_pipe_close_writer(pipe: Int) Unit
 
 export extern fn msrt_pipe_close_reader(pipe: Int) Unit

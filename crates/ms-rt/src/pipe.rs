@@ -367,12 +367,6 @@ fn flush_cancelled(id: i64, pipe: usize, _bits: u32) -> bool {
     false
 }
 
-/// How many values are queued and not yet read.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipe_buffered(pipe: i64) -> i64 {
-    slot(&mut pipes(), pipe).map_or(0, |p| p.queue.len() as i64)
-}
-
 /// Closes one writing end. When the last one closes, a waiting read finishes with none.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_pipe_close_writer(pipe: i64) {
@@ -441,6 +435,11 @@ mod tests {
     use crate::sched;
     use crate::testutil::lock;
     use ms_rt_abi::Closure;
+
+    /// How many values are queued and not yet read.
+    fn msrt_pipe_buffered(pipe: i64) -> i64 {
+        slot(&mut pipes(), pipe).map_or(0, |p| p.queue.len() as i64)
+    }
 
     fn write_int(pipe: i64, mut v: i64) -> i64 {
         // SAFETY: `v` is an Int slot the call takes.

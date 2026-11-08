@@ -23,14 +23,17 @@ fn run() Unit!:
     var input = q.reader()
     try p.close()
     try q.close()
+
     let a = promise(fn: fill(var w1, 0, 500000))
     let b = promise(fn: fill(var w2, 500000, 500000))
     let st = promise(fn: stage(var pr, var qw))
     var sum = 0
     var n = 0
+
     for v in input:
         sum += v
         n += 1
+
     try a.wait()
     try b.wait()
     try st.wait()
