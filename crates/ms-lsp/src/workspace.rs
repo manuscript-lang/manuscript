@@ -276,6 +276,7 @@ pub(crate) fn workspace_symbols_matching(
             Err(ScanError::Io(_)) => {}
         }
     }
+    let scanned: HashSet<String> = documents.iter().map(Document::path).collect();
     let mut analyzed: HashSet<String> = HashSet::new();
     let mut names = HashMap::new();
     let mut seen: HashSet<nav::LocationKey> = HashSet::new();
@@ -287,7 +288,7 @@ pub(crate) fn workspace_symbols_matching(
         if !analyzed.insert(d.uri.clone()) {
             continue;
         }
-        if !may_contain_symbol(d, matches, &mut names) {
+        if !may_contain_symbol(d, matches, &mut names, &scanned) {
             continue;
         }
         let checked = workspace_analysis(syms, session, d, docs);
@@ -340,6 +341,23 @@ pub(crate) fn workspace_symbols_matching(
     Some(result.into_iter().map(|(_, v)| v).collect())
 }
 
+/// Whether the import string `text` (with its quotes) names a standard module or a relative file
+/// of the scan, whose own declarations the scan reports without this file's help.
+fn scanned_import(importer: &str, text: &str, scanned: &HashSet<String>) -> bool {
+    if text.starts_with("\"@std/") || text.starts_with("'@std/") {
+        return true;
+    }
+    let Some(inner) = text
+        .strip_prefix('"')
+        .and_then(|t| t.strip_suffix('"'))
+        .filter(|t| !t.contains('\\'))
+    else {
+        return false;
+    };
+    (inner.starts_with("./") || inner.starts_with("../"))
+        && scanned.contains(&pathops::join(&[&pathops::dir(importer), inner]))
+}
+
 /// This is only a conservative filter: imports and uses can also match. The
 /// checker and occurrence index remain the authority for returned declarations.
 /// If lexing fails, keep the file so loading/recovery behaves as before.
@@ -347,6 +365,7 @@ fn may_contain_symbol(
     d: &Document,
     matches: &dyn Fn(&str) -> bool,
     names: &mut HashMap<String, bool>,
+    scanned: &HashSet<String>,
 ) -> bool {
     let file: Arc<str> = Arc::from(d.path());
     let Ok(lexed) = ms_syntax::lexer::lex(&file, &d.text) else {
@@ -354,11 +373,10 @@ fn may_contain_symbol(
     };
     lexed.tokens.iter().enumerate().any(|(i, token)| {
         if token.kind == ms_syntax::token::Tok::Import {
-            // Local imports can contribute declarations not written here,
-            // including modules outside discovery's scan scope. Only the
-            // ordinary, unescaped standard path spelling proves otherwise;
-            // unusual strings or malformed imports conservatively stay in.
-            let standard = lexed.tokens[i + 1..]
+            // An import can contribute declarations not written here. A standard module or a
+            // relative file the scan already visits contributes none the scan would miss; any
+            // other spelling (an alias, an escaped string, a file outside the scan) stays in.
+            let path = lexed.tokens[i + 1..]
                 .iter()
                 .take_while(|t| {
                     !matches!(
@@ -367,11 +385,8 @@ fn may_contain_symbol(
                     )
                 })
                 .find(|t| t.kind == ms_syntax::token::Tok::String)
-                .is_some_and(|path| {
-                    let text = &lexed.source[path.lo as usize..path.hi as usize];
-                    text.starts_with("\"@std/") || text.starts_with("'@std/")
-                });
-            if !standard {
+                .map(|path| &lexed.source[path.lo as usize..path.hi as usize]);
+            if !path.is_some_and(|text| scanned_import(&file, text, scanned)) {
                 return true;
             }
         }
@@ -407,13 +422,18 @@ fn may_contain_symbol(
 mod tests {
     use super::*;
 
-    fn kept(text: &str, query: &str) -> bool {
+    fn kept_in(text: &str, query: &str, scanned: &[&str]) -> bool {
         let document = Document::new(uri::file_uri("/tmp/a.ms"), text);
         may_contain_symbol(
             &document,
             &|name| name.eq_ignore_ascii_case(query),
             &mut HashMap::new(),
+            &scanned.iter().map(|p| p.to_string()).collect(),
         )
+    }
+
+    fn kept(text: &str, query: &str) -> bool {
+        kept_in(text, query, &[])
     }
 
     #[test]
@@ -428,6 +448,28 @@ mod tests {
         assert!(kept(
             "import (\n    a,\n    b\n) from \"./other.ms\"\n",
             "missing"
+        ));
+    }
+
+    #[test]
+    fn an_import_of_a_scanned_file_adds_no_candidate() {
+        let scanned = ["/tmp/other.ms", "/tmp/sub/deep.ms"];
+        let text = "import f from \"./other.ms\"\nimport g from \"./sub/deep.ms\"\n";
+        // The scan visits those files itself and reports their declarations once.
+        assert!(!kept_in(text, "missing", &scanned));
+        // A file the scan does not visit, an alias, or an escape keeps the importer in.
+        assert!(kept_in(text, "missing", &["/tmp/other.ms"]));
+        assert!(kept_in("import f from \"../x.ms\"\n", "missing", &scanned));
+        assert!(kept_in(
+            "import f from \"@lib/x.ms\"\n",
+            "missing",
+            &scanned
+        ));
+        // The importer's own declarations still count.
+        assert!(kept_in(
+            "import f from \"./other.ms\"\nfn helper() Int:\n    return 1\n",
+            "helper",
+            &scanned
         ));
     }
 }
