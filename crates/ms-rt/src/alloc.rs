@@ -1328,6 +1328,8 @@ mod std_heap {
     unsafe impl GlobalAlloc for StdHeap {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            #[cfg(feature = "stats")]
+            super::rust_heap::add(1, layout.size() as isize);
             if heap_ok(layout) {
                 super::alloc(layout.size())
             } else if let Some(size) = shared_size(layout) {
@@ -1351,6 +1353,8 @@ mod std_heap {
 
         #[inline]
         unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+            #[cfg(feature = "stats")]
+            super::rust_heap::add(1, layout.size() as isize);
             if heap_ok(layout) {
                 if layout.size() <= MAX_SMALL {
                     return super::alloc_zeroed(layout.size());
@@ -1382,6 +1386,8 @@ mod std_heap {
 
         #[inline]
         unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
+            #[cfg(feature = "stats")]
+            super::rust_heap::add(-1, -(layout.size() as isize));
             if owns(p) {
                 // SAFETY: a heap block; `free` routes it to its owner.
                 unsafe { super::free(p) };
@@ -1402,6 +1408,8 @@ mod std_heap {
         }
 
         unsafe fn realloc(&self, p: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+            #[cfg(feature = "stats")]
+            super::rust_heap::add(0, new_size as isize - layout.size() as isize);
             let target = Layout::from_size_align(new_size, layout.align());
             let Ok(target) = target else {
                 return core::ptr::null_mut();
@@ -1427,3 +1435,30 @@ mod std_heap {
         }
     }
 }
+
+/// Counters of Rust's own heap (`Vec`, `Box`, `Rc` in the `ms-std-*` natives), which counting
+/// builds keep apart from the runtime's blocks. A cancelled task that leaves such a value on a
+/// skipped frame shows up as a live count above the uncancelled run (`make cancel-sweep`).
+#[cfg(all(target_os = "linux", feature = "stats"))]
+pub(crate) mod rust_heap {
+    use core::sync::atomic::{AtomicIsize, Ordering};
+
+    static BLOCKS: AtomicIsize = AtomicIsize::new(0);
+    static BYTES: AtomicIsize = AtomicIsize::new(0);
+
+    pub(crate) fn add(blocks: isize, bytes: isize) {
+        BLOCKS.fetch_add(blocks, Ordering::Relaxed);
+        BYTES.fetch_add(bytes, Ordering::Relaxed);
+    }
+
+    /// Live Rust heap blocks and bytes.
+    pub fn live() -> (isize, isize) {
+        (
+            BLOCKS.load(Ordering::Relaxed),
+            BYTES.load(Ordering::Relaxed),
+        )
+    }
+}
+
+#[cfg(all(target_os = "linux", feature = "stats"))]
+pub use rust_heap::live as rust_heap_live;
