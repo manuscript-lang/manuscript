@@ -120,7 +120,7 @@ native! {
     /// `network() -> Network` (a new handle on the isolate's root network). No handle is cached
     /// in a thread-local: its destructor would run after a worker's arena is gone.
     fn msstd_net_network() -> Object<NetH> {
-        Object(NetH(Bound::new(root())))
+        Object(NetH(root()))
     }
 
     /// `Network.close()`; closing from a handler of a server this network owns faults.
@@ -201,7 +201,7 @@ native! {
         out: Out<Object<NetH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(NetH(Bound::new(report(net.restrict(&hosts, &cidrs, allow_listen), &err)?))));
+        out.write(Object(NetH(report(net.restrict(&hosts, &cidrs, allow_listen), &err)?)));
         Ok(())
     }
 
@@ -212,7 +212,7 @@ native! {
         out: Out<Object<NetH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        out.write(Object(NetH(Bound::new(report(net.with_resolver(address), &err)?))));
+        out.write(Object(NetH(report(net.with_resolver(address), &err)?)));
         Ok(())
     }
 
