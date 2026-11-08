@@ -32,3 +32,5 @@ Use for `crates/ms-syntax`, `ms-check`, `ms-mir`, `ms-lower`, `ms-clif`, `ms-dri
 - Exercise strict parsing and editor partial parsing (`partial.rs`). Incomplete neighboring declarations must not erase multiline parameters or scopes. Use lexer continuation boundaries instead of splitting at lines/closing delimiters.
 - Inline suites stop at enclosing delimiters, implicitly return expressions only in callable bodies, and enforce one statement/conditional branch per line. Follow current grammar rather than restoring blanket indentation restrictions.
 - Route new shapes through [tooling](../tooling-and-docs/tooling-change-checklist.md). Verify traversal, accepted/rejected parsing, recovery, formatting idempotence, and affected editor scopes/navigation. Preserve reproducible parser failures as regression tests.
+
+- Every source function-value thunk has an owned-result callable ABI, including plain free functions as well as bound/defaulted methods. Adapt inferred borrowed Clonable results at that boundary; never return a borrowed MIR value as owned or copy a resource result (#3112).
