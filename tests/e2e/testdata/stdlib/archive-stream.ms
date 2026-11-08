@@ -363,7 +363,9 @@ test "tar entries and unpack agree on corrupted and truncated archives":
     var cases: List[Bytes] = []
 
     // Header fields (name, size, checksum, type) and data bytes of each member, set to boundary values.
-    for at in [0, 1, 100, 124, 125, 130, 135, 148, 155, 156, 257, 512, 700, 1024, 1536, 2048]:
+    for at in [
+        0, 1, 100, 124, 125, 130, 135, 148, 155, 156, 257, 512, 700, 1024, 1536, 2048
+    ]:
         for value in [0, 55, 56, 120, 255]:
             cases.append(with_byte(archive.clone(), at, value))
 

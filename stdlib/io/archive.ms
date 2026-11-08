@@ -321,11 +321,14 @@ impl TarEntries:
             ):
                 padded = 0
             at += padded
+
             if self.buffer.length() < at:
                 let slack = if padded > 0: padded - size else: 0
                 if ended and not extension and self.buffer.length() >= at - slack:
                     return ok(self.buffer.length())
+
                 return ok(0)
+
             if not extension: return ok(at)
 
             if flag == 120:
@@ -379,9 +382,7 @@ impl TarEntries:
 
             // Padding the archive ended inside is restored so the end blocks stay block-aligned.
             let short = length % 512
-            if short != 0: member = member.concat(
-                try self.end.slice(0, 512 - short)
-            )
+            if short != 0: member = member.concat(try self.end.slice(0, 512 - short))
 
             let end = member.concat(self.end)
 
