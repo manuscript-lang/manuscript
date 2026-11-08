@@ -163,34 +163,31 @@ struct Completer<'a> {
     seen: HashSet<String>,
     files: DeclFiles,
     import_placement: Option<(Position, &'static str)>,
+    /// The range every item replaces, found once: each item needs it, and locating a position
+    /// scans the text before it.
+    range: Range,
+    /// The modules documentation is read from, listed once for every item.
+    modules: Vec<ms_check::api::syntax::ModRef>,
 }
 
 impl Completer<'_> {
     fn range(&self) -> Range {
-        Range {
-            start: text::position(&self.d.text, self.c.start),
-            end: text::position(&self.d.text, self.c.end),
-        }
+        self.range
     }
 
-    fn doc(&self, syms: ms_syntax::Names, decl: Option<&DeclRef>, fallback: Name) -> Json {
+    fn doc(&self, decl: Option<&DeclRef>, fallback: Name) -> Json {
         let Some(decl) = decl else {
             return Json::Null;
         };
         let file = self.files.of_decl(decl).unwrap_or(fallback);
-        nav::description(syms, &self.a.result, file, decl.pos())
+        nav::description_in(&self.modules, file, decl.pos())
     }
 
-    fn method_doc(&self, syms: ms_syntax::Names, decl: Option<&FuncRef>, fallback: Name) -> Json {
+    fn method_doc(&self, decl: Option<&FuncRef>, fallback: Name) -> Json {
         let Some(decl) = decl else {
             return Json::Null;
         };
-        nav::description(
-            syms,
-            &self.a.result,
-            self.files.file(decl, fallback),
-            decl.pos(),
-        )
+        nav::description_in(&self.modules, self.files.file(decl, fallback), decl.pos())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -243,7 +240,7 @@ impl Completer<'_> {
             kind = 21;
             insert = syms.str(s.name).to_string();
         }
-        let documentation = self.doc(syms, s.decl.as_ref(), s.module);
+        let documentation = self.doc(s.decl.as_ref(), s.module);
         self.add(
             syms,
             syms.str(s.name),
@@ -349,7 +346,7 @@ impl Completer<'_> {
                 ),
                 MemberKind::Field => (5, syms.str(member.name).to_string()),
             };
-            let documentation = self.method_doc(syms, member.declaration.as_ref(), file);
+            let documentation = self.method_doc(member.declaration.as_ref(), file);
             self.add(
                 syms,
                 syms.str(member.name),
@@ -564,7 +561,7 @@ impl Completer<'_> {
                     );
                 }
             }
-            let documentation = self.doc(syms, s.decl.as_ref(), s.module);
+            let documentation = self.doc(s.decl.as_ref(), s.module);
             self.add(
                 syms,
                 syms.str(name),
@@ -772,7 +769,8 @@ pub fn completion_at(
     // or generic application would turn a valid use into `f(...)(...)`.
     let snippets = snippets && !c.applied;
     let a = query_editor(syms, session, d, docs, &c);
-    let files = DeclFiles::new(&a.result.source_modules(syms));
+    let modules = a.result.source_modules(syms);
+    let files = DeclFiles::new(&modules);
     let mut k = Completer {
         d,
         docs,
@@ -783,6 +781,11 @@ pub fn completion_at(
         seen: HashSet::new(),
         files,
         import_placement: None,
+        range: Range {
+            start: text::position(&d.text, c.start),
+            end: text::position(&d.text, c.end),
+        },
+        modules,
     };
     if c.member {
         k.member_items(syms);

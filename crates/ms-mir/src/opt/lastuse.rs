@@ -408,14 +408,16 @@ fn candidate(
         return false;
     }
     // The region the analysis needs: blocks reachable from the definition, not past a block that
-    // holds the original drop (liveness ends there and `v` is not owned beyond it). Everything
+    // holds the original drop or consumes `v` (liveness ends there and `v` is not owned beyond
+    // it; a region that ran on past a consumption would make a long chain of `v`s that each
+    // consume on one branch quadratic). Everything
     // below is indexed by position in `order`, so a candidate costs its region, not the function.
     let mut order: Vec<usize> = vec![db];
     {
         let mut seen: HashSet<usize> = HashSet::from([db]);
         let mut work = vec![db];
         while let Some(b) = work.pop() {
-            if drop_at.contains_key(&b) {
+            if drop_at.contains_key(&b) || consume_at.contains_key(&b) {
                 continue;
             }
             for s in f.blocks[b].term.successors() {

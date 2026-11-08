@@ -276,6 +276,7 @@ impl Hir<'_> {
         // Parameter modes, closure escapes and result slots feed each other, and each step
         // carries a fact one call further, so a chain needs about one round per callable.
         let rounds = callables.len() + 16;
+        let contract_methods = walk::ContractMethods::new(&self.program().methods);
         for round in 0..=rounds {
             outcomes.clear();
             let mut changed = false;
@@ -287,7 +288,7 @@ impl Hir<'_> {
                     c,
                     classes: &classes,
                     summaries: &summaries,
-                    methods: &self.program().methods,
+                    methods: &contract_methods,
                     live: l,
                     escaped: &known,
                 });

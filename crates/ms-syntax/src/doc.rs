@@ -7,49 +7,77 @@
 pub fn comments_above(source: &str, line_start: usize, indent: Option<usize>) -> String {
     let before = &source[..line_start.min(source.len())];
     let before = before.strip_suffix('\n').unwrap_or(before);
-    let lines: Vec<&str> = if before.is_empty() {
-        Vec::new()
-    } else {
-        before.split('\n').collect()
-    };
+    // The lines above, nearest first, read from the end only as far as the comments go: splitting
+    // the whole prefix would make each call cost the text before it (every completion item asks).
+    let mut rest = (!before.is_empty()).then_some(before);
+    let mut nearest: Vec<&str> = Vec::new();
     let width = |s: &str| s.len() - s.trim_start_matches([' ', '\t']).len();
     let mut blocks: Vec<String> = Vec::new();
-    let mut end = lines.len();
-    while end > 0 {
-        let line = lines[end - 1].trim_end_matches('\r');
+    // Lines already consumed from the end.
+    let mut used = 0;
+    loop {
+        fill(&mut rest, &mut nearest, used);
+        let Some(&raw) = nearest.get(used) else { break };
+        let line = raw.trim_end_matches('\r');
         if indent.is_some_and(|want| width(line) != want) {
             break;
         }
         let text = line.trim();
         if text.starts_with("// ms:") {
             // A directive for the tools (`// ms: effect ...`), not documentation.
-            end -= 1;
-        } else if let Some(rest) = text.strip_prefix("//") {
+            used += 1;
+        } else if let Some(comment) = text.strip_prefix("//") {
             blocks.push(
-                rest.strip_prefix(' ')
-                    .unwrap_or(rest)
+                comment
+                    .strip_prefix(' ')
+                    .unwrap_or(comment)
                     .trim_end()
                     .to_string(),
             );
-            end -= 1;
+            used += 1;
         } else if text.ends_with("*/") {
-            let Some(start) = (0..end)
-                .rev()
-                .find(|&i| lines[i].trim_start().starts_with("/*"))
-            else {
-                break;
+            // The block starts at the nearest line above that opens one.
+            let mut open = used;
+            let start = loop {
+                fill(&mut rest, &mut nearest, open);
+                let Some(candidate) = nearest.get(open) else {
+                    break None;
+                };
+                if candidate.trim_start().starts_with("/*") {
+                    break Some(open);
+                }
+                open += 1;
             };
-            if indent.is_some_and(|want| width(lines[start]) != want) {
+            let Some(start) = start else { break };
+            if indent.is_some_and(|want| width(nearest[start]) != want) {
                 break;
             }
-            blocks.push(block_text(&lines[start..end]));
-            end = start;
+            let block: Vec<&str> = nearest[used..=start].iter().rev().copied().collect();
+            blocks.push(block_text(&block));
+            used = start + 1;
         } else {
             break;
         }
     }
     blocks.reverse();
     blocks.join("\n")
+}
+
+/// Reads lines from the end of `rest` into `nearest` until it holds line `upto` or the text ends.
+fn fill<'a>(rest: &mut Option<&'a str>, nearest: &mut Vec<&'a str>, upto: usize) {
+    while nearest.len() <= upto {
+        let Some(text) = *rest else { break };
+        match text.rsplit_once('\n') {
+            Some((head, line)) => {
+                nearest.push(line);
+                *rest = Some(head);
+            }
+            None => {
+                nearest.push(text);
+                *rest = None;
+            }
+        }
+    }
 }
 
 /// The text of a `/* */` block given as whole lines: markers removed, the common indentation of
@@ -148,6 +176,33 @@ mod tests {
         let src = "// far\n\n// near\nfn f()\n";
         let at = src.find("fn").unwrap();
         assert_eq!(comments_above(src, at, Some(0)), "near");
+    }
+
+    #[test]
+    fn crlf_directives_and_indentation_are_read_from_the_nearest_line() {
+        let src = "// far\r\n\r\n  // ms: effect x\r\n  // near\r\n  fn f()\r\n";
+        let at = src.find("  fn").unwrap();
+        assert_eq!(comments_above(src, at, Some(2)), "near");
+        assert_eq!(comments_above(src, at, Some(0)), "");
+        let nested = "x\n  /* a\n     b */\n  fn f()\n";
+        let at = nested.find("  fn").unwrap();
+        assert_eq!(comments_above(nested, at, None), "a\nb");
+        assert_eq!(comments_above("", 0, None), "");
+        assert_eq!(comments_above("// only\n", 7, None), "only");
+    }
+
+    /// Reading the lines above used to split the whole text before the declaration, so asking
+    /// for every item of a long file was quadratic.
+    #[test]
+    fn the_cost_of_a_lookup_does_not_grow_with_the_text_before_it() {
+        let mut src = "fn f()\n".repeat(100_000);
+        src.push_str("// doc\nfn g()\n");
+        let at = src.find("fn g").unwrap();
+        let start = std::time::Instant::now();
+        for _ in 0..5_000 {
+            assert_eq!(comments_above(&src, at, None), "doc");
+        }
+        assert!(start.elapsed().as_secs() < 3, "took {:?}", start.elapsed());
     }
 
     #[test]

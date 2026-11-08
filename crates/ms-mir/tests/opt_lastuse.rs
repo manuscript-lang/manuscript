@@ -331,3 +331,49 @@ fn shared_record_types_are_classified_once() {
     assert!(start.elapsed().as_secs() < 5, "took {:?}", start.elapsed());
     verify_module(&m).expect("output verifies");
 }
+
+/// `n` lists, each consumed on one branch and dropped on the other, one after another.
+fn branching_consumers(n: usize) -> String {
+    let mut s = String::from(
+        r#"module "t"
+file 0 "t.ms"
+entry @main
+
+fn @eat(%l: move list<int>) -> int inline(never) {
+b0:
+  %n: int = list.len %l
+  drop %l
+  ret %n
+}
+
+fn @main() -> int export {
+b0:
+  %z: int = iconst 0
+  br b1(%z)
+"#,
+    );
+    for k in 0..n {
+        let (a, b, c, next) = (3 * k + 1, 3 * k + 2, 3 * k + 3, 3 * k + 4);
+        let last = k + 1 == n;
+        s.push_str(&format!(
+            "b{a}(%acc{k}: int):\n  %v{k}: list<int> = list.lit\n  %t{k}: bool = icmp.eq %acc{k}, %z\n  br_if %t{k}, b{b}(), b{c}()\nb{b}():\n  %e{k}: int = call @eat (%v{k})\n  br b{next}(%e{k})\nb{c}():\n  drop %v{k}\n  br b{next}(%z)\n"
+        ));
+        if last {
+            s.push_str(&format!("b{next}(%out: int):\n  ret %out\n"));
+        }
+    }
+    s.push_str("}\n");
+    s
+}
+
+/// A value consumed on one branch used to keep its analysis region running through the rest of
+/// the function, so a chain of them was quadratic (14 s for 4000 in an unoptimized build).
+#[test]
+fn a_chain_of_branch_consumed_values_is_handled_in_linear_time() {
+    let mut m = parse_module(&branching_consumers(6000)).expect("parse");
+    verify_module(&m).expect("input verifies");
+    let start = std::time::Instant::now();
+    opt::lastuse::run(&mut m);
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    verify_module(&m).expect("output verifies");
+}
