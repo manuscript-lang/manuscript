@@ -9,7 +9,6 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_UNAVAILABLE,
 };
@@ -23,11 +22,27 @@ pub struct IoFail {
 
 pub type IoRes<T> = Result<T, IoFail>;
 
+/// `Err` when a stop request is pending (never on a blocking-pool thread).
+fn check() -> IoRes<()> {
+    if !ms_rt::glue::pool::on_pool_thread() && ms_rt::glue::cancel_pending() {
+        return Err(IoFail::cancelled());
+    }
+    Ok(())
+}
+
 impl IoFail {
     pub fn status(status: u8) -> IoFail {
         IoFail {
             status,
             message: Vec::new(),
+        }
+    }
+
+    /// A stop request: the frames return by this error and `io::status` raises the cancel.
+    pub(crate) fn cancelled() -> IoFail {
+        IoFail {
+            status: STATUS_FAILED,
+            message: b"cancelled".to_vec(),
         }
     }
 
@@ -173,10 +188,9 @@ impl Stream {
 
     /// Blocks until the descriptor is ready. The task parks, so other tasks (a server's
     /// handlers) keep running, and a stop request unwinds.
-    fn wait(&self, interest: Interest) {
+    fn wait(&self, interest: Interest) -> IoRes<()> {
         if !self.pollable {
-            poll_cancel();
-            return;
+            return check();
         }
         #[cfg(all(unix, not(test)))]
         {
@@ -185,22 +199,26 @@ impl Stream {
                 Interest::Write => ms_rt::glue::WAIT_WRITE,
             };
             // Ready, hung up, or failed: the next read or write reports the details.
-            ms_rt::glue::task_wait_fd(self.fd, events, -1);
+            if ms_rt::glue::try_task_wait_fd(self.fd, events, -1).is_err() {
+                return Err(IoFail::cancelled());
+            }
         }
         // Tests run on many threads, which the runtime's scheduler does not support; Windows
         // pipes and consoles cannot be polled, so they are checked in short slices.
         #[cfg(any(windows, test))]
         loop {
-            poll_cancel();
+            check()?;
             // A slice on the blocking pool parks this task, so others run meanwhile.
             let ready = offload((self.fd, interest), &[], |&(fd, interest), _| {
                 sys::wait_ready(fd, interest, POLL_SLICE_MS)
             });
             if ready {
                 // Ready, hung up, or failed: the next read or write reports the details.
-                return;
+                return Ok(());
             }
         }
+        #[cfg(all(unix, not(test)))]
+        Ok(())
     }
 
     /// Whether the descriptor is a regular file, whose reads and writes cannot be waited on:
@@ -233,14 +251,15 @@ impl Stream {
         offload(self.fd, bytes, |&fd, bytes| sys::write(fd, bytes))
     }
 
-    fn read_fd(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
+    fn read_fd(&mut self, buf: &mut [u8]) -> IoRes<usize> {
         #[cfg(windows)]
         if self.adopted {
             return ms_rt::glue::pipe::read(self.fd, buf)
-                .map_err(|e| e.raw_os_error().unwrap_or(0));
+                .map_err(|e| IoFail::os("read", &self.name, e.raw_os_error().unwrap_or(0)));
         }
-        self.wait(Interest::Read);
+        self.wait(Interest::Read)?;
         self.read_raw(buf)
+            .map_err(|e| IoFail::os("read", &self.name, e))
     }
 
     /// One read of up to `max` bytes: `None` at end of stream.
@@ -248,7 +267,7 @@ impl Stream {
         if self.closed {
             return Err(IoFail::status(STATUS_CLOSED));
         }
-        poll_cancel();
+        check()?;
         if self.no_read {
             return Err(IoFail::status(STATUS_INVALID_INPUT));
         }
@@ -264,7 +283,7 @@ impl Stream {
                 data.truncate(k);
                 Ok(Some(data))
             }
-            Err(e) => Err(IoFail::os("read", &self.name, e)),
+            Err(e) => Err(e),
         }
     }
 
@@ -272,7 +291,7 @@ impl Stream {
         if self.closed {
             return Err(IoFail::status(STATUS_CLOSED));
         }
-        poll_cancel();
+        check()?;
         if self.no_write {
             return Err(IoFail::status(STATUS_INVALID_INPUT));
         }
@@ -285,7 +304,7 @@ impl Stream {
                 .map_err(|e| IoFail::os("write", &self.name, e.raw_os_error().unwrap_or(0)));
         }
         while !data.is_empty() {
-            self.wait_write();
+            self.wait_write()?;
             let end = data.len().min(1 << 20);
             match self.write_raw(&data[..end]) {
                 Ok(0) => {
@@ -302,11 +321,11 @@ impl Stream {
         Ok(())
     }
 
-    fn wait_write(&self) {
+    fn wait_write(&self) -> IoRes<()> {
         if self.pollable {
-            self.wait(Interest::Write);
+            self.wait(Interest::Write)
         } else {
-            poll_cancel();
+            check()
         }
     }
 
@@ -314,7 +333,7 @@ impl Stream {
         if self.closed {
             return Err(IoFail::status(STATUS_CLOSED));
         }
-        poll_cancel();
+        check()?;
         if self.file {
             sys::fsync(self.fd).map_err(|e| IoFail::os("sync", &self.name, e))?;
         }

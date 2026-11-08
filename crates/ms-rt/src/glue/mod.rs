@@ -85,14 +85,24 @@ pub const WAIT_TIMEOUT: u32 = 8;
 /// ready bits or `WAIT_TIMEOUT`; unwinds the program when a stop request ends the wait.
 #[cfg(unix)]
 pub fn task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
+    match try_task_wait_fd(fd, events, timeout_ns) {
+        Ok(got) => got,
+        Err(_) => cancelled(),
+    }
+}
+
+/// [`task_wait_fd`] that returns `Err(Cancelled)` when a stop request ends the wait, so the
+/// caller's frames return and drop what they hold; raise the cancel afterwards.
+#[cfg(unix)]
+pub fn try_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> Result<u32, pool::Cancelled> {
     /// The runtime's `WAIT_CANCELLED` bit.
     const WAIT_CANCELLED: u32 = 16;
     // SAFETY: parks the current task; no Rust borrow is held across the call.
     let got = unsafe { msrt_task_wait_fd(fd, events, timeout_ns) };
     if got & WAIT_CANCELLED != 0 {
-        cancelled();
+        return Err(pool::Cancelled);
     }
-    got
+    Ok(got)
 }
 
 /// Windows overlapped named pipes driven by the runtime poller: reads and writes park the task

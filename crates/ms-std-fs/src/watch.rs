@@ -3,6 +3,7 @@
 //! Both are driven from `next`, which waits in short slices and polls
 //! for cancellation between them, so no worker thread is needed.
 use crate::err::{Fail, Res};
+use crate::ops::poll_cancel;
 use crate::path;
 use crate::sys::{self, CPath};
 use alloc::collections::BTreeMap;
@@ -10,7 +11,6 @@ use alloc::collections::BTreeMap;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 
 const SLICE_MS: i32 = 50;
@@ -40,7 +40,7 @@ fn visit(
     max: i64,
     out: &mut BTreeMap<Vec<u8>, Stamp>,
 ) -> Res<()> {
-    poll_cancel();
+    poll_cancel()?;
     if out.len() as i64 >= max {
         return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
     }
@@ -150,7 +150,7 @@ impl Poll {
         loop {
             let mut waited = 0i64;
             while waited < self.interval_ns {
-                poll_cancel();
+                poll_cancel()?;
                 if closed.load(Ordering::Relaxed) {
                     return Err(Fail::status(STATUS_CLOSED));
                 }
@@ -226,7 +226,7 @@ impl Native {
     }
 
     fn add_dir(&mut self, root: &[u8], p: &[u8]) -> Res<()> {
-        poll_cancel();
+        poll_cancel()?;
         if core::str::from_utf8(p).is_err() {
             return Err(Fail::status(STATUS_UNSUPPORTED));
         }
@@ -388,7 +388,7 @@ impl Native {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
             }
-            poll_cancel();
+            poll_cancel()?;
             wait_events(self.fd);
         }
     }

@@ -11,11 +11,20 @@ use ms_rt_abi::{STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 pub const UNLIMITED: i64 = i64::MAX;
 
 /// `glue::poll_cancel` for code that also runs as a blocking-pool job, where the runtime is off
-/// limits: a job never checks for a stop request.
-pub(crate) fn poll_cancel() {
-    if !ms_rt::glue::pool::on_pool_thread() {
-        ms_rt::glue::poll_cancel();
+/// limits: a job never checks for a stop request. A pending stop returns a failure that unwinds
+/// the caller's frames by return (their destructors run); `fs_status` raises the cancel at the
+/// boundary.
+pub(crate) fn poll_cancel() -> Res<()> {
+    if !ms_rt::glue::pool::on_pool_thread() && ms_rt::glue::cancel_pending() {
+        return Err(Fail::failed("cancelled"));
     }
+    Ok(())
+}
+
+/// [`poll_cancel`] for loops that report an errno; the boundary raises the cancel, so the
+/// errno itself is never shown.
+pub(crate) fn poll_cancel_errno() -> Result<(), Errno> {
+    poll_cancel().map_err(|_| sys::EIO)
 }
 
 /// Runs `f(&input, bytes)` on a blocking-pool thread when other tasks could use the time, so a
@@ -70,11 +79,14 @@ pub fn read_bounded(fd: sys::Fd, max: i64) -> Result<Vec<u8>, Fail> {
 
 /// Parks the task until `fd` can be read, so a pipe with no data yet neither stalls the other
 /// tasks nor ignores a stop request.
-fn wait_readable(fd: sys::Fd) {
+fn wait_readable(fd: sys::Fd) -> Res<()> {
     #[cfg(all(unix, not(test)))]
-    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1);
+    if ms_rt::glue::try_task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1).is_err() {
+        return Err(Fail::failed("cancelled"));
+    }
     #[cfg(any(not(unix), test))]
     let _ = fd;
+    Ok(())
 }
 
 /// Opens `path`. A named pipe opened for reading would block in `open(2)` until a writer
@@ -111,10 +123,10 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
     let waits = cancellable && stat.as_ref().is_some_and(sys::is_pollable);
     loop {
         if cancellable {
-            poll_cancel();
+            poll_cancel()?;
         }
         if waits {
-            wait_readable(fd);
+            wait_readable(fd)?;
         }
         let remaining = max - filled as i64;
         if filled == out.len() {
@@ -166,17 +178,7 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
         }
         read_bounded(fd, max)
     };
-    // Cancellation abandons Rust frames, so the ordinary close below does not run. The pool
-    // job above is shielded; this path can park on a pipe or device and needs runtime cleanup.
-    #[cfg(not(test))]
-    let result = ms_rt::fault::with_cleanup(
-        &mut || {
-            let _ = sys::close(fd);
-        },
-        read,
-    );
-    // Unit tests do not park and may run on threads; the cleanup stack belongs to the runtime.
-    #[cfg(test)]
+    // A cancel returns an error here, so the close below runs.
     let result = read();
     let _ = sys::close(fd);
     result
@@ -185,7 +187,7 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
 fn write_all(fd: sys::Fd, mut data: &[u8], path: &[u8], cancellable: bool) -> Res<()> {
     while !data.is_empty() {
         if cancellable {
-            poll_cancel();
+            poll_cancel()?;
         }
         // A pool job cannot be cancelled, so it hands the kernel large writes; a cancellable
         // write stays in small steps so the check above runs between them.
@@ -415,7 +417,7 @@ fn list_now(path: &[u8], max: i64) -> Res<Vec<Entry>> {
     let raw = sys::read_dir(&p).map_err(|e| Fail::errno(e, "readdirent", path))?;
     let mut out: Vec<Entry> = Vec::new();
     for (name, kind) in raw {
-        poll_cancel();
+        poll_cancel()?;
         if out.len() as i64 >= max {
             return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
         }
@@ -499,7 +501,7 @@ pub fn remove_tree(path: &[u8]) -> Res<()> {
 }
 
 fn remove_tree_now(path: &[u8]) -> Res<()> {
-    poll_cancel();
+    poll_cancel()?;
     let p = cpath(path)?;
     let st = match sys::stat(&p, false) {
         Err(e) if sys::is_not_found(e) => return Ok(()),

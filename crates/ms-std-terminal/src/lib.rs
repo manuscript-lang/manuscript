@@ -21,8 +21,17 @@ mod raw;
 mod raw;
 
 use core::cell::RefCell;
-use ms_rt::ffi::{ErrOut, Global, Has, ObjRef, Object, Out, StatusCode, abi_handle, native};
+use ms_rt::ffi::{
+    ErrOut, Failure, Global, Has, ObjRef, Object, Out, StatusCode, abi_handle, native,
+};
 use ms_rt::glue::poll_cancel;
+
+/// The status of `f`, raising a pending cancel first: operations that parked return a failure
+/// instead of jumping, so their frames have returned and dropped what they held.
+fn fail(err: &ErrOut, f: Failure) -> StatusCode {
+    poll_cancel();
+    err.fail(f)
+}
 use ms_rt_abi::StrVal;
 use ms_rt_abi::{STATUS_NOT_TERMINAL, STATUS_OK, STATUS_UNSUPPORTED};
 
@@ -178,7 +187,7 @@ native! {
         err: ErrOut
     ) -> Result<(), StatusCode> {
         out.write(Object(RawH(alloc::rc::Rc::new(
-            imp::open_raw(alternate_screen).map_err(|f| err.fail(f))?,
+            imp::open_raw(alternate_screen).map_err(|f| fail(&err, f))?,
         ))));
         Ok(())
     }
@@ -207,17 +216,17 @@ native! {
 
     fn msstd_terminal_raw_terminal_move_cursor(h: ObjRef<RawH>, row: i64, column: i64; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.move_cursor(row, column).map_err(|f| err.fail(f))
+        h.move_cursor(row, column).map_err(|f| fail(&err, f))
     }
 
     fn msstd_terminal_raw_terminal_show_cursor(h: ObjRef<RawH>, visible: bool; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.show_cursor(visible).map_err(|f| err.fail(f))
+        h.show_cursor(visible).map_err(|f| fail(&err, f))
     }
 
     fn msstd_terminal_raw_terminal_erase(h: ObjRef<RawH>, region: i64; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.erase(region).map_err(|f| err.fail(f))
+        h.erase(region).map_err(|f| fail(&err, f))
     }
 
     fn msstd_terminal_raw_terminal_next_event(
@@ -230,6 +239,8 @@ native! {
         // The wait parks, so `CURRENT` is not borrowed until it returns.
         let mut event = None;
         let status = h.next_event(timeout, &mut event);
+        // The wait returned instead of jumping, so its frames are gone; raise a cancel now.
+        poll_cancel();
         if event.is_some() {
             *CURRENT.get().borrow_mut() = event;
         }

@@ -14,7 +14,9 @@ use core::cell::{Cell, RefCell};
 use core::ops::Deref;
 use ms_rt::ffi::Failure;
 use ms_rt::ffi::Global;
-use ms_rt_abi::{STATUS_CLOSED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK};
+use ms_rt_abi::{
+    STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK,
+};
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::fd::BorrowedFd;
 use rustix::io::{Errno, read, write};
@@ -24,6 +26,7 @@ use rustix::termios::{
 };
 use rustix::time::{ClockId, Timespec, clock_gettime};
 
+use ms_rt::glue::pool::Cancelled;
 use ms_rt::io::msrt_io_flush;
 use ms_rt::process::msrt_process_on_exit;
 #[cfg(not(test))]
@@ -127,13 +130,14 @@ fn readable_now(fd: BorrowedFd<'_>) -> bool {
     poll_readable(fd, 0)
 }
 
-/// Blocks the task until `fd` is readable or `timeout_ns` passes; a stop request unwinds.
-fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
+/// Blocks the task until `fd` is readable or `timeout_ns` passes; `Err` when a stop request
+/// ends the wait, so the caller returns and drops what it holds.
+fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> Result<bool, Cancelled> {
     if readable_now(fd) {
-        return true;
+        return Ok(true);
     }
     if timeout_ns <= 0 {
-        return false;
+        return Ok(false);
     }
     #[cfg(not(test))]
     {
@@ -146,29 +150,30 @@ fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
             )
         };
         if woke & WAIT_CANCELLED != 0 {
-            ms_rt::glue::cancelled();
+            return Err(Cancelled);
         }
         // Readable or hung up; a read then reports which.
-        woke & 0b101 != 0
+        Ok(woke & 0b101 != 0)
     }
     #[cfg(test)]
     {
-        poll_readable(fd, timeout_ns)
+        Ok(poll_readable(fd, timeout_ns))
     }
 }
 
 /// Sleeps the task for `ns` so another task's read can finish.
-fn pause(ns: i64) {
+fn pause(ns: i64) -> Result<(), Cancelled> {
     #[cfg(not(test))]
     {
         use ms_rt::task::msrt_task_sleep;
         // SAFETY: provided by `ms-rt`.
         if unsafe { msrt_task_sleep(ns) } & WAIT_CANCELLED != 0 {
-            ms_rt::glue::cancelled();
+            return Err(Cancelled);
         }
     }
     #[cfg(test)]
     std::thread::sleep(core::time::Duration::from_nanos(ns.max(0) as u64));
+    Ok(())
 }
 
 /// Clears the reading flag when `next_event` leaves, by any path.
@@ -279,7 +284,11 @@ impl State {
             match write(self.output, rest) {
                 Ok(n) => rest = &rest[n..],
                 Err(Errno::INTR) => {}
-                Err(Errno::AGAIN) => pause(NS_PER_MS),
+                Err(Errno::AGAIN) => {
+                    if pause(NS_PER_MS).is_err() {
+                        return Err(Failure::failed("cancelled"));
+                    }
+                }
                 Err(_) => return Err(Failure::failed("cannot write to the terminal")),
             }
         }
@@ -349,12 +358,16 @@ impl State {
             if remaining().is_some_and(|r| r <= 0) {
                 return STATUS_NONE;
             }
-            pause(NS_PER_MS);
+            if pause(NS_PER_MS).is_err() {
+                return STATUS_FAILED;
+            }
         }
         self.reading.set(true);
         let _reading = Reading(&self.reading);
         loop {
-            ms_rt::glue::poll_cancel();
+            if ms_rt::glue::cancel_pending() {
+                return STATUS_FAILED;
+            }
             if self.closed.get() {
                 return STATUS_CLOSED;
             }
@@ -373,7 +386,10 @@ impl State {
             let partial = self.decoder.borrow().pending();
             let natural = if partial { ESCAPE_NS } else { TICK_NS };
             let step = remaining().map_or(natural, |r| natural.min(r.max(0)));
-            if wait_readable(self.input, step) {
+            let Ok(ready) = wait_readable(self.input, step) else {
+                return STATUS_FAILED;
+            };
+            if ready {
                 match self.fill() {
                     Ok(()) => continue,
                     Err(status) => return status,
