@@ -16,6 +16,7 @@ Aligned text columns for terminal output. `columns` gives one alignment per colu
 number of spaces between columns (default 2, negative counts as 0) and `indent` the spaces before each
 non-blank line. Rows are added one at a time and rendered as LF-separated lines with no final LF.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Align, Table from "@std/cli/table.ms"
 
