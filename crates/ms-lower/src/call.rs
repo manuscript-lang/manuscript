@@ -14,9 +14,9 @@ pub(crate) struct Args {
     pub slots: Vec<Option<Val>>,
     /// For `var` parameters: the written place that receives the updated value.
     pub places: Vec<Option<Expr>>,
-    /// Resource arguments registered for fault cleanup while later operands ran, in registration
-    /// order. `release_staged` takes them back once every operand has been evaluated.
-    pub staged: Vec<Value>,
+    /// An implicit optional made from a borrowed payload owns transport storage only.
+    /// It must not acquire the original resource's close obligation.
+    pub borrowed_optional_payloads: Vec<bool>,
 }
 
 /// A changed argument moved into a slot for a call: its position, the slot, the value's type and
@@ -70,7 +70,7 @@ impl<'a> FnLower<'a> {
                     Args {
                         slots: Vec::new(),
                         places: Vec::new(),
-                        staged: Vec::new(),
+                        borrowed_optional_payloads: Vec::new(),
                     },
                     e,
                 )?
@@ -156,10 +156,11 @@ impl<'a> FnLower<'a> {
     ) -> Result<Args, Error> {
         let mut slots: Vec<Option<Val>> = vec![None; names.len()];
         let mut places: Vec<Option<Expr>> = vec![None; names.len()];
-        let mut staged: Vec<Value> = Vec::new();
+        let mut borrowed_optional_payloads = vec![false; names.len()];
         let vars = self.cx.var_positions(callee);
         let offset = usize::from(callee.self_binding.is_some());
         let mut read_at = Vec::new();
+        let has_defaults = names.len() > view.arguments.len();
         for (n, a) in view.arguments.iter().enumerate() {
             let idx = names
                 .iter()
@@ -178,9 +179,10 @@ impl<'a> FnLower<'a> {
                 return Ok(Args {
                     slots,
                     places,
-                    staged,
+                    borrowed_optional_payloads,
                 });
             }
+            borrowed_optional_payloads[idx] = !x.own && a.wrap_optional.is_some();
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
@@ -193,16 +195,15 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
-            let operands_follow =
-                n + 1 < view.arguments.len() || view.arguments.len() < names.len();
-            let x = if let Some(key) = self.stage_arg(
-                x,
-                operands_follow && !vars.contains(&(idx + offset)),
-                &mut staged,
-            )? {
-                key
-            } else if later_try {
-                self.hold_temp(x)
+            let x = if n + 1 < view.arguments.len() || has_defaults {
+                if borrowed_optional_payloads[idx] {
+                    if later_try {
+                        self.borrow(x);
+                    }
+                    x
+                } else {
+                    self.hold_source_arg(x, later_try)?
+                }
             } else {
                 x
             };
@@ -216,10 +217,6 @@ impl<'a> FnLower<'a> {
             let Some(x) = slots[idx] else {
                 continue;
             };
-            // A staged value already moved out of its place; reading the place again would take it twice.
-            if staged.contains(&x.v) {
-                continue;
-            }
             // A `var` argument is the variable itself: it sees what its siblings changed.
             slots[idx] = Some(
                 if vars.contains(&(idx + offset)) && !x.own && self.is_place(expr) {
@@ -229,8 +226,10 @@ impl<'a> FnLower<'a> {
                 },
             );
         }
+        let mut defaults_left = slots.iter().filter(|slot| slot.is_none()).count();
         for i in 0..slots.len() {
             if slots[i].is_none() {
+                defaults_left -= 1;
                 // Defaults execute in the callee's lexical frame even though their
                 // instructions live in the caller. Reuse inline-frame metadata so
                 // faults retain both frames without runtime call bookkeeping.
@@ -258,45 +257,18 @@ impl<'a> FnLower<'a> {
                     self.default_argument(callee, i, subst, &mut slots, recv, Some(call_pos));
                 self.source_scope = parent;
                 let d = result?;
-                slots[i] = Some(d);
+                slots[i] = Some(if defaults_left > 0 {
+                    self.hold_source_arg(d, true)?
+                } else {
+                    d
+                });
             }
         }
         Ok(Args {
             slots,
             places,
-            staged,
+            borrowed_optional_payloads,
         })
-    }
-
-    /// Keeps an owned resource argument registered for fault and cancellation cleanup while the
-    /// operands after it (`later`) evaluate; the view that stands for it is borrowed until
-    /// `release_staged`. Any other value is the caller's to hold or pass on.
-    pub(crate) fn stage_arg(
-        &mut self,
-        x: Val,
-        later: bool,
-        staged: &mut Vec<Value>,
-    ) -> Result<Option<Val>, Error> {
-        if !later || !x.own {
-            return Ok(None);
-        }
-        let Some(key) = self.hold_resource_temp(x.v)? else {
-            return Ok(None);
-        };
-        staged.push(key);
-        Ok(Some(Val { v: key, own: false }))
-    }
-
-    /// Takes the staged arguments back as owned values, last registered first (the cleanup stack
-    /// discards a registration together with every newer one), and rewrites `slots` to them.
-    pub(crate) fn release_staged(&mut self, staged: &[Value], slots: &mut [Option<Val>]) {
-        for &key in staged.iter().rev() {
-            let (v, _) = self.take_resource_temp(key);
-            self.unhold_temp(key);
-            for slot in slots.iter_mut().flatten().filter(|x| x.v == key) {
-                *slot = Val { v, own: true };
-            }
-        }
     }
 
     /// Whether a place permits writeback: an owned local or shared mutable storage.
@@ -341,6 +313,51 @@ impl<'a> FnLower<'a> {
             v: self.borrow(x),
             own: false,
         }
+    }
+
+    /// Keeps an owned resource argument registered for fault and cancellation cleanup while the
+    /// operands after it (`later`) evaluate; the view that stands for it is borrowed until
+    /// `release_staged`. Any other value is the caller's to hold or pass on.
+    pub(crate) fn stage_arg(
+        &mut self,
+        x: Val,
+        later: bool,
+        staged: &mut Vec<Value>,
+    ) -> Result<Option<Val>, Error> {
+        if !later || !x.own {
+            return Ok(None);
+        }
+        let Some(key) = self.hold_resource_temp(x.v)? else {
+            return Ok(None);
+        };
+        staged.push(key);
+        Ok(Some(Val { v: key, own: false }))
+    }
+
+    /// Takes the staged arguments back as owned values, last registered first (the cleanup stack
+    /// discards a registration together with every newer one), and rewrites `slots` to them.
+    pub(crate) fn release_staged(&mut self, staged: &[Value], slots: &mut [Option<Val>]) {
+        for &key in staged.iter().rev() {
+            let (v, _) = self.take_resource_temp(key);
+            self.unhold_temp(key);
+            for slot in slots.iter_mut().flatten().filter(|x| x.v == key) {
+                *slot = Val { v, own: true };
+            }
+        }
+    }
+
+    /// Stages a source argument without forgetting that the caller owns it. Intact resource
+    /// wrappers need their payload closer if a later argument returns early or faults.
+    fn hold_source_arg(&mut self, x: Val, later_try: bool) -> Result<Val, Error> {
+        if x.own
+            && let Some(key) = self.hold_resource_temp(x.v)?
+        {
+            return Ok(Val { v: key, own: true });
+        }
+        if later_try {
+            self.borrow(x);
+        }
+        Ok(x)
     }
 
     /// The default of an omitted parameter, written in the callee's scope.
@@ -475,8 +492,6 @@ impl<'a> FnLower<'a> {
             self.instance(c, subst)?
         };
         let vars = self.cx.var_positions(c);
-        let mut args = args;
-        self.release_staged(&args.staged.clone(), &mut args.slots);
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<VarArgument> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
@@ -486,6 +501,21 @@ impl<'a> FnLower<'a> {
         // takes it out of its place and puts it back, instead of working on a copy.
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
+            // An intact borrowed argument keeps its original registration and acquisition
+            // order. Only a consuming/changed parameter takes its value out of that slot.
+            let guarded = a.own && self.resource_temps.contains_key(&a.v);
+            let taking = vars.contains(&i) || owned_mask.as_ref().is_some_and(|mask| mask[i]);
+            let a = if a.own && (!guarded || taking) {
+                self.unhold_temp(a.v);
+                let v = if self.resource_temps.contains_key(&a.v) {
+                    self.take_resource_temp(a.v).0
+                } else {
+                    a.v
+                };
+                Val { v, own: true }
+            } else {
+                a
+            };
             // A temporary held across a later `try` in the same call is ours again once every
             // argument is evaluated: a consumed parameter takes it instead of a copy.
             let a = if !a.own
@@ -508,6 +538,15 @@ impl<'a> FnLower<'a> {
                         self.owned(a)
                     };
                     vals.push(v);
+                } else if guarded {
+                    vals.push(a.v);
+                } else if a.own
+                    && !args.borrowed_optional_payloads[i]
+                    && let Some(key) = self.hold_resource_temp(a.v)?
+                {
+                    // Borrow the intact caller-owned resource through a registered slot.
+                    // Its payload remains ours, unlike a wrapper whose payload was moved.
+                    vals.push(key);
                 } else {
                     vals.push(self.borrow(a));
                 }
@@ -592,6 +631,11 @@ impl<'a> FnLower<'a> {
                     // The result is that temporary: use the argument value itself, which the
                     // MIR knows as owned, and stop dropping it with the statement.
                     self.unhold_temp(arg);
+                    let arg = if self.resource_temps.contains_key(&arg) {
+                        self.take_resource_temp(arg).0
+                    } else {
+                        arg
+                    };
                     return Ok(self.val(arg, true));
                 }
             }
@@ -873,12 +917,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(recv);
         }
-        let recv = if view
-            .arguments
-            .iter()
-            .any(|a| crate::mutation::has_try(a.expr))
-        {
-            self.hold_temp(recv)
+        let recv = if !c.parameters.is_empty() {
+            let later_try = view
+                .arguments
+                .iter()
+                .any(|a| crate::mutation::has_try(a.expr));
+            self.hold_source_arg(recv, later_try)?
         } else {
             recv
         };
@@ -898,13 +942,15 @@ impl<'a> FnLower<'a> {
                 .then(|| recv_expr.clone()),
         ];
         places.extend(args.places);
+        let mut borrowed_optional_payloads = vec![false];
+        borrowed_optional_payloads.extend(args.borrowed_optional_payloads);
         self.call_callable(
             &c,
             &subst,
             Args {
                 slots: all,
                 places,
-                staged: args.staged,
+                borrowed_optional_payloads,
             },
             e,
         )
@@ -1066,6 +1112,9 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 return Ok(x);
             }
+            // An optional made from a borrowed payload owns transport storage only; it must not
+            // take over the original resource's close duty.
+            let borrowed_payload = !x.own && a.wrap_optional.is_some();
             let x = match &a.wrap_optional {
                 Some(_) => {
                     let o = self.owned(x);
@@ -1086,7 +1135,11 @@ impl<'a> FnLower<'a> {
             let is_var = op_vars.get(idx).copied().unwrap_or(false);
             let operands_follow =
                 n + 1 < view.arguments.len() || view.arguments.len() < params.len();
-            let x = if let Some(key) = self.stage_arg(x, operands_follow && !is_var, &mut staged)? {
+            let x = if let Some(key) = self.stage_arg(
+                x,
+                operands_follow && !is_var && !borrowed_payload,
+                &mut staged,
+            )? {
                 key
             } else if later_try && x.own {
                 self.hold_temp(x)
@@ -1286,7 +1339,7 @@ impl<'a> FnLower<'a> {
         };
         let mut slots: Vec<Option<Val>> = vec![None; params.len()];
         let mut held: Vec<Value> = Vec::new();
-        let mut staged: Vec<Value> = Vec::new();
+        let mut resources = Vec::new();
         let has_defaults = params.len() > view.arguments.len();
         for (n, a) in view.arguments.iter().enumerate() {
             let x = self.expr(a.expr)?;
@@ -1310,10 +1363,12 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| Error::new(format!("no field {}", self.syms.str(a.slot.name))))?;
             // Every later operand can fault or suspend, and defaults run after the written
             // arguments. An acquired resource stays owned until all that evaluation succeeds.
-            if let Some(key) =
-                self.stage_arg(x, n + 1 < view.arguments.len() || has_defaults, &mut staged)?
+            if x.own
+                && (n + 1 < view.arguments.len() || has_defaults)
+                && let Some(key) = self.hold_resource_temp(x.v)?
             {
-                slots[idx] = Some(key);
+                resources.push((idx, key));
+                slots[idx] = Some(Val { v: key, own: false });
                 continue;
             }
             // A later field may return early (`try`): hold this one as a temporary until then.
@@ -1350,7 +1405,7 @@ impl<'a> FnLower<'a> {
         let mut defaults_left = slots.iter().filter(|s| s.is_none()).count();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
-                Some(x) if staged.contains(&x.v) => vals.push(x.v),
+                Some(x) if self.resource_temps.contains_key(&x.v) => vals.push(x.v),
                 Some(x) if held.contains(&x.v) => {
                     // Every `try` of the fields has passed: the field takes the temporary.
                     self.unhold_temp(x.v);
@@ -1372,20 +1427,23 @@ impl<'a> FnLower<'a> {
                         .map(|(p, v)| (p.name, *v))
                         .collect();
                     let v = self.field_default(&t, case, i, &earlier)?;
-                    let owned = Val { v, own: true };
-                    match self.stage_arg(owned, defaults_left > 0, &mut staged)? {
-                        Some(key) => vals.push(key.v),
-                        None => vals.push(v),
+                    if defaults_left > 0
+                        && let Some(key) = self.hold_resource_temp(v)?
+                    {
+                        resources.push((i, key));
+                        vals.push(key);
+                    } else {
+                        vals.push(v);
                     }
                 }
             }
         }
         // Commit the fields only after every argument and default has succeeded. Retire
         // registrations last acquired first, then immediately consume their owned values.
-        let mut staged_vals: Vec<Option<Val>> =
-            vals.iter().map(|&v| Some(Val { v, own: false })).collect();
-        self.release_staged(&staged, &mut staged_vals);
-        vals = staged_vals.into_iter().flatten().map(|x| x.v).collect();
+        for (i, key) in resources.into_iter().rev() {
+            vals[i] = self.take_resource_temp(key).0;
+            self.unhold_temp(key);
+        }
         let v = match (self.b.m.types.kind(mt).clone(), case) {
             (TyKind::Rec(r), None) => self.b.rec_new(r, &vals),
             (TyKind::Opt(_), Some(_)) => self.b.opt_some(vals[0]),
