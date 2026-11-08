@@ -287,10 +287,20 @@ impl Builder {
 
 /// Builds the sorted occurrence index of all modules the analysis can show.
 pub fn source_index(syms: ms_syntax::Names, analysis: &Analysis) -> Vec<Occurrence> {
+    build_index(syms, analysis, true)
+}
+
+/// Builds the sorted occurrence index of the project's modules, and of the bundled standard
+/// modules when `standard` is set.
+pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) -> Vec<Occurrence> {
     let Some(program) = &analysis.program else {
         return Vec::new();
     };
-    let modules = analysis.source_modules(syms);
+    let modules = if standard {
+        analysis.source_modules(syms)
+    } else {
+        analysis.project_modules(syms)
+    };
     let mut b = Builder {
         root: analysis.module_path(""),
         files: DeclFiles::new(&modules),

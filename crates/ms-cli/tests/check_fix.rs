@@ -161,6 +161,21 @@ fn check_json_carries_the_fix_that_fix_applies() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn fix_repeats_until_later_diagnostics_are_fixed() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-passes-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // The checker reports the immutable `xs` only after the misspelled member is fixed.
+    std::fs::write(dir.join("a.ms"), include_str!("check_fix/repeat_passes.ms")).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("var xs = [1, 2]"), "{fixed}");
+    assert!(fixed.contains("xs.append(3)"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[cfg(unix)]
 #[test]
 fn directory_symlink_named_like_source_is_skipped() {

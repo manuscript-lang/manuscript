@@ -698,6 +698,11 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     Ok(Plan { build_type: kind })
 }
 
+/// Whether `flag` (without an inline `=value`) is followed by its value in the next argument.
+pub fn takes_value(flag: &str) -> bool {
+    VALUE_OPTIONS.contains(&flag) || ["--limit", "--explain", "--effect"].contains(&flag)
+}
+
 /// `--help` scanning: a flag value is not a help request, even if spelled `--help`.
 pub fn requests_help(args: &[String]) -> bool {
     let mut i = 0;
@@ -705,11 +710,7 @@ pub fn requests_help(args: &[String]) -> bool {
         match args[i].as_str() {
             "--" => return false,
             "-h" | "--help" => return true,
-            flag if VALUE_OPTIONS.contains(&flag)
-                || ["--limit", "--explain", "--effect"].contains(&flag) =>
-            {
-                i += 1;
-            }
+            flag if takes_value(flag) => i += 1,
             _ => {}
         }
         i += 1;

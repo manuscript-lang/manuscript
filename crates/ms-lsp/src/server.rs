@@ -25,9 +25,11 @@ use std::rc::Rc;
 use std::sync::mpsc::TryRecvError;
 use std::time::{Duration, Instant};
 
-/// Identifier text a server may accumulate before it starts over with a fresh name table. The
-/// standard library is about 6 KB; every name typed while editing adds to the table, so this
-/// bounds a long session (about 150,000 distinct names) at the cost of one reload.
+/// Identifier text a server may accumulate beyond its settled working set (the standard library
+/// and the open documents) before it starts over with a fresh name table. Every name typed while
+/// editing adds to the table, so this bounds a long session (about 150,000 distinct names) at the
+/// cost of one reload. Measuring growth keeps a large document, whose own names exceed this, from
+/// discarding every cache on every request.
 const NAME_BYTES_LIMIT: usize = 1 << 20;
 
 const MAX_BATCH: usize = 32;
@@ -52,7 +54,8 @@ pub fn serve_with(
     serve_recycling(syms, input, output, lint, NAME_BYTES_LIMIT)
 }
 
-/// Runs a session that starts over with fresh names when its name table passes `limit` bytes.
+/// Runs a session that starts over with fresh names when its name table grows `limit` bytes past
+/// the size it settled at after the last start.
 pub fn serve_recycling(
     syms: ms_syntax::Names,
     input: impl Read + Send + 'static,
@@ -64,6 +67,7 @@ pub fn serve_recycling(
         names: None,
         entered: None,
         name_limit: limit,
+        settled_names: None,
         session: ms_check::Session::new(),
         transport: Transport::new(input),
         output: Box::new(output),
@@ -80,6 +84,30 @@ pub fn serve_recycling(
         diagnostics_dirty: false,
     };
     server.serve_messages(syms)
+}
+
+/// Whether a name table of `bytes` has grown `limit` past its settled size. Until the caches are
+/// rebuilt after a start the table holds only part of the working set, so it never counts.
+fn over_limit(settled: Option<usize>, bytes: usize, limit: usize) -> bool {
+    settled.is_some_and(|settled| bytes > settled.saturating_add(limit))
+}
+
+#[cfg(test)]
+mod name_limit_tests {
+    use super::over_limit;
+
+    #[test]
+    fn a_large_working_set_is_not_over_the_limit() {
+        // A document whose own names exceed the limit settles there; only growth counts.
+        assert!(!over_limit(Some(1_080_000), 1_080_000, 1 << 20));
+        assert!(!over_limit(Some(1_080_000), 1_080_000 + (1 << 20), 1 << 20));
+        assert!(over_limit(Some(1_080_000), 1_080_001 + (1 << 20), 1 << 20));
+    }
+
+    #[test]
+    fn an_unsettled_table_is_never_over_the_limit() {
+        assert!(!over_limit(None, usize::MAX, 0));
+    }
 }
 
 /// How a request ended.
@@ -256,6 +284,8 @@ struct Server<'a> {
     names: Option<ms_syntax::Session>,
     entered: Option<ms_syntax::Entered>,
     name_limit: usize,
+    /// Name-table size once analyses were rebuilt after the last start; `None` until then.
+    settled_names: Option<usize>,
     /// The standard library every analysis of this server reads.
     session: Rc<ms_check::Session>,
     transport: Transport,
@@ -324,6 +354,10 @@ impl Server<'_> {
             if let Err(stop) = self.serve(syms, &current.body) {
                 return Self::ended(stop);
             }
+            if self.settled_names.is_none() && !(self.cache.is_empty() && self.analyses.is_empty())
+            {
+                self.settled_names = Some(syms.text_bytes());
+            }
         }
     }
 
@@ -332,9 +366,11 @@ impl Server<'_> {
     /// are text, so they survive; analyses and the library reload on demand.
     #[allow(unsafe_code)]
     fn recycle_names(&mut self, syms: &mut ms_syntax::Names) {
-        if syms.text_bytes() <= self.name_limit {
+        // Until a request has rebuilt the caches the table holds only part of the working set.
+        if !over_limit(self.settled_names, syms.text_bytes(), self.name_limit) {
             return;
         }
+        self.settled_names = None;
         self.invalidate();
         // Restore the previous current table before entering the new one.
         self.entered = None;
