@@ -32,6 +32,12 @@ fn function_values_and_closure_literals_are_charged() {
 }
 
 #[test]
+fn a_bound_method_value_is_charged_where_it_is_named() {
+    let got = flagged(include_str!("lint_effects/method_value.ms"));
+    assert_eq!(got, vec!["Logger.info", "stored_method"]);
+}
+
+#[test]
 fn converting_to_an_interface_charges_the_converter_not_main() {
     let got = flagged(include_str!("lint_effects/capability.ms"));
     assert_eq!(got, vec!["ConsoleLogger.info", "wire"]);

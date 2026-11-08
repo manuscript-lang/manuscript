@@ -203,6 +203,12 @@ impl Visitor for Scan<'_> {
                 if receiver_record && self.info(e).is_some_and(|i| i.method.is_none()) {
                     self.effects.insert("read");
                 }
+                // A bound method value (`let f = value.method`) reaches the method where it is
+                // named, as a function named as a value does. A call's callee is also visited
+                // here; its edge was already recorded at the call.
+                if let Some(method) = self.info(e).and_then(|i| i.method) {
+                    self.scan_method_call(&method, e.pos);
+                }
             }
             ExprKind::Map(entries) if entries.len() > 1 => {
                 // Duplicate-key insertion may dispatch user-defined equality.
