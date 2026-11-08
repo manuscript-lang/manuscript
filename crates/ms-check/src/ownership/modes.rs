@@ -457,6 +457,41 @@ pub fn wrapper_passthrough(
     receiver.args.get(index).cloned()
 }
 
+/// The payload a method value of a wrapper operation hands out on each call: the first type
+/// argument of the wrapper (`T?`, `T!E`) that the declared result mentions. It is read from the
+/// declaration, so a new operation (`Result.get`, `Result.err`) cannot be left off a name list.
+/// A callback's own type parameter (`map[U]`) is not an argument of the wrapper, so values the
+/// callback creates do not imply passthrough.
+pub fn bound_passthrough(method: &MethodRef, receiver: &Ty) -> Option<Ty> {
+    if !(method.receiver.is(Builtin::Optional) || method.receiver.is(Builtin::Result)) {
+        return None;
+    }
+    // The wrapper's operations are folded into its enum declaration (`Optional[T]`, `Result[T, E]`).
+    let decl = method.decl.as_ref()?;
+    let result = &decl.func()?.result;
+    let index = decl
+        .decl
+        .type_params()
+        .iter()
+        .position(|p| written_mentions(result, p.name))?;
+    receiver.args.get(index).cloned()
+}
+
+/// Whether the written type `t` names `name` anywhere.
+fn written_mentions(t: &TypeRef, name: ms_syntax::Symbol) -> bool {
+    match &t.kind {
+        TypeKind::Named { name: n, args } => {
+            *n == name || args.iter().any(|a| written_mentions(a, name))
+        }
+        TypeKind::Fn { params, result } => {
+            params
+                .iter()
+                .any(|p| p.ty.as_ref().is_some_and(|t| written_mentions(t, name)))
+                || written_mentions(result, name)
+        }
+    }
+}
+
 /// How a method treats its receiver, for a method used as a value.
 pub fn receiver_mode(
     syms: ms_syntax::Names,

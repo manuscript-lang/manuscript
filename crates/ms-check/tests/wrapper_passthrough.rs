@@ -135,3 +135,26 @@ fn specialized_source_receivers_preserve_borrow_and_overlap_checks() {
         );
     }
 }
+
+#[test]
+fn derived_passthrough_covers_result_get_and_discarding_method_values() {
+    // `Result.get` returns the payload, so a method value of it needs a clonable payload; the
+    // classification is read from the declaration, not from a list of method names.
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/reject-bound-result-get.ms"
+    ));
+    assert!(
+        got.iter()
+            .any(|d| d.contains("method value keeps its receiver") && d.contains("clone")),
+        "{got:?}"
+    );
+    // A method value cannot close the entry `remove` discards, so it would leak.
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/reject-bound-list-remove-resource.ms"
+    ));
+    assert!(
+        got.iter()
+            .any(|d| d.contains("discards entries of the receiver") && d.contains("Marker")),
+        "{got:?}"
+    );
+}
