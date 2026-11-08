@@ -26,6 +26,48 @@ pub const WAIT_WRITE: u32 = 2;
 pub const WAIT_HUP: u32 = 4;
 pub const WAIT_TIMEOUT: u32 = 8;
 pub const WAIT_CANCELLED: u32 = 16;
+
+/// Cancellation sweep hook for counting builds (`make cancel-sweep`): `MS_CANCEL_AT_PARK=n` makes
+/// the n-th park of the process return `WAIT_CANCELLED`, as if the parking task had been
+/// cancelled there, and `MS_PARK_COUNT=1` prints how many parks the run made. Both are absent
+/// from release builds.
+#[cfg(feature = "stats")]
+pub mod sweep {
+    use core::sync::atomic::{AtomicU64, Ordering};
+
+    static PARKS: AtomicU64 = AtomicU64::new(0);
+
+    fn target() -> u64 {
+        static TARGET: AtomicU64 = AtomicU64::new(u64::MAX);
+        static READ: AtomicU64 = AtomicU64::new(0);
+        if READ.swap(1, Ordering::Relaxed) == 0 {
+            let n = std::env::var("MS_CANCEL_AT_PARK")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(u64::MAX);
+            TARGET.store(n, Ordering::Relaxed);
+        }
+        TARGET.load(Ordering::Relaxed)
+    }
+
+    /// Counts one park; true when this is the park to cancel.
+    pub fn cancel_here() -> bool {
+        PARKS.fetch_add(1, Ordering::Relaxed) + 1 == target()
+    }
+
+    /// Parks made so far.
+    pub fn parks() -> u64 {
+        PARKS.load(Ordering::Relaxed)
+    }
+}
+
+#[cfg(not(feature = "stats"))]
+mod sweep {
+    #[inline(always)]
+    pub fn cancel_here() -> bool {
+        false
+    }
+}
 /// Request bit: keep the descriptor registered between waits instead of re-arming it. Only for
 /// a descriptor whose owner drains it before every wait and keeps it open for good.
 pub const WAIT_KEEP: u32 = 32;
@@ -1764,7 +1806,7 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
-        if cancel_flag().load(Ordering::Relaxed) != 0 {
+        if cancel_flag().load(Ordering::Relaxed) != 0 || sweep::cancel_here() {
             return WAIT_CANCELLED;
         }
         let mut s = sched();
@@ -2295,7 +2337,7 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         if take(value_out) {
             return 0;
         }
-        if cancel_flag().load(Ordering::Relaxed) != 0 {
+        if cancel_flag().load(Ordering::Relaxed) != 0 || sweep::cancel_here() {
             return WAIT_CANCELLED;
         }
         let mut s = sched();

@@ -98,15 +98,13 @@ impl<'a> FnLower<'a> {
 
     /// The written arguments of a native call in order; `wrapped` marks values meant for an `Optional` parameter.
     pub(crate) fn native_args(&mut self, view: &CallView<'_>) -> Result<Vec<NArg>, Error> {
-        self.native_args_staged(view, false)
+        self.native_args_protected(view, false)
     }
 
-    /// `native_args`; with `stage`, an owned resource stays registered for fault cleanup while
-    /// the later operands run (the callee takes it through `element_value`).
-    pub(crate) fn native_args_staged(
+    pub(super) fn native_args_protected(
         &mut self,
         view: &CallView<'_>,
-        stage: bool,
+        protect_list_elements: bool,
     ) -> Result<Vec<NArg>, Error> {
         let mut out = Vec::new();
         let mut read_at = Vec::new();
@@ -123,29 +121,36 @@ impl<'a> FnLower<'a> {
             if self.dead {
                 break;
             }
+            let mut val = val;
+            let mut wrapped = a.wrap_optional.is_some();
+            if protect_list_elements && val.own {
+                let ty = a.wrap_optional.clone().unwrap_or_else(|| self.ety(a.expr));
+                let ty = ct::sub(&ty, &self.subst);
+                if let Some(kind) = self.part_closer(&ty)? {
+                    if wrapped {
+                        val.v = self.b.opt_some(val.v);
+                        wrapped = false;
+                    }
+                    let key = self.hold_resource_temp_with(val.v, kind);
+                    val = Val { v: key, own: false };
+                }
+            }
             read_at.push((a.expr, at));
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
-            let later =
-                stage && !reader && a.wrap_optional.is_none() && n + 1 < view.arguments.len();
-            // The callee takes a staged resource itself, through `element_value`.
-            let val = if let Some(key) = self.stage_arg(val, later, &mut Vec::new())? {
-                key
-            } else if later_try {
-                self.hold_temp(val)
-            } else {
-                val
-            };
+            let val = if later_try { self.hold_temp(val) } else { val };
             out.push(NArg {
                 name: a.slot.name,
                 val,
-                wrapped: a.wrap_optional.is_some(),
+                wrapped,
                 reader,
             });
         }
         for (arg, (expr, at)) in out.iter_mut().zip(read_at) {
-            arg.val = self.refresh(expr, arg.val, at)?;
+            if self.resource_temp_slot(arg.val.v).is_none() {
+                arg.val = self.refresh(expr, arg.val, at)?;
+            }
         }
         // Written order decides evaluation; callers index by declared parameter position, so
         // `set(value: 8, 0)` must hand them the index before the value.

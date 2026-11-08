@@ -10,9 +10,7 @@
 
 Stage 1 (this PR): `Optional` temporaries close at statement end (#2989), list `set`/`insert`/`replace` keep the incoming resource registered through every operand and the bounds check until `element_value` stores it (#3027), including a failing later operand. `replace` now checks its index in lowering, like `set`.
 
-Stage 2: source calls, method values and interface calls stage an owned resource argument with `stage_arg` while later operands (or defaults) evaluate and take it back with `release_staged`, newest first (the cleanup stack discards a registration with every newer one). A staged value already moved out of its place is not read again (`refresh`).
-
-Later stages, in order: record construct and the native call path onto the same helpers, then delete the `later_try` copies of the hold logic and the `copyelim` sub-passes whose copies lowering no longer emits.
+Stages 2 and 3 landed on `main` from other work while this was in review (#2984, #2992, #3004, #3052): source, interface, function-value and list-mutator calls now hold owned resource arguments through later operands, so this change adds no further staging helper. What it adds is below.
 
 ## Problem
 
@@ -27,7 +25,7 @@ Measured on `c6fef864`: the `later_try`-style hold appears in `eval_args`, `nati
 
 ## Stage 3 findings
 
-Record construct and native calls use `stage_arg`/`release_staged` too. Counting how often each `copyelim` sub-pass changes a module over the e2e and conformance corpora (453 and 3887 fixtures): `borrow_local_copies` 396, `move_dead_sources_across_blocks` 327, `move_dead_sources` 318, `borrow_str_phis` 215, `borrow_str_copies_across_blocks` 124, `run_func` 90, `unbox_dead_sources` 62, `unbox_dead_options` 5, `borrow_opt_str_reads` 1. Most still fire because they also elide the copy of a written `.clone()` whose source dies, which is an optimization, not a lowering hack. `borrow_opt_str_reads` (one firing, a refcount-era shape) is deleted. `make copy-check` currently fails on `main` in `tools/copy-check.ms:62` (`env` moved in a loop), so the lowering-copy count could not be re-measured; that needs its own fix.
+Counting how often each `copyelim` sub-pass changes a module over the e2e and conformance corpora (453 and 3887 fixtures): `borrow_local_copies` 396, `move_dead_sources_across_blocks` 327, `move_dead_sources` 318, `borrow_str_phis` 215, `borrow_str_copies_across_blocks` 124, `run_func` 90, `unbox_dead_sources` 62, `unbox_dead_options` 5, `borrow_opt_str_reads` 1. Most still fire because they also elide the copy of a written `.clone()` whose source dies, which is an optimization, not a lowering hack. `borrow_opt_str_reads` (one firing, a refcount-era shape) is deleted. `make copy-check` failed on `tools/copy-check.ms:62` (`env` moved in a loop); fixed with `env.clone()`, and it now reports 0 lowering copies over 717 programs.
 
 ## Close failures and bounds checks (#3075, #3076)
 

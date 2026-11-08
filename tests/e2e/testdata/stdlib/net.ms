@@ -198,8 +198,7 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-    // Read directly: `within` runs its read in a promise that may hop threads, which a thread-bound socket faults on.
-    let query = (try served.input.next()).get()
+    let query = (try within(var served.input, 2.seconds())).get()
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]

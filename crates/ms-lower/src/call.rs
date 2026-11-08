@@ -315,25 +315,6 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// Keeps an owned resource argument registered for fault and cancellation cleanup while the
-    /// operands after it (`later`) evaluate; the view that stands for it is borrowed until
-    /// `release_staged`. Any other value is the caller's to hold or pass on.
-    pub(crate) fn stage_arg(
-        &mut self,
-        x: Val,
-        later: bool,
-        staged: &mut Vec<Value>,
-    ) -> Result<Option<Val>, Error> {
-        if !later || !x.own {
-            return Ok(None);
-        }
-        let Some(key) = self.hold_resource_temp(x.v)? else {
-            return Ok(None);
-        };
-        staged.push(key);
-        Ok(Some(Val { v: key, own: false }))
-    }
-
     /// Stages a source argument without forgetting that the caller owns it. Intact resource
     /// wrappers need their payload closer if a later argument returns early or faults.
     fn hold_source_arg(&mut self, x: Val, later_try: bool) -> Result<Val, Error> {
@@ -1126,8 +1107,7 @@ impl<'a> FnLower<'a> {
                 .ok_or_else(|| {
                     Error::new(format!("no parameter {}", self.syms.str(a.slot.name)))
                 })?;
-            let is_var = op_vars.get(idx).copied().unwrap_or(false);
-            if is_var {
+            if op_vars.get(idx).copied().unwrap_or(false) {
                 places[idx] = Some(a.expr.clone());
             }
             slots[idx] = Some(x);

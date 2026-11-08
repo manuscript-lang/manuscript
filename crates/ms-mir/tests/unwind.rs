@@ -239,6 +239,77 @@ b0:
 }
 
 #[test]
+fn covers_a_slot_value_that_the_callee_parks_in_a_local_slot_for_another_borrower() {
+    let body = format!(
+        r#"
+fn @inner(%slot: ptr) -> int {{
+b0:
+  %s: str = take str %slot
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %s
+  ret %r
+}}
+fn @hold(%slot: ptr) -> int {{
+b0:
+  %s: str = take str %slot
+  %local: ptr = slot str
+  put %local, %s
+  %r: int = call @inner (%local)
+  %back: str = take str %local
+  put %slot, %back
+  ret %r
+}}
+{SLOT_CALLER}"#
+    );
+    let (m, changed) = rewrite(&body, true);
+    // `hold` only forwards the value to a borrower, so main still covers the slot it passed and
+    // `hold` registers nothing for the value it took back from its local slot (a double drop).
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "hold", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn leaves_a_slot_value_to_the_caller_when_a_local_slot_also_holds_another_value() {
+    let body = format!(
+        r#"
+fn @hold(%slot: ptr) -> int {{
+b0:
+  %s: str = take str %slot
+  %lit: str = str "x"
+  %other: str = clone %lit
+  %local: ptr = slot str
+  put %local, %other
+  put %local, %s
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  %back: str = take str %local
+  put %slot, %back
+  ret %r
+}}
+{SLOT_CALLER}"#
+    );
+    let (m, _) = rewrite(&body, true);
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
 fn covers_a_slot_value_that_flows_through_a_block_parameter() {
     let body = format!(
         r#"
