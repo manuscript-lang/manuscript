@@ -269,7 +269,11 @@ test('the landing page offers a trial while documentation keeps its reading navi
     .find(tag => (attribute(tag, 'class') || '').split(' ').includes('home-button-primary'));
   assert.ok(primary, 'Offer a primary trial action');
   assert.ok(attribute(primary, 'href').endsWith('/learn/getting-started/'), 'Start the trial with a runnable guide');
-  assert.ok(home.includes('ms run server.ms'), 'Show how to run the displayed program');
+  const shot = [...home.matchAll(/<img\b[^>]*>/g)].map(match => match[0])
+    .find(tag => (attribute(tag, 'src') || '').endsWith('/images/screencast.gif'));
+  assert.ok(shot, 'Show the feature screencast');
+  assert.ok(attribute(shot, 'alt'), 'The screencast needs alt text');
+  assert.ok(fs.existsSync(path.join(book, 'images/screencast.gif')), 'Publish the screencast file');
   const docs = fs.readFileSync(path.join(book, 'learn/index.html'), 'utf8');
   assert.ok(docs.includes('Documentation navigation'), 'Readers need a documentation sidebar');
 });
