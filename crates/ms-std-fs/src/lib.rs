@@ -32,10 +32,19 @@ use ms_rt::ffi::{
 use ms_rt_abi::{STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE};
 use stream::Stream;
 
+/// Raises a pending cancel once the failing operation's frames have returned and dropped what
+/// they held. Runs only at the FFI boundary, never on a pool thread.
+fn raise_cancel() {
+    if !ms_rt::glue::pool::on_pool_thread() && ms_rt::glue::cancel_pending() {
+        ms_rt::glue::cancelled();
+    }
+}
+
 /// A filesystem result as a status: a failure stores its text in `err`, which the caller reads
 /// for `STATUS_FAILED` (so it is always written for that status).
 pub fn fs_status<T>(r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
     r.map_err(|Fail { status, message }| {
+        raise_cancel();
         if status == STATUS_FAILED {
             err.set_bytes(&message.unwrap_or_default());
         }
@@ -47,6 +56,7 @@ pub fn fs_status<T>(r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
 /// the message reads `filesystem: <failure>: <path>`.
 pub fn fs_status_at<T>(path: &[u8], r: Res<T>, err: &ErrOut) -> Result<T, StatusCode> {
     r.map_err(|Fail { status, message }| {
+        raise_cancel();
         if status == STATUS_FAILED {
             err.set_bytes(&message.unwrap_or_default());
         } else {

@@ -116,8 +116,8 @@ impl Waiter {
 
     /// Parks the task until something in the set is ready or `timeout_ns` passes (negative: no
     /// limit).
-    pub fn park(&self, timeout_ns: i64) {
-        ms_rt::glue::task_wait_fd(self.set.0, ms_rt::glue::WAIT_READ, timeout_ns);
+    pub fn park(&self, timeout_ns: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
+        ms_rt::glue::try_task_wait_fd(self.set.0, ms_rt::glue::WAIT_READ, timeout_ns).map(|_| ())
     }
 }
 
@@ -184,7 +184,7 @@ impl Waiter {
 
     /// Parks the task until something in the set is ready or `timeout_ns` passes (negative: no
     /// limit).
-    pub fn park(&self, timeout_ns: i64) {
-        ms_rt::glue::task_wait_fd(self.set.0, ms_rt::glue::WAIT_READ, timeout_ns);
+    pub fn park(&self, timeout_ns: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
+        ms_rt::glue::try_task_wait_fd(self.set.0, ms_rt::glue::WAIT_READ, timeout_ns).map(|_| ())
     }
 }

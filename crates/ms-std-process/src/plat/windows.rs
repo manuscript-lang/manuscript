@@ -211,12 +211,13 @@ impl Waiter {
     /// The process handle fires once; later parks wake on the pipes alone.
     pub fn exited(&mut self) {}
 
-    pub fn park(&self, timeout_ns: i64) {
+    pub fn park(&self, timeout_ns: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
         // SAFETY: the process handle stays open while `run` holds the child, and the child's
         // drop ends the watch.
-        if unsafe { ms_rt::glue::object::wait(self.process, timeout_ns) }.is_none() {
+        if unsafe { ms_rt::glue::object::try_wait(self.process, timeout_ns) }?.is_none() {
             // The process cannot be watched: check again after a short park.
-            ms_rt::glue::task_sleep(2_000_000);
+            ms_rt::glue::try_task_sleep(2_000_000)?;
         }
+        Ok(())
     }
 }

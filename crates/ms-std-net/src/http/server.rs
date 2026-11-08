@@ -627,7 +627,9 @@ struct ServerSt {
 
 impl Resource for Server {
     fn close_resource(&self) {
-        self.close_inner();
+        // Runs the drain shielded when it parks, so a stop request cannot cut it short.
+        let _shield = rt::Shield::default();
+        let _ = self.close_inner();
     }
 }
 
@@ -636,6 +638,8 @@ impl Resource for Server {
 pub enum CloseError {
     /// Called from a handler of this server.
     FromHandler,
+    /// A stop request ended the drain; the server is closed anyway.
+    Cancelled,
 }
 
 impl Server {
@@ -715,7 +719,7 @@ impl Server {
     /// cut the drain short.
     pub fn finish(&self) {
         rt::shield();
-        self.close_inner();
+        let _ = self.close_inner();
         rt::unshield();
     }
 
@@ -760,18 +764,20 @@ impl Server {
     }
 
     /// Blocks until the server is closed, serving requests meanwhile.
-    pub fn wait(&self) {
+    pub fn wait(&self) -> Result<(), rt::Cancelled> {
         if self.is_closed() {
-            return;
+            return Ok(());
         }
         let token = rt::Token::new();
         self.st.borrow_mut().waiters.push(token.id());
         while !self.is_closed() {
             if token.park(-1) & 16 != 0 {
-                rt::cancelled();
+                self.st.borrow_mut().waiters.retain(|&id| id != token.id());
+                return Err(rt::Cancelled);
             }
         }
         self.st.borrow_mut().waiters.retain(|&id| id != token.id());
+        Ok(())
     }
 
     /// Stops accepting, lets in-flight responses finish within the grace period
@@ -780,16 +786,18 @@ impl Server {
         if Reactor::get().in_handler_of(self) {
             return Err(CloseError::FromHandler);
         }
-        self.close_inner();
-        Ok(())
+        self.close_inner().map_err(|_| CloseError::Cancelled)
     }
 
-    fn close_inner(&self) {
+    /// Closes the server. A stop request that ends the drain still closes every connection; it
+    /// is returned at the end, after the frames below have returned.
+    fn close_inner(&self) -> Result<(), rt::Cancelled> {
+        let mut cancelled = false;
         let reactor = Reactor::get();
         {
             let mut st = self.st.borrow_mut();
             if st.closing {
-                return;
+                return Ok(());
             }
             st.closing = true;
         }
@@ -824,8 +832,8 @@ impl Server {
                     .remaining()
                     .map_or(-1, |d| d.as_nanos().min(i64::MAX as u128) as i64);
                 if token.park(left) & 16 != 0 {
-                    self.st.borrow_mut().draining = None;
-                    rt::cancelled();
+                    cancelled = true;
+                    break;
                 }
             }
             self.st.borrow_mut().draining = None;
@@ -853,6 +861,11 @@ impl Server {
             for promise in live {
                 rt::promise_drop(promise);
             }
+        }
+        if cancelled {
+            Err(rt::Cancelled)
+        } else {
+            Ok(())
         }
     }
 

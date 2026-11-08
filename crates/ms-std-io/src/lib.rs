@@ -19,6 +19,10 @@ use stream::{IoFail, IoRes, Stream};
 /// `STATUS_FAILED`.
 fn status<T>(r: IoRes<T>, err: &ErrOut) -> Result<T, StatusCode> {
     r.map_err(|IoFail { status, message }| {
+        // The failing operation's frames have returned and dropped what they held.
+        if ms_rt::glue::cancel_pending() && !ms_rt::glue::pool::on_pool_thread() {
+            ms_rt::glue::cancelled();
+        }
         if status == STATUS_FAILED {
             err.set_bytes(&message);
         }
