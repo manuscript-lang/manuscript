@@ -1,5 +1,5 @@
 import panic from "@std/core.ms"
-import sqrt from "@std/math/math.ms"
+import sqrt, frexp, ldexp from "@std/math/math.ms"
 import rat_of_float, rat_of_int from "@std/math/big.ms"
 
 /*
@@ -127,7 +127,7 @@ export fn variance(values: List[Float]) Float?:
 // Returns the population standard deviation, or none for an empty list.
 export fn population_stdev(values: List[Float]) Float?:
     if let spread_squared = population_variance(values):
-        return sqrt(spread_squared)
+        return deviation_from_variance(values, spread_squared, 0)
 
     return none
 
@@ -135,9 +135,101 @@ export fn population_stdev(values: List[Float]) Float?:
 // Example: `stdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])` is about `2.138`.
 export fn stdev(values: List[Float]) Float?:
     if let spread_squared = variance(values):
-        return sqrt(spread_squared)
+        return deviation_from_variance(values, spread_squared, 1)
 
     return none
+
+// Preserve ordinary rounding; avoid requiring the squared result to fit for extreme finite inputs.
+fn deviation_from_variance(
+    values: List[Float],
+    spread_squared: Float,
+    correction: Int
+) Float:
+    let ordinary = sqrt(spread_squared)
+    if spread_squared.is_finite() and spread_squared >= 2.2250738585072014e-308:
+        return ordinary
+
+    var scale = 0.0
+
+    for value in values:
+        if not value.is_finite(): return ordinary
+
+        scale = scale.max(value.abs())
+
+    if scale == 0.0: return 0.0
+
+    let exponent = frexp(scale).exponent
+    let origin = ldexp(values[0], -exponent)
+    var total = DeviationSum()
+    for value in values:
+        total.add(ldexp(value, -exponent) - origin)
+
+    let center = total.value() / values.length().to_float()
+    var squares = DeviationSum()
+
+    for value in values:
+        let delta = (ldexp(value, -exponent) - origin) - center
+        squares.add(delta * delta)
+
+    let normalized = sqrt(squares.value() / (values.length() - correction).to_float())
+    let result = ldexp(normalized, exponent)
+
+    // Population deviation cannot exceed the greatest input magnitude.
+    if correction == 0: return result.min(scale)
+    if normalized == 0.0: return 0.0
+
+    // Sample deviation is at most sqrt(2) times scale. Only these extreme inputs
+    // can cross Float's overflow midpoint; decide that boundary exactly.
+    if scale > 1.7976931348623157e308 / 2.0:
+        if sample_deviation_overflows(values): return 1.0 / 0.0
+
+        return result.min(1.7976931348623157e308)
+
+    return result
+
+fn sample_deviation_overflows(values: List[Float]) Bool:
+    var total = rat_of_int(0)
+    var squares = rat_of_int(0)
+
+    for value in values:
+        if let term = rat_of_float(value):
+            total = total.add(term)
+            squares = squares.add(term.multiply(term))
+        else:
+            panic("statistics: finite deviation input could not be converted")
+
+    let count = rat_of_int(values.length())
+    let numerator = squares.multiply(count).subtract(total.multiply(total))
+
+    // Round-to-nearest overflows at MAX + half its upward ulp, including the tie.
+    if let maximum = rat_of_float(1.7976931348623157e308):
+        if let half_ulp = rat_of_float(ldexp(1.0, 970)):
+            let midpoint = maximum.add(half_ulp)
+            let bound = midpoint.multiply(
+                midpoint
+            ).multiply(count).multiply(rat_of_int(values.length() - 1))
+            return numerator.compare(bound) >= 0
+
+    panic("statistics: finite deviation overflow boundary could not be converted")
+
+// Compensated summation on the bounded fallback coordinates.
+type DeviationSum:
+    total: Float = 0.0
+    correction: Float = 0.0
+
+impl DeviationSum:
+    var fn add(value: Float) Unit:
+        let next = self.total + value
+
+        if self.total.abs() >= value.abs():
+            self.correction += (self.total - next) + value
+        else:
+            self.correction += (value - next) + self.total
+
+        self.total = next
+
+    fn value() Float:
+        return self.total + self.correction
 
 /*
 Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list.
