@@ -1,4 +1,4 @@
-import promise, owned_promise, Promise, wait_all from "@std/concurrency/promise.ms"
+import promise, Promise, wait_all from "@std/concurrency/promise.ms"
 import arguments from "@std/os/env.ms"
 import monotonic_time from "@std/os/system.ms"
 

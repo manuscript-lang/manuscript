@@ -1,7 +1,7 @@
 //! Thread-bound values: a handle made of `Rc` and `RefCell` is not safe to touch from another
 //! thread, and `promise(fn:)` may run its entry on any scheduler thread (#3047). [`Bound`]
 //! remembers the thread that created the value and faults, naming the cause, when any other
-//! thread dereferences or clones it. `owned_promise` keeps its entry on the creating thread.
+//! thread dereferences or clones it. `owned_task` keeps its entry on the creating thread.
 
 use std::ops::Deref;
 use std::thread::{self, ThreadId};
@@ -24,7 +24,7 @@ impl<T> Bound<T> {
         if thread::current().id() != self.owner {
             ms_rt::fault::fault(
                 b"a native handle was used on a different thread than the one that created it; \
-                  use owned_promise to keep work that captures a network, connection, listener, \
+                  use owned_task to keep work that captures a network, connection, listener, \
                   socket or client on the creating thread",
             );
         }

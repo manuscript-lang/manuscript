@@ -1,6 +1,6 @@
 // Stack growth cost: a loop that crosses the first slot boundary on every call, the same loop
 // without a crossing, both on the main task, then a 900k-frame recursion. See README.md.
-import owned_promise from "@std/concurrency/promise.ms"
+import owned_task from "@std/concurrency/promise.ms"
 import monotonic_time from "@std/os/system.ms"
 import read_file from "@std/os/fs.ms"
 
@@ -23,7 +23,7 @@ fn status(label: String) Unit:
             print(label + " " + line)
 
 fn in_task(n: Int, rounds: Int) Int:
-    let p = owned_promise[Int, Int](n, fn a: ok(loop_depth(a, rounds)))
+    let p = owned_task[Int](fn: ok(loop_depth(n, rounds)))
     return p.wait().get()
 
 export fn main() Int:

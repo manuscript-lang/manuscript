@@ -6,7 +6,7 @@ Decision (2026-11-05, owner approved breaking renames, no aliases): `net/net.ms`
 
 Findings that stop further removal (verified on `80fd348b`):
 - `share` and `close_if_last` stay. A `Connection` hands `input` and `output` to different tasks, so two owners need one socket; with `close_if_last` removed, `client.close()` only half-closed and `tests/e2e/testdata/stdlib/net-broken-pipe.ms` never saw the peer's write fail.
-- Promise closures still borrow what they capture (`this promise reads ..., which ends with this function`), so `owned_promise` with a small `ConnectArgs`/`AcceptArgs` record is the only way to return a promise that outlives its arguments. Replacing it needs the owning-capture checker change from `architecture/closure-capture-rules.md` (rule 5).
+- A promise started in a `return` owns what it captures (#2686), and `owned_task` takes a job closure that owns clones, so no `*Args` record or `owned_promise` remains.
 
 Apply when: touching connection, listener, datagram or WebSocket ends, or trying to drop an `*Args` record.
 Evidence: [net.ms](../../stdlib/net/net.ms), [net-broken-pipe.ms](../../tests/e2e/testdata/stdlib/net-broken-pipe.ms).
