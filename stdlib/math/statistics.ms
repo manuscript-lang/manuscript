@@ -1,5 +1,5 @@
 import panic from "@std/core.ms"
-import sqrt from "@std/math/math.ms"
+import sqrt, frexp, ldexp from "@std/math/math.ms"
 import rat_of_float, rat_of_int from "@std/math/big.ms"
 
 /*
@@ -270,13 +270,150 @@ Lists of different lengths fault.
 Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
 */
 export fn correlation(xs: List[Float], ys: List[Float]) Float?:
-    if let s = spread(xs, ys):
-        if s.xx == 0.0 or s.yy == 0.0:
-            return none
+    if xs.length() != ys.length():
+        panic("statistics: the lists must have the same length")
+    if xs.length() < 2: return none
+    if let result = range_safe_correlation(xs, ys): return result
 
-        return s.xy / sqrt(s.xx * s.yy)
+    var scale_x = 0.0
+    var scale_y = 0.0
 
-    return none
+    for i in 0..xs.length():
+        if not xs[i].is_finite() or not ys[i].is_finite():
+            return nonfinite_correlation(xs, ys)
+
+        scale_x = scale_x.max(xs[i].abs())
+        scale_y = scale_y.max(ys[i].abs())
+
+    if scale_x == 0.0 or scale_y == 0.0: return none
+
+    // Power-of-two scaling avoids overflow without rounding adjacent large values together.
+    let exponent_x = frexp(scale_x).exponent
+    let exponent_y = frexp(scale_y).exponent
+    let factor_x = ldexp(1.0, -exponent_x)
+    let factor_y = ldexp(1.0, -exponent_y)
+    let multiply_x = factor_x.is_finite()
+    let multiply_y = factor_y.is_finite()
+    let origin_x = ldexp(xs[0], -exponent_x)
+    let origin_y = ldexp(ys[0], -exponent_y)
+    var sum_x = CorrelationSum()
+    var sum_y = CorrelationSum()
+
+    for i in 0..xs.length():
+        let scaled_x = if multiply_x: xs[i] * factor_x else: ldexp(xs[i], -exponent_x)
+        let scaled_y = if multiply_y: ys[i] * factor_y else: ldexp(ys[i], -exponent_y)
+        sum_x.add(scaled_x - origin_x)
+        sum_y.add(scaled_y - origin_y)
+
+    let center_x = sum_x.value() / xs.length().to_float()
+    let center_y = sum_y.value() / ys.length().to_float()
+
+    // Subtract the origin before the mean to preserve variation near a large common offset.
+    var xx = CorrelationSum()
+    var yy = CorrelationSum()
+    var xy = CorrelationSum()
+
+    for i in 0..xs.length():
+        let scaled_x = if multiply_x: xs[i] * factor_x else: ldexp(xs[i], -exponent_x)
+        let scaled_y = if multiply_y: ys[i] * factor_y else: ldexp(ys[i], -exponent_y)
+        let dx = (scaled_x - origin_x) - center_x
+        let dy = (scaled_y - origin_y) - center_y
+        xx.add(dx * dx)
+        yy.add(dy * dy)
+        xy.add(dx * dy)
+
+    let square_x = xx.value()
+    let square_y = yy.value()
+    if square_x == 0.0 or square_y == 0.0: return none
+
+    // Rounding may exceed the mathematical correlation bound by a final ulp.
+    return (xy.value() / sqrt(square_x * square_y)).max(-1.0).min(1.0)
+
+// Neumaier accumulation retains small contributions on the scaled fallback path.
+type CorrelationSum:
+    total: Float = 0.0
+    correction: Float = 0.0
+
+impl CorrelationSum:
+    var fn add(value: Float) Unit:
+        let next = self.total + value
+
+        if self.total.abs() >= value.abs():
+            self.correction += (self.total - next) + value
+        else:
+            self.correction += (value - next) + self.total
+
+        self.total = next
+
+    fn value() Float:
+        return self.total + self.correction
+
+// Origin-shifted means and compensated moments avoid scaling when intermediates stay normal.
+// A failed range check requests the scaled/compensated path; it does not mean zero spread.
+fn range_safe_correlation(xs: List[Float], ys: List[Float]) Float?:
+    let origin_x = xs[0]
+    let origin_y = ys[0]
+    var sum_x = 0.0
+    var sum_y = 0.0
+
+    for i in 0..xs.length():
+        sum_x += xs[i] - origin_x
+        sum_y += ys[i] - origin_y
+
+    let mean_x = sum_x / xs.length().to_float()
+    let mean_y = sum_y / ys.length().to_float()
+    if not mean_x.is_finite() or not mean_y.is_finite(): return none
+
+    var xx = 0.0
+    var xx_error = 0.0
+    var yy = 0.0
+    var yy_error = 0.0
+    var xy = 0.0
+    var xy_error = 0.0
+
+    for i in 0..xs.length():
+        let dx = (xs[i] - origin_x) - mean_x
+        let dy = (ys[i] - origin_y) - mean_y
+        let adjusted_xx = dx * dx - xx_error
+        let next_xx = xx + adjusted_xx
+        xx_error = (next_xx - xx) - adjusted_xx
+        xx = next_xx
+
+        let adjusted_yy = dy * dy - yy_error
+        let next_yy = yy + adjusted_yy
+        yy_error = (next_yy - yy) - adjusted_yy
+        yy = next_yy
+
+        let adjusted_xy = dx * dy - xy_error
+        let next_xy = xy + adjusted_xy
+        xy_error = (next_xy - xy) - adjusted_xy
+        xy = next_xy
+
+    let min_normal = 2.2250738585072014e-308
+    let product = xx * yy
+    if not (xx >= min_normal and yy >= min_normal and product >= min_normal): return none
+    if not product.is_finite() or not xy.is_finite(): return none
+
+    return (xy / sqrt(product)).max(-1.0).min(1.0)
+
+// Raw sums intentionally preserve the old nonfinite arithmetic even when mean repairs finite overflow.
+fn nonfinite_correlation(xs: List[Float], ys: List[Float]) Float?:
+    let mean_x = xs.sum() / xs.length().to_float()
+    let mean_y = ys.sum() / ys.length().to_float()
+    var xx = 0.0
+    var yy = 0.0
+    var xy = 0.0
+
+    for i in 0..xs.length():
+        let dx = xs[i] - mean_x
+        let dy = ys[i] - mean_y
+        xx += dx * dx
+        yy += dy * dy
+        xy += dx * dy
+
+    if xx == 0.0 or yy == 0.0: return none
+
+    return xy / sqrt(xx * yy)
 
 /*
 Returns the least-squares line through paired values, or none when there are fewer than two pairs or the `xs` are all equal.

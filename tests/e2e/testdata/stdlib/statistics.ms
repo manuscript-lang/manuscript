@@ -265,3 +265,139 @@ test "mean overflow recovery rounds tiny cancellation residuals to signed zero":
         let result = try expect_some(mean([edge, edge, -edge, -edge, residual]))
         try expect_equal(result, 0.0)
         try expect_equal(1.0 / result, 1.0 / residual)
+
+test "correlation is invariant across finite axis scales":
+    for scale_x in [5e-324, 1e-300, 1.0, 1e100, 1e300]:
+        for scale_y in [5e-324, 1e-300, 1.0, 1e100, 1e300]:
+            let xs = [scale_x, 2.0 * scale_x, 3.0 * scale_x]
+            let ys = [3.0 * scale_y, 2.0 * scale_y, scale_y]
+            let positive = try expect_some(correlation(xs, xs))
+            let negative = try expect_some(correlation(xs, ys))
+            try expect_equal(positive.is_finite() and negative.is_finite(), true)
+            try expect_close(positive, 1.0, 1e-14)
+            try expect_close(negative, -1.0, 1e-14)
+
+    let edge = 1.7976931348623157e308
+    try expect_close(
+        try expect_some(correlation([-edge, 0.0, edge], [edge, 0.0, -edge])), -1.0,
+        1e-14
+    )
+
+test "correlation preserves adjacent values near large common offsets":
+    let low = 1.0
+    let high = 1.0000000000000002
+    try expect_close(
+        try expect_some(correlation([low, high], [high, low])), -1.0, 1e-14
+    )
+    try expect_close(
+        try expect_some(
+            correlation([1e308, 1.0000000000000002e308], [2.0, 1.0])
+        ),
+        -1.0,
+        1e-14
+    )
+    try expect_none(
+        correlation(
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        )
+    )
+
+test "correlation keeps existing nonfinite and zero-spread behavior":
+    let inf = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+
+    for values in [
+        [1.0, inf], [-inf, 1.0], [-inf, inf], [inf, inf], [nan, 1.0], [nan, nan]
+    ]:
+        try expect_equal(
+            (try expect_some(correlation(values, [1.0, 2.0]))).is_nan(), true
+        )
+        try expect_none(correlation([1.0, 1.0], values))
+
+    try expect_none(correlation([0.0, -0.0], [1.0, 2.0]))
+
+test "correlation preserves nontrivial and zero correlations under scaling":
+    for scale in [5e-324, 1e-300, 1.0, 1e100, 1e300]:
+        let xs = [scale, 2.0 * scale, 3.0 * scale, 4.0 * scale]
+        let ys = [2.0 * scale, scale, 4.0 * scale, 3.0 * scale]
+        try expect_close(try expect_some(correlation(xs, ys)), 0.6, 1e-14)
+
+        var reversed_x = xs.clone()
+        var reversed_y = ys.clone()
+        reversed_x.reverse()
+        reversed_y.reverse()
+        try expect_close(
+            try expect_some(correlation(reversed_x, reversed_y)), 0.6, 1e-14
+        )
+        try expect_equal(
+            try expect_some(
+                correlation(
+                    [-scale, -scale, scale, scale], [-scale, scale, -scale, scale]
+                )
+            ),
+            0.0
+        )
+
+    var xs: List[Float] = []
+    var ys: List[Float] = []
+
+    for i in 0..10000:
+        xs.append((i % 4).to_float() * 1e100)
+        ys.append((3 - i % 4).to_float() * 1e-100)
+
+    try expect_close(try expect_some(correlation(xs, ys)), -1.0, 1e-14)
+
+test "correlation nonfinite compatibility does not inherit exact mean fallback":
+    let edge = 1.7976931348623157e308
+    let inf = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+
+    for values in [[inf, inf], [nan, nan], [1.0, inf]]:
+        try expect_equal(
+            (try expect_some(correlation([edge, edge], values))).is_nan(), true
+        )
+        try expect_equal(
+            (try expect_some(correlation(values, [edge, edge]))).is_nan(), true
+        )
+
+    try expect_none(correlation([edge, edge], [1.0, 2.0]))
+
+test "correlation falls back for unsafe unscaled intermediates":
+    try expect_close(
+        try expect_some(
+            correlation([-1e308, 0.0, 0.0, 0.0], [0.0, 1.0, 1.0, 1.0])
+        ),
+        1.0,
+        1e-14
+    )
+    try expect_close(
+        try expect_some(correlation([0.0, 1e200], [0.0, 1e200])), 1.0, 1e-14
+    )
+    try expect_close(
+        try expect_some(correlation([0.0, 1e100], [0.0, 1e100])), 1.0, 1e-14
+    )
+    try expect_close(
+        try expect_some(correlation([0.0, 1e-155], [0.0, 1e150])), 1.0, 1e-14
+    )
+
+    let values = [1e-80, 2e-80, 3e-80, 4e-80]
+    try expect_close(
+        try expect_some(correlation(values, [2e-80, 1e-80, 4e-80, 3e-80])), 0.6, 1e-14
+    )
+
+test "finite correlation stays within its advertised bounds":
+    for count in [2, 3, 17, 1000]:
+        var values: List[Float] = []
+        var negatives: List[Float] = []
+
+        for i in 0..count:
+            let value = (i % 17).to_float() / 7.0
+            values.append(value)
+            negatives.append(-value)
+
+        let positive = try expect_some(correlation(values, values))
+        let negative = try expect_some(correlation(values, negatives))
+        try expect_equal(positive <= 1.0 and positive >= -1.0, true)
+        try expect_equal(negative <= 1.0 and negative >= -1.0, true)
+        try expect_close(positive, 1.0, 1e-14)
+        try expect_close(negative, -1.0, 1e-14)
