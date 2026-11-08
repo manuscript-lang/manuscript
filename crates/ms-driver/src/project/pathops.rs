@@ -240,6 +240,17 @@ pub fn escapes(rel: &str) -> bool {
     rel == ".." || rel.starts_with("../")
 }
 
+#[cfg(not(windows))]
+/// The bytes of a link target. A lossy copy would name a different file, so a target that is not text is rejected.
+fn link_text(link_path: &str, target: &std::path::Path) -> Result<Vec<u8>, ProjectError> {
+    match target.to_str() {
+        Some(text) => Ok(text.as_bytes().to_vec()),
+        None => Err(ProjectError::msg(format!(
+            "symlink {link_path} points to a path that is not valid UTF-8; point it at a UTF-8 name"
+        ))),
+    }
+}
+
 /// `filepath.EvalSymlinks`: every component is resolved with `lstat`, errors
 /// carry the failing prefix.
 #[cfg(not(windows))]
@@ -303,12 +314,7 @@ pub fn eval_symlinks(path: &str) -> Result<String, ProjectError> {
         }
         let link = std::fs::read_link(&dest_text)
             .map_err(|e| ProjectError::path("readlink", &dest_text, &e))?;
-        // A lossy copy would name a different file, so a target that is not text is rejected.
-        let Some(link) = link.to_str().map(|text| text.as_bytes().to_vec()) else {
-            return Err(ProjectError::msg(format!(
-                "symlink {dest_text} points to a path that is not valid UTF-8; point it at a UTF-8 name"
-            )));
-        };
+        let link = link_text(&dest_text, &link)?;
         let mut next = link.clone();
         next.extend_from_slice(&path[end..]);
         path = next;
@@ -472,5 +478,37 @@ mod tests {
     fn join_ignores_empty() {
         assert_eq!(join(&["", ""]), "");
         assert_eq!(join(&["/a", "../b"]), "/b");
+    }
+
+    #[cfg(not(windows))]
+    use super::link_text;
+    #[cfg(not(windows))]
+    use std::ffi::OsString;
+    #[cfg(not(windows))]
+    use std::path::PathBuf;
+
+    #[cfg(not(windows))]
+    /// A name that is not UTF-8, built in memory so no file system has to accept it (APFS rejects such names).
+    fn non_utf8() -> OsString {
+        use std::os::unix::ffi::OsStringExt;
+        OsString::from_vec(vec![0xff, b'.', b'm', b's'])
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_link_target_that_is_not_utf8_is_rejected() {
+        let error = link_text("dep.ms", &PathBuf::from(non_utf8()))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("not valid UTF-8"), "{error}");
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_utf8_link_target_keeps_its_bytes() {
+        assert_eq!(
+            link_text("dep.ms", &PathBuf::from("a.ms")).unwrap(),
+            b"a.ms"
+        );
     }
 }
