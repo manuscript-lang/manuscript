@@ -137,6 +137,9 @@ pub(crate) enum Event {
     Stop { id: i64 },
     /// To the runner: cancel the promise's task `task` (a stale handle is ignored).
     Cancel { task: u64 },
+    /// To the owner of a promise another thread uses: run the job in a task of its own. The job
+    /// answers the caller through a token it holds (see `promise::ask`).
+    Call(Box<dyn FnOnce() + Send>),
 }
 
 struct Mail {
