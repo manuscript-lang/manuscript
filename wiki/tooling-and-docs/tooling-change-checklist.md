@@ -14,6 +14,7 @@ Use for `crates/ms-tooling`, `ms-lsp`, `ms-cli`, `extensions/vscode/`, or line t
 - Trailing-comment extraction must skip quoted text with the lexer scanner,
   including nested interpolations; quote toggles mistake nested URLs for docs.
   Scan only the literal so incomplete surrounding editor code remains usable.
+- Machine fixes use written source spans, not call anchor positions: pipes and member calls can begin before the callee. Apply fixes and recheck direct/member/piped calls, discarded bindings, parentheses, multiline closures and CRLF.
 - Test valid source and incomplete snapshots: preserve neighboring declarations and positions; check navigation/completion with malformed input, LF/CRLF, and relevant Unicode positions.
 - Analysis/completion/workspace discovery share nearest-manifest and canonical identity. Confine overlays; malformed nested manifests cannot inherit parent aliases silently. Edits respect versions, shadowing, and binding identity.
 - Standard virtual documents are checked source: navigate workspace → stdlib, within stdlib, and across modules, including signature types/hover. Keep documents immutable/outside overlays; register their scheme with the client and test restarts.
