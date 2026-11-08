@@ -426,7 +426,8 @@ impl FnLower<'_> {
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(self.syms, &ty) != ms_check::api::ownership::Class::Resource
-            || (self.closeable_impl(&ty).is_none() && ty.is(Builtin::Result))
+            || (self.closeable_impl(&ty).is_none()
+                && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
             return v;
         }
