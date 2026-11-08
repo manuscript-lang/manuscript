@@ -1,3 +1,4 @@
+import sqrt from "@std/math/math.ms"
 import BinCounts from "@std/math/statistics.ms"
 import (
     expect_close,
@@ -320,3 +321,115 @@ test "subnormal bin repair preserves nonfinite and degenerate controls":
     for values in [[nan, nan], [5e-324, 5e-324], [-5e-324, -5e-324]]:
         let result = try expect_some(bin_counts(values, 4))
         try expect_equal(result.counts, [2, 0, 0, 0])
+
+test "standard deviation survives finite range beyond representable variance":
+    try expect_equal(try expect_some(population_stdev([-1e200, 1e200])), 1e200)
+
+test "standard deviation does not lose small finite spread":
+    try expect_equal(try expect_some(population_stdev([-1e-200, 1e-200])), 1e-200)
+
+test "standard deviation covers finite axis scales and sample normalization":
+    for scale in [
+        5e-324, 1e-300, 1e-200, 1e-160, 1.0, 1e100, 1e200, 1e300, 1.7976931348623157e308
+    ]:
+        let population = try expect_some(population_stdev([-scale, scale]))
+        try expect_equal(population, scale)
+        try expect_equal(try expect_some(population_stdev([scale, scale])), 0.0)
+        try expect_equal(try expect_some(stdev([scale, scale])), 0.0)
+
+    for scale in [1e-300, 1e-200, 1e-160, 1.0, 1e100, 1e200, 1e300]:
+        let sample = try expect_some(stdev([-scale, scale]))
+        try expect_close(sample / scale, 1.4142135623730951, 0.00000000000001)
+
+    let edge = 1.7976931348623157e308
+    try expect_equal((try expect_some(stdev([-edge, edge]))).is_finite(), false)
+    try expect_equal(try expect_some(stdev([-5e-324, 5e-324])), 5e-324)
+
+test "standard deviation preserves ordinary and nonfinite paths":
+    for values in [[1.0, 2.0, 6.0], [1e16, 1e16 + 2.0], [0.0, 0.0]]:
+        try expect_equal(
+            try expect_some(population_stdev(values)),
+            sqrt(try expect_some(population_variance(values)))
+        )
+
+    let inf = 1.0 / 0.0
+    let nan = 0.0 / 0.0
+
+    for values in [[inf, inf], [-inf, inf], [nan, 1.0], [1.0, inf]]:
+        try expect_equal((try expect_some(population_stdev(values))).is_nan(), true)
+        try expect_equal((try expect_some(stdev(values))).is_nan(), true)
+
+    try expect_none(population_stdev(List[Float]()))
+    try expect_none(stdev([1.0]))
+
+test "standard deviation large adjacent":
+    let values = [1e+300, 1.0000000000000002e+300]
+    let p = try expect_some(population_stdev(values))
+    try expect_close(p / 7.435084542388915e+283, 1.0, 0.000000000000005)
+
+    let s = try expect_some(stdev(values))
+    try expect_close(s / 1.0514797397236962e+284, 1.0, 0.000000000000005)
+
+test "standard deviation maximum adjacent":
+    let values = [1.7976931348623157e+308, 1.7976931348623155e+308]
+    let p = try expect_some(population_stdev(values))
+    try expect_close(p / 9.9792015476736e+291, 1.0, 0.000000000000005)
+
+    let s = try expect_some(stdev(values))
+    try expect_close(s / 1.4112722170374585e+292, 1.0, 0.000000000000005)
+
+test "standard deviation small adjacent":
+    let values = [1e-300, 1.0000000000000002e-300]
+    let p = try expect_some(population_stdev(values))
+    try expect_equal(p, 8.289046e-317)
+
+    let s = try expect_some(stdev(values))
+    try expect_equal(s, 1.1722481e-316)
+
+test "standard deviation half minimum subnormal":
+    let values = [0.0, 5e-324]
+    let p = try expect_some(population_stdev(values))
+    try expect_equal(p, 0.0)
+
+    let s = try expect_some(stdev(values))
+    try expect_equal(s, 5e-324)
+
+test "standard deviation unbalanced minimum subnormal":
+    let values = [0.0, 5e-324, 5e-324]
+    let p = try expect_some(population_stdev(values))
+    try expect_equal(p, 0.0)
+
+    let s = try expect_some(stdev(values))
+    try expect_equal(s, 5e-324)
+
+test "standard deviation balanced minimum subnormal":
+    let values = [0.0, 0.0, 5e-324, 5e-324]
+    let p = try expect_some(population_stdev(values))
+    try expect_equal(p, 0.0)
+
+    let s = try expect_some(stdev(values))
+    try expect_equal(s, 5e-324)
+
+// Exact binary64 rational variance lies below the squared overflow midpoint.
+test "standard deviation finite sample threshold":
+    let values = [
+        1.5568479229996504e+308, -1.5568479229996504e+308, -1.5568479229996504e+308
+    ]
+    let p = try expect_some(population_stdev(values))
+    try expect_close(p / 1.4678102981723264e+308, 1.0, 0.000000000000005)
+
+    let s = try expect_some(stdev(values))
+    try expect_equal(s, 1.7976931348623157e+308)
+
+// The rounded normalized estimate alone lands below MAX, but exact variance overflows.
+test "standard deviation infinite sample threshold":
+    let values = [
+        1.7054414520639489e+308, 1.7054414520639489e+308, 1.7054414520639489e+308,
+        1.7054414520639489e+308, -1.7054414520639489e+308, -1.7054414520639489e+308,
+        -1.7054414520639489e+308, -1.7054414520639489e+308, -1.7054414520639489e+308
+    ]
+    let p = try expect_some(population_stdev(values))
+    try expect_close(p / 1.694881341538195e+308, 1.0, 0.000000000000005)
+
+    let s = try expect_some(stdev(values))
+    try expect_equal(s, 1.0 / 0.0)

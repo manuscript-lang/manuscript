@@ -108,6 +108,54 @@ impl Pos {
     };
 }
 
+/// One group is the common case for a block. Keep it inline rather than allocating a
+/// hash table; additional anchors use the same indexed representation as larger blocks.
+#[derive(Clone)]
+struct PendingDrops {
+    first: (Option<usize>, Vec<Value>),
+    rest: HashMap<Option<usize>, Vec<Value>>,
+}
+
+impl PendingDrops {
+    fn new(pos: Pos, v: Value) -> Self {
+        debug_assert_eq!(pos.after, 0);
+        Self {
+            first: (pos.idx, vec![v]),
+            rest: HashMap::new(),
+        }
+    }
+
+    fn insert(&mut self, pos: Pos, v: Value) {
+        let drops = if self.first.0 == pos.idx {
+            &mut self.first.1
+        } else {
+            self.rest.entry(pos.idx).or_default()
+        };
+        drops.insert(pos.after, v);
+    }
+
+    fn get(&self, anchor: Option<usize>) -> Option<&Vec<Value>> {
+        if self.first.0 == anchor {
+            Some(&self.first.1)
+        } else {
+            self.rest.get(&anchor)
+        }
+    }
+
+    fn positions(&self, v: Value) -> impl Iterator<Item = Pos> + '_ {
+        std::iter::once((&self.first.0, &self.first.1))
+            .chain(self.rest.iter())
+            .flat_map(move |(anchor, drops)| {
+                drops.iter().enumerate().filter_map(move |(n, w)| {
+                    (*w == v).then_some(Pos {
+                        idx: *anchor,
+                        after: n + 1,
+                    })
+                })
+            })
+    }
+}
+
 /// Where a value is read, built once per function so each candidate costs its own footprint
 /// rather than a scan of the function. Instruction indices are those of the original function:
 /// the pass never inserts or removes instructions while it analyses, it records the drops it
@@ -123,7 +171,7 @@ struct Index {
     /// Original drops deleted so far, per block and instruction index.
     removed: Vec<Vec<bool>>,
     /// Drops to insert, per block and anchor, in emission order at that anchor.
-    pending: Vec<HashMap<Option<usize>, Vec<Value>>>,
+    pending: Vec<Option<Box<PendingDrops>>>,
     /// Blocks holding a pending drop of each value.
     pending_blocks: ValueMap<Vec<usize>>,
     /// Predecessors of each block (once per edge), kept current as edge blocks are added.
@@ -142,7 +190,7 @@ impl Index {
                 .iter()
                 .map(|b| vec![false; b.insts.len()])
                 .collect(),
-            pending: vec![HashMap::new(); f.blocks.len()],
+            pending: vec![None; f.blocks.len()],
             pending_blocks: ValueMap::new(),
             preds: vec![Vec::new(); f.blocks.len()],
         };
@@ -167,7 +215,7 @@ impl Index {
 
     fn add_block(&mut self) {
         self.removed.push(Vec::new());
-        self.pending.push(HashMap::new());
+        self.pending.push(None);
         self.preds.push(Vec::new());
     }
 
@@ -178,23 +226,17 @@ impl Index {
 
     /// Positions in `bi` of the pending drops of `v`.
     fn pending_drops(&self, bi: usize, v: Value) -> impl Iterator<Item = Pos> + '_ {
-        self.pending[bi].iter().flat_map(move |(anchor, drops)| {
-            drops.iter().enumerate().filter_map(move |(n, w)| {
-                (*w == v).then_some(Pos {
-                    idx: *anchor,
-                    after: n + 1,
-                })
-            })
-        })
+        self.pending[bi].iter().flat_map(move |p| p.positions(v))
     }
 
     /// Records a drop of `v` directly behind `pos`: behind the instruction, ahead of the drops
     /// already placed there, or behind the pending drop `pos` names.
     fn insert_pending(&mut self, bi: usize, pos: Pos, v: Value) {
-        self.pending[bi]
-            .entry(pos.idx)
-            .or_default()
-            .insert(pos.after, v);
+        if let Some(pending) = &mut self.pending[bi] {
+            pending.insert(pos, v);
+        } else {
+            self.pending[bi] = Some(Box::new(PendingDrops::new(pos, v)));
+        }
         let blocks = self.pending_blocks.get_or_default(v);
         if !blocks.contains(&bi) {
             blocks.push(bi);
@@ -204,8 +246,8 @@ impl Index {
     /// Writes the recorded removals and insertions into the function.
     fn apply(self, f: &mut Func) {
         for (bi, b) in f.blocks.iter_mut().enumerate() {
-            let pending = &self.pending[bi];
-            if pending.is_empty() && !self.removed[bi].iter().any(|r| *r) {
+            let pending = self.pending[bi].as_deref();
+            if pending.is_none() && !self.removed[bi].iter().any(|r| *r) {
                 continue;
             }
             let drop_inst = |v: Value, loc: Loc| Inst {
@@ -216,10 +258,9 @@ impl Index {
                 loc,
             };
             let old = std::mem::take(&mut b.insts);
-            let count: usize = pending.values().map(Vec::len).sum();
-            let mut out = Vec::with_capacity(old.len() + count);
+            let mut out = Vec::with_capacity(old.len() + pending.map_or(0, |p| 1 + p.rest.len()));
             let by_anchor = pending;
-            for v in by_anchor.get(&None).into_iter().flatten() {
+            for v in by_anchor.and_then(|p| p.get(None)).into_iter().flatten() {
                 out.push(drop_inst(*v, b.term_loc));
             }
             for (k, inst) in old.into_iter().enumerate() {
@@ -227,7 +268,7 @@ impl Index {
                 if !self.removed[bi][k] {
                     out.push(inst);
                 }
-                for v in by_anchor.get(&Some(k)).into_iter().flatten() {
+                for v in by_anchor.and_then(|p| p.get(Some(k))).into_iter().flatten() {
                     out.push(drop_inst(*v, loc));
                 }
             }
@@ -721,9 +762,12 @@ mod tests {
             },
             a,
         );
-        assert_eq!(ix.pending[0][&Some(5)], [b, c, a]);
-        assert_eq!(ix.pending[0][&Some(2)], [a]);
-        assert_eq!(ix.pending[0][&None], [b, a]);
+        assert_eq!(
+            *ix.pending[0].as_ref().unwrap().get(Some(5)).unwrap(),
+            [b, c, a]
+        );
+        assert_eq!(*ix.pending[0].as_ref().unwrap().get(Some(2)).unwrap(), [a]);
+        assert_eq!(*ix.pending[0].as_ref().unwrap().get(None).unwrap(), [b, a]);
         let mut positions: Vec<_> = ix.pending_drops(0, a).collect();
         positions.sort_unstable();
         assert_eq!(
