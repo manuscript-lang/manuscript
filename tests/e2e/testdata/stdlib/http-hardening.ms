@@ -68,6 +68,26 @@ test "close cancels a handler that outlives the grace period":
             Error("handler finished instead of being cancelled")
         )
 
+test "close cancels a handler parked on a request body and releases its stream":
+    var server = serve(
+        address: "127.0.0.1:0", handler: buffered(ok_route),
+        options: HttpServerOptions(grace: 0.seconds())
+    ) | try expect_ok
+    var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
+
+    // The head promises a body that never comes, so the handler parks reading it. Cancelling it
+    // must free the stream (`make leak-check` counts a leaked stream as a live block).
+    send(var client, "POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab") | try expect_ok
+
+    let _ = sleep(100.milliseconds()).wait()
+    try server.close()
+
+    if let reply = recv(var client, 5.seconds()):
+        let text = reply.get(Bytes([])).decode_utf8().get("")
+        if text.starts_with("HTTP/1.1 200"): return error(
+            Error("handler finished instead of being cancelled")
+        )
+
 fn expect_file_reply(var conn: Connection) Unit!:
     let reply = recv(var conn, 10.seconds()) | try expect_ok
     let text = reply.get(Bytes([])).decode_utf8().get("")

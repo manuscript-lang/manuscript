@@ -8,6 +8,7 @@ use super::sniff;
 use crate::conn::SharedIo;
 use crate::conn::{Io, Step};
 use crate::error::{HttpErr, IoErr, WsErr};
+use crate::rt;
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use crate::ws::handshake::{self, Rejected};
 use crate::ws::socket::{Config, Role, Socket};
@@ -126,6 +127,47 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
     exchange.finish(outcome, late);
 }
 
+/// A handle on the connection's stream that a parked operation holds. A cancellation or fault
+/// leaves the task with a jump that skips destructors, so a plain `Rc` clone held across the park
+/// would keep the descriptor open for good; the box belongs to a runtime cleanup instead, which
+/// drops it on that path and is discarded on an ordinary return.
+struct HeldIo {
+    io: *mut Rc<dyn Io>,
+    cleanup: usize,
+}
+
+unsafe extern "C-unwind" fn release_io(arg: *mut u8) {
+    // SAFETY: the runtime runs this action once, only on the path that skips `HeldIo::drop`,
+    // and `arg` is the allocation `HeldIo::new` leaked.
+    drop(unsafe { Box::from_raw(arg.cast::<Rc<dyn Io>>()) });
+}
+
+impl HeldIo {
+    fn new(io: Rc<dyn Io>) -> HeldIo {
+        // The cleanup stack is process-global, including in otherwise polling-only tests.
+        #[cfg(test)]
+        server::serialize_tests();
+        let io = Box::into_raw(Box::new(io));
+        // SAFETY: the allocation stays live until the action runs or `HeldIo::drop` discards it.
+        let cleanup = unsafe { rt::cleanup_push(release_io, io.cast()) };
+        HeldIo { io, cleanup }
+    }
+
+    fn io(&self) -> &dyn Io {
+        // SAFETY: `HeldIo` owns the allocation until it drops or the cleanup takes it, and the
+        // cleanup only runs when this frame is abandoned.
+        unsafe { &**self.io }
+    }
+}
+
+impl Drop for HeldIo {
+    fn drop(&mut self) {
+        rt::cleanup_discard(self.cleanup);
+        // SAFETY: the cleanup was discarded, so this is the allocation's sole owner.
+        drop(unsafe { Box::from_raw(self.io) });
+    }
+}
+
 impl Exchange {
     pub(super) fn deadline(&self) -> Deadline {
         match self.st.borrow().deadline {
@@ -171,13 +213,15 @@ impl Exchange {
         }
     }
 
-    fn io(&self) -> Result<Rc<dyn Io>, IoErr> {
-        self.conn.st.borrow().io.clone().ok_or(IoErr::Closed)
+    fn io(&self) -> Result<HeldIo, IoErr> {
+        let io = self.conn.st.borrow().io.clone().ok_or(IoErr::Closed)?;
+        Ok(HeldIo::new(io))
     }
 
     /// Reads more bytes from the socket into the connection's input buffer.
     fn fill(&self, deadline: Deadline) -> Result<bool, IoErr> {
-        let io = self.io()?;
+        let held = self.io()?;
+        let io = held.io();
         let mut scratch = [0u8; 16 * 1024];
         loop {
             match io.read(&mut scratch) {
@@ -202,7 +246,8 @@ impl Exchange {
 
     /// Writes all of `bytes` and flushes, blocking.
     fn send(&self, bytes: &[u8], deadline: Deadline) -> Result<(), IoErr> {
-        let io = self.io()?;
+        let held = self.io()?;
+        let io = held.io();
         let mut rest = bytes;
         while !rest.is_empty() {
             match io.write(rest) {

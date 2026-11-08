@@ -7,6 +7,7 @@ and the record is decoded from those values like `json.parse[T]`, so each field 
 and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
 `process.arguments()` from `main`.
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 import Arg, Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import arguments from "@std/os/env.ms"

@@ -254,6 +254,8 @@ pub struct FnAdaptJob {
 
 /// A bound native method waiting to be lowered; the closure holds the receiver.
 pub struct BoundNativeJob {
+    /// Consuming implementation parameters in declaration order, excluding the receiver.
+    pub consumed_arguments: Vec<bool>,
     /// The method.
     pub method: ct::MethodRef,
     /// Module the use is written in.

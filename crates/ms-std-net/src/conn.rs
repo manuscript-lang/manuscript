@@ -525,6 +525,10 @@ pub struct Listener {
     upgrade: Option<Upgrade>,
     handshake: Deadline,
     handshake_timeout: Option<i64>,
+    /// The thread that uses the listener. An accept registers its connection with the owning
+    /// network, which is not thread safe, so a promise started where the listener lives must run
+    /// there.
+    pin: ms_rt::sched::Pin,
 }
 
 impl Resource for Listener {
@@ -550,6 +554,8 @@ impl Listener {
         } else {
             address
         };
+        let pin = ms_rt::sched::Pin::new();
+        pin.touch();
         Listener {
             owner,
             sock: OwnedSock::new(sock),
@@ -560,6 +566,7 @@ impl Listener {
             upgrade,
             handshake: Deadline::none(),
             handshake_timeout,
+            pin,
         }
     }
 
@@ -642,6 +649,7 @@ impl Listener {
     pub fn accept(self: &Rc<Self>, timeout: Option<i64>) -> Result<Rc<Connection>, NetErr> {
         let deadline = Deadline::from_nanos(timeout).map_err(|_| NetErr::InvalidInput)?;
         let _ = (&self.handshake, self.handshake_timeout);
+        self.pin.touch();
         let (sock, peer) = self.accept_socket(deadline)?;
         let local = sock
             .local_addr()

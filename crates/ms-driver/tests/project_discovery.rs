@@ -166,3 +166,61 @@ fn discovery_skips_nested_projects() {
         sorted(vec![own, own_src])
     );
 }
+
+#[test]
+fn overlay_discovery_keeps_nested_projects_isolated() {
+    let dir = TempDir::new();
+    let root = dir.path().to_string();
+    let source = join(&root, "src");
+    write(&root, "src/inner/ms.toml", "");
+    write(&root, "examples/demo/ms.toml", "invalid manifest");
+    let saved = write(&root, "src/inner/saved_test.ms", "");
+    let p = Project {
+        root: root.clone(),
+        source,
+        ..Default::default()
+    };
+    let overlay = Overlay::from([
+        (saved, String::new()),
+        (join(&root, "src/inner/new.ms"), String::new()),
+        (
+            join(&root, "src/inner/new/deeper/new_test.ms"),
+            String::new(),
+        ),
+        (join(&root, "examples/demo/new_test.ms"), String::new()),
+        (join(&root, "src/ordinary/new_test.ms"), String::new()),
+        (join(&root, "tests/new/deeper/bench.ms"), String::new()),
+    ]);
+    for all in [false, true] {
+        assert_eq!(
+            discover_modules_with_overlay(&p, all, &overlay).unwrap(),
+            sorted(vec![
+                join(&root, "src/ordinary/new_test.ms"),
+                join(&root, "tests/new/deeper/bench.ms")
+            ])
+        );
+    }
+
+    // An explicitly selected source directory remains eligible, even if its
+    // parent has a manifest or would normally be skipped during a root walk.
+    for source in ["src/inner", "examples/demo", ".hidden", "vendor"] {
+        write(&root, &format!("{source}/ms.toml"), "invalid manifest");
+        let p = Project {
+            root: root.clone(),
+            source: join(&root, source),
+            ..Default::default()
+        };
+        let file = join(&p.source, "new/deeper/value_test.ms");
+        let overlay = Overlay::from([(file.clone(), String::new())]);
+        assert!(
+            discover_modules_with_overlay(&p, true, &overlay)
+                .unwrap()
+                .contains(&file)
+        );
+        assert!(
+            !discover_modules_with_overlay(&p, false, &overlay)
+                .unwrap()
+                .contains(&file)
+        );
+    }
+}

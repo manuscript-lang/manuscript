@@ -165,3 +165,12 @@ fn recovery_keeps_a_multi_line_import_path_in_one_chunk() {
     assert_eq!(messages.len(), 1, "{messages:?}");
     assert!(messages[0].contains("one-line text"), "{messages:?}");
 }
+
+#[test]
+fn restoring_adjacent_literals_uses_the_restored_line_indentation() {
+    let file: Arc<str> = Arc::from("m.ms");
+    let source = "fn f() String:\n    return \"\"\"\n        first\n        \"\"\" + \"\"\"\n        second\n        \"\"\"\n";
+    let once = format(&file, source).unwrap();
+    assert_eq!(once, source);
+    assert_eq!(format(&file, &once).unwrap(), once);
+}
