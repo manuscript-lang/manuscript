@@ -1,6 +1,13 @@
 import expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms"
 import monotonic from "@std/time.ms"
-import (escape, unescape, parse, HtmlNode, HtmlAttribute, HtmlOptions) from "@std/data/html.ms"
+import (
+    escape,
+    unescape,
+    parse,
+    HtmlNode,
+    HtmlAttribute,
+    HtmlOptions
+) from "@std/data/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:
