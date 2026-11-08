@@ -163,17 +163,17 @@ impl Wire {
     /// buffer is taken out for its duration: a request in another task that reads meanwhile
     /// gets a fresh buffer instead of finding this one borrowed.
     fn fill(&mut self, deadline: Deadline) -> Result<usize, IoErr> {
-        let mut scratch = SCRATCH.take();
-        scratch.resize(READ_BUF, 0);
-        let got = self.conn.read_into(&mut scratch, deadline);
+        let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
+        scratch.buf().resize(READ_BUF, 0);
+        let got = self.conn.read_into(scratch.buf(), deadline);
         if let Ok(n) = got {
             if self.rpos > 0 && self.rpos == self.rbuf.len() {
                 self.rbuf.clear();
                 self.rpos = 0;
             }
-            self.rbuf.extend_from_slice(&scratch[..n]);
+            self.rbuf.extend_from_slice(&scratch.buf()[..n]);
         }
-        SCRATCH.set(scratch);
+        SCRATCH.set(scratch.finish());
         got
     }
 }
@@ -181,11 +181,11 @@ impl Wire {
 impl Wire {
     /// Reads up to `max` bytes straight into a new buffer; empty is end of stream.
     fn read_raw(&mut self, deadline: Deadline, max: usize) -> Result<Vec<u8>, IoErr> {
-        let mut scratch = SCRATCH.take();
-        scratch.resize(READ_BUF.max(max), 0);
-        let got = self.conn.read_into(&mut scratch[..max], deadline);
-        let out = got.map(|n| scratch[..n].to_vec());
-        SCRATCH.set(scratch);
+        let mut scratch = rt::ParkedBuf::new(SCRATCH.take());
+        scratch.buf().resize(READ_BUF.max(max), 0);
+        let got = self.conn.read_into(&mut scratch.buf()[..max], deadline);
+        let out = got.map(|n| scratch.buf()[..n].to_vec());
+        SCRATCH.set(scratch.finish());
         out
     }
 }

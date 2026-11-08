@@ -83,7 +83,7 @@ pub fn use_tasks() {
 }
 
 /// Whether waits park the task: always, except on a test thread without a server.
-fn parks() -> bool {
+pub(crate) fn parks() -> bool {
     #[cfg(test)]
     return TASKS.with(Cell::get);
     #[cfg(not(test))]
