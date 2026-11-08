@@ -376,8 +376,8 @@ impl Session {
         }
         // The read parks, so nothing shared is borrowed across it.
         let mut held = rt::ParkedBuf::new(self.scratch.take());
-        held.buf().resize(READ_BUF, 0);
-        let got = self.conn.read_into(held.buf(), deadline);
+        held.get().resize(READ_BUF, 0);
+        let got = self.conn.read_into(held.get(), deadline);
         let n = match got {
             Ok(n) => n,
             Err(e) => {
@@ -390,7 +390,7 @@ impl Session {
             self.mark_dead();
             return Ok(());
         }
-        let fed = self.state.borrow_mut().core.feed(&held.buf()[..n]);
+        let fed = self.state.borrow_mut().core.feed(&held.get()[..n]);
         self.scratch.set(held.finish());
         let Ok(events) = fed else {
             // The core queued a GOAWAY; push it out, then give up.
