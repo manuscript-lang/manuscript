@@ -55,10 +55,12 @@ fn path_char(c: u8) -> bool {
     c.is_ascii_alphanumeric() || b"-_.~$&+,/:;=@%!'()*[]".contains(&c)
 }
 
-fn escape_path(decoded: &[u8]) -> String {
-    let mut out = String::new();
-    for &c in decoded {
-        if c.is_ascii_alphanumeric() || b"-_.~$&+,/:;=@".contains(&c) {
+/// Escapes the bytes of a path that cannot appear in a request target (spaces, controls and
+/// non-ASCII), leaving existing percent escapes and delimiters alone so an escaped `/` stays one.
+fn escape_path(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    for &c in raw.as_bytes() {
+        if path_char(c) {
             out.push(c as char);
         } else {
             out.push_str(&format!("%{c:02X}"));
@@ -121,12 +123,7 @@ pub fn parse(text: &str) -> Option<Url> {
     if !valid_escapes(raw_path) {
         return None;
     }
-    let path = if raw_path.bytes().all(path_char) {
-        raw_path.to_string()
-    } else {
-        let decoded = super::target::unescape(raw_path)?;
-        escape_path(&decoded)
-    };
+    let path = escape_path(raw_path);
     let path = if path.is_empty() {
         "/".to_string()
     } else {
@@ -281,6 +278,15 @@ mod tests {
         assert_eq!(parse("http://h").unwrap().request_uri(), "/");
         assert_eq!(parse("http://h?q").unwrap().request_uri(), "/?q");
         assert_eq!(parse("http://h/%41%2f").unwrap().path, "/%41%2f");
+        for (input, path) in [
+            ("http://h/a%2Fb c", "/a%2Fb%20c"),
+            ("http://h/a%2Fb%20c", "/a%2Fb%20c"),
+            ("http://h/a%3Ab c", "/a%3Ab%20c"),
+            ("http://h/a%40b/\u{e9}", "/a%40b/%C3%A9"),
+            ("http://h/%41 b", "/%41%20b"),
+        ] {
+            assert_eq!(parse(input).unwrap().path, path, "{input}");
+        }
         // A query cannot carry a space or non-ASCII text onto the request line.
         assert_eq!(
             parse("http://h/a?b c&d=\u{fc}%41|\"")

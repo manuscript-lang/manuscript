@@ -137,7 +137,7 @@ pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
 pub fn parse_float(text: &[u8]) -> Result<f64, u8> {
     match text {
         b"NaN" => return Ok(f64::NAN),
-        b"Infinity" => return Ok(f64::INFINITY),
+        b"Infinity" | b"+Infinity" => return Ok(f64::INFINITY),
         b"-Infinity" => return Ok(f64::NEG_INFINITY),
         _ => {}
     }
@@ -986,6 +986,8 @@ mod tests {
         assert_eq!(parse_float(b"1."), Err(STATUS_INVALID_DATA));
         assert_eq!(parse_float(b"inf"), Err(STATUS_INVALID_DATA));
         assert!(parse_float(b"NaN").unwrap().is_nan());
+        assert_eq!(parse_float(b"+Infinity"), Ok(f64::INFINITY));
+        assert_eq!(parse_float(b"+NaN"), Err(STATUS_INVALID_DATA));
         assert_eq!(parse_float(b"1e-400"), Ok(0.0));
     }
 }

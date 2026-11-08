@@ -69,7 +69,20 @@ impl<'a> FnLower<'a> {
         {
             self.converting = Some(e as *const Expr);
         }
-        let x = self.expr_value(e);
+        let x = (|| {
+            if self.cx.fact(
+                self.hir.data.file,
+                e.id,
+                ms_check::api::ownership::Fact::BorrowedRead,
+            ) && let Some(shape) = self.borrowed_shape(e)?
+            {
+                let Some((present, entry)) = self.borrowed_read(shape, e)? else {
+                    return Ok(self.dummy(MTy::UNIT));
+                };
+                return self.borrowed_optional(present, &entry);
+            }
+            self.expr_value(e)
+        })();
         self.converting = saved;
         let mut x = x?;
         let reader = self.hir.info(e).function_source.clone();

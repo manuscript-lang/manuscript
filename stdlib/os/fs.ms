@@ -7,6 +7,7 @@ Completion rule: an operation on a whole file's contents (`read_file`, `write_fi
 Text and bytes use one function: `write_file(path, "text")` and `write_file(path, bytes)` both type-check.
 Functions take at most three parameters; more settings travel in an `*Options` record.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 import read_file, write_file from "@std/os/fs.ms"
 
@@ -571,6 +572,7 @@ Returns entries matching the include patterns of `options`, sorted by path. `pat
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
 returns True. A malformed pattern, one over 4096 bytes, or a negative limit returns EINVAL.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 let sources = try glob(".", GlobOptions(patterns: ["*.ms"]))
 ```
@@ -595,6 +597,7 @@ By default an existing destination returns EEXIST; set `replace` to overwrite it
 source and destination path and skips the entry when it returns False.
 Entry and byte limits apply cumulatively across the whole copy.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 try copy("a.txt", "b.txt", CopyOptions(replace: true))
 ```
@@ -784,6 +787,7 @@ fn open_flags(mode: OpenMode, exclusive: Bool) String:
 Opens `path` in `mode` (default `Read`). `options.exclusive` makes creation fail with EEXIST when the file exists;
 `options.permissions` is applied on creation, subject to umask and OS policy.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 let file = try open("out.log", OpenMode.Append)
 ```
@@ -806,7 +810,7 @@ export fn open_directory(path: String) Directory!:
 
 /*
 Starts replacing the file at `path` with `data` (text or `Bytes`) all-or-nothing and returns its promise: readers see the old contents or the new, never a partial file.
-The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
+The data goes to a new file beside `path`, is synced to stable storage, and then renamed over `path`, so `path`'s directory must be writable. When `path` is a symbolic link the file it names is replaced and the link stays; a link that cannot be resolved is replaced itself. An existing file keeps its permission bits and a new one gets 0644. On failure the temporary file is removed and `path` is unchanged.
 Example: `write_atomic("config.json", text).wait()`.
 */
 // ms: effect std.fs.write
@@ -817,7 +821,27 @@ export fn write_atomic(path: String, data: Writable) Promise[Unit]:
 fn atomic_job(path: String, data: Bytes) fn() Unit!:
     return fn: replace_atomically(path, data)
 
-fn replace_atomically(path: String, data: Bytes) Unit!:
+// The file a write to `path` replaces: the target of a symbolic link, so the link stays, else `path`.
+// A link that cannot be resolved (a dangling one) is replaced itself.
+fn through_links(path: String) String:
+    let link = stat(path, follow_links: false)
+    if link.is_error() or not link.get().is_symlink(): return path.clone()
+
+    return canonicalize(path).get(path.clone())
+
+// A sibling name for `path` that stays within the 255-byte file name limit: the file name is cut to 32 characters.
+fn temporary_name(path: String, stamp: String) String:
+    var split = 0
+    if let slash = path.last_index_of("/"): split = slash + 1
+    if let slash = path.last_index_of("\\"):
+        if slash + 1 > split: split = slash + 1
+
+    let directory = path.slice(0, split).get("")
+    let name = path.slice(split, path.byte_length()).get("")
+    return "{directory}.{name.take(32)}.{stamp}.tmp"
+
+fn replace_atomically(link: String, data: Bytes) Unit!:
+    let path = through_links(link)
     let existing = stat(path)
     var mode = 420
     if let info = existing: mode = info.permissions
@@ -826,7 +850,9 @@ fn replace_atomically(path: String, data: Bytes) Unit!:
     var attempt = 0
 
     while attempt < 16:
-        let temporary = "{path}.{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}.tmp"
+        let temporary = temporary_name(
+            path, "{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}"
+        )
         attempt += 1
 
         match open(
@@ -902,6 +928,7 @@ With an interval it compares snapshots of the tree every `interval`, which must 
 `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts, and
 fails with EOVERFLOW the same way on every platform.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 var watcher = try watch("src", recursive: true, options: WatchOptions(interval: 1.seconds()))
 ```

@@ -48,6 +48,7 @@ extern fn msrt_io_write_stdout(text: String) Unit
 Writes `value` as text and a newline to standard output. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
 It returns `Unit`; output is buffered and flushed at exit. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
 
+<!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 print("total: {total}")
 print(order)

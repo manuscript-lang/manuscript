@@ -103,8 +103,9 @@ pub fn default_text(syms: ms_syntax::Names, parameter: &Param, source: Option<&S
     };
     let text = source.text();
     let from = parameter.pos.offset as usize;
-    for (i, &(kind, offset)) in tokens.iter().enumerate() {
-        if offset < from || kind != Tok::Assign {
+    let first = tokens.partition_point(|&(_, offset)| offset < from);
+    for (i, &(kind, _)) in tokens.iter().enumerate().skip(first) {
+        if kind != Tok::Assign {
             continue;
         }
         let Some(&(_, start)) = tokens.get(i + 1) else {

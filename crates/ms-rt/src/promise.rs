@@ -502,7 +502,11 @@ pub(crate) fn task_ended(id: i64, status: u8, msg: &ms_rt_abi::StrVal, started: 
         Vec::new()
     };
     sched::live_add(-1);
+    // Ending drops the closure, which closes what it captured: like any implicit close that runs
+    // shielded, since a cancelled task would otherwise be cancelled again at its first park.
+    fault::msrt_shield_enter();
     deliver(id, Event::Ended { id, status, report });
+    fault::msrt_shield_exit();
 }
 
 /// Wakes the task waiting on slot `i`, if any.
@@ -982,6 +986,7 @@ unsafe fn start_on(id: i64, work: *mut ms_rt_abi::Closure, here: bool) {
     let start = Start {
         id,
         closure: work as usize,
+        at: crate::sys::monotonic_ns(),
     };
     if here || sched::current() == sched::NONE || sched::pinned_here() {
         execute(start);
@@ -1007,12 +1012,39 @@ pub unsafe extern "C-unwind" fn msrt_promise_defer(id: i64, work: *mut ms_rt_abi
     t.retry_state[i] = work as usize;
 }
 
-/// Runs the deferred work of `id` if it has not run: the caller is the waiter.
-fn run_deferred(id: i64, deadline: Option<i64>) {
+/// Runs promise `id` on the waiter's own stack if no thread has taken it yet: the closure leaves
+/// its queue and runs here under a guard, so a fault still ends only that promise. Costs about a
+/// call, against a task start. Only an unbounded wait does this; a wait with a deadline cannot
+/// stop the work, so it leaves the promise to run as a task.
+fn run_unstarted(id: i64) {
     let t = table();
     let Some(i) = index(t, id) else { return };
-    if t.flags[i] & DEFERRED == 0 {
+    if t.closure[i] == 0 || t.thread[i] != NOT_STARTED || t.flags[i] & WANT_CANCEL != 0 {
         return;
+    }
+    let Some(closure) = sched::remove_pending(id) else {
+        return;
+    };
+    let mut msg = crate::string::NO_STR;
+    // SAFETY: the promise owns the closure until `Ended`; the entry calls it as a task would.
+    let status =
+        unsafe { fault::msrt_guard_call(task::closure_entry, closure as *mut u8, &mut msg) };
+    let report = if status == 1 {
+        fault::fault_report(&msg, &[])
+    } else {
+        Vec::new()
+    };
+    // SAFETY: the guard handed over the message, released once.
+    unsafe { crate::string::release_opt(&msg) };
+    apply(Event::Ended { id, status, report });
+}
+
+/// Runs the deferred work of `id` if it has not run: the caller is the waiter.
+fn run_deferred(id: i64, deadline: Option<i64>) -> bool {
+    let t = table();
+    let Some(i) = index(t, id) else { return false };
+    if t.flags[i] & DEFERRED == 0 {
+        return false;
     }
     t.flags[i] &= !DEFERRED;
     let closure = core::mem::take(&mut t.retry_state[i]) as *mut ms_rt_abi::Closure;
@@ -1037,6 +1069,7 @@ fn run_deferred(id: i64, deadline: Option<i64>) {
     });
     release();
     task::set_defer_deadline(earlier);
+    true
 }
 
 /// A closure that calls a native entry with the argument it owns.
@@ -1154,6 +1187,9 @@ pub extern "C-unwind" fn msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 {
         (Some(o), i) => Some(o.min(i)),
         (None, i) => Some(i),
     };
+    if deadline.is_none() {
+        run_unstarted(id);
+    }
     run_deferred(id, deadline);
     loop {
         let t = table();
@@ -1205,11 +1241,15 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
             .position(|&id| index(t, id).is_none_or(|i| t.state[i] != State::Pending))
     };
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
-    for &id in &list {
-        if first_done(&list).is_some() {
-            break;
+    // Eager inputs cannot finish on this thread while this loop runs: their events and timers
+    // advance only when we park. Only a deferred callback can run work here, so rescan after
+    // one runs, not once per input. Otherwise an all-pending list takes quadratic work.
+    if first_done(&list).is_none() {
+        for &id in &list {
+            if run_deferred(id, deadline) && first_done(&list).is_some() {
+                break;
+            }
         }
-        run_deferred(id, deadline);
     }
     loop {
         if let Some(at) = first_done(&list) {
@@ -1372,6 +1412,18 @@ mod tests {
 
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn wait_any_handles_a_large_eager_pending_list() {
+        let _g = lock();
+        let mut ids: Vec<i64> = (0..40_000).map(|_| msrt_promise_new()).collect();
+        assert_eq!(wait_any_probe(&mut ids, 0), -1);
+        for id in ids {
+            msrt_promise_drop(id);
+        }
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_promise_task_delivers_its_result_once() {
         let _g = lock();
         let id = msrt_promise_new();
@@ -1383,6 +1435,35 @@ mod tests {
         msrt_promise_drop(id);
         // A dropped id is stale: done reads as finished and the slot's next promise is distinct.
         assert_eq!(msrt_promise_done(id), 1);
+        task::teardown();
+    }
+
+    crate::isolate_static! {
+        static RAN_IN: u64 = 0;
+    }
+
+    unsafe extern "C-unwind" fn note_task(_: *mut Closure) {
+        // SAFETY: called from a running task; stores a stack Int the callee takes.
+        unsafe {
+            *RAN_IN.ptr() = task::msrt_task_current();
+            let mut v = 1i64;
+            msrt_promise_put(*ID.ptr(), (&raw mut v).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn waiting_on_a_promise_nobody_took_runs_it_in_the_waiters_task() {
+        let _g = lock();
+        let id = msrt_promise_new();
+        start(id, note_task);
+        // SAFETY: the test runs as a task.
+        let me = unsafe { task::msrt_task_current() };
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        // SAFETY: this isolate's state.
+        assert_eq!(unsafe { *RAN_IN.ptr() }, me);
+        assert_eq!(take_int(id), 1);
+        msrt_promise_drop(id);
         task::teardown();
     }
 
@@ -1664,6 +1745,34 @@ mod tests {
     }
 
     #[test]
+    fn wait_any_stops_deferred_work_when_a_callback_finishes_another_input() {
+        let _g = lock();
+        use std::sync::atomic::Ordering::SeqCst;
+        DEFERRED_CALLS.store(0, SeqCst);
+        DEFERRED_DROPS.store(0, SeqCst);
+        let completed = msrt_promise_new();
+        let first = msrt_promise_new();
+        // SAFETY: the closure owns the target id after its header; running it completes the
+        // third input rather than its own promise. The first promise owns the closure.
+        unsafe {
+            let closure = crate::obj::new_obj(size_of::<Closure>() + 8, None, drop_deferred_probe)
+                .cast::<Closure>();
+            (*closure).code = probe_deferred as *const u8;
+            closure.add(1).cast::<i64>().write(completed);
+            msrt_promise_defer(first, closure);
+        }
+        let second = deferred_probe();
+        assert_eq!(wait_any_probe(&mut [first, second, completed], -1), 2);
+        assert_eq!(DEFERRED_CALLS.load(SeqCst), 1);
+        assert_eq!(take_int(completed), 42);
+        for id in [first, second, completed] {
+            msrt_promise_drop(id);
+        }
+        task::teardown();
+        assert_eq!(DEFERRED_DROPS.load(SeqCst), 2);
+    }
+
+    #[test]
     fn wait_any_deferred_work_observes_the_earlier_promise_and_inherited_limit() {
         let _g = lock();
         use std::sync::atomic::Ordering::SeqCst;
@@ -1857,6 +1966,20 @@ mod tests {
             msrt_promise_drop(id);
         }
         sched::shutdown();
+        task::teardown();
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn touching_main_thread_state_keeps_the_mains_promises_on_it() {
+        let _g = lock();
+        // `Global` holds main-thread-only state (the terminal); a promise that reaches it from
+        // another thread faults, so once the main thread has used one, its promises stay put.
+        static CELL: crate::ffi::Global<core::cell::Cell<u8>> =
+            crate::ffi::Global::new(core::cell::Cell::new(0));
+        CELL.get().set(1);
+        assert!(sched::pinned_here());
+        sched::unpin_main();
         task::teardown();
     }
 

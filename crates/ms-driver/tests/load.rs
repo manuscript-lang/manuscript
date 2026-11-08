@@ -175,3 +175,31 @@ fn file_entries_share_a_library_under_the_enclosing_manifest() {
     let checked = check_graph(syms, graph, CheckRequest { entry: true });
     assert!(checked.success(), "{:?}", checked.diagnostics);
 }
+
+#[test]
+fn nested_project_editor_buffers_do_not_contaminate_parent_graphs() {
+    let syms = ms_syntax::Names::global();
+    let dir = scratch("nested-overlay-discovery");
+    let manifest = write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"parent\"\nsource = \"src\"\n",
+    );
+    write(&dir, "src/value.ms", "export fn value() Int: 1\n");
+    write(&dir, "src/child/ms.toml", "invalid configuration");
+    let child = write(&dir, "src/child/broken.ms", "not valid Manuscript");
+    let new_child = dir.join("src/child/new.ms").to_str().unwrap().to_string();
+    for path in [child, new_child] {
+        let graph = load_editor_file(
+            syms,
+            &manifest,
+            LoadOptions::default(),
+            &EditorOptions {
+                overlay: [(path, "not valid Manuscript".to_string())].into(),
+                ..EditorOptions::default()
+            },
+        );
+        assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
+        assert_eq!(graph.modules.len(), 1);
+    }
+}

@@ -6,8 +6,11 @@ use crate::walk::walk_module;
 use ms_check::api::types::n;
 use ms_check::{ModuleData, Program};
 use ms_syntax::ast::*;
+use ms_syntax::lexer;
+use ms_syntax::token::{Tok, Token};
 use ms_syntax::visit::Visitor;
 use ms_syntax::{DiagnosticFix, Pos};
+use std::cell::OnceCell;
 use std::collections::HashSet;
 
 pub(super) fn lint(
@@ -52,6 +55,7 @@ pub(super) fn lint(
         let key = symbol_of(syms.str(import.name));
         !key.is_some_and(|k| used.contains(&k))
     };
+    let import_tokens = OnceCell::new();
     for import in &module.imports {
         if unused(import) {
             let siblings = module.imports.iter().filter(|i| i.pos == import.pos);
@@ -63,7 +67,14 @@ pub(super) fn lint(
                 import.name_pos,
             );
             found.fix = if whole {
-                statement_removal(&module.source, import)
+                import_tokens
+                    .get_or_init(|| {
+                        lexer::lex(&file, &module.source)
+                            .ok()
+                            .map(|lexed| lexed.tokens)
+                    })
+                    .as_deref()
+                    .and_then(|tokens| statement_removal(&module.source, import, tokens))
             } else {
                 name_removal(syms, &module.source, import)
             };
@@ -93,10 +104,13 @@ fn fix_of(source: &str, start: usize, end: usize) -> Option<DiagnosticFix> {
 }
 
 /// Deletes the whole `import ... from "path"` statement, with its line breaks.
-fn statement_removal(source: &str, import: &Import) -> Option<DiagnosticFix> {
+fn statement_removal(source: &str, import: &Import, tokens: &[Token]) -> Option<DiagnosticFix> {
     let start = import.pos.offset as usize;
-    let quote = start + source.get(start..)?.find('"')?;
-    let close = quote + 1 + source.get(quote + 1..)?.find('"')?;
+    let first = tokens.partition_point(|token| token.pos.offset < import.pos.offset);
+    let path = tokens[first..]
+        .iter()
+        .find(|token| token.kind == Tok::String)?;
+    let close = path.end.offset as usize;
     let line_end = source[close..]
         .find('\n')
         .map_or(source.len(), |i| close + i + 1);

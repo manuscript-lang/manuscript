@@ -1888,7 +1888,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
-        if core::str::from_utf8(s).is_err() {
+        if !s.is_ascii() && core::str::from_utf8(s).is_err() {
             return 0;
         }
         out.write(from_bytes(s));
@@ -1916,7 +1916,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
             ));
         }
         let part = &s[start as usize..end as usize];
-        if core::str::from_utf8(part).is_err() {
+        if !part.is_ascii() && core::str::from_utf8(part).is_err() {
             return 0;
         }
         out.write(from_bytes(part));
@@ -2102,7 +2102,11 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut
                 ptr = alloc::realloc(ptr, v.len + 1);
             }
             *ptr.add(v.len) = 0;
-            out.write(StrVal::owned(ptr, v.len));
+            // One vector scan flags an ASCII text, so `length`, `get` and `slice` on it do not
+            // count scalars on every call.
+            let text = StrVal::owned(ptr, v.len);
+            let ascii = core::slice::from_raw_parts(ptr, v.len).is_ascii();
+            out.write(if ascii { text.with_ascii() } else { text });
             *v = EMPTY;
             return;
         }
@@ -2162,11 +2166,30 @@ mod tests {
                     assert_eq!(string::bytes(&s), &want[..]);
                     if len > STR_INLINE_MAX {
                         assert_eq!(*string::bytes(&s).as_ptr().add(len), 0);
+                        assert!(s.flagged_ascii(), "long ASCII text carries the flag");
                     }
                     assert!(b.ptr.is_null());
                     string::release(&s);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn strbuilder_freeze_does_not_flag_non_ascii_text() {
+        // SAFETY: the builder is a fresh owned buffer that freeze moving_params.
+        unsafe {
+            let want = "é".repeat(20).into_bytes();
+            let mut b = EMPTY;
+            reserve(&mut b, &desc::msrt_desc_bool, want.len());
+            core::ptr::copy_nonoverlapping(want.as_ptr(), b.ptr, want.len());
+            b.len = want.len();
+            let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+            msrt_strbuilder_freeze(&mut b, out.as_mut_ptr());
+            let s = out.assume_init();
+            assert!(!s.flagged_ascii());
+            assert_eq!(string::scalar_count(&s), 20);
+            string::release(&s);
         }
     }
 

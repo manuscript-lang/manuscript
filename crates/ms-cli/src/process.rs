@@ -95,7 +95,9 @@ pub fn wait_with_signals(child: &mut Child, stops: &Stops) -> std::io::Result<Ex
 }
 
 /// Wait for `child`, forwarding SIGINT and SIGTERM, killing it once `timeout`
-/// has elapsed, and calling `poll` about every 10 milliseconds (to drain pipes).
+/// has elapsed, and calling `poll` (to drain pipes) at growing intervals up to 10 milliseconds: a
+/// child that exits at once is noticed at once, where a fixed 10 ms nap made every short test
+/// cost 10 ms.
 pub fn wait_supervised(
     child: &mut Child,
     stops: &Stops,
@@ -105,6 +107,7 @@ pub fn wait_supervised(
     let started = Instant::now();
     let (mut timed_out, mut interrupted) = (false, false);
     let mut last = None;
+    let mut nap = Duration::from_micros(100);
     let result = loop {
         match child.try_wait() {
             Ok(Some(status)) => {
@@ -127,7 +130,8 @@ pub fn wait_supervised(
             let _ = child.kill();
         }
         poll();
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(nap);
+        nap = (nap * 2).min(Duration::from_millis(10));
     };
     // Hand the signal back to the caller's `Stops` (and a surrounding one in the watch loops).
     if let Some(pending) = last {

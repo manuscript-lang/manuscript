@@ -11,6 +11,8 @@
 //! live in one slot made at function entry: the entry edges put into it, the calls use it
 //! directly, and the parameter, the per-pass `put` and the `take` go away.
 
+use std::collections::HashMap;
+
 use crate::ir::{Block, Func, Imm, Inst, Mode, Module, Op, Term, Value};
 use crate::types::Ty;
 
@@ -43,12 +45,22 @@ fn carry_one(f: &mut Func) -> bool {
         }
         b.term.for_each_use(|v| uses[v.index()] += 1);
     }
+    // Where each value is put into a slot. Searching the function for the puts of every
+    // parameter would be quadratic.
+    let mut puts: HashMap<Value, Vec<(usize, usize)>> = HashMap::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (pi, i) in b.insts.iter().enumerate() {
+            if i.op == Op::Put {
+                puts.entry(i.args[1]).or_default().push((bi, pi));
+            }
+        }
+    }
     for l in 1..f.blocks.len() {
         for k in 0..f.blocks[l].params.len() {
             if f.blocks[l].params[k].mode != Mode::Move {
                 continue;
             }
-            if let Some(pairs) = plan(f, Block(l as u32), k, &uses) {
+            if let Some(pairs) = plan(f, Block(l as u32), k, &uses, &puts) {
                 apply(f, Block(l as u32), k, &pairs);
                 return true;
             }
@@ -58,60 +70,63 @@ fn carry_one(f: &mut Func) -> bool {
 }
 
 /// The pairs that use parameter `k` of `l`, when the parameter qualifies.
-fn plan(f: &Func, l: Block, k: usize, uses: &[u32]) -> Option<Vec<Pair>> {
+fn plan(
+    f: &Func,
+    l: Block,
+    k: usize,
+    uses: &[u32],
+    puts: &HashMap<Value, Vec<(usize, usize)>>,
+) -> Option<Vec<Pair>> {
     let p = f.blocks[l.index()].params[k].value;
     let ty = f.values[p.index()];
     let mut pairs = Vec::new();
     let mut seen = 0;
-    for (bi, b) in f.blocks.iter().enumerate() {
-        for (pi, put) in b.insts.iter().enumerate() {
-            if put.op != Op::Put || put.args[1] != p {
-                continue;
-            }
-            seen += 1;
-            let s = put.args[0];
-            let slot = b.insts[..pi]
-                .iter()
-                .position(|i| i.op == Op::Slot && i.res == Some(s))?;
-            if b.insts[slot].imm != Imm::Ty(ty) {
-                return None;
-            }
-            let take = b.insts[pi + 1..]
-                .iter()
-                .position(|i| i.op == Op::Take && i.args[0] == s)
-                .map(|x| x + pi + 1);
-            // The slot is only put into, called on and taken from, inside this block.
-            let takes = usize::from(take.is_some());
-            let calls = b.insts[pi + 1..]
-                .iter()
-                .filter(|i| i.op == Op::CallRt)
-                .map(|i| i.args.iter().filter(|&&a| a == s).count())
-                .sum::<usize>();
-            if uses[s.index()] as usize != 1 + takes + calls {
-                return None;
-            }
-            if let Some(ti) = take {
-                let t = b.insts[ti].res?;
-                let calls_between = b.insts[pi + 1..ti].iter().all(|i| i.op == Op::CallRt);
-                let Term::Br(tg) = &b.term else {
-                    return None;
-                };
-                if !calls_between
-                    || b.insts[ti].imm != Imm::Ty(ty)
-                    || uses[t.index()] != 1
-                    || tg.block != l
-                    || tg.args[k] != t
-                {
-                    return None;
-                }
-            }
-            pairs.push(Pair {
-                block: Block(bi as u32),
-                slot,
-                put: pi,
-                take,
-            });
+    for &(bi, pi) in puts.get(&p)? {
+        let b = &f.blocks[bi];
+        let put = &b.insts[pi];
+        seen += 1;
+        let s = put.args[0];
+        let slot = b.insts[..pi]
+            .iter()
+            .position(|i| i.op == Op::Slot && i.res == Some(s))?;
+        if b.insts[slot].imm != Imm::Ty(ty) {
+            return None;
         }
+        let take = b.insts[pi + 1..]
+            .iter()
+            .position(|i| i.op == Op::Take && i.args[0] == s)
+            .map(|x| x + pi + 1);
+        // The slot is only put into, called on and taken from, inside this block.
+        let takes = usize::from(take.is_some());
+        let calls = b.insts[pi + 1..]
+            .iter()
+            .filter(|i| i.op == Op::CallRt)
+            .map(|i| i.args.iter().filter(|&&a| a == s).count())
+            .sum::<usize>();
+        if uses[s.index()] as usize != 1 + takes + calls {
+            return None;
+        }
+        if let Some(ti) = take {
+            let t = b.insts[ti].res?;
+            let calls_between = b.insts[pi + 1..ti].iter().all(|i| i.op == Op::CallRt);
+            let Term::Br(tg) = &b.term else {
+                return None;
+            };
+            if !calls_between
+                || b.insts[ti].imm != Imm::Ty(ty)
+                || uses[t.index()] != 1
+                || tg.block != l
+                || tg.args[k] != t
+            {
+                return None;
+            }
+        }
+        pairs.push(Pair {
+            block: Block(bi as u32),
+            slot,
+            put: pi,
+            take,
+        });
     }
     // Every use of the parameter is one of the puts, and the loop really carries it.
     if seen == 0 || uses[p.index()] != seen || pairs.iter().all(|x| x.take.is_none()) {

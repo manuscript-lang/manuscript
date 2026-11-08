@@ -7,7 +7,7 @@ import (
     public_key,
     Curve
 ) from "@std/crypto.ms"
-import JsonValue from "@std/data/json.ms"
+import JsonValue, parse from "@std/data/json.ms"
 import (sign_token, verify_token, JwtAlgorithm, JwtCheck) from "@std/data/jwt.ms"
 import random_bytes from "@std/random.ms"
 
@@ -157,6 +157,41 @@ test "verify checks nbf and audience claims":
     )
     (try failure(verify_token[Audience](single, secret, JwtCheck(audience: "b")))) | try expect_equal(
         Error("jwt: wrong audience", kind: "EBADMSG")
+    )
+
+test "verify rejects registered claims of the wrong type":
+    let secret = "secret".to_bytes()
+    let wrong = Error("jwt: nbf must be a number", kind: "EBADMSG")
+    let cases = [
+        "\{\"nbf\":\"tomorrow\"\}", "\{\"nbf\":null\}", "\{\"exp\":\"never\"\}",
+        "\{\"exp\":[1]\}", "\{\"aud\":[123]\}", "\{\"aud\":[123,\"wanted\"]\}",
+        "\{\"aud\":7\}"
+    ]
+
+    for text in cases:
+        let claims = (parse(text) | try expect_ok)
+        let token = (sign_token(claims, secret) | try expect_ok)
+        let outcome = verify_token(token, secret, JwtCheck(at: 100, audience: "wanted"))
+        try expect_equal(outcome.err().kind, "EBADMSG")
+
+    let nbf = (
+        sign_token(
+            (parse("\{\"nbf\":\"tomorrow\"\}") | try expect_ok), secret
+        ) | try expect_ok
+    )
+    (try failure(verify_token(nbf, secret, JwtCheck(at: 100)))) | try expect_equal(
+        wrong
+    )
+
+    let fine = (
+        sign_token(
+            (parse("\{\"aud\":[\"wanted\"],\"exp\":200\}") | try expect_ok), secret
+        ) | try expect_ok
+    )
+    let _ = (
+        verify_token(
+            fine, secret, JwtCheck(at: 100, audience: "wanted")
+        ) | try expect_ok
     )
 
 test "rs256 signs with a private key and verifies with the public key":

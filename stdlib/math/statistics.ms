@@ -1,5 +1,6 @@
 import panic from "@std/core.ms"
-import sqrt from "@std/math/math.ms"
+import sqrt, frexp, ldexp from "@std/math/math.ms"
+import BigRat, rat_of_float, rat_of_int from "@std/math/big.ms"
 
 /*
 Summary statistics over a `List[Float]`, in binary64 arithmetic.
@@ -30,7 +31,28 @@ export fn mean(values: List[Float]) Float?:
     if values.is_empty():
         return none
 
-    return values.sum() / values.length().to_float()
+    let sum = values.sum()
+    let ordinary = sum / values.length().to_float()
+    if sum.is_finite(): return ordinary
+
+    // Keep the existing NaN/infinity behavior; only a finite-input overflow needs repair.
+    for value in values:
+        if not value.is_finite(): return ordinary
+
+    // Exact accumulation preserves small cancellation residuals that scaling would discard.
+    var total = rat_of_int(0)
+
+    for value in values:
+        if let term = rat_of_float(value):
+            total = total.add(term)
+        else:
+            panic("statistics: finite mean input could not be converted")
+
+    if let average = total.divide(rat_of_int(values.length())):
+        if let result = average.to_float(): return result
+
+    // The exact average of finite inputs lies between their finite extrema.
+    panic("statistics: finite mean could not be represented")
 
 // Returns the median, the middle value of the sorted list or the mean of the two middle values, or none for an empty list.
 // Example: `median([5.0, 1.0, 3.0, 2.0])` is `2.5`.
@@ -43,7 +65,15 @@ export fn median(values: List[Float]) Float?:
     if ordered.length() % 2 == 1:
         return ordered[middle]
 
-    return (ordered[middle - 1] + ordered[middle]) / 2.0
+    let low = ordered[middle - 1]
+    let high = ordered[middle]
+    let sum = low + high
+
+    // Only overflowing finite sums need halves; halving tiny values would lose precision.
+    if not sum.is_finite() and low.is_finite() and high.is_finite():
+        return low / 2.0 + high / 2.0
+
+    return sum / 2.0
 
 // Returns the most frequent value, or none for an empty list. When several values are equally frequent the least one wins.
 // Example: `mode([2.0, 1.0, 2.0, 1.0, 3.0])` is `1.0`.
@@ -97,7 +127,7 @@ export fn variance(values: List[Float]) Float?:
 // Returns the population standard deviation, or none for an empty list.
 export fn population_stdev(values: List[Float]) Float?:
     if let spread_squared = population_variance(values):
-        return sqrt(spread_squared)
+        return deviation_from_variance(values, spread_squared, 0)
 
     return none
 
@@ -105,9 +135,101 @@ export fn population_stdev(values: List[Float]) Float?:
 // Example: `stdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])` is about `2.138`.
 export fn stdev(values: List[Float]) Float?:
     if let spread_squared = variance(values):
-        return sqrt(spread_squared)
+        return deviation_from_variance(values, spread_squared, 1)
 
     return none
+
+// Preserve ordinary rounding; avoid requiring the squared result to fit for extreme finite inputs.
+fn deviation_from_variance(
+    values: List[Float],
+    spread_squared: Float,
+    correction: Int
+) Float:
+    let ordinary = sqrt(spread_squared)
+    if spread_squared.is_finite() and spread_squared >= 2.2250738585072014e-308:
+        return ordinary
+
+    var scale = 0.0
+
+    for value in values:
+        if not value.is_finite(): return ordinary
+
+        scale = scale.max(value.abs())
+
+    if scale == 0.0: return 0.0
+
+    let exponent = frexp(scale).exponent
+    let origin = ldexp(values[0], -exponent)
+    var total = DeviationSum()
+    for value in values:
+        total.add(ldexp(value, -exponent) - origin)
+
+    let center = total.value() / values.length().to_float()
+    var squares = DeviationSum()
+
+    for value in values:
+        let delta = (ldexp(value, -exponent) - origin) - center
+        squares.add(delta * delta)
+
+    let normalized = sqrt(squares.value() / (values.length() - correction).to_float())
+    let result = ldexp(normalized, exponent)
+
+    // Population deviation cannot exceed the greatest input magnitude.
+    if correction == 0: return result.min(scale)
+    if normalized == 0.0: return 0.0
+
+    // Sample deviation is at most sqrt(2) times scale. Only these extreme inputs
+    // can cross Float's overflow midpoint; decide that boundary exactly.
+    if scale > 1.7976931348623157e308 / 2.0:
+        if sample_deviation_overflows(values): return 1.0 / 0.0
+
+        return result.min(1.7976931348623157e308)
+
+    return result
+
+fn sample_deviation_overflows(values: List[Float]) Bool:
+    var total = rat_of_int(0)
+    var squares = rat_of_int(0)
+
+    for value in values:
+        if let term = rat_of_float(value):
+            total = total.add(term)
+            squares = squares.add(term.multiply(term))
+        else:
+            panic("statistics: finite deviation input could not be converted")
+
+    let count = rat_of_int(values.length())
+    let numerator = squares.multiply(count).subtract(total.multiply(total))
+
+    // Round-to-nearest overflows at MAX + half its upward ulp, including the tie.
+    if let maximum = rat_of_float(1.7976931348623157e308):
+        if let half_ulp = rat_of_float(ldexp(1.0, 970)):
+            let midpoint = maximum.add(half_ulp)
+            let bound = midpoint.multiply(
+                midpoint
+            ).multiply(count).multiply(rat_of_int(values.length() - 1))
+            return numerator.compare(bound) >= 0
+
+    panic("statistics: finite deviation overflow boundary could not be converted")
+
+// Compensated summation on the bounded fallback coordinates.
+type DeviationSum:
+    total: Float = 0.0
+    correction: Float = 0.0
+
+impl DeviationSum:
+    var fn add(value: Float) Unit:
+        let next = self.total + value
+
+        if self.total.abs() >= value.abs():
+            self.correction += (self.total - next) + value
+        else:
+            self.correction += (value - next) + self.total
+
+        self.total = next
+
+    fn value() Float:
+        return self.total + self.correction
 
 /*
 Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list.
@@ -141,7 +263,14 @@ fn percentile_sorted(ordered: List[Float], percent: Float) Float:
     if not low.is_finite() and high != -low:
         return low
 
-    return low + (high - low) * fraction
+    let span = high - low
+
+    // Finite opposite-sign endpoints can overflow their difference, not their weighted mean.
+    // Keep the original formula for finite spans to preserve small/subnormal rounding.
+    if not span.is_finite() and low.is_finite() and high.is_finite():
+        return low * (1.0 - fraction) + high * fraction
+
+    return low + span * fraction
 
 /*
 Returns the `parts - 1` cut points that divide the sorted values into `parts` groups of equal probability, using the same interpolation as `percentile`.
@@ -179,6 +308,21 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     let halved = not (high - low).is_finite()
     let origin = if halved: low / 2.0 else: low
     let width = (if halved: high / 2.0 - origin else: high - low) / bins.to_float()
+
+    if (
+        low < high
+        and low.is_finite()
+        and high.is_finite()
+        and width < 2.2250738585072014e-308
+    ):
+        var finite = true
+        for value in values:
+            if not value.is_finite(): finite = false
+        if finite:
+            return BinCounts(
+                low: low, high: high, counts: exact_bin_counts(values, low, high, bins)
+            )
+
     var counts: List[Int] = []
     for index in 0..bins:
         counts.append(0)
@@ -197,6 +341,43 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
         counts.set(bin, counts[bin] + 1)
 
     return BinCounts(low: low, high: high, counts: counts)
+
+// A subnormal width loses bin boundaries. Classify exact binary64 inputs instead.
+fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) List[Int]:
+    let origin = finite_bin_rat(low)
+    let span = finite_bin_rat(high).subtract(origin)
+    var counts: List[Int] = []
+    for index in 0..bins:
+        counts.append(0)
+
+    if let multiplier = rat_of_int(bins).divide(span):
+        for value in values:
+            var bin = 0
+
+            if value >= high:
+                bin = bins - 1
+            else:
+                let position = (
+                    finite_bin_rat(value)
+                    .subtract(origin)
+                    .multiply(multiplier)
+                )
+
+                if let index = position.floor().to_int():
+                    bin = index
+                else:
+                    panic("statistics: finite bin index could not be represented")
+
+            counts.set(bin, counts[bin] + 1)
+
+        return counts
+
+    panic("statistics: finite bin range could not be divided")
+
+fn finite_bin_rat(value: Float) BigRat:
+    if let result = rat_of_float(value): return result
+
+    panic("statistics: finite bin input could not be converted")
 
 // Returns the sum of products of deviations of two lists of equal length, with both sums of squares, or none when there are fewer than two pairs.
 type Spread:

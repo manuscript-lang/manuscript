@@ -23,3 +23,4 @@ mod snapshots;
 mod source_coordinates;
 mod supervise;
 mod support;
+mod uri_identity;

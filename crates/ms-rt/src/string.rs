@@ -278,6 +278,21 @@ unsafe fn sub_scalars(s: *const StrVal, a: usize, b: usize) -> StrVal {
     }
 }
 
+/// Substring by nonnegative scalar bounds `a <= b` on a string not known to be ASCII, found by
+/// walking the text once; `None` when `b` exceeds the scalar length. No whole-string count.
+unsafe fn walk_sub_scalars(s: *const StrVal, a: usize, b: usize) -> Option<StrVal> {
+    // SAFETY: `s` live.
+    unsafe {
+        let text = bytes(s);
+        let ao = utf8::advance(text, 0, a)?;
+        let bo = utf8::advance(text, ao, b - a)?;
+        if ao == 0 && bo == text.len() {
+            return Some(cloned(&*s));
+        }
+        Some(from_bytes(&text[ao..bo]))
+    }
+}
+
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_string_length(s: *const StrVal) -> i64 {
@@ -328,18 +343,29 @@ unsafe fn string_get(
 ) -> StrVal {
     // SAFETY: caller passes live strings (default may be absent).
     unsafe {
-        let n = scalar_count(s);
-        let Some(i) = relative(n, index) else {
+        let text = bytes(s);
+        let off = if index >= 0 && !(*s).flagged_ascii() {
+            // Non-ASCII text: walk to the scalar instead of counting the whole string first.
+            utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
+        } else {
+            let n = scalar_count(s);
+            relative(n, index).map(|i| {
+                if n == text.len() {
+                    i
+                } else {
+                    scalar_offset(s, i)
+                }
+            })
+        };
+        let Some(off) = off else {
             if !has_default {
-                fault::msrt_index_fault(index, n as i64);
+                fault::msrt_index_fault(index, scalar_count(s) as i64);
             }
             return cloned(&*default);
         };
-        let text = bytes(s);
-        if n == text.len() {
-            return from_bytes(&text[i..i + 1]);
+        if (*s).flagged_ascii() {
+            return from_bytes(&text[off..off + 1]);
         }
-        let off = scalar_offset(s, i);
         let (c, w) = utf8::decode(&text[off..]);
         if c == 0xFFFD && w == 1 {
             return from_bytes("\u{FFFD}".as_bytes());
@@ -359,18 +385,26 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
 ) -> i64 {
     // SAFETY: caller passes a live string.
     unsafe {
-        let n = scalar_count(s);
-        let Some(i) = relative(n, index) else {
+        let text = bytes(s);
+        let off = if index >= 0 && !(*s).flagged_ascii() {
+            utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
+        } else {
+            let n = scalar_count(s);
+            relative(n, index).map(|i| {
+                if n == text.len() {
+                    i
+                } else {
+                    scalar_offset(s, i)
+                }
+            })
+        };
+        let Some(off) = off else {
             if !has_default.is_set() {
-                fault::msrt_index_fault(index, n as i64);
+                fault::msrt_index_fault(index, scalar_count(s) as i64);
             }
             return default;
         };
-        let text = bytes(s);
-        if n == text.len() {
-            return text[i] as i64;
-        }
-        utf8::decode(&text[scalar_offset(s, i)..]).0 as i64
+        utf8::decode(&text[off..]).0 as i64
     }
 }
 
@@ -1135,7 +1169,7 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
         let total = text.len() * count as usize;
         let r = alloc_str(total);
         fill_repeated(r.ptr_word, text, total);
-        *out = r;
+        *out = if is_ascii(&*s) { r.with_ascii() } else { r };
         STATUS_OK
     }
 }
@@ -1306,7 +1340,11 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
         }
         core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, text.len() - i);
     }
-    out
+    if text.is_ascii() && new.is_ascii() {
+        out.with_ascii()
+    } else {
+        out
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -1516,6 +1554,15 @@ pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
+        if start >= 0 && end >= start && !(*s).flagged_ascii() {
+            return match walk_sub_scalars(s, start as usize, end as usize) {
+                Some(r) => {
+                    *out = r;
+                    STATUS_OK
+                }
+                None => STATUS_OUT_OF_RANGE,
+            };
+        }
         let n = scalar_count(s) as i64;
         if start < 0 || end < start || end > n {
             return STATUS_OUT_OF_RANGE;
@@ -1568,6 +1615,15 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
 ) -> u8 {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
+        if start >= 0 && end >= start && !(*s).flagged_ascii() {
+            return match walk_sub_scalars(s, start as usize, end as usize) {
+                Some(r) => {
+                    *out = r;
+                    STATUS_OK
+                }
+                None => STATUS_OUT_OF_RANGE,
+            };
+        }
         let n = scalar_count(s) as i64;
         let (a, b) = (
             if start < 0 { n + start } else { start },
@@ -2761,6 +2817,48 @@ mod tests {
             // SAFETY: the list holds `v.len` inline strings.
             .map(|i| txt(unsafe { &*(v.ptr as *const StrVal).add(i) }))
             .collect()
+    }
+
+    #[test]
+    fn walking_index_and_slice_match_scalar_lists() {
+        let _g = testutil::lock();
+        let texts = [
+            "",
+            "héllo",
+            "ascii only text longer than fifteen",
+            "日本語のテキスト、長い文字列です。",
+            "a😀b😀c😀d😀e😀f😀g😀h😀i",
+        ];
+        for text in texts {
+            let chars: std::vec::Vec<S> = text.chars().map(S::from).collect();
+            let n = chars.len() as i64;
+            for i in 0..n + 2 {
+                let mut o = NO_STR;
+                let want_ok = i < n;
+                // SAFETY: `st` creates live strings and `o` is writable.
+                let got = unsafe { msrt_string_slice(st(text), i, (i + 1).min(n + 1), &mut o) };
+                let ok = i < n;
+                assert_eq!(got == STATUS_OK, ok, "slice {text:?} {i}");
+                if want_ok {
+                    assert_eq!(txt(&o), chars[i as usize]);
+                    // SAFETY: as above.
+                    let g =
+                        unsafe { ret(|out| msrt_string_get(st(text), i, HasRaw(1), &NO_STR, out)) };
+                    assert_eq!(g, chars[i as usize]);
+                }
+                for j in i..n + 2 {
+                    let mut o = NO_STR;
+                    // SAFETY: as above.
+                    let got = unsafe { msrt_string_slice_scalars(st(text), i, j, &mut o) };
+                    if j <= n {
+                        assert_eq!(got, STATUS_OK, "{text:?} {i}..{j}");
+                        assert_eq!(txt(&o), chars[i as usize..j as usize].concat());
+                    } else {
+                        assert_eq!(got, STATUS_OUT_OF_RANGE, "{text:?} {i}..{j}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]

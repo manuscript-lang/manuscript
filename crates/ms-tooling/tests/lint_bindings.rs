@@ -55,3 +55,60 @@ fn recursion_with_a_base_case_is_clean() {
         0
     );
 }
+
+#[test]
+fn unused_import_fix_ignores_quotes_in_group_comments() {
+    let syms = ms_syntax::Names::global();
+    let file: Arc<str> = Arc::from("lint.ms");
+    for comment in [
+        "// The words \"square root\" do not delimit this import.",
+        "// An unmatched \" does not open a string.",
+        "/* An embedded \"@std/math/math.ms\" is not the path. */",
+    ] {
+        for newline in ["\n", "\r\n"] {
+            let source = include_str!("lint_bindings/quoted-import-comment.ms")
+                .replace(
+                    "// The words \"square root\" do not delimit this import.",
+                    comment,
+                )
+                .replace('\n', newline);
+            let module = ms_syntax::parser::parse(&file, &source).unwrap();
+            let program = ms_check::check(
+                syms,
+                vec![ms_check::load_module(syms, &module)],
+                ImportMap::default(),
+                CheckOptions::default(),
+            );
+            assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+            let findings = lint_program(syms, &program);
+            let unused: Vec<_> = findings.iter().filter(|f| f.code == "MSL102").collect();
+            assert_eq!(unused.len(), 2);
+            for finding in unused {
+                let fix = finding.fix.as_ref().unwrap();
+                let mut fixed = source.clone();
+                fixed.replace_range(
+                    fix.pos.offset as usize..fix.end.offset as usize,
+                    &fix.replacement,
+                );
+                let module = ms_syntax::parser::parse(&file, &fixed).expect(&fixed);
+                assert_eq!(module.imports.len(), 1, "{fixed}");
+                let program = ms_check::check(
+                    syms,
+                    vec![ms_check::load_module(syms, &module)],
+                    ImportMap::default(),
+                    CheckOptions::default(),
+                );
+                assert!(
+                    program.diagnostics.is_empty(),
+                    "{fixed}\n{:?}",
+                    program.diagnostics
+                );
+                assert!(
+                    !lint_program(syms, &program)
+                        .iter()
+                        .any(|f| f.code == "MSL102")
+                );
+            }
+        }
+    }
+}

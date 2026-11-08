@@ -24,6 +24,19 @@ test "media types parse and format":
     try expect_true(parse_media_type("text").is_error())
     try expect_true(parse_media_type("a/b; x=\"open").is_error())
 
+test "an escaped closing quote does not end a quoted parameter":
+    // text/plain; name="x\"  (the last quote is a quoted pair)
+    try expect_true(parse_media_type("text/plain; name=\"x\\\"").is_error())
+    try expect_true(parse_media_type("text/plain; name=\"x\\\\\\\"").is_error())
+    try expect_true(parse_media_type("text/plain; name=\"x\"y").is_error())
+    try expect_true(parse_media_type("text/plain; name=\"").is_error())
+
+    let pair = parse_media_type("text/plain; name=\"x\\\"y\"").get()
+    try expect_equal(pair.params.get("name").get(""), "x\"y")
+
+    let slash = parse_media_type("text/plain; name=\"x\\\\\"").get()
+    try expect_equal(slash.params.get("name").get(""), "x\\")
+
 test "extension table maps both ways":
     try expect_equal(media_type_for_extension(".JSON").get(""), "application/json")
     try expect_equal(media_type_for_extension("png").get(""), "image/png")
@@ -64,3 +77,16 @@ test "multipart rejects a missing closing delimiter":
         multipart_boundary("multipart/form-data; boundary=abc").get(""), "abc"
     )
     try expect_true(not multipart_boundary("text/plain").is_some())
+
+test "multipart accepts only transport padding before delimiter line endings":
+    for padding in ["", " ", "\t", " \t \t"]:
+        let body = "--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
+        let parts = try parse_multipart(body, "b")
+        try expect_equal(parts.length(), 2)
+        try expect_equal(parts[0].headers.get("X-Label"), "first")
+        try expect_equal(parts[0].data, " \tpayload ".to_bytes())
+        try expect_equal(parts[1].data, "".to_bytes())
+
+    for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"]:
+        let body = "--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
+        try expect_equal(parse_multipart(body, "b").err().kind, "EBADMSG")

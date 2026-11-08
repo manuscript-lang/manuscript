@@ -328,7 +328,7 @@ export let sqrt2: Float = 1.4142135623730951
 // The square root of 1/2.
 export let sqrt_half: Float = 0.7071067811865476
 
-// Parses a decimal floating-point number using Manuscript's numeric syntax.
+// Parses a decimal floating-point number using Manuscript's numeric syntax, plus `NaN`, `Infinity`, `+Infinity` and `-Infinity`.
 export fn parse_float(text: String) Float!:
     return msrt_numbers_parse_float(text)
 

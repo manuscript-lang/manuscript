@@ -891,3 +891,42 @@ fn ownership_mermaid_uses_the_same_checked_modes_as_json() {
     }
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn review_and_diagram_accept_git_quoted_unicode_paths() {
+    let dir = scratch("quoted-diff-path");
+    std::fs::write(dir.join("café.ms"), include_str!("review_quoted/head.ms")).unwrap();
+    std::fs::write(
+        dir.join("change.patch"),
+        include_str!("review_quoted/change.patch"),
+    )
+    .unwrap();
+    let report = json(&ms(
+        &dir,
+        &["review", "café.ms", "--diff", "change.patch", "--json"],
+    ));
+    assert_eq!(report.get("base_checked"), Some(&Json::Bool(true)));
+    let findings = report.get("findings").unwrap().as_array().unwrap();
+    assert_eq!(findings.len(), 1);
+    assert!(report.pretty(ms_json::Escape::Plain).contains("café.ms"));
+    let diagram = json(&ms(
+        &dir,
+        &[
+            "diagram",
+            "café.ms",
+            "--view",
+            "flow",
+            "--entity",
+            "value",
+            "--diff",
+            "change.patch",
+            "--json",
+        ],
+    ));
+    assert!(
+        diagram
+            .pretty(ms_json::Escape::Plain)
+            .contains("CONTRACT #1")
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

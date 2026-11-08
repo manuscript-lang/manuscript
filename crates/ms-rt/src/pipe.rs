@@ -16,14 +16,18 @@
 //! it, like any other writer.
 use crate::desc::slot_drop;
 use crate::{alloc, promise};
+use core::cell::UnsafeCell;
 use ms_rt_abi::TypeDesc;
 use std::collections::VecDeque;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Status of `msrt_pipe_write`: the value was taken.
 pub const WRITTEN: i64 = 0;
 /// Status of `msrt_pipe_write`: the reader is gone, so the value was dropped.
 pub const CLOSED: i64 = 1;
+/// Status of `msrt_pipe_write`: the value is queued and the queue is above its capacity, so the
+/// writer should wait on a flush (back pressure) without asking the pipe again.
+pub const FULL: i64 = 2;
 
 struct Item {
     ptr: usize,
@@ -43,10 +47,94 @@ struct Pipe {
     flushes: Vec<i64>,
 }
 
-static PIPES: Mutex<Vec<Pipe>> = Mutex::new(Vec::new());
+thread_local! {
+    static OPS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
 
-fn pipes() -> std::sync::MutexGuard<'static, Vec<Pipe>> {
-    PIPES.lock().unwrap_or_else(|e| e.into_inner())
+/// Every 256th transfer on a thread passes a scheduler point and a cancellation check, so a task
+/// that always finds work still sees timers, time limits and cancellation. Call it where the
+/// operation holds nothing, because a cancel unwinds from here.
+fn cancellation_point() {
+    let n = OPS.with(|c| {
+        c.set(c.get().wrapping_add(1));
+        c.get()
+    });
+    if n & 0xff == 0 {
+        // SAFETY: called from a task of this thread's scheduler.
+        unsafe { crate::task::msrt_task_yield() };
+        if crate::fault::cancel_flag().load(core::sync::atomic::Ordering::Relaxed) != 0 {
+            crate::fault::msrt_cancelled();
+        }
+    }
+}
+
+/// A lock held for a few pointer moves, so a waiter spins instead of sleeping: a contended
+/// `std::sync::Mutex` costs a futex wait and wake (microseconds) per hand-over, which made a
+/// pipe between threads run 5 to 10 times slower than between tasks of one thread.
+struct Spin<T> {
+    locked: AtomicBool,
+    value: UnsafeCell<T>,
+}
+
+// SAFETY: the flag admits one holder at a time.
+unsafe impl<T: Send> Sync for Spin<T> {}
+
+struct SpinGuard<'a, T>(&'a Spin<T>);
+
+impl<T> Spin<T> {
+    const fn new(value: T) -> Spin<T> {
+        Spin {
+            locked: AtomicBool::new(false),
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    fn lock(&self) -> SpinGuard<'_, T> {
+        let mut spins = 0u32;
+        while self
+            .locked
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            // The holder may have been descheduled: give its core back after a short spin.
+            while self.locked.load(Ordering::Relaxed) {
+                spins += 1;
+                if spins < 256 {
+                    core::hint::spin_loop();
+                } else {
+                    std::thread::yield_now();
+                }
+            }
+        }
+        SpinGuard(self)
+    }
+}
+
+impl<T> core::ops::Deref for SpinGuard<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        // SAFETY: this guard holds the lock.
+        unsafe { &*self.0.value.get() }
+    }
+}
+
+impl<T> core::ops::DerefMut for SpinGuard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: this guard holds the lock.
+        unsafe { &mut *self.0.value.get() }
+    }
+}
+
+impl<T> Drop for SpinGuard<'_, T> {
+    fn drop(&mut self) {
+        self.0.locked.store(false, Ordering::Release);
+    }
+}
+
+static PIPES: Spin<Vec<Pipe>> = Spin::new(Vec::new());
+
+fn pipes() -> SpinGuard<'static, Vec<Pipe>> {
+    PIPES.lock()
 }
 
 fn slot(table: &mut [Pipe], id: i64) -> Option<&mut Pipe> {
@@ -116,7 +204,7 @@ pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
     }
 }
 
-/// Moves `value` into the pipe and answers `WRITTEN`, or `CLOSED` (the value is dropped) when the
+/// Moves `value` into the pipe and answers `WRITTEN` (`FULL` when the queue now exceeds the capacity), or `CLOSED` (the value is dropped) when the
 /// reader is gone. It never waits.
 ///
 /// # Safety
@@ -145,7 +233,14 @@ pub unsafe extern "C-unwind" fn msrt_pipe_write(
                 Some(reader) => Some(reader),
                 None => {
                     p.queue.push_back(item);
-                    return WRITTEN;
+                    let status = if p.queue.len() > p.capacity {
+                        FULL
+                    } else {
+                        WRITTEN
+                    };
+                    drop(table);
+                    cancellation_point();
+                    return status;
                 }
             },
             _ => {
@@ -212,6 +307,45 @@ pub extern "C-unwind" fn msrt_pipe_read(pipe: i64) -> i64 {
     id
 }
 
+/// Takes the next queued value without a promise: moves it to `out` and answers 1, or answers 0
+/// when nothing is queued (the reader then waits through `msrt_pipe_read`, or ends if
+/// `msrt_pipe_ended`). Like `msrt_pipe_read` it makes room for flushes waiting on the capacity.
+///
+/// # Safety
+/// `out` is writable memory for a value of `d`, the descriptor the writer used.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_pipe_try(
+    pipe: i64,
+    d: ms_rt_abi::ValueDesc,
+    out: *mut u8,
+) -> u8 {
+    cancellation_point();
+    let (item, released) = {
+        let mut table = pipes();
+        let Some(p) = slot(&mut table, pipe) else {
+            return 0;
+        };
+        let Some(item) = p.queue.pop_front() else {
+            return 0;
+        };
+        (item, take_flushes(p))
+    };
+    complete_flushes(released);
+    // SAFETY: the block holds an owned value of the writer's descriptor, which has the size `d`
+    // names; it moves out and the block is freed.
+    unsafe {
+        core::ptr::copy_nonoverlapping(item.ptr as *const u8, out, (*d).size as usize);
+        alloc::free(item.ptr as *mut u8);
+    }
+    1
+}
+
+/// Whether a read would finish with no value: every writer has closed and nothing is queued.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_pipe_ended(pipe: i64) -> i64 {
+    slot(&mut pipes(), pipe).is_none_or(|p| p.writers == 0 && p.queue.is_empty()) as i64
+}
+
 /// The flushes that no longer wait, once the queue has fallen to its capacity.
 fn take_flushes(p: &mut Pipe) -> Vec<i64> {
     if p.queue.len() <= p.capacity {
@@ -256,12 +390,6 @@ fn flush_cancelled(id: i64, pipe: usize, _bits: u32) -> bool {
         p.flushes.retain(|&f| f != id);
     }
     false
-}
-
-/// How many values are queued and not yet read.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_pipe_buffered(pipe: i64) -> i64 {
-    slot(&mut pipes(), pipe).map_or(0, |p| p.queue.len() as i64)
 }
 
 /// Closes one writing end. When the last one closes, a waiting read finishes with none.
@@ -333,6 +461,11 @@ mod tests {
     use crate::testutil::lock;
     use ms_rt_abi::Closure;
 
+    /// How many values are queued and not yet read.
+    fn msrt_pipe_buffered(pipe: i64) -> i64 {
+        slot(&mut pipes(), pipe).map_or(0, |p| p.queue.len() as i64)
+    }
+
     fn write_int(pipe: i64, mut v: i64) -> i64 {
         // SAFETY: `v` is an Int slot the call takes.
         unsafe { msrt_pipe_write(pipe, (&raw mut v).cast(), &msrt_desc_int) }
@@ -374,16 +507,47 @@ mod tests {
         crate::task::teardown();
     }
 
+    fn try_int(pipe: i64) -> Option<i64> {
+        let mut v = 0i64;
+        // SAFETY: `v` is an Int slot.
+        let some = unsafe { msrt_pipe_try(pipe, &msrt_desc_int, (&raw mut v).cast()) } == 1;
+        some.then_some(v)
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn try_takes_queued_values_without_a_promise_and_releases_flushes() {
+        let _g = lock();
+        let pipe = msrt_pipe_new(1);
+        assert_eq!(try_int(pipe), None);
+        assert_eq!(msrt_pipe_ended(pipe), 0);
+        write_int(pipe, 1);
+        write_int(pipe, 2);
+        write_int(pipe, 3);
+        let waiting = msrt_pipe_flush(pipe);
+        assert_eq!(promise::msrt_promise_done(waiting), 0);
+        assert_eq!(try_int(pipe), Some(1));
+        assert_eq!(try_int(pipe), Some(2));
+        assert_eq!(finish_unit(waiting), promise::OK);
+        assert_eq!(try_int(pipe), Some(3));
+        assert_eq!(try_int(pipe), None);
+        msrt_pipe_close_writer(pipe);
+        assert_eq!(msrt_pipe_ended(pipe), 1);
+        assert_eq!(try_int(pipe), None);
+        msrt_pipe_close_reader(pipe);
+        crate::task::teardown();
+    }
+
     #[test]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn a_flush_waits_above_capacity_and_a_closed_reader_refuses_writes() {
         let _g = lock();
         let pipe = msrt_pipe_new(1);
-        write_int(pipe, 1);
+        assert_eq!(write_int(pipe, 1), WRITTEN);
         let at_capacity = msrt_pipe_flush(pipe);
         assert_eq!(finish_unit(at_capacity), promise::OK);
-        write_int(pipe, 2);
-        write_int(pipe, 3);
+        assert_eq!(write_int(pipe, 2), FULL);
+        assert_eq!(write_int(pipe, 3), FULL);
         let waiting = msrt_pipe_flush(pipe);
         assert_eq!(promise::msrt_promise_done(waiting), 0);
         assert_eq!(finish(msrt_pipe_read(pipe)), Some(1));

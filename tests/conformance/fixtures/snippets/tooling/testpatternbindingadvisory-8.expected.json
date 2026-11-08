@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or non-nullary alternative case value of Box; cases:  (cases with payloads need call syntax)",
+        "message": "Box has no member value; a type name is followed only by an enum case",
         "position": {
           "file": "testpatternbindingadvisory-8.ms",
           "line": 9,
@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testpatternbindingadvisory-8.ms:9:25: resolution: unknown or non-nullary alternative case value of Box; cases:  (cases with payloads need call syntax)\n   |\n 9 |         box: return Box.value\n   |                         ^\n<DIR>/testpatternbindingadvisory-8.ms:10:22: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 10 |         none: return panic(message: \"empty\")\n    |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testpatternbindingadvisory-8.ms:9:25: resolution: Box has no member value; a type name is followed only by an enum case\n   |\n 9 |         box: return Box.value\n   |                         ^\n<DIR>/testpatternbindingadvisory-8.ms:10:22: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 10 |         none: return panic(message: \"empty\")\n    |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

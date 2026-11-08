@@ -51,6 +51,32 @@ test "TCP loopback writes reads half close and EOF":
     try client.output.close()
     try expect_true((try within(var server.input, 2.seconds())).is_none())
 
+test "a read cancelled by its timeout leaves the stream closable":
+    let listener = try listen("127.0.0.1:0")
+    var client = try connect(listener.address(), timeout: 2.seconds()).wait()
+    let _server = try listener.accept(2.seconds()).wait()
+
+    // The peer is silent, so the limit cancels the read mid-park. The borrowed stream still
+    // belongs to the caller: closing it afterwards frees the socket once.
+    try expect_true(within(var client.input, 50.milliseconds()).is_error())
+    try client.close()
+
+fn accept_all(listener: Listener) Unit!:
+    while true:
+        let _connection = try listener.accept().wait()
+    return ok(unit)
+
+test "a promise that accepts on a listener runs where the listener lives":
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    let _accepting = promise(fn: accept_all(listener))
+
+    // Accepts and connects register their connections with one network, which is not thread
+    // safe: running the accepts on another thread raced these connects and panicked.
+    for i in 0..2000:
+        var client = try connect(address, timeout: 2.seconds()).wait()
+        try client.close()
+
 test "closing the input leaves the output open and closing both ends the connection":
     let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), timeout: 2.seconds()).wait()
@@ -172,7 +198,8 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-    let query = (try within(var served.input, 2.seconds())).get()
+    // Read directly: `within` runs its read in a promise that may hop threads, which a thread-bound socket faults on.
+    let query = (try served.input.next()).get()
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]

@@ -1,0 +1,15 @@
+[Wiki](../index.md) › [Testing and conformance](index.md)
+
+# Numeric tests use boundary values and an exact reference
+
+Verified 2026-11-08: `@std/test/boundary.ms` supplies `int_boundaries`, `float_boundaries` and `finite_float_boundaries` (extremes and neighbors, ties, 2^53, subnormals, NaN, infinities), and `tests/e2e/testdata/stdlib/numeric-reference-boundaries.ms` checks the public numeric stdlib against `BigInt`/`BigRat` references over them. It found no stdlib bug; the failures it raised were reference mistakes:
+
+- `big_float_of_rat(x, 53).to_float()` rounds twice in the subnormal range; use `BigRat.to_float()` for a correctly rounded reference.
+- `math.round` sends ties toward +infinity, `BigRat.round` away from zero.
+- `Float.to_fixed` prints a negative value that rounds to zero as `-0`; `BigRat.to_fixed` drops the sign.
+- `Decimal` keeps 34 significant digits, so an exact `BigInt` product is a reference only when it fits.
+- `min`/`max` on Float follow the total order (NaN above all, ties return `left`, so signed zeros depend on argument order).
+
+Apply when: adding or changing a numeric stdlib function; add its cases to that fixture, or call the helper from a new one.
+Evidence: [helper](../../stdlib/test/boundary.ms), [fixture](../../tests/e2e/testdata/stdlib/numeric-reference-boundaries.ms).
+Verify: `ms test tests/e2e/testdata/stdlib/numeric-reference-boundaries.ms` reports 28 tests, 0 failed.

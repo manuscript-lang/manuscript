@@ -17,6 +17,8 @@ pub struct Checked {
     /// The checked program; absent when loading failed before checking.
     pub program: Option<Program>,
     pub diagnostics: Vec<Diagnostic>,
+    /// Links and embedded files the load depended on; watch mode follows them.
+    pub inputs: Vec<String>,
 }
 
 impl Checked {
@@ -69,6 +71,7 @@ pub fn check_graph_in(
         entry: graph.entry.clone(),
         program: None,
         diagnostics: graph.diagnostics.clone(),
+        inputs: graph.inputs.clone(),
     };
     if graph.modules.is_empty() && (!graph.library || !graph.diagnostics.is_empty()) {
         return checked;

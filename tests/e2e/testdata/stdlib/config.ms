@@ -24,6 +24,14 @@ test "dotenv ends a bare value only at a hash that starts it or follows a space"
     values.get("D").get("x") | try expect_equal("")
     values.get("E").get("x") | try expect_equal("x")
 
+test "dotenv keeps spaces and tabs inside a multiline quoted value":
+    let text = "A=\"hello  \nworld\"\nB='x \t\ny'\nC=`z   \nw` # c\nD=  \"one  \" \n"
+    let values = (parse_dotenv(text) | try expect_ok)
+    values.get("A").get("") | try expect_equal("hello  \nworld")
+    values.get("B").get("") | try expect_equal("x \t\ny")
+    values.get("C").get("") | try expect_equal("z   \nw")
+    values.get("D").get("") | try expect_equal("one  ")
+
 test "dotenv later duplicates replace earlier values":
     let values = (parse_dotenv("A=1\nB=2\nA=3\n") | try expect_ok)
     values.keys() | try expect_equal(["A", "B"])

@@ -6,3 +6,5 @@ Verified (2026-11-06, x86-64 Linux sandbox, 4 cores): a promise cost about 3.5 Â
 Apply when: touching `isolate.rs` idle accounting, `sched::wake`, or `reactor_wait`; a poster publishes its work, then unparks, then wakes if the target is flagged sleeping; a sleeper flags, then looks for work once more.
 Evidence: [`bench/perf/mailbox/README.md`](../../bench/perf/mailbox/README.md).
 Verify: `ms run bench/perf/mailbox/main.ms -- 100000 5`; `cargo test -p ms-rt remote_posts_never_miss_a_sleeping_scheduler`.
+
+Pipes (2026-11-08): a pipe transfer between threads cost 5 to 10 times a same-thread one because every item took the one table lock of all pipes three times and, contended, each hand-over was a futex wait and wake. The table lock is now a spin lock (a few pointer moves under it) and a write answers `FULL` itself instead of a second `msrt_pipe_buffered` call; the same pipeline runs 0.075 s typically (was 0.14 s best, 0.5 to 1.4 s otherwise). Evidence: [`bench/perf/pipe-pipeline/README.md`](../../bench/perf/pipe-pipeline/README.md).

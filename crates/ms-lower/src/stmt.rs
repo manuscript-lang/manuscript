@@ -154,7 +154,7 @@ impl<'a> FnLower<'a> {
                 // this return; the other paths still drop it.
                 let moved_before = self.closed_on_path.clone();
                 let x = match e {
-                    Some(e) => self.expr(e)?,
+                    Some(e) => self.returned_expr(e)?,
                     None => Val {
                         v: self.b.unit(),
                         own: false,
@@ -284,6 +284,23 @@ impl<'a> FnLower<'a> {
             return self.bind_closing(&b, x, cleanup.as_ref());
         }
         self.bind_pattern(pattern, x)
+    }
+
+    /// The value of a `return`. A borrow-returning function returns the entry of a container read
+    /// in place (`opt.view`), not a copy the caller would never release.
+    pub(crate) fn returned_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if self.b.func_mut().ret_borrowed
+            && let Some(shape) = self.borrowed_shape(e)?
+        {
+            let Some((present, entry)) = self.borrowed_read(shape, e)? else {
+                return Ok(Val {
+                    v: self.b.unit(),
+                    own: false,
+                });
+            };
+            return self.borrowed_optional(present, &entry);
+        }
+        self.expr(e)
     }
 
     /// The binding and read shape when `let name = value` or `if let name = value` can borrow
@@ -609,12 +626,34 @@ impl<'a> FnLower<'a> {
         if self.dead || self.prepared_indices.contains_key(&key) {
             return Ok(());
         }
+        self.access_receiver(left)?;
+        if self.dead {
+            return Ok(());
+        }
         let i = self.expr(index)?;
         if self.dead {
             return Ok(());
         }
         let at = self.borrow(i);
         self.prepared_indices.insert(key, at);
+        Ok(())
+    }
+
+    /// Reads the receiver `left` of an index inside a place (`grid[0]` in `grid[0][later()]`), so
+    /// its bounds or missing-key fault comes before the next index runs. A receiver that is a
+    /// plain variable or a field of one cannot fault and is skipped.
+    pub(crate) fn access_receiver(&mut self, left: &Expr) -> Result<(), Error> {
+        let mut root = left;
+        while let ExprKind::Member { left, .. } = &root.kind {
+            root = left;
+        }
+        if crate::mutation::index_parts(self.syms, &self.hir, root).is_none() {
+            return Ok(());
+        }
+        let read = self.expr(left)?;
+        if !self.dead && read.own {
+            self.drop_value(read.v);
+        }
         Ok(())
     }
 
@@ -1221,8 +1260,31 @@ impl<'a> FnLower<'a> {
 
     fn iterates_untouched_local(&self, iter: &Expr, body: &[Stmt]) -> bool {
         let mut root = iter;
-        while let ExprKind::Member { left, .. } = &root.kind {
-            root = left;
+        // `xs.field`, `xs[i]` and `xs.get(i)` borrow part of `xs` while `xs` is unchanged. Other method calls may return a new value (`entries()`), so they are not followed.
+        loop {
+            match &root.kind {
+                ExprKind::Member { left, .. }
+                | ExprKind::Index { left, .. }
+                | ExprKind::Apply {
+                    left,
+                    value: Some(_),
+                    ..
+                } => root = left,
+                ExprKind::Call { callee, .. } => {
+                    match (&callee.kind, self.hir.resolution(callee)) {
+                        (
+                            ExprKind::Member { left, .. },
+                            ms_check::api::hir::Resolution::Method(m),
+                        ) if m.name().is_some_and(|n| self.syms.str(n) == "get")
+                            && self.hir.ty(left).is(ms_check::api::types::Builtin::List) =>
+                        {
+                            root = left
+                        }
+                        _ => break,
+                    }
+                }
+                _ => break,
+            }
         }
         matches!(&root.kind, ExprKind::Name(_))
             && matches!(
@@ -1316,13 +1378,24 @@ impl<'a> FnLower<'a> {
         body: &[Stmt],
     ) -> Result<(), Error> {
         let item = if scalars { MTy::INT } else { MTy::STR };
-        // The checker keeps a borrowed text unchanged while the loop reads it: walk it in place.
+        // Scan borrowed text in place only when the body cannot change its source.
+        // Unlike plain-list iteration, chars()/scalar_values() promise a fresh snapshot.
         let text_var = if !text.own && untouched {
             let var = self.b.declare_var(MTy::STR, ms_mir::ir::Mode::Borrow);
             self.b.def_var(var, text.v);
             var
         } else {
-            self.bind_hidden(text)
+            // This copy supplies the snapshot of the list-producing operation we removed.
+            // A borrowed helper result may alias storage that the loop body replaces.
+            let snapshot = if text.own {
+                text
+            } else {
+                Val {
+                    v: self.clone_value(text.v),
+                    own: true,
+                }
+            };
+            self.bind_hidden(snapshot)
         };
         let empty = self.b.str_lit("");
         let keep = self.bind_hidden(Val {
@@ -1537,15 +1610,10 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };
-                let frozen = self
-                    .hir
-                    .stmt(s)
-                    .loop_binding
-                    .is_some_and(|b| self.cx.shared(b.uid));
-                let var = if !it.own && (frozen || self.iterates_untouched_local(iter, body)) {
-                    // The checker keeps the list unchanged while the loop variable borrows it
-                    // (or the body never names it): walk it in place instead of copying it, so
-                    // a borrow-returning function can hand back its elements.
+                let var = if !it.own {
+                    // The checker holds the iterable's source origins for the entire loop,
+                    // even when its scalar elements need no shared binding. Preserve the
+                    // lowered borrow, including results of source functions and methods.
                     let ty = self.ty_of(it.v);
                     let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
                     self.b.def_var(var, it.v);

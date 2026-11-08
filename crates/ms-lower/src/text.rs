@@ -621,6 +621,10 @@ impl<'a> FnLower<'a> {
     /// A text literal with interpolations.
     pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
         let mut acc: Option<Val> = None;
+        // Scanning the later parts at each part would be quadratic in a long interpolation.
+        let last_try = parts
+            .iter()
+            .rposition(|l| matches!(l, TextPart::Interp(e) if crate::mutation::has_try(e)));
         for (n, p) in parts.iter().enumerate() {
             let piece = match p {
                 TextPart::Lit(s) => {
@@ -650,9 +654,7 @@ impl<'a> FnLower<'a> {
                 }
             });
             // A later part may return early (`try`): the text built so far is a temporary.
-            let later_try = parts[n + 1..]
-                .iter()
-                .any(|l| matches!(l, TextPart::Interp(e) if crate::mutation::has_try(e)));
+            let later_try = last_try.is_some_and(|t| t > n);
             if later_try && let Some(a) = acc {
                 acc = Some(self.hold_temp(a));
             }
