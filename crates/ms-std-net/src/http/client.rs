@@ -1388,9 +1388,13 @@ impl BodyState {
             Some(stream) => h2_framing(&head, method, stream),
             None => h1::response_framing(&head, method).unwrap_or(Framing::UntilClose),
         };
+        // A 101 hands the connection to another protocol, and a response with both chunked coding
+        // and a length may have been framed differently by whoever sent it.
         let keep_alive = wire.h2.is_none()
             && h1::keep_alive(head.minor, &head.fields)
-            && framing != Framing::UntilClose;
+            && framing != Framing::UntilClose
+            && head.status != 101
+            && !h1::conflicting_framing(&head.fields);
         let empty = matches!(framing, Framing::None | Framing::Length(0));
         let gzip = gzip && !empty;
         BodyState {
@@ -2288,6 +2292,38 @@ mod tests {
         assert!(matches!(
             c.send(request("GET", &address, "/")),
             Err(HttpErr::Closed)
+        ));
+    }
+
+    #[test]
+    fn does_not_reuse_a_connection_whose_response_had_two_framings() {
+        let (address, accepted) = serve(|s, _| {
+            while let Some(_request) = read_request(s) {
+                reply(
+                    s,
+                    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Length: 50\r\n\r\n2\r\nok\r\n0\r\n\r\n",
+                );
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        for _ in 0..2 {
+            assert_eq!(text(&c.send(request("GET", &address, "/")).unwrap()), "ok");
+        }
+        assert_eq!(accepted.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn refuses_a_response_head_with_a_bare_line_feed() {
+        let (address, _) = serve(|s, _| {
+            if read_request(s).is_some() {
+                s.write_all(b"HTTP/1.1 200 OK\nContent-Length: 2\n\nok")
+                    .unwrap();
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        assert!(matches!(
+            c.send(request("GET", &address, "/")),
+            Err(HttpErr::Failed(_))
         ));
     }
 

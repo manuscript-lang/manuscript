@@ -31,9 +31,17 @@ impl Event {
     }
 }
 
+/// The most parameter and intermediate bytes a CSI sequence may carry before it is dropped. Real
+/// sequences (modified keys, the kitty keyboard protocol) are far shorter; the bound keeps a peer
+/// that never sends a final byte from growing the buffer, and the decoder from rescanning it, without end.
+const MAX_CSI_PARAMS: usize = 128;
+
 #[derive(Default)]
 pub struct Decoder {
     pending: Vec<u8>,
+    /// Inside a CSI sequence that passed `MAX_CSI_PARAMS`: its remaining bytes are dropped up to
+    /// the final byte, so they never leak as text.
+    discarding: bool,
 }
 
 /// What the start of a byte run holds.
@@ -96,6 +104,8 @@ enum Escape {
     Decoded(Event, usize),
     /// An unrecognized sequence, dropped over this many bytes.
     Dropped(usize),
+    /// A CSI sequence past `MAX_CSI_PARAMS`: drop this many bytes and the rest of it as it arrives.
+    Overlong(usize),
 }
 
 fn tilde_key(n: i64) -> Option<&'static str> {
@@ -190,6 +200,9 @@ fn escape(buf: &[u8]) -> Escape {
     match buf[1] {
         b'[' => {
             for (i, &c) in buf.iter().enumerate().skip(2) {
+                if i - 2 >= MAX_CSI_PARAMS && (0x20..=0x3f).contains(&c) {
+                    return Escape::Overlong(i);
+                }
                 if (0x40..=0x7e).contains(&c) {
                     return match csi(&buf[2..i], c) {
                         Some(event) => Escape::Decoded(event, i + 1),
@@ -275,7 +288,18 @@ impl Decoder {
             }
         }
         while let Some(&b) = buf.first() {
-            if b == 0x1b {
+            if self.discarding {
+                // Parameter bytes are dropped; the final byte ends the sequence, and any other
+                // byte ends it and is decoded on its own.
+                match b {
+                    0x20..=0x3f => buf = &buf[1..],
+                    0x40..=0x7e => {
+                        self.discarding = false;
+                        buf = &buf[1..];
+                    }
+                    _ => self.discarding = false,
+                }
+            } else if b == 0x1b {
                 flush_text(&mut out, &mut text);
                 match escape(buf) {
                     Escape::Incomplete => {
@@ -287,6 +311,10 @@ impl Decoder {
                         buf = &buf[n..];
                     }
                     Escape::Dropped(n) => buf = &buf[n..],
+                    Escape::Overlong(n) => {
+                        self.discarding = true;
+                        buf = &buf[n..];
+                    }
                 }
             } else if b < 0x20 || b == 0x7f {
                 flush_text(&mut out, &mut text);
@@ -386,6 +414,58 @@ mod tests {
                 key("space", false, true, false),
             ]
         );
+    }
+
+    /// Joins adjacent text events: each call to `feed` ends its own text run.
+    fn merged(events: Vec<Event>) -> Vec<Event> {
+        let mut out: Vec<Event> = Vec::new();
+        for event in events {
+            match (out.last_mut(), event) {
+                (Some(Event::Text(prev)), Event::Text(more)) => prev.extend(more),
+                (_, event) => out.push(event),
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn an_overlong_csi_sequence_is_dropped_whole_however_it_is_split() {
+        let mut long = b"\x1b[".to_vec();
+        long.extend(core::iter::repeat_n(b'1', MAX_CSI_PARAMS + 5));
+        long.extend_from_slice(b"Aok\x1b[Bz");
+        let mut whole = Decoder::default();
+        let expect = vec![text("ok"), key("down", false, false, false), text("z")];
+        assert_eq!(whole.feed(&long), expect);
+        for step in [1, 2, 7, 64] {
+            let mut d = Decoder::default();
+            let mut got = Vec::new();
+            for piece in long.chunks(step) {
+                got.extend(d.feed(piece));
+            }
+            assert_eq!(merged(got), expect, "chunks of {step}");
+            assert!(!d.pending());
+        }
+        // The buffer stays small while a sequence never ends.
+        let mut d = Decoder::default();
+        d.feed(b"\x1b[");
+        for _ in 0..10_000 {
+            d.feed(b"1;");
+        }
+        assert!(d.pending.len() <= MAX_CSI_PARAMS + 2);
+        assert_eq!(d.feed(b"mx"), vec![text("x")]);
+        // A sequence at the limit still decodes; a byte that cannot be part of one ends the drop.
+        let mut at_limit = b"\x1b[".to_vec();
+        at_limit.extend(core::iter::repeat_n(b'1', MAX_CSI_PARAMS - 1));
+        at_limit.push(b'A');
+        assert_eq!(
+            Decoder::default().feed(&at_limit),
+            vec![key("up", false, false, false)]
+        );
+        let mut d = Decoder::default();
+        let mut cut = b"\x1b[".to_vec();
+        cut.extend(core::iter::repeat_n(b'1', MAX_CSI_PARAMS + 1));
+        cut.push(b'\r');
+        assert_eq!(d.feed(&cut), vec![key("enter", false, false, false)]);
     }
 
     #[test]
