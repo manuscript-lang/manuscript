@@ -28,3 +28,9 @@ Measured on `c6fef864`: the `later_try`-style hold appears in `eval_args`, `nati
 ## Stage 3 findings
 
 Record construct and native calls use `stage_arg`/`release_staged` too. Counting how often each `copyelim` sub-pass changes a module over the e2e and conformance corpora (453 and 3887 fixtures): `borrow_local_copies` 396, `move_dead_sources_across_blocks` 327, `move_dead_sources` 318, `borrow_str_phis` 215, `borrow_str_copies_across_blocks` 124, `run_func` 90, `unbox_dead_sources` 62, `unbox_dead_options` 5, `borrow_opt_str_reads` 1. Most still fire because they also elide the copy of a written `.clone()` whose source dies, which is an optimization, not a lowering hack. `borrow_opt_str_reads` (one firing, a refcount-era shape) is deleted. `make copy-check` currently fails on `main` in `tools/copy-check.ms:62` (`env` moved in a loop), so the lowering-copy count could not be re-measured; that needs its own fix.
+
+## Close failures and bounds checks (#3075, #3076)
+
+A mutator that discards a resource entry (`set`, `remove`, `splice`, map `add`/`remove`) closes it in place; a failed close faulted at once, leaving the entry in the container so the unwind closed it again. The failure is now recorded (`defer_close_failures`) and the fault comes after the mutation removed the entry (`fault_deferred_close`), so each entry closes once and every entry of a `splice` is attempted.
+
+`insert`, `replace` and `remove` took the list out of its variable before the bounds check, so a fault left the variable's cleanup with an empty slot; Windows then closed nothing in the list (#3076). They now check the index while the list is still in the variable (`precheck_list_index`).

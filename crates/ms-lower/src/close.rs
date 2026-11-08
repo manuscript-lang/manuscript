@@ -259,6 +259,31 @@ fn close_at(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MTy) {
     close_error_fault(b, r);
 }
 
+/// Closes the value at `ptr` and records a failed close in `failed` instead of faulting.
+fn close_at_deferred(
+    b: &mut FuncBuilder<'_>,
+    kind: &CloseKind,
+    ptr: Value,
+    ty: MTy,
+    failed: ms_mir::builder::Var,
+) {
+    let r = close_at_result(b, kind, ptr, ty);
+    let rty = b.ty(r);
+    if let TyKind::Alt(a) = b.m.types.kind(rty).clone()
+        && let Some(err) = b.m.alts[a.index()].error_case()
+    {
+        let tag = b.alt_tag(r);
+        let k = b.iconst(err as i64);
+        let is_err = b.icmp(Cc::Eq, tag, k);
+        let prev = b.use_var(failed);
+        let any = b.binop(Op::Or, prev, is_err);
+        b.def_var(failed, any);
+    }
+    if b.m.needs_drop(rty) {
+        b.emit(Op::Drop, &[r], Imm::None, None);
+    }
+}
+
 /// Closes the value at `ptr` and drops the result: for the cleanup stack a fault runs, where the
 /// failure is already being reported.
 fn close_at_silent(b: &mut FuncBuilder<'_>, kind: &CloseKind, ptr: Value, ty: MTy) {
@@ -1412,6 +1437,38 @@ impl FnLower<'_> {
         v
     }
 
+    /// Starts deferring close failures: a mutator that discards entries closes them in place,
+    /// and the entry is gone once the mutation ran, so the fault comes after it.
+    pub(crate) fn defer_close_failures(&mut self) {
+        let failed = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+        let no = self.b.bconst(false);
+        self.b.def_var(failed, no);
+        self.deferred_close = Some(failed);
+    }
+
+    /// Faults when a close deferred by `defer_close_failures` failed.
+    pub(crate) fn fault_deferred_close(&mut self) {
+        let Some(failed) = self.deferred_close.take() else {
+            return;
+        };
+        if self.dead {
+            return;
+        }
+        let bad = self.b.use_var(failed);
+        let (fail, good) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(bad, fail, &[], good, &[]);
+        self.b.seal_block(fail);
+        self.b.seal_block(good);
+        self.b.switch_to(fail);
+        let msg = self
+            .b
+            .str_lit("a resource could not be closed: its close returned an error");
+        let ext = crate::text::runtime_fn(self.b.m, "msrt_fault_string", &[MTy::STR], MTy::UNIT);
+        self.b.call_rt(ext, &[msg]);
+        self.b.unreachable();
+        self.b.switch_to(good);
+    }
+
     /// Closes the value of checked type `ty` stored at `ptr`, in place, when it holds a
     /// resource: shielded like any other close.
     pub(crate) fn close_discarded_at(&mut self, ty: &ct::Ty, ptr: Value) -> Result<(), Error> {
@@ -1426,7 +1483,11 @@ impl FnLower<'_> {
     /// Closes the value of type `ty` at `ptr` with `kind`, shielded like any other close.
     pub(crate) fn close_at_shielded(&mut self, kind: &CloseKind, ptr: Value, ty: MTy) {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        close_at(&mut self.b, kind, ptr, ty);
+        if let Some(failed) = self.deferred_close {
+            close_at_deferred(&mut self.b, kind, ptr, ty, failed);
+        } else {
+            close_at(&mut self.b, kind, ptr, ty);
+        }
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 
