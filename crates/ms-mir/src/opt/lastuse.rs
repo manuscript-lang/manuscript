@@ -122,8 +122,8 @@ struct Index {
     slots: Vec<bool>,
     /// Original drops deleted so far, per block and instruction index.
     removed: Vec<Vec<bool>>,
-    /// Drops to insert, per block: (after instruction or block start, value), in emission order.
-    pending: Vec<Vec<(Option<usize>, Value)>>,
+    /// Drops to insert, per block and anchor, in emission order at that anchor.
+    pending: Vec<HashMap<Option<usize>, Vec<Value>>>,
     /// Blocks holding a pending drop of each value.
     pending_blocks: ValueMap<Vec<usize>>,
     /// Predecessors of each block (once per edge), kept current as edge blocks are added.
@@ -142,7 +142,7 @@ impl Index {
                 .iter()
                 .map(|b| vec![false; b.insts.len()])
                 .collect(),
-            pending: vec![Vec::new(); f.blocks.len()],
+            pending: vec![HashMap::new(); f.blocks.len()],
             pending_blocks: ValueMap::new(),
             preds: vec![Vec::new(); f.blocks.len()],
         };
@@ -167,7 +167,7 @@ impl Index {
 
     fn add_block(&mut self) {
         self.removed.push(Vec::new());
-        self.pending.push(Vec::new());
+        self.pending.push(HashMap::new());
         self.preds.push(Vec::new());
     }
 
@@ -178,29 +178,23 @@ impl Index {
 
     /// Positions in `bi` of the pending drops of `v`.
     fn pending_drops(&self, bi: usize, v: Value) -> impl Iterator<Item = Pos> + '_ {
-        let pending = &self.pending[bi];
-        pending
-            .iter()
-            .enumerate()
-            .filter(move |(_, (_, w))| *w == v)
-            .map(move |(n, (anchor, _))| Pos {
-                idx: *anchor,
-                after: 1 + pending[..n].iter().filter(|(a, _)| a == anchor).count(),
+        self.pending[bi].iter().flat_map(move |(anchor, drops)| {
+            drops.iter().enumerate().filter_map(move |(n, w)| {
+                (*w == v).then_some(Pos {
+                    idx: *anchor,
+                    after: n + 1,
+                })
             })
+        })
     }
 
     /// Records a drop of `v` directly behind `pos`: behind the instruction, ahead of the drops
     /// already placed there, or behind the pending drop `pos` names.
     fn insert_pending(&mut self, bi: usize, pos: Pos, v: Value) {
-        let group: Vec<usize> = (0..self.pending[bi].len())
-            .filter(|&n| self.pending[bi][n].0 == pos.idx)
-            .collect();
-        let at = if pos.after == 0 {
-            group.first().copied().unwrap_or(self.pending[bi].len())
-        } else {
-            group[pos.after - 1] + 1
-        };
-        self.pending[bi].insert(at, (pos.idx, v));
+        self.pending[bi]
+            .entry(pos.idx)
+            .or_default()
+            .insert(pos.after, v);
         let blocks = self.pending_blocks.get_or_default(v);
         if !blocks.contains(&bi) {
             blocks.push(bi);
@@ -222,12 +216,9 @@ impl Index {
                 loc,
             };
             let old = std::mem::take(&mut b.insts);
-            let mut out = Vec::with_capacity(old.len() + pending.len());
-            // Group by anchor once so a block costs its instructions plus its pending drops.
-            let mut by_anchor: HashMap<Option<usize>, Vec<Value>> = HashMap::new();
-            for (anchor, v) in pending {
-                by_anchor.entry(*anchor).or_default().push(*v);
-            }
+            let count: usize = pending.values().map(Vec::len).sum();
+            let mut out = Vec::with_capacity(old.len() + count);
+            let by_anchor = pending;
             for v in by_anchor.get(&None).into_iter().flatten() {
                 out.push(drop_inst(*v, b.term_loc));
             }
@@ -694,4 +685,67 @@ fn candidate(
         });
     }
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pending_drop_positions_preserve_anchor_order() {
+        let f = Func::new("pending", Vec::new(), crate::types::Ty::UNIT);
+        let mut ix = Index::new(&f);
+        ix.add_block();
+        // Interleave block-start and instruction anchors; inserting before or after an
+        // existing drop must update its ordinal only within that anchor's group.
+        let a = Value(0);
+        let b = Value(1);
+        let c = Value(2);
+        ix.insert_pending(0, Pos::at(5), a);
+        ix.insert_pending(0, Pos::START, b);
+        ix.insert_pending(0, Pos::at(2), a);
+        ix.insert_pending(0, Pos::at(5), b);
+        ix.insert_pending(
+            0,
+            Pos {
+                idx: Some(5),
+                after: 1,
+            },
+            c,
+        );
+        ix.insert_pending(
+            0,
+            Pos {
+                idx: None,
+                after: 1,
+            },
+            a,
+        );
+        assert_eq!(ix.pending[0][&Some(5)], [b, c, a]);
+        assert_eq!(ix.pending[0][&Some(2)], [a]);
+        assert_eq!(ix.pending[0][&None], [b, a]);
+        let mut positions: Vec<_> = ix.pending_drops(0, a).collect();
+        positions.sort_unstable();
+        assert_eq!(
+            positions,
+            [
+                Pos {
+                    idx: None,
+                    after: 2
+                },
+                Pos {
+                    idx: Some(2),
+                    after: 1
+                },
+                Pos {
+                    idx: Some(5),
+                    after: 3
+                },
+            ]
+        );
+        assert_eq!(ix.pending_blocks.get(&a).unwrap(), &[0]);
+        ix.add_block();
+        ix.insert_pending(1, Pos::START, a);
+        assert_eq!(ix.pending_blocks.get(&a).unwrap(), &[0, 1]);
+    }
 }

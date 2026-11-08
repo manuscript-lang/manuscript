@@ -35,6 +35,9 @@ Evidence: [shared graph and metadata regressions](../../crates/ms-check/src/type
 Verified: type interning deduplicates completed input nodes within each `intern` or `shape` query, preserving first representatives, flags and child order. Reuse empty memo storage, never answers across queries. Bypass recursive frames for leaves and leave short leaf-only rows uncached; cache wide rows too so shallow fanout cannot become quadratic.
 Evidence: [type identity regressions](../../crates/ms-check/src/tytable_tests.rs).
 
+Verified: last-use pending drops are grouped by instruction anchor when recorded, not rediscovered by scanning every pending drop in the block for each insertion. Preserve ordinal order within each anchor: an owner may follow a family member's already-pending drop. Group iteration order must not affect placement; emit anchors in original instruction order.
+Evidence: [pending-drop ordering and single-block regressions](../../crates/ms-mir/tests/opt_lastuse.rs), #2940.
+
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Evidence: [method registration and lookup](../../crates/ms-check/src/contracts.rs), [candidate regressions](../../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../../crates/ms-check/src/editor.rs).
