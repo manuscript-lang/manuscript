@@ -446,6 +446,8 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     // SAFETY: the lend ended with the job.
     unsafe { crate::task::pin_current(false) };
     if got & WAIT_CANCELLED != 0 {
+        // The unwind skips this frame, so the output is released here.
+        drop(output);
         crate::glue::cancelled();
     }
     output

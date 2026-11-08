@@ -226,6 +226,7 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// live-block count.
 pub fn teardown() {
     crate::promise::teardown();
+    crate::sched::release_mail();
     fault::retire_hdr();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
