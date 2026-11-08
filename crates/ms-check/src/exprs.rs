@@ -71,7 +71,9 @@ pub(crate) fn numeric(syms: ms_syntax::Names, t: &Ty) -> bool {
 /// An unsuffixed number literal, possibly signed.
 pub(crate) fn is_plain_literal(syms: ms_syntax::Names, e: &Expr) -> bool {
     match &e.kind {
-        ExprKind::Number(t) => !ms_syntax::number::canonical(syms.str(t)).ends_with('d'),
+        ExprKind::Number(t) => {
+            !ms_syntax::number::is_decimal(&ms_syntax::number::canonical(syms.str(t)))
+        }
         ExprKind::Unary {
             op: UnaryOp::Neg | UnaryOp::Plus,
             operand,
@@ -86,7 +88,7 @@ fn literal_tree_fractional(syms: ms_syntax::Names, e: &Expr) -> Option<bool> {
     match &e.kind {
         ExprKind::Number(t) => {
             let text = ms_syntax::number::canonical(syms.str(t));
-            (!text.ends_with('d')).then(|| text.contains(['.', 'e', 'E']))
+            (!ms_syntax::number::is_decimal(&text)).then(|| ms_syntax::number::is_fractional(&text))
         }
         ExprKind::Unary {
             op: UnaryOp::Neg | UnaryOp::Plus,
@@ -381,7 +383,7 @@ impl Checker {
         negated: bool,
         mut i: Info,
     ) -> Info {
-        if text.ends_with('d') {
+        if ms_syntax::number::is_decimal(text) {
             let ok = self
                 .sym(n("Decimal"))
                 .zip(self.session.standard_symbol("Decimal"))
@@ -400,7 +402,7 @@ impl Checker {
                     "Decimal literal is outside the exact 34-digit representable grid; shorten it to 34 significant digits",
                 );
             }
-        } else if text.contains(['.', 'e', 'E']) {
+        } else if ms_syntax::number::is_fractional(text) {
             // An expected sized float type gives the literal that type.
             let narrow = expected
                 .filter(|t| float_bits(self.syms, t) == Some(32) && self.syms.str(t.id) != "Float");
@@ -1029,7 +1031,7 @@ impl Checker {
         // A negated literal takes its sized type from the expected type; -128 fits Int8.
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
-            && !ms_syntax::number::canonical(self.syms.str(t)).ends_with('d')
+            && !ms_syntax::number::is_decimal(&ms_syntax::number::canonical(self.syms.str(t)))
         {
             let literal = self.infer_number(
                 operand,
