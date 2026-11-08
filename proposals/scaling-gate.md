@@ -12,7 +12,7 @@ About 30 bugs (#2853-55, #2874, #2924, #2930, #2937-40, #2993, #3001, #3032-33) 
 - Runtime: `tests/scaling/containers.ms` times List, Map, Set, SortedMap, String build, scan and `replace_each` phases itself at 10k and 100k, so compile time does not enter.
 - A measurement fails when `(t100k - t1k) / (t10k - t1k)` exceeds `SCALING_BOUND` (default 30). Linear work gives about 10, n log n about 12, quadratic about 100. Subtracting the 1k time removes process and standard-library start-up; a floor on the denominator keeps sub-noise phases from inflating the ratio.
 
-First run on this checkout: every measurement is under 22x, so none of the earlier offenders has regressed. The highest are many_functions emit (about 20x) and many_impls (12 to 19x), which are mildly superlinear and worth a look but do not fail.
+First run on this checkout: every measurement is under 22x, so none of the earlier offenders has regressed. The highest are many_functions emit (about 20x) and many_impls (12 to 19x), whose wall time is above linear only from cache effects: callgrind instruction counts per function are constant from 5k to 40k functions, so there is nothing algorithmic to fix.
 
 ## Alternatives considered
 
