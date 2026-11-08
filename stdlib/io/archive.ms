@@ -186,15 +186,22 @@ export fn decompressed(
 
     return through[Bytes, Bytes](input, step)
 
-// Reads the octal (or base-256) size field of a tar header block.
+// Reads the octal (or base-256) size field of a tar header block; -1 when the size is beyond any real member.
 fn tar_size(block: Bytes) Int:
     let first = block.get(124, 0).to_int()
     var size = 0
 
     if first >= 128:
         size = first - 128
+
         for i in 125..136:
+            // Past 2^52 the size is not a real member; -1 lets the caller reject it before the arithmetic overflows.
+            if size >= 4503599627370496: return -1
+
             size = size * 256 + block.get(i, 0).to_int()
+
+        if size >= 4503599627370496: return -1
+
         return size
 
     for i in 124..136:
@@ -265,6 +272,15 @@ type TarEntries:
     parents: Set[String]
 
 impl TarEntries:
+    // Fails with `EOVERFLOW` when a member of `size` data bytes exceeds `max_entry_bytes` or would take the archive past `max_bytes`.
+    fn check_size(size: Int) Unit!:
+        let over: Unit! = error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
+        if let most = self.options.max_entry_bytes:
+            if size > most: return over
+        if let most = self.options.max_bytes:
+            if self.total + size > most: return over
+        return ok(unit)
+
     // Bytes of the member at the start of the buffer, or 0 while its end has not arrived.
     fn member_length() Int!:
         var at = 0
@@ -279,11 +295,18 @@ impl TarEntries:
             let flag = block.get(156, 0).to_int()
             var size = tar_size(block)
             var padded = 0
+            if size < 0: return error(
+                Error("archive: invalid archive", kind: "EBADMSG")
+            )
 
             // 'x', 'g', 'L' and 'K' carry data for the header that follows them.
             let extension = flag == 120 or flag == 103 or flag == 76 or flag == 75
             if not extension and override >= 0: size = override
             padded = (size + 511) / 512 * 512
+
+            // Refuse a member that is over a limit from its header, before any of its data is buffered.
+            if not extension and padded > 0:
+                try self.check_size(size)
             at += 512
             if (
                 flag == 53
