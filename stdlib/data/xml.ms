@@ -146,6 +146,17 @@ impl Reader:
 
         return error(Error("XML: invalid data", kind: "EBADMSG"))
 
+    // XML comments cannot contain a double hyphen or end with a hyphen.
+    var fn comment() String!:
+        try self.expect("<!--")
+
+        let text = try self.take_until("-->")
+        if text.contains("--") or text.ends_with("-"): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        return ok(text)
+
     var fn name() String!:
         var out = StringBuilder()
         var first = true
@@ -172,9 +183,7 @@ impl Reader:
 
                 let _pi = try self.take_until("?>")
             else if self.looking_at("<!--"):
-                self.at += 4
-
-                let _comment = try self.take_until("-->")
+                let _comment = try self.comment()
             else if self.looking_at("<!DOCTYPE"):
                 var depth = 0
 
@@ -261,8 +270,7 @@ impl Reader:
                 return ok(XmlElement(name, attributes, children))
 
             if self.looking_at("<!--"):
-                self.at += 4
-                children.append(XmlComment(try self.take_until("-->")))
+                children.append(XmlComment(try self.comment()))
             else if self.looking_at("<![CDATA["):
                 self.at += 9
                 children.append(XmlText(try self.take_until("]]>")))

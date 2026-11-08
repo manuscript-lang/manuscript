@@ -63,3 +63,26 @@ test "entity decoding is linear in the text":
     // A quadratic decoder would take minutes on this many entities.
     let big = parse("<a>{"&amp;".repeat(100000).get()}</a>").get()
     try expect_equal(big.text().scalar_length(), 100000)
+
+test "malformed comments fail inside before and after the root":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for comment in [
+        "<!--a--b-->", "<!--a--->", "<!--a\n--b-->", "<!--a---->", "<!--open"
+    ]:
+        try expect_equal(parse("<a>{comment}</a>"), malformed)
+        try expect_equal(parse("{comment}<a/>"), malformed)
+        try expect_equal(parse("<a/>{comment}"), malformed)
+
+test "valid comments preserve text and leave other delimited constructs alone":
+    for contents in ["", "a-b", "-a", "a\n-b", "é - 😀", "&amp; &#65;"]:
+        let comment = "<!--{contents}-->"
+        let inside = "<a>{comment}</a>"
+        let node = try parse(inside)
+        try expect_equal(node.children(), [XmlNode.XmlComment(contents.clone())])
+        try expect_equal(stringify(node), inside)
+        try expect_equal(stringify(try parse("{comment}<a/>{comment}")), "<a/>")
+
+    let node = try parse("<a><!----><!--a-b--><![CDATA[x--y]]><?p x--y?></a>")
+    try expect_equal(node.children().length(), 3)
+    try expect_equal(node.text(), "x--y")
