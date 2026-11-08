@@ -10,7 +10,7 @@ Native filename separators must survive URI generation. On Unix a backslash is a
 
 Generated import paths need Manuscript string escaping, including literal braces; generic JSON/TOML/Go quoting does not preserve source meaning. Omit paths the import grammar cannot express, rather than replacing a Unix filename backslash with a separator. [Import hint regressions](../../crates/ms-driver/tests/import_hints.rs) check generated paths by parsing them back.
 
-Import edits must use lexical statement boundaries, not delimiter characters in line text. A `)` inside a comment is not the end of a grouped import; inserting a first import must also leave a blank-terminated effect header at the top of its file. [Editing regressions](../../crates/ms-lsp/tests/editing_regressions.rs) apply the edits, recheck the source and preserve its effect permissions in LF and CRLF.
+Import edits, including unused-import lint fixes, must use lexical statement boundaries, not delimiter characters in line text. Quotes in grouped-import comments are not module-path delimiters; reuse one lazily lexed token list per linted module. A `)` inside a comment is not the end of a grouped import; inserting a first import must also leave a blank-terminated effect header at the top of its file. [Editing regressions](../../crates/ms-lsp/tests/editing_regressions.rs) apply the edits, recheck the source and preserve its effect permissions in LF and CRLF.
 
 Apply when: changing language-server analysis caching, URI encoding, workspaces, or scheduling.
 Evidence: [analysis](../../crates/ms-lsp/src/analysis.rs), [workspace](../../crates/ms-lsp/src/workspace.rs), [overlays](../../crates/ms-driver/src/project/overlay.rs), [snapshot tests](../../crates/ms-lsp/tests/snapshots.rs).
