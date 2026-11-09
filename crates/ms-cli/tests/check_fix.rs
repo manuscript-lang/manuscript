@@ -194,6 +194,24 @@ fn fix_removes_a_group_of_only_redundant_prelude_imports() {
 }
 
 #[test]
+fn fix_adds_each_missing_import_once() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-import-once-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/missing_imports.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert_eq!(fixed.matches("import Duration").count(), 1, "{fixed}");
+    assert_eq!(fixed.matches("import Bytes").count(), 1, "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn conversion_fix_never_rewrites_a_compound_assignment_target() {
     let dir = std::env::temp_dir().join(format!("ms-cli-compound-fix-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

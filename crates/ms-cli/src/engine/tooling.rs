@@ -344,7 +344,15 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
     }
     let (mut applied, mut edited) = (0, 0);
     for (path, mut file_fixes) in by_file {
-        file_fixes.sort_by_key(|f| (f.pos.offset, f.end.offset));
+        // Equal fixes must sit next to each other for `dedup`: several diagnostics can ask
+        // for the same import while others ask for different ones at the same offset.
+        file_fixes.sort_by(|a, b| {
+            (a.pos.offset, a.end.offset, &a.replacement).cmp(&(
+                b.pos.offset,
+                b.end.offset,
+                &b.replacement,
+            ))
+        });
         file_fixes.dedup();
         let Ok(mut text) = std::fs::read_to_string(&path) else {
             continue;
