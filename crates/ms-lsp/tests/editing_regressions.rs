@@ -678,3 +678,14 @@ fn whitespace_actions_preserve_multiline_string_data() {
         }
     }
 }
+
+#[test]
+fn completion_distinguishes_multiline_payload_and_interpolation() {
+    for newline in ["\n", "\r\n"] {
+        let source = "fn greet(name: String) String:\n    return \"\"\"\n        hello {name.}\n        \"\"\"\n".replace('\n', newline);
+        let found = labels(&source, 2, 20);
+        assert!(found.iter().any(|l| l == "trim"), "{found:?}");
+        let raw = "fn greet(name: String) String:\n    return r\"\"\"\n        {\"name\": name.member}\n        \"\"\"\n".replace('\n', newline);
+        assert!(labels(&raw, 2, 13).is_empty());
+    }
+}
