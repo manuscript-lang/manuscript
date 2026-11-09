@@ -665,10 +665,7 @@ export fn binomial(n: Int, k: Int) BigInt!:
     if k > n:
         return ok(msstd_bigint_from_int(0))
 
-    var choose = k
-    if n - k < k:
-        choose = n - k
-
+    let choose = if n - k < k: n - k else: k
     var result = msstd_bigint_from_int(1)
     for step in 0..choose:
         result = (
@@ -708,9 +705,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
         odd_part = odd_part.shift_right(1).get(bigint_zero())
         twos += 1
 
-    var fixed = rounds
-    if fixed > primes.length():
-        fixed = primes.length()
+    let fixed = min(rounds, primes.length())
     for index in 0..fixed:
         if not bigint_strong_probable(
             n, msstd_bigint_from_int(primes[index]), odd_part, twos

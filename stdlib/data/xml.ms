@@ -353,7 +353,7 @@ fn decode(text: String) String!:
         index += 1
 
         let end = tail.index_of(";")
-        if not end.is_some(): return error(Error("XML: invalid data", kind: "EBADMSG"))
+        if end.is_none(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
         let entity = tail.take(end.get(0))
 
@@ -390,7 +390,7 @@ fn is_xml_char(code: Int) Bool:
     )
 
 fn scalar(value: Int?) String!:
-    if not value.is_some() or not is_xml_char(value.get(0)): return error(
+    if value.is_none() or not is_xml_char(value.get(0)): return error(
         Error("XML: invalid data", kind: "EBADMSG")
     )
 

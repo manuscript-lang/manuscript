@@ -10,7 +10,6 @@ import (
     set_environment,
     working_directory
 ) from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
 
 fn supported(target_os: String, target_arch: String) Bool:
     let key = "{target_os}/{target_arch}"
@@ -106,5 +105,5 @@ export fn main() Int:
 
     let digest = file_sha256(archive)
     write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
-    stdout().write("{archive}\n").get()
+    print("{archive}")
     return 0

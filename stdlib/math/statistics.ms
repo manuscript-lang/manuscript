@@ -373,9 +373,7 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
                 low: low, high: high, counts: exact_bin_counts(values, low, high, bins)
             )
 
-    var counts: List[Int] = []
-    for index in 0..bins:
-        counts.append(0)
+    var counts = [0].repeated(bins)
 
     for value in values:
         var bin = 0
@@ -396,9 +394,7 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) List[Int]:
     let origin = finite_bin_rat(low)
     let span = finite_bin_rat(high).subtract(origin)
-    var counts: List[Int] = []
-    for index in 0..bins:
-        counts.append(0)
+    var counts = [0].repeated(bins)
 
     if let multiplier = rat_of_int(bins).divide(span):
         for value in values:
@@ -488,9 +484,7 @@ fn unit_scaled(values: List[Float]) List[Float]:
     if scale == 0.0: return values.clone()
 
     let exponent = frexp(scale).exponent
-    var scaled: List[Float] = []
-    for value in values:
-        scaled.append(ldexp(value, -exponent))
+    var scaled = values.map(fn value: ldexp(value, -exponent))
     return scaled
 
 /*

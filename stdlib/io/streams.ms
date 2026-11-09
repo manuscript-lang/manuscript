@@ -143,10 +143,7 @@ impl Source[Bytes] for BytesSource:
         if self.at >= self.data.length():
             return ok(none)
 
-        var stop = self.at + self.chunk
-        if stop > self.data.length():
-            stop = self.data.length()
-
+        let stop = (self.at + self.chunk).min(self.data.length())
         let piece = try self.data.slice(self.at, stop)
         self.at = stop
         return ok(piece)

@@ -639,7 +639,7 @@ impl Builder:
 
     var fn for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
         let at = header.index_of(" in ")
-        if not at.is_some(): return error(
+        if at.is_none(): return error(
             syntax_error(line: line, reason: "for needs `name in value`")
         )
 
@@ -720,13 +720,13 @@ impl Run:
 
             i -= 1
 
-        if not current.is_some(): return none
+        if current.is_none(): return none
 
         var value = current.get(JsonValue.Null)
 
         for k in 1..parts.length():
             let next = member(value, parts[k])
-            if not next.is_some(): return none
+            if next.is_none(): return none
 
             value = next.get(JsonValue.Null)
 
@@ -842,7 +842,7 @@ impl Run:
         if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
 
         let partial = self.partials.get(key).clone()
-        if not partial.is_some(): return error(unknown_partial_error(name: key))
+        if partial.is_none(): return error(unknown_partial_error(name: key))
 
         return self.nodes(
             partial.get(
@@ -1148,7 +1148,7 @@ fn equal(left: JsonValue, right: JsonValue) Bool:
 fn compare_values(left: JsonValue, right: JsonValue) Int:
     if let text = number_text(left):
         let other = number_text(right)
-        if not other.is_some(): return 2
+        if other.is_none(): return 2
 
         let right_text = other.get("")
         if let integer = exact_integer(text):
@@ -1156,10 +1156,10 @@ fn compare_values(left: JsonValue, right: JsonValue) Int:
                 return if integer < other_integer: -1 else if integer > other_integer: 1 else: 0
 
         let a = exact_number(text)
-        if not a.is_some(): return 2
+        if a.is_none(): return 2
 
         let b = exact_number(right_text)
-        if not b.is_some(): return 2
+        if b.is_none(): return 2
 
         return number_compare(a.get(), b.get())
 
@@ -1208,7 +1208,7 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
     if name == "truncate":
         let count = try arg_text(name.clone(), args, 0)
         let limit = count.parse_int()
-        if not limit.is_some() or limit.get(0) < 0: return error(
+        if limit.is_none() or limit.get(0) < 0: return error(
             invalid(name.clone(), "needs a count")
         )
 

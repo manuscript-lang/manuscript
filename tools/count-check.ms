@@ -86,7 +86,7 @@ export fn main() Int:
 
                 var shown = "an unreported number of"
                 if live.length() > 0: shown = live[0].clone()
-                stdout().write("leak: {f} ({build}) left {shown} live blocks\n").get()
+                print("leak: {f} ({build}) left {shown} live blocks")
 
             var have = List[String]()
             if counts.length() > 0: have = counts[0].split(" ")
@@ -114,13 +114,13 @@ export fn main() Int:
 
                 if out.trim_end() != expected_out.join("\n"):
                     failures += 1
-                    stdout().write("stdout: {f} ({build}) differs:\n{out}\n").get()
+                    print("stdout: {f} ({build}) differs:\n{out}")
 
     change_directory(root).get()
-    stdout().write("checked {checked} expectations, {failures} failing\n").get()
+    print("checked {checked} expectations, {failures} failing")
 
     if checked == 0:
-        stdout().write("no expectations ran\n").get()
+        print("no expectations ran")
         return 1
 
     if failures > 0: return 1

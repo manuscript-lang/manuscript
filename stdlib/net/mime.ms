@@ -115,7 +115,7 @@ export fn parse_media_type(text: String) MediaType!:
         if piece.is_empty(): continue
 
         let at = piece.index_of("=")
-        if not at.is_some(): return error(
+        if at.is_none(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
@@ -126,7 +126,7 @@ export fn parse_media_type(text: String) MediaType!:
         )
 
         let value = unquote(raw)
-        if not value.is_some(): return error(
+        if value.is_none(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
@@ -224,7 +224,7 @@ export fn parse_headers(text: String) Headers!:
             continue
 
         let at = line.index_of(":")
-        if not at.is_some() or at.get(0) == 0: return error(
+        if at.is_none() or at.get(0) == 0: return error(
             Error("MIME: invalid header", kind: "EBADMSG")
         )
 
@@ -291,8 +291,8 @@ fn make_part(section: Bytes) Part!:
         )
 
         if media.is_ok():
-            part.name = media.get().params.get("name").get("")
-            part.filename = media.get().params.get("filename").get("")
+            part.name = media.get().params.get_or("name", "")
+            part.filename = media.get().params.get_or("filename", "")
 
     return ok(part)
 

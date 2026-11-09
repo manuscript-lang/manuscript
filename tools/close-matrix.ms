@@ -373,7 +373,7 @@ export fn main() Int:
 
                 if why.contains(": parse:"):
                     failures += 1
-                    stdout().write("generated: {name} does not parse: {why}\n").get()
+                    print("generated: {name} does not parse: {why}")
                 else if show or filter != "":
                     stdout().write("rejected {name}: {why.split("\n")[0]}\n").get()
 
@@ -391,7 +391,7 @@ export fn main() Int:
 
                 if ran.is_error():
                     failures += 1
-                    stdout().write("run: {name} ({build}) could not run {ms}\n").get()
+                    print("run: {name} ({build}) could not run {ms}")
                     continue
 
                 let child = ran.get()
@@ -439,7 +439,7 @@ export fn main() Int:
     )
 
     if checked == 0:
-        stdout().write("no combination ran\n").get()
+        print("no combination ran")
         return 1
 
     if failures > 0: return 1

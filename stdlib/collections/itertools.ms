@@ -46,11 +46,7 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
         panic("cycle: times must not be negative")
 
     let count = if values.is_empty(): 0 else: times
-    var out: List[T] = []
-    for unused1 in 0..count:
-        for value in values:
-            out.append(value.clone())
-    return out
+    return values.repeated(count)
 
 // Pairs items by position and pads the shorter list with none, so the result is as long as the longer list.
 // Example: `zip_longest([1, 2, 3], ["a"])` pairs `(1, "a")`, `(2, none)` and `(3, none)`.
@@ -59,9 +55,7 @@ export fn zip_longest[A: Clonable, B: Clonable](
     right: List[B]
 ) List[Pair[A?, B?]]:
     var out: List[Pair[A?, B?]] = []
-    var longest = left.length()
-    if right.length() > longest:
-        longest = right.length()
+    let longest = left.length().max(right.length())
 
     for i in 0..longest:
         var first: A? = none
@@ -112,10 +106,8 @@ export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[Lis
         panic("permutations: size must be from 0 to the list length")
 
     var out: List[List[T]] = []
-    var used: List[Bool] = []
+    var used = [false].repeated(n)
     var chosen: List[Int] = []
-    for unused2 in 0..n:
-        used.append(false)
     extend_permutations(values, k, var used, var chosen, var out)
     return out
 
@@ -173,7 +165,7 @@ Example: `product([[1, 2], [3, 4]])` is `[[1, 3], [1, 4], [2, 3], [2, 4]]`.
 export fn product[T: Clonable](lists: List[List[T]]) List[List[T]]:
     // An empty factor empties the product, so no prefix is built before it is found.
     for choices in lists:
-        if choices.length() == 0: return []
+        if choices.is_empty(): return []
 
     var out: List[List[T]] = [[]]
 

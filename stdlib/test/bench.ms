@@ -98,7 +98,7 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
     try body()
 
     let environment = environment().get(Map[String, String]())
-    if environment.get(measured_flag).get("") == "1":
+    if environment.get_or(measured_flag, "") == "1":
         return ok(unit)
 
     return measure(operations, body)

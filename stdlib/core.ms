@@ -233,7 +233,7 @@ export fn wrap_error(context: String, cause: Error) Error:
 // Combines `errors` into one error whose message holds theirs, one per line, and whose `count` detail is
 // how many there were. Returns none when the list is empty.
 export fn join_errors(errors: List[Error]) Error?:
-    if errors.length() == 0:
+    if errors.is_empty():
         return none
 
     var text = ""

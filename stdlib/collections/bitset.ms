@@ -59,10 +59,7 @@ impl BitSet:
 
     // Reports whether the set has no members.
     fn is_empty() Bool:
-        for word in self.words:
-            if word != 0:
-                return false
-        return true
+        return not self.words.any(fn word: word != 0)
 
     // Removes every member and releases the bitmap.
     var fn clear() Unit:
@@ -70,10 +67,7 @@ impl BitSet:
 
     // Returns the smallest member that is at least `from`, or `none` when there is none.
     fn next(from: Int = 0) Int?:
-        var start = from
-        if start < 0:
-            start = 0
-
+        let start = from.max(0)
         var word = start / 64
         if word >= self.words.length():
             return none
@@ -125,19 +119,11 @@ impl BitSet:
     // Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3 symmetric difference.
     fn combine(other: BitSet, mode: Int) BitSet:
         var out: List[Int] = []
-        var count = self.words.length()
-        if other.words.length() > count:
-            count = other.words.length()
+        let count = self.words.length().max(other.words.length())
 
         for word in 0..count:
-            var left = 0
-            if word < self.words.length():
-                left = self.words.get(word)
-
-            var right = 0
-            if word < other.words.length():
-                right = other.words.get(word)
-
+            let left = if word < self.words.length(): self.words.get(word) else: 0
+            let right = if word < other.words.length(): other.words.get(word) else: 0
             var merged = bit_or(left, right)
             if mode == 1:
                 merged = bit_and(left, right)
@@ -164,9 +150,7 @@ impl BitSet:
 
     // Reports whether the sets share no member.
     fn is_disjoint_from(other: BitSet) Bool:
-        var count = self.words.length()
-        if other.words.length() < count:
-            count = other.words.length()
+        let count = self.words.length().min(other.words.length())
         for word in 0..count:
             if bit_and(self.words[word], other.words[word]) != 0:
                 return false

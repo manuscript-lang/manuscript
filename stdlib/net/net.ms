@@ -585,7 +585,7 @@ type Accepting:
 
 impl Closeable for Accepting:
     var fn close() Unit!:
-        while self.deals.length() > 0:
+        while not self.deals.is_empty():
             if let deal = self.deals.pop():
                 var closing = deal
                 let _ = closing.close()

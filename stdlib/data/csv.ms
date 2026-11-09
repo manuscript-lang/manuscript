@@ -63,7 +63,7 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
         if record.is_error(): return error(record.err())
 
         let found = record.get()
-        if not found.is_some(): break
+        if found.is_none(): break
 
         let row = found.get()
         if rows.length() >= rows_budget or row.length() > cells_budget - cells: return error(

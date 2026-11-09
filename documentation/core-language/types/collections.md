@@ -237,10 +237,7 @@ import panic from "@std/core.ms"
 
 
 fn positives(values: List[Int]) List[Int]:
-    var result: List[Int] = []
-    for value in values:
-        if value > 0:
-            result.append(value)
+    let result = values.filter(fn value: value > 0)
     return result
 
 test "dynamic mutable data and explicit copies":

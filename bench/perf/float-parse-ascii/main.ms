@@ -1,6 +1,5 @@
 import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
 import infinity, nan from "@std/math/math.ms"
 
 export fn main() Int:
@@ -38,7 +37,7 @@ export fn main() Int:
                 checksum += last.byte_length()
 
             let elapsed = monotonic().difference(start).to_nanoseconds()
-            stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+            print("ns={elapsed} checksum={checksum} last={last}")
         else:
             var value = 0
             let start = monotonic()
@@ -49,7 +48,7 @@ export fn main() Int:
 
             let elapsed = monotonic().difference(start).to_nanoseconds()
             last = value.to_string()
-            stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+            print("ns={elapsed} checksum={checksum} last={last}")
     else if operation == "parse_float":
         var texts = List[String]()
         var values = List[Float]()
@@ -86,7 +85,7 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "ok"
-        stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+        print("ns={elapsed} checksum={checksum} last={last}")
     else if operation == "float_special":
         let texts = ["Infinity", "-Infinity", "NaN"]
         let values = [infinity, -infinity, nan]
@@ -104,7 +103,7 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "ok"
-        stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+        print("ns={elapsed} checksum={checksum} last={last}")
     else if operation == "float_error":
         var text = "!"
 
@@ -128,7 +127,7 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "none"
-        stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+        print("ns={elapsed} checksum={checksum} last={last}")
     else:
         return 2
 

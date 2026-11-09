@@ -25,7 +25,11 @@ fn first_difference(expected: String, actual: String) String:
 
     while line < want.length() and line < got.length():
         if want[line] != got[line]:
-            return "line {line + 1}:\n  golden: {want[line]}\n  actual: {got[line]}"
+            return """
+                line {line + 1}:
+                  golden: {want[line]}
+                  actual: {got[line]}
+                """
 
         line += 1
 

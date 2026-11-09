@@ -23,9 +23,7 @@ export fn edit_distance(left: String, right: String) Int:
         var current: List[Int] = [i]
 
         for j in 1..b.length() + 1:
-            var cost = 1
-            if a[i - 1] == b[j - 1]:
-                cost = 0
+            let cost = if a[i - 1] == b[j - 1]: 0 else: 1
             current.append(
                 (previous[j] + 1).min(
                     (current[j - 1] + 1).min(previous[j - 1] + cost)
@@ -38,9 +36,7 @@ export fn edit_distance(left: String, right: String) Int:
 
 // Returns the length of the longest common subsequence of two lists of text.
 fn common_length(a: List[String], b: List[String]) Int:
-    var previous: List[Int] = []
-    for unused1 in 0..b.length() + 1:
-        previous.append(0)
+    var previous = [0].repeated(b.length() + 1)
 
     for i in 1..a.length() + 1:
         var current: List[Int] = [0]
@@ -129,14 +125,7 @@ type Step:
 
 // Walks the longest common subsequence table to list the steps that turn `old` into `new`, deletions before insertions within a change.
 fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
-    var table: List[List[Int]] = []
-
-    for unused2 in 0..old.length() + 1:
-        var row: List[Int] = []
-        for unused3 in 0..new.length() + 1:
-            row.append(0)
-        table.append(row)
-
+    var table = (0..old.length() + 1).map(fn _row: [0].repeated(new.length() + 1))
     var i = old.length() - 1
 
     while i >= 0:
@@ -210,8 +199,7 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
         old_middle.append(old[i].clone())
     for i in head..new.length() - tail:
         new_middle.append(new[i].clone())
-    for step in middle_steps(old_middle, new_middle, head):
-        steps.append(step)
+    steps.extend(middle_steps(old_middle, new_middle, head))
 
     for i in 0..tail:
         let at = old.length() - tail + i
@@ -254,10 +242,8 @@ export fn unified_diff(
         panic("unified_diff: context must not be negative")
 
     let steps = line_steps(old, new)
-    var keep: List[Bool] = []
+    var keep = [false].repeated(steps.length())
     var any_change = false
-    for unused4 in 0..steps.length():
-        keep.append(false)
 
     for i in 0..steps.length():
         if steps[i].kind != 0:

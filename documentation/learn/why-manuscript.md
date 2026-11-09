@@ -17,7 +17,6 @@ A model writes Manuscript well because there is little to get wrong. The concept
 
 <!-- manuscript-example: {"mode":"run","stdout":"1650 cents\n"} -->
 ```manuscript {filename="shop.ms"}
-import stdout from "@std/io/io.ms"
 
 enum Item:
     Book(pages: Int)
@@ -41,7 +40,7 @@ fn sum_by[T](items: List[T], price: fn(T) Int) Int:
 export fn main() Int:
     let cart = [Item.Book(pages: 200), Item.Coffee(grams: 250)]
     let total = sum_by(cart, fn item: item.cents())
-    stdout().write("{total} cents\n").get()
+    print("{total} cents")
     return 0
 ```
 

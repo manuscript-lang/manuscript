@@ -121,11 +121,10 @@ export fn summarize(lines: List[String], repeats: Int) String!:
         rows.append("| {op.name} | {op.count} | " + cells.join(" | ") + " |")
 
     let rule = heads.map(fn _h: "---:|").join("")
-    return ok(
-        "Median of {repeats} alternating runs; ns/op. Checksums and operation counts verified.\n\n| operation | ops | "
-        + heads.join(" | ")
-        + " |\n|---|---:|"
-        + rule
-        + "\n"
-        + rows.join("\n")
-    )
+    return ok("""
+        Median of {repeats} alternating runs; ns/op. Checksums and operation counts verified.
+
+        | operation | ops | {heads.join(" | ")} |
+        |---|---:|{rule}
+        {rows.join("\n")}
+        """)

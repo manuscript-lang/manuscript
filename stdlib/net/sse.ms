@@ -241,7 +241,7 @@ fn value_after(line: String, colon_end: Int, spaced: Bool) String:
     return line.slice(colon_end, line.length()).get()
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
-    if decoder.data.length() > 0:
+    if not decoder.data.is_empty():
         var name = decoder.event_type.clone()
         if name == "": name = "message"
         events.append(
