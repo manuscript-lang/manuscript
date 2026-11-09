@@ -405,11 +405,15 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 
     match node:
         TableNode(value):
-            let state = flags(reader, value)
+            var state = flags(reader, value).clone()
             if state.sealed: return error(invalid(reader, "inline table is closed"))
             if dotted and state.explicit: return error(
                 invalid(reader, "dotted key extends an explicit table")
             )
+
+            if dotted and not state.dotted:
+                state.dotted = true
+                store_flags(var reader, value, state)
 
             return ok(value)
         TableArray(slot):
