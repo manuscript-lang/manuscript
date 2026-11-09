@@ -11,3 +11,5 @@ Pitfalls: defaults on bundled prelude records must use forms `literal_default` a
 
 
 Update (2026-11-04): the owner replaced the closed `ErrorCategory` enum with a short string `kind` so users can define their own kinds, and made it optional (`String?`, default `none`), and asked that the stdlib report standard errno codes (`ENOENT`, `EBUSY`). Codes of at most 15 bytes are inline and never allocate. Mapping and rationale: [proposal](../../proposals/error-kind-string.md); the status-to-code rows are `// ms: status` comments beside `Error` in `stdlib/core.ms` (a module words a status differently with `// ms: words` in its own file); `crates/ms-lower/build.rs` turns them into `rtcall::status_table`. Parse and limit failures with no natural errno use `EBADMSG` and `EOVERFLOW`.
+
+Crypto error tests must assert the exact `kind`: the ChaCha20-Poly1305 fixture checked only `is_error()`, so a mistaken `EACCES` survived despite the documented `EAUTH`. Its [authentication regression](../../tests/e2e/testdata/stdlib/chacha20poly1305.ms) now covers wrong keys/nonces, associated data and altered ciphertext/tags, while retaining `EINVAL` for malformed input (#3296).

@@ -330,6 +330,6 @@ export fn chacha20poly1305_open(
     let tag = sealed.slice(split, sealed.length()).get(Bytes([]))
     let expected = try tag_for(key, nonce, associated_data, ciphertext)
     if not constant_time_equal(expected, tag):
-        return error(Error("crypto: authentication failed", kind: "EACCES"))
+        return error(Error("crypto: authentication failed", kind: "EAUTH"))
 
     return ok(xor_stream(key, 1, nonce, ciphertext))

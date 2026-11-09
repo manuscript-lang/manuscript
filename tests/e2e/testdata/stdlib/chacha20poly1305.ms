@@ -6,7 +6,7 @@ import (
     poly1305
 ) from "@std/crypto/chacha20poly1305.ms"
 import Bytes from "@std/bytes.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
+import expect_equal, expect_error, expect_true from "@std/test/test.ms"
 
 fn bytes_of(hex: String) Bytes:
     return hex_decode(hex, none).get(Bytes([]))
@@ -65,3 +65,32 @@ test "tampering and bad lengths are rejected":
         ).is_error()
     )
     try expect_true(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])).is_error())
+
+test "authentication failures preserve the documented error kind":
+    let key = bytes_of(key_hex)
+    let nonce = bytes_of(nonce_hex)
+    let aad = bytes_of(aad_hex)
+    let sealed = try chacha20poly1305_seal(key, nonce, text.to_bytes(), aad)
+    let wrong_key = bytes_of(
+        "008182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+    )
+    let wrong_nonce = bytes_of("000000004041424344454647")
+    let altered = try chacha20poly1305_seal(key, nonce, "changed".to_bytes(), aad)
+    let tag = try altered.slice(altered.length() - 16, altered.length())
+    let ciphertext = try sealed.slice(0, sealed.length() - 16)
+    let bad_tag = ciphertext.concat(tag)
+    let suffix = try sealed.slice(1, sealed.length())
+    let bad_ciphertext = Bytes([0]).concat(suffix)
+
+    for failed in [
+        chacha20poly1305_open(wrong_key, nonce, sealed, aad),
+        chacha20poly1305_open(key, wrong_nonce, sealed, aad),
+        chacha20poly1305_open(key, nonce, sealed, Bytes([])),
+        chacha20poly1305_open(key, nonce, bad_tag, aad),
+        chacha20poly1305_open(key, nonce, bad_ciphertext, aad)
+    ]:
+        let failure = try expect_error(failed)
+        try expect_equal(failure.kind.get(""), "EAUTH")
+
+    let invalid = try expect_error(chacha20poly1305_open(key, nonce, Bytes([]), aad))
+    try expect_equal(invalid.kind.get(""), "EINVAL")
