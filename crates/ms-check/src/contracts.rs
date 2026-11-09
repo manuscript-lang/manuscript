@@ -1428,6 +1428,7 @@ impl Checker {
             };
             let old = self.scope.clone();
             self.scope = self.variable_scope(&s.variables());
+            self.declared_refs_bounds(d.decl());
             if s.kind == SymKind::Fn {
                 self.check_declared(&s.ty(self.syms), d.pos(), s.export);
             } else {
@@ -1460,6 +1461,65 @@ impl Checker {
                 }
             }
             self.scope = old;
+        }
+    }
+
+    /// Checks the bounds of every type written in a declaration at the written type's own position,
+    /// so a violation points at `Map[K, V]` in a signature instead of at the declaration's start.
+    /// `check_declared` then finds each message already reported.
+    fn declared_refs_bounds(&mut self, decl: &ms_syntax::ast::Decl) {
+        use ms_syntax::ast::DeclKind;
+        let mut refs: Vec<&ms_syntax::ast::TypeRef> = Vec::new();
+        fn params(ps: &[ms_syntax::ast::Param]) -> impl Iterator<Item = &ms_syntax::ast::TypeRef> {
+            ps.iter().filter_map(|p| p.ty.as_ref())
+        }
+        match &decl.kind {
+            DeclKind::Fn(f) => {
+                refs.extend(params(&f.params));
+                refs.push(&f.result);
+            }
+            DeclKind::Record(r) => refs.extend(params(&r.fields)),
+            DeclKind::Alternative(a) => {
+                for c in &a.cases {
+                    refs.extend(params(&c.fields));
+                }
+            }
+            DeclKind::Interface(i) => {
+                for m in &i.methods {
+                    refs.extend(params(&m.func.params));
+                    refs.push(&m.func.result);
+                }
+            }
+            _ => {}
+        }
+        for t in refs {
+            self.type_ref_bounds(t);
+        }
+    }
+
+    fn type_ref_bounds(&mut self, t: &ms_syntax::ast::TypeRef) {
+        use ms_syntax::ast::TypeKind;
+        match &t.kind {
+            TypeKind::Named { args, .. } => {
+                for a in args {
+                    self.type_ref_bounds(a);
+                }
+            }
+            TypeKind::Fn { params, result } => {
+                for p in params {
+                    if let Some(pt) = &p.ty {
+                        self.type_ref_bounds(pt);
+                    }
+                }
+                self.type_ref_bounds(result);
+            }
+        }
+        let resolved = self.m().facts().type_refs.get(&t.id).cloned();
+        if let Some(resolved) = resolved {
+            // Each written type is its own site: report it even when the same message came up elsewhere.
+            let declaration_checks = std::mem::replace(&mut self.in_declaration_checks, false);
+            self.bounds_hold(&resolved, t.pos);
+            self.in_declaration_checks = declaration_checks;
         }
     }
 
