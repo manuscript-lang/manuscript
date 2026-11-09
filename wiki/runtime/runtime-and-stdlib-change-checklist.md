@@ -52,6 +52,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 
 - Complex asymptotic trig must not overflow a finite phase while evaluating double-angle sine. Beyond half Float.max, use the bounded sine/cosine identity; test the tiny component with relative accuracy rather than a fixed tolerance that accepts zero (`complex.ms`, #3196).
 - Complex exponentials can have finite components after their radius overflows. Multiply the trig components by four quarter-exponential factors; a half-exponential split still overflows for tiny phases near real part 1450. Check each component relatively, including minimum-subnormal phases (`complex.ms`, #3298).
+- Complex sin/cos/sinh/cosh need the same range care when a standalone hyperbolic factor overflows. Grow the trig component through three quarter-exponential factors and a final quarter-exponential factor divided by two; halving a subnormal phase first loses it, while halving only after overflow is too late. Retain the direct finite/nonfinite path and signed-zero controls (`complex.ms`, #3337).
 
 ## Rust runtime
 
