@@ -26,6 +26,36 @@ fn json(output: &Output) -> Json {
 }
 
 #[test]
+fn review_and_diagram_reject_truncated_context_at_eof() {
+    let dir = scratch("truncated-diff-context");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("review_diff_truncation/main.ms"),
+    )
+    .unwrap();
+    for newline in ["\n", "\r\n"] {
+        std::fs::write(
+            dir.join("change.patch"),
+            include_str!("review_diff_truncation/change.patch").replace('\n', newline),
+        )
+        .unwrap();
+        for command in ["review", "diagram"] {
+            let mut args = vec![command, "main.ms", "--diff", "change.patch", "--json"];
+            if command == "diagram" {
+                args.extend(["--view", "calls"]);
+            }
+            let output = ms(&dir, &args);
+            assert_eq!(output.status.code(), Some(2));
+            assert!(output.stdout.is_empty());
+            assert!(
+                String::from_utf8_lossy(&output.stderr)
+                    .contains("hunk is shorter than its header declares")
+            );
+        }
+    }
+}
+
+#[test]
 fn diagram_ambiguous_entity_remedies_are_usable() {
     let dir = scratch("selectors");
     std::fs::write(
