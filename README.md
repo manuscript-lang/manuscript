@@ -92,6 +92,22 @@ which writes any value and a newline; for write errors or bytes import stdout fr
 
 Every diagnostic gives the cause and the remedy, and `ms check --json` is there for agents. The compiler also recognizes habits from other languages: `len(xs)`, `&&` and `null` each get a pointed fix.
 
+## Batteries included
+
+```manuscript
+import parse, stringify, StringifyOptions from "@std/data/json.ms"
+
+type Config:
+    name: String
+    enabled: Bool = true
+
+fn roundtrip(text: String) Result[String, Error]:
+    let config = try parse[Config](text)
+    return stringify(config, StringifyOptions(strict: true))
+```
+
+The standard library ships with the compiler: HTTP client and server, WebSocket and TLS; JSON, YAML, TOML, CSV and XML; crypto and JWT; big, decimal and complex math; files, processes and archives; terminal and CLI helpers; images; and testing. Types describe your data, so `parse[Config]` returns a `Config` or an error. Nothing to install.
+
 ## Review without reading every line
 
 ```sh
