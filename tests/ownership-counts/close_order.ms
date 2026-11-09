@@ -10,7 +10,7 @@ type Res:
 
 impl Closeable for Res:
     var fn close() Unit!:
-        print("close {self.id}")
+        stdout().write("close {self.id}\n").get()
         return ok(unit)
 
 type Pair:

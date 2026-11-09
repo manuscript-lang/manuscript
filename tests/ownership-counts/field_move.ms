@@ -62,5 +62,5 @@ export fn main() Int:
         )
         .get()
     )
-    print("{reinit(Big(name: name.clone(), items: [7]))}")
+    stdout().write("{reinit(Big(name: name.clone(), items: [7]))}\n").get()
     return 0
