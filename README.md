@@ -31,7 +31,7 @@ export fn main() Int:
     return 1
 ```
 
-## Use-after-move is a compile error
+## Ownership without annotations
 
 ```manuscript
 export fn main() Int:
@@ -47,7 +47,7 @@ $ ms run own.ms
 own.ms:4:18: type: `first` is moved here but used again at 5:11 …
 ```
 
-One owner per value. No GC, no refcounts, no surprises.
+Use-after-move is a compile error. Every value has one owner and borrows are the default, with no lifetime or ownership annotations to write. No GC, no refcounts, no surprises.
 
 ## All cores, regular functions
 
