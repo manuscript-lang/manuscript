@@ -1735,6 +1735,21 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     }
                     start += 1;
                 }
+                StmtKind::Call(_) => {
+                    // `xs[i] = value` is a call of `[]=`; only the value wraps.
+                    let mut at = start;
+                    while at < tokens.len() && tokens[at].pos.offset < value.end.offset {
+                        if let Some(&end) = self.pairs.get(&at) {
+                            at = end + 1;
+                            continue;
+                        }
+                        if tokens[at].kind == Tok::Assign {
+                            start = at + 1;
+                            break;
+                        }
+                        at += 1;
+                    }
+                }
                 _ => {}
             }
             self.wrap(start, value.end.offset);
