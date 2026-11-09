@@ -123,3 +123,36 @@ test "combinations distinguish equal positions and own nested copies":
     try expect_equal(result[1], [[1], [3]])
 
     let _too_large = try expect_fault(fn: discard(combinations([1], 2)))
+
+test "zero-size permutations preserve shape and validate sizes":
+    let empty = List[Int]()
+    try expect_equal(permutations(empty), [List[Int]()])
+    try expect_equal(permutations(empty, none), [List[Int]()])
+    try expect_equal(permutations(empty, 0), [List[Int]()])
+    try expect_equal(permutations([[1], [2]], 0), [List[List[Int]]()])
+
+    var values: List[Int] = []
+    for i in 0..100000:
+        values.append(i)
+    try expect_equal(permutations(values, 0), [List[Int]()])
+    try expect_equal(values.length(), 100000)
+    try expect_equal(values[99999], 99999)
+
+    let _negative = try expect_fault(fn: discard(permutations(empty, -1)))
+    let _oversized = try expect_fault(fn: discard(permutations(empty, 1)))
+    let _minimum = try expect_fault(
+        fn: discard(permutations([1], -9223372036854775808))
+    )
+    let _maximum = try expect_fault(fn: discard(permutations([1], 9223372036854775807)))
+
+test "nonzero permutations retain position order and own their results":
+    try expect_equal(
+        permutations([1, 1, 2], 2), [[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]]
+    )
+    try expect_equal(permutations([10, 20], none), [[10, 20], [20, 10]])
+
+    let input = [[1], [2], [3]]
+    var result = permutations(input, 2)
+    result[0][0].append(9)
+    try expect_equal(input, [[1], [2], [3]])
+    try expect_equal(result[1], [[1], [3]])
