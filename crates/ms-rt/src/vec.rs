@@ -3,6 +3,7 @@
 //! Every operation takes a pointer to the receiver value and the element
 //! descriptor. Mutators change the receiver in place and return nothing;
 //! element arguments of stores are consumed (ownership moves into the list).
+//! ms: domain binary
 use crate::alloc;
 use crate::desc::{self, is_plain, needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
@@ -274,7 +275,7 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -287,7 +288,7 @@ pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, o
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -302,7 +303,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, ou
 
 /// `index_of`: present flag; index through `out`. `probe` is borrowed.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_index_of(
     v: *const VecVal,
     d: ElemDesc,
@@ -346,7 +347,7 @@ fn find_int(items: &[i64], target: i64) -> Option<usize> {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
     v: *const VecVal,
     d: ElemDesc,
@@ -367,7 +368,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_contains(
     v: *const VecVal,
     d: ElemDesc,
@@ -449,7 +450,7 @@ pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
 
 /// Removes the last element into `out`; 0 when empty.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -758,7 +759,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
 
 /// `slice(start, end)`: status protocol.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_slice(
     v: *const VecVal,
     d: ElemDesc,
@@ -1304,7 +1305,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
 // ---- generators ----
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_filled(
     value: *const u8,
     d: ElemDesc,
@@ -1361,7 +1362,7 @@ pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut 
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=collection
 pub unsafe extern "C-unwind" fn msrt_list_range_by(
     start: i64,
     end: i64,

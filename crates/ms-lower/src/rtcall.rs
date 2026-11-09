@@ -27,6 +27,7 @@ type RtEntry = (
     &'static str,
     u8,
     &'static str,
+    &'static str,
 );
 
 /// The ABI facts a runtime function declares with a `// ms:` comment in its source
@@ -43,6 +44,8 @@ pub(crate) struct RtFlags {
     pub spawns: bool,
     /// The MIR instruction (`// ms: op=<mnemonic>`) the function is on its arguments.
     pub op: Option<&'static str>,
+    /// How its failures name their domain (`//! ms: domain` of its file, or `domain=`).
+    pub domain: Option<&'static str>,
 }
 
 /// The declared flags of the runtime function `sym` (none for an unknown symbol).
@@ -50,13 +53,14 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
     let Ok(at) = SYMBOLS.binary_search_by_key(&sym, |s| s.0) else {
         return RtFlags::default();
     };
-    let (_, _, _, bits, op) = SYMBOLS[at];
+    let (_, _, _, bits, op, domain) = SYMBOLS[at];
     RtFlags {
         leaf: bits & 1 != 0,
         reads: bits & 2 != 0,
         fresh: bits & 4 != 0,
         spawns: bits & 16 != 0,
         op: (!op.is_empty()).then_some(op),
+        domain: (!domain.is_empty()).then_some(domain),
     }
 }
 
@@ -108,7 +112,7 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
-    let (_, params, ret, bits, _) = SYMBOLS[at];
+    let (_, params, ret, bits, _, _) = SYMBOLS[at];
     Some(RtSig {
         params: params
             .iter()
@@ -1314,50 +1318,9 @@ pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> 
         .collect()
 }
 
-/// How messages of `sym`'s module name their domain.
+/// How the failures of `sym` name their domain, as its runtime source declares.
 fn domain_of(sym: &str) -> String {
-    const NAMES: [(&str, &str); 28] = [
-        ("msstd_fs_", "filesystem"),
-        ("msstd_path_", "path"),
-        ("msstd_io_", "I/O"),
-        ("msstd_terminal_", "terminal"),
-        ("msstd_json_", "JSON"),
-        ("msstd_html_", "HTML"),
-        ("msstd_random_", "random"),
-        ("msstd_crypto_", "cryptography"),
-        ("msstd_net_", "network"),
-        ("msstd_http_", "HTTP"),
-        ("msstd_websocket_", "WebSocket"),
-        ("msstd_tls_", "TLS"),
-        ("msstd_url_", "URL"),
-        ("msstd_archive_", "archive"),
-        ("msstd_compress_", "compression"),
-        ("msstd_regex_", "regular expression"),
-        ("msstd_bigint_", "big integer"),
-        ("msstd_process", "process"),
-        ("msstd_system_", "system"),
-        ("msstd_time_", "time"),
-        ("msrt_numbers_", "number"),
-        ("msrt_float", "number"),
-        ("msrt_bits_", "number"),
-        ("msstd_math_", "number"),
-        ("msstd_decimal_", "number"),
-        ("msrt_string_", "string"),
-        ("msrt_list_", "collection"),
-        ("msrt_bytes_", "binary"),
-    ];
-    NAMES
-        .iter()
-        .find(|(p, _)| sym.starts_with(p))
-        .map(|(_, n)| n.to_string())
-        .unwrap_or_else(|| {
-            sym.trim_start_matches("msstd_")
-                .trim_start_matches("msrt_")
-                .split('_')
-                .next()
-                .unwrap_or("error")
-                .to_string()
-        })
+    rt_flags(sym).domain.unwrap_or("runtime").to_string()
 }
 
 #[cfg(test)]

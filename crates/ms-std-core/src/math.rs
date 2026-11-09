@@ -2,6 +2,7 @@
 //! scalars by value or writes ordinary result records through the existing record mechanism.
 //!
 //! The generic `max` and `min` are not natives: `@std/math` writes them over `Comparable`.
+//! ms: domain number
 use ms_rt::ffi::{STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, abi_record, native};
 
 abi_record! {

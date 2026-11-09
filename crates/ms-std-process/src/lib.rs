@@ -6,6 +6,7 @@
 //! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and command errors to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
 //! are a present flag plus the value. A `Map[String, String]` crosses as two parallel string lists.
+//! ms: domain process
 
 extern crate alloc;
 

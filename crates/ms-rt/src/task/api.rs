@@ -1,4 +1,5 @@
 //! Switching between tasks, the exported task API and closure tasks.
+//! ms: domain task
 
 use super::*;
 

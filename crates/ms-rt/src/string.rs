@@ -5,6 +5,7 @@
 //! copying duplicates and dropping frees; a static one (`cap == 0`) is never freed. Language level
 //! indices and lengths count Unicode scalars; a string whose scalar count equals its byte length
 //! is ASCII, which every indexing operation exploits.
+//! ms: domain string
 use crate::alloc;
 use crate::fault;
 use crate::obj;
@@ -2044,7 +2045,7 @@ pub unsafe extern "C-unwind" fn msrt_string_split_iter(
 /// Makes the next piece current and writes a borrow of it to `out` (the iterator owns the bytes
 /// until the next call); returns 0 when the pieces are used up.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=split
 pub unsafe extern "C-unwind" fn msrt_split_next(it: *mut SplitIter, out: *mut StrVal) -> u8 {
     // SAFETY: caller passes a live iterator and a writable `out`.
     unsafe {

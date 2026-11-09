@@ -4,6 +4,7 @@
 //! (`ms-rt/src/streams.rs`). What remains here is the file-handle read and write that `NativeFile`
 //! uses and the standard-stream redirect. Operations return a status: `0` ok,
 //! `STATUS_NONE` for end of stream, or `FAILED` with its text stored through `err`.
+//! ms: domain I/O
 #![no_std]
 
 extern crate alloc;

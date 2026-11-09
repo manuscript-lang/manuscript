@@ -9,6 +9,7 @@
 //! Outcome codes returned by [`msrt_promise_wait`]:
 //! `0` ok (the result is in the slot), `1` the operation's own error (the error value is in the slot),
 //! `2` timed out, `3` cancelled, `4` closed (the result was already taken), `5` failed (a fault inside).
+//! ms: domain promise
 use crate::desc::slot_drop;
 use crate::sched::{self, Event, Start};
 use crate::{alloc, fault, task};

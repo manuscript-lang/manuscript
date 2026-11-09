@@ -6,13 +6,14 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 /// A listed function: name, parameters (name and type), return type, flag bits, kept
-/// parameters and the MIR instruction it is (empty when none).
+/// parameters, the MIR instruction it is and the domain its failures name (empty when none).
 type Entry = (
     String,
     Vec<(String, String)>,
     String,
     u8,
     Vec<String>,
+    String,
     String,
 );
 
@@ -143,6 +144,11 @@ fn main() {
             .find_map(|f| f.strip_prefix("op="))
             .unwrap_or("")
             .to_string();
+        let domain = flags
+            .iter()
+            .find_map(|f| f.strip_prefix("domain="))
+            .unwrap_or("")
+            .to_string();
         let flags = bit("leaf")
             | bit("pure") << 1
             | bit("fresh") << 2
@@ -172,12 +178,20 @@ fn main() {
             .strip_prefix("->")
             .map(|r| r.trim().to_string())
             .unwrap_or_default();
-        table.push((name.trim().to_string(), params, ret, flags, kept, op));
+        table.push((
+            name.trim().to_string(),
+            params,
+            ret,
+            flags,
+            kept,
+            op,
+            domain,
+        ));
     }
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");
-    for (name, params, ret, flags, kept, op) in &table {
+    for (name, params, ret, flags, kept, op, domain) in &table {
         let params: Vec<String> = params
             .iter()
             .map(|(n, t)| {
@@ -192,7 +206,7 @@ fn main() {
             .collect();
         writeln!(
             out,
-            "    ({name:?}, &[{}], {ret:?}, {flags}, {op:?}),",
+            "    ({name:?}, &[{}], {ret:?}, {flags}, {op:?}, {domain:?}),",
             params.join(", ")
         )
         .unwrap();

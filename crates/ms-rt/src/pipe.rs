@@ -27,6 +27,7 @@
 //!
 //! The pipe starts with one writer, the `Pipe` value itself; `msrt_pipe_close_writer` releases
 //! it, like any other writer.
+//! ms: domain pipe
 use crate::desc::slot_drop;
 use crate::{alloc, promise};
 use core::cell::UnsafeCell;

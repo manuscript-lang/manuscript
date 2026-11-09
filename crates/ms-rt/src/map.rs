@@ -5,6 +5,7 @@
 //! high word is the hash's high word (a tag, so probes skip non-matching slots without touching
 //! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
+//! ms: domain set
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
@@ -990,7 +991,7 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=map
 pub unsafe extern "C-unwind" fn msrt_map_contains(
     m: *const MapVal,
     kd: KeyDesc,
@@ -1046,7 +1047,7 @@ unsafe fn value_ptr_k<K: KeyOps>(
 
 /// `get(key)`: copies the value into `out`; 0 when absent.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=map
 pub unsafe extern "C-unwind" fn msrt_map_get(
     m: *const MapVal,
     kd: KeyDesc,
