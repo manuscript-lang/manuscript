@@ -553,7 +553,13 @@ impl Source[Instant] for TickSource:
     var fn next() Instant?!:
         let tick = self.due.clone()
         try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
-        self.due = tick.shift(self.period.clone()).max(monotonic())
+
+        let current = monotonic()
+        let period = self.period.to_nanoseconds()
+        let elapsed = current.difference(tick).to_nanoseconds()
+
+        // Drop missed ticks, retaining the original phase without multiplying a tick count.
+        self.due = current.shift(nanoseconds(period - elapsed % period))
         return ok(tick)
 
     var fn close() Unit!:
