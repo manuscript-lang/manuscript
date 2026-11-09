@@ -51,7 +51,7 @@ SCENES = [
     dict(title="*Token-lean* syntax, *benchmark-driven*.",
          sub="Fewer tokens to write and read, and we measure it.",
          points=["Compact syntax: less to generate, less to read.",
-                 "20 challenges, 4 languages, scored on hidden tests.",
+                 "Agents build real programs, scored on hidden tests.",
                  "Pass rate, tokens, turns and cost guide every change."]),
     dict(title="Can't read all that agent code? *Map it.*",
          sub="Call graph here; --format html writes an offline interactive code map.",
