@@ -149,7 +149,7 @@ export fn cost_from_tokens(
 ) Float:
     let table = parse(text_of("{root()}/pricing.json")).get(JsonValue.Null)
     var p = table.get("default").get(JsonValue.Null)
-    if let own = table.get(model): p = own
+    if let own = table.get(model): p = own.clone()
 
     let input = p.get("input").get(JsonValue.Null).as_float().get(0.0)
     let cached_input = p.get("cached_input").get(JsonValue.Null).as_float().get(0.0)
