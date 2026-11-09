@@ -178,6 +178,10 @@ impl Reader:
             if at < self.total and self.bytes[at] == 34:
                 at += 1
 
+                let start = at
+                var first_escape = -1
+                var multiple_escapes = false
+
                 while true:
                     let close = self.next_quote(at)
                     if close >= self.total: return error(
@@ -186,15 +190,24 @@ impl Reader:
                         )
                     )
 
-                    cell = cell.concat(self.text_between(at, close))
                     at = close + 1
 
                     if at < self.total and self.bytes[at] == 34:
-                        cell = cell.concat("\"")
+                        if first_escape < 0: first_escape = close
+                        else: multiple_escapes = true
+
                         at += 1
                         continue
 
                     break
+
+                if first_escape >= 0 and not multiple_escapes:
+                    let prefix = self.text_between(start, first_escape)
+                    let suffix = self.text_between(first_escape + 2, at - 1)
+                    cell = "{prefix}\"{suffix}"
+                else:
+                    cell = self.text_between(start, at - 1)
+                    if multiple_escapes: cell = cell.replace("\"\"", "\"")
 
                 if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
 

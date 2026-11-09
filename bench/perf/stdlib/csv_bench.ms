@@ -28,3 +28,13 @@ bench "csv.parse":
         return keep(0)
 
     try measure(5000, work)
+
+bench "csv.parse escaped quote field":
+    let value = try "a\"".repeat(8000)
+    let text = "\"{value.replace("\"", "\"\"")}\"\n"
+
+    fn work() Unit!:
+        let rows = try parse(text)
+        return keep(rows[0][0].byte_length())
+
+    try measure(1, work)
