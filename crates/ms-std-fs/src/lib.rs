@@ -212,7 +212,11 @@ native! {
     /// Takes an admission permit for copying `bytes` for a pool job, parking while the pool is
     /// full; true when one is held and `msstd_fs_release` must follow.
     safe fn msstd_fs_admit(bytes: i64) -> bool {
-        ms_rt::glue::pool::admit(usize::try_from(bytes).unwrap_or(0))
+        // Nothing is held here, so the cancel is raised at once.
+        match ms_rt::glue::pool::admit(usize::try_from(bytes).unwrap_or(0)) {
+            Ok(held) => held,
+            Err(_) => ms_rt::glue::cancelled(),
+        }
     }
 
     /// Returns a permit from `msstd_fs_admit`.

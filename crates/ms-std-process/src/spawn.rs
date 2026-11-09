@@ -258,21 +258,24 @@ impl Child {
 
     /// Parks the task until the child exits or `timeout_ns` passes (negative: no limit). False
     /// when the platform cannot wait on the child, so the caller checks it in slices instead.
-    pub fn park_until_exit(&mut self, timeout_ns: i64) -> bool {
+    pub fn park_until_exit(
+        &mut self,
+        timeout_ns: i64,
+    ) -> Result<bool, ms_rt::glue::pool::Cancelled> {
         #[cfg(unix)]
         {
             let Some(fd) = self.exit_fd() else {
-                return false;
+                return Ok(false);
             };
-            ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, timeout_ns);
-            true
+            ms_rt::glue::try_task_wait_fd(fd, ms_rt::glue::WAIT_READ, timeout_ns)?;
+            Ok(true)
         }
         #[cfg(windows)]
         {
             use std::os::windows::io::AsRawHandle;
             let handle = self.inner.as_raw_handle() as isize;
             // SAFETY: the process handle stays open until drop, which ends the watch first.
-            unsafe { ms_rt::glue::object::wait(handle, timeout_ns) }.is_some()
+            Ok(unsafe { ms_rt::glue::object::try_wait(handle, timeout_ns) }?.is_some())
         }
     }
 

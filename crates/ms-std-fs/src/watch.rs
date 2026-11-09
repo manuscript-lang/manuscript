@@ -65,7 +65,9 @@ fn visit(
 #[cfg(target_os = "linux")]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
-    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
+    // A stop request ends the wait early; the caller's next `poll_cancel()?` returns it.
+    let _ =
+        ms_rt::glue::try_task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
     sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
@@ -117,7 +119,8 @@ fn valid_native(root: &[u8], recursive: bool, max: i64, events: i64, overflow: &
 
 fn sleep_slice() {
     #[cfg(not(test))]
-    ms_rt::glue::task_sleep(i64::from(SLICE_MS) * 1_000_000);
+    // A stop request ends the sleep early; the caller's next `poll_cancel()?` returns it.
+    let _ = ms_rt::glue::try_task_sleep(i64::from(SLICE_MS) * 1_000_000);
     #[cfg(test)]
     sys::sleep_ms(SLICE_MS);
 }
