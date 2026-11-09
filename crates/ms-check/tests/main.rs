@@ -2,6 +2,7 @@
 //! crate links once instead of once per file.
 
 mod call_chains;
+mod constant_index;
 mod callable_identity;
 mod diagnostic_wording;
 mod error_values;
