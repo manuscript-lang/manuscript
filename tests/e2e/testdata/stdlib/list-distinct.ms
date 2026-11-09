@@ -1,5 +1,16 @@
 import expect_equal from "@std/test/test.ms"
 
+fn unique_copy[T: Equal & Clonable](values: List[T]) List[T]:
+    let copy_unique = values.distinct
+    return copy_unique()
+
+test "generic distinct method values copy nested elements independently":
+    let source = [[1], [1], [2]]
+    var result = unique_copy(source)
+    result[0].append(3)
+    try expect_equal(result, [[1, 3], [2]])
+    try expect_equal(source, [[1], [1], [2]])
+
 type Key:
     id: Int
     payload: List[Int]
