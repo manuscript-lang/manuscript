@@ -47,7 +47,7 @@ $ ms run own.ms
 own.ms:4:18: type: `first` is moved here but used again at 5:11 …
 ```
 
-Use-after-move is a compile error. Every value has one owner and borrows are the default, with no lifetime or ownership annotations to write. No GC, no refcounts, no surprises.
+Use-after-move is a compile error. Every value has one owner and borrows are the default, with no lifetime or ownership annotations to write. Values carry no GC and no reference counts.
 
 ## All cores, regular functions
 
