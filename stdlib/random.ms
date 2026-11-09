@@ -114,11 +114,13 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
     if values.is_empty() and weights.is_empty():
         return ok(none)
-    if not valid_weights(values.length(), weights):
+
+    let total = weight_total(values.length(), weights)
+    if total == 0.0:
         return error(Error("random: invalid input", kind: "EINVAL"))
 
-    let point = try float() * weight_total(weights)
-    return ok(values[weighted_position(weights, point)].clone())
+    let point = try float()
+    return ok(values[weighted_position(weights, point, total)].clone())
 
 fn positions(count: Int) List[Int]:
     var out: List[Int] = []
@@ -127,39 +129,60 @@ fn positions(count: Int) List[Int]:
     return out
 
 /*
-Reports whether `weights` has `count` finite, non-negative entries with a positive total.
-Sums the weights. A loop rather than `List.sum`, because `@std/math/math.ms` imports this module and the
-modules the collection extensions import cannot use those extensions.
+Returns the total, or zero for an invalid length, weight or all-zero total. An infinite total is
+valid when all individual weights are finite; selection scales it before use. A loop rather than
+`List.sum`, because the collection extensions cannot be used by modules `math.ms` imports.
 */
-fn weight_total(weights: List[Float]) Float:
-    var total = 0.0
-    for weight in weights:
-        total += weight
-    return total
-
-fn valid_weights(count: Int, weights: List[Float]) Bool:
+fn weight_total(count: Int, weights: List[Float]) Float:
     if weights.length() != count:
-        return false
+        return 0.0
 
     var total = 0.0
 
     for weight in weights:
         if not (weight >= 0.0) or not weight.is_finite():
-            return false
+            return 0.0
 
         total += weight
 
-    return total > 0.0 and total.is_finite()
+    return total
 
-// Returns the position whose share of the total weight contains `point`, which is at least 0.0 and below the total.
-// Zero-weight positions are never returned.
-fn weighted_position(weights: List[Float], point: Float) Int:
+// Selects a positive-weight position from a unit draw, keeping ordinary sums on their original scale.
+fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
+    if not total.is_finite() or total < 2.2250738585072014e-308:
+        return scaled_weighted_position(weights, unit_draw)
+
+    let point = unit_draw * total
     var running = 0.0
     var last = 0
 
     for i in 0..weights.length():
         if weights[i] > 0.0:
             running += weights[i]
+            last = i
+            if point < running:
+                return i
+
+    return last
+
+// A largest-weight scale keeps an overflowing or subnormal total in a safe range, without allocation.
+fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
+    var scale = 0.0
+    for weight in weights:
+        if weight > scale:
+            scale = weight
+
+    var total = 0.0
+    for weight in weights:
+        total += weight / scale
+
+    let point = unit_draw * total
+    var running = 0.0
+    var last = 0
+
+    for i in 0..weights.length():
+        if weights[i] > 0.0:
+            running += weights[i] / scale
             last = i
             if point < running:
                 return i
@@ -264,13 +287,14 @@ impl SeededRandom:
         if values.is_empty() and weights.is_empty():
             return none
 
-        if not valid_weights(values.length(), weights):
+        let total = weight_total(values.length(), weights)
+        if total == 0.0:
             panic(
                 "random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
             )
 
-        let point = self.float() * weight_total(weights)
-        return values[weighted_position(weights, point)].clone()
+        let point = self.float()
+        return values[weighted_position(weights, point, total)].clone()
 
     // Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.
     var fn normal() Float:
