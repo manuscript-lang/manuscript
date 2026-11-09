@@ -51,7 +51,7 @@ $ ms run own.ms
 own.ms:4:18: type: `first` is moved here but used again at 5:11 …
 ```
 
-Use-after-move is a compile error. Every value has one owner and borrows are the default, with no lifetime or ownership annotations to write. Values carry no GC and no reference counts.
+Use-after-move is a compile error. Every value has one owner and borrows are the default, with no lifetime or ownership annotations to write. Values carry no GC and no reference counts. To keep a value in two places, call `.clone()`, the only way to copy one.
 
 ## All cores, regular functions
 
@@ -67,7 +67,7 @@ export fn main() Int:
     return 0
 ```
 
-No async, no await, no function coloring. Wrap a call in `promise(fn: ...)` and it runs on another core.
+No async, no await, no function coloring. Wrap a call in `promise(fn: ...)` and it runs on another core. Promises are cheap: on Linux a parked one costs about 5 KB, so a million fit in a few GB, and stacks grow on demand when a task recurses deep.
 
 ## Effects the compiler checks
 
@@ -83,7 +83,7 @@ fn audit(total: Int) Unit!:
     return save("audit {total}")
 ```
 
-Declare an effect once, and `ms lint` flags every caller that did not allow it.
+Declare an effect once, and `ms lint` flags every caller that did not allow it. Effects are comments, so the language gains no extra syntax.
 
 ## Errors that name the fix
 
@@ -94,7 +94,7 @@ which writes any value and a newline; for write errors or bytes import stdout fr
 "@std/io/io.ms" and call stdout().write("text\n")
 ```
 
-Every diagnostic gives the cause and the remedy, and `ms check --json` is there for agents. The compiler also recognizes habits from other languages: `len(xs)`, `&&` and `null` each get a pointed fix.
+Every diagnostic gives the cause and the remedy, `ms check --fix` applies the mechanical ones, and `ms check --json` is there for agents. The compiler also recognizes habits from other languages: `len(xs)`, `&&` and `null` each get a pointed fix.
 
 ## Batteries included
 
