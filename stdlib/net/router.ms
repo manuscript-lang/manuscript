@@ -12,7 +12,7 @@ import (
 ) from "@std/net/http.ms"
 import NativeWebSocket from "@std/net/websocket.ms"
 import Logger from "@std/log.ms"
-import uuid_v4 from "@std/random.ms"
+import uuid_v4 from "@std/data/uuid.ms"
 import monotonic from "@std/time.ms"
 import Closeable from "@std/core.ms"
 import (

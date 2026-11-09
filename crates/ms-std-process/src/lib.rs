@@ -226,10 +226,6 @@ fn command_status<T>(
 }
 
 native! {
-    safe fn msstd_process_monotonic_time() -> i64 {
-        uptime_ns()
-    }
-
     /// `uptime()` as a `Duration` in nanoseconds.
     safe fn msstd_process_uptime() -> i64 {
         uptime_ns()

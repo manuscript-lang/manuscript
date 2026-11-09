@@ -17,7 +17,6 @@ import (
 import (
     msstd_random_os_bytes,
     draw_int,
-    draw_uuid,
     draw_float,
     draw_shuffle,
     draw_choice,
@@ -28,11 +27,6 @@ import (
 // ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
     return draw_int(min, max_exclusive)
-
-// Creates a version-4 UUID from the operating system's entropy.
-// ms: effect std.random.read
-export fn uuid_v4() String!:
-    return draw_uuid()
 
 /*
 Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.

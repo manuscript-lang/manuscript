@@ -829,7 +829,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 fn forward[T](item: T) T: item
 resolution	3	8	121	module does not export commands; did you mean 'Commands'?
-resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -4328,14 +4328,14 @@ resolution	4	12	81	unknown binding tagged_detail; declare it with 'let tagged_de
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/net/url.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
 
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/net/url.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn f() Bool:
     return active or allowed and remaining > 0
 resolution	2	12	24	unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module

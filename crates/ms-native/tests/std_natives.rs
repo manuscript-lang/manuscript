@@ -805,12 +805,9 @@ mod process {
         let _g = lock();
         // SAFETY: valid runtime values and out pointers throughout.
         unsafe {
-            // Uptime counts from its first call here, the monotonic clock from its own first
-            // reading; reading uptime first keeps its origin no later than the clock's.
             let started = msstd_process_uptime();
-            let a = msstd_process_monotonic_time();
             let uptime = msstd_process_uptime();
-            assert!(started >= 0 && a >= 0 && uptime >= a && uptime >= started);
+            assert!(started >= 0 && uptime >= started);
             let mut cwd = ms_rt::string::NO_STR;
             assert_eq!(
                 msstd_process_working_directory(&mut cwd, ErrSlot(core::ptr::null_mut())),

@@ -11,42 +11,45 @@ export type Version:
     // Dot-separated build metadata identifiers in input order; ignored by compare.
     build: List[String] = []
 
-// Compares two versions by SemVer precedence, returning -1, 0 or 1.
-// Build metadata is ignored, and a pre-release sorts before its release.
-export fn compare(left: Version, right: Version) Int:
-    let core = compare_ints(left.major, right.major)
-    if core != 0: return core
+impl Version:
+    // Compares two versions by SemVer precedence, returning -1, 0 or 1.
+    // Build metadata is ignored, and a pre-release sorts before its release.
+    fn compare(other: Version) Int:
+        let core = compare_ints(self.major, other.major)
+        if core != 0: return core
 
-    let minor = compare_ints(left.minor, right.minor)
-    if minor != 0: return minor
+        let minor = compare_ints(self.minor, other.minor)
+        if minor != 0: return minor
 
-    let patch = compare_ints(left.patch, right.patch)
-    if patch != 0: return patch
-    if left.prerelease.is_empty() and right.prerelease.is_empty(): return 0
-    if left.prerelease.is_empty(): return 1
-    if right.prerelease.is_empty(): return -1
+        let patch = compare_ints(self.patch, other.patch)
+        if patch != 0: return patch
+        if self.prerelease.is_empty() and other.prerelease.is_empty(): return 0
+        if self.prerelease.is_empty(): return 1
+        if other.prerelease.is_empty(): return -1
 
-    var index = 0
-    let shared = compare_ints(left.prerelease.length(), right.prerelease.length())
-    let limit = left.prerelease.length()
-    let other = right.prerelease.length()
-    var count = limit
-    if other < limit: count = other
+        var index = 0
+        let shared = compare_ints(self.prerelease.length(), other.prerelease.length())
+        let limit = self.prerelease.length()
+        let other_length = other.prerelease.length()
+        var count = limit
+        if other_length < limit: count = other_length
 
-    while index < count:
-        let order = compare_identifier(left.prerelease[index], right.prerelease[index])
-        if order != 0: return order
+        while index < count:
+            let order = compare_identifier(
+                self.prerelease[index], other.prerelease[index]
+            )
+            if order != 0: return order
 
-        index += 1
+            index += 1
 
-    return shared
+        return shared
 
-// Formats a version as `major.minor.patch[-prerelease][+build]`.
-export fn format(version: Version) String:
-    var text = "{version.major}.{version.minor}.{version.patch}"
-    if not version.prerelease.is_empty(): text = "{text}-{version.prerelease.join(".")}"
-    if not version.build.is_empty(): text = "{text}+{version.build.join(".")}"
-    return text
+    // Formats a version as `major.minor.patch[-prerelease][+build]`.
+    fn format() String:
+        var text = "{self.major}.{self.minor}.{self.patch}"
+        if not self.prerelease.is_empty(): text = "{text}-{self.prerelease.join(".")}"
+        if not self.build.is_empty(): text = "{text}+{self.build.join(".")}"
+        return text
 
 // Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
 export fn parse(text: String) Version!:

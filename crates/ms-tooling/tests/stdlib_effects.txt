@@ -2,6 +2,7 @@
 @std/cli/terminal.ms terminal_capabilities: std.console.read
 @std/cli/terminal.ms terminal_size: std.console.read
 @std/core.ms print: std.console.write
+@std/data/uuid.ms uuid_v4: std.random.read
 @std/io/io.ms redirect_to_null: std.console.write
 @std/io/io.ms stderr: std.console.write
 @std/io/io.ms stderr_bytes: std.console.write
@@ -41,24 +42,21 @@
 @std/os/fs.ms append_file: std.fs.write
 @std/os/fs.ms canonicalize: std.fs.read
 @std/os/fs.ms chmod: std.fs.write
-@std/os/fs.ms chmod_link: std.fs.write
 @std/os/fs.ms chown: std.fs.write
-@std/os/fs.ms chown_link: std.fs.write
 @std/os/fs.ms copy: std.fs.read, std.fs.write
 @std/os/fs.ms create_directory: std.fs.write
-@std/os/fs.ms create_link: std.fs.write
+@std/os/fs.ms create_hard_link: std.fs.write
+@std/os/fs.ms create_symlink: std.fs.write
 @std/os/fs.ms glob: std.fs.read
-@std/os/fs.ms hard_link: std.fs.write
 @std/os/fs.ms list: std.fs.read
 @std/os/fs.ms move: std.fs.write, std.fs.delete
 @std/os/fs.ms open: std.fs.read, std.fs.write
 @std/os/fs.ms open_directory: std.fs.read
 @std/os/fs.ms read_file: std.fs.read
-@std/os/fs.ms read_link: std.fs.read
+@std/os/fs.ms read_symlink: std.fs.read
 @std/os/fs.ms remove: std.fs.delete
 @std/os/fs.ms rename: std.fs.write, std.fs.delete
 @std/os/fs.ms set_times: std.fs.write
-@std/os/fs.ms set_times_link: std.fs.write
 @std/os/fs.ms stat: std.fs.read
 @std/os/fs.ms stat_filesystem: std.fs.read
 @std/os/fs.ms temporary: std.fs.write
@@ -92,7 +90,6 @@
 @std/os/system.ms machine: std.system.read
 @std/os/system.ms memory_usage: std.system.read
 @std/os/system.ms metrics: std.system.read
-@std/os/system.ms monotonic_time: std.clock.read
 @std/os/system.ms network_interfaces: std.system.read
 @std/os/system.ms os_release: std.system.read
 @std/os/system.ms os_version: std.system.read
@@ -107,7 +104,6 @@
 @std/random.ms shuffle: std.random.read
 @std/random.ms token: std.random.read
 @std/random.ms ulid: std.random.read, std.clock.read
-@std/random.ms uuid_v4: std.random.read
 @std/random.ms weighted_choice: std.random.read
 @std/time.ms deadline_after: std.clock.read
 @std/time.ms local_zone: std.system.read

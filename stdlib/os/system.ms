@@ -19,8 +19,7 @@ import (
     msstd_process_available_memory,
     msstd_process_constrained_memory,
     msstd_process_elapsed,
-    msstd_process_memory_usage,
-    msstd_process_monotonic_time
+    msstd_process_memory_usage
 ) from "@std/internal/system.ms"
 
 // The operating system family the program was built for. A host outside the three named families reads as `Other`.
@@ -116,9 +115,16 @@ export type SystemMetrics:
     // Logical processors this process may run on, which can be fewer than `SystemInfo.cpu_count` under CPU affinity limits.
     available_parallelism: Int
 
-// Returns exactly `LE` or `BE` for the host's native byte order.
-export fn endianness() String:
-    return msstd_system_endianness()
+// The byte order of the host's native integers.
+export enum Endianness:
+    Little  // The least significant byte comes first, as on x86-64 and AArch64.
+    Big  // The most significant byte comes first.
+
+// Returns the host's native byte order.
+export fn endianness() Endianness:
+    if msstd_system_endianness() == "BE": return Endianness.Big
+
+    return Endianness.Little
 
 // Returns the host's line-ending sequence.
 export fn end_of_line() String:
@@ -141,12 +147,6 @@ export fn os() Os:
 // Names and values vary by host; missing entries do not imply a portable numeric default.
 export fn constants() Map[String, Int]:
     return msstd_system_constants()
-
-// Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
-// This is not Unix time or a Clock Instant; prefer monotonic().difference(start) for timing.
-// ms: effect std.clock.read
-export fn monotonic_time() Int:
-    return msstd_process_monotonic_time()
 
 // Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
 // ms: effect std.system.read
