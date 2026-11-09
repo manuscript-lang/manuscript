@@ -51,7 +51,7 @@ $ ms run own.ms
 own.ms:4:18: type: `first` is moved here but used again at 5:11 …
 ```
 
-Use-after-move is a compile error. Every value has one owner and borrows are the default, with no lifetime or ownership annotations to write. Values carry no GC and no reference counts. The checker's ownership facts drive code generation, so a move never copies and a borrow is a plain pointer. `.clone()` is the only copy.
+Use-after-move is a compile error, and there are no lifetime annotations to write. Every value has one owner and borrows are the default. Memory is freed deterministically when its owner ends, with no GC and no reference counts on values. `.clone()` is the only copy.
 
 ## All cores, regular functions
 
@@ -67,7 +67,7 @@ export fn main() Int:
     return 0
 ```
 
-No async, no await, no function coloring. Wrap a call in `promise(fn: ...)` and it runs on another core. A promise's lambda borrows its captures read-only until the promise is dropped, so the checker rules out data races. Each task gets a 512 KiB stack slot in a reserved region, an idle task hibernates to the heap and hands its pages back, and a deep recursion grows onto more guarded slots. On Linux a parked promise costs about 5 KB, so millions of them fit in memory.
+No async, no await, no function coloring: wrap a call in `promise(fn: ...)` and it runs on another core. The lambda borrows its captures read-only, so the checker rules out data races. A parked promise costs about 5 KB on Linux, and idle stacks hibernate, so millions fit in memory.
 
 ## Effects the compiler checks
 
@@ -83,7 +83,7 @@ fn audit(total: Int) Unit!:
     return save("audit {total}")
 ```
 
-Declare an effect once, and `ms lint` flags every caller that did not allow it. The lint names the call chain that brings the effect in, and effects are comments, so the language gains no extra syntax.
+Declare an effect once, and `ms lint` flags every caller that did not allow it, naming the call chain that brings it in. Effects are comments, so the language gains no extra syntax.
 
 ## Errors that name the fix
 
@@ -94,7 +94,7 @@ which writes any value and a newline; for write errors or bytes import stdout fr
 "@std/io/io.ms" and call stdout().write("text\n")
 ```
 
-Every diagnostic gives the cause and the remedy, `ms check --fix` applies the mechanical ones, and `ms check --json` is there for agents. Failure is a value (`T!`), and `Error` is one pointer wide, so a fallible function uses no more stack than an infallible one. The compiler also recognizes habits from other languages: `len(xs)`, `&&` and `null` each get a pointed fix.
+Every diagnostic gives the cause and the remedy, `ms check --fix` applies the mechanical ones, and `--json` is there for agents. Failure is a value (`T!`), and `Error` is one pointer wide, so a fallible function uses no more stack than an infallible one.
 
 ## Batteries included
 
@@ -110,7 +110,7 @@ fn roundtrip(text: String) Result[String, Error]:
     return stringify(config, StringifyOptions(strict: true))
 ```
 
-The standard library ships with the compiler: HTTP client and server, WebSocket and TLS; JSON, YAML, TOML, CSV and XML; crypto and JWT; big, decimal and complex math; files, processes and archives; terminal and CLI helpers; images; and testing. Types describe your data: `parse[Config]` returns a `Config` or an error, and the decoder is generated per type at compile time, like formatting and equality, with no reflection. Nothing to install.
+HTTP, WebSocket and TLS, JSON, YAML, TOML, CSV and XML, crypto, big and decimal math, files, processes, images and testing ship with the compiler. Decoders are generated per type at compile time, with no reflection.
 
 ## Review without reading every line
 
@@ -119,7 +119,7 @@ ms diagram ms.toml --format html -o code-map.html
 git diff main... | ms review ms.toml --diff -
 ```
 
-The first command writes an offline, interactive code map with source, types, calls and ownership side by side, and the declarations a change touched highlighted. The second ranks what deserves your attention first: changed contracts, error flow and resource scopes. See [working with an agent](documentation/guide/working-with-an-agent.md).
+The code map shows source, types, calls and ownership side by side, with the declarations a change touched highlighted. `ms review` ranks what deserves your attention first: changed contracts, error flow and resource scopes. See [working with an agent](documentation/guide/working-with-an-agent.md).
 
 ## Test, fuzz, benchmark, profile
 
@@ -129,7 +129,7 @@ ms bench ms.toml
 ms profile ms.toml
 ```
 
-Property tests double as a fuzzer, benchmarks time each change, and the profiler gives source attribution, pprof and folded stacks. Nothing to install.
+Property tests double as a fuzzer, benchmarks time each change, and the profiler gives source attribution, pprof and folded stacks.
 
 ## Try it
 
