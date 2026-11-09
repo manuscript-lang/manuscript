@@ -11,3 +11,5 @@ Evidence: [template.ms](../../stdlib/text/template.ms), [xml.ms](../../stdlib/da
 Verify: `ms test tests/e2e/testdata/stdlib/template.ms` and `make docs-check`.
 
 YAML flow values spanning physical lines must carry lexical state forward rather than rescan the accumulated source on every line (#3174). Keep quote/property and nesting state, strip comments with scalar offsets, and test cross-line quoting, Unicode comments, and ordinary single-line workloads alongside long flows.
+
+Multipart streaming keeps confirmed part bytes in a builder and searches only a delimiter-overlap suffix plus the new chunk (#3264). A full-prefix concatenation or rescan per transport chunk is quadratic. Preserve exact raw-section budgets, delimiter-prefix bytes, binary bodies, empty chunks, and the held bytes if parsing a completed section fails. Test large fragmented parts beside ordinary single-chunk uploads.

@@ -1,0 +1,4 @@
+--- a/main.ms
++++ b/main.ms
+@@ -1,2 +1,2 @@
+ fn value() Int: 1

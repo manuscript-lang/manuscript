@@ -11,3 +11,5 @@ Evidence: [recursive interface bound fixture](../../tests/conformance/fixtures/e
 Verify: a program with `T: T` reports a diagnostic and the checker and language server both terminate.
 
 Default type arguments also need bound checks on their nested applications, even when the parameter has no explicit bound. Resolve them with earlier parameters and the enclosing receiver scope; validate after record fields and local implementations are complete. Substitute the default into recursive bounds and receiver bindings into method defaults without mutating shared variables. The [type-default regressions](../../crates/ms-check/src/type_argument_defaults_tests.rs) cover these paths and rejection controls.
+
+Default recovery can leave holes in a parameter list, including a later default that failed to resolve. Compute minimum positional arity through the last parameter without a resolved default; the first default does not prove the remaining suffix can be omitted. Otherwise an already-diagnosed declaration such as `type Broken[A = Int, B]` can panic when a type annotation or application omits `B` (#3261).

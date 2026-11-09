@@ -312,6 +312,7 @@ msrt_string_trim_start(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_trim_start_view(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_trim_view(s: *const StrVal, out: *mut StrVal) @leaf
 msrt_string_upper(s: *const StrVal, out: *mut StrVal) @leaf
+msrt_string_view(s: *const StrVal, start: i64, end: i64, out: *mut StrVal) @leaf
 msrt_task_cancel(handle: u64)
 msrt_task_count() -> usize
 msrt_task_current() -> u64

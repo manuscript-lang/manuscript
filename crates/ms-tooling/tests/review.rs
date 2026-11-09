@@ -78,6 +78,32 @@ fn malformed_hunks_are_reported_with_lines() {
     );
 }
 
+#[test]
+fn diff_eof_terminators_are_not_context_lines() {
+    for newline in ["\n", "\r\n"] {
+        for ending in ["", "\n"] {
+            let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -1,2 +1,2 @@\n same{ending}")
+                .replace('\n', newline);
+            assert_eq!(
+                parse_diff(&patch).unwrap_err(),
+                "diff line 3: hunk is shorter than its header declares"
+            );
+        }
+        // A genuine empty context line still exists, with or without its
+        // conventional space prefix. Do not trim it along with the terminator.
+        for blank in [" \n", "\n"] {
+            let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -1,2 +1,2 @@\n same\n{blank}")
+                .replace('\n', newline);
+            let files = parse_diff(&patch).unwrap();
+            assert_eq!(files[0].hunks[0].lines, [" same", " "]);
+            assert_eq!(
+                reverse_apply("same\n\n", &files[0].hunks).unwrap(),
+                "same\n\n"
+            );
+        }
+    }
+}
+
 fn fact(file: &str, kind: &str, name: &str, line: usize) -> Fact {
     Fact {
         key: fact_key(file, kind, name),

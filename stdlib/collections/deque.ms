@@ -116,9 +116,11 @@ impl Deque[T]:
 
         var steps = count % self.size
 
-        // Keep the short forward route for negative counts near a whole turn.
-        // The remainder is bounded before negation; even-sized ties go backward.
-        if steps < -(self.size / 2):
+        // Choose the shorter direction after reducing the signed count.
+        // Half-turn ties keep their original direction; Int.min is never negated.
+        if steps > self.size / 2:
+            steps -= self.size
+        else if steps < -(self.size / 2):
             steps += self.size
 
         while steps > 0:
