@@ -71,7 +71,13 @@ pub fn type_text(syms: ms_syntax::Names, t: &TypeRef) -> String {
         TypeKind::Fn { params, result } => {
             let types: Vec<String> = params
                 .iter()
-                .map(|p| p.ty.as_ref().map_or(String::new(), |a| type_text(syms, a)))
+                .map(|p| {
+                    format!(
+                        "{}{}",
+                        if p.mutable { "var " } else { "" },
+                        p.ty.as_ref().map_or(String::new(), |a| type_text(syms, a))
+                    )
+                })
                 .collect();
             format!("fn({}) {}", types.join(", "), type_text(syms, result))
         }
