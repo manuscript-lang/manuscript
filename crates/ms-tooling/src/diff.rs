@@ -64,7 +64,9 @@ const RENAME_HINT: &str =
 /// Reads a unified diff (git or plain `diff -u`).
 pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
     let text = text.replace("\r\n", "\n");
-    let lines: Vec<&str> = text.split('\n').collect();
+    // A final terminator ends the preceding line; it is not an extra blank
+    // context line that can satisfy a truncated hunk's declared length.
+    let lines: Vec<&str> = text.split_terminator('\n').collect();
     let mut files: Vec<DiffFile> = Vec::new();
     let mut have_current = false;
     let mut git = false;
