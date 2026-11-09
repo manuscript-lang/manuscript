@@ -1,5 +1,5 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import base64_encode_unpadded from "@std/data/encoding.ms"
+import base64_encode from "@std/data/encoding.ms"
 import now from "@std/time.ms"
 import panic from "@std/core.ms"
 import (
@@ -74,7 +74,7 @@ The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API ke
 // ms: effect std.random.read
 export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
-    return ok(base64_encode_unpadded(data, url_safe: true))
+    return ok(base64_encode(data, url_safe: true, padded: false))
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the operating system's entropy.
 // ms: effect std.random.read

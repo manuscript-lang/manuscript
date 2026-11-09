@@ -10,7 +10,7 @@ import (
     sign,
     verify
 ) from "@std/crypto.ms"
-import base64_encode_unpadded, base64_decode_unpadded from "@std/data/encoding.ms"
+import base64_encode, base64_decode from "@std/data/encoding.ms"
 import JsonValue, parse, stringify from "@std/data/json.ms"
 import now from "@std/time.ms"
 
@@ -76,11 +76,13 @@ export fn sign_token[T: Data](
     let payload = stringify(claims)
     if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
 
-    let head = base64_encode_unpadded(header.get("").to_bytes(), url_safe: true)
-    let body = base64_encode_unpadded(payload.get("").to_bytes(), url_safe: true)
+    let head = base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
+    let body = base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
     let signing_input = "{head}.{body}"
     let signature = try sign_bytes(algorithm, key, signing_input.to_bytes())
-    return ok("{signing_input}.{base64_encode_unpadded(signature, url_safe: true)}")
+    return ok(
+        "{signing_input}.{base64_encode(signature, url_safe: true, padded: false)}"
+    )
 
 /*
 Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
@@ -107,8 +109,8 @@ export fn verify_token[T: Data = JsonValue](
         Error("jwt: wrong algorithm", kind: "EBADMSG")
     )
 
-    let signature = base64_decode_unpadded(
-        parts[2], url_safe: true, max_bytes: check.max_bytes
+    let signature = base64_decode(
+        parts[2], url_safe: true, max_bytes: check.max_bytes, padded: false
     )
     if signature.is_error(): return error(
         Error("jwt: malformed token", kind: "EBADMSG")
@@ -134,7 +136,7 @@ fn algorithm_name(algorithm: JwtAlgorithm) String:
         EdDsa: return "EdDSA"
 
 fn decode_json[T: Data](part: String, limit: Int) T!:
-    let raw = base64_decode_unpadded(part, url_safe: true, max_bytes: limit)
+    let raw = base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
     if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let text = raw.get("".to_bytes()).decode_utf8()

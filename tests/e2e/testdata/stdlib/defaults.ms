@@ -114,8 +114,8 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let copied = base64_encode
     try expect_equal(copied(bytes), "/w==")
 
-    let typed: fn(Bytes, Bool) String = encode
-    try expect_equal(typed(bytes, false), "/w==")
+    let typed: fn(Bytes, Bool, Bool) String = encode
+    try expect_equal(typed(bytes, false, true), "/w==")
     try expect_false(
         (
             (try base64_decode("/w==")) != bytes
