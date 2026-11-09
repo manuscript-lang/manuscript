@@ -424,42 +424,48 @@ impl FnLower<'_> {
         }
         // Standard value types read from their JSON text.
         let parsed = if t.is_time(self.syms, "Duration") {
-            Some((KIND_NUMBER, "msstd_json_dec_int", false))
+            Some((KIND_NUMBER, "msstd_json_dec_int", TextArgs::Plain))
         } else if t.is_time(self.syms, "Timestamp") {
-            Some((KIND_STRING, "msstd_time_parse_timestamp", false))
+            Some((KIND_STRING, "msstd_time_parse_timestamp", TextArgs::Plain))
         } else if t.is(Builtin::Bytes) {
-            Some((KIND_STRING, "msstd_encoding_base64_decode", true))
+            Some((
+                KIND_STRING,
+                "msstd_encoding_base64_decode",
+                TextArgs::Base64,
+            ))
         } else if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
-            Some((KIND_STRING, "msstd_url_parse", false))
+            Some((KIND_STRING, "msstd_url_parse", TextArgs::Plain))
         } else if t.is_source_type(self.syms, "@std/net/ip.ms", "IpAddress") {
-            Some((KIND_STRING, "msstd_json_dec_ip", false))
+            Some((KIND_STRING, "msstd_json_dec_ip", TextArgs::Plain))
         } else if t.is_source_type(self.syms, "@std/net/ip.ms", "Cidr") {
-            Some((KIND_STRING, "msstd_json_dec_cidr", false))
+            Some((KIND_STRING, "msstd_json_dec_cidr", TextArgs::Plain))
         } else if t.is(Builtin::Decimal) {
-            Some((KIND_NUMBER, "msstd_decimal_parse", false))
+            Some((KIND_NUMBER, "msstd_decimal_parse", TextArgs::Plain))
         } else if t.is(Builtin::BigInt) {
-            Some((KIND_NUMBER, "msstd_bigint_parse", false))
+            Some((KIND_NUMBER, "msstd_bigint_parse", TextArgs::DecimalDigits))
         } else {
             None
         };
-        if let Some((kind, sym, base64)) = parsed {
+        if let Some((kind, sym, extra)) = parsed {
             self.jexpect_kind(doc, id, kind)?;
             let text = self.jtext(doc, id)?;
             let slot = self.jslot(mt);
-            let st = if base64 {
-                // Standard alphabet, no output budget.
-                let plain = self.b.bconst(false);
-                let none = self.b.bconst(false);
-                let zero = self.b.iconst(0);
-                self.status_code(sym, &[text, plain, none, zero, slot])?
-            } else if sym == "msstd_bigint_parse" {
-                // Decimal digits, at most 10000 of them.
-                let radix = self.b.iconst(10);
-                let has_max = self.b.bconst(true);
-                let max = self.b.iconst(10_000);
-                self.status_code(sym, &[text, radix, has_max, max, slot])?
-            } else {
-                self.status_code(sym, &[text, slot])?
+            let st = match extra {
+                TextArgs::Base64 => {
+                    // Standard alphabet, no output budget.
+                    let plain = self.b.bconst(false);
+                    let none = self.b.bconst(false);
+                    let zero = self.b.iconst(0);
+                    self.status_code(sym, &[text, plain, none, zero, slot])?
+                }
+                TextArgs::DecimalDigits => {
+                    // Decimal digits, at most 10000 of them.
+                    let radix = self.b.iconst(10);
+                    let has_max = self.b.bconst(true);
+                    let max = self.b.iconst(10_000);
+                    self.status_code(sym, &[text, radix, has_max, max, slot])?
+                }
+                TextArgs::Plain => self.status_code(sym, &[text, slot])?,
             };
             self.drop_value(text);
             let zero = self.b.iconst(0);
@@ -1894,4 +1900,15 @@ fn sized_int_range(name: &str) -> (i64, i64) {
         "UInt16" => (0, u16::MAX.into()),
         _ => (0, u32::MAX.into()),
     }
+}
+
+/// What a runtime parser of a standard value's JSON text takes after the text.
+#[derive(Clone, Copy)]
+enum TextArgs {
+    /// Nothing more.
+    Plain,
+    /// The Base64 alphabet choice and an output budget.
+    Base64,
+    /// A radix of 10 and a digit budget.
+    DecimalDigits,
 }

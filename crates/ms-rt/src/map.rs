@@ -1081,7 +1081,20 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(m: *mut MapVal, kd: KeyDesc, vd: 
     unsafe { drop_map(m, &*kd, opt(vd)) }
 }
 
-/// `keys()` / `Set.values()` as a fresh list of copies.
+/// `Set.values()`: a set's elements are its map's keys, as a fresh list of copies.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_set_values(
+    m: *const MapVal,
+    kd: KeyDesc,
+    vd: ValDesc,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract.
+    unsafe { msrt_map_keys(m, kd, vd, out) }
+}
+
+/// `keys()` as a fresh list of copies.
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_keys(

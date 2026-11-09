@@ -107,7 +107,7 @@ impl Walker<'_> {
                 return;
             }
             // A bare `none` owns nothing, so a borrow-returning function can hand it back beside its references.
-            if !matches!(&e.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
+            if self.cx.m.data.default_form(self.syms, e) != crate::syntax::DefaultForm::None {
                 self.owned_return.get_or_insert(e.pos);
                 self.owned_cases |= self.owned_case(e);
                 if self.result_case(e).is_some() {

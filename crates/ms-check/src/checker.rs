@@ -353,6 +353,12 @@ impl Checker {
             .any(|d| d.file.as_ref() == file && d.cause == Cause::Unknown(name))
     }
 
+    /// Whether `e` is the prelude's `none`: the name, not shadowed by a local of that name
+    /// (module declarations cannot reuse a prelude constructor name).
+    pub(crate) fn names_none(&self, e: &Expr) -> bool {
+        matches!(&e.kind, ExprKind::Name(nm) if self.syms.str(nm) == "none" && self.scope.binding(*nm).is_none())
+    }
+
     /// Reports a diagnostic, applying the checker's suppression rules.
     pub(crate) fn error(&mut self, pos: Pos, phase: Phase, message: impl Into<String>) {
         let message: String = message.into();
@@ -1203,7 +1209,8 @@ impl Checker {
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
-                        let is_none = matches!(&default.kind, ExprKind::Name(nm) if self.syms.str(nm) == "none");
+                        let is_none =
+                            self.m().default_form(self.syms, default) == DefaultForm::None;
                         // Bundled interfaces are implemented by the runtime, which fills any default.
                         let bundled = self.session.is_source_module(module);
                         if !bundled && (self.syms.str(typ.id) != "@std/Optional" || !is_none) {

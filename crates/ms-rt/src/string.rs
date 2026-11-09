@@ -1623,10 +1623,10 @@ pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, o
     }
 }
 
-/// `drop(count)` (named `drop_n` because `msrt_string_drop` releases a value).
+/// `drop(count)`: the text after the first `count` scalars.
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_string_drop_n(s: *const StrVal, count: i64, out: *mut StrVal) {
+pub unsafe extern "C-unwind" fn msrt_string_drop(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
         check_count("drop", count);

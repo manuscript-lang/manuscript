@@ -630,6 +630,14 @@ impl Sym {
         self.variables.borrow().clone()
     }
 
+    /// Whether this is `caller_site` of `@std/test/test.ms`, the default that names the
+    /// position of the call that omitted it.
+    pub fn is_caller_site(&self, syms: ms_syntax::Names) -> bool {
+        self.kind == SymKind::Fn
+            && syms.str(self.name) == "caller_site"
+            && syms.str(self.module) == "@std/test/test.ms"
+    }
+
     /// Whether this is a module-level `let` constant.
     pub fn is_constant(&self) -> bool {
         self.kind == SymKind::Fn && self.decl.as_ref().is_some_and(|d| d.is_constant())

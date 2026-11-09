@@ -1,7 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import (
     HttpHeaders,
-    HttpMethod,
     HttpResponseMetadata,
     NativeHttpClient,
     HttpExchange,
@@ -19,7 +18,7 @@ export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpCli
 
 export extern fn msstd_http_client_request(
     handle: NativeHttpClient,
-    method: HttpMethod,
+    method: String,
     url: String,
     headers: HttpHeaders,
     body: String,
@@ -29,7 +28,7 @@ export extern fn msstd_http_client_request(
 
 export extern fn msstd_http_client_request_bytes(
     handle: NativeHttpClient,
-    method: HttpMethod,
+    method: String,
     url: String,
     headers: HttpHeaders,
     body: Bytes,

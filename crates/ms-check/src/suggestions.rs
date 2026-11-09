@@ -244,11 +244,6 @@ impl Checker {
         }
     }
 
-    /// A resolution diagnostic about the `len`-byte name at `pos`, with its fix.
-    pub(crate) fn res_error_name(&mut self, pos: Pos, len: usize, message: String) {
-        self.error_fixed(pos, len, Phase::Resolution, message);
-    }
-
     /// A type diagnostic about the `len`-byte name at `pos`, with its fix.
     pub(crate) fn type_error_name(&mut self, pos: Pos, len: usize, message: String) {
         self.error_fixed(pos, len, Phase::Type, message);

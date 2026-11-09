@@ -5,31 +5,9 @@ use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::ast::*;
 
-fn is_none(syms: ms_syntax::Names, e: &Expr) -> bool {
-    matches!(&e.kind, ExprKind::Name(nm) if syms.str(nm) == "none")
-}
-
-/// Extended defaults need source preparation rather than the native none adapter.
-fn has_extended_defaults(syms: ms_syntax::Names, params: &[ms_syntax::ast::Param]) -> bool {
-    params
-        .iter()
-        .any(|p| p.default.as_ref().is_some_and(|e| !is_none(syms, e)))
-}
-
-fn closed_literal_defaults(syms: ms_syntax::Names, params: &[ms_syntax::ast::Param]) -> bool {
-    params.iter().all(|p| match &p.default {
-        None => true,
-        Some(e) => {
-            matches!(
-                e.kind,
-                ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit
-            ) || is_none(syms, e)
-        }
-    })
-}
-
 impl Checker {
-    /// Checks the default expressions of one native standard callable.
+    /// Checks the default expressions of one native standard callable, recording what each
+    /// resolves to for lowering.
     pub(crate) fn check_native_defaults(
         &mut self,
         d: &FuncRef,
@@ -38,26 +16,41 @@ impl Checker {
         variables: &[Ty],
         contract: bool,
     ) {
-        if !has_extended_defaults(self.syms, params) {
-            // Existing Optional.none adapters retain their allocation-free path.
-            for parameter in params {
-                let optional = parameter
-                    .ty
-                    .as_ref()
-                    .is_some_and(|ty| ty.name(self.syms) == "Optional");
-                if parameter.default.is_some() && !optional {
-                    self.type_error(
-                        parameter.pos,
-                        "none default requires Optional; use a value matching the declared type",
-                    );
-                }
-            }
+        if params.iter().all(|p| p.default.is_none()) {
+            return;
+        }
+        let old_scope = self.scope.clone();
+        let old_result = self.result.clone();
+        let old_function = self.function;
+        self.scope = self.variable_scope(variables);
+        self.result = t.result.clone();
+        self.serial += 1;
+        self.function = self.serial;
+        self.check_parameters(d, params, &t.params);
+        self.scope = old_scope;
+        self.result = old_result;
+        self.function = old_function;
+        let form = |c: &Checker, e: &Expr| c.m().default_form(c.syms, e);
+        // `none` defaults keep the allocation-free Optional adapter; anything else is prepared
+        // by lowering before native dispatch.
+        let extended: Vec<&Expr> = params
+            .iter()
+            .filter_map(|p| p.default.as_ref())
+            .filter(|e| form(self, e) != DefaultForm::None)
+            .collect();
+        if extended.is_empty() {
             return;
         }
         // Keep this first native-default slice bounded. Source generic defaults and
         // generic calls through nongeneric standard contracts retain their existing
         // rules; native generic expression defaults need a substitution design.
-        if !variables.is_empty() && !closed_literal_defaults(self.syms, params) {
+        let closed = extended.iter().all(|e| {
+            matches!(
+                e.kind,
+                ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit
+            )
+        });
+        if !variables.is_empty() && !closed {
             self.type_error(
                 d.pos(),
                 "native generic expression defaults are not supported; keep '= none' on Optional parameters or use a source wrapper",
@@ -72,14 +65,6 @@ impl Checker {
             );
             return;
         }
-        let old_scope = self.scope.clone();
-        let old_result = self.result.clone();
-        let old_function = self.function;
-        self.scope = self.variable_scope(variables);
-        self.result = t.result.clone();
-        self.serial += 1;
-        self.function = self.serial;
-        self.check_parameters(d, params, &t.params);
         if contract {
             // Inherited preparation precedes an implementation's own defaults.
             // Keep this bounded interface slice independent and free of effects;
@@ -95,24 +80,12 @@ impl Checker {
                 }
             }
         }
-        self.scope = old_scope;
-        self.result = old_result;
-        self.function = old_function;
     }
 
     fn closed_interface_default(&self, e: &Expr) -> bool {
         match &e.kind {
             ExprKind::Bool(_) | ExprKind::Number(_) | ExprKind::Unit => true,
-            ExprKind::Name(nm) => {
-                self.syms.str(nm) == "none"
-                    && self.info_of(e).is_some_and(|i| {
-                        i.binding.is_none()
-                            && i.constructor
-                                .as_ref()
-                                .is_some_and(|c| c.is(Builtin::Optional))
-                            && i.case.is_some_and(|c| self.syms.str(c) == "none")
-                    })
-            }
+            ExprKind::Name(_) => self.m().default_form(self.syms, e) == DefaultForm::None,
             ExprKind::Text(parts) => parts.iter().all(|p| matches!(p, TextPart::Lit(_))),
             ExprKind::Call { callee, args } => {
                 let ExprKind::Member { left, .. } = &callee.kind else {

@@ -4,6 +4,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
 use ms_check::api::hir::{CallView, Resolution};
+use ms_check::api::syntax::DefaultForm;
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::ir::{Imm, Mode, Op, Param, Value};
@@ -96,15 +97,6 @@ pub(crate) struct NArg {
     pub reader: bool,
 }
 
-/// The native identity of `@std/data/json.ms`'s typed calls, which its source module declares as externs.
-pub(crate) fn json_native(native: &str) -> &str {
-    match native {
-        "extern:msstd_json_parse" => "json/parse",
-        "extern:msstd_json_stringify" => "json/stringify",
-        other => other,
-    }
-}
-
 impl<'a> FnLower<'a> {
     pub fn native_function(
         &mut self,
@@ -114,67 +106,19 @@ impl<'a> FnLower<'a> {
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
-        let native = json_native(native);
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !self.syms.str(sym.module).starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
-            // The runtime keeps the first of equal elements and receives the element descriptor like a method call.
-            if symbol == "msrt_list_distinct" {
+            // A runtime function that is one instruction on its arguments is emitted as that instruction.
+            if let Some(op) = crate::rtcall::rt_flags(symbol).op {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
                 }
                 let result = self.emty(e)?;
-                return self.rt_method(symbol, args[0].val, &params[1..], &args[1..], result);
-            }
-            // Float rounding and square root are single instructions.
-            if let Some(op) = match symbol {
-                "msstd_math_sqrt" => Some(ms_mir::ir::Op::FSqrt),
-                "msstd_math_floor" => Some(ms_mir::ir::Op::FFloor),
-                "msstd_math_ceil" => Some(ms_mir::ir::Op::FCeil),
-                "msstd_math_truncate" => Some(ms_mir::ir::Op::FTrunc),
-                _ => None,
-            } {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let x = self.borrow(args[0].val);
                 self.at(e.pos);
-                let v = self
-                    .b
-                    .emit(op, &[x], ms_mir::ir::Imm::None, Some(MTy::FLOAT))
-                    .expect("float op");
-                return Ok(Val { v, own: false });
-            }
-            // The `@std/math` bit operations declare their natives as externs; on `Int` each is one instruction.
-            if let Some(name) = symbol.strip_prefix("msrt_bits_").filter(|n| {
-                matches!(
-                    *n,
-                    "bit_and"
-                        | "bit_or"
-                        | "bit_xor"
-                        | "bit_not"
-                        | "shift_left"
-                        | "shift_right"
-                        | "shift_right_unsigned"
-                        | "rotate_left"
-                        | "rotate_right"
-                        | "count_ones"
-                        | "leading_zeros"
-                        | "trailing_zeros"
-                        | "wrapping_add"
-                        | "wrapping_subtract"
-                        | "wrapping_multiply"
-                )
-            }) {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                self.at(e.pos);
-                return self.bit_operation(name, &args);
+                return self.single_op(symbol, op, &args, result);
             }
             // A symbol that is lowered by hand keeps its native identity.
             if let Some(hand) = crate::stdnative::by_symbol(symbol) {
@@ -187,37 +131,6 @@ impl<'a> FnLower<'a> {
             }
             let result = self.emty(e)?;
             self.at(e.pos);
-            // The host-rule path functions share the interface's entry points; a leading `windows` flag the
-            // declaration does not spell selects the host's rules.
-            if crate::rtcall::rt_sig(symbol)
-                .is_some_and(|sig| sig.params.first().is_some_and(|p| p.name == "windows"))
-                && params
-                    .first()
-                    .is_none_or(|p| self.syms.str(p.name) != "windows")
-            {
-                let name = ct::n("windows");
-                let v = self.b.bconst(cfg!(windows));
-                let mut args = args;
-                args.insert(
-                    0,
-                    NArg {
-                        name,
-                        val: Val { v, own: false },
-                        wrapped: false,
-                        reader: false,
-                    },
-                );
-                let mut decl = params.to_vec();
-                decl.insert(
-                    0,
-                    ct::Param {
-                        name,
-                        ty: ct::bool_(),
-                        mutable: false,
-                    },
-                );
-                return self.rt_function(symbol, &decl, &args, result);
-            }
             return self.rt_function(symbol, params, &args, result);
         }
         match native {
@@ -368,80 +281,21 @@ impl<'a> FnLower<'a> {
         self.rt_function(&sym, params, args, result)
     }
 
-    /// The `@std/math` bit operations on `Int` as single MIR instructions. A shift count outside
-    /// 0 through 63 goes to the runtime function of the same name, which faults.
-    fn bit_operation(&mut self, name: &str, args: &[NArg]) -> Result<Val, Error> {
-        use ms_mir::ir::{Cc, Op};
-        let left = self.borrow(args[0].val);
-        let v = match name {
-            "bit_not" => {
-                let ones = self.b.iconst(-1);
-                self.b.binop(Op::Xor, left, ones)
-            }
-            "count_ones" => self.b.unop(Op::Popcnt, left),
-            "leading_zeros" => self.b.unop(Op::Clz, left),
-            "trailing_zeros" => self.b.unop(Op::Ctz, left),
-            // Any count is reduced modulo 64, as the instruction does.
-            "rotate_left" | "rotate_right" => {
-                let count = self.borrow(args[1].val);
-                let op = if name == "rotate_left" {
-                    Op::Rotl
-                } else {
-                    Op::Rotr
-                };
-                self.b.binop(op, left, count)
-            }
-            "bit_and" | "bit_or" | "bit_xor" | "wrapping_add" | "wrapping_subtract"
-            | "wrapping_multiply" => {
-                let right = self.borrow(args[1].val);
-                let op = match name {
-                    "bit_and" => Op::And,
-                    "bit_or" => Op::Or,
-                    "bit_xor" => Op::Xor,
-                    "wrapping_add" => Op::IAdd,
-                    "wrapping_subtract" => Op::ISub,
-                    _ => Op::IMul,
-                };
-                self.b.binop(op, left, right)
-            }
-            _ => {
-                let count = self.borrow(args[1].val);
-                let (zero, max) = (self.b.iconst(0), self.b.iconst(63));
-                let lo = self.b.icmp(Cc::Ge, count, zero);
-                let hi = self.b.icmp(Cc::Le, count, max);
-                let ok = self.b.binop(Op::And, lo, hi);
-                let (good, bad) = (self.b.new_block(), self.b.new_block());
-                self.b.br_if(ok, good, &[], bad, &[]);
-                self.b.seal_block(good);
-                self.b.seal_block(bad);
-                self.b.switch_to(bad);
-                let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
-                    name: format!("msrt_bits_{name}"),
-                    params: vec![
-                        Param {
-                            ty: MTy::INT,
-                            mode: Mode::Borrow
-                        };
-                        2
-                    ],
-                    ret: MTy::INT,
-                    noreturn: true,
-                    pure_: false,
-                    fresh: false,
-                    role: ms_mir::ir::ExternRole::None,
-                    leaf: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).leaf,
-                    reads: crate::rtcall::rt_flags(&format!("msrt_bits_{name}")).reads,
-                });
-                self.b.call_rt(ext, &[left, count]);
-                self.b.unreachable();
-                self.b.switch_to(good);
-                match name {
-                    "shift_left" => self.b.binop(Op::Shl, left, count),
-                    "shift_right" => self.b.binop(Op::Sshr, left, count),
-                    _ => self.b.binop(Op::Ushr, left, count),
-                }
-            }
-        };
+    /// The runtime function `symbol` declared as the MIR instruction `op` on its arguments.
+    pub(crate) fn single_op(
+        &mut self,
+        symbol: &str,
+        op: &str,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let op = Op::from_name(op)
+            .ok_or_else(|| Error::new(format!("{symbol}: unknown instruction {op}")))?;
+        let vals: Vec<Value> = args.iter().map(|a| self.borrow(a.val)).collect();
+        let v = self
+            .b
+            .emit(op, &vals, Imm::None, Some(result))
+            .ok_or_else(|| Error::new(format!("{symbol}: instruction without a result")))?;
         Ok(Val { v, own: false })
     }
 

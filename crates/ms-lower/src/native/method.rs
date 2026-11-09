@@ -233,16 +233,6 @@ impl<'a> FnLower<'a> {
         }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
-        // `map_add`, `set_values`: the receiver type already says which.
-        // `Map.map_keys` is itself the method's name, which the `map_` rule would cut.
-        let keep = name == "map_keys";
-        let name = if !keep && crate::mapset::is_map_or_set(self.b.m, rty) {
-            name.strip_prefix("map_")
-                .or_else(|| name.strip_prefix("set_"))
-                .unwrap_or(name)
-        } else {
-            name
-        };
         match (self.b.m.types.kind(rty).clone(), name) {
             (TyKind::Obj(n, _), "length" | "is_empty") if n == Native::Map || n == Native::Set => {
                 let r = self.borrow(recv);

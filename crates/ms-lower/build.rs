@@ -5,8 +5,16 @@
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-/// A listed function: name, parameters (name and type) and return type.
-type Entry = (String, Vec<(String, String)>, String, u8, Vec<String>);
+/// A listed function: name, parameters (name and type), return type, flag bits, kept
+/// parameters and the MIR instruction it is (empty when none).
+type Entry = (
+    String,
+    Vec<(String, String)>,
+    String,
+    u8,
+    Vec<String>,
+    String,
+);
 
 /// Splits `list` at its top-level commas (a function-pointer type holds commas).
 fn split_params(list: &str) -> Vec<&str> {
@@ -129,7 +137,17 @@ fn main() {
             .iter()
             .filter_map(|f| f.strip_prefix("keeps:"))
             .collect();
-        let flags = bit("leaf") | bit("pure") << 1 | bit("fresh") << 2 | bit("handle") << 3;
+        // `@op=<mnemonic>`: the function is exactly that MIR instruction on its arguments.
+        let op = flags
+            .iter()
+            .find_map(|f| f.strip_prefix("op="))
+            .unwrap_or("")
+            .to_string();
+        let flags = bit("leaf")
+            | bit("pure") << 1
+            | bit("fresh") << 2
+            | bit("handle") << 3
+            | bit("spawns") << 4;
         let Some((name, rest)) = line.split_once('(') else {
             panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
         };
@@ -154,12 +172,12 @@ fn main() {
             .strip_prefix("->")
             .map(|r| r.trim().to_string())
             .unwrap_or_default();
-        table.push((name.trim().to_string(), params, ret, flags, kept));
+        table.push((name.trim().to_string(), params, ret, flags, kept, op));
     }
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");
-    for (name, params, ret, flags, kept) in &table {
+    for (name, params, ret, flags, kept, op) in &table {
         let params: Vec<String> = params
             .iter()
             .map(|(n, t)| {
@@ -174,7 +192,7 @@ fn main() {
             .collect();
         writeln!(
             out,
-            "    ({name:?}, &[{}], {ret:?}, {flags}),",
+            "    ({name:?}, &[{}], {ret:?}, {flags}, {op:?}),",
             params.join(", ")
         )
         .unwrap();

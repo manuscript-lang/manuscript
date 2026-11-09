@@ -36,7 +36,7 @@ pub mod ownership {
 }
 
 pub mod syntax {
-    pub use crate::syntax::{DeclRef, FuncRef, Info, ModRef, ScopeState};
+    pub use crate::syntax::{DeclRef, DefaultForm, FuncRef, Info, ModRef, ScopeState};
 }
 
 pub mod checker {

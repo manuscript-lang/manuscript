@@ -103,6 +103,9 @@ pub(crate) struct World {
     receiver_natives: HashSet<String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
+    /// The bundled module of each declared function or method, by the address of its syntax;
+    /// built on first use once the library is loaded.
+    func_modules: Option<HashMap<usize, ModRef>>,
 }
 
 /// The compiler session: the standard-library world and the binding counter. A checker, the
@@ -1238,6 +1241,35 @@ impl Session {
     }
 
     /// Whether a bundled module is a source module (it has bodies).
+    /// The bundled module that declares the function or method `f`.
+    pub fn func_module(self: &Rc<Self>, f: &ms_syntax::ast::Func) -> Option<ModRef> {
+        self.world(|w| {
+            if w.func_modules.is_none() {
+                let mut map = HashMap::new();
+                for m in &w.sources {
+                    for d in &m.decls {
+                        if let Some(f) = d.func() {
+                            map.insert(f as *const _ as usize, m.clone());
+                        }
+                        for method in d.methods() {
+                            map.insert(&method.func as *const _ as usize, m.clone());
+                        }
+                    }
+                }
+                w.func_modules = Some(map);
+            }
+            w.func_modules
+                .as_ref()?
+                .get(&(f as *const _ as usize))
+                .cloned()
+        })
+    }
+
+    /// The bundled module checked from `file`, if the standard library has one.
+    pub fn bundled_module(self: &Rc<Self>, file: Name) -> Option<ModRef> {
+        self.world(|w| w.sources.iter().find(|m| m.file == file).cloned())
+    }
+
     pub fn is_source_module(self: &Rc<Self>, module: &ModRef) -> bool {
         self.world(|w| {
             w.source_modules

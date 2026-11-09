@@ -1534,12 +1534,17 @@ fn lower_native_thunk(
     let func = job.sym.decl.as_ref().and_then(|d| d.func());
     let mut args = fl.thunk_native_args(job.sym.module, func, &job.params, &params[1..])?;
     let ret = fl.ret_ty;
-    match crate::native::json_native(job.native.as_str()) {
+    let identity = job
+        .native
+        .strip_prefix("extern:")
+        .and_then(crate::stdnative::by_symbol)
+        .map_or(job.native.as_str(), |h| h.identity);
+    match identity {
         "json/parse" | "json/stringify" => {
             // Generic natives with their own lowering: the type argument comes from the instance.
             fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
             let have = fl.mty(&job.result)?;
-            let r = if crate::native::json_native(&job.native) == "json/parse" {
+            let r = if identity == "json/parse" {
                 let t = job.result.args.first().cloned();
                 let t = t.ok_or_else(|| Error::new("parse without a result type"))?;
                 fl.json_parse(&t, have, &args)?
@@ -1594,9 +1599,14 @@ impl FnLower<'_> {
             };
             let lifted = passed != declared;
             let none_default = p.ty.is(Builtin::Optional)
-                && default.is_none_or(
-                    |d| matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none"),
-                );
+                && match default {
+                    None => true,
+                    Some(d) => {
+                        let f = func.expect("a default has a declaration");
+                        self.func_decl_module(module, f)?.default_form(self.syms, d)
+                            == ms_check::api::syntax::DefaultForm::None
+                    }
+                };
             let val = if lifted && none_default {
                 // Native/interface arguments borrow their caller's values. A supplied payload and
                 // the implicit none both live through this call; copying here would make

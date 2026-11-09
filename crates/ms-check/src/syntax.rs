@@ -437,6 +437,34 @@ impl ModuleData {
         self.facts.borrow_mut()
     }
 
+    /// What the parameter default `e`, written in this module, is, from its checked resolution:
+    /// a local named `none` or `caller_site` is an ordinary expression.
+    pub fn default_form(&self, syms: ms_syntax::Names, e: &ms_syntax::ast::Expr) -> DefaultForm {
+        let facts = self.facts();
+        let resolved = |e: &ms_syntax::ast::Expr| facts.info(e.id).filter(|i| i.binding.is_none());
+        match &e.kind {
+            ms_syntax::ast::ExprKind::Name(_)
+                if resolved(e).is_some_and(|i| {
+                    i.constructor
+                        .as_ref()
+                        .is_some_and(|c| c.is(Builtin::Optional))
+                        && i.case.is_some_and(|c| syms.str(c) == "none")
+                }) =>
+            {
+                DefaultForm::None
+            }
+            ms_syntax::ast::ExprKind::Call { callee, args }
+                if args.is_empty()
+                    && resolved(callee)
+                        .and_then(|i| i.symbol.as_ref())
+                        .is_some_and(|s| s.is_caller_site(syms)) =>
+            {
+                DefaultForm::CallerSite
+            }
+            _ => DefaultForm::Expr,
+        }
+    }
+
     /// Whether a name is in an `@std/` module.
     pub fn is_standard(&self, syms: ms_syntax::Names) -> bool {
         syms.str(self.file).starts_with("@std/")
@@ -445,6 +473,17 @@ impl ModuleData {
 
 /// Shared module.
 pub type ModRef = Rc<ModuleData>;
+
+/// What a parameter default is, decided from its checked resolution.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DefaultForm {
+    /// `none`: the absent `Optional`.
+    None,
+    /// `caller_site()` of `@std/test/test.ms`: the position of the call that omitted it.
+    CallerSite,
+    /// Any other expression, evaluated at the call.
+    Expr,
+}
 
 /// Span containment helper.
 pub fn in_span(offset: u32, s: &Span) -> bool {

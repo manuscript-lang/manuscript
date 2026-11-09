@@ -249,7 +249,7 @@ fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchRespo
     let started = monotonic()
     let outbound = outgoing(options.clone())
     let body = try msstd_http_client_request_bytes(
-        native, options.method.clone(), url, outbound.headers, outbound.body,
+        native, options.method.text(), url, outbound.headers, outbound.body,
         options.max_response_bytes, options.timeout
     )
     return drain(body, options, started)

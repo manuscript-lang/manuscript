@@ -170,7 +170,7 @@ impl HttpClient:
         timeout: Duration?
     ) StreamingResponse!:
         let raw = try msstd_http_client_request(
-            self.native, method, url, headers, body, max_response_bytes, timeout
+            self.native, method.text(), url, headers, body, max_response_bytes, timeout
         )
         return ok(response(raw))
 
@@ -198,7 +198,7 @@ impl HttpClient:
         timeout: Duration?
     ) RawResponse!:
         return msstd_http_client_request_bytes(
-            self.native, method, url, headers, body, max_response_bytes, timeout
+            self.native, method.text(), url, headers, body, max_response_bytes, timeout
         )
 
     // Reads `body` to its end, then sends it as the request body. The upload is buffered until the request can

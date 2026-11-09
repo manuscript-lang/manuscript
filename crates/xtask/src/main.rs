@@ -129,7 +129,9 @@ fn symbols(check: bool) -> Result<String, String> {
          # `name(param: type, ..) -> ret`, the C signature lowering marshals runtime calls from, then the\n\
          # flags the source declares with a `// ms: leaf pure fresh` comment above the function:\n\
          # `@leaf` never reaches a cancellation point, `@pure` only reads memory and cannot fault,\n\
-         # `@fresh` returns a value that borrows none of its arguments.\n",
+         # `@fresh` returns a value that borrows none of its arguments, `@keeps:<param>` stores that\n\
+         # function value, `@spawns` starts a task running program code, and `@op=<mnemonic>` is exactly\n\
+         # that MIR instruction on its arguments.\n",
     );
     for (name, found) in &flags {
         if !table.contains_key(name) {
@@ -191,8 +193,10 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
 /// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
-/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, and `keeps:<param>`
-/// for a function value the runtime stores and drops itself); an unknown flag or a
+/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `keeps:<param>`
+/// for a function value the runtime stores and drops itself, `spawns` for a function that starts a
+/// task running code of the program, and `op=<mnemonic>` for a function
+/// that is exactly one MIR instruction on its arguments); an unknown flag or a
 /// marker with no function after it is an error.
 fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
     let mut found = Vec::new();
@@ -202,7 +206,9 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         if let Some(list) = t.strip_prefix("// ms:") {
             let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
             if let Some(bad) = list.iter().find(|f| {
-                !["leaf", "pure", "fresh"].contains(&f.as_str()) && !f.starts_with("keeps:")
+                !["leaf", "pure", "fresh", "spawns"].contains(&f.as_str())
+                    && !f.starts_with("keeps:")
+                    && !f.starts_with("op=")
             }) {
                 return Err(format!("line {}: unknown flag `{bad}`", n + 1));
             }

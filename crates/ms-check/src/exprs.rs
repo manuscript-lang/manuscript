@@ -1133,13 +1133,9 @@ impl Checker {
         mut i: Info,
     ) -> Info {
         if matches!(op, BinaryOp::Eq | BinaryOp::Ne)
-            && (is_none_name(self.syms, left) || is_none_name(self.syms, right))
+            && (self.names_none(left) || self.names_none(right))
         {
-            let other = if is_none_name(self.syms, left) {
-                right
-            } else {
-                left
-            };
+            let other = if self.names_none(left) { right } else { left };
             let other = self.expression(other, None);
             if !invalid_ty(&other.t()) {
                 self.type_error(
@@ -1348,10 +1344,6 @@ pub(crate) fn callee_name(syms: ms_syntax::Names, e: &Expr) -> String {
         ExprKind::Apply { left, .. } => callee_name(syms, left),
         _ => String::new(),
     }
-}
-
-fn is_none_name(syms: ms_syntax::Names, e: &Expr) -> bool {
-    matches!(&e.kind, ExprKind::Name(n) if syms.str(n) == "none")
 }
 
 /// Whether a call with `count` arguments can fill the parameters of `callable`, leaving out only omittable ones.

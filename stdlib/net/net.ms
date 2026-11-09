@@ -385,7 +385,7 @@ impl Network:
         options: RequestOptions = RequestOptions()
     ) ClientResponse!:
         return msstd_net_network_request(
-            self.native, method, url, options.headers, body, options.max_bytes,
+            self.native, method.text(), url, options.headers, body, options.max_bytes,
             options.timeout
         )
 
@@ -397,7 +397,7 @@ impl Network:
         options: RequestOptions = RequestOptions()
     ) ClientResponse!:
         return msstd_net_network_request_bytes(
-            self.native, method, url, options.headers, body, options.max_bytes,
+            self.native, method.text(), url, options.headers, body, options.max_bytes,
             options.timeout
         )
 

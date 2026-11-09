@@ -1039,44 +1039,6 @@ pub unsafe extern "C-unwind" fn msrt_list_keys(v: *const VecVal, out: *mut VecVa
     }
 }
 
-/// `join` on `List[String]`.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_join(
-    v: *const VecVal,
-    sep: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller contract.
-    unsafe {
-        let v = &*v;
-        *out = string::join_strings(v.ptr as *const StrVal, v.len, string::bytes(sep));
-    }
-}
-
-/// `join` on `List[Int]`: decimal text of each element.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_join_int(
-    v: *const VecVal,
-    sep: *const StrVal,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller contract.
-    unsafe {
-        let v = &*v;
-        let sepb = string::bytes(sep);
-        let mut b = Vec::new();
-        for i in 0..v.len {
-            if i > 0 {
-                b.extend_from_slice(sepb);
-            }
-            b.extend_from_slice((*(v.ptr as *const i64).add(i)).to_string().as_bytes());
-        }
-        *out = string::from_buf(b);
-    }
-}
-
 // ---- sorting ----
 
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.

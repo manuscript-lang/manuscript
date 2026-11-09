@@ -22,7 +22,8 @@ impl<'a> FnLower<'a> {
             let Some(d) = f.params.get(i).and_then(|q| q.default.as_ref()) else {
                 continue;
             };
-            if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
+            let decl_module = self.func_decl_module(module, f)?;
+            if decl_module.default_form(self.syms, d) == DefaultForm::None {
                 continue;
             }
             // Bundled declarations carry no checked facts: literal defaults are built directly,
@@ -54,7 +55,7 @@ impl<'a> FnLower<'a> {
                 ExprKind::Call { .. } | ExprKind::Member { .. }
                     if self.cx.module(module).is_err() =>
                 {
-                    match self.literal_default(d, &p.ty)? {
+                    match self.literal_default(&decl_module, d, &p.ty)? {
                         Some(v) => Ok(v),
                         None => continue,
                     }
