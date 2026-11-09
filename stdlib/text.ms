@@ -33,15 +33,16 @@ white space are not accepted. Base 0 chooses the base from a `0x`, `0o` or `0b` 
 otherwise uses 10. An overflow, bad digit or unsupported base is none.
 */
 export fn parse_int_radix(text: String, base: Int) Int?:
-    var digits = text
     var negative = false
+    var sign = 0
 
-    if let rest = digits.cut_prefix("-"):
+    if text.starts_with("-"):
         negative = true
-        digits = rest.clone()
-    else if let rest = digits.cut_prefix("+"):
-        digits = rest.clone()
+        sign = 1
+    else if text.starts_with("+"):
+        sign = 1
 
+    var digits = text.drop(sign)
     var radix = base
 
     if radix == 0:

@@ -11,5 +11,6 @@ Verified: Go text-parity sweep (workstream 1); tests `tests/e2e/testdata/stdlib/
 - `@std/string.ms` cannot import `@std/unicode.ms` (cycle); use `@std/internal/unicode.ms`.
 - In string literals `\\u{` still starts an interpolation; write `\\u\{` and `\}`.
 - `quote` and `quote_ascii` must escape both braces and literal-forbidden bidi controls; verify their output can be parsed as source, as well as round-tripped through `unquote`. Unicode escape payloads require 1 to 6 ASCII hexadecimal digits: the signed integer parser alone also accepts invalid `+41` and `-0` payloads.
+- `var x = param` inside a stdlib function aliases the parameter, so callers lose their String (`parse_int_radix(text)` consumed `text`). Derive with `drop`/`take` into a `var`, or `.clone()`; check by calling the function twice with one variable.
 
 Apply when: adding text or scalar helpers. Verify: `ms test tests/e2e/testdata/stdlib/text.ms`.
