@@ -2,31 +2,28 @@
 
 **The language for the agentic era.**
 
+Manuscript makes it practical to trust agent generated code: its syntax is simple enough to read at a glance, and built-in diagramming tools with an interactive code map let you explore what the agent built without reading it line by line. Under the hood, the compiler enforces one owner per value with no GC, so programs run close to C speed and scale to all cores, and a simple effects system tracks what your code is allowed to do. The toolchain comes with everything agentic coding needs: errors that name their fix, and one command each to verify, test, fuzz, benchmark and profile.
+
+
 <p align="center">
   <img src="website/static/images/screencast.gif" width="720" alt="A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.">
 </p>
 
-Manuscript makes it practical to trust agent generated code: its syntax is simple enough to read at a glance, and built-in diagramming tools with an interactive code map let you explore what the agent built without reading it line by line. Under the hood, the compiler enforces one owner per value with no GC, so programs run close to C speed and scale to all cores, and a simple effects system tracks what your code is allowed to do. The toolchain comes with everything agentic coding needs: errors that name their fix, and one command each to verify, test, fuzz, benchmark and profile.
-
-Builds are fast. A generated 122,000-line project builds in debug in 5.4 s against 9.0 s for `go build` ([results](bench/perf/results-2026-11-05.md)).
 
 ```manuscript
-import parse from "@std/data/json.ms"
-import expect_equal from "@std/test/test.ms"
+fn handle(request: HttpRequest) HttpResponse:
+    return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
-type Config:
-    port: Int?
+fn listen() Unit!:
+    let server = try serve("127.0.0.1:0", buffered(handle))
+    print("{server.address()}")
+    try server.wait()
+    return ok(unit)
 
-fn port_from(text: String) Int!:
-    let config = try parse[Config](text)
-    return ok(config.port.get(8080))
-
-test "an unset port uses the default":
-    let port = try port_from("\{\"port\":null\}")
-    try expect_equal(port, 8080)
+export fn main() Int:
+    if listen().is_ok(): return 0
+    return 1
 ```
-
-Save it as `config.ms` and run `ms test config.ms`.
 
 ## Where to go next
 
