@@ -268,3 +268,63 @@ fn signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments() {
         );
     }
 }
+
+#[test]
+fn multiline_interpolation_signature_help() {
+    let syms = ms_syntax::Names::global();
+    let session = ms_check::Session::new();
+    for newline in ["\n", "\r\n"] {
+        let ws = Workspace::new("multiline-help");
+        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, 2)}\n        \"\"\"\n".replace('\n', newline);
+        let offset = source.find(", 2").unwrap() + 2;
+        let d = Document::new(ws.uri("signature.ms"), source.clone());
+        let answer = signature_help(
+            syms,
+            &session,
+            &d,
+            &Documents::new(),
+            text::position(&source, offset),
+        )
+        .unwrap();
+        assert_eq!(
+            answer.get("activeParameter").and_then(|v| v.as_i64()),
+            Some(1)
+        );
+        let raw = source.replace("return \"\"\"", "return r\"\"\"");
+        let offset = raw.find(", 2").unwrap() + 2;
+        let d = Document::new(ws.uri("raw.ms"), raw.clone());
+        assert_eq!(
+            signature_help(
+                syms,
+                &session,
+                &d,
+                &Documents::new(),
+                text::position(&raw, offset)
+            )
+            .unwrap(),
+            ms_lsp::json::Json::Null
+        );
+    }
+}
+
+#[test]
+fn unfinished_multiline_interpolation_signature_help() {
+    let syms = ms_syntax::Names::global();
+    for newline in ["\n", "\r\n"] {
+        let ws = Workspace::new("unfinished-help");
+        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, ".replace('\n', newline);
+        let d = Document::new(ws.uri("signature.ms"), source.clone());
+        let answer = signature_help(
+            syms,
+            &ms_check::Session::new(),
+            &d,
+            &Documents::new(),
+            text::position(&source, source.len()),
+        )
+        .unwrap();
+        assert_eq!(
+            answer.get("activeParameter").and_then(|v| v.as_i64()),
+            Some(1)
+        );
+    }
+}
