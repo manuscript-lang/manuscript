@@ -336,7 +336,7 @@ export fn main() Int:
                             .get()
                         )
                     else if filter != "":
-                        stdout().write("rejected {name}: {why}\n").get()
+                        print("rejected {name}: {why}")
 
                     continue
 
@@ -418,7 +418,7 @@ export fn main() Int:
     )
 
     if checked == 0:
-        stdout().write("no combination ran\n").get()
+        print("no combination ran")
         return 1
 
     if failures > 0: return 1

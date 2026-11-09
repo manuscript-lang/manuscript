@@ -12,7 +12,6 @@ import arguments, change_directory, working_directory from "@std/os/env.ms"
 import system_info from "@std/os/system.ms"
 import Promise, promise from "@std/concurrency/promise.ms"
 import seconds from "@std/time.ms"
-import stdout from "@std/io/io.ms"
 
 // The live block counts the runtime printed on standard error; a program that starts child
 // processes prints one per process, and their sum is what leaked. Empty when none was printed.
@@ -135,13 +134,13 @@ export fn main() Int:
             if line == "swept": swept += 1
             else:
                 leaks += 1
-                stdout().write("{line}\n").get()
+                print("{line}")
 
     change_directory(root).get()
-    stdout().write("swept {swept} programs, {leaks} leaking\n").get()
+    print("swept {swept} programs, {leaks} leaking")
 
     if swept == 0:
-        stdout().write("no program reported a live block count\n").get()
+        print("no program reported a live block count")
         return 1
 
     if leaks > 0: return 1

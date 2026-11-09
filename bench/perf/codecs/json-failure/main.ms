@@ -1,7 +1,6 @@
 import parse from "@std/data/json.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
 import monotonic from "@std/time.ms"
 
 extern fn codec_bench_cpu_ns() Int
@@ -64,5 +63,5 @@ export fn main() Int:
     let cpu = codec_bench_cpu_ns() - cpu_start
     if cpu <= 0: return 6
 
-    stdout().write("{size} {rounds} {shape} {checksum} {elapsed} {cpu}\n").get()
+    print("{size} {rounds} {shape} {checksum} {elapsed} {cpu}")
     return 0

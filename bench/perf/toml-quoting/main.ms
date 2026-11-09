@@ -28,5 +28,5 @@ export fn main() Int:
         checksum += out.byte_length()
 
     let elapsed = monotonic().difference(start).to_nanoseconds()
-    stdout().write("{elapsed}\t{checksum}\t{expected.byte_length()}\n").get()
+    print("{elapsed}\t{checksum}\t{expected.byte_length()}")
     return 0
