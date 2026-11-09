@@ -154,8 +154,8 @@ into a Manuscript stream.
 
 ```text
 msstd_net_network_http_client(net, opts, out, err) -> u8
-msstd_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
-msstd_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
+msstd_http_client_request_bytes(c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
+msstd_net_network_request_bytes(net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
 msstd_http_body_{read,metadata,close}
 msstd_net_network_serve(net, address, env, opts, out, err) -> u8
 msstd_http_server_{address,close,wait}

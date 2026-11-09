@@ -23,7 +23,6 @@
 @std/net/net.ms listen_unix: std.net.listen
 @std/net/net.ms lookup: std.net.connect
 @std/net/net.ms request: std.net.connect
-@std/net/net.ms request_bytes: std.net.connect
 @std/net/net.ms resolve_dns: std.net.connect
 @std/net/net.ms serve: std.net.listen
 @std/net/net.ms web_socket: std.net.connect
