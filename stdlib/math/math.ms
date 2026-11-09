@@ -333,7 +333,7 @@ export fn parse_float(text: String) Float!:
     return msrt_numbers_parse_float(text)
 
 // Parses an integer in a radix from 2 through 36.
-export fn parse_int(text: String, radix: Int) Int!:
+export fn parse_int(text: String, radix: Int = 10) Int!:
     return msrt_numbers_parse_int(text, radix)
 
 // Returns the bitwise AND of two integers.

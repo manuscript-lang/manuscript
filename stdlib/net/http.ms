@@ -266,9 +266,9 @@ export interface HttpExchange:
     // Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     // `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
     var fn upgrade(
-        allowed_origins: List[String],
-        subprotocols: List[String],
-        max_message_bytes: Int?
+        allowed_origins: List[String] = [],
+        subprotocols: List[String] = [],
+        max_message_bytes: Int? = none
     ) NativeWebSocket!
     // Writes one chunk of the response body and flushes it.
     // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.

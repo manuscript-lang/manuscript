@@ -413,7 +413,11 @@ impl Network:
 
     // Returns a derived network limited to the given host names and CIDR ranges.
     // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
-    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!:
+    fn restrict(
+        hosts: List[String],
+        cidrs: List[String] = [],
+        allow_listen: Bool = false
+    ) Network!:
         return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
 
     // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
@@ -545,8 +549,8 @@ export fn resolve_dns(
 // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
 export fn restrict(
     hosts: List[String],
-    cidrs: List[String],
-    allow_listen: Bool
+    cidrs: List[String] = [],
+    allow_listen: Bool = false
 ) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
