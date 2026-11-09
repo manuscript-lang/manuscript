@@ -117,4 +117,6 @@ Property tests double as a fuzzer, benchmarks time each change, and the profiler
 ms init hello
 ```
 
-Everything here works today, and I harden it with each release. Syntax and APIs still evolve.
+Download `ms` from the [releases page](https://github.com/manuscript-lang/manuscript/releases) and run the command above.
+
+Everything here works today and is hardened with each release. Syntax and APIs still evolve.
