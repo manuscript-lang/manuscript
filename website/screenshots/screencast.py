@@ -17,41 +17,42 @@ SRC = os.path.join(HERE, "screencast")
 def first(n): return lambda ls: ls[:n]
 def last(n): return lambda ls: ls[-n:]
 SCENES = [
-    dict(title="*One owner.* No garbage collector.",
-         sub="Use-after-move is a compile error. No GC pauses, no refcounts.",
+    dict(title="*Use-after-move?* Compile error.",
+         sub="One owner per value. No GC, no refcounts, no surprises.",
          src="own.ms", steps=[("ms run own.ms", first(1))], cut=";"),
-    dict(title="*C-class speed.* No GC, no heavy runtime.",
+    dict(title="*No GC pauses.* C-class speed.",
          sub="5M sieve: 26 ms, C 26 ms (bench/perf, 2026-11-05).",
          src=None, steps=[("ms build sieve.ms -o sieve && ./sieve", first(2))]),
-    dict(title="*No async.* No await.",
-         sub="Any function can run concurrently. Nothing to color or rewrite.",
+    dict(title="*async/await?* Not needed.",
+         sub="Any function can run concurrently. No colored functions to rewrite.",
          src="conc.ms", steps=[("ms run conc.ms", first(1))]),
-    dict(title="*Every core*, no threads to manage.",
+    dict(title="*Every core.* Zero threads to manage.",
          sub="Four CPU-bound promises, spread across the machine by the runtime.",
          src=None, steps=[("ms run par.ms", first(1))]),
-    dict(title="*Effects* are checked.",
-         sub="A function that prints or touches files has to say so.",
+    dict(title="Does it *really* just add numbers?",
+         sub="Printing, files and network must be declared, or lint says so.",
          src="effects.ms", steps=[("ms lint effects.ms", first(1))], cut=";"),
-    dict(title="Errors that tell you *the fix*.",
+    dict(title="Compiler errors that *name the fix*.",
          sub="Cause and remedy in every diagnostic. --json for agents.",
          src="fixme.ms", steps=[("ms check fixme.ms", first(1))], cut=";"),
-    dict(title="*Test. Bench. Profile.* Built in.",
+    dict(title="Zero setup: *test, bench, profile.*",
          sub="No framework, no harness, no extra tools to install.",
          src=None, steps=[
              ("ms test tb.ms", last(1)),
              ("ms bench tb.ms --time 20ms --samples 3", lambda ls: [l for l in ls if l.startswith("BENCH")]),
              ("ms profile prof.ms --out-dir pr --top 3", lambda ls: ls[1:4]),
          ], cut=" ("),
-    dict(title="*See what the agent built.*",
-         sub="Call graphs and code maps come from checked source.",
+    dict(title="Can't read all that agent code? *Map it.*",
+         sub="Call graphs and code maps from checked source.",
          src=None, steps=[("ms diagram conc.ms --format ascii", first(6))]),
 ]
 URL = "manuscript-lang.github.io/manuscript"
 
 W, H = 1280, 720
-C = dict(top=(13, 15, 30), bot=(34, 17, 52), card=(18, 20, 32), bar=(30, 33, 50), edge=(60, 66, 96),
-         fg=(232, 235, 247), dim=(146, 152, 178), acc=(86, 214, 255), pink=(255, 95, 170), ok=(120, 230, 150),
-         err=(255, 110, 125), kw=(255, 121, 198), st=(150, 235, 160), nu=(255, 184, 108), co=(110, 118, 150))
+# the website's orange dark theme (website/assets/_custom.scss)
+C = dict(top=(27, 18, 14), bot=(27, 18, 14), card=(36, 24, 16), bar=(71, 39, 25), edge=(120, 74, 46),
+         fg=(255, 242, 230), dim=(192, 170, 153), acc=(255, 135, 62), acc2=(255, 171, 114), ok=(255, 200, 120),
+         err=(255, 105, 105), kw=(255, 171, 114), st=(255, 135, 62), nu=(255, 214, 120), co=(150, 125, 105))
 KEYWORDS = set("fn let var if else for in return try import from export type impl while match and or not true false none ok error test bench".split())
 D = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono"
 CODE, HEAD, SUB, SMALL = (ImageFont.truetype(D + ".ttf", 27), ImageFont.truetype(D + "-Bold.ttf", 47),
@@ -146,7 +147,7 @@ def card_frame(kind, n, total, typed="", chips=0):
     d = ImageDraw.Draw(im)
     if kind == "intro":
         d.text((W // 2, 250), "Manuscript", font=BIG, fill=C["fg"], anchor="mm")
-        d.text((W // 2, 345), "The language for the agentic era.", font=HEAD, fill=C["acc"], anchor="mm")
+        d.text((W // 2, 345), "Agents write it. People understand it.", font=HEAD, fill=C["acc"], anchor="mm")
         names = ["no GC", "no async", "checked effects", "native speed"]
     else:
         d.text((W // 2, 200), "Try it.", font=BIG, fill=C["fg"], anchor="mm")
@@ -234,7 +235,7 @@ def main():
         mix = lambda x, y, k: tuple(int(p + (q - p) * k) for p, q in zip(x, y))
         entries = [mix(C["top"], C["bot"], i / 31) for i in range(32)]
         entries += [C["card"], C["bar"], C["edge"], (237, 106, 94), (245, 191, 79), (97, 197, 84)]
-        for name in ("fg", "dim", "acc", "pink", "ok", "err", "kw", "st", "nu", "co"):
+        for name in ("fg", "dim", "acc", "acc2", "ok", "err", "kw", "st", "nu", "co"):
             for base in (C["card"], C["top"], C["bot"], C["bar"]):
                 entries += [mix(base, C[name], k) for k in (0.25, 0.5, 0.75, 1.0)]
         entries = list(dict.fromkeys(entries))[:256]
