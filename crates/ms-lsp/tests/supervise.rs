@@ -150,7 +150,7 @@ fn crashed_worker_is_replaced_and_state_replayed() {
         &input,
         obj([
             ("jsonrpc", "2.0".into()),
-            ("id", 2usize.into()),
+            ("id", "ms-lsp-replay".into()),
             ("method", "textDocument/hover".into()),
             (
                 "params",
@@ -166,7 +166,7 @@ fn crashed_worker_is_replaced_and_state_replayed() {
     );
     wait_for(&sink, |m| {
         m.iter().any(|m| {
-            m.get("id").and_then(|i| i.as_i64()) == Some(2)
+            m.get("id").and_then(Json::as_str) == Some("ms-lsp-replay")
                 && m.get("result").is_some_and(|r| !r.is_null())
         })
     });
@@ -185,10 +185,60 @@ fn crashed_worker_is_replaced_and_state_replayed() {
     drop(input);
     supervisor.join().unwrap().unwrap();
     let seen = messages(&sink.0.lock().unwrap());
-    // The replayed initialize answer never reaches the client.
+    // Only the client's hover reaches it, never the replayed initialize answer.
+    let replay_ids: Vec<_> = seen
+        .iter()
+        .filter(|message| message.get("id").and_then(Json::as_str) == Some("ms-lsp-replay"))
+        .collect();
+    assert_eq!(replay_ids.len(), 1);
     assert!(
-        !seen
-            .iter()
-            .any(|m| m.get("id").and_then(|i| i.as_str()) == Some("ms-lsp-replay"))
+        replay_ids[0]
+            .get("result")
+            .unwrap()
+            .get("contents")
+            .is_some()
     );
+}
+
+#[test]
+fn client_request_can_use_replay_id_without_a_restart() {
+    let (input, receiver) = channel();
+    let sink = Sink(Arc::default());
+    let output = sink.clone();
+    let supervisor = std::thread::spawn(move || {
+        ms_lsp::supervise(Pipe(receiver, Vec::new()), output, || {
+            let mut command = Command::new(env!("CARGO_BIN_EXE_ms-lsp"));
+            command.env("MS_LSP_WORKER", "1");
+            command
+        })
+    });
+    for (id, method) in [("ms-lsp-replay", "initialize"), ("barrier", "shutdown")] {
+        send(
+            &input,
+            obj([
+                ("jsonrpc", "2.0".into()),
+                ("id", id.into()),
+                ("method", method.into()),
+                ("params", obj([])),
+            ]),
+        );
+    }
+    wait_for(&sink, |messages| {
+        messages
+            .iter()
+            .any(|message| message.get("id").and_then(Json::as_str) == Some("barrier"))
+    });
+    send(
+        &input,
+        obj([("jsonrpc", "2.0".into()), ("method", "exit".into())]),
+    );
+    drop(input);
+    supervisor.join().unwrap().unwrap();
+    let seen = messages(&sink.0.lock().unwrap());
+    let response = seen
+        .iter()
+        .find(|message| message.get("id").and_then(Json::as_str) == Some("ms-lsp-replay"))
+        .expect("the client's initialize response must not be hidden as a replay");
+    assert!(response.get("result").is_some());
+    assert!(response.get("error").is_none());
 }

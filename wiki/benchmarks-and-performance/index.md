@@ -29,3 +29,4 @@ Perf and agent benchmarks, profiling.
 - [String fusion must not treat other-block drops as early](string-fusion-must-not-treat-other-block-drops-as-early.md): a leaf dropped on a sibling path is not dropped before the join; `Info::dropped_before` uses reachability, c36 -6.8% instructions.
 
 - [URL parent resolution truncates existing prefixes](url-parent-resolution-truncates-existing-prefixes.md): avoid quadratic prefix copies while preserving root and slash semantics; measure ordinary relative-reference controls.
+- [Diff context windows need only new flags](diff-context-windows-need-only-new-flags.md): mark each Boolean once while preserving overlapping hunk windows and ordinary diff controls.

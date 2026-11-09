@@ -896,6 +896,7 @@ impl ListCopiesKeyed[T] for List[T]:
     fn repeated(count: Int) List[T]:
         if count < 0:
             panic("List.repeated: count {count} must not be negative")
+        if self.length() == 0: return []
 
         var out = List[T](reserve: self.length() * count)
         for round in 0..count:
