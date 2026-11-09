@@ -201,3 +201,15 @@ bench "list.records_map":
         return keep(mapped.fold(0, fn(acc: Int, p: Point) Int: acc + p.y))
 
     try measure(100000, work)
+
+bench "list.repeated empty":
+    let values: List[Int] = []
+    fn work() Unit!:
+        return keep(values.repeated(1000000).length())
+    try measure(1, work)
+
+bench "list.repeated small":
+    let values = [1, 2, 3, 4]
+    fn work() Unit!:
+        return keep(values.repeated(2).length())
+    try measure(1, work)
