@@ -689,3 +689,30 @@ fn completion_distinguishes_multiline_payload_and_interpolation() {
         assert!(labels(&raw, 2, 13).is_empty());
     }
 }
+
+#[test]
+fn completion_recovers_incomplete_multiline_interpolation() {
+    for newline in ["\n", "\r\n"] {
+        for suffix in ["", "}\n        \"\"\"\nlet broken = \""] {
+            for prefix in ["", "let broken = \"\n"] {
+                let source = format!(
+                "{prefix}fn greet(name: String) String:\n    return \"\"\"\n        hello {{name.{suffix}"
+            )
+            .replace('\n', newline);
+                let found = labels(&source, 2 + usize::from(!prefix.is_empty()), 20);
+                assert!(found.iter().any(|l| l == "trim"), "{source:?}: {found:?}");
+            }
+        }
+        let raw =
+            "fn greet(name: String) String:\n    return r\"\"\"\n        {\"name\": name.member"
+                .replace('\n', newline);
+        assert!(labels(&raw, 2, 13).is_empty());
+        for prefix in ["", "r"] {
+            for quotes in ["", "\"", "\"\""] {
+                let source = format!("fn greet(name: String) String:\n    return {prefix}\"\"\"\n        payload\n        {quotes}")
+                    .replace('\n', newline);
+                assert!(labels(&source, 3, 8 + quotes.len()).is_empty(), "{source}");
+            }
+        }
+    }
+}

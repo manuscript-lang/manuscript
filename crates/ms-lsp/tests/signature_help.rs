@@ -305,3 +305,24 @@ fn multiline_interpolation_signature_help() {
         );
     }
 }
+
+#[test]
+fn unfinished_multiline_interpolation_signature_help() {
+    let syms = ms_syntax::Names::global();
+    for newline in ["\n", "\r\n"] {
+        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, ".replace('\n', newline);
+        let d = Document::new("file:///unfinished-help.ms", source.clone());
+        let answer = signature_help(
+            syms,
+            &ms_check::Session::new(),
+            &d,
+            &Documents::new(),
+            text::position(&source, source.len()),
+        )
+        .unwrap();
+        assert_eq!(
+            answer.get("activeParameter").and_then(|v| v.as_i64()),
+            Some(1)
+        );
+    }
+}

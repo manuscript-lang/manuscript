@@ -279,22 +279,200 @@ pub fn header(source: &str, offset: usize, name: &str) -> Option<usize> {
         .map(|token| start + token.start)
 }
 
-/// Complete string spans when multiline syntax requires more than the forgiving
-/// one-quote scanner. Failure leaves incomplete snapshots on the existing path.
-pub(crate) fn multiline_string_spans(source: &str) -> Option<Vec<(usize, usize)>> {
+/// A forgiving literal boundary in original source coordinates.
+pub(crate) struct LiteralSpan {
+    pub start: usize,
+    pub end: usize,
+    pub closed: bool,
+    /// Delimiters for the private query snapshot, never edits to the document.
+    pub closing: String,
+    /// Mode transitions keep nested text/interpolation lookup on the same scan.
+    contexts: Vec<(usize, Option<usize>)>,
+}
+
+impl LiteralSpan {
+    pub(crate) fn interpolation_at(&self, offset: usize) -> Option<usize> {
+        self.contexts
+            .iter()
+            .take_while(|(at, _)| *at <= offset)
+            .last()
+            .and_then(|(_, expression)| *expression)
+    }
+}
+
+/// Closing state at a literal token's end, including a partial multiline closer.
+pub(crate) fn literal_is_closed(source: &str) -> bool {
+    literal_span(source.as_bytes(), 0).closed
+}
+
+/// Multiline-aware boundaries independent of whether the whole document lexes.
+/// This scanner supplies editor context only, never compiler tokens/validation.
+pub(crate) fn multiline_string_spans(source: &str) -> Option<Vec<LiteralSpan>> {
     if !source.contains("\"\"\"") {
         return None;
     }
-    let file = std::sync::Arc::from("editor");
-    let lexed = ms_syntax::lexer::lex(&file, source).ok()?;
-    Some(
-        lexed
-            .tokens
-            .iter()
-            .filter(|t| t.kind == ms_syntax::token::Tok::String)
-            .map(|t| (t.pos.offset as usize, t.end.offset as usize))
-            .collect(),
-    )
+    let bytes = source.as_bytes();
+    let mut spans = Vec::new();
+    let mut at = 0;
+    while at < bytes.len() {
+        if bytes[at..].starts_with(b"//") {
+            at += source[at..].find('\n').unwrap_or(bytes.len() - at);
+        } else if bytes[at..].starts_with(b"/*") {
+            at += source[at + 2..]
+                .find("*/")
+                .map_or(bytes.len() - at, |n| n + 4);
+        } else if bytes[at] == b'"' || bytes[at..].starts_with(b"r\"\"\"") {
+            let span = literal_span(bytes, at);
+            at = span.end;
+            spans.push(span);
+        } else if identifier(bytes[at]) {
+            while at < bytes.len() && identifier(bytes[at]) {
+                at += 1;
+            }
+        } else {
+            at += 1;
+        }
+    }
+    Some(spans)
+}
+
+fn literal_span(bytes: &[u8], start: usize) -> LiteralSpan {
+    // An explicit stack keeps adversarial nesting off the native call stack.
+    // This intentionally tolerates unfinished/invalid text; indentation, escape
+    // validity and interpolation restrictions remain the compiler's decisions.
+    enum Mode {
+        Text { multiline: bool, raw: bool },
+        Expression { groups: Vec<u8>, from: usize },
+    }
+    let raw = bytes[start] == b'r';
+    let multiline = raw || bytes[start..].starts_with(b"\"\"\"");
+    let mut modes = vec![Mode::Text { multiline, raw }];
+    let mut contexts = vec![(start, None)];
+    let mut at = start
+        + if raw {
+            4
+        } else if multiline {
+            3
+        } else {
+            1
+        };
+    while at < bytes.len() {
+        let top_level = modes.len() == 1;
+        match modes.last_mut().expect("literal mode") {
+            Mode::Text { multiline, raw } => {
+                if top_level && !*multiline && matches!(bytes[at], b'\n' | b'\r') {
+                    // A broken single-line literal cannot consume a later
+                    // declaration's multiline opener.
+                    return LiteralSpan {
+                        start,
+                        end: at,
+                        closed: false,
+                        closing: "\"".into(),
+                        contexts,
+                    };
+                } else if bytes[at] == b'\\' && !*raw {
+                    if bytes[at..].starts_with(b"\\u{") {
+                        at += 3;
+                        while at < bytes.len() && bytes[at] != b'}' {
+                            at += 1;
+                        }
+                        at = (at + 1).min(bytes.len());
+                    } else {
+                        at = (at + 2).min(bytes.len());
+                    }
+                } else if bytes[at] == b'"' && (!*multiline || bytes[at..].starts_with(b"\"\"\"")) {
+                    at += if *multiline { 3 } else { 1 };
+                    modes.pop();
+                    if modes.is_empty() {
+                        return LiteralSpan {
+                            start,
+                            end: at,
+                            closed: true,
+                            closing: String::new(),
+                            contexts,
+                        };
+                    }
+                } else if bytes[at] == b'{' && !*raw {
+                    modes.push(Mode::Expression {
+                        groups: Vec::new(),
+                        from: at + 1,
+                    });
+                    at += 1;
+                } else {
+                    at += 1;
+                }
+            }
+            Mode::Expression { groups, .. } => {
+                if bytes[at..].starts_with(b"//") {
+                    while at < bytes.len() && bytes[at] != b'\n' {
+                        at += 1;
+                    }
+                } else if bytes[at..].starts_with(b"/*") {
+                    at += 2;
+                    while at < bytes.len() && !bytes[at..].starts_with(b"*/") {
+                        at += 1;
+                    }
+                    at = (at + 2).min(bytes.len());
+                } else if bytes[at] == b'"' {
+                    modes.push(Mode::Text {
+                        multiline: false,
+                        raw: false,
+                    });
+                    at += 1;
+                } else if matches!(bytes[at], b'{' | b'(' | b'[') {
+                    groups.push(bytes[at]);
+                    at += 1;
+                } else if bytes[at] == b'}' {
+                    if groups.is_empty() {
+                        modes.pop();
+                    } else {
+                        groups.pop();
+                    }
+                    at += 1;
+                } else if matches!(bytes[at], b')' | b']') {
+                    groups.pop();
+                    at += 1;
+                } else {
+                    at += 1;
+                }
+            }
+        }
+        let context = match modes.last() {
+            Some(Mode::Expression { from, .. }) => Some(*from),
+            _ => None,
+        };
+        if contexts
+            .last()
+            .is_none_or(|(_, previous)| *previous != context)
+        {
+            contexts.push((at, context));
+        }
+    }
+    let mut closing = String::new();
+    for mode in modes.iter().rev() {
+        match mode {
+            Mode::Text { multiline, .. } => {
+                closing.push_str(if *multiline { "\n\"\"\"" } else { "\"" })
+            }
+            Mode::Expression { groups, .. } => {
+                for group in groups.iter().rev() {
+                    closing.push(match group {
+                        b'(' => ')',
+                        b'[' => ']',
+                        _ => '}',
+                    });
+                }
+                closing.push('}');
+            }
+        }
+    }
+    LiteralSpan {
+        start,
+        end: at,
+        closed: false,
+        closing,
+        contexts,
+    }
 }
 
 /// Scans tolerating unfinished strings and delimiters. It is only a cursor
@@ -308,8 +486,8 @@ pub fn editor_tokens(source: &str) -> Vec<EditorToken<'_>> {
     while at < bytes.len() {
         let start = at;
         let b = bytes[at];
-        if strings.peek().is_some_and(|&(start, _)| start == at) {
-            let (_, end) = strings.next().expect("peeked string");
+        if strings.peek().is_some_and(|span| span.start == at) {
+            let end = strings.next().expect("peeked string").end;
             result.push(token(source, EditorKind::Str, at, end));
             at = end;
             continue;
