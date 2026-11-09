@@ -202,8 +202,8 @@ Interpolation and direct `to_string()` conversion use the forms below, independe
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |
 | Type | `Type(field: value, ...)`, with fields sorted by name and values recursively converted |
 | Alternative | `Type.Case` for a nullary case; `Type.Case(value, ...)` for payloads in declaration order |
-| Optional | `Optional.some(value)` or `Optional.none`; for example, an `Int?` holding 42 formats as `Optional.some(42)` |
-| Result | `Result.ok(value)` or `Result.error(cause)`; for example, `ok(42)` formats as `Result.ok(42)` |
+| Optional | `some(value)` or `none`; for example, an `Int?` holding 42 formats as `some(42)` |
+| Result | `ok(value)` or `error(cause)`; for example, `ok(42)` formats as `ok(42)` |
 | List | `[value, ...]` in element order |
 | Map | `Map(key: value, ...)` in insertion order |
 | Set | `Set(value, ...)` in insertion order |

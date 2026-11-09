@@ -19,7 +19,7 @@ fn bound_alias_methods_write_through() {
         );
         assert_eq!(
             String::from_utf8_lossy(&out.stdout),
-            "1 [[1, 9, 10], [2]]\nLists(left: [1, 3], right: [2, 4])\n[Counter(count: 9)]\nCounters(left: Counter(count: 3), right: Counter(count: 12))\n1 Map(key-1: [7, 8, 9])\nOptional.some(second) [[first]]\ncount-10 [Counter(count: 10)]\n"
+            "1 [[1, 9, 10], [2]]\nLists(left: [1, 3], right: [2, 4])\n[Counter(count: 9)]\nCounters(left: Counter(count: 3), right: Counter(count: 12))\n1 Map(key-1: [7, 8, 9])\nsome(second) [[first]]\ncount-10 [Counter(count: 10)]\n"
         );
     }
 }

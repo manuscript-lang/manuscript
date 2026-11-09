@@ -314,12 +314,12 @@ pub(crate) fn build_format(
             b.seal_block(some);
             b.seal_block(none);
             b.switch_to(none);
-            let acc = start(&mut b, if repr { "none" } else { "Optional.none" });
+            let acc = start(&mut b, "none");
             let r = finish(&mut b, acc);
             b.ret(Some(r));
             b.switch_to(some);
             let v = b.opt_get(x);
-            let acc = start(&mut b, if repr { "some" } else { "Optional.some" });
+            let acc = start(&mut b, "some");
             append_fields(cx, &mut b, acc, &[(None, inner, v)], repr, depth);
             let r = finish(&mut b, acc);
             b.ret(Some(r));
@@ -353,7 +353,9 @@ pub(crate) fn build_format(
             for (i, c) in def.cases.iter().enumerate() {
                 b.seal_block(blocks[i]);
                 b.switch_to(blocks[i]);
-                let head = if repr {
+                let base = def.name.split('[').next().unwrap_or(&def.name);
+                // `Result` prints as its source cases (`ok(1)`), like `Optional`'s `some(3)`.
+                let head = if repr || base == "Result" {
                     c.name.clone()
                 } else {
                     // Generic arguments are not part of the printed name.

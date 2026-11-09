@@ -961,12 +961,16 @@ impl Walker<'_> {
         let recv = self.cx.m.ty(left);
         let returns_borrow = match (self.syms.str(name), args.len()) {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
-            ("get", 0) => recv.is(Builtin::Optional),
+            ("get", 0) => recv.is(Builtin::Optional) || recv.is(Builtin::Result),
             ("first" | "last", 0) => recv.is(Builtin::List),
             ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(),
             _ => false,
         };
-        returns_borrow.then_some(&**left)
+        // `get()` on the last use of an owned local hands its payload over instead of borrowing it.
+        let takes_payload = matches!(self.syms.str(name), "get")
+            && args.is_empty()
+            && self.owned_local_at_last_use(left);
+        (returns_borrow && !takes_payload).then_some(&**left)
     }
 
     /// The variable whose `Bytes.view` the call `e` is, when it is returned: a function returns

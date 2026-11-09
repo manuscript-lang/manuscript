@@ -71,12 +71,12 @@ test "records alternatives and collections convert":
     let absent: Int? = none
     let present: Int? = 3
     let result: Int!Error = error(Error("failed"))
-    (try check(value: absent.to_string(), expected: "Optional.none"))
-    (try check(value: present.to_string(), expected: "Optional.some(3)"))
+    (try check(value: absent.to_string(), expected: "none"))
+    (try check(value: present.to_string(), expected: "some(3)"))
     (
         try check(
             value: result.to_string(),
-            expected: "Result.error(Error(details: Map(), kind: Optional.none, message: failed))"
+            expected: "error(Error(details: Map(), kind: none, message: failed))"
         )
     )
     (try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))
@@ -121,7 +121,7 @@ test "generics views bound methods functions and resources":
     (
         try check(
             value: queue.to_string(),
-            expected: "Queue(capacity: Optional.some(1), head: 0, items: [])"
+            expected: "Queue(capacity: some(1), head: 0, items: [])"
         )
     )
 
