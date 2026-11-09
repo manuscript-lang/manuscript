@@ -20,7 +20,7 @@ import (
 ) from "@std/os/fs.ms"
 import system_info from "@std/os/system.ms"
 import now from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
+import uuid_v4 from "@std/data/uuid.ms"
 import secure_int from "@std/random.ms"
 import parse_timestamp from "@std/time.ms"
 import posix from "@std/os/path.ms"

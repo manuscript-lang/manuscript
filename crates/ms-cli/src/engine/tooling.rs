@@ -508,10 +508,7 @@ fn placed(
     root: &str,
     issue: &ms_driver::Diagnostic,
 ) -> CommandDiagnostic {
-    let mut diagnostic = command_diagnostic(issue);
-    diagnostic.position = selection.position(root, &diagnostic.position);
-    diagnostic.end = diagnostic.end.map(|end| selection.position(root, &end));
-    diagnostic
+    super::placed_command_diagnostic(issue, &|position| selection.position(root, &position))
 }
 
 /// Drop repeats, then order by position, code and message.

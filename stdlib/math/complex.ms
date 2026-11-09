@@ -174,6 +174,17 @@ impl Complex:
         if self.im == 0.0:
             return Complex(re: radius, im: self.im)
 
+        // The full radius can overflow while either final component still fits.
+        // Four growing factors also preserve tiny phases beyond the half-exponential range.
+        if not radius.is_finite() and self.re.is_finite() and self.im.is_finite():
+            let quarter = exp(self.re / 4.0)
+            var result = Complex(re: cos(self.im), im: sin(self.im))
+            for _step in 0..4:
+                result = Complex(
+                    re: product(result.re, quarter), im: product(result.im, quarter)
+                )
+            return result
+
         return complex_polar(radius, self.im)
 
     // Returns the principal natural logarithm; the imaginary part is the phase.

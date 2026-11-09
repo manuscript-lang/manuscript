@@ -19,4 +19,5 @@ mod nested_text;
 mod recovery_blanking;
 mod recovery_comments;
 mod recovery_declarations;
+mod recovery_diagnostics;
 mod type_suffix;

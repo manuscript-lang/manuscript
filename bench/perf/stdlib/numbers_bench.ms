@@ -87,6 +87,35 @@ bench "time.parse_timestamp":
 
     try measure(20000, work)
 
+bench "time.parse_timestamp_maximum_width":
+    fn work() Result[Unit, Error]:
+        var n = 0
+
+        for i in 0..20000:
+            let t = try parse_timestamp("2026-03-01T12:30:45.123456789+05:30")
+            n += t.nanoseconds()
+
+        return keep(n)
+
+    try measure(20000, work)
+
+bench "time.parse_timestamp_oversized_fraction":
+    let text = "2026-03-01T12:30:45." + "0".repeat(65536).get() + "Z"
+
+    fn work() Result[Unit, Error]:
+        var n = 0
+
+        for i in 0..1000:
+            let result = parse_timestamp(text)
+            if result.is_ok() or result.err().kind != "EBADMSG":
+                return error(Error("expected timestamp InvalidData"))
+
+            n += 1
+
+        return keep(n)
+
+    try measure(1000, work)
+
 bench "queue.enqueue_dequeue":
     fn work() Result[Unit, Error]:
         var q = Queue[Int]()

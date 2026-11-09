@@ -104,7 +104,11 @@ Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1
 export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[List[T]]:
     let n = values.length()
     let k = size.get(n)
-    if k < 0 or k > n:
+
+    if k <= 0 or k > n:
+        if k == 0:
+            return [[]]
+
         panic("permutations: size must be from 0 to the list length")
 
     var out: List[List[T]] = []

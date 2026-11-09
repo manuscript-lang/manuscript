@@ -103,6 +103,15 @@ impl Dispatch for Streamer {
                     }
                     return Ok(());
                 }
+                "/html" | "/typed" => {
+                    let mut headers = Headers::new();
+                    if ex.path() == "/typed" {
+                        headers.append("Content-Type", b"application/custom")?;
+                    }
+                    ex.send_headers(200, &headers)?;
+                    ex.write(b"<html>ok</html>").map_err(|_| HttpErr::Closed)?;
+                    return Ok(());
+                }
                 "/upload" => {
                     let mut total = 0;
                     while let Some(chunk) = ex.read(None).map_err(|_| HttpErr::Closed)? {
@@ -524,6 +533,52 @@ fn streamed_response_larger_than_the_window() {
     assert_eq!(r.body.len(), 100 * 4096);
     assert!(r.body.iter().all(|&b| b == b'y'));
     assert!(r.header("content-length").is_none());
+}
+
+#[test]
+fn streaming_response_content_types() {
+    let (_net, server) = start(Box::new(Streamer), limits());
+    let addr = server.address().to_string();
+    let responses = with_client(move || {
+        let mut c = Client::connect(&addr, Settings::default());
+        let mut responses = Vec::new();
+        for (method, path) in [
+            ("GET", "/"),
+            ("GET", "/html"),
+            ("GET", "/typed"),
+            ("GET", "/whole-empty"),
+            ("GET", "/nobody"),
+            ("HEAD", "/html"),
+        ] {
+            let id = c
+                .core
+                .open_stream(request(method, path, &[]), true)
+                .unwrap();
+            responses.push(c.response(id));
+        }
+        responses
+    });
+    let expected = [
+        Some("text/plain; charset=utf-8"),
+        Some("text/html; charset=utf-8"),
+        Some("application/custom"),
+        None,
+        None,
+        None,
+    ];
+    for (response, content_type) in responses.iter().zip(expected) {
+        assert_eq!(response.header("content-type"), content_type);
+    }
+    assert_eq!(responses[0].text(), "HTTP/2.0");
+    assert_eq!(responses[1].text(), "<html>ok</html>");
+    assert_eq!(responses[2].text(), "<html>ok</html>");
+    assert!(responses[0].header("content-length").is_none());
+    assert!(responses[1].header("content-length").is_none());
+    assert!(
+        responses[3..]
+            .iter()
+            .all(|response| response.body.is_empty())
+    );
 }
 
 #[test]

@@ -1,5 +1,4 @@
 import (
-    assert_equal,
     expect_close,
     expect_contains,
     expect_equal,
@@ -21,7 +20,7 @@ test "testing assertions":
     true | try expect_true
     false | try expect_false
     identity(3) | try expect_equal(3)
-    "hello" | try assert_equal("hello")
+    "hello" | try expect_equal("hello")
     [1, 2] | try expect_equal([1, 2])
     1 | try expect_not_equal(2)
     try expect_close(1.01, 1.0, 0.02)

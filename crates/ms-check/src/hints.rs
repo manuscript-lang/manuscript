@@ -149,8 +149,18 @@ pub fn type_sketch(name: &str, arity: usize) -> String {
 
 /// Names the standard module that exports `name`, if any.
 pub fn import_hint(session: &Rc<crate::stdlib::Session>, name: &str) -> String {
+    import_hint_for(session, name, false)
+}
+
+/// Names a standard module exporting a type usable in an annotation.
+pub fn type_import_hint(session: &Rc<crate::stdlib::Session>, name: &str) -> String {
+    import_hint_for(session, name, true)
+}
+
+fn import_hint_for(session: &Rc<crate::stdlib::Session>, name: &str, types_only: bool) -> String {
     if let Some(symbol) = session.standard_symbol(name)
         && session.is_prelude_symbol(&symbol)
+        && (!types_only || symbol.kind == SymKind::Type)
     {
         return format!(
             "; use the prelude {name} declaration directly; rename any shadowing binding or declaration"
@@ -160,7 +170,11 @@ pub fn import_hint(session: &Rc<crate::stdlib::Session>, name: &str) -> String {
         return String::new();
     }
     for module in session.standard_module_names() {
-        if session.standard_exports(module).contains_key(&n(name)) {
+        if session
+            .standard_exports(module)
+            .get(&n(name))
+            .is_some_and(|symbol| !types_only || symbol.kind == SymKind::Type)
+        {
             return format!("; add: import {name} from \"{module}\"");
         }
     }
@@ -854,7 +868,7 @@ impl Checker {
     /// Explains an unknown type.
     pub(crate) fn unknown_type_message(&self, name: Name) -> String {
         let message = format!("unknown type {name_t}", name_t = self.syms.str(name));
-        let hint = import_hint(&self.session, self.syms.str(name));
+        let hint = type_import_hint(&self.session, self.syms.str(name));
         if !hint.is_empty() {
             return format!("{message}{hint}");
         }

@@ -477,6 +477,54 @@ fn decompresses_gzip() {
 }
 
 #[test]
+fn stacked_content_encodings_keep_the_body_and_metadata() {
+    let gzip = |bytes: &[u8]| {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(bytes).unwrap();
+        encoder.finish().unwrap()
+    };
+    let encoded = gzip(&gzip(b"payload"));
+    let served = encoded.clone();
+    let (address, _, _) = serve(move |req, _| {
+        let mut headers = vec![("content-length".into(), served.len().to_string())];
+        if req.path() == "/combined" {
+            headers.push(("content-encoding".into(), "gzip, gzip".into()));
+        } else {
+            headers.push(("content-encoding".into(), "gzip".into()));
+            headers.push(("content-encoding".into(), "gzip".into()));
+        }
+        Reply::Respond {
+            status: 200,
+            headers,
+            body: served.clone(),
+        }
+    });
+    let (_net, client) = client(ClientOptions {
+        decompress: true,
+        ..ClientOptions::default()
+    });
+    for path in ["/combined", "/split"] {
+        let body = client.send(request("GET", &address, path)).unwrap();
+        assert_eq!(body.read_all().unwrap(), encoded, "{path}");
+        let headers = body.headers.borrow();
+        assert_eq!(
+            headers.text("Content-Length").unwrap(),
+            Some(vec![encoded.len().to_string()]),
+            "{path}"
+        );
+        let expected = if path == "/combined" {
+            vec![b"gzip, gzip".to_vec()]
+        } else {
+            vec![b"gzip".to_vec(), b"gzip".to_vec()]
+        };
+        assert_eq!(
+            headers.values("Content-Encoding"),
+            Some(expected.as_slice())
+        );
+    }
+}
+
+#[test]
 fn follows_redirects() {
     let (address, accepted, _) = serve(|req, _| match req.path() {
         "/r302" => redirect(302, "/dump"),

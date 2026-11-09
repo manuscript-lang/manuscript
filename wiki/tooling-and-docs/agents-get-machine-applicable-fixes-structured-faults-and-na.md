@@ -6,6 +6,11 @@ Decision: diagnostics carry a `fix` field when the repair is mechanical (nearest
 
 Apply when: adding or rewording diagnostics, or changing JSON output.
 Evidence: [CLI help](../../crates/ms-cli/src/help_text.rs), [diagnostics](../../documentation/developer-tooling/source/diagnostics.md), [fault report](../../crates/ms-cli/src/fault.rs).
+
+Lesson (collection paths, [#3301](https://github.com/manuscript-lang/manuscript/issues/3301)): moving a diagnostic from a source root to invocation-relative paths must also move its embedded fix boundaries. Test separate roots with identical basenames by applying the emitted edits and rechecking; comparing the surrounding diagnostic alone misses an edit aimed at another file.
+
 Verify: a misspelled name is fixed by `ms check --fix`; `ms run --json` on a faulting program exits with a JSON fault; each new hint has a test and a re-recorded golden.
 
 Lesson (fix safety): sweep `--fix` over the fixture corpus (fix, then re-check; new parse or resolution errors are bugs). It found fixes that produced invalid source: a candidate list offering a name with no writable spelling (`Optional`), a conversion applied to a compound-assignment target (the parser clones the target as the left operand), a `.clone()` inserted after a whole closure, and an edit set that together emptied an import group. A fix is single-edit and local: when the repair needs a rename or two edits, carry no fix.
+
+Import repairs must retain declaration kind (#3288). A function or constant with the requested name cannot repair an unknown type; an exported `fn Bytes` previously replaced the valid standard `Bytes` import. Filter standard symbols and project export headers by type kind before selecting compiler fixes or editor actions. Keep value-reference imports available, and apply each offered repair then recheck the resulting source (`ms-driver` import-hint and `ms-lsp` editing regression tests).

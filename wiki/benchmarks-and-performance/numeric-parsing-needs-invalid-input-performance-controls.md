@@ -26,3 +26,10 @@ so build location did not explain the results. The candidate was rejected and th
 checked conversion restored. Safety proofs and successful-input gains do not
 replace complete affected controls; retain negative measurements and stop when
 a confirmed regression remains unexplained.
+
+Timestamp parsing has a grammar-derived byte-length bound: four-digit years,
+fixed-width fields, an optional 1–9 digit fraction and either `Z` or `±hh:mm`
+accept at most 35 bytes. Reject longer text before scanning the fraction (#3282).
+Keep maximum-width valid values, oversized fractions and exact range-error controls
+alongside the ordinary timestamp benchmark; invalid input must not add an
+unbounded digit scan to this bounded grammar.

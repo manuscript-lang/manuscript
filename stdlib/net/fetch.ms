@@ -129,7 +129,7 @@ impl Fetcher:
     // Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
     fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
         let sent = outgoing(options)
-        return self.client.request_bytes(
+        return self.client.request(
             options.method.clone(), url, sent.headers, sent.body,
             options.max_response_bytes, options.timeout
         )

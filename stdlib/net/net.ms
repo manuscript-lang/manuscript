@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+import Closeable, Writable from "@std/core.ms"
 import (ReadStream, WriteStream, Source, Sink, pipe, Pipe) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
@@ -40,7 +40,6 @@ import (
     msstd_net_network_listen_tls,
     msstd_net_network_listen_unix,
     msstd_net_network_lookup,
-    msstd_net_network_request,
     msstd_net_network_request_bytes,
     msstd_net_network_resolve,
     msstd_net_network_restrict,
@@ -381,24 +380,12 @@ impl Network:
     fn request(
         method: HttpMethod,
         url: String,
-        body: String = "",
-        options: RequestOptions = RequestOptions()
-    ) ClientResponse!:
-        return msstd_net_network_request(
-            self.native, method.text(), url, options.headers, body, options.max_bytes,
-            options.timeout
-        )
-
-    // Performs the same buffered request with a raw bytes body.
-    fn request_bytes(
-        method: HttpMethod,
-        url: String,
-        body: Bytes,
+        body: Writable = "",
         options: RequestOptions = RequestOptions()
     ) ClientResponse!:
         return msstd_net_network_request_bytes(
-            self.native, method.text(), url, options.headers, body, options.max_bytes,
-            options.timeout
+            self.native, method.text(), url, options.headers, body.as_bytes(),
+            options.max_bytes, options.timeout
         )
 
     // Resolves the selected supported category, retaining it in each record.
@@ -517,20 +504,10 @@ export fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!
 export fn request(
     method: HttpMethod,
     url: String,
-    body: String = "",
+    body: Writable = "",
     options: RequestOptions = RequestOptions()
 ) ClientResponse!:
     return host_network().request(method, url, body, options)
-
-// Performs the same buffered request with a raw bytes body.
-// ms: effect std.net.connect
-export fn request_bytes(
-    method: HttpMethod,
-    url: String,
-    body: Bytes,
-    options: RequestOptions = RequestOptions()
-) ClientResponse!:
-    return host_network().request_bytes(method, url, body, options)
 
 // Resolves the selected supported category, retaining it in each record.
 // ms: effect std.net.connect

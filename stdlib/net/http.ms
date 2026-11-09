@@ -1,4 +1,4 @@
-import Closeable, Data from "@std/core.ms"
+import Closeable, Data, Writable from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import (
@@ -21,7 +21,6 @@ import (
     msstd_http_headers_remove,
     msstd_http_headers_clone,
     msstd_http_headers_new,
-    msstd_http_client_request,
     msstd_http_client_request_bytes,
     msstd_http_body_close,
     msstd_http_body_metadata,
@@ -160,31 +159,17 @@ impl Closeable for HttpClient:
         return ok(unit)
 
 impl HttpClient:
-    // Sends the UTF-8 text body and returns the response with its body as a stream.
+    // Sends the body (text or `Bytes`) and returns the response with its body as a stream.
     fn request(
         method: HttpMethod,
         url: String,
         headers: HttpHeaders,
-        body: String = "",
-        max_response_bytes: Int?,
-        timeout: Duration?
-    ) StreamingResponse!:
-        let raw = try msstd_http_client_request(
-            self.native, method.text(), url, headers, body, max_response_bytes, timeout
-        )
-        return ok(response(raw))
-
-    // Sends immutable Bytes and returns the response with its body as a stream.
-    fn request_bytes(
-        method: HttpMethod,
-        url: String,
-        headers: HttpHeaders,
-        body: Bytes = "".to_bytes(),
+        body: Writable = "",
         max_response_bytes: Int?,
         timeout: Duration?
     ) StreamingResponse!:
         let raw = try self.request_raw(
-            method, url, headers, body, max_response_bytes, timeout
+            method, url, headers, body.as_bytes(), max_response_bytes, timeout
         )
         return ok(response(raw))
 
@@ -212,9 +197,7 @@ impl HttpClient:
         timeout: Duration?
     ) StreamingResponse!:
         let data = try read_all(body, none)
-        return self.request_bytes(
-            method, url, headers, data, max_response_bytes, timeout
-        )
+        return self.request(method, url, headers, data, max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
