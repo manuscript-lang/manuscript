@@ -63,3 +63,7 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   turns use back-to-front moves; near-whole negative turns keep the shorter
   forward route. Test wrapped and partially filled rings, half-turn boundaries,
   and Int limits; a faster negative-unit case must not regress near-size counts.
+- CSV quoted-cell decoding scans for its closing quote before decoding the span.
+  Do not concatenate a growing prefix for every doubled quote: it makes a large
+  valid field quadratic (#3197). Keep zero/single-escape, Unicode, CRLF and
+  malformed-termination controls alongside the many-escape workload.
