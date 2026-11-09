@@ -1,6 +1,6 @@
 import promise, Promise, wait_all from "@std/concurrency/promise.ms"
 import arguments from "@std/os/env.ms"
-import monotonic_time from "@std/os/system.ms"
+import monotonic from "@std/time.ms"
 
 fn fib(n: Int) Int:
     if n < 2:
@@ -27,7 +27,7 @@ export fn main() Int:
     let mode = args[0].clone()
     let n = args[1].parse_int().get()
     let k = args[2].parse_int().get()
-    let t0 = monotonic_time()
+    let t0 = monotonic()
     var r = 0
 
     if mode == "fan":
@@ -43,7 +43,7 @@ export fn main() Int:
 
     print(
         mode + " result " + r.to_string() + " ms " + (
-            (monotonic_time() - t0)
+            monotonic().difference(t0).to_nanoseconds()
             / 1000000
         ).to_string()
     )
