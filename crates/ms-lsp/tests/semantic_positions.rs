@@ -72,7 +72,7 @@ fn multiline_semantic_positions_match_crlf() {
             let data = actual.get("data").unwrap().as_array().unwrap();
             let mut start = Position::default();
             let mut string_lines = 0;
-            for token in data.chunks_exact(5) {
+            for token in data.as_chunks::<5>().0 {
                 let delta_line = token[0].as_i64().unwrap();
                 let delta_character = token[1].as_i64().unwrap();
                 assert!(delta_line >= 0 && delta_character >= 0);
