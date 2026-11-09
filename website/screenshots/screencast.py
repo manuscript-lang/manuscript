@@ -25,14 +25,14 @@ SCENES = [
     dict(title="*No GC pauses.* C-class speed.",
          sub="Run time relative to C, seven kernels (bench/perf, 2026-11-05).",
          chart=True),
-    dict(title="Without promises: *one core.*",
-         sub="Four Fibonacci jobs, one after another. User time equals real time.",
-         src="seq.ms", hold=3000,
-         steps=[("ms build seq.ms -o seq && time ./seq", clock)]),
-    dict(title="*async/await?* Not needed. More cores.",
-         sub="Wrap each job in promise(fn: ...). Same work, real time drops, no async or await.",
-         src="par.ms", hold=4600,
-         steps=[("ms build par.ms -o par && time ./par", clock)]),
+    dict(title="*All cores.* Regular functions.",
+         sub="No async, no await, no function coloring.",
+         phases=[
+             dict(sub="One core: four jobs, one after another. User time equals real time.", src="seq.ms", hold=1800,
+                  steps=[("ms build seq.ms -o seq && time ./seq", clock)]),
+             dict(sub="Wrap each call in promise(fn: ...). Same fib, real time drops.", src="par.ms", hold=4600,
+                  steps=[("ms build par.ms -o par && time ./par", clock)]),
+         ]),
     dict(title="*Declare* effects. *Compiler checks* them.",
          sub="Mark db.write once; ms lint flags every caller that did not allow it.",
          src="effects.ms", hold=3200,
@@ -139,20 +139,23 @@ def scene_frame(sc, n, total, code, shown, rows, cursor):
     """rows: list of (kind, text) shown after the code: 'cmd', 'out', 'err'."""
     im = background()
     d = ImageDraw.Draw(im)
-    header(d, sc["title"], sc["sub"])
+    header(d, sc["title"], sc.get("_sub", sc["sub"]))
     terminal(d)
     fnt, cw, lh = sc["_font"]
     x0, y = CARD[0] + 32, CARD[1] + 62
-    for line in code[:shown]:
-        x = x0
-        for s_, c in tokens(line):
-            d.text((x, y), s_, font=fnt, fill=c)
-            x += cw * len(s_)
+    visible = shown if isinstance(shown, (set, frozenset)) else set(range(shown))
+    for i, line in enumerate(code):
+        if i in visible:
+            x = x0
+            for s_, c in tokens(line):
+                d.text((x, y), s_, font=fnt, fill=c)
+                x += cw * len(s_)
         y += lh
     if code: y += int(lh * 0.35)
     cur = None
-    if cursor and shown and not rows and code:
-        cur = (x0 + len(code[shown - 1]) * cw, y0 if False else CARD[1] + 62 + (shown - 1) * lh)
+    if cursor and visible and not rows and code:
+        last = max(visible)
+        cur = (x0 + len(code[last]) * cw, CARD[1] + 62 + last * lh)
     for kind, text in rows:
         if kind == "cmd":
             d.text((x0, y), "$", font=fnt, fill=C["ok"])
@@ -253,34 +256,46 @@ def main():
                     add(chart_frame(sc, n, total, k), 450)
                 durs[-1] += 2600
                 continue
-            code = open(os.path.join(SRC, sc["src"])).read().rstrip("\\n".replace("\\n", "\n")).split("\n") if sc["src"] else []
-            raws = [keep(run(cmd, work, ms_dir)) for cmd, keep in sc["steps"]]
+            phases = sc.get("phases") or [sc]
+            codes = [open(os.path.join(SRC, ph["src"])).read().rstrip("\n").split("\n") if ph.get("src") else [] for ph in phases]
+            raws = [[keep(run(cmd, work, ms_dir)) for cmd, keep in ph["steps"]] for ph in phases]
             room = CARD[3] - CARD[1] - 62 - 34
             for font in FONTS:
                 cols = int((CARD[2] - CARD[0] - 64) / font[1])
-                outs = [wrap(raw, sc.get("cut"), cols) for raw in raws]
-                need = len(code) + (0.35 if code else 0) + sum(1 + len(o) for o in outs)
+                outs = [[wrap(raw, ph.get("cut"), cols) for raw in rs] for ph, rs in zip(phases, raws)]
+                need = max(len(c) + (0.35 if c else 0) + sum(1 + len(o) for o in os_) for c, os_ in zip(codes, outs))
                 if need * font[2] <= room:
                     break
             else:
                 print(f"warning: {sc['title']} may not fit", file=sys.stderr)
             sc["_font"] = font
-            add(scene_frame(sc, n, total, code, 0, [], False), 1100)
-            for k, line in enumerate(code, 1):
-                add(scene_frame(sc, n, total, code, k, [], True), read(line))
-            if code: durs[-1] += 700
-            rows = []
-            for (cmd, _), out in zip(sc["steps"], outs):
-                step = max(1, len(cmd) // 6)
-                for k in range(step, len(cmd), step):
-                    add(scene_frame(sc, n, total, code, len(code), rows + [("cmd", cmd[:k])], True), 70)
-                rows = rows + [("cmd", cmd)]
-                add(scene_frame(sc, n, total, code, len(code), rows, True), 450)
-                for line in out:
-                    kind = "err" if re.search(r"error|warning|type:|resolution:", line) else "out"
-                    rows = rows + [(kind, line)]
-                    add(scene_frame(sc, n, total, code, len(code), rows, False), 400 + 10 * len(line))
-            durs[-1] += sc.get("hold", 2200)
+            prev = None
+            for pi, (ph, code, phase_outs) in enumerate(zip(phases, codes, outs)):
+                sc["_sub"] = ph.get("sub", sc["sub"])
+                if prev is None:
+                    add(scene_frame(sc, n, total, code, 0, [], False), 1100)
+                    visible = set()
+                else:
+                    visible = {i for i, line in enumerate(code) if line in prev}
+                    add(scene_frame(sc, n, total, code, set(visible), [], False), 1400)
+                for i, line in enumerate(code):
+                    if i in visible: continue
+                    visible.add(i)
+                    add(scene_frame(sc, n, total, code, set(visible), [], True), read(line))
+                if code: durs[-1] += 700
+                rows = []
+                for (cmd, _), out in zip(ph["steps"], phase_outs):
+                    step = max(1, len(cmd) // 6)
+                    for k in range(step, len(cmd), step):
+                        add(scene_frame(sc, n, total, code, set(visible), rows + [("cmd", cmd[:k])], True), 70)
+                    rows = rows + [("cmd", cmd)]
+                    add(scene_frame(sc, n, total, code, set(visible), rows, True), 450)
+                    for line in out:
+                        kind = "err" if re.search(r"error|warning|type:|resolution:", line) else "out"
+                        rows = rows + [(kind, line)]
+                        add(scene_frame(sc, n, total, code, set(visible), rows, False), 400 + 10 * len(line))
+                durs[-1] += ph.get("hold", 2200)
+                prev = set(code)
         add(card_frame("outro", total - 1, total), 900)
         cmd = "ms init hello"
         for k in range(2, len(cmd) + 1, 2):
