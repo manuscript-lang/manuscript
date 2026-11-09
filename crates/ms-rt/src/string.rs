@@ -1654,6 +1654,25 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
                 None => STATUS_OUT_OF_RANGE,
             };
         }
+        if (start < 0 || end < 0) && !(*s).flagged_ascii() {
+            // A bound from the end walks back from the end, one from the start walks forward; offsets
+            // grow with scalar positions, so `a <= b` is the same check on bytes.
+            let text = bytes(s);
+            let offset = |bound: i64| {
+                if bound < 0 {
+                    utf8::retreat(text, text.len(), bound.unsigned_abs() as usize)
+                } else {
+                    utf8::advance(text, 0, bound as usize)
+                }
+            };
+            return match (offset(start), offset(end)) {
+                (Some(a), Some(b)) if a <= b => {
+                    *out = sub_bytes(s, a, b);
+                    STATUS_OK
+                }
+                _ => STATUS_OUT_OF_RANGE,
+            };
+        }
         let n = scalar_count(s) as i64;
         let (a, b) = (
             if start < 0 { n + start } else { start },
