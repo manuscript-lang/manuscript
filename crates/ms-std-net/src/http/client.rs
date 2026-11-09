@@ -741,14 +741,17 @@ impl Client {
         } else {
             format!("HTTP/1.{}", head.minor)
         };
+        // Repeated fields form one ordered coding list. Only decode a single gzip coding:
+        // removing all encoding metadata after decoding one layer would mislabel a stacked body.
+        let mut encodings = head
+            .fields
+            .iter()
+            .filter(|(n, _)| n.eq_ignore_ascii_case("Content-Encoding"));
         let gzip = added_gzip
-            && head
-                .fields
-                .iter()
-                .find(|(n, _)| n.eq_ignore_ascii_case("Content-Encoding"))
-                .is_some_and(|(_, v)| {
-                    v.eq_ignore_ascii_case(b"gzip") || v.eq_ignore_ascii_case(b"x-gzip")
-                });
+            && encodings.next().is_some_and(|(_, v)| {
+                v.eq_ignore_ascii_case(b"gzip") || v.eq_ignore_ascii_case(b"x-gzip")
+            })
+            && encodings.next().is_none();
         let mut fields = head.fields.clone();
         let mut state = BodyState::start(head, wire, key, method, gzip, max_response);
         let gzip = state.gzip.is_some();
@@ -2432,6 +2435,56 @@ mod tests {
         );
         let body = c.send(request("GET", &address, "/corrupt")).unwrap();
         assert_eq!(body.read_all(), Err(ReadAll::Invalid));
+    }
+
+    #[test]
+    fn stacked_content_encodings_keep_the_body_and_metadata() {
+        let gzip = |bytes: &[u8]| {
+            let mut encoder =
+                flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            encoder.write_all(bytes).unwrap();
+            encoder.finish().unwrap()
+        };
+        let encoded = gzip(&gzip(b"payload"));
+        let served = encoded.clone();
+        let (address, _) = serve(move |socket, _| {
+            let request = read_request(socket).unwrap();
+            let encoding = if request.starts_with("GET /combined") {
+                "Content-Encoding: gzip, gzip\r\n"
+            } else {
+                "Content-Encoding: gzip\r\ncOnTeNt-EnCoDiNg: gzip\r\n"
+            };
+            write!(
+                socket,
+                "HTTP/1.1 200 OK\r\n{encoding}Content-Length: {}\r\nConnection: close\r\n\r\n",
+                served.len()
+            )
+            .unwrap();
+            socket.write_all(&served).unwrap();
+        });
+        let (_net, client) = client(ClientOptions {
+            decompress: true,
+            ..ClientOptions::default()
+        });
+        for path in ["/combined", "/split"] {
+            let body = client.send(request("GET", &address, path)).unwrap();
+            assert_eq!(body.read_all_bytes().unwrap(), encoded, "{path}");
+            let headers = body.headers.borrow();
+            assert_eq!(
+                headers.text("Content-Length").unwrap(),
+                Some(vec![encoded.len().to_string()]),
+                "{path}"
+            );
+            let expected = if path == "/combined" {
+                vec![b"gzip, gzip".to_vec()]
+            } else {
+                vec![b"gzip".to_vec(), b"gzip".to_vec()]
+            };
+            assert_eq!(
+                headers.values("Content-Encoding"),
+                Some(expected.as_slice())
+            );
+        }
     }
 
     #[test]

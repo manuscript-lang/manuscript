@@ -14,6 +14,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Exercise return/error/fault/cancellation/break/continue across cleanup scopes. Close does not deadlock callbacks or reentry.
 - Use ownership and borrowing from `crates/ms-check/OWNERSHIP.md`: mutation requires `var`, and `.clone()` makes a deep value copy; `Clonable` is the bound for generic copying. Native resource handles cannot be cloned. Guard validation covers actual operations and reads where required.
 - Native I/O remains interruptible after descriptor metadata access. Completeness includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values. Process `stdin`/`stdout` reads and writes need not be cancellable (the user dropped that item).
+- UDP DNS responses must match the configured resolver's full source socket address and query ID. Matching only its IP accepts an answer from another source port; `dns::tests::ignores_udp_answers_from_a_different_source_port` exercises this with two real sockets and no ordering sleeps (#3275).
 - Concurrency is promises and pipes: see [concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md); extend `@std/concurrency/promise.ms`, not new groups or locks.
 - Line streams buffer unfinished fragments once and join only at newline/EOF (#3212). Keep whole-chunk decoding direct; test split CRLF, empty chunks, UTF-8 and exact byte limits without rescanning or copying the growing prefix.
 - Empty `List.repeated` must not traverse the repetition count (#3204), but

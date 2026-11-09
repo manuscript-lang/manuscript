@@ -232,8 +232,7 @@ fn query_udp(
     loop {
         match sock.recv_from(&mut buf) {
             Ok((n, from)) => {
-                if from.ip() == server.ip() && n >= 2 && u16::from_be_bytes([buf[0], buf[1]]) == id
-                {
+                if from == server && n >= 2 && u16::from_be_bytes([buf[0], buf[1]]) == id {
                     buf.truncate(n);
                     return Ok(buf);
                 }
@@ -543,6 +542,35 @@ mod tests {
         let d = Deadline::after(Duration::from_millis(100));
         let r = query(silent.local_addr().unwrap(), "x.test.", TYPE_A, d);
         assert_eq!(r.unwrap_err(), NetErr::Timeout);
+    }
+
+    #[test]
+    fn ignores_udp_answers_from_a_different_source_port() {
+        let server = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let address = server.local_addr().unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        let other = UdpSocket::bind("127.0.0.1:0").unwrap();
+        assert_ne!(other.local_addr().unwrap().port(), address.port());
+        let deadline = Deadline::after(Duration::from_secs(2));
+        let responder = std::thread::spawn(move || {
+            let mut bytes = [0u8; 512];
+            let (length, client) = server.recv_from(&mut bytes).unwrap();
+            let mut response = bytes[..length].to_vec();
+            response[2..4].copy_from_slice(&[0x81, 0x80]);
+            response[6..8].copy_from_slice(&1u16.to_be_bytes());
+            response
+                .extend_from_slice(&[0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 30, 0, 4, 203, 0, 113, 99]);
+            other.send_to(&response, client).unwrap();
+            assert!(
+                !deadline.expired(),
+                "test answer must be sent before the query deadline"
+            );
+        });
+        let result = query(address, "test.", TYPE_A, deadline);
+        responder.join().unwrap();
+        assert_eq!(result, Err(NetErr::Timeout));
     }
 
     #[test]
