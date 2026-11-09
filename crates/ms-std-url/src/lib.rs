@@ -489,6 +489,38 @@ mod tests {
     }
 
     #[test]
+    fn resolves_long_parent_walks_without_rebuilding_prefixes() {
+        let base = parse(&alloc::format!(
+            "https://example.com/{}leaf",
+            "segment/".repeat(8000)
+        ))
+        .unwrap();
+        let resolved = resolve(&base, &"../".repeat(8000)).unwrap();
+        assert_eq!(format(&resolved).unwrap(), "https://example.com/");
+        let above_root = resolve(&base, &alloc::format!("{}next", "../".repeat(8002))).unwrap();
+        assert_eq!(format(&above_root).unwrap(), "https://example.com/next");
+    }
+
+    #[test]
+    fn parent_resolution_preserves_empty_segments_and_trailing_slashes() {
+        for (base, reference, expected) in [
+            ("/a//b/leaf", "../next", "/a//next"),
+            ("/a//b/leaf", "../../next", "/a/next"),
+            ("/a/b/leaf", "..", "/a/"),
+            ("/a/b/leaf", "../..", "/"),
+            ("/a/b/leaf", "../../..", "/"),
+            ("/a/b/leaf", ".././next/..", "/a/"),
+            ("/a/b/leaf", "../%2e%2e/next", "/a/%2e%2e/next"),
+        ] {
+            assert_eq!(
+                parser::resolve_path(base.as_bytes(), reference.as_bytes()),
+                expected.as_bytes(),
+                "{base} + {reference}"
+            );
+        }
+    }
+
+    #[test]
     fn queries() {
         let e = parse_query("a=1&b&a=2&&c=%20+x", None).unwrap();
         assert_eq!(
