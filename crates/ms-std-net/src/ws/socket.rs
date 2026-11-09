@@ -807,6 +807,91 @@ mod tests {
         );
     }
 
+    fn expect_protocol_close(wire: impl Fn(bool) -> Vec<u8>, reason: &str, body: bool) {
+        for server_receives in [false, true] {
+            let net = Network::new_root();
+            let (client, server) = pair(&net, true, None, None);
+            let (sender, receiver) = if server_receives {
+                (&client, &server)
+            } else {
+                (&server, &client)
+            };
+            sender
+                .connection()
+                .write(&wire(server_receives), SEC)
+                .unwrap();
+            let expected = if body {
+                TRUNCATED.to_string()
+            } else {
+                format!("websocket: {reason}")
+            };
+            assert_eq!(receiver.receive(SEC), Err(WsErr::Failed(expected)));
+            assert_eq!(receiver.receive(SEC), Err(WsErr::Closed));
+            assert_eq!(
+                sender.receive(SEC),
+                Err(WsErr::Failed(format!(
+                    "websocket: close 1002 (protocol error): {reason}"
+                )))
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_negotiated_rsv1_sends_1002() {
+        for opcode in [OP_CLOSE, OP_PING, OP_PONG] {
+            expect_protocol_close(
+                |masked| encode_frame(opcode, true, true, b"", masked.then_some([1, 2, 3, 4])),
+                "RSV1 set",
+                false,
+            );
+        }
+        expect_protocol_close(
+            |masked| {
+                let mask = masked.then_some([1, 2, 3, 4]);
+                let mut wire = encode_frame(OP_BINARY, false, false, b"a", mask);
+                wire.extend(encode_frame(OP_CONTINUATION, true, true, b"b", mask));
+                wire
+            },
+            "RSV1 set",
+            true,
+        );
+    }
+
+    #[test]
+    fn nonminimal_lengths_send_1002() {
+        for short in [126, 127] {
+            expect_protocol_close(
+                |masked| {
+                    let mut wire = vec![0x82, short | if masked { 0x80 } else { 0 }];
+                    wire.extend(vec![0; if short == 126 { 2 } else { 8 }]);
+                    if masked {
+                        wire.extend([1, 2, 3, 4]);
+                    }
+                    wire
+                },
+                "nonminimal payload length",
+                false,
+            );
+        }
+    }
+
+    #[test]
+    fn one_byte_close_sends_1002() {
+        expect_protocol_close(
+            |masked| {
+                encode_frame(
+                    OP_CLOSE,
+                    true,
+                    false,
+                    &[0x03],
+                    masked.then_some([1, 2, 3, 4]),
+                )
+            },
+            "close payload has one byte",
+            false,
+        );
+    }
+
     #[test]
     fn protocol_error_inside_a_message_reads_as_truncated() {
         let (_net, client, server) = setup();
