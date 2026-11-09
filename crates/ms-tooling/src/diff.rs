@@ -11,6 +11,10 @@ pub struct DiffHunk {
     pub new_start: i64,
     pub new_len: i64,
     pub lines: Vec<String>,
+    /// The final old-side line has no line terminator.
+    pub old_no_newline: bool,
+    /// The final new-side line has no line terminator.
+    pub new_no_newline: bool,
 }
 
 /// The hunks for one file. An empty `old` marks an added file and an empty
@@ -208,6 +212,7 @@ fn parse_hunk(lines: &[&str], start: usize) -> Result<(DiffHunk, usize), String>
     while i < lines.len() && (old_left > 0 || new_left > 0) {
         let mut line = lines[i];
         if line.starts_with('\\') {
+            record_no_newline(&mut h);
             i += 1;
             continue;
         }
@@ -238,9 +243,19 @@ fn parse_hunk(lines: &[&str], start: usize) -> Result<(DiffHunk, usize), String>
         ));
     }
     while i < lines.len() && lines[i].starts_with('\\') {
+        record_no_newline(&mut h);
         i += 1;
     }
     Ok((h, i))
+}
+
+// The no-newline note can be localized by the diff producer; its leading
+// backslash and the preceding side marker carry the structural meaning.
+fn record_no_newline(hunk: &mut DiffHunk) {
+    if let Some(line) = hunk.lines.last() {
+        hunk.old_no_newline |= !line.starts_with('+');
+        hunk.new_no_newline |= !line.starts_with('-');
+    }
 }
 
 fn parse_range(text: &str) -> Result<(i64, i64), String> {
@@ -261,7 +276,8 @@ fn parse_range(text: &str) -> Result<(i64, i64), String> {
 /// and added line is checked against the head, so a diff that does not
 /// describe this tree is an error rather than a guess.
 pub fn reverse_apply(head: &str, hunks: &[DiffHunk]) -> Result<String, String> {
-    let source: Vec<&str> = head.split('\n').collect();
+    let source: Vec<&str> = head.split_terminator('\n').collect();
+    let mut trailing_newline = head.ends_with('\n');
     let mut out: Vec<&str> = Vec::new();
     let mut position = 0usize;
     let same = |a: &str, b: &str| a.trim_end_matches('\r') == b.trim_end_matches('\r');
@@ -292,10 +308,23 @@ pub fn reverse_apply(head: &str, hunks: &[DiffHunk]) -> Result<String, String> {
             }
             index += 1;
         }
+        if hunk.new_no_newline && index != source.len() {
+            return Err("no-newline marker appears before the end of the file".to_string());
+        }
+        if index == source.len() {
+            if hunk.new_len > 0 && hunk.new_no_newline == head.ends_with('\n') {
+                return Err("final newline does not match the diff".to_string());
+            }
+            trailing_newline = !hunk.old_no_newline;
+        }
         position = index;
     }
     out.extend_from_slice(&source[position..]);
-    Ok(out.join("\n"))
+    let mut result = out.join("\n");
+    if !out.is_empty() && trailing_newline {
+        result.push('\n');
+    }
+    Ok(result)
 }
 
 /// The base text of a deleted file.
@@ -308,5 +337,9 @@ pub fn removed_content(hunks: &[DiffHunk]) -> String {
             }
         }
     }
-    out.join("\n") + "\n"
+    let mut result = out.join("\n");
+    if !out.is_empty() && !hunks.last().is_some_and(|h| h.old_no_newline) {
+        result.push('\n');
+    }
+    result
 }
