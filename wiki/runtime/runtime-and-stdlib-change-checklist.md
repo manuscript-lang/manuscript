@@ -16,6 +16,9 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Native I/O remains interruptible after descriptor metadata access. Completeness includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values. Process `stdin`/`stdout` reads and writes need not be cancellable (the user dropped that item).
 - Concurrency is promises and pipes: see [concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md); extend `@std/concurrency/promise.ms`, not new groups or locks.
 - Line streams buffer unfinished fragments once and join only at newline/EOF (#3212). Keep whole-chunk decoding direct; test split CRLF, empty chunks, UTF-8 and exact byte limits without rescanning or copying the growing prefix.
+- Empty `List.repeated` must not traverse the repetition count (#3204), but
+  validate negative counts before the empty return. Keep a nonempty nested-copy
+  control so a fast path does not weaken cloning or output order.
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - User code binds a native symbol with `extern fn name(...) T` (symbol is the function name, linked with `--link`; may return `Result` with a payload-free error type; not generic, not a method). Stdlib natives are `extern fn` declarations wrapped by ordinary functions; the few generic natives are bodiless and named in `ms-lower/src/rtcall.rs`. `extern type` and source-level `Shared[T]`, `Weak[T]`, `Arena[T]` are planned, not shipped.
 - Preserve declared error types/cases/causes and checked binding identities.
