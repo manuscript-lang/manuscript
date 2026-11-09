@@ -91,14 +91,14 @@ export interface Commands:
     */
     fn run(
         program: String,
-        arguments: List[String] = [],
+        arguments: List[String],
         options: RunOptions = RunOptions()
     ) CommandOutput!
     // Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
     // `options.cwd` and `options.env` behave as in `run`.
     fn spawn(
         program: String,
-        arguments: List[String] = [],
+        arguments: List[String],
         options: SpawnOptions = SpawnOptions()
     ) Subprocess!
 
