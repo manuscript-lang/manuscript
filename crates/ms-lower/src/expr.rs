@@ -345,7 +345,7 @@ impl<'a> FnLower<'a> {
 
     /// The raw register value of a constant scalar element (an integer, float, or boolean
     /// literal, optionally negated), or `None` when `e` is anything else.
-    fn const_scalar(&self, e: &Expr) -> Option<i64> {
+    pub(crate) fn const_scalar(&self, e: &Expr) -> Option<i64> {
         let (text, negate) = match &e.kind {
             ExprKind::Bool(b) => return Some(i64::from(*b)),
             ExprKind::Number(text) => (self.syms.str(text), false),

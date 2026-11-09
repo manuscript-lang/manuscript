@@ -75,3 +75,37 @@ fn list_const_yields_the_registered_elements() {
     m.entry = Some(id);
     assert_eq!(run(&m), -2 + 3);
 }
+
+/// `main` stores `x + 1` in a slot made inside the run and reads it back.
+fn slot_program(outline: bool) -> Module {
+    use ms_mir::ir::Imm;
+    let mut m = Module::new("outline");
+    let mut b = FuncBuilder::new(&mut m, "main", vec![], Ty::INT);
+    let x = b.iconst(41);
+    let mark = b.mark();
+    let one = b.iconst(1);
+    let sum = b.binop(Op::IAdd, x, one);
+    let slot = b
+        .emit(Op::Slot, &[], Imm::Ty(Ty::INT), Some(Ty::PTR))
+        .unwrap();
+    b.emit(Op::Store, &[slot, sum], Imm::None, None);
+    let mut got = b
+        .emit(Op::Load, &[slot], Imm::Ty(Ty::INT), Some(Ty::INT))
+        .unwrap();
+    if outline {
+        got = b.outline(mark, got, "slot.run").expect("outlined");
+    }
+    b.ret(Some(got));
+    let id = b.finish();
+    m.entry = Some(id);
+    m
+}
+
+#[test]
+fn a_slot_made_and_used_inside_the_run_moves_with_it() {
+    let inline = slot_program(false);
+    let outlined = slot_program(true);
+    assert_eq!(outlined.funcs.len(), inline.funcs.len() + 1);
+    assert_eq!(run(&inline), 42);
+    assert_eq!(run(&outlined), 42);
+}

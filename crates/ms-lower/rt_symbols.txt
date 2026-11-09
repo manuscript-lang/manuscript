@@ -154,6 +154,7 @@ msrt_map_add_default(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, val
 msrt_map_add_default_lent(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, val: *mut u8) @leaf
 msrt_map_add_lent(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, val: *mut u8) @leaf
 msrt_map_add_sw8(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, val: *mut u8) @leaf
+msrt_map_add_table(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, table: *const StrVal) @leaf
 msrt_map_add_w8(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, val: *mut u8) @leaf
 msrt_map_clear(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) @leaf
 msrt_map_contains(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @leaf
