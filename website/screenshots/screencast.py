@@ -39,9 +39,9 @@ SCENES = [
          steps=[("ms lint effects.ms", first(1))], cut=";"),
     dict(title="Compiler errors that *name the fix*.",
          sub="Cause and remedy in every diagnostic. --json for agents.",
-         src="fixme.ms", steps=[("ms check fixme.ms", first(1))], cut=";"),
+         src="fixme.ms", steps=[("ms check fixme.ms", first(1))]),
     dict(title="A *complete toolchain*, in the box.",
-         sub="Agents do better when everything is in the box.",
+         sub="test, fuzz, bench, profile: robust, performant programs, nothing to install.",
          src="tb.ms",
          steps=[("ms test tb.ms && ms bench tb.ms",
                  lambda ls: [l for l in ls if l.startswith("1 tests")] + bench_line(ls))], cut=" ("),
@@ -316,6 +316,8 @@ def main():
                     add(scene_frame(sc, n, total, code, set(visible), rows, True), 450)
                     for line in out:
                         kind = "err" if re.search(r"error|warning|type:|resolution:", line) else "out"
+                        if line.startswith("  ") and rows and rows[-1][0] in ("err", "out"):
+                            kind = rows[-1][0]
                         rows = rows + [(kind, line)]
                         add(scene_frame(sc, n, total, code, set(visible), rows, False), 400 + 10 * len(line))
                 durs[-1] += ph.get("hold", 2200)
