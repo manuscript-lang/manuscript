@@ -189,6 +189,8 @@ pub enum Builtin {
     BytesBuilder,
     /// `Regex`.
     Regex,
+    /// The implicit `Self` variable of an interface.
+    SelfType,
 }
 
 impl Builtin {

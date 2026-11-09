@@ -496,19 +496,20 @@ impl Checker {
     /// `Self` is limited to whole parameter and result types, the positions where a call can
     /// substitute the implementing type.
     pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
-        fn mentions(syms: ms_syntax::Names, t: &Ty) -> bool {
-            syms.str(t.id).ends_with("/Self")
-                || t.args.iter().any(|a| mentions(syms, a))
-                || t.params.iter().any(|p| mentions(syms, &p.ty))
-                || t.result.as_ref().is_some_and(|r| mentions(syms, r))
+        fn mentions(t: &Ty) -> bool {
+            t.is(Builtin::SelfType)
+                || t.args.iter().any(mentions)
+                || t.params.iter().any(|p| mentions(&p.ty))
+                || t.result.as_ref().is_some_and(mentions)
         }
-        let misplaced =
-            op.params
-                .iter()
-                .any(|p| !self.syms.str(p.ty.id).ends_with("/Self") && mentions(self.syms, &p.ty))
-                || op.result.as_ref().is_some_and(|r| {
-                    !self.syms.str(r.id).ends_with("/Self") && mentions(self.syms, r)
-                });
+        let misplaced = op
+            .params
+            .iter()
+            .any(|p| !p.ty.is(Builtin::SelfType) && mentions(&p.ty))
+            || op
+                .result
+                .as_ref()
+                .is_some_and(|r| !r.is(Builtin::SelfType) && mentions(r));
         if misplaced {
             self.type_error(
                 pos,
@@ -1897,11 +1898,11 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
 /// The implicit `Self` type of an interface: a variable that implementations and calls replace
 /// with the receiver.
 pub fn self_variable(syms: ms_syntax::Names, owner: Name) -> Ty {
-    Rc::new(Type::new(
-        syms,
+    Rc::new(Type::with_builtin(
         n("Self"),
         n(&format!("{owner_t}/Self", owner_t = syms.str(owner))),
         Kind::Variable,
+        Some(Builtin::SelfType),
     ))
 }
 

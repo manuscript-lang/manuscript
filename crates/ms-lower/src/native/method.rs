@@ -74,10 +74,6 @@ impl<'a> FnLower<'a> {
         let str_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str);
         // `NormalizationForm` is the only alternative whose native `normalize` this lowers.
         let form_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Alt(_));
-        if let Some(sym) = hash_algorithm_symbol(native) {
-            let result = self.emty(e)?;
-            return self.hash_algorithm_call(sym, recv, &args, result);
-        }
         if str_recv && native == "chars" && self.chars_iter_for == Some(e as *const Expr) {
             // `for c in text.chars()`: the loop scans the string itself, so no list is built.
             self.chars_iter_for = None;

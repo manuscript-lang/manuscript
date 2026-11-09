@@ -322,8 +322,6 @@ impl<'a> FnLower<'a> {
                 let v = self.b.bytes_lit(data);
                 Ok(Val { v, own: false })
             }
-            "math/min" => self.math_extreme(view, false),
-            "math/max" => self.math_extreme(view, true),
             other if crate::stdnative::handle_of(other).is_some() => {
                 let handle = crate::stdnative::handle_of(other).expect("checked");
                 let (ity, want) = (self.ety(e), self.emty(e)?);
@@ -342,15 +340,6 @@ impl<'a> FnLower<'a> {
                 }
                 let func = sym.decl.as_ref().and_then(|d| d.func());
                 self.fill_native_defaults(sym.module, func, params, &mut args)?;
-                if other.starts_with("crypto/rsa_") {
-                    // The C ABI produces CryptoError even when the source expects Error.
-                    let declared = sym.ty(self.syms).result_ty();
-                    let have = self.mty(&declared)?;
-                    self.at(e.pos);
-                    let r = self.native_call(other, params, &args, have)?;
-                    let want = self.emty(e)?;
-                    return self.fit_ty(r, &declared, want);
-                }
                 let result = self.emty(e)?;
                 self.at(e.pos);
                 self.native_call(other, params, &args, result)
@@ -360,21 +349,7 @@ impl<'a> FnLower<'a> {
 
     /// Whether `native_call` lowers the native function `native`.
     fn has_native_call(&self, native: &str) -> bool {
-        matches!(
-            native,
-            "math/min"
-                | "math/max"
-                | "math/bit_and"
-                | "math/bit_or"
-                | "math/bit_xor"
-                | "math/bit_not"
-                | "math/shift_left"
-                | "math/shift_right"
-                | "math/shift_right_unsigned"
-                | "math/wrapping_add"
-                | "math/wrapping_subtract"
-                | "math/wrapping_multiply"
-        ) || crate::rtcall::function_symbol(native).is_some()
+        crate::rtcall::function_symbol(native).is_some()
     }
 
     /// A native function applied to evaluated arguments (borrowed by the callee).
@@ -385,118 +360,12 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
-        if matches!(native, "math/min" | "math/max") {
-            return self.min_max(native == "math/max", args);
-        }
-        if let Some(name) = native.strip_prefix("math/").filter(|n| {
-            matches!(
-                *n,
-                "bit_and"
-                    | "bit_or"
-                    | "bit_xor"
-                    | "bit_not"
-                    | "shift_left"
-                    | "shift_right"
-                    | "shift_right_unsigned"
-                    | "wrapping_add"
-                    | "wrapping_subtract"
-                    | "wrapping_multiply"
-            )
-        }) {
-            return self.bit_operation(name, args);
-        }
         if native == "collections/map_from_entries" {
             return self.map_from_entries(args[0].val, result);
-        }
-        if matches!(native, "crypto/sha256" | "crypto/sha384" | "crypto/sha512") {
-            // The digest of the `HashAlgorithm` case of that name.
-            let data = args
-                .first()
-                .ok_or_else(|| Error::new("a digest without data"))?;
-            let data = self.borrow(data.val);
-            let alg = match native {
-                "crypto/sha256" => 3,
-                "crypto/sha384" => 4,
-                _ => 5,
-            };
-            let alg = self.b.iconst(alg);
-            let sym = "msstd_crypto_digest";
-            let sig = crate::rtcall::rt_sig(sym)
-                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-            return self.finish_rt_call(sym, &sig, true, vec![alg, data], MTy::BYTES);
-        }
-        if native == "crypto/derive_key" {
-            // PBKDF2-HMAC-SHA-256: the `HashAlgorithm.Sha256` case of the algorithm method.
-            let mut vals = vec![self.b.iconst(3)];
-            for a in args {
-                vals.push(self.borrow(a.val));
-            }
-            let sym = "msstd_crypto_derive_key";
-            let sig = crate::rtcall::rt_sig(sym)
-                .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-            return self.finish_rt_call(sym, &sig, true, vals, result);
         }
         let sym = crate::rtcall::function_symbol(native)
             .ok_or_else(|| Error::new(format!("unsupported native function {native}")))?;
         self.rt_function(&sym, params, args, result)
-    }
-
-    /// Whether `a` orders strictly above `b`; Float orders NaN above every other value.
-    fn strictly_above(&mut self, a: Value, b: Value) -> Result<Value, Error> {
-        use ms_mir::ir::{Cc, Op};
-        let t = self.ty_of(a);
-        let above = if self.b.m.types.is_int(t) {
-            self.b.icmp(Cc::Gt, a, b)
-        } else if self.b.m.types.is_float(t) {
-            let gt = self.b.fcmp(Cc::Gt, a, b);
-            let a_nan = self.b.fcmp(Cc::Ne, a, a);
-            let b_num = self.b.fcmp(Cc::Eq, b, b);
-            let nan_above = self.b.binop(Op::And, a_nan, b_num);
-            self.b.binop(Op::Or, gt, nan_above)
-        } else if t == MTy::STR {
-            let c = self.call_runtime("msrt_string_compare", &[a, b], MTy::INT)?;
-            let zero = self.b.iconst(0);
-            self.b.icmp(Cc::Gt, c, zero)
-        } else if let Some(c) = self.native_compare(t, a, b)? {
-            let zero = self.b.iconst(0);
-            self.b.icmp(Cc::Gt, c, zero)
-        } else {
-            return Err(Error::new(format!(
-                "unsupported min/max on {}",
-                ms_mir::print::ty_str(self.b.m, t)
-            )));
-        };
-        Ok(above)
-    }
-
-    /// `max(left, right)` / `min(left, right)`: `left` unless `right` is strictly greater
-    /// (lesser). Floats order NaN above every other value.
-    fn min_max(&mut self, max: bool, args: &[NArg]) -> Result<Val, Error> {
-        let (left, right) = (self.borrow(args[0].val), self.borrow(args[1].val));
-        let t = self.ty_of(left);
-        // `a` ordered strictly above `b`.
-        let (a, b) = if max { (right, left) } else { (left, right) };
-        let above = self.strictly_above(a, b)?;
-        if !self.needs_drop(t) {
-            let v = self.b.select(above, right, left);
-            return Ok(Val { v, own: false });
-        }
-        self.two_ways(
-            above,
-            t,
-            &mut |s| {
-                Ok(Some(s.owned(Val {
-                    v: right,
-                    own: false,
-                })))
-            },
-            &mut |s| {
-                Ok(Some(s.owned(Val {
-                    v: left,
-                    own: false,
-                })))
-            },
-        )
     }
 
     /// The `@std/math` bit operations on `Int` as single MIR instructions. A shift count outside
@@ -799,19 +668,6 @@ impl<'a> FnLower<'a> {
             self.b.conv(x, result)
         };
         Ok(Val { v, own: false })
-    }
-}
-
-/// The runtime symbol of a `HashAlgorithm` operation, by native identity.
-fn hash_algorithm_symbol(native: &str) -> Option<&'static str> {
-    match native {
-        "crypto/hash_algorithm_digest" => Some("msstd_crypto_digest"),
-        "crypto/hash_algorithm_hmac" => Some("msstd_crypto_hmac"),
-        "derive_key" | "crypto/hash_algorithm_derive_key" => Some("msstd_crypto_derive_key"),
-        "hkdf" | "crypto/hash_algorithm_hkdf" => Some("msstd_crypto_hkdf"),
-        "crypto/hash_algorithm_hasher" => Some("msstd_crypto_hasher_new"),
-        "crypto/hash_algorithm_hmac_hasher" => Some("msstd_crypto_hmac_hasher_new"),
-        _ => None,
     }
 }
 

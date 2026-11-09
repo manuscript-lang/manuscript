@@ -130,9 +130,6 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &[r, d, n], rty)?;
             return Ok(Val { v: out, own: true });
         }
-        if let Some(sym) = hash_algorithm_symbol(self.syms.str(m.native)) {
-            return self.hash_algorithm_call(sym, recv, args, result);
-        }
         if self.syms.str(m.native) == "hash" && !matches!(self.b.m.types.kind(rty), TyKind::Str) {
             return self.structural_hash(recv);
         }
@@ -158,26 +155,6 @@ impl<'a> FnLower<'a> {
         // `equal` borrows both operands, so owned temporaries are released with the statement.
         let v = self.equal(t, recv, other)?;
         Ok(Val { v, own: false })
-    }
-
-    /// A `HashAlgorithm` operation: the algorithm is the receiver's case index, the first runtime argument.
-    pub(super) fn hash_algorithm_call(
-        &mut self,
-        sym: &str,
-        recv: Val,
-        args: &[NArg],
-        result: MTy,
-    ) -> Result<Val, Error> {
-        let tag = self.borrow(recv);
-        let alg = self.b.alt_tag(tag);
-        let mut vals = vec![alg];
-        for a in args {
-            vals.push(self.borrow(a.val));
-        }
-        let sig = crate::rtcall::rt_sig(sym)
-            .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
-        let has_out = sig.params.last().is_some_and(|p| p.name == "out");
-        self.finish_rt_call(sym, &sig, has_out, vals, result)
     }
 
     /// A variable that always holds the receiver list, for use across loop headers.

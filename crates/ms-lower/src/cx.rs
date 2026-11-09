@@ -727,7 +727,7 @@ impl Cx {
                             .ty
                             .params
                             .iter()
-                            .map(|p| self.syms.str(p.ty.id).ends_with("/Self"))
+                            .map(|p| p.ty.is(ct::Builtin::SelfType))
                             .collect();
                         let sig = ct::sub(&op.ty, &subst);
                         let vars = op_var_params(&op);

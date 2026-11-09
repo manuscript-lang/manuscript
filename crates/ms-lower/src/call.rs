@@ -1053,7 +1053,9 @@ impl<'a> FnLower<'a> {
             // A concrete receiver (a generic instance): call its implementation directly.
             let Some(im) = self.contract_impl(m, &static_ty) else {
                 // Hashing is derived for every hashable type.
-                if m.name().is_some_and(|n| self.syms.str(n) == "hash") {
+                if m.name().is_some_and(|n| self.syms.str(n) == "hash")
+                    && contract.is(Builtin::Hashable)
+                {
                     let recv = self.expr(recv_expr)?;
                     if self.dead {
                         return Ok(recv);
