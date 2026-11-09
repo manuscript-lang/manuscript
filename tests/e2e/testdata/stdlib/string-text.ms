@@ -1,4 +1,4 @@
-import expect_equal from "@std/test/test.ms"
+import expect_equal, expect_true from "@std/test/test.ms"
 
 test "string text helpers":
     "  a b\t c ".fields() | try expect_equal(["a", "b", "c"])
@@ -111,3 +111,19 @@ test "negative get and scalar_at index from the end on non-ASCII text":
     try expect_equal(text.get(-6, "none"), "none")
     try expect_equal(text.scalar_at(-6, -1), -1)
     try expect_equal(text.get(-9223372036854775807 - 1, "none"), "none")
+
+test "slice bounds from the end agree with the same bounds from the start on non-ASCII text":
+    let text = "aé😀b日"
+    let n = text.length()
+
+    for start in [-7, -6, -5, -3, -1, 0, 2, 5, 6]:
+        for end in [-7, -5, -2, -1, 0, 1, 4, 5, 6]:
+            let a = if start < 0: n + start else: start
+            let b = if end < 0: n + end else: end
+
+            if a < 0 or b < a or b > n:
+                try expect_true(text.slice(start, end).is_error())
+            else:
+                try expect_equal(
+                    text.slice(start, end).get(""), text.slice(a, b).get("")
+                )
