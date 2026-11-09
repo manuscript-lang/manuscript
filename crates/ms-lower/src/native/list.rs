@@ -429,17 +429,9 @@ impl<'a> FnLower<'a> {
                 return Ok(self.dummy(MTy::UNIT));
             }
         }
-        if !discards {
-            if name == "add"
-                && let Some(done) = self.fused_update(e, view, m, recv_expr)?
-            {
-                self.finish_place(recv_expr);
-                return Ok(done);
-            }
-            if let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
-                self.finish_place(recv_expr);
-                return Ok(done);
-            }
+        if !discards && let Some(done) = self.borrowed_key_add(e, view, m, recv_expr, name)? {
+            self.finish_place(recv_expr);
+            return Ok(done);
         }
         let mut args = self.native_args_protected(view, protect_list)?;
         if self.dead {

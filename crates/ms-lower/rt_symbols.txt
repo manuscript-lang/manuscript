@@ -176,7 +176,6 @@ msrt_map_merge(m: *mut MapVal, other: *const MapVal, kd: KeyDesc, vd: ValDesc) @
 msrt_map_new(out: *mut MapVal) @leaf
 msrt_map_remove(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) @leaf
 msrt_map_reserve(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, n: i64) @leaf
-msrt_map_slot(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, default: *mut u8) -> *mut u8 @leaf
 msrt_map_slot_count(m: *const MapVal) -> i64 @leaf @pure
 msrt_map_slot_lent(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, default: *mut u8) -> *mut u8 @leaf
 msrt_map_stamp(m: *mut MapVal, kd: KeyDesc) @leaf

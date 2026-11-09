@@ -7,7 +7,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use crate::rtcall::Input;
-use ms_check::api::ast::{BinaryOp, Expr, ExprKind, MapEntry, TextPart};
+use ms_check::api::ast::{Expr, ExprKind, MapEntry, TextPart};
 use ms_check::api::hir::{CallView, Resolution};
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
@@ -47,130 +47,6 @@ fn clone_receiver<'e>(
 }
 
 impl<'a> FnLower<'a> {
-    /// `m.add(k, m.get(k).get(d) <op> x)` on an `Int`-valued map held in a local, as one probe
-    /// (`+`, `-` with the read on the left, `*`). The runtime finds or creates the entry with
-    /// `d` and the update reads and writes through the returned slot. `None` leaves the call to
-    /// the ordinary path: anything else about the shape, a used result, or an `x` that names the
-    /// map (it could change the entry before the read).
-    pub(crate) fn fused_update(
-        &mut self,
-        e: &Expr,
-        view: &CallView<'_>,
-        m: &ct::MethodRef,
-        recv_expr: &Expr,
-    ) -> Result<Option<Val>, Error> {
-        if self.discard != Some(e as *const Expr as usize) || view.arguments.len() != 2 {
-            return Ok(None);
-        }
-        let declared: Vec<_> = m.ty.params.iter().map(|p| p.name).collect();
-        if declared.len() != 2
-            || view.arguments[0].slot.name != declared[0]
-            || view.arguments[1].slot.name != declared[1]
-        {
-            return Ok(None);
-        }
-        let (key, value) = (view.arguments[0].expr, view.arguments[1].expr);
-        // `m.add(w.clone(), m.get(w).get(0) + 1)`: the explicit copy is only needed when the key
-        // is absent, so the runtime makes it then and the lookup borrows `w`.
-        let key = clone_receiver(self.syms, &self.hir, key).unwrap_or(key);
-        let ExprKind::Binary { op, left, right } = &value.kind else {
-            return Ok(None);
-        };
-        let Resolution::Local(recv) = self.hir.resolution(recv_expr) else {
-            return Ok(None);
-        };
-        if !matches!(recv_expr.kind, ExprKind::Name(_)) {
-            return Ok(None);
-        }
-        let read_left = self.counter_read(left, recv.uid, recv_expr, key);
-        let (default, other) = match (read_left, op) {
-            (Some(d), BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul) => (d, &**right),
-            (None, BinaryOp::Add | BinaryOp::Mul) => {
-                match self.counter_read(right, recv.uid, recv_expr, key) {
-                    Some(d) => (d, &**left),
-                    None => return Ok(None),
-                }
-            }
-            _ => return Ok(None),
-        };
-        // The insertion key and later lookup must select the same value. A literal operand
-        // cannot change or consume even a mutable key; other operands require an immutable key.
-        let literal_operand = matches!(other.kind, ExprKind::Number(_));
-        let stable_key = match &key.kind {
-            ExprKind::Number(_) => true,
-            ExprKind::Name(_) => matches!(
-                self.hir.resolution(key),
-                Resolution::Local(b) if !b.mutable || literal_operand
-            ),
-            _ => false,
-        };
-        if !stable_key {
-            return Ok(None);
-        }
-        if crate::mutation::uses_of(&self.hir, other, recv.uid) != 0 {
-            return Ok(None);
-        }
-        // Immutable keys can still be moved by the other operand. Keep their last use
-        // in source order rather than retaining a borrowed key past that move.
-        if let Resolution::Local(binding) = self.hir.resolution(key)
-            && crate::mutation::uses_of(&self.hir, other, binding.uid) != 0
-        {
-            return Ok(None);
-        }
-        let mt = self.emty(recv_expr)?;
-        let TyKind::Obj(n, a) = self.b.m.types.kind(mt).clone() else {
-            return Ok(None);
-        };
-        if n != Native::Map || a.get(1) != Some(&MTy::INT) || self.emty(value)? != MTy::INT {
-            return Ok(None);
-        }
-        // As in map_get_chain, checked key conversions (such as Int to Optional[Int])
-        // need the ordinary argument path rather than a slot of the raw expression's type.
-        if a.first() != Some(&self.emty(key)?) {
-            return Ok(None);
-        }
-        // The fused update checks 64-bit overflow only; sized integers take the general path.
-        if ct::int_bits(self.syms, &self.hir.ty(value)).is_some_and(|bits| bits < 64) {
-            return Ok(None);
-        }
-        let read_is_left = read_left.is_some();
-        let k = self.expr(key)?;
-        if self.dead {
-            return Ok(Some(k));
-        }
-        let k = self.borrow(k);
-        let x = self.expr(other)?;
-        if self.dead {
-            return Ok(Some(x));
-        }
-        let d = self.expr(default)?;
-        let (kd, vd) = self.map_descs(mt)?;
-        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let op = *op;
-        let at = e.pos;
-        self.place_update(recv_expr, &mut |s, old| {
-            let slot = s.put_slot(old);
-            let ks = s.borrow_slot(k);
-            let ds = s.put_slot(d.v);
-            let p = s.call_runtime("msrt_map_slot_lent", &[slot, kd, vd, ks, ds], MTy::PTR)?;
-            let cur =
-                s.b.emit(Op::Load, &[p], Imm::Ty(MTy::INT), Some(MTy::INT))
-                    .expect("load");
-            s.at(at);
-            let (l, r) = if read_is_left { (cur, x.v) } else { (x.v, cur) };
-            let o = match op {
-                BinaryOp::Add => Op::IAddChk,
-                BinaryOp::Sub => Op::ISubChk,
-                _ => Op::IMulChk,
-            };
-            let next = s.b.binop(o, l, r);
-            s.b.emit(Op::Store, &[p, next], Imm::None, None);
-            Ok(s.take_slot(slot, mt))
-        })?;
-        let u = self.b.unit();
-        Ok(Some(Val { v: u, own: false }))
-    }
-
     /// `m.add(key: k.clone(), value: v)` and `m.add_default(..)` on a `String`-keyed map held in a
     /// local, with `k` a part of a variable that cannot change: the runtime copies the key only when
     /// the entry is absent, so updating an existing entry allocates nothing.
@@ -243,69 +119,6 @@ impl<'a> FnLower<'a> {
         })?;
         let u = self.b.unit();
         Ok(Some(Val { v: u, own: false }))
-    }
-
-    /// The default `d` of `recv.get(key).get(d)` when `e` is exactly that read of the same
-    /// local map and an equal simple key, with `d` a number literal.
-    fn counter_read<'e>(
-        &self,
-        e: &'e Expr,
-        uid: usize,
-        recv_expr: &Expr,
-        key: &Expr,
-    ) -> Option<&'e Expr> {
-        let ExprKind::Call { callee, args } = &e.kind else {
-            return None;
-        };
-        let ExprKind::Member { left: opt, name } = &callee.kind else {
-            return None;
-        };
-        let [d] = args.as_slice() else { return None };
-        if self.syms.str(name) != "get"
-            || !matches!(d.value.kind, ExprKind::Number(_))
-            || d.name.is_some()
-        {
-            return None;
-        }
-        let ExprKind::Call {
-            callee: c2,
-            args: a2,
-        } = &opt.kind
-        else {
-            return None;
-        };
-        let ExprKind::Member {
-            left: map,
-            name: n2,
-        } = &c2.kind
-        else {
-            return None;
-        };
-        let [k2] = a2.as_slice() else { return None };
-        if self.syms.str(n2) != "get" || k2.name.is_some() {
-            return None;
-        }
-        let same_map = matches!(map.kind, ExprKind::Name(_))
-            && matches!(self.hir.resolution(map), Resolution::Local(b) if b.uid == uid)
-            && self.ety(map).is(Builtin::Map)
-            && self.ety(opt).is(Builtin::Optional)
-            && self.ety(recv_expr).is(Builtin::Map);
-        (same_map && self.same_key(&k2.value, key)).then_some(&d.value)
-    }
-
-    /// Whether two key expressions are the same local or the same number literal.
-    fn same_key(&self, a: &Expr, b: &Expr) -> bool {
-        match (&a.kind, &b.kind) {
-            (ExprKind::Name(_), ExprKind::Name(_)) => matches!(
-                (self.hir.resolution(a), self.hir.resolution(b)),
-                (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
-            ),
-            (ExprKind::Number(x), ExprKind::Number(y)) => {
-                ms_check::api::number::canonical(self.syms.str(x))
-                    == ms_check::api::number::canonical(self.syms.str(y))
-            }
-            _ => false,
-        }
     }
 
     /// `m.get(key).get()`, `.get(default)`, `.is_some()` and `.is_none()` read the entry in place:
@@ -889,6 +702,9 @@ impl<'a> FnLower<'a> {
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
         }
+        if name == "update" && matches!(self.b.m.types.kind(mt), TyKind::Obj(Native::Map, _)) {
+            return self.map_update(old, args);
+        }
         let set = matches!(self.b.m.types.kind(mt), TyKind::Obj(Native::Set, _));
         let text = decl.first().is_some_and(|p| p.ty.is_string(self.syms));
         let sym = match (set, name) {
@@ -959,6 +775,80 @@ impl<'a> FnLower<'a> {
             Val { v, own: true }
         });
         Ok((new, result))
+    }
+
+    /// `map.update(key, initial, change)`: one lookup finds or creates the entry (holding `initial`
+    /// when it is new), `change` reads the stored value through its slot, and its result replaces
+    /// the old value in place. The checker rejects a `change` that overlaps the receiver, so the
+    /// slot stays valid across the call. A fault in `change` leaves the entry as it was.
+    fn map_update(&mut self, old: Value, args: &[NArg]) -> Result<(Value, Option<Val>), Error> {
+        let mt = self.ty_of(old);
+        let arg = |s: &Self, n: &str| {
+            args.iter()
+                .find(|a| s.syms.str(a.name) == n)
+                .copied()
+                .ok_or_else(|| Error::new(format!("update without {n}")))
+        };
+        let (key, initial, change) = (
+            arg(self, "key")?,
+            arg(self, "initial")?,
+            arg(self, "change")?,
+        );
+        let (_, vt) = match self.b.m.types.kind(mt).clone() {
+            TyKind::Obj(_, a) if a.len() == 2 => (a[0], a[1]),
+            _ => return Err(Error::new("update on a map without values")),
+        };
+        // A key the checker converts on the way in (`Int` to `Optional[Int]`) is wrapped first.
+        let k = if key.wrapped {
+            let v = self.element_value(&key);
+            self.hold_temp(Val { v, own: true }).v
+        } else {
+            self.borrow(key.val)
+        };
+        let f = self.borrow(change.val);
+        let init = self.owned(initial.val);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let slot = self.put_slot(old);
+        let ks = self.borrow_slot(k);
+        let ds = self.put_slot(init);
+        let upsert =
+            |s: &mut Self| s.call_runtime("msrt_map_slot_lent", &[slot, kd, vd, ks, ds], MTy::PTR);
+        // A scalar-valued Int or String map probes through the inlined word lookup; only an absent
+        // key reaches the runtime, which appends the entry.
+        let p = match self.word_map_symbol("msrt_map_get_ptr", mt) {
+            Some(probe) => {
+                let hit = self.call_runtime(probe, &[slot, kd, vd, ks], MTy::PTR)?;
+                let missing = self
+                    .b
+                    .emit(Op::PtrIsNull, &[hit], Imm::None, Some(MTy::BOOL))
+                    .expect("is_null");
+                self.two_ways_mode(
+                    missing,
+                    MTy::PTR,
+                    Mode::Borrow,
+                    &mut |s| upsert(s).map(Some),
+                    &mut |_| Ok(Some(hit)),
+                )?
+                .v
+            }
+            None => upsert(self)?,
+        };
+        // A value that owns storage moves out of its slot and is released after `change` read it.
+        let (take, put) = if self.needs_drop(vt) {
+            (Op::Take, Op::Put)
+        } else {
+            (Op::Load, Op::Store)
+        };
+        let cur = self
+            .b
+            .emit(take, &[p], Imm::Ty(vt), Some(vt))
+            .expect("take");
+        let next = self.b.call_ind(f, &[cur]);
+        self.drop_value(cur);
+        self.b.emit(put, &[p, next], Imm::None, None);
+        let new = self.take_slot(slot, mt);
+        Ok((new, None))
     }
 
     /// `map.add_default_from(key, create)`: `create(key)` runs once, only when the key is absent.

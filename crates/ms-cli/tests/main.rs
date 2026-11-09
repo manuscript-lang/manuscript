@@ -26,7 +26,6 @@ mod list_reserve;
 mod llvm;
 mod lsp;
 mod many_joins;
-mod map_update;
 mod min_size_rel;
 mod opaque;
 mod profile;

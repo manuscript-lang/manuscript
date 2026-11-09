@@ -25,4 +25,5 @@ Perf and agent benchmarks, profiling.
 - [Callgrind needs a smaller allocator reservation](callgrind-needs-a-smaller-allocator-reservation.md): the 256 GiB reservation fails under valgrind, so profiles show glibc `malloc` costs the real run never pays.
 - [A temporary `stdout()` stream must not flush on close](a-temporary-stdout-stream-must-not-flush-on-close.md): per-write flush cost one syscall per output line and halved program speed through a pipe.
 - [A returned `Map.get` is a borrow, not a copy](a-returned-map-get-is-a-borrow-not-a-copy.md): `JsonValue.get` stops deep-copying; callers that mutate the map need `.clone()`.
+- [A read-modify-write is one API, not a syntactic pattern](a-read-modify-write-is-one-api-not-a-syntactic-pattern.md): `Map.update` is one lookup via the inlined word probe; the `get(k).get(d)` matcher was deleted (7.6 vs 10.1 vs 13.9 ms).
 - [String fusion must not treat other-block drops as early](string-fusion-must-not-treat-other-block-drops-as-early.md): a leaf dropped on a sibling path is not dropped before the join; `Info::dropped_before` uses reachability, c36 -6.8% instructions.

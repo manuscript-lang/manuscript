@@ -909,9 +909,9 @@ interface MapUpdate[T: Hashable & Clonable, U: Clonable]:
 
 impl MapUpdate[T, U] for Map[T, U]:
     // Stores `change` applied to the value for `key`, or to `initial` when the key is absent.
+    // Looks the key up once; `initial` is evaluated eagerly and `change` runs once.
     // Example: `counts.update(word, 0, fn n: n + 1)` counts occurrences.
-    var fn update(key: T, initial: U, change: fn(U) U) Unit:
-        self.add(key.clone(), change(self.get_or(key, initial)))
+    var fn update(key: T, initial: U, change: fn(U) U) Unit: ...
 
 import panic from "@std/core.ms"
 import StringBuilder from "@std/string.ms"
