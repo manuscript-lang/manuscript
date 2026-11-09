@@ -33,9 +33,9 @@ export fn main() Int:
 
 - Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
-- Be terse: infer closure types, one-line bodies (`fn f(x: Int) Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
-- `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
-- Stdlib, imported as `@std/<dir>/<m>.ms`: `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
+- Be terse: infer closure types; `map`/`filter`/`fold`/`join`/`get(d)` over loops.
+- `main() Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
+- Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
 - Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`. `and or not`, not `&& || !`.
@@ -53,10 +53,11 @@ export fn main() Int:
 - Borrow: `let b = a`, `let x = a.b`, `xs[i]`, arguments, loop variables and match payloads read the owner's value in place; while `b` is used, `a` cannot change. `var x = a.b` changes `a.b` through `x`.
 - Move: storing a value (`xs.append(s)`, a field, a list) gives it a new owner and kills the old name, so `xs.append(s.clone())` unless it is the last use. A borrowed part cannot be stored: `names.append(u.name.clone())`.
 - A fn returning part of a parameter or receiver returns a borrow, no `.clone()`: `fn name(u: User) String: return u.name`; the caller reads it in place, `.clone()` to keep it. A sibling path returning a new value needs `.clone()` on the borrowed path.
+- Avoid clones (slow): pass borrows, move at the last use, mutate via `var` parameters, keep indices. Clone only for a second owner.
 - `export opaque type T:` hides fields; `export opaque enum T:` hides cases outside the file.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
-- Lints fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
+- Lints fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail (prefix `_`).
 - `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
-- Waiting: `read`, `fetch`, `sleep` return a `Promise[T]`; `p.wait()` gives `T!`. Limits: `promise(fn: f(), options: PromiseOptions(timeout: d, cancel: stop.signal()))` or `p.with(options: ...)`; `stop = cancel_switch()`; `stop.cancel()`, `p.cancel()` act at the next wait. `wait_all(ps)`, `wait_first(ps)`. Dropping cancels. Share state via one owner and `pipe[T](cap)`.
+- Waiting: `read`, `fetch`, `sleep` return `Promise[T]`; `p.wait()` gives `T!`. Limits: `promise(fn: f(), options: PromiseOptions(timeout: d, cancel: stop.signal()))` or `p.with(options: ...)`; `stop = cancel_switch()`; `stop.cancel()`, `p.cancel()` act at the next wait. `wait_all(ps)`, `wait_first(ps)`. Share state via one owner and `pipe[T](cap)`.
 - Streams: `for x in s:` binds `T`, a failed read leaves with its error; `w.write(v)` waits when full; steps `input | lines | map(f) | collect(none)`. `serve(":8080", h)` uses every core; `server.wait()`.
-- Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.
+- Not Python: no exceptions, classes, `async`, `null`, `pass`, `f""`; `fn` not `def`/`lambda`; `else if`; `none`.

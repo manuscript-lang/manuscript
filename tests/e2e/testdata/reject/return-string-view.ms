@@ -1,0 +1,8 @@
+// A returned `String` is owned, but `view` only borrows its receiver, so returning one (of a local
+// or of a parameter) is rejected; copy it with `.clone()` after the view.
+fn result() String:
+    let text = "hello world"
+    return text.view(1, 5)
+
+export fn main() Int:
+    return result().length()

@@ -118,6 +118,10 @@ interface StringOperations:
     // Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
     // Bounds outside 0 <= start <= end <= scalar_length() return an `Error` of kind `ERANGE`; the receiver is unchanged.
     fn slice(start: Int, end: Int) String!
+    // Borrows the scalars [start, end) of the receiver without copying; negative bounds are relative to the end.
+    // Bounds outside 0 <= start <= end <= scalar_length() raise a fault. Like `Bytes.view`, the result borrows
+    // the receiver, which cannot change while the view is used; `.clone()` keeps the text. `slice` copies instead.
+    fn view(start: Int, end: Int) String
     // Returns the UTF-8 encoded byte length.
     fn byte_length() Int
     // Encodes the string as UTF-8 bytes.

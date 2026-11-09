@@ -60,7 +60,7 @@ Leave out the `.clone()`:
 The compiler refuses, and its message says how to repair it:
 
 ```text
-cart.ms:11:13: type: `cart` is moved here but used again at 12:11; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
+cart.ms:11:13: type: `cart` is moved here but used again at 12:11; a value has one owner, so move it only at its last use, or pass `cart.clone()` if the original is still needed
 ```
 
 Two repairs fit: clone, as above, or move the value at its last use and stop using the old name.
