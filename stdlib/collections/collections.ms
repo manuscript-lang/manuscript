@@ -275,8 +275,8 @@ export type SearchResult:
     // True when the element at `index` compares equal to the target.
     found: Bool
 
-// Creates a list containing `value` repeated `count` times.
-export fn filled[T](value: T, count: Int, max_items: Int?) List[T]!:
+// Creates a list containing independent copies of `value` repeated `count` times; the value must be Clonable.
+export fn filled[T: Clonable](value: T, count: Int, max_items: Int?) List[T]!:
     return msrt_list_filled(value, count, max_items)
 
 // Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
@@ -299,8 +299,8 @@ export fn range_by(
 // Builds a map from entries. Later entries replace earlier values for duplicate keys.
 export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...
 
-// Concatenates the inner lists in order into one new list; `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.
-export fn flatten[T](lists: List[List[T]]) List[T]:
+// Copies the inner lists' elements in order into one new list; elements must be Clonable. Example: `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.
+export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
     return msrt_list_flatten(lists)
 
 // List operations written in Manuscript. Each interface gathers the operations that need a bound on the element type;
@@ -618,11 +618,11 @@ impl ListSearch[T] for List[T]:
 
         return none
 
-interface ListDistinct[T: Equal]:
+interface ListDistinct[T: Equal & Clonable]:
     fn distinct() List[T]
 
 impl ListDistinct[T] for List[T]:
-    // Returns a new owned List keeping a copy of each first equal element in order; elements require Equal.
+    // Returns a new owned List keeping a copy of each first equal element in order; elements require Equal and Clonable.
     fn distinct() List[T]:
         return msrt_list_distinct(self)
 

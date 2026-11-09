@@ -211,3 +211,35 @@ test "List join renders any element type":
         [JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
     )
     try expect_equal(List[Int]().join(","), "")
+
+fn repeat_copy[T: Clonable](value: T) List[T]!:
+    return filled(value, 2)
+
+fn flatten_copy[T: Clonable](values: List[List[T]]) List[T]:
+    return flatten(values)
+
+test "filled copies nested values independently through generic and function calls":
+    let source = [1]
+    var copies = try repeat_copy(source)
+    copies[0].append(2)
+    try expect_equal(copies, [[1, 2], [1]])
+    try expect_equal(source, [1])
+
+    let repeat = filled[List[Int]]
+    var via_function = try repeat(source, 2, none)
+    via_function[1].append(3)
+    try expect_equal(via_function, [[1], [1, 3]])
+    try expect_equal(source, [1])
+
+test "flatten copies nested elements through generic and function calls":
+    let source = [[[1]], [[2]]]
+    var copies = flatten_copy(source)
+    copies[0].append(3)
+    try expect_equal(copies, [[1, 3], [2]])
+    try expect_equal(source, [[[1]], [[2]]])
+
+    let concatenate = flatten[List[Int]]
+    var via_function = concatenate(source)
+    via_function[1].append(4)
+    try expect_equal(via_function, [[1], [2, 4]])
+    try expect_equal(source, [[[1]], [[2]]])
