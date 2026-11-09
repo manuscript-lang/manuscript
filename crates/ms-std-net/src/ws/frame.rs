@@ -446,6 +446,10 @@ impl Decoder {
             }
             n => u64::from(n),
         };
+        // RFC 6455 section 5.2 requires the shortest payload-length encoding.
+        if (short == 126 && length < 126) || (short == 127 && length < 65_536) {
+            return Err(self.protocol("nonminimal payload length"));
+        }
         let mut key = [0u8; 4];
         if masked {
             key.copy_from_slice(&avail[2 + ext..total]);
@@ -487,7 +491,8 @@ impl Decoder {
         let opcode = b0 & 0x0f;
         let fin = b0 & 0x80 != 0;
         let mut reasons: Vec<String> = Vec::new();
-        if b0 & 0x40 != 0 && !self.deflate {
+        // permessage-deflate uses RSV1 only on a message's first data frame.
+        if b0 & 0x40 != 0 && (!self.deflate || !matches!(opcode, OP_TEXT | OP_BINARY)) {
             reasons.push("RSV1 set".into());
         }
         if b0 & 0x20 != 0 {
@@ -607,11 +612,14 @@ impl Decoder {
     }
 
     fn close_event(&self, payload: &[u8]) -> Result<Event, DecodeError> {
-        if payload.len() < 2 {
+        if payload.is_empty() {
             return Ok(Event::Close {
                 code: code::NO_STATUS,
                 reason: String::new(),
             });
+        }
+        if payload.len() == 1 {
+            return Err(self.protocol("close payload has one byte"));
         }
         let c = u16::from_be_bytes([payload[0], payload[1]]);
         if !valid_received_close_code(c) {
@@ -724,6 +732,50 @@ mod tests {
         assert_eq!(edge[1], 125);
         let edge = encode_frame(OP_BINARY, true, false, &[1u8; 126], None);
         assert_eq!(&edge[..4], [0x82, 126, 0, 126]);
+    }
+
+    #[test]
+    fn extended_lengths_must_use_the_minimal_form() {
+        for server in [false, true] {
+            for (short, length) in [(126, 0u64), (126, 125), (127, 0), (127, 65_535)] {
+                let mut header = vec![0x82, short | if server { 0x80 } else { 0 }];
+                let encoded = length.to_be_bytes();
+                header.extend_from_slice(if short == 126 {
+                    &encoded[6..]
+                } else {
+                    &encoded
+                });
+                if server {
+                    header.extend_from_slice(&KEY);
+                }
+                let mut decoder = Decoder::new(server, false, u64::MAX);
+                for byte in &header[..header.len() - 1] {
+                    decoder.push(&[*byte]);
+                    assert_eq!(decoder.poll().unwrap(), None);
+                }
+                decoder.push(&header[header.len() - 1..]);
+                assert_eq!(
+                    decoder.poll(),
+                    Err(DecodeError::Protocol {
+                        text: "nonminimal payload length".into(),
+                        body: false,
+                    })
+                );
+                assert!(!decoder.in_message());
+            }
+            for length in [0, 125, 126, 65_535, 65_536] {
+                let data = vec![b'x'; length];
+                let mut decoder = Decoder::new(server, false, u64::MAX);
+                decoder.push(&encode_frame(
+                    OP_BINARY,
+                    true,
+                    false,
+                    &data,
+                    server.then_some(KEY),
+                ));
+                assert_eq!(decode_all(&mut decoder), vec![message(false, &data)]);
+            }
+        }
     }
 
     #[test]
@@ -847,6 +899,46 @@ mod tests {
     }
 
     #[test]
+    fn negotiated_rsv1_is_only_valid_on_a_messages_first_frame() {
+        for server in [false, true] {
+            let mask = server.then_some(KEY);
+            for opcode in [OP_CLOSE, OP_PING, OP_PONG] {
+                let wire = encode_frame(opcode, true, true, b"", mask);
+                assert_eq!(protocol_text(&wire[..2], server, true), "RSV1 set");
+            }
+            for compressed in [false, true] {
+                let mut decoder = Decoder::new(server, true, 100);
+                decoder.push(&encode_frame(OP_BINARY, false, compressed, b"", mask));
+                assert_eq!(decoder.poll().unwrap(), None);
+                let wire = encode_frame(OP_CONTINUATION, true, true, b"", mask);
+                decoder.push(&wire[..1]);
+                assert_eq!(decoder.poll().unwrap(), None);
+                decoder.push(&wire[1..2]);
+                assert_eq!(
+                    decoder.poll(),
+                    Err(DecodeError::Protocol {
+                        text: "RSV1 set".into(),
+                        body: true,
+                    })
+                );
+            }
+            let data = b"compressed fragments with an ordinary ping";
+            let mut wire = encode_message(OP_BINARY, data, server, true, 3);
+            let first_end = 2 + if server { 4 } else { 0 } + 3;
+            wire.splice(
+                first_end..first_end,
+                encode_frame(OP_PING, true, false, b"p", mask),
+            );
+            let mut decoder = Decoder::new(server, true, 100);
+            decoder.push(&wire);
+            assert_eq!(
+                decode_all(&mut decoder),
+                vec![Event::Ping(b"p".to_vec()), message(false, data)]
+            );
+        }
+    }
+
+    #[test]
     fn close_frames_are_validated() {
         let close = |payload: &[u8]| {
             let mut d = Decoder::new(false, false, 100);
@@ -855,13 +947,6 @@ mod tests {
         };
         assert_eq!(
             close(&[]).unwrap(),
-            Some(Event::Close {
-                code: 1005,
-                reason: String::new()
-            })
-        );
-        assert_eq!(
-            close(&[0x03]).unwrap(),
             Some(Event::Close {
                 code: 1005,
                 reason: String::new()
@@ -892,6 +977,24 @@ mod tests {
             panic!("bad utf8 accepted");
         };
         assert_eq!(text, "invalid utf8 payload in close frame");
+    }
+
+    #[test]
+    fn one_byte_close_payload_is_a_protocol_error() {
+        for server in [false, true] {
+            let mut decoder = Decoder::new(server, false, 100);
+            let wire = encode_frame(OP_CLOSE, true, false, &[0x03], server.then_some(KEY));
+            decoder.push(&wire[..wire.len() - 1]);
+            assert_eq!(decoder.poll().unwrap(), None);
+            decoder.push(&wire[wire.len() - 1..]);
+            assert_eq!(
+                decoder.poll(),
+                Err(DecodeError::Protocol {
+                    text: "close payload has one byte".into(),
+                    body: false,
+                })
+            );
+        }
     }
 
     #[test]
