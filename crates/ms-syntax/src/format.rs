@@ -37,9 +37,16 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     // The line-based passes cannot see inside a multi-line text literal, so a
     // one-line placeholder stands in for each and the literal text returns
     // afterwards, shifted with the line it lands on.
+    // Keep markers compact even when text contains long runs of private-use scalars.
     let marker = ('\u{e000}'..='\u{f8ff}')
         .find(|c| !normalized.contains(*c))
-        .expect("source does not use the whole private use area");
+        .map(|c| c.to_string())
+        .unwrap_or_else(|| {
+            (0..)
+                .map(|i: usize| format!("\u{e000}{i}\u{e000}"))
+                .find(|candidate| !normalized.contains(candidate))
+                .expect("a finite source cannot contain every numbered marker")
+        });
     // A block comment becomes a line comment, which the line passes already keep in place.
     let placeholder = |i: usize| {
         if spans[i].2 {

@@ -14,6 +14,7 @@ mod text;
 
 use ms_check::{ModuleData, Program};
 use ms_syntax::{DiagnosticFix, Pos};
+use std::cell::OnceCell;
 use std::sync::Arc;
 
 /// How seriously a finding is taken. Warnings are reported without failing
@@ -172,12 +173,27 @@ pub fn explain(code: &str) -> Option<&'static Rule> {
 /// newline (`MSL002`).
 pub fn lint_source(file: &Arc<str>, source: &str) -> Vec<Finding> {
     let mut findings = Vec::new();
+    // Lex only if a candidate exists. Unknown text boundaries must never yield
+    // a destructive whitespace quickfix in an incomplete editor snapshot.
+    let tokens = OnceCell::new();
     let mut offset = 0usize;
     for (line, text) in source.split_inclusive('\n').enumerate() {
         let body = text.strip_suffix('\n').unwrap_or(text);
         let body = body.strip_suffix('\r').unwrap_or(body);
         let trimmed = body.trim_end_matches([' ', '\t']);
-        if trimmed.len() != body.len() {
+        let at = offset + trimmed.len();
+        let safe_whitespace = || {
+            tokens
+                .get_or_init(|| ms_syntax::lexer::lex(file, source).ok().map(|l| l.tokens))
+                .as_ref()
+                .is_some_and(|tokens| {
+                    let next = tokens.partition_point(|t| t.end.offset as usize <= at);
+                    !tokens.get(next).is_some_and(|t| {
+                        t.kind == ms_syntax::token::Tok::String && t.pos.offset as usize <= at
+                    })
+                })
+        };
+        if trimmed.len() != body.len() && safe_whitespace() {
             findings.push(finding(
                 "MSL001",
                 "Remove trailing whitespace",

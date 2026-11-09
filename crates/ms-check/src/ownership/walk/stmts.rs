@@ -700,6 +700,16 @@ impl Walker<'_> {
                 "this method value keeps its receiver for repeated calls, so it",
             );
         }
+        if let Some((m, _)) = self.method_value_parts(e)
+            && let Some(element) = element_handed_out(self.syms, &m, &self.cx.m.ty(recv))
+        {
+            // The call borrows the entry; a method value returns an owned value, so it copies it.
+            self.require_clonable(
+                e,
+                &element,
+                "this method value hands out an element on each call, so it",
+            );
+        }
         if self.is_place(recv)
             && let Some((m, _)) = self.method_value_parts(e)
             && takes_element_mutator(&m)
