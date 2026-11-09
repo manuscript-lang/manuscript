@@ -71,7 +71,6 @@ test "a var parameter is passed on through another function value":
 test "a var parameter of a one-owner value is not copied":
     var words = ["a"]
     let extend = fn(var xs: List[String], more: List[String]):
-        for w in more:
-            xs.append(w.clone())
+        xs.extend(more)
     extend(var words, ["b", "c"])
     words | try expect_equal(["a", "b", "c"])

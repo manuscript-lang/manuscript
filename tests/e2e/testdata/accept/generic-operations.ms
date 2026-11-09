@@ -25,16 +25,12 @@ impl Picker[Int] for Bag:
         return self.items[at]
 
     fn mapped[U](transform: fn(Int) U) List[U]:
-        var out: List[U] = []
-        for x in self.items:
-            out.append(transform(x))
+        var out = self.items.map(fn x: transform(x))
         return out
 
 impl Bag:
     fn paired[U: Clonable](other: U) List[U]:
-        var out: List[U] = []
-        for item in self.items:
-            out.append(other.clone())
+        var out = self.items.map(fn item: other.clone())
         return out
 
 fn pick_with[B: Picker[Int]](bag: B) Int?:

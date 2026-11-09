@@ -4,16 +4,14 @@ import expect_equal from "@std/test/test.ms"
 // than the in-place map walk used when a loop only reads its element.
 fn collect_values(source: Map[String, String]) List[String]:
     var out = List[String]()
-    for value in source.values():
-        out.append(value)
+    out.extend(source.values())
     return out
 
 fn collect_entries(
     source: Map[String, List[String]]
 ) List[MapEntry[String, List[String]]]:
     var out = List[MapEntry[String, List[String]]]()
-    for entry in source.entries():
-        out.append(entry)
+    out.extend(source.entries())
     return out
 
 fn capture_keys(source: Map[String, Int]) List[fn() String]:
@@ -46,7 +44,6 @@ test "map keys can move into escaping closures":
 test "set values move from their owned traversal result":
     let source = Set(["alpha", "beta", "gamma"])
     var out = List[String]()
-    for value in source.values():
-        out.append(value)
+    out.extend(source.values())
     try expect_equal(out, ["alpha", "beta", "gamma"])
     try expect_equal(source.length(), 3)

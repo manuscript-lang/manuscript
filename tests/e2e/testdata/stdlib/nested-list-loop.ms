@@ -2,15 +2,11 @@ import expect_equal from "@std/test/test.ms"
 
 // A loop over `rows[i]` or `rows.get(i)` walks the inner list in place while `rows` is unchanged.
 fn total_indexed(rows: List[List[Int]], slot: Int) Int:
-    var total = 0
-    for value in rows[slot]:
-        total += value
+    var total = rows[slot].sum()
     return total
 
 fn total_get(rows: List[List[Int]], slot: Int) Int:
-    var total = 0
-    for value in rows.get(slot):
-        total += value
+    var total = rows.get(slot).sum()
     return total
 
 fn lengths(rows: List[List[String]]) Int:

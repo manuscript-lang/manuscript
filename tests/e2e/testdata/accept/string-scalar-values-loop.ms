@@ -2,15 +2,11 @@ import expect_equal from "@std/test/test.ms"
 
 fn walked(s: String) List[Int]:
     var out: List[Int] = []
-    for c in s.scalar_values():
-        out.append(c)
+    out.extend(s.scalar_values())
     return out
 
 fn digits_only(s: String) Bool:
-    for c in s.scalar_values():
-        if c < 48 or c > 57:
-            return false
-    return true
+    return not s.scalar_values().any(fn c: c < 48 or c > 57)
 
 test "a scalar walk yields what the list holds":
     for s in ["", "abc", "héllo wörld ✓ 😀!", "añb"]:
