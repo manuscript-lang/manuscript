@@ -83,7 +83,8 @@ fn scanned_tokens(d: &Document) -> Vec<Token> {
                 kind,
                 previous_fn: previous == Tok::Fn,
                 previous_type: matches!(previous, Tok::Type | Tok::Enum),
-                text: lexed.source[t.lo as usize..t.hi as usize].to_string(),
+                // Keep token text and offsets in the same, original coordinate space.
+                text: d.text[t.pos.offset as usize..t.end.offset as usize].to_string(),
                 offset: t.pos.offset as usize,
             });
             previous = t.kind;

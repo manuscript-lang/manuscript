@@ -47,3 +47,56 @@ fn semantic_positions_preserve_strict_and_forgiving_output() {
         }
     }
 }
+
+#[test]
+fn multiline_semantic_positions_match_crlf() {
+    let syms = ms_syntax::Names::global();
+    for literal in [
+        "\"\"\"\n        hello 😀\n\n        world é\n        \"\"\"",
+        "r\"\"\"\n        hello 😀\n\n        world é\n        \"\"\"",
+        "\"\"\"\n        hello {1}\n        world 😀\n        \"\"\"",
+    ] {
+        let source =
+            format!("fn text() String:\n    return {literal}\n\nfn next() Int:\n    return 1\n");
+        ms_syntax::lexer::lex(&std::sync::Arc::from("test.ms"), &source).unwrap();
+        let lf = Document::new("file:///tmp/semantic-multiline.ms", &source);
+        let expected = semantic_tokens(syms, None, &[], &lf);
+        for source in [
+            source.clone(),
+            source.replace('\n', "\r\n"),
+            source.replacen('\n', "\r\n", 4),
+        ] {
+            let document = Document::new("file:///tmp/semantic-multiline.ms", &source);
+            let actual = semantic_tokens(syms, None, &[], &document);
+            assert_eq!(actual, expected, "{source:?}");
+            let data = actual.get("data").unwrap().as_array().unwrap();
+            let mut start = Position::default();
+            let mut string_lines = 0;
+            for token in data.as_chunks::<5>().0 {
+                let delta_line = token[0].as_i64().unwrap();
+                let delta_character = token[1].as_i64().unwrap();
+                assert!(delta_line >= 0 && delta_character >= 0);
+                start.line += delta_line as usize;
+                start.character = if delta_line == 0 {
+                    start.character + delta_character as usize
+                } else {
+                    delta_character as usize
+                };
+                let end = Position {
+                    character: start.character + token[2].as_i64().unwrap() as usize,
+                    ..start
+                };
+                assert!(text::offset(&source, start).is_ok());
+                assert!(text::offset(&source, end).is_ok());
+                if token[3].as_i64() == Some(3) {
+                    string_lines += 1;
+                    let line = source.lines().nth(start.line).unwrap();
+                    let expected_start = if string_lines == 1 { 11 } else { 0 };
+                    assert_eq!(start.character, expected_start);
+                    assert_eq!(end.character, line.encode_utf16().count());
+                }
+            }
+            assert_eq!(string_lines, 4, "opening, two content lines and closing");
+        }
+    }
+}
