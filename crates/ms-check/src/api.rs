@@ -57,7 +57,7 @@ pub mod stdlib {
 }
 
 pub mod hints {
-    pub use crate::hints::{edit_distance, import_hint};
+    pub use crate::hints::{edit_distance, import_hint, type_import_hint};
 }
 
 pub mod editor {

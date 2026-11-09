@@ -168,6 +168,57 @@ fn title(action: &Json) -> &str {
 }
 
 #[test]
+fn type_import_actions_exclude_values_and_preserve_usable_repairs() {
+    let syms = ms_syntax::Names::global();
+    let session = ms_check::Session::new();
+    for export in [
+        include_str!("../../ms-driver/tests/import_hints/function-export.ms"),
+        include_str!("../../ms-driver/tests/import_hints/constant-export.ms"),
+    ] {
+        let ws = Workspace::new("type-import-kinds");
+        std::fs::write(ws.path("values.ms"), export).unwrap();
+        for source in [
+            include_str!("../../ms-driver/tests/import_hints/type-use.ms"),
+            include_str!("../../ms-driver/tests/import_hints/function-type-use.ms"),
+        ] {
+            for source in [source.to_string(), source.replace('\n', "\r\n")] {
+                let d = Document::new(ws.uri("use.ms"), &source);
+                let checked = analyze(syms, &session, &d, &Documents::new());
+                let found = editor_actions(
+                    syms,
+                    &d,
+                    &checked,
+                    &Tooling,
+                    &Documents::new(),
+                    Range {
+                        start: Position::default(),
+                        end: text::position(&source, source.len()),
+                    },
+                    &["quickfix".to_string()],
+                );
+                let imports: Vec<_> = found
+                    .iter()
+                    .filter(|action| title(action).starts_with("Add `import"))
+                    .collect();
+                if source.contains("panic") {
+                    assert!(imports.is_empty(), "{imports:?}");
+                    continue;
+                }
+                assert_eq!(imports.len(), 1, "{imports:?}");
+                assert_eq!(
+                    title(imports[0]),
+                    "Add `import Bytes from \"@std/bytes.ms\"`"
+                );
+                let fixed = apply(&source, imports[0]);
+                let repaired = Document::new(d.uri.clone(), &fixed);
+                let checked = analyze(syms, &session, &repaired, &Documents::new());
+                assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+            }
+        }
+    }
+}
+
+#[test]
 fn adding_imports_preserves_grouped_declarations_and_file_directives() {
     let syms = ms_syntax::Names::global();
     for source in [
