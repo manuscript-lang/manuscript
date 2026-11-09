@@ -1,7 +1,7 @@
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 import sleep, milliseconds from "@std/time.ms"
 import arguments from "@std/os/env.ms"
-import monotonic_time from "@std/os/system.ms"
+import monotonic from "@std/time.ms"
 
 fn work(i: Int, jitter: Bool) Int!:
     if jitter:
@@ -21,12 +21,12 @@ export fn main() Int:
     let args = arguments()
     let count = args[0].parse_int().get()
     let jitter = args[1] == "jitter"
-    let before = monotonic_time()
+    let before = monotonic()
     var promises: List[Promise[Int]] = []
     for i in 0..count:
         promises.append(promise[Int](fn: work(i, jitter)))
 
-    let spawned = monotonic_time()
+    let spawned = monotonic()
     let results = if args.length() > 2 and args[2] == "ordered": ordered_wait_all(
         promises
     ).get() else: wait_all(promises).get()
@@ -44,6 +44,6 @@ export fn main() Int:
         return 4
 
     print("count " + at.to_string() + " checksum " + total.to_string())
-    print("spawn_ns " + (spawned - before).to_string())
-    print("total_ns " + (monotonic_time() - before).to_string())
+    print("spawn_ns " + spawned.difference(before).to_nanoseconds().to_string())
+    print("total_ns " + monotonic().difference(before).to_nanoseconds().to_string())
     return 0

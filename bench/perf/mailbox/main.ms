@@ -5,7 +5,7 @@
 // `ms run bench/perf/mailbox/main.ms -- 100000 5 [window]`: promises per round, rounds, window (default 64).
 import promise, Promise from "@std/concurrency/promise.ms"
 import arguments from "@std/os/env.ms"
-import monotonic_time from "@std/os/system.ms"
+import monotonic from "@std/time.ms"
 
 fn work(a: Int) Int!:
     return ok(a * 2 + 1)
@@ -19,7 +19,7 @@ export fn main() Int:
         window = args[2].parse_int().get()
 
     var total = 0
-    let t0 = monotonic_time()
+    let t0 = monotonic()
 
     for r in 0..rounds:
         var done = 0
@@ -32,7 +32,7 @@ export fn main() Int:
                 total = total + p.wait().get()
             done = done + window
 
-    let t1 = monotonic_time()
+    let t1 = monotonic()
     print("total " + total.to_string())
-    print("ns/promise " + ((t1 - t0) / (n * rounds)).to_string())
+    print("ns/promise " + (t1.difference(t0).to_nanoseconds() / (n * rounds)).to_string())
     return 0

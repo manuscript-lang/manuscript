@@ -132,10 +132,15 @@ agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" "$(RELEASE_MS)" run bench/agent/run.ms -- oracle
 	"$(RELEASE_MS)" test bench/agent/core_test.ms
 
-# Type-checks every benchmark project so the suites cannot rot unnoticed.
+# Type-checks every benchmark project and standalone bench source so the suites cannot rot unnoticed.
 bench-check: build
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
 		(cd $$(dirname $$t) && "$(RELEASE_MS)" check ms.toml) || exit 1; \
+	done
+	@for f in $$(find bench/perf -name '*.ms' -not -path 'bench/perf/formatter-flow/*' -not -path 'bench/perf/results/*' | sort); do \
+		p=$$(dirname $$f); \
+		while [ $$p != bench/perf ] && [ ! -f $$p/ms.toml ]; do p=$$(dirname $$p); done; \
+		[ -f $$p/ms.toml ] || "$(RELEASE_MS)" check $$f || exit 1; \
 	done
 	@for t in bench/tools/*.ms; do "$(RELEASE_MS)" check $$t || exit 1; done
 	@for t in bench/tools/*_test.ms; do "$(RELEASE_MS)" test $$t || exit 1; done
