@@ -176,21 +176,21 @@ html:root[data-theme="dark"] .docs-shot.has-dark .shot-dark { display: block; }
 .docs-home-layout { max-width: 90rem; margin-inline: auto; }
 .docs-home-layout .book-page { width: 100%; padding: 0 3rem 1rem; }
 .docs-home-layout .book-article, .docs-home-layout .book-footer { max-width: 76rem; }
-.home-hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 4rem; align-items: start; padding: 2rem 0 6rem; border-bottom: 1px solid var(--gray-200); }
+.home-hero { display: flex; flex-direction: column; align-items: center; gap: 3.5rem; padding: 2rem 0 6rem; border-bottom: 1px solid var(--gray-200); text-align: center; }
 .home-pitch, .home-example { min-width: 0; }
-.markdown .home-eyebrow { display: flex; align-items: center; gap: .75rem; color: var(--docs-muted); font: .72rem var(--docs-mono); text-transform: uppercase; letter-spacing: .12em; margin: 0 0 2rem; }
+.markdown .home-eyebrow { display: flex; align-items: center; justify-content: center; gap: .75rem; color: var(--docs-muted); font: .72rem var(--docs-mono); text-transform: uppercase; letter-spacing: .12em; margin: 0 0 2rem; }
 .home-eyebrow > span { width: 9px; height: 9px; background: var(--docs-button-bg); border: 1px solid var(--docs-heading); }
-.markdown .home-hero h1 { font-family: var(--docs-mono); font-size: clamp(2.3rem, 4vw, 3.8rem); font-weight: 400; line-height: 1.12; letter-spacing: -.065em; margin: 0 0 2rem; }
+.markdown .home-hero h1 { font-family: var(--docs-mono); font-size: clamp(2.3rem, 5vw, 4.4rem); font-weight: 400; line-height: 1.12; letter-spacing: -.065em; margin: 0 0 2rem; }
 .home-hero h1 span { color: var(--docs-prose-link); }
-.markdown .home-description { max-width: 32rem; margin: 0; font-size: 1.05rem; line-height: 1.75; color: var(--docs-muted); }
-.home-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-top: 2rem; }
+.markdown .home-description { max-width: 44rem; margin: 0 auto; font-size: 1.05rem; line-height: 1.75; color: var(--docs-muted); }
+.home-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.5rem; margin-top: 2rem; }
 .markdown .home-button[href] { display: inline-flex; align-items: center; justify-content: center; gap: 1.5rem; border: 1px solid var(--docs-heading); border-radius: 0; padding: .9rem 1.15rem; font: .8rem var(--docs-mono); text-decoration: none; }
 .markdown a.home-button-primary[href], .markdown a.home-button-primary[href]:visited { background: var(--docs-button-bg); color: var(--docs-button-fg); box-shadow: 3px 3px 0 var(--docs-heading); }
 .markdown a.home-button-primary[href]:hover { background: var(--docs-button-hover); }
 .markdown .home-explore[href] { color: var(--docs-heading); font: .76rem var(--docs-mono); }
-.markdown .home-platforms { color: var(--docs-muted); font: .72rem/1.7 var(--docs-mono); margin: 1.5rem 0 0; max-width: 26rem; }
+.markdown .home-platforms { color: var(--docs-muted); font: .72rem/1.7 var(--docs-mono); margin: 1.5rem auto 0; max-width: 32rem; }
 .home-platforms span { margin-inline: .3rem; }
-.home-example { position: relative; width: 100%; border: 1px solid var(--docs-heading); background: var(--docs-code-bg); box-shadow: 12px 12px 0 var(--docs-accent-bg); }
+.home-example { position: relative; width: 100%; max-width: 60rem; border: 1px solid var(--docs-heading); background: var(--docs-code-bg); box-shadow: 12px 12px 0 var(--docs-accent-bg); }
 .home-example::before { content: ""; position: absolute; width: 5rem; height: 5rem; right: -1.5rem; top: -2rem; z-index: -1; background: repeating-linear-gradient(135deg, var(--docs-muted) 0, var(--docs-muted) 1px, transparent 1px, transparent 8px); }
 .home-example-intro { padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-200); }
 .home-example-intro strong { font: 500 .8rem var(--docs-mono); color: var(--docs-heading); }
@@ -225,7 +225,7 @@ html:root[data-theme="dark"] .docs-shot.has-dark .shot-dark { display: block; }
 .topbar-links a { align-items: center; }
 .markdown h1, .markdown h2 { font-family: var(--docs-mono); }
 @media screen and (max-width: 62rem) {
-  .home-hero { grid-template-columns: 1fr; gap: 3rem; padding: 2rem 0 3rem; }
+  .home-hero { gap: 3rem; padding: 2rem 0 3rem; }
   .markdown .home-hero h1 { font-size: clamp(2.4rem, 6.8vw, 4rem); }
   .home-example { max-width: 42rem; }
   .markdown .home-benefit-grid { grid-template-columns: repeat(2, 1fr); }

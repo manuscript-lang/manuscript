@@ -2,7 +2,11 @@
 
 **The language for the agentic era.**
 
-Agents write it; people understand it. Manuscript is a small, statically typed language that compiles to native executables. Failure, mutation and copies are marked in the source, so a reader can see what a program does without reading every line. Diagnostics say what is wrong and how to fix it, and the toolchain gives an agent what it needs to work alone: `ms guide`, `ms search_symbol`, `ms check --fix` and `ms verify`. Interactive code maps and `ms review --diff` show a person what changed.
+<p align="center">
+  <img src="website/static/images/screencast.gif" width="720" alt="A screencast of Manuscript: failure as values, ownership errors, promises, ms verify, the call graph and a native build, each with a short caption.">
+</p>
+
+Manuscript makes it practical to trust agent generated code: its syntax is simple enough to read at a glance, and built-in diagramming tools with an interactive code map let you explore what the agent built without reading it line by line. Under the hood, the compiler enforces one owner per value with no GC, so programs run close to C speed and scale to all cores, and a simple effects system tracks what your code is allowed to do. The toolchain comes with everything agentic coding needs: errors that name their fix, and one command each to verify, test, fuzz, benchmark and profile.
 
 Builds are fast. A generated 122,000-line project builds in debug in 5.4 s against 9.0 s for `go build` ([results](bench/perf/results-2026-11-05.md)).
 
