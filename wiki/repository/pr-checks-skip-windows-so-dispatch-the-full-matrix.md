@@ -11,3 +11,5 @@ Update (2026-11-08): relying on each author to dispatch failed. #3067, #3070, #3
 Apply when: changing runtime, sockets, workers, paths, linking, or anything host-specific.
 Evidence: `.github/workflows/cicd.yml` (`workflow_dispatch`); [create-pr](../../skills/create-pr/SKILL.md#merging).
 Verify: the dispatched run's Windows and macOS jobs pass; no test was skipped or gated to get there.
+
+Update (2026-11-09): #3227 and #3234 added `ms-lsp` signature-help tests that used `file:///x.ms` documents, which name no real directory on Windows, and merged without a Windows run. `crates/ms-lsp/` is now in the list; tests that analyze a document use `Workspace::uri`, not a literal Unix path.
