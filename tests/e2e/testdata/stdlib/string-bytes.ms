@@ -48,7 +48,7 @@ test "bytes copy slice search and UTF8 validation":
 
     let copied = data.clone().with_value(0, 42)
     try expect_false(copied.get(0) != 42 or data.get(0) != 0)
-    try expect_false(not Bytes([255]).decode_utf8().is_none())
+    try expect_false(Bytes([255]).decode_utf8().is_some())
     try expect_equal("é".to_bytes().decode_utf8(), "é")
 
 test "Bytes values direct bound and free calls return independent lists":

@@ -9,7 +9,7 @@ interface Picker[T]:
 
 impl Picker[Int] for Bag:
     fn pick[K: Comparable](key: fn(Int) K) Int?:
-        if self.items.length() == 0:
+        if self.items.is_empty():
             return none
 
         var at = 0

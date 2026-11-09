@@ -44,7 +44,7 @@ test "serve timeout closes idle connections":
 
     let first = recv(var reused, 2.seconds()) | try expect_ok
     let answered = first.get(Bytes([]))
-    if answered.length() == 0: return error(Error("no response"))
+    if answered.is_empty(): return error(Error("no response"))
 
     let after = recv(var reused, 3.seconds()) | try expect_ok
     if let _data = after: return error(Error("idle keep-alive connection stayed open"))

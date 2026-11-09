@@ -49,7 +49,7 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     try expect_equal(missing.or_else(create).get(), 42)
 
     let nested: Int?? = missing
-    try expect_false(not nested.is_some() or not nested.get().is_none())
+    try expect_false(nested.is_none() or nested.get().is_some())
 
 test "Result propagation and Error views preserve concrete causes":
     let failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))

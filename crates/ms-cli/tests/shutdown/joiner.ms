@@ -9,9 +9,9 @@ fn long() Int:
 
 export fn main() Int:
     let w = promise(fn: ok(long()))
-    stdout().write("joining\n").get()
+    print("joining")
 
     let _flushed = stdout().flush()
     let outcome = w.wait()
-    stdout().write("joined {outcome.is_ok()}\n").get()
+    print("joined {outcome.is_ok()}")
     return 0

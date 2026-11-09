@@ -287,7 +287,7 @@ test "byte reversal names copy across direct bound and view calls":
     try expect_false(data != Bytes([0, 1, 255]) or reversed() != Bytes([255, 1, 0]))
     try expect_false(
         (
-            Bytes([]).reversed().length() != 0
+            not Bytes([]).reversed().is_empty()
             or Bytes([1]).reversed() != Bytes([1])
         )
     )

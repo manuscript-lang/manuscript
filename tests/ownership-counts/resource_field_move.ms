@@ -37,7 +37,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("close {self.name}\n").get()
+        print("close {self.name}")
         return ok(unit)
 
 type Room:
@@ -50,7 +50,7 @@ type Wrap:
     extra: Door
 
 fn say(s: String) Unit:
-    stdout().write("{s}\n").get()
+    print("{s}")
 
 fn both(r: Room) List[Door]:
     var xs: List[Door] = []

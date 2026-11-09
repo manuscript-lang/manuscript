@@ -69,7 +69,7 @@ test "empty list constructors have fresh typed storage":
     let contextual: List[Int] = List()
     let other = List[String]()
     empty.append("a")
-    (empty[0] != "a" or other.length() != 0 or contextual.length() != 0) | try expect_false
+    (empty[0] != "a" or not other.is_empty() or not contextual.is_empty()) | try expect_false
 
     let map = Map[String, Int]()
     map.length() | try expect_equal(0)

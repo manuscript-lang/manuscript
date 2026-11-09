@@ -12,7 +12,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("close {self.name}\n").get()
+        print("close {self.name}")
         return ok(unit)
 
 fn faulting() Unit:
@@ -27,5 +27,5 @@ fn faulting() Unit:
 export fn main() Int:
     let work = promise(fn: ok(faulting()))
     let waited = work.wait()
-    stdout().write("waited: {waited.is_error()}\n").get()
+    print("waited: {waited.is_error()}")
     return 0

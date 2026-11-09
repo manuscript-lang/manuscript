@@ -38,7 +38,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("close {self.name}\n").get()
+        print("close {self.name}")
         return ok(unit)
 
 type Room:
@@ -49,7 +49,7 @@ type Oops:
     why: String
 
 fn say(s: String) Unit:
-    stdout().write("{s}\n").get()
+    print("{s}")
 
 fn check(fail: Bool) Int!Oops:
     if fail:

@@ -13,7 +13,7 @@ test "parse reads elements attributes and text":
     try expect_equal(item.attribute("id").get(""), "7")
     try expect_equal(item.text(), "Hi <there> AB")
     try expect_equal(doc.find_all("empty").length(), 1)
-    try expect_true(not doc.find("missing").is_some())
+    try expect_true(doc.find("missing").is_none())
 
 test "CDATA and comments":
     let doc = parse("<a>x<![CDATA[<raw & text>]]><!--c-->y</a>").get()

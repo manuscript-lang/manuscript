@@ -27,7 +27,7 @@ test "a list moved on one path closes on the path that keeps it":
 fn block(log: String, id: Int) Unit:
     let doors = [Door(id, log.clone())]
     var moved: List[Door]? = none
-    if doors.length() == 0:
+    if doors.is_empty():
         moved = doors
     if moved.is_some():
         return
@@ -82,7 +82,7 @@ test "a binding built from a call that consumes a resource closes it":
 
 fn block_wrap(log: String) Unit:
     let made = wrap(Door(1, log.clone()), log.clone())
-    if made.length() == 0:
+    if made.is_empty():
         return
 
 enum Shape:
