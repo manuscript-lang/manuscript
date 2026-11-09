@@ -174,6 +174,23 @@ pub fn advance(s: &[u8], from: usize, mut n: usize) -> Option<usize> {
     Some(i)
 }
 
+/// Byte offset reached by moving `n` scalars backward from byte offset `end`, or `None` when
+/// fewer than `n` scalars precede it. `s` is valid UTF-8, so a scalar starts at every non-continuation
+/// byte; reaching a nearby index from the end costs the distance only.
+pub fn retreat(s: &[u8], mut end: usize, mut n: usize) -> Option<usize> {
+    while n > 0 {
+        if end == 0 {
+            return None;
+        }
+        end -= 1;
+        while end > 0 && s[end] & 0xC0 == 0x80 {
+            end -= 1;
+        }
+        n -= 1;
+    }
+    Some(end)
+}
+
 /// Unicode White_Space, as `unicode.IsSpace`.
 pub fn is_space(c: u32) -> bool {
     match char::from_u32(c) {
@@ -192,6 +209,21 @@ mod tests {
         assert_eq!(count(b"padded"), 6);
         assert_eq!(count("héllo 😀".as_bytes()), 7);
         assert_eq!(count(&[b'a', 0xFF, b'b', 0xC3]), 4);
+    }
+
+    #[test]
+    fn retreat_mirrors_advance_from_the_end() {
+        for text in ["", "a", "é", "aé😀b日", "😀😀"] {
+            let b = text.as_bytes();
+            let starts: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
+            for n in 0..=starts.len() + 1 {
+                let expected = starts
+                    .len()
+                    .checked_sub(n)
+                    .map(|k| if n == 0 { b.len() } else { starts[k] });
+                assert_eq!(retreat(b, b.len(), n), expected, "{text:?} back {n}");
+            }
+        }
     }
 
     #[test]
