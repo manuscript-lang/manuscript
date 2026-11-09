@@ -1581,14 +1581,12 @@ pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> St
     message
 }
 
-/// Counts the leading type variables without a default.
+/// Minimum positional arity: only a fully defaulted trailing suffix may be omitted.
+/// Invalid declarations can leave a required parameter after an earlier default.
 pub fn required_type_arguments(vars: &[Ty]) -> usize {
-    for (i, v) in vars.iter().enumerate() {
-        if v.default.borrow().is_some() {
-            return i;
-        }
-    }
-    vars.len()
+    vars.iter()
+        .rposition(|v| v.default.borrow().is_none())
+        .map_or(0, |index| index + 1)
 }
 
 /// Fills unresolved and omitted trailing arguments from defaults.

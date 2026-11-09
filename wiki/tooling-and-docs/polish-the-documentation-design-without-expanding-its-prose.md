@@ -2,7 +2,7 @@
 
 # Polish the documentation design without expanding its prose
 
-Decision: the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler. The later direction makes the landing page a marketing page whose goal is getting people to try Manuscript: lead with "The language for the agentic era." as the hero headline, a runnable example, and a clear first-run action.
+Decision: the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler. The later direction makes the landing page a marketing page whose goal is getting people to try Manuscript: lead with "The language for the agentic era." as the hero headline, a runnable example, and a clear first-run action. On 2026-11-09 the user replaced the two-pane home with one centered hero (headline, subline, buttons, then the screencast) and chose the subline wording: it opens with trusting agent generated code, then readable syntax and the interactive code map, then compiler guarantees (one owner, no GC, simple effects), then the toolchain. It does not lead with memory safety, and it says "simple effects system", not how effects are declared.
 
 Apply when: redesigning the documentation shell or overview, or extending its visual system.
 Evidence: the user's documentation redesign correction; [Tailwind docs](https://tailwindcss.com/docs/installation/using-vite); [Vercel docs](https://vercel.com/docs); [site-owned visual system](../../website/assets/_custom.scss); [overview presentation](../../website/layouts/_shortcodes/docs-home.html).

@@ -1,0 +1,2 @@
+fn value() Int: 1
+

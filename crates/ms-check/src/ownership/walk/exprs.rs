@@ -547,7 +547,7 @@ impl Walker<'_> {
             } else {
                 self.error_fix(
                     e.pos,
-                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); use `{name_t}.{CLONE}()` to get a clone", role_text(role, perm), name_t = self.syms.str(name)),
+                    format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); borrow it in place or restructure to avoid the copy, and use `{name_t}.{CLONE}()` only if a second owner is needed", role_text(role, perm), name_t = self.syms.str(name)),
                     insert_at(forward(e.pos, self.syms.str(name).len()), &format!(".{CLONE}()")),
                 );
             }
@@ -589,7 +589,7 @@ impl Walker<'_> {
             } else {
                 self.error_fix(
                     e.pos,
-                    format!("`{name_t}` is moved here but used again{later}; a value has one owner, so pass `{name_t}.{CLONE}()` to keep the original, or move it only at its last use", name_t = self.syms.str(name)),
+                    format!("`{name_t}` is moved here but used again{later}; a value has one owner, so move it only at its last use, or pass `{name_t}.{CLONE}()` if the original is still needed", name_t = self.syms.str(name)),
                     insert_at(forward(e.pos, self.syms.str(name).len()), &format!(".{CLONE}()")),
                 );
             }
@@ -682,7 +682,7 @@ impl Walker<'_> {
                 )
             } else {
                 format!(
-                    "cannot move `{0}` out of `{1}`: only a whole variable can move; take a clone with `{0}.{CLONE}()`",
+                    "cannot move `{0}` out of `{1}`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `{0}.{CLONE}()` only if a second owner is needed",
                     info.text,
                     self.syms.str(info.root.name)
                 )
@@ -766,7 +766,7 @@ impl Walker<'_> {
                 .unwrap_or_default();
             self.error(
                 e.pos,
-                format!("`{0}` is moved here but used again{later}; a value has one owner, so use `{0}.{CLONE}()` to keep the original, or move it only at its last use", info.text),
+                format!("`{0}` is moved here but used again{later}; a value has one owner, so move it only at its last use, or use `{0}.{CLONE}()` if the original is still needed", info.text),
             );
             return true;
         }

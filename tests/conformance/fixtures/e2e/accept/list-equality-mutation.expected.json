@@ -165,7 +165,7 @@
         {
           "code": "MS3030",
           "phase": "type",
-          "message": "cannot move `left` out: it is borrowed, not owned (a variable captured by the closure); use `left.clone()` to get a clone",
+          "message": "cannot move `left` out: it is borrowed, not owned (a variable captured by the closure); borrow it in place or restructure to avoid the copy, and use `left.clone()` only if a second owner is needed",
           "position": {
             "file": "list-equality-mutation.ms",
             "line": 31,
@@ -191,7 +191,7 @@
         {
           "code": "MS3030",
           "phase": "type",
-          "message": "cannot move `right` out: it is borrowed, not owned (a variable captured by the closure); use `right.clone()` to get a clone",
+          "message": "cannot move `right` out: it is borrowed, not owned (a variable captured by the closure); borrow it in place or restructure to avoid the copy, and use `right.clone()` only if a second owner is needed",
           "position": {
             "file": "list-equality-mutation.ms",
             "line": 33,
@@ -239,7 +239,7 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`side` is moved here but used again at 87:33; a value has one owner, so pass `side.clone()` to keep the original, or move it only at its last use",
+          "message": "`side` is moved here but used again at 87:33; a value has one owner, so move it only at its last use, or pass `side.clone()` if the original is still needed",
           "position": {
             "file": "list-equality-mutation.ms",
             "line": 87,
