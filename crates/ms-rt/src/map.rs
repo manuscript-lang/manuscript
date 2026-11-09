@@ -8,6 +8,7 @@
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
+use crate::string;
 use ms_rt_abi::record::FaultKind;
 use ms_rt_abi::*;
 
@@ -1280,6 +1281,63 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
         if l.vsize > 64 {
             alloc::free(vp);
         }
+    }
+}
+
+/// Adds the entries of a packed table of constants, in order, so a later entry replaces an
+/// earlier one with an equal key. The compiler emits the table for a literal whose keys and
+/// values are all constants, which keeps the code per entry at nothing.
+///
+/// `table` is a borrowed `Bytes` of items, key then value for each entry: tag `0` and an
+/// 8-byte little-endian word (`Int`, `Float` bits, `Bool` as 0 or 1), or tag `1`, a `u32`
+/// length and that many bytes (`String`). An item must fit its slot (word keys are `Int`,
+/// string keys `String`), as the call site's types guarantee.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_map_add_table(
+    m: *mut MapVal,
+    kd: KeyDesc,
+    vd: ValDesc,
+    table: *const StrVal,
+) {
+    let kd = key_desc(m, kd);
+    // SAFETY: caller contract.
+    unsafe {
+        let (kd, vdo) = (&*kd, opt(vd));
+        let l = layout(kd, vdo);
+        let mut kb = [0u64; 2];
+        let mut vb = [0u64; 2];
+        let mut rest = string::bytes(table);
+        while !rest.is_empty() {
+            rest = table_item(rest, kb.as_mut_ptr().cast(), l.ksize);
+            rest = table_item(rest, vb.as_mut_ptr().cast(), l.vsize);
+            insert(
+                &mut *m,
+                kd,
+                vdo,
+                kb.as_mut_ptr().cast(),
+                vb.as_mut_ptr().cast(),
+            );
+        }
+    }
+}
+
+/// Decodes one [`msrt_map_add_table`] item into `out`, a slot of `size` bytes, and returns the
+/// bytes after it.
+unsafe fn table_item(rest: &[u8], out: *mut u8, size: usize) -> &[u8] {
+    // SAFETY: `out` is a writable slot of `size` bytes; the table was written by the compiler.
+    unsafe {
+        let (tag, rest) = (rest[0], &rest[1..]);
+        if tag == 0 {
+            let n = size.min(8);
+            core::ptr::copy_nonoverlapping(rest.as_ptr(), out, n);
+            return &rest[8..];
+        }
+        let len = u32::from_le_bytes([rest[0], rest[1], rest[2], rest[3]]) as usize;
+        let (text, rest) = rest[4..].split_at(len);
+        debug_assert_eq!(size, core::mem::size_of::<StrVal>());
+        string::from_bytes(text).write_to(out.cast());
+        rest
     }
 }
 

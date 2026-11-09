@@ -7,7 +7,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use crate::rtcall::Input;
-use ms_check::api::ast::{BinaryOp, Expr, ExprKind, MapEntry};
+use ms_check::api::ast::{BinaryOp, Expr, ExprKind, MapEntry, TextPart};
 use ms_check::api::hir::{CallView, Resolution};
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
@@ -20,6 +20,8 @@ use ms_mir::types::{Ty as MTy, TyKind};
 const LONG_MAP_LITERAL: usize = 256;
 /// Entries per chunk of a long map literal.
 const LONG_MAP_CHUNK: usize = 64;
+/// Entries from which a literal of constants is a static table.
+const CONST_MAP_TABLE: usize = 16;
 
 /// Whether `t` is a `Map` or `Set`.
 pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
@@ -587,6 +589,14 @@ impl<'a> FnLower<'a> {
         let early = entries
             .iter()
             .any(|en| crate::mutation::has_try(&en.key) || crate::mutation::has_try(&en.value));
+        let table = if early || entries.len() < CONST_MAP_TABLE {
+            None
+        } else {
+            self.const_map_table(ty, entries)
+        };
+        if let Some(table) = table {
+            return self.table_map_literal(ty, table);
+        }
         if !early && entries.len() > LONG_MAP_LITERAL {
             return self.long_map_literal(ty, entries);
         }
@@ -619,6 +629,67 @@ impl<'a> FnLower<'a> {
             acc = self.map_insert(acc, k, v)?;
         }
         Ok(Val { v: acc, own: true })
+    }
+
+    /// One item of a constant table: the tag-0 word of an `Int`, `Float` or `Bool` constant, or
+    /// the tag-1 length and bytes of a `String` constant (see `msrt_map_add_table`).
+    fn table_item(&self, t: MTy, e: &Expr, out: &mut Vec<u8>) -> Option<()> {
+        if t == MTy::STR {
+            let ExprKind::Text(parts) = &e.kind else {
+                return None;
+            };
+            let mut text = String::new();
+            for p in parts {
+                let TextPart::Lit(s) = p else {
+                    return None;
+                };
+                text.push_str(s);
+            }
+            out.push(1);
+            out.extend_from_slice(&u32::try_from(text.len()).ok()?.to_le_bytes());
+            out.extend_from_slice(text.as_bytes());
+            return Some(());
+        }
+        if ![MTy::INT, MTy::FLOAT, MTy::BOOL].contains(&t) {
+            return None;
+        }
+        out.push(0);
+        out.extend_from_slice(&self.const_scalar(e)?.to_le_bytes());
+        Some(())
+    }
+
+    /// The packed table of a literal whose keys (`Int` or `String`) and values (`Int`, `Float`,
+    /// `Bool` or `String`) are all constants.
+    fn const_map_table(&self, ty: MTy, entries: &[MapEntry]) -> Option<Vec<u8>> {
+        let TyKind::Obj(_, a) = self.b.m.types.kind(ty) else {
+            return None;
+        };
+        let (kt, vt) = (*a.first()?, *a.get(1)?);
+        if kt != MTy::INT && kt != MTy::STR {
+            return None;
+        }
+        let mut table = Vec::new();
+        for en in entries {
+            self.table_item(kt, &en.key, &mut table)?;
+            self.table_item(vt, &en.value, &mut table)?;
+        }
+        Some(table)
+    }
+
+    /// A map of constants built by the runtime from static data: no code per entry, so a
+    /// 20000-entry literal is one call rather than a function as long as the literal.
+    fn table_map_literal(&mut self, ty: MTy, table: Vec<u8>) -> Result<Val, Error> {
+        let (kd, vd) = self.map_descs(ty)?;
+        let vd = vd.ok_or_else(|| Error::new("a set literal is not supported"))?;
+        let empty = self.map_new(ty)?;
+        let slot = self.put_slot(empty);
+        let data = self.b.bytes_lit(table);
+        let data = self.borrow_slot(data);
+        self.call_runtime("msrt_map_add_table", &[slot, kd, vd, data], MTy::UNIT)?;
+        Ok(Val {
+            v: self.take_slot(slot, ty),
+            own: true,
+        })
     }
 
     /// A long literal is built in chunks, each a small map made by its own helper function when

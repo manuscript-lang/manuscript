@@ -257,3 +257,40 @@ test "a long map literal holding try entries is built one entry at a time":
     let m = try tried()
     try expect_equal(m.length(), 300)
     try expect_equal(m[150], 150)
+
+test "a literal of constants covers every key and value kind":
+    let ints = {
+        - 10: "v0", -9: "v1", -8: "v2", -7: "v3", -6: "v4", -5: "v5", -4: "v6",
+        -3: "v7", -2: "v8", -1: "v9", 0: "v10", 1: "v11", 2: "v12", 3: "v13", 4: "v14",
+        5: "v15", 6: "v16", 7: "v17", 8: "v18", 9: "v19", -3: "", 0: "ü\n\"q\""
+    }
+    try expect_equal(ints.length(), 20)
+    try expect_equal(ints[-10], "v0")
+    try expect_equal(ints[-3], "")
+    try expect_equal(ints[0], "ü\n\"q\"")
+    try expect_equal(ints[9], "v19")
+
+    let floats = {
+        "f0": 0.5, "f1": 1.5, "f2": 2.5, "f3": 3.5, "f4": 4.5, "f5": 5.5, "f6": 6.5,
+        "f7": 7.5, "f8": 8.5, "f9": 9.5, "f10": 10.5, "f11": 11.5, "f12": 12.5,
+        "f13": 13.5, "f14": 14.5, "f15": 15.5, "f16": 16.5, "f17": 17.5, "f18": 18.5,
+        "f19": 19.5, "f0": -0.25
+    }
+    try expect_equal(floats.length(), 20)
+    try expect_equal(floats["f0"], -0.25)
+    try expect_equal(floats["f19"], 19.5)
+
+    let flags = {
+        "b0": true, "b1": false, "b2": false, "b3": true, "b4": false, "b5": false,
+        "b6": true, "b7": false, "b8": false, "b9": true, "b10": false, "b11": false,
+        "b12": true, "b13": false, "b14": false, "b15": true, "b16": false,
+        "b17": false, "b18": true, "b19": false
+    }
+    try expect_equal(flags["b0"], true)
+    try expect_equal(flags["b1"], false)
+    try expect_equal(flags["b18"], true)
+
+    var grown = ints.clone()
+    grown[100] = "new"
+    try expect_equal(grown.length(), 21)
+    try expect_equal(ints.length(), 20)
