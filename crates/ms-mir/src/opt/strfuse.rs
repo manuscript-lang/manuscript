@@ -56,6 +56,38 @@ struct Info {
     /// Every `drop v`: its position, and how many there are.
     drops: Vec<Vec<(usize, usize)>>,
     preds: Vec<u32>,
+    /// Successor blocks, for asking whether a drop can run before a position.
+    succs: Vec<Vec<u32>>,
+}
+
+impl Info {
+    /// Whether `leaf` may be dropped before the instruction at `at` runs. A drop in another block
+    /// counts only when that block reaches `at`'s block without redefining the leaf: a drop on a
+    /// sibling path, or after the join, does not.
+    fn dropped_before(&self, leaf: Value, at: (usize, usize)) -> bool {
+        let redefined = self.defs[leaf.index()].map(|(b, _)| b);
+        self.drops[leaf.index()].iter().any(|&(db, di)| {
+            if db == at.0 {
+                return di < at.1;
+            }
+            let mut seen = vec![false; self.succs.len()];
+            let mut work = vec![db];
+            seen[db] = true;
+            while let Some(b) = work.pop() {
+                for &n in &self.succs[b] {
+                    let n = n as usize;
+                    if n == at.0 {
+                        return true;
+                    }
+                    if !seen[n] && Some(n) != redefined {
+                        seen[n] = true;
+                        work.push(n);
+                    }
+                }
+            }
+            false
+        })
+    }
 }
 
 fn info(f: &Func) -> Info {
@@ -65,6 +97,7 @@ fn info(f: &Func) -> Info {
         uses: vec![0; n],
         drops: vec![Vec::new(); n],
         preds: vec![0; f.blocks.len()],
+        succs: vec![Vec::new(); f.blocks.len()],
     };
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, i) in b.insts.iter().enumerate() {
@@ -79,7 +112,10 @@ fn info(f: &Func) -> Info {
             }
         }
         b.term.for_each_use(|v| d.uses[v.index()] += 1);
-        b.term.for_each_target(|t| d.preds[t.block.index()] += 1);
+        b.term.for_each_target(|t| {
+            d.preds[t.block.index()] += 1;
+            d.succs[bi].push(t.block.0);
+        });
     }
     d
 }
@@ -181,11 +217,10 @@ fn fuse_one(m: &mut Module, fi: usize) -> bool {
                 continue;
             }
             // A leaf string dropped before the append would be used after its drop.
-            let early = plan.leaves.iter().any(|l| {
-                info.drops[l.index()]
-                    .iter()
-                    .any(|&(db, di)| db != bi || di < ii)
-            });
+            let early = plan
+                .leaves
+                .iter()
+                .any(|&l| info.dropped_before(l, (bi, ii)));
             if early || plan.pieces.len() > 8 || plan.remove.iter().any(|r| claimed.contains(r)) {
                 continue;
             }
@@ -309,10 +344,7 @@ fn chain(m: &Module, f: &Func, info: &Info, v: Value, at: (usize, usize), g: &mu
     // deeper concat as a leaf: it is a root of its own, fused in the same scan. Rejecting the whole
     // chain instead fuses one group per scan, which is quadratic in the length of a long
     // interpolation. The value must stay a leaf, not vanish: the join is built from `leaves`.
-    if g.links >= MAX_JOIN - 1 {
-        g.leaves.push(Piece::Str(v));
-        return;
-    }
+    let capped = g.links >= MAX_JOIN - 1;
     let inner = info.defs[v.index()].and_then(|(db, di)| {
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
         let (dbi, ddi) = info.drops[v.index()].first().copied()?;
@@ -324,7 +356,8 @@ fn chain(m: &Module, f: &Func, info: &Info, v: Value, at: (usize, usize), g: &mu
             && (dbi != at.0 || ddi > at.1 || db != at.0 || di < at.1);
         ok.then_some((db, di, role == ExternRole::StringConcat))
     });
-    let Some((db, di, concat)) = inner else {
+    // At the cap a deeper concat stays a leaf, but an integer's text still becomes the integer.
+    let Some((db, di, concat)) = inner.filter(|&(_, _, concat)| !(capped && concat)) else {
         g.leaves.push(Piece::Str(v));
         return;
     };
@@ -378,9 +411,7 @@ fn fuse_concat(m: &mut Module, fi: usize) -> bool {
             }
             // A leaf dropped before the join would be used after its drop.
             let early = leaves.iter().any(|l| match l {
-                Piece::Str(l) => info.drops[l.index()]
-                    .iter()
-                    .any(|&(db, di)| db != bi || di < ii),
+                Piece::Str(l) => info.dropped_before(*l, (bi, ii)),
                 Piece::Int(_) => false,
             });
             if early || remove.iter().any(|r| claimed.contains(r)) {
