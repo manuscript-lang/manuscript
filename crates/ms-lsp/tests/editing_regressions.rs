@@ -333,6 +333,35 @@ fn organize_imports_moves_whole_multiline_declarations() {
     }
 }
 
+#[test]
+fn organize_imports_preserves_eof_separator() {
+    for newline in ["\n", "\r\n"] {
+        for last in [
+            "import sqrt from \"@std/math/math.ms\"",
+            "import sqrt from \"@std/math/math.ms\" // math",
+            "import (\n    sqrt,\n    sin,\n) from \"@std/math/math.ms\"",
+        ] {
+            let source = format!("import StringBuilder from \"@std/string.ms\"\n{last}")
+                .replace('\n', newline);
+            let (_, found) = actions(&source, "source.organizeImports");
+            let organized = apply(&source, found.first().expect("organize imports"));
+            ms_syntax::format(&"main.ms".into(), &organized).expect("organized source parses");
+            assert!(organized.starts_with("import "), "{organized}");
+            assert!(organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap());
+            assert!(!organized.ends_with('\n'), "preserve missing final newline");
+            let (_, repeated) = actions(&organized, "source.organizeImports");
+            assert!(repeated.is_empty(), "organization is idempotent");
+        }
+    }
+    let source = "import StringBuilder from \"@std/string.ms\"\nimport parse from \"@std/data/json.ms\"\r\nimport sqrt from \"@std/math/math.ms\"";
+    let (_, found) = actions(source, "source.organizeImports");
+    let organized = apply(source, found.first().expect("mixed-newline imports"));
+    ms_syntax::format(&"main.ms".into(), &organized).expect("mixed newline result parses");
+    assert!(organized.ends_with("import StringBuilder from \"@std/string.ms\""));
+    let (_, repeated) = actions(&organized, "source.organizeImports");
+    assert!(repeated.is_empty());
+}
+
 const IDENTITY: &str = "fn identity(value: Int) Int:\n    return value\n";
 
 fn rename_edit(uri: &str) -> Json {
