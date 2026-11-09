@@ -715,7 +715,7 @@ impl ListExtremes[T] for List[T]:
     // Returns a copy of the least element, or none for an empty list; the first of equal elements wins.
     // Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is `none`.
     fn min() T?:
-        if self.length() == 0:
+        if self.is_empty():
             return none
 
         var at = 0
@@ -727,7 +727,7 @@ impl ListExtremes[T] for List[T]:
     // Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
     // Example: `[3, 1, 2].max()` is `3`.
     fn max() T?:
-        if self.length() == 0:
+        if self.is_empty():
             return none
 
         var at = 0
@@ -747,7 +747,7 @@ impl ListKeyedExtremes[T] for List[T]:
     Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
     */
     fn max_by[K: Comparable](key: fn(T) K) T?:
-        if self.length() == 0:
+        if self.is_empty():
             return none
 
         var at = 0
@@ -768,7 +768,7 @@ impl ListKeyedExtremes[T] for List[T]:
     Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
     */
     fn min_by[K: Comparable](key: fn(T) K) T?:
-        if self.length() == 0:
+        if self.is_empty():
             return none
 
         var at = 0
@@ -884,6 +884,7 @@ impl ListIsSorted[T] for List[T]:
 interface ListCopiesKeyed[T: Clonable]:
     fn sorted_by_key[K: Comparable](key: fn(T) K) List[T]
     fn repeated(count: Int) List[T]
+    var fn extend(other: List[T]) Unit
 
 impl ListCopiesKeyed[T] for List[T]:
     // Returns a new list ordered by the natural order of `key(element)`; the receiver is unchanged and the sort is stable.
@@ -898,10 +899,15 @@ impl ListCopiesKeyed[T] for List[T]:
             panic("List.repeated: count {count} must not be negative")
 
         var out = List[T](reserve: self.length() * count)
-        for round in 0..count:
-            for x in self:
-                out.append(x.clone())
+        for _round in 0..count:
+            out.extend(self)
         return out
+
+    // Appends a copy of every element of `other`, in order, to this list in place; `other` is unchanged. The argument cannot be the receiver.
+    // Example: after `var xs = [1]`, `xs.extend([2, 3])` leaves `xs` as `[1, 2, 3]`.
+    var fn extend(other: List[T]) Unit:
+        for x in other:
+            self.append(x.clone())
 
 // Map operations written in Manuscript. A Map[T, U] has them only when T can be cloned for storage.
 interface MapUpdate[T: Hashable & Clonable, U: Clonable]:

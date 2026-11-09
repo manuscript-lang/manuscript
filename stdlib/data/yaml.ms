@@ -596,7 +596,7 @@ fn flow_entry(
 
         if cause.kind != "EBADMSG": return error(cause)
 
-        let reason = cause.details.get("reason").get("").clone()
+        let reason = cause.details.get_or("reason", "").clone()
 
         // A plain value may have consumed trailing separation before the delimiter.
         // Point this value-type error at its end, rather than a later closing line.
@@ -1557,7 +1557,7 @@ fn sequence_items(
         var chain: List[Int] = []
         if item.starts_with("-"): chain = nested_columns(line, base)
 
-        if chain.length() > 0:
+        if not chain.is_empty():
             // A run of compact sequence indicators (`- - x`) opens one level per
             // indicator. Scan the line once and rewrite it once instead of per level.
             let innermost = chain.get(chain.length() - 1)
@@ -1967,7 +1967,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
     if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
     // Without aliases, parsing already counted every container and leaf at its depth.
-    if context.values > 0 and context.anchors.length() == 0: return ok(result)
+    if context.values > 0 and context.anchors.is_empty(): return ok(result)
 
     context.values = 0
     try validate(var context, result, 1)

@@ -484,9 +484,7 @@ fn unit_scaled(values: List[Float]) List[Float]:
     if scale == 0.0: return values.clone()
 
     let exponent = frexp(scale).exponent
-    var scaled: List[Float] = []
-    for value in values:
-        scaled.append(ldexp(value, -exponent))
+    var scaled = values.map(fn value: ldexp(value, -exponent))
     return scaled
 
 /*

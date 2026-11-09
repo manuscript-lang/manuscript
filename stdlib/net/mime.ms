@@ -291,8 +291,8 @@ fn make_part(section: Bytes) Part!:
         )
 
         if media.is_ok():
-            part.name = media.get().params.get("name").get("")
-            part.filename = media.get().params.get("filename").get("")
+            part.name = media.get().params.get_or("name", "")
+            part.filename = media.get().params.get_or("filename", "")
 
     return ok(part)
 

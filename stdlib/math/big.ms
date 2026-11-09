@@ -1,5 +1,5 @@
 import panic from "@std/core.ms"
-import BigInt, frexp, from_int, ldexp, parse, parse_int from "@std/math/math.ms"
+import BigInt, frexp, from_int, ldexp, max, parse, parse_int from "@std/math/math.ms"
 
 /*
 An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,
@@ -604,10 +604,7 @@ fn div_parts(numerator: BigInt, denominator: BigInt, prec: Int) Quotient:
         return Quotient(value: Binary(mant: from_int(0), exp: 0), sticky: false)
 
     let magnitude = numerator.abs()
-    var shift = prec + 2 + bit_length(denominator) - bit_length(magnitude)
-    if shift < 0:
-        shift = 0
-
+    let shift = max(prec + 2 + bit_length(denominator) - bit_length(magnitude), 0)
     let scaled = shl(magnitude, shift)
     var quotient = scaled / denominator
     let sticky = (scaled % denominator).sign() != 0
@@ -629,10 +626,7 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 
     let magnitude = value.mant.abs()
     let bits = bit_length(magnitude)
-    var grid = value.exp + bits - 1 - 52
-    if grid < -1074:
-        grid = -1074
-
+    let grid = max(value.exp + bits - 1 - 52, -1074)
     var kept = magnitude.clone()
     var exponent = value.exp
 

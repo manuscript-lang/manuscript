@@ -38,7 +38,7 @@ fn clean(path: String) String!:
         if part == "" or part == ".": continue
 
         if part == "..":
-            if parts.length() == 0: return error(fs_invalid_input())
+            if parts.is_empty(): return error(fs_invalid_input())
 
             parts.remove(parts.length() - 1)
             continue
@@ -340,7 +340,7 @@ export fn walk(
     var pending = List[WalkEntry]()
     try push_children(tree, start, var pending)
 
-    while pending.length() > 0:
+    while not pending.is_empty():
         let top = pending.length() - 1
         let entry = WalkEntry(pending[top].path.clone(), pending[top].directory)
         pending.remove(top)

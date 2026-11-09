@@ -400,10 +400,7 @@ impl SortedSet[T]:
 
     // Returns a new list of the members with `low` <= member < `high`, in ascending order.
     fn range(low: T, high: T) List[T]:
-        var out: List[T] = []
-        for entry in self.members.range(low, high):
-            out.append(entry.key.clone())
-        return out
+        return self.members.range(low, high).map(fn entry: entry.key.clone())
 
     // Returns a new list of the members in ascending order.
     fn values() List[T]:

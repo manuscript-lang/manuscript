@@ -285,10 +285,7 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
     if pending.is_empty():
         return error(Error("promise: nothing to wait for"))
 
-    var ids: List[Int] = []
-    for p in pending:
-        ids.append(p.id)
-
+    var ids = pending.map(fn p: p.id)
     let which = msrt_promise_wait_any(ids, -1)
     return pending[which].wait()
 

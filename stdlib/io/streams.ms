@@ -1,3 +1,4 @@
+import min from "@std/math/math.ms"
 import Bytes, BytesBuilder, join from "@std/bytes.ms"
 import (ReadStream, WriteStream, Source) from "@std/io/io.ms"
 
@@ -143,10 +144,7 @@ impl Source[Bytes] for BytesSource:
         if self.at >= self.data.length():
             return ok(none)
 
-        var stop = self.at + self.chunk
-        if stop > self.data.length():
-            stop = self.data.length()
-
+        let stop = min(self.at + self.chunk, self.data.length())
         let piece = try self.data.slice(self.at, stop)
         self.at = stop
         return ok(piece)

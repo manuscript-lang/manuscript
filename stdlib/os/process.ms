@@ -234,16 +234,12 @@ impl Source[Int] for SignalSource:
 
 // The names of an environment map, in the order of its values.
 fn environment_names(environment: Map[String, String]) List[String]:
-    var names: List[String] = []
-    for entry in environment.entries():
-        names.append(entry.key.clone())
+    var names = environment.entries().map(fn entry: entry.key.clone())
     return names
 
 // The values of an environment map, in the order of its names.
 fn environment_values(environment: Map[String, String]) List[String]:
-    var values: List[String] = []
-    for entry in environment.entries():
-        values.append(entry.value.clone())
+    var values = environment.entries().map(fn entry: entry.value.clone())
     return values
 
 // The work of `run`: a returned closure owns the program, arguments and options.

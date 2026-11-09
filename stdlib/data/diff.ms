@@ -23,9 +23,7 @@ export fn edit_distance(left: String, right: String) Int:
         var current: List[Int] = [i]
 
         for j in 1..b.length() + 1:
-            var cost = 1
-            if a[i - 1] == b[j - 1]:
-                cost = 0
+            let cost = if a[i - 1] == b[j - 1]: 0 else: 1
             current.append(
                 (previous[j] + 1).min(
                     (current[j - 1] + 1).min(previous[j - 1] + cost)
@@ -201,8 +199,7 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
         old_middle.append(old[i].clone())
     for i in head..new.length() - tail:
         new_middle.append(new[i].clone())
-    for step in middle_steps(old_middle, new_middle, head):
-        steps.append(step)
+    steps.extend(middle_steps(old_middle, new_middle, head))
 
     for i in 0..tail:
         let at = old.length() - tail + i

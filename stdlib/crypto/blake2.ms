@@ -40,17 +40,14 @@ fn word(data: Bytes, at: Int, width: Int) Int:
 fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
     var out = BytesBuilder()
 
-    if key.length() > 0:
+    if not key.is_empty():
         out.append_bytes(key)
         for fill in key.length()..block:
             out.append(0)
 
     out.append_bytes(data)
 
-    var written = data.length()
-    if key.length() > 0:
-        written = block + data.length()
-
+    let written = if not key.is_empty(): block + data.length() else: data.length()
     var fill_to = ((written + block - 1) / block) * block
     if fill_to == 0:
         fill_to = block
@@ -84,7 +81,7 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
     let blocks = message.length() / 128
     let schedule = sigma()
     var total = data.length()
-    if key.length() > 0:
+    if not key.is_empty():
         total += 128
 
     var counted = 0
@@ -189,15 +186,12 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
     let blocks = message.length() / 64
     let schedule = sigma()
     var total = data.length()
-    if key.length() > 0:
+    if not key.is_empty():
         total += 64
 
     for block in 0..blocks:
         let last = block == blocks - 1
-        var counted = (block + 1) * 64
-        if last:
-            counted = total
-
+        let counted = if last: total else: (block + 1) * 64
         var m: List[Int] = []
         for index in 0..16:
             m.append(word(message, block * 64 + index * 4, 4))

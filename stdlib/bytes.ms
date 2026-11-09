@@ -131,9 +131,7 @@ export type VarintRead[T]:
 // Appends the low `width` bytes of `value` in the requested byte order.
 fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
     for i in 0..width:
-        var place = width - 1 - i
-        if little:
-            place = i
+        let place = if little: i else: width - 1 - i
         out.append(
             msrt_bits_bit_and(
                 msrt_bits_shift_right(value, 8 * place), 255

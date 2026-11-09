@@ -163,7 +163,7 @@ Example: `product([[1, 2], [3, 4]])` is `[[1, 3], [1, 4], [2, 3], [2, 4]]`.
 export fn product[T: Clonable](lists: List[List[T]]) List[List[T]]:
     // An empty factor empties the product, so no prefix is built before it is found.
     for choices in lists:
-        if choices.length() == 0: return []
+        if choices.is_empty(): return []
 
     var out: List[List[T]] = [[]]
 

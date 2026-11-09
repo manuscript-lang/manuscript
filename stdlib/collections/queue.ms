@@ -164,14 +164,14 @@ impl PriorityQueue[T]:
 
     // Returns the next value by priority without removing it, or none when empty.
     fn peek() T?:
-        if self.heap.length() == 0:
+        if self.heap.is_empty():
             return none
 
         return self.heap.get(0)
 
     // Reports whether the queue has no values to peek or dequeue.
     fn is_empty() Bool:
-        return self.heap.length() == 0
+        return self.heap.is_empty()
 
 impl Iterable[T] for PriorityQueue[T]:
     // Returns the number of enqueued values, independent of their priorities.

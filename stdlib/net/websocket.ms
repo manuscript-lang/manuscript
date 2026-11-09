@@ -49,9 +49,7 @@ impl Source[WebSocketMessage] for WebSocketSource:
         let raw = try msstd_websocket_receive(self.native)
 
         if let message = raw:
-            var kind = WebSocketKind.Binary
-            if message.text:
-                kind = WebSocketKind.Text
+            let kind = if message.text: WebSocketKind.Text else: WebSocketKind.Binary
             return ok(WebSocketMessage(message.data, kind))
 
         return ok(none)

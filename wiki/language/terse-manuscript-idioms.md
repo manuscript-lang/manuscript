@@ -6,13 +6,15 @@ Decision (Chinmay, 2026-11-09): code, examples, and docs use the shortest form t
 
 Use instead of:
 - `print("x")` over `stdout().write("x\n").get()`; `stdout()` only for bytes, no newline, or handled errors.
-- `a.length().max(b.length())` over `var m = a.length()` plus `if ...: m = ...` (Int `max`/`min`/`clamp` methods are not implemented yet; today `max` is a free function in `@std/math`).
-- `[0].repeated(n)`, `(0..n)`, `.map`, `.filter`, `.any`/`.all`, `.sum()`, `.contains` over loops that build a list or accumulate; `for _ in` over `unusedN`.
+- `a.length().max(b.length())` over `var m = a.length()` plus `if ...: m = ...`. The Int methods need `import min, max from "@std/math/math.ms"` in user code and are not visible inside standard modules (`math.ms` rejects `.min`), so stdlib code writes `max(a, b)` with that import. Making the methods ambient is an open primitive.
+- `[0].repeated(n)`, `(0..n)`, `.map`, `.filter`, `.any`/`.all`, `.sum()`, `.contains` over loops that build a list or accumulate; `for _round in` over `unusedN` (bare `_` is a reserved word; names starting `_` are exempt from unread and shadowing checks); `xs.extend(ys)` over a loop that appends copies.
 - `let x = if c: a else: b` over `var x = a` plus a reassignment.
 - `.is_empty()` over `.length() == 0`; no `== true`; no `else:` after `return`.
-- `if let`, `get(default)`, `try` over `is_none()` guards and `match` unwrapping. Avoid chained `.get(a).get(b)`; use `get_or` on maps.
+- `if let`, `get(default)`, `try` over `is_none()` guards and `match` unwrapping. Avoid chained `.get(a).get(b)`; use `get_or(key, default)` on a Map (`Headers`, `JsonValue` and `Result` lack it). Inside a type's own `get_or` do not write `self.get_or`: it recurses.
 - `"""` multi-line literals over `+ "\n" +` chains.
 
 Do not rewrite `tests/conformance` fixtures for style: their expected output holds line numbers, so edits fail the corpus. Keep fixtures that exist to exercise the verbose form. `repeated` loops and clones, so keep native `filled` in hot paths.
 Evidence: scan with counts in the project file terse-manuscript/catalog.md (2026-11-09).
 Verify: `ms fmt --check`, `make conform`, `make e2e`, `make repo-check`.
+
+Rewrite hazards found: an `if` expression cannot replace `var x = a; if c: x = b` when `c` or `b` reads `x`, when `x` is reassigned later, or with `if let` (not an expression); `.get_or` on a type that defines its own `get_or` recurses. Do not bulk-edit `tests/e2e` fixtures that exist to exercise the verbose form.

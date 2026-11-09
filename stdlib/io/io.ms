@@ -149,7 +149,7 @@ impl Source[Bytes] for DescriptorSource:
             return ok(data)
 
         let message = msrt_streams_error(self.id)
-        if message.length() > 0:
+        if not message.is_empty():
             return error(Error(message, kind: "EIO"))
 
         return ok(none)

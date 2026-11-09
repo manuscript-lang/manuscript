@@ -70,10 +70,7 @@ impl BitSet:
 
     // Returns the smallest member that is at least `from`, or `none` when there is none.
     fn next(from: Int = 0) Int?:
-        var start = from
-        if start < 0:
-            start = 0
-
+        let start = from.max(0)
         var word = start / 64
         if word >= self.words.length():
             return none
@@ -130,14 +127,8 @@ impl BitSet:
             count = other.words.length()
 
         for word in 0..count:
-            var left = 0
-            if word < self.words.length():
-                left = self.words.get(word)
-
-            var right = 0
-            if word < other.words.length():
-                right = other.words.get(word)
-
+            let left = if word < self.words.length(): self.words.get(word) else: 0
+            let right = if word < other.words.length(): other.words.get(word) else: 0
             var merged = bit_or(left, right)
             if mode == 1:
                 merged = bit_and(left, right)
