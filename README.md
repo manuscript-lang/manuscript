@@ -31,45 +31,66 @@ export fn main() Int:
     return 1
 ```
 
-## Small enough to write and read
+## Use-after-move is a compile error
 
 ```manuscript
-enum Item:
-    Book(pages: Int)
-    Coffee(grams: Int)
-
-interface Priced:
-    fn cents() Int
-
-impl Priced for Item:
-    fn cents() Int:
-        match self:
-            Book(pages): return 500 + pages * 2
-            Coffee(grams): return grams * 3
-
-fn sum_by[T](items: List[T], price: fn(T) Int) Int:
-    var total = 0
-    for item in items:
-        total += price(item)
-    return total
-
 export fn main() Int:
-    let cart = [Item.Book(pages: 200), Item.Coffee(grams: 250)]
-    print("{sum_by(cart, fn item: item.cents())} cents")
+    var names = List[String]()
+    let first = "ada"
+    names.append(first)
+    print(first)
     return 0
 ```
 
-Functions, enums, interfaces and generics, spelled with plain words (`and`, `or`, `not`, `fn`, `var`, `none`) that cost few tokens. There is little to get wrong, and a program reads top to bottom.
+```text
+$ ms run own.ms
+own.ms:4:18: type: `first` is moved here but used again at 5:11 …
+```
+
+One owner per value. No GC, no refcounts, no surprises.
+
+## All cores, regular functions
+
+```manuscript
+import promise, wait_all from "@std/concurrency/promise.ms"
+
+fn fib(n: Int) Int:
+    return if n < 2: n else: fib(n - 1) + fib(n - 2)
+
+export fn main() Int:
+    let tasks = [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
+    print(wait_all(tasks).get(List[Int]()).length())
+    return 0
+```
+
+No async, no await, no function coloring. Wrap a call in `promise(fn: ...)` and it runs on another core.
+
+## Effects the compiler checks
+
+```manuscript
+import write_file from "@std/os/fs.ms"
+
+// ms: effect db.write
+// ms: allow_effect std.fs.write
+fn save(order: String) Unit!:
+    return write_file("orders.log", order).wait()
+
+fn audit(total: Int) Unit!:
+    return save("audit {total}")
+```
+
+Declare an effect once, and `ms lint` flags every caller that did not allow it.
 
 ## Errors that name the fix
 
 ```text
-resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length()
-parse: '&&' is not an operator; write 'and' for logical and
-resolution: unknown binding null; Manuscript has no null: absence is an Optional, written none
+$ ms check fixme.ms
+fixme.ms:3:5: resolution: unknown binding println; there is no println: use print(value),
+which writes any value and a newline; for write errors or bytes import stdout from
+"@std/io/io.ms" and call stdout().write("text\n")
 ```
 
-Every diagnostic names the cause and the fix, and the compiler recognizes habits from other languages. `ms check --fix` applies the mechanical ones.
+Every diagnostic gives the cause and the remedy, and `ms check --json` is there for agents. The compiler also recognizes habits from other languages: `len(xs)`, `&&` and `null` each get a pointed fix.
 
 ## Review without reading every line
 
@@ -78,9 +99,9 @@ ms diagram ms.toml --format html -o code-map.html
 git diff main... | ms review ms.toml --diff -
 ```
 
-The first command writes one offline file with source, types, calls and ownership side by side, and the declarations a change touched highlighted. The second ranks what deserves your attention first: changed contracts, error flow and resource scopes. See [working with an agent](documentation/guide/working-with-an-agent.md).
+The first command writes an offline, interactive code map with source, types, calls and ownership side by side, and the declarations a change touched highlighted. The second ranks what deserves your attention first: changed contracts, error flow and resource scopes. See [working with an agent](documentation/guide/working-with-an-agent.md).
 
-## Measure, then improve
+## Test, fuzz, benchmark, profile
 
 ```sh
 ms test ms.toml --fuzz 30s
@@ -88,6 +109,12 @@ ms bench ms.toml
 ms profile ms.toml
 ```
 
-Property tests double as a fuzzer, benchmarks time each change, and the profiler shows where the time goes. An agent can run that loop on its own.
+Property tests double as a fuzzer, benchmarks time each change, and the profiler gives source attribution, pprof and folded stacks. Nothing to install.
+
+## Try it
+
+```sh
+ms init hello
+```
 
 Everything here works today, and I harden it with each release. Syntax and APIs still evolve.
