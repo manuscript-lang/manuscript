@@ -194,12 +194,12 @@ impl BigRat:
 
         return self.clone()
 
-    // Returns the exact power. A negative exponent inverts first, so zero with a negative exponent returns EINVAL.
-    // An exponent too large for BigInt.pow faults as BigInt does.
+    // Returns the exact power. A negative exponent returns the reciprocal power, so zero with a negative exponent returns EINVAL.
+    // A numerator or denominator power above 16777216 bits returns EOVERFLOW.
     fn pow(exponent: Int) BigRat!:
         let count = exponent.abs()
-        let top = self.num.pow(count).get(big(0))
-        let bottom = self.den.pow(count).get(big(1))
+        let top = try self.num.pow(count)
+        let bottom = try self.den.pow(count)
         if exponent >= 0:
             return ok(BigRat(num: top, den: bottom))
 
