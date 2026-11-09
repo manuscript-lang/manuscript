@@ -1572,15 +1572,38 @@ pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
     }
 }
 
-/// Faults on a negative `count`, else clamps it to the scalar length.
-unsafe fn scalar_count_arg(name: &str, s: *const StrVal, count: i64) -> usize {
+/// Faults on a negative `count`.
+fn check_count(name: &str, count: i64) {
     if count < 0 {
         fault::fault_fmt(format_args!(
             "String.{name}: count must be nonnegative, found {count}"
         ));
     }
-    // SAFETY: caller passes a live string.
-    (count as usize).min(unsafe { scalar_count(s) })
+}
+
+/// Byte offset after the first `count` scalars, clamped to the end of the text. Walks only that
+/// prefix (no whole-string count) unless the string is known to be ASCII, where it is the count.
+unsafe fn offset_after(s: *const StrVal, count: usize) -> usize {
+    // SAFETY: `s` live.
+    unsafe {
+        let text = bytes(s);
+        if (*s).flagged_ascii() {
+            return count.min(text.len());
+        }
+        utf8::advance(text, 0, count).unwrap_or(text.len())
+    }
+}
+
+/// A copy of `text[a..b]`, sharing nothing; the whole string is cloned when the range covers it.
+unsafe fn sub_bytes(s: *const StrVal, a: usize, b: usize) -> StrVal {
+    // SAFETY: `s` live; `a <= b <= len`.
+    unsafe {
+        let text = bytes(s);
+        if a == 0 && b == text.len() {
+            return cloned(&*s);
+        }
+        from_bytes(&text[a..b])
+    }
 }
 
 /// `take(count)`: the first `count` scalars, clamped to the string.
@@ -1589,8 +1612,9 @@ unsafe fn scalar_count_arg(name: &str, s: *const StrVal, count: i64) -> usize {
 pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let n = scalar_count_arg("take", s, count);
-        *out = sub_scalars(s, 0, n);
+        check_count("take", count);
+        let end = offset_after(s, count as usize);
+        *out = sub_bytes(s, 0, end);
     }
 }
 
@@ -1600,8 +1624,9 @@ pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, o
 pub unsafe extern "C-unwind" fn msrt_string_drop_n(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let n = scalar_count_arg("drop", s, count);
-        *out = sub_scalars(s, n, scalar_count(s));
+        check_count("drop", count);
+        let start = offset_after(s, count as usize);
+        *out = sub_bytes(s, start, bytes(s).len());
     }
 }
 
