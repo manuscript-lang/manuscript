@@ -476,6 +476,10 @@ impl FnLower<'_> {
 
     /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.
     pub(crate) fn part_closer_mir(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
+        // An interface value with `close` carries its closer in the vtable, whatever the checker type.
+        if let TyKind::Iface(iface) = self.b.m.types.kind(ty).clone() {
+            return Ok(self.iface_closer(iface));
+        }
         let Some(ct) = self.cx.source_tys.get(ty.0 as usize).cloned() else {
             return Ok(None);
         };

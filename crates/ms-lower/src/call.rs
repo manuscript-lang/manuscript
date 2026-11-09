@@ -187,17 +187,34 @@ impl<'a> FnLower<'a> {
             let later_try = view.arguments[n + 1..]
                 .iter()
                 .any(|l| crate::mutation::has_try(l.expr));
+            // The generated optional has no checker type, so its closer is composed around the
+            // payload's, resolved before the conversion (`optional_resource_closer`).
+            let mut wrapped_closer = None;
             let x = match &a.wrap_optional {
-                Some(opt) => {
+                Some(_) => {
+                    let payload_kind = if x.own {
+                        self.part_closer_mir(self.ty_of(x.v))?
+                    } else {
+                        None
+                    };
+                    let inner = self.ty_of(x.v);
                     let o = self.owned_boundary(x);
-                    let _ = opt;
                     let v = self.b.opt_some(o);
+                    if let Some(kind) = payload_kind {
+                        wrapped_closer =
+                            Some(self.optional_resource_closer(self.ty_of(v), inner, kind));
+                    }
                     Val { v, own: true }
                 }
                 None => x,
             };
             let x = if n + 1 < view.arguments.len() || has_defaults {
-                if borrowed_optional_payloads[idx] {
+                if let Some(kind) = wrapped_closer {
+                    Val {
+                        v: self.hold_resource_temp_with(x.v, kind),
+                        own: true,
+                    }
+                } else if borrowed_optional_payloads[idx] {
                     if later_try {
                         self.borrow(x);
                     }
