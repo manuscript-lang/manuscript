@@ -23,7 +23,7 @@ SCENES = [
          sub="One owner per value. No GC, no refcounts, no surprises.",
          src="own.ms", steps=[("ms run own.ms", first(1))], cut=";"),
     dict(title="*No GC pauses.* C-class speed.",
-         sub="Run time vs C with bounds checks, seven kernels (bench/perf, 2026-11-09).",
+         sub="Run time vs C with bounds checks, six kernels (bench/perf, 2026-11-09).",
          chart=True),
     dict(title="*All cores.* Regular functions.",
          sub="No async, no await, no function coloring.",
@@ -59,7 +59,7 @@ SCENES = [
 ]
 # Time relative to C compiled with bounds checks (1.0 = same), from bench/perf/results-2026-11-09.md: ms us / c-bounds us per kernel.
 KERNELS = [("sieve", 28410 / 28204), ("nbody", 9024 / 8942), ("life", 4958 / 37967), ("matmul", 9098 / 10188),
-           ("trees", 25892 / 25855), ("collatz", 244873 / 286587), ("map_count", 17136 / 13002)]
+           ("trees", 25892 / 25855), ("collatz", 244873 / 286587)]
 URL = "manuscript-lang.github.io/manuscript"
 
 W, H = 1280, 720
