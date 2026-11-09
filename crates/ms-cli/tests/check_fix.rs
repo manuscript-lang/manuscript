@@ -212,6 +212,26 @@ fn fix_adds_each_missing_import_once() {
 }
 
 #[test]
+fn integer_literal_fix_is_text_not_an_interpolation() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-literal-text-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/int_literal_to_text.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("greet(\"3\")"), "{fixed}");
+    let (status, text) = ms(&["lint", "a.ms"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(!text.contains("MSL117"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn conversion_fix_never_rewrites_a_compound_assignment_target() {
     let dir = std::env::temp_dir().join(format!("ms-cli-compound-fix-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

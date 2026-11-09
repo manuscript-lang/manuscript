@@ -64,8 +64,8 @@
           "end": {
             "file": "testgroupedimportresolutionerrors-1.ms",
             "line": 4,
-            "column": 29,
-            "offset": 204
+            "column": 28,
+            "offset": 203
           },
           "replacement": ""
         }

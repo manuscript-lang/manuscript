@@ -64,8 +64,8 @@
           "end": {
             "file": "testnamedimports-3.ms",
             "line": 4,
-            "column": 28,
-            "offset": 185
+            "column": 27,
+            "offset": 184
           },
           "replacement": ""
         }

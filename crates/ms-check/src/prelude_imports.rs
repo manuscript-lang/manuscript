@@ -101,8 +101,6 @@ fn prelude_import_fix(
             let mut end = name.end;
             if at + 1 < tokens.len() && tokens[at + 1].kind == Tok::Comma {
                 end = tokens[at + 1].end;
-            } else if at + 1 < tokens.len() && tokens[at + 1].pos.line == name.end.line {
-                end = tokens[at + 1].pos;
             }
             let trivia = trivia_of(text(comma.end.offset, name.pos.offset));
             return Some(DiagnosticFix {

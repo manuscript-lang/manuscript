@@ -64,8 +64,8 @@
           "end": {
             "file": "testanalysiscollectionrangesandsymlinkconfineme-1.ms",
             "line": 5,
-            "column": 24,
-            "offset": 228
+            "column": 23,
+            "offset": 227
           },
           "replacement": ""
         }
