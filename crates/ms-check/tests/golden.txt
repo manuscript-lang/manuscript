@@ -580,7 +580,7 @@ fn explicit() Unit:
     fs.remove("", false)
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	14	72	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-type	6	46	194	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingimport panic from "@std/faults.ms"
+type	6	46	194	cannot infer the type of none; give it a target, e.g. `let x: Int? = none`, or pass a valueimport panic from "@std/faults.ms"
 type Override:
     received: Bool
 impl FileSystem for Override:
@@ -945,8 +945,7 @@ fn count[T](r: Result[T, Error]) Int: 1
 fn use() Int: count(r: failing())
 type	3	1	28	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
 type	7	21	206	conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)
-type	7	15	200	cannot infer type argument T for count; write count[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter
-type	7	24	209	expected Result[<invalid>, Error], found Result[Int, Failure] (in argument 'r' of count)type Pair[A, B = A]:
+type	7	15	200	cannot infer type argument T for count; write count[T](...) with an explicit type for T; call arguments and the expected result must determine every type parametertype Pair[A, B = A]:
     first: A
     second: B
 fn use() Pair[Int]: Pair[Int](1, 2)
@@ -1724,7 +1723,7 @@ resolution	1	36	35	unknown type Bytes; add: import Bytes from "@std/bytes.ms"ty
     value: T
 fn f() Unit:
     let x = none
-type	2	13	25	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f(value: Int?) Int: return value.get()
+type	2	13	25	cannot infer the type of none; give it a target, e.g. `let x: Int? = none`, or pass a valuefn f(value: Int?) Int: return value.get()
 fn call() Int: return f(4)
 fn call[T](operation: fn() T) T:
     return operation()
@@ -1767,7 +1766,8 @@ impl Equal for Key:
     fn equals(other: Equal) Bool: return true
 fn keys() Map[Key, Int]: return Map[Key, Int]()
 type	4	8	49	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool
-type	5	33	120	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itimport TestHooks from "@std/test/test.ms"
+type	5	33	120	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it
+type	5	11	98	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itimport TestHooks from "@std/test/test.ms"
 type State:
     value: Int
 impl TestHooks for State:
@@ -2021,7 +2021,7 @@ fn get() List[ListEntry[Int]]: [1].entries()
     OutOfRange
 fn get() Result[List[Int], CollectionError]: [1].slice(0, 1)
 type	3	50	86	expected Result[List[Int], CollectionError], found Result[List[Int], Error] (in the return value)fn entries(values: MapEntry[List[Int], Int]) Unit: unit
-type	1	1	0	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringexport type List[T]:
+type	1	20	19	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringexport type List[T]:
     value: T
 export type Set[T]:
     value: T
@@ -2080,7 +2080,7 @@ resolution	5	5	142	unknown binding compress; add: import compress from "@std/io/
 resolution	6	5	189	unknown binding compress; add: import compress from "@std/io/archive.ms"
 resolution	7	5	238	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"
 resolution	8	5	283	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"
-type	8	57	335	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
+type	8	57	335	cannot infer the type of none; give it a target, e.g. `let x: Int? = none`, or pass a value
 resolution	9	5	345	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"let initial = Mode.Idle
 
 enum Mode:
@@ -2622,7 +2622,7 @@ fn helper() Int: return 3
 fn broken(
 parse	4	1	68	unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the filefn f() Unit:
     let missing = none
-type	2	19	31	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
+type	2	19	31	cannot infer the type of none; give it a target, e.g. `let x: Int? = none`, or pass a valuefn f() Unit:
     let result = ok(value: 1)
 type	2	18	30	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
     let result = error(cause: "failed")
@@ -2666,7 +2666,7 @@ fn f() Unit:
     m.add("a", true)
 type	2	16	47	expected Int, found Bool (in argument 'value' of m.add)fn f(m: Map[List[Int], Int]) Unit:
     return
-type	1	1	0	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringtype Map[K,V]:
+type	1	9	8	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringtype Map[K,V]:
     value: V
 fn f(m: Map[String,Int]) Unit:
     m.add("a", 1)
@@ -2680,7 +2680,7 @@ resolution	2	1	50	declaration Map reuses a prelude name; rename it, because Map 
     values.add(true)
 type	2	16	44	expected Int, found Bool (in argument 'value' of values.add)fn f(values: Set[List[Int]]) Unit:
     return
-type	1	1	0	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringtype Set[T]:
+type	1	14	13	List[Int] does not satisfy Hashable; collections have no Hashable implementation, so use a record key or join the elements into a Stringtype Set[T]:
     value: T
 fn f(values: Set[Int]) Unit:
     values.add(1)

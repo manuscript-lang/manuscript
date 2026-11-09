@@ -35,6 +35,8 @@ mod tytable;
 mod unused;
 
 #[cfg(test)]
+mod diagnostic_cascade_tests;
+#[cfg(test)]
 mod generic_defaults_tests;
 #[cfg(test)]
 mod radix_literal_tests;

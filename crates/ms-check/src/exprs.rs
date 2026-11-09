@@ -212,13 +212,15 @@ impl Checker {
         }
         if let Some(exp) = expected {
             // A part left invalid by an inference failure was reported already ("cannot infer
-            // callback parameter"); restating it would print `<invalid>` to the user.
+            // callback parameter", "cannot infer list element type"); restating it would print
+            // `<invalid>` to the user.
             let inference_reported = (invalid_type(&Some(actual.clone()))
                 || invalid_type(&Some(exp.clone())))
-                && self.p.diagnostics.iter().any(|d| {
-                    d.message.starts_with("cannot infer callback parameter")
-                        && d.pos.line == e.pos.line
-                });
+                && self
+                    .p
+                    .diagnostics
+                    .iter()
+                    .any(|d| d.message.starts_with("cannot infer") && d.pos.line == e.pos.line);
             if !actual.is_invalid()
                 && !exp.is_invalid()
                 && !inference_reported

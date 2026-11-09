@@ -16,12 +16,23 @@
           "column": 33,
           "offset": 317
         }
+      },
+      {
+        "code": "MS3021",
+        "phase": "type",
+        "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
+        "position": {
+          "file": "testequalityinterfacesandhashconsistency-1.ms",
+          "line": 10,
+          "column": 11,
+          "offset": 295
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testequalityinterfacesandhashconsistency-1.ms:10:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n    |\n 10 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n    |                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testequalityinterfacesandhashconsistency-1.ms:10:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n    |\n 10 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n    |                                 ^\n<DIR>/testequalityinterfacesandhashconsistency-1.ms:10:11: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n    |\n 10 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n    |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
