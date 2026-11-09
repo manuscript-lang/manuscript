@@ -88,6 +88,36 @@ fn valid_host_text(host: &str) -> bool {
         .all(|b| b > 0x20 && b != 0x7f && !b"\\^`{|}#?/@".contains(&b) && b != b'%')
 }
 
+/// RFC 3986 section 5.2.4 over an encoded path. Empty segments are significant,
+/// and a final `/.` or `/..` leaves the slash that denotes a directory.
+fn remove_dot_segments(mut input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    while !input.is_empty() {
+        if let Some(rest) = input.strip_prefix("../") {
+            input = rest;
+        } else if let Some(rest) = input.strip_prefix("./") {
+            input = rest;
+        } else if input.starts_with("/./") {
+            input = &input[2..];
+        } else if input == "/." {
+            input = "/";
+        } else if input.starts_with("/../") || input == "/.." {
+            input = if input == "/.." { "/" } else { &input[3..] };
+            out.truncate(out.rfind('/').unwrap_or(0));
+        } else if input == "." || input == ".." {
+            break;
+        } else {
+            // Include the initial slash, but stop at the next slash. In `//`,
+            // each slash therefore survives as a separate empty path segment.
+            let skip = usize::from(input.starts_with('/'));
+            let end = input[skip..].find('/').map_or(input.len(), |i| skip + i);
+            out.push_str(&input[..end]);
+            input = &input[end..];
+        }
+    }
+    out
+}
+
 /// An http or https URL with a host, a valid port
 /// and no user info.
 pub fn parse(text: &str) -> Option<Url> {
@@ -224,10 +254,14 @@ impl Url {
         }
         let reference = reference.split('#').next().unwrap_or("");
         if scheme_end(reference).is_some() {
-            return parse(reference);
+            let mut resolved = parse(reference)?;
+            resolved.path = remove_dot_segments(&resolved.path);
+            return Some(resolved);
         }
         if let Some(rest) = reference.strip_prefix("//") {
-            return parse(&format!("{}://{rest}", self.scheme));
+            let mut resolved = parse(&format!("{}://{rest}", self.scheme))?;
+            resolved.path = remove_dot_segments(&resolved.path);
+            return Some(resolved);
         }
         let (path_part, query_part) = match reference.split_once('?') {
             Some((p, q)) => (p, Some(q)),
@@ -236,13 +270,13 @@ impl Url {
         let merged = if path_part.is_empty() {
             self.path.clone()
         } else if path_part.starts_with('/') {
-            super::target::clean_keep(path_part)
+            remove_dot_segments(path_part)
         } else {
             let base = match self.path.rfind('/') {
                 Some(i) => &self.path[..=i],
                 None => "/",
             };
-            super::target::clean_keep(&format!("{base}{path_part}"))
+            remove_dot_segments(&format!("{base}{path_part}"))
         };
         let query = match (query_part, path_part.is_empty()) {
             (Some(q), _) => Some(q.to_string()),
@@ -329,5 +363,98 @@ mod tests {
         assert_eq!(base.resolve("https://o/p#f").unwrap().text(), "https://o/p");
         assert!(base.resolve("ftp://o/").is_none());
         assert_eq!(base.resolve("./").unwrap().text(), "http://h/a/b/");
+    }
+
+    #[test]
+    fn resolves_rfc3986_normal_and_abnormal_examples() {
+        // RFC 3986 sections 5.4.1 and 5.4.2. HTTP URLs omit fragments and use `/`
+        // for an empty path; non-HTTP schemes and authority-free URLs are refused.
+        let base = parse("http://a/b/c/d;p?q").unwrap();
+        let examples = [
+            ("g", "http://a/b/c/g"),
+            ("./g", "http://a/b/c/g"),
+            ("g/", "http://a/b/c/g/"),
+            ("/g", "http://a/g"),
+            ("//g", "http://g/"),
+            ("?y", "http://a/b/c/d;p?y"),
+            ("g?y", "http://a/b/c/g?y"),
+            ("#s", "http://a/b/c/d;p?q"),
+            ("g#s", "http://a/b/c/g"),
+            ("g?y#s", "http://a/b/c/g?y"),
+            (";x", "http://a/b/c/;x"),
+            ("g;x", "http://a/b/c/g;x"),
+            ("g;x?y#s", "http://a/b/c/g;x?y"),
+            ("", "http://a/b/c/d;p?q"),
+            (".", "http://a/b/c/"),
+            ("./", "http://a/b/c/"),
+            ("..", "http://a/b/"),
+            ("../", "http://a/b/"),
+            ("../g", "http://a/b/g"),
+            ("../..", "http://a/"),
+            ("../../", "http://a/"),
+            ("../../g", "http://a/g"),
+            ("../../../g", "http://a/g"),
+            ("../../../../g", "http://a/g"),
+            ("/./g", "http://a/g"),
+            ("/../g", "http://a/g"),
+            ("g.", "http://a/b/c/g."),
+            (".g", "http://a/b/c/.g"),
+            ("g..", "http://a/b/c/g.."),
+            ("..g", "http://a/b/c/..g"),
+            ("./../g", "http://a/b/g"),
+            ("./g/.", "http://a/b/c/g/"),
+            ("g/./h", "http://a/b/c/g/h"),
+            ("g/../h", "http://a/b/c/h"),
+            ("g;x=1/./y", "http://a/b/c/g;x=1/y"),
+            ("g;x=1/../y", "http://a/b/c/y"),
+            ("g?y/./x", "http://a/b/c/g?y/./x"),
+            ("g?y/../x", "http://a/b/c/g?y/../x"),
+            ("g#s/./x", "http://a/b/c/g"),
+            ("g#s/../x", "http://a/b/c/g"),
+        ];
+        for (reference, expected) in examples {
+            assert_eq!(
+                base.resolve(reference).unwrap().text(),
+                expected,
+                "{reference}"
+            );
+        }
+        for unsupported in ["g:h", "http:g"] {
+            assert!(base.resolve(unsupported).is_none(), "{unsupported}");
+        }
+    }
+
+    #[test]
+    fn redirect_resolution_preserves_encoded_path_structure() {
+        let base = parse("http://a/b/c/d;p?q").unwrap();
+        for (reference, expected) in [
+            ("/a/.", "http://a/a/"),
+            ("/a/b/..", "http://a/a/"),
+            ("/a//b", "http://a/a//b"),
+            ("g//h", "http://a/b/c/g//h"),
+            ("/a///b/../c", "http://a/a///c"),
+            ("/a//..", "http://a/a/"),
+            ("/a//../c", "http://a/a/c"),
+            ("http://a/b/./c", "http://a/b/c"),
+            ("http://a/b/c/..", "http://a/b/"),
+            ("http://a/b//./c/../d", "http://a/b//d"),
+            ("//a/b/c/..", "http://a/b/"),
+            ("../%2e%2e//g?x=/./y", "http://a/b/%2e%2e//g?x=/./y"),
+            ("/a%2fb/%2E/../c", "http://a/a%2fb/c"),
+            ("/a//b?", "http://a/a//b?"),
+        ] {
+            assert_eq!(
+                base.resolve(reference).unwrap().text(),
+                expected,
+                "{reference}"
+            );
+        }
+        let repeated = parse("http://a/b//c/d").unwrap();
+        assert_eq!(repeated.resolve("../g").unwrap().text(), "http://a/b//g");
+        // Parsing a URL for the first request does not normalize its path.
+        let original = parse("http://a/b//./c/..").unwrap();
+        assert_eq!(original.path, "/b//./c/..");
+        assert_eq!(original.resolve("").unwrap().path, original.path);
+        assert_eq!(original.resolve("?x").unwrap().path, original.path);
     }
 }

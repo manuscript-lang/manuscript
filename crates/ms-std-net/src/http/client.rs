@@ -2502,6 +2502,65 @@ mod tests {
     }
 
     #[test]
+    fn redirects_preserve_the_resolved_request_target() {
+        let (address, _) = serve(|socket, _| {
+            let received = read_request(socket).unwrap();
+            let target = received.split_ascii_whitespace().nth(1).unwrap();
+            if let Some((_, case)) = target.split_once("?case=") {
+                let host = received
+                    .lines()
+                    .find_map(|line| line.strip_prefix("Host: "))
+                    .unwrap();
+                let location = match case {
+                    "0" => ".".to_string(),
+                    "1" => "..".to_string(),
+                    "2" => "/a//b".to_string(),
+                    "3" => "/a//../b".to_string(),
+                    "4" => format!("http://{host}/a/./b/.."),
+                    "5" => format!("//{host}/a//./b/../c?x=../."),
+                    "6" => "../%2e%2e//item?next=/./x".to_string(),
+                    _ => "/a///b/../c".to_string(),
+                };
+                reply(
+                    socket,
+                    &format!(
+                        "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    ),
+                );
+            } else {
+                reply(
+                    socket,
+                    &format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{target}",
+                        target.len()
+                    ),
+                );
+            }
+        });
+        let (_net, client) = client(ClientOptions {
+            max_redirects: Some(1),
+            ..ClientOptions::default()
+        });
+        for (case, expected) in [
+            "/base/dir/",
+            "/base/",
+            "/a//b",
+            "/a/b",
+            "/a/",
+            "/a//c?x=../.",
+            "/base/%2e%2e//item?next=/./x",
+            "/a///c",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let initial = format!("/base/dir/start?case={case}");
+            let body = client.send(request("GET", &address, &initial)).unwrap();
+            assert_eq!(text(&body), *expected, "case {case}");
+        }
+    }
+
+    #[test]
     fn follows_redirects_like_go() {
         let (address, _) = serve(|s, _| {
             while let Some(request) = read_request(s) {
