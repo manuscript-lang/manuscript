@@ -5,7 +5,7 @@
 //! high word is the hash's high word (a tag, so probes skip non-matching slots without touching
 //! them) and the low word is the slot number (`0` empty, `u32::MAX` removed, otherwise slot + 1). Removal leaves a hole that scans
 //! skip and compaction reclaims once more than half the slots are holes.
-//! ms: domain set
+//! ms: domain map
 use crate::alloc;
 use crate::desc::{needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
@@ -991,7 +991,7 @@ pub unsafe extern "C-unwind" fn msrt_map_remove(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=map
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_contains(
     m: *const MapVal,
     kd: KeyDesc,
@@ -1047,7 +1047,7 @@ unsafe fn value_ptr_k<K: KeyOps>(
 
 /// `get(key)`: copies the value into `out`; 0 when absent.
 #[unsafe(no_mangle)]
-// ms: leaf domain=map
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_get(
     m: *const MapVal,
     kd: KeyDesc,
@@ -1084,7 +1084,7 @@ pub unsafe extern "C-unwind" fn msrt_map_clear(m: *mut MapVal, kd: KeyDesc, vd: 
 
 /// `Set.values()`: a set's elements are its map's keys, as a fresh list of copies.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_values(
     m: *const MapVal,
     kd: KeyDesc,
@@ -1389,7 +1389,7 @@ unsafe fn each_key_while(m: &MapVal, kd: &TypeDesc, mut f: impl FnMut(*const u8)
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
@@ -1397,7 +1397,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, k
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_union(
     a: *const MapVal,
     b: *const MapVal,
@@ -1433,7 +1433,7 @@ unsafe fn filter_into(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_intersection(
     a: *const MapVal,
     b: *const MapVal,
@@ -1449,7 +1449,7 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_difference(
     a: *const MapVal,
     b: *const MapVal,
@@ -1465,7 +1465,7 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     a: *const MapVal,
     b: *const MapVal,
@@ -1486,7 +1486,7 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     a: *const MapVal,
     b: *const MapVal,
@@ -1501,7 +1501,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
     a: *const MapVal,
     b: *const MapVal,
@@ -1513,7 +1513,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_superset_of(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=set
 pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     a: *const MapVal,
     b: *const MapVal,

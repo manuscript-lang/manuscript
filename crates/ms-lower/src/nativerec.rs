@@ -74,11 +74,11 @@ impl NativeOps {
                 _ => continue,
             };
             let r = &method.receiver;
-            let rec = if r.is_time(syms, "Timestamp") {
+            let rec = if r.is(ms_check::api::types::Builtin::Timestamp) {
                 NativeRec::Timestamp
-            } else if r.is_time(syms, "Instant") {
+            } else if r.is(ms_check::api::types::Builtin::Instant) {
                 NativeRec::Instant
-            } else if r.is_time(syms, "Duration") {
+            } else if r.is(ms_check::api::types::Builtin::Duration) {
                 NativeRec::Duration
             } else if r.is_std(syms, "Decimal") {
                 NativeRec::Decimal

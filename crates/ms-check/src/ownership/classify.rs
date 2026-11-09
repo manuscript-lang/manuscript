@@ -172,7 +172,7 @@ impl Classifier {
         #[cfg(test)]
         CLASS_QUERIES.with(|queries| queries.set(queries.get() + 1));
         match t.kind {
-            Kind::Primitive if syms.str(t.id) == "String" => Class::Move,
+            Kind::Primitive if t.is(Builtin::String) => Class::Move,
             Kind::Primitive | Kind::Invalid | Kind::Inferred => Class::Copy,
             Kind::Variable => {
                 if t.bounds.borrow().iter().any(|b| b.is(Builtin::Closeable)) {

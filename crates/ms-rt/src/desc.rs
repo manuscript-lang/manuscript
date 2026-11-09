@@ -1,5 +1,4 @@
 //! Type descriptors: drop, copy, equality and hash of values stored in slots.
-//! ms: domain eq
 use crate::alloc;
 use crate::fault;
 use crate::map;

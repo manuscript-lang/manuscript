@@ -270,7 +270,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = if ct::float_bits(self.syms, &t) == Some(32) {
+                let f: f64 = if ct::float_bits(&t) == Some(32) {
                     ms_check::api::number::float32(text)
                 } else {
                     ms_check::api::number::canonical(text).parse().ok()
@@ -366,7 +366,7 @@ impl<'a> FnLower<'a> {
             }
             "UInt64" => Some(u64::try_from(parse_int(text)?).ok()? as i64),
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = if ct::float_bits(self.syms, &t) == Some(32) {
+                let f: f64 = if ct::float_bits(&t) == Some(32) {
                     ms_check::api::number::float32(text)?
                 } else {
                     ms_check::api::number::canonical(text).parse().ok()?
@@ -781,10 +781,10 @@ impl<'a> FnLower<'a> {
     /// Brings a 64-bit result back to its sized type: integers fault when out of range,
     /// binary32 floats round. Default-width and 64-bit types pass through.
     fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
-        if ct::int_bits(self.syms, t).is_some_and(|bits| bits < 64) {
+        if ct::int_bits(t).is_some_and(|bits| bits < 64) {
             return self.b.narrow_chk(v);
         }
-        if ct::float_bits(self.syms, t) == Some(32) {
+        if ct::float_bits(t) == Some(32) {
             return self.b.f32_round(v);
         }
         v

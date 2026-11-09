@@ -33,7 +33,7 @@ impl<'a> FnLower<'a> {
                     v: self.b.bconst(*b),
                     own: false,
                 }),
-                ExprKind::Number(t) if self.syms.str(p.ty.id) == "Int" => {
+                ExprKind::Number(t) if p.ty.is(ct::Builtin::Int) => {
                     match ms_check::api::number::canonical(self.syms.str(t)).parse::<i64>() {
                         Ok(n) => Ok(Val {
                             v: self.b.iconst(n),

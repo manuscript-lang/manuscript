@@ -149,6 +149,13 @@ fn main() {
             .find_map(|f| f.strip_prefix("domain="))
             .unwrap_or("")
             .to_string();
+        let named: Vec<&str> = flags
+            .iter()
+            .filter_map(|f| {
+                f.strip_prefix("keeps:")
+                    .or_else(|| f.strip_prefix("takes:"))
+            })
+            .collect();
         let flags = bit("leaf")
             | bit("pure") << 1
             | bit("fresh") << 2
@@ -165,13 +172,23 @@ fn main() {
             Some(at) => at,
             None => close,
         };
-        let params = split_params(&rest[..close])
+        let params: Vec<(String, String)> = split_params(&rest[..close])
             .into_iter()
             .map(str::trim)
             .filter(|p| !p.is_empty())
             .filter_map(|p| p.split_once(':'))
             .map(|(name, ty)| (name.trim().to_string(), ty.trim().to_string()))
             .collect();
+        // A `keeps:`/`takes:` flag names one of the function's parameters.
+        let param_names: Vec<&str> = params
+            .iter()
+            .map(|(p, _)| p.trim_start_matches("handle ").trim())
+            .collect();
+        for named in &named {
+            if !param_names.contains(named) {
+                panic!("rt_symbols.txt:{}: no parameter `{named}`: {line}", n + 1);
+            }
+        }
         let kept = kept.into_iter().map(str::to_string).collect();
         let ret = rest[close + 1..]
             .trim()

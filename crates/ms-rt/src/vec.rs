@@ -3,7 +3,7 @@
 //! Every operation takes a pointer to the receiver value and the element
 //! descriptor. Mutators change the receiver in place and return nothing;
 //! element arguments of stores are consumed (ownership moves into the list).
-//! ms: domain binary
+//! ms: domain collection
 use crate::alloc;
 use crate::desc::{self, is_plain, needs_no_drop, slot_copy, slot_drop, slot_eq, slot_hash};
 use crate::fault;
@@ -275,7 +275,7 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -288,7 +288,7 @@ pub unsafe extern "C-unwind" fn msrt_list_first(v: *const VecVal, d: ElemDesc, o
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -303,7 +303,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last(v: *const VecVal, d: ElemDesc, ou
 
 /// `index_of`: present flag; index through `out`. `probe` is borrowed.
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_index_of(
     v: *const VecVal,
     d: ElemDesc,
@@ -347,7 +347,7 @@ fn find_int(items: &[i64], target: i64) -> Option<usize> {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
     v: *const VecVal,
     d: ElemDesc,
@@ -368,7 +368,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last_index_of(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_contains(
     v: *const VecVal,
     d: ElemDesc,
@@ -450,7 +450,7 @@ pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
 
 /// Removes the last element into `out`; 0 when empty.
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -759,7 +759,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
 
 /// `slice(start, end)`: status protocol.
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_slice(
     v: *const VecVal,
     d: ElemDesc,
@@ -1305,7 +1305,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
 // ---- generators ----
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_filled(
     value: *const u8,
     d: ElemDesc,
@@ -1362,7 +1362,7 @@ pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut 
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf domain=collection
+// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_range_by(
     start: i64,
     end: i64,
@@ -1470,7 +1470,7 @@ pub(crate) unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_drop(b: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
@@ -1483,21 +1483,21 @@ pub unsafe extern "C-unwind" fn msrt_bytes_drop(b: *mut VecVal) {
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_copy(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe { copy_bytes(b, out) }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_contains(b: *const VecVal, v: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { string::find(bslice(b), bslice(v)).is_some() as u8 }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
     b: *const VecVal,
     v: *const VecVal,
@@ -1517,7 +1517,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
 
 /// `index_of_byte(value, start)`: first offset at or after `start` holding `value`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
     b: *const VecVal,
     value: i64,
@@ -1555,7 +1555,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
     b: *const VecVal,
     v: *const VecVal,
@@ -1574,21 +1574,21 @@ pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { bslice(b).starts_with(bslice(v)) as u8 }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8 {
     // SAFETY: caller contract.
     unsafe { bslice(b).ends_with(bslice(v)) as u8 }
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_get(
     b: *const VecVal,
     index: i64,
@@ -1610,7 +1610,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_get(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_slice(
     b: *const VecVal,
     start: i64,
@@ -1633,7 +1633,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_slice(
 /// (`cap == 0` marks a view, which is never freed). Bounds as in `slice`; a bound outside the
 /// receiver faults.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_view(
     b: *const VecVal,
     start: i64,
@@ -1663,7 +1663,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_view(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
@@ -1675,7 +1675,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_reversed(b: *const VecVal, out: *mut 
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_with_value(
     b: *const VecVal,
     index: i64,
@@ -1700,7 +1700,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_with_value(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_concat(
     a: *const VecVal,
     b: *const VecVal,
@@ -1717,7 +1717,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_concat(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_split(
     b: *const VecVal,
     sep: *const VecVal,
@@ -1771,7 +1771,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
@@ -1795,7 +1795,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
 
 /// `bytes.join(parts)`: the parts end to end in one allocation.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract; the list holds `Bytes` values inline.
     unsafe {
@@ -1831,7 +1831,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut 
 
 /// `Bytes(values)`: a `List[UInt8]` already holds one byte per element, so this copies it.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
@@ -1846,7 +1846,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
 
 /// `decode_utf8`: presence flag (0 when the bytes are not valid UTF-8), the string through `out`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 {
     // SAFETY: caller contract.
     unsafe {
@@ -1862,7 +1862,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
 /// `decode_utf8_range(start, end)`: like `decode_utf8` over `[start, end)` without copying the range
 /// first; bounds outside `0 <= start <= end <= length()` fault.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
     b: *const VecVal,
     start: i64,
@@ -1889,7 +1889,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
 
 /// `BytesBuilder.append(value)`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
     // SAFETY: caller contract.
     unsafe {
@@ -1906,7 +1906,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
 
 /// `BytesBuilder.append_bytes(values)`: borrowed `values`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) {
     // SAFETY: caller contract.
     unsafe {
@@ -1926,7 +1926,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
 /// number, or all eight bytes as the `i64` with that bit pattern. `@std/bytes.ms` builds every
 /// `Bytes.int32_le(at)` style read on it. Missing bytes are `STATUS_OUT_OF_RANGE`.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=binary
 pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
     b: *const VecVal,
     at: i64,

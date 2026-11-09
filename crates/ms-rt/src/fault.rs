@@ -1,5 +1,4 @@
 //! Faults, the cleanup stack, call depth, cancellation and process exit.
-//! ms: domain guard
 use crate::global::Process;
 #[allow(unused_imports)]
 use crate::sys;

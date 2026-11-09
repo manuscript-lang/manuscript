@@ -101,7 +101,7 @@ impl Checker {
         right: &Expr,
         ty: &Ty,
     ) {
-        let Some(range) = int_range(self.syms, ty) else {
+        let Some(range) = int_range(ty) else {
             return;
         };
         if matches!(op, BinaryOp::Div | BinaryOp::Rem) && self.fold(right, range) == Some(0) {
@@ -130,7 +130,7 @@ impl Checker {
         let ExprKind::List(items) = &left.kind else {
             return;
         };
-        let Some(i) = self.fold(index, int_range(self.syms, &int()).unwrap_or_default()) else {
+        let Some(i) = self.fold(index, int_range(&int()).unwrap_or_default()) else {
             return;
         };
         let len = items.len() as i128;

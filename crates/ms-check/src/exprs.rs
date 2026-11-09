@@ -57,16 +57,13 @@ fn is_ordering(op: BinaryOp) -> bool {
 }
 
 /// Whether a type is an integer of any width.
-pub(crate) fn integer(syms: ms_syntax::Names, t: &Ty) -> bool {
-    int_bits(syms, t).is_some()
+pub(crate) fn integer(t: &Ty) -> bool {
+    int_bits(t).is_some()
 }
 
 /// Whether a type is an integer or float of any width, or Decimal.
-pub(crate) fn numeric(syms: ms_syntax::Names, t: &Ty) -> bool {
-    integer(syms, t)
-        || float_bits(syms, t).is_some()
-        || t.is(Builtin::Decimal)
-        || t.is(Builtin::BigInt)
+pub(crate) fn numeric(t: &Ty) -> bool {
+    integer(t) || float_bits(t).is_some() || t.is(Builtin::Decimal) || t.is(Builtin::BigInt)
 }
 
 /// An unsuffixed number literal, possibly signed.
@@ -88,7 +85,6 @@ pub(crate) fn is_plain_literal(syms: ms_syntax::Names, e: &Expr) -> bool {
 /// operand-type diagnostic.
 impl Checker {
     pub(crate) fn literal_hint<'a>(&self, literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
-        let syms = self.syms;
         if let ExprKind::List(items) = &literal.kind {
             // A list of plain literals takes the element type of a `List` of a sized number.
             let element =
@@ -100,25 +96,25 @@ impl Checker {
             return all.then_some(other);
         }
         let fractional = self.literal_tree_fractional(literal)?;
-        let sized_int = int_bits(syms, other).is_some() && syms.str(other.id) != "Int";
-        let sized_float = float_bits(syms, other).is_some() && syms.str(other.id) != "Float";
+        let sized_int = int_bits(other).is_some() && !other.is(Builtin::Int);
+        let sized_float = float_bits(other).is_some() && !other.is(Builtin::Float);
         ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
     }
 }
 
 /// Whether the decimal integer literal `text`, negated when `negated`, fits the integer type `t`.
-fn int_literal_fits(syms: ms_syntax::Names, text: &str, negated: bool, t: &Ty) -> bool {
+fn int_literal_fits(text: &str, negated: bool, t: &Ty) -> bool {
     let Ok(v) = text.parse::<i128>() else {
         return false;
     };
     let v = if negated { -v } else { v };
-    int_range(syms, t).is_some_and(|(lo, hi)| (lo..=hi).contains(&v))
+    int_range(t).is_some_and(|(lo, hi)| (lo..=hi).contains(&v))
 }
 
-fn is_time_operand(syms: ms_syntax::Names, types: &[&Ty]) -> bool {
+fn is_time_operand(types: &[&Ty]) -> bool {
     types
         .iter()
-        .any(|t| t.is_time(syms, "Duration") || t.is_time(syms, "Instant"))
+        .any(|t| t.is(Builtin::Duration) || t.is(Builtin::Instant))
 }
 
 const TIME_ARITHMETIC: [(BinaryOp, &str, &str, &str); 5] = [
@@ -146,8 +142,8 @@ pub(crate) fn is_source_location(syms: ms_syntax::Names, name: Name) -> bool {
     matches!(syms.str(name), "__LINE__" | "__FILE__")
 }
 
-fn finish_info(syms: ms_syntax::Names, mut i: Info) -> Info {
-    if i.ty.as_ref().is_some_and(|t| t.is_never(syms)) {
+fn finish_info(mut i: Info) -> Info {
+    if i.ty.as_ref().is_some_and(|t| t.is_never()) {
         i.no_return = true;
     }
     i
@@ -208,7 +204,7 @@ impl Checker {
             i.ty = Some(invalid());
         }
         let actual = i.t();
-        if actual.is_never(self.syms) {
+        if actual.is_never() {
             i.no_return = true;
         }
         if let Some(exp) = expected {
@@ -225,7 +221,7 @@ impl Checker {
             if !actual.is_invalid()
                 && !exp.is_invalid()
                 && !inference_reported
-                && !compatible(self.syms, &Some(actual.clone()), exp)
+                && !compatible(&Some(actual.clone()), exp)
             {
                 if self.interface_assignable(&actual, exp) {
                     i.interface_source = Some(actual.clone());
@@ -351,7 +347,7 @@ impl Checker {
                 return self.infer_binary(e, *op, left, right, expected, i);
             }
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_number(
@@ -386,8 +382,7 @@ impl Checker {
             }
         } else if ms_syntax::number::is_fractional(text) {
             // An expected sized float type gives the literal that type.
-            let narrow = expected
-                .filter(|t| float_bits(self.syms, t) == Some(32) && self.syms.str(t.id) != "Float");
+            let narrow = expected.filter(|t| float_bits(t) == Some(32) && !t.is(Builtin::Float));
             match (text.parse::<f64>(), narrow) {
                 (Ok(_), Some(_)) if ms_syntax::number::float32(text).is_none_or(f64::is_infinite) => self.type_error(
                     e.pos,
@@ -406,12 +401,11 @@ impl Checker {
             i.ty = Some(narrow.cloned().unwrap_or_else(|| primitive("Float")));
         } else {
             // An expected sized integer type gives the literal that type.
-            let sized = expected
-                .filter(|t| int_bits(self.syms, t).is_some() && self.syms.str(t.id) != "Int");
+            let sized = expected.filter(|t| int_bits(t).is_some() && !t.is(Builtin::Int));
             match sized {
                 Some(t) => {
-                    if !int_literal_fits(self.syms, text, negated, t) {
-                        let (lo, hi) = int_range(self.syms, t).unwrap_or_default();
+                    if !int_literal_fits(text, negated, t) {
+                        let (lo, hi) = int_range(t).unwrap_or_default();
                         self.type_error(
                             e.pos,
                             format!(
@@ -434,7 +428,7 @@ impl Checker {
                 }
             }
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_text(&mut self, parts: &[TextPart], mut i: Info) -> Info {
@@ -445,7 +439,7 @@ impl Checker {
                 i.no_return = i.no_return || p.no_return;
             }
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_name(&mut self, e: &Expr, name: Name, expected: Option<&Ty>, mut i: Info) -> Info {
@@ -517,7 +511,7 @@ impl Checker {
                 string()
             });
             i.native = Native::Builtin(name);
-            return finish_info(self.syms, i);
+            return finish_info(i);
         }
         let (typ, cs, ambiguous) = self.find_case(name, e.pos);
         if ambiguous {
@@ -531,7 +525,7 @@ impl Checker {
             let msg = self.unknown_name(name);
             self.unknown_error(e.pos, name, msg);
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_apply(
@@ -616,7 +610,7 @@ impl Checker {
                 "brackets require type arguments on a generic declaration or one Int index on a List",
             );
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_member(
@@ -777,7 +771,7 @@ impl Checker {
             );
         }
         i.method = Some(m);
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_list(&mut self, e: &Expr, items: &[Expr], expected: Option<&Ty>, mut i: Info) -> Info {
@@ -821,7 +815,7 @@ impl Checker {
         };
         self.literal_items(items, &independent, std::slice::from_ref(&element), &mut i);
         i.ty = Some(self.session.standard("List", vec![element]));
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_map_literal(
@@ -878,7 +872,7 @@ impl Checker {
         // Key and value types were checked where they were written or
         // instantiated; rechecking them makes nested literals quartic in depth.
         self.bounds_hold(&map_type, e.pos);
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn independent_items(
@@ -907,7 +901,7 @@ impl Checker {
         while at < items.len() {
             if !self.contextual(items[at]) {
                 let v = self.expression(items[at], None);
-                if typ.is_none() && !v.t().is_never(self.syms) {
+                if typ.is_none() && !v.t().is_never() {
                     let t = v.t();
                     typ = Some(if t.kind == Kind::Function {
                         required_type(&t)
@@ -990,7 +984,7 @@ impl Checker {
             i.no_return = i.no_return || v.no_return;
         }
         i.ty = expected.cloned();
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn infer_unary(
@@ -1029,7 +1023,7 @@ impl Checker {
             );
             self.set_info(operand, literal.clone());
             i.ty = literal.ty.clone();
-            return finish_info(self.syms, i);
+            return finish_info(i);
         }
         let hint = expected
             .filter(|_| matches!(op, UnaryOp::Neg | UnaryOp::Plus))
@@ -1039,7 +1033,7 @@ impl Checker {
         let vt = v.t();
         match op {
             UnaryOp::Not => {
-                if !compatible(self.syms, &Some(vt.clone()), &bool_()) {
+                if !compatible(&Some(vt.clone()), &bool_()) {
                     self.type_error(
                         e.pos,
                         format!(
@@ -1051,13 +1045,13 @@ impl Checker {
             }
             UnaryOp::Try => self.check_try(e, &v, &mut i),
             UnaryOp::Neg | UnaryOp::Plus => {
-                if op == UnaryOp::Neg && int_unsigned(self.syms, &vt) {
+                if op == UnaryOp::Neg && int_unsigned(&vt) {
                     self.type_error(
                         e.pos,
                         format!("unary - is not defined for {vt_t}; subtract from zero with a wider signed type, e.g. 0 - x.to_int()", vt_t = vt.display(self.syms)),
                     );
                 }
-                if !numeric(self.syms, &vt) {
+                if !numeric(&vt) {
                     self.type_error(
                         e.pos,
                         format!("numeric sign requires an independently known numeric operand, found {vt_t}; apply + or - to Int, Float, Decimal, or BigInt", vt_t = vt.display(self.syms)),
@@ -1066,7 +1060,7 @@ impl Checker {
                 i.ty = Some(vt);
             }
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     /// Types `try operand`: the operand must be a Result whose error the
@@ -1178,8 +1172,8 @@ impl Checker {
         i.no_return = a.no_return || (!logical && b.no_return);
         if logical {
             i.ty = Some(bool_());
-            if (!compatible(self.syms, &Some(at.clone()), &bool_())
-                || !compatible(self.syms, &Some(bt.clone()), &bool_()))
+            if (!compatible(&Some(at.clone()), &bool_())
+                || !compatible(&Some(bt.clone()), &bool_()))
                 && !invalid_ty(&at)
                 && !invalid_ty(&bt)
             {
@@ -1190,12 +1184,12 @@ impl Checker {
             }
             return i;
         }
-        if matches!(op, BinaryOp::Add | BinaryOp::Sub) && is_time_operand(self.syms, &[&at, &bt]) {
+        if matches!(op, BinaryOp::Add | BinaryOp::Sub) && is_time_operand(&[&at, &bt]) {
             self.check_time_arithmetic(e, op, &at, &bt, &mut i);
             return i;
         }
         let mut common = at.clone();
-        if common.is_never(self.syms) {
+        if common.is_never() {
             common = bt.clone();
         }
         let comparison = matches!(op, BinaryOp::Eq | BinaryOp::Ne) || is_ordering(op);
@@ -1207,10 +1201,10 @@ impl Checker {
         let wrapped_operand = matches!(op, BinaryOp::Eq | BinaryOp::Ne)
             && common.is(Builtin::Optional)
             && common.args.len() == 1
-            && compatible(self.syms, &Some(bt.clone()), &common.args[0]);
-        if common.is_never(self.syms)
-            || !compatible(self.syms, &Some(at.clone()), &common)
-            || !(wrapped_operand || compatible(self.syms, &Some(bt.clone()), &common))
+            && compatible(&Some(bt.clone()), &common.args[0]);
+        if common.is_never()
+            || !compatible(&Some(at.clone()), &common)
+            || !(wrapped_operand || compatible(&Some(bt.clone()), &common))
         {
             let mut hint = optional_use_hint(self.syms, &at, &bt);
             if hint.is_empty() {
@@ -1260,10 +1254,10 @@ impl Checker {
             }
             _ if is_ordering(op) => {
                 i.ty = Some(bool_());
-                if !numeric(self.syms, &common)
-                    && self.syms.str(common.id) != "String"
-                    && !common.is_time(self.syms, "Duration")
-                    && !common.is_time(self.syms, "Instant")
+                if !numeric(&common)
+                    && !common.is(Builtin::String)
+                    && !common.is(Builtin::Duration)
+                    && !common.is(Builtin::Instant)
                 {
                     self.type_error(
                         e.pos,
@@ -1274,18 +1268,15 @@ impl Checker {
             _ => {
                 i.ty = Some(common.clone());
                 if !common.is_invalid()
-                    && !numeric(self.syms, &common)
-                    && !(self.syms.str(common.id) == "String" && op == BinaryOp::Add)
-                    && !(common.is_time(self.syms, "Duration")
+                    && !numeric(&common)
+                    && !(common.is(Builtin::String) && op == BinaryOp::Add)
+                    && !(common.is(Builtin::Duration)
                         && matches!(op, BinaryOp::Add | BinaryOp::Sub))
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
                 self.constant_arithmetic(e, op, left, right, &common);
-                if op == BinaryOp::Rem
-                    && !integer(self.syms, &common)
-                    && !common.is(Builtin::BigInt)
-                {
+                if op == BinaryOp::Rem && !integer(&common) && !common.is(Builtin::BigInt) {
                     self.type_error(
                         e.pos,
                         format!("remainder requires integer operands, found {common_t}; convert to Int or use math functions", common_t = common.display(self.syms)),
@@ -1293,7 +1284,7 @@ impl Checker {
                 }
             }
         }
-        finish_info(self.syms, i)
+        finish_info(i)
     }
 
     fn check_time_arithmetic(
@@ -1307,8 +1298,8 @@ impl Checker {
         let mut matches = 0;
         for (row_op, l, r, result) in TIME_ARITHMETIC {
             if row_op == op
-                && compatible(self.syms, &Some(left.clone()), &self.session.time_type(l))
-                && compatible(self.syms, &Some(right.clone()), &self.session.time_type(r))
+                && compatible(&Some(left.clone()), &self.session.time_type(l))
+                && compatible(&Some(right.clone()), &self.session.time_type(r))
             {
                 i.ty = Some(self.session.time_type(result));
                 matches += 1;

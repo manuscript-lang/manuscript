@@ -1327,3 +1327,21 @@ pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> 
 fn domain_of(sym: &str) -> String {
     rt_flags(sym).domain.unwrap_or("runtime").to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every `// ms: op=<mnemonic>` names a MIR instruction.
+    #[test]
+    fn declared_ops_are_instructions() {
+        for (sym, .., op, _) in SYMBOLS {
+            if !op.is_empty() {
+                assert!(
+                    Op::from_name(op).is_some(),
+                    "{sym}: unknown instruction {op}"
+                );
+            }
+        }
+    }
+}

@@ -963,7 +963,7 @@ impl Walker<'_> {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("get", 0) => recv.is(Builtin::Optional),
             ("first" | "last", 0) => recv.is(Builtin::List),
-            ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(self.syms),
+            ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(),
             _ => false,
         };
         returns_borrow.then_some(&**left)
@@ -980,7 +980,7 @@ impl Walker<'_> {
             return None;
         };
         let ty = self.cx.m.ty(e);
-        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string(self.syms)) {
+        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string()) {
             return None;
         }
         let root = self.root_name(recv)?;

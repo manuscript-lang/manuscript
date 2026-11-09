@@ -102,7 +102,7 @@ impl<'a> FnLower<'a> {
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
-        if !self.dead && self.ety(e).is_never(self.syms) {
+        if !self.dead && self.ety(e).is_never() {
             self.b.unreachable();
             self.terminated();
         }
@@ -1650,7 +1650,7 @@ impl<'a> FnLower<'a> {
             ExprKind::Name(_) if module.default_form(self.syms, d) == DefaultForm::None => {
                 Some(val(self.b.opt_none(mt)))
             }
-            ExprKind::Number(n) if self.syms.str(t.id) == "Int" => {
+            ExprKind::Number(n) if t.is(ct::Builtin::Int) => {
                 ms_check::api::number::canonical(self.syms.str(n))
                     .parse::<i64>()
                     .ok()

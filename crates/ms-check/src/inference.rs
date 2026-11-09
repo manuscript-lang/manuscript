@@ -129,7 +129,7 @@ impl Checker {
             }
             return;
         }
-        if typ.is_never(self.syms) {
+        if typ.is_never() {
             return;
         }
         let Some(r) = self.return_inference.as_mut() else {
@@ -171,7 +171,7 @@ impl Checker {
             if matches!(arg.value.kind, ExprKind::Lambda(_)) {
                 pending.push(*arg);
             } else if is_plain_literal(self.syms, arg.value)
-                && sized_number(self.syms, parameter_type(params, arg))
+                && sized_number(parameter_type(params, arg))
             {
                 // The literal takes the parameter's own sized type when it is checked.
             } else if sized_literal_list(self.syms, arg.value, parameter_type(params, arg)) {
@@ -298,7 +298,7 @@ impl Checker {
             && actual_ty.is(Builtin::Optional)
             && actual_ty.args.len() == 1
             && !substituted.is(Builtin::Optional)
-            && compatible(self.syms, &Some(substituted.clone()), &actual_ty.args[0])
+            && compatible(&Some(substituted.clone()), &actual_ty.args[0])
         {
             s.insert(pattern.id, actual_ty.clone());
             return;
@@ -306,7 +306,7 @@ impl Checker {
         // A plain value beside an inferred `T?` wraps into it, as at a typed binding.
         if substituted.is(Builtin::Optional)
             && substituted.args.len() == 1
-            && compatible(self.syms, &Some(actual_ty.clone()), &substituted.args[0])
+            && compatible(&Some(actual_ty.clone()), &substituted.args[0])
         {
             return;
         }
@@ -499,14 +499,14 @@ fn sized_literal_list(syms: ms_syntax::Names, e: &Expr, parameter: Option<Ty>) -
     !items.is_empty()
         && items.iter().all(|x| is_plain_literal(syms, x))
         && parameter.is_some_and(|p| {
-            p.is(Builtin::List) && p.args.len() == 1 && sized_number(syms, Some(p.args[0].clone()))
+            p.is(Builtin::List) && p.args.len() == 1 && sized_number(Some(p.args[0].clone()))
         })
 }
 
 /// Whether `t` is a sized integer or `Float32`, which a number literal takes as its own type.
-fn sized_number(syms: ms_syntax::Names, t: Option<Ty>) -> bool {
+fn sized_number(t: Option<Ty>) -> bool {
     t.is_some_and(|t| {
-        (int_bits(syms, &t).is_some() && syms.str(t.id) != "Int")
-            || (float_bits(syms, &t) == Some(32) && syms.str(t.id) != "Float")
+        (int_bits(&t).is_some() && !t.is(Builtin::Int))
+            || (float_bits(&t) == Some(32) && !t.is(Builtin::Float))
     })
 }

@@ -191,9 +191,101 @@ pub enum Builtin {
     Regex,
     /// The implicit `Self` variable of an interface.
     SelfType,
+    /// `Int`.
+    Int,
+    /// `Int8`.
+    Int8,
+    /// `Int16`.
+    Int16,
+    /// `Int32`.
+    Int32,
+    /// `Int64`.
+    Int64,
+    /// `UInt8`.
+    UInt8,
+    /// `UInt16`.
+    UInt16,
+    /// `UInt32`.
+    UInt32,
+    /// `UInt64`.
+    UInt64,
+    /// `Float`.
+    Float,
+    /// `Float32`.
+    Float32,
+    /// `Float64`.
+    Float64,
+    /// `Bool`.
+    Bool,
+    /// `String`.
+    String,
+    /// `Unit`.
+    Unit,
+    /// `Never`.
+    Never,
+    /// `Timestamp`.
+    Timestamp,
+    /// `Instant`.
+    Instant,
+    /// `Duration`.
+    Duration,
 }
 
 impl Builtin {
+    /// The primitive type spelled `name`, if any.
+    pub fn primitive(name: &str) -> Option<Builtin> {
+        match name {
+            "Int" => Some(Builtin::Int),
+            "Int8" => Some(Builtin::Int8),
+            "Int16" => Some(Builtin::Int16),
+            "Int32" => Some(Builtin::Int32),
+            "Int64" => Some(Builtin::Int64),
+            "UInt8" => Some(Builtin::UInt8),
+            "UInt16" => Some(Builtin::UInt16),
+            "UInt32" => Some(Builtin::UInt32),
+            "UInt64" => Some(Builtin::UInt64),
+            "Float" => Some(Builtin::Float),
+            "Float32" => Some(Builtin::Float32),
+            "Float64" => Some(Builtin::Float64),
+            "Bool" => Some(Builtin::Bool),
+            "String" => Some(Builtin::String),
+            "Unit" => Some(Builtin::Unit),
+            "Never" => Some(Builtin::Never),
+            _ => None,
+        }
+    }
+
+    /// A type declared by a bundled source module that the compiler gives a native layout.
+    pub fn source(module: &str, name: &str) -> Option<Builtin> {
+        match (module, name) {
+            ("@std/time.ms", "Timestamp") => Some(Builtin::Timestamp),
+            ("@std/time.ms", "Instant") => Some(Builtin::Instant),
+            ("@std/time.ms", "Duration") => Some(Builtin::Duration),
+            _ => None,
+        }
+    }
+
+    /// Whether this is a primitive integer type.
+    pub fn is_int(self) -> bool {
+        matches!(
+            self,
+            Builtin::Int
+                | Builtin::Int8
+                | Builtin::Int16
+                | Builtin::Int32
+                | Builtin::Int64
+                | Builtin::UInt8
+                | Builtin::UInt16
+                | Builtin::UInt32
+                | Builtin::UInt64
+        )
+    }
+
+    /// Whether this is a primitive float type.
+    pub fn is_float(self) -> bool {
+        matches!(self, Builtin::Float | Builtin::Float32 | Builtin::Float64)
+    }
+
     /// The built-in named by a type id (`@std/<name>`), if any.
     pub fn from_id(id: &str) -> Option<Builtin> {
         match id.strip_prefix("@std/")? {
@@ -360,7 +452,12 @@ pub fn show(syms: ms_syntax::Names, t: &Option<Ty>) -> String {
 impl Type {
     /// A bare type of one kind.
     pub fn new(syms: ms_syntax::Names, name: Name, id: Name, kind: Kind) -> Type {
-        Type::with_builtin(name, id, kind, Builtin::from_id(syms.str(id)))
+        let builtin = if kind == Kind::Primitive {
+            Builtin::primitive(syms.str(id))
+        } else {
+            Builtin::from_id(syms.str(id))
+        };
+        Type::with_builtin(name, id, kind, builtin)
     }
 
     /// A bare type of one kind whose built-in identity is already known.
@@ -411,13 +508,13 @@ impl Type {
     }
 
     /// The `Never` primitive.
-    pub fn is_never(&self, syms: ms_syntax::Names) -> bool {
-        self.kind == Kind::Primitive && syms.str(self.id) == "Never"
+    pub fn is_never(&self) -> bool {
+        self.kind == Kind::Primitive && self.is(Builtin::Never)
     }
 
     /// The `String` primitive.
-    pub fn is_string(&self, syms: ms_syntax::Names) -> bool {
-        self.kind == Kind::Primitive && syms.str(self.id) == "String"
+    pub fn is_string(&self) -> bool {
+        self.kind == Kind::Primitive && self.is(Builtin::String)
     }
 
     /// Standard type test: id is `@std/<name>`.
@@ -434,11 +531,6 @@ impl Type {
     /// Whether this is `TestHooks` of `@std/test/test.ms`.
     pub fn is_test_hooks(&self, syms: ms_syntax::Names) -> bool {
         self.is_source_type(syms, "@std/test/test.ms", "TestHooks")
-    }
-
-    /// Whether this is `Duration`, `Instant` or `Timestamp` of `@std/time.ms`.
-    pub fn is_time(&self, syms: ms_syntax::Names, name: &str) -> bool {
-        self.is_source_type(syms, "@std/time.ms", name)
     }
 
     /// Whether this is the type `name` declared by the bundled source module `module`.
@@ -837,7 +929,14 @@ struct Prims {
 
 impl Prims {
     fn new() -> Prims {
-        let p = |s: &str| Rc::new(Type::with_builtin(n(s), n(s), Kind::Primitive, None));
+        let p = |s: &str| {
+            Rc::new(Type::with_builtin(
+                n(s),
+                n(s),
+                Kind::Primitive,
+                Builtin::primitive(s),
+            ))
+        };
         Prims {
             int: p("Int"),
             float: p("Float"),
@@ -874,7 +973,7 @@ pub fn primitive(name: &str) -> Ty {
             n(other),
             n(other),
             Kind::Primitive,
-            None,
+            Builtin::primitive(other),
         )),
     })
 }
@@ -902,30 +1001,29 @@ pub fn primitive_id(name: &'static str) -> &'static str {
 }
 
 /// Bit width of an integer type, or none for any other type.
-pub fn int_bits(syms: ms_syntax::Names, t: &Type) -> Option<u32> {
-    match syms.str(t.id) {
-        "Int" => Some(DEFAULT_INT_BITS),
-        "Int8" => Some(8),
-        "Int16" => Some(16),
-        "Int32" => Some(32),
-        "Int64" => Some(64),
-        "UInt8" => Some(8),
-        "UInt16" => Some(16),
-        "UInt32" => Some(32),
-        "UInt64" => Some(64),
+pub fn int_bits(t: &Type) -> Option<u32> {
+    match t.builtin? {
+        Builtin::Int => Some(DEFAULT_INT_BITS),
+        Builtin::Int8 | Builtin::UInt8 => Some(8),
+        Builtin::Int16 | Builtin::UInt16 => Some(16),
+        Builtin::Int32 | Builtin::UInt32 => Some(32),
+        Builtin::Int64 | Builtin::UInt64 => Some(64),
         _ => None,
     }
 }
 
 /// Whether `t` is an unsigned integer type.
-pub fn int_unsigned(syms: ms_syntax::Names, t: &Type) -> bool {
-    matches!(syms.str(t.id), "UInt8" | "UInt16" | "UInt32" | "UInt64")
+pub fn int_unsigned(t: &Type) -> bool {
+    matches!(
+        t.builtin,
+        Some(Builtin::UInt8 | Builtin::UInt16 | Builtin::UInt32 | Builtin::UInt64)
+    )
 }
 
 /// The inclusive range of values an integer type holds, or none for any other type.
-pub fn int_range(syms: ms_syntax::Names, t: &Type) -> Option<(i128, i128)> {
-    let bits = int_bits(syms, t)?;
-    Some(if int_unsigned(syms, t) {
+pub fn int_range(t: &Type) -> Option<(i128, i128)> {
+    let bits = int_bits(t)?;
+    Some(if int_unsigned(t) {
         (0, (1i128 << bits) - 1)
     } else {
         (-(1i128 << (bits - 1)), (1i128 << (bits - 1)) - 1)
@@ -933,11 +1031,11 @@ pub fn int_range(syms: ms_syntax::Names, t: &Type) -> Option<(i128, i128)> {
 }
 
 /// Bit width of a floating-point type, or none for any other type.
-pub fn float_bits(syms: ms_syntax::Names, t: &Type) -> Option<u32> {
-    match syms.str(t.id) {
-        "Float" => Some(DEFAULT_FLOAT_BITS),
-        "Float32" => Some(32),
-        "Float64" => Some(64),
+pub fn float_bits(t: &Type) -> Option<u32> {
+    match t.builtin? {
+        Builtin::Float => Some(DEFAULT_FLOAT_BITS),
+        Builtin::Float32 => Some(32),
+        Builtin::Float64 => Some(64),
         _ => None,
     }
 }
@@ -1087,9 +1185,9 @@ pub fn same_opt(a: &Option<Ty>, b: &Option<Ty>) -> bool {
 }
 
 /// `compatible`: the actual type is `Never` or the same as expected.
-pub fn compatible(syms: ms_syntax::Names, actual: &Option<Ty>, expected: &Ty) -> bool {
+pub fn compatible(actual: &Option<Ty>, expected: &Ty) -> bool {
     match actual {
-        Some(a) => a.is_never(syms) || same(a, expected),
+        Some(a) => a.is_never() || same(a, expected),
         None => false,
     }
 }

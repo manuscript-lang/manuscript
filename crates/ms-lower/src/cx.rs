@@ -550,21 +550,24 @@ impl Cx {
     pub fn lower_ty(&mut self, m: &mut Module, t: &ct::Ty) -> Result<MTy, Error> {
         match t.kind {
             Kind::Primitive => {
-                return match self.syms.str(t.id) {
-                    "Int" | "Int64" => Ok(MTy::INT),
-                    "Int8" => Ok(MTy::INT8),
-                    "Int16" => Ok(MTy::INT16),
-                    "Int32" => Ok(MTy::INT32),
-                    "UInt8" => Ok(MTy::UINT8),
-                    "UInt16" => Ok(MTy::UINT16),
-                    "UInt32" => Ok(MTy::UINT32),
-                    "UInt64" => Ok(MTy::UINT64),
-                    "Float" | "Float64" => Ok(MTy::FLOAT),
-                    "Float32" => Ok(MTy::FLOAT32),
-                    "Bool" => Ok(MTy::BOOL),
-                    "String" => Ok(MTy::STR),
-                    "Unit" | "Never" => Ok(MTy::UNIT),
-                    other => Err(Error::new(format!("unsupported primitive type {other}"))),
+                return match t.builtin {
+                    Some(Builtin::Int | Builtin::Int64) => Ok(MTy::INT),
+                    Some(Builtin::Int8) => Ok(MTy::INT8),
+                    Some(Builtin::Int16) => Ok(MTy::INT16),
+                    Some(Builtin::Int32) => Ok(MTy::INT32),
+                    Some(Builtin::UInt8) => Ok(MTy::UINT8),
+                    Some(Builtin::UInt16) => Ok(MTy::UINT16),
+                    Some(Builtin::UInt32) => Ok(MTy::UINT32),
+                    Some(Builtin::UInt64) => Ok(MTy::UINT64),
+                    Some(Builtin::Float | Builtin::Float64) => Ok(MTy::FLOAT),
+                    Some(Builtin::Float32) => Ok(MTy::FLOAT32),
+                    Some(Builtin::Bool) => Ok(MTy::BOOL),
+                    Some(Builtin::String) => Ok(MTy::STR),
+                    Some(Builtin::Unit | Builtin::Never) => Ok(MTy::UNIT),
+                    _ => Err(Error::new(format!(
+                        "unsupported primitive type {}",
+                        self.syms.str(t.id)
+                    ))),
                 };
             }
             Kind::Invalid | Kind::Inferred => {
@@ -645,11 +648,11 @@ impl Cx {
             }
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.display(self.syms).to_string(), Vec::new());
-                m.records[id.index()].native = if t.is_time(self.syms, "Timestamp") {
+                m.records[id.index()].native = if t.is(Builtin::Timestamp) {
                     Some(NativeRec::Timestamp)
-                } else if t.is_time(self.syms, "Instant") {
+                } else if t.is(Builtin::Instant) {
                     Some(NativeRec::Instant)
-                } else if t.is_time(self.syms, "Duration") {
+                } else if t.is(Builtin::Duration) {
                     Some(NativeRec::Duration)
                 } else {
                     None
@@ -786,16 +789,15 @@ impl Cx {
         if t.is(Builtin::Bytes) || ms_check::api::effects::is_text_builder(self.syms, t) {
             return Ok(MTy::BYTES);
         }
-        // Plain-data natives share the runtime's `repr(C)` layout.
-        let pod: &[(&str, &[&str])] = &[("Decimal", &["lo", "hi", "exp"])];
-        for (name, fields) in pod {
-            if t.is_std(self.syms, name) {
-                let (id, ty) = m.add_record(name, Vec::new());
-                m.records[id.index()].native = Some(NativeRec::Decimal);
-                m.records[id.index()].fields =
-                    fields.iter().map(|f| (f.to_string(), MTy::INT)).collect();
-                return Ok(ty);
-            }
+        // `Decimal` is plain data in the runtime's `repr(C)` layout (`ms_rt::decimal::Dec`).
+        if t.is(Builtin::Decimal) {
+            let (id, ty) = m.add_record("Decimal", Vec::new());
+            m.records[id.index()].native = Some(NativeRec::Decimal);
+            m.records[id.index()].fields = ["lo", "hi", "exp"]
+                .iter()
+                .map(|f| (f.to_string(), MTy::INT))
+                .collect();
+            return Ok(ty);
         }
         // Arbitrary-precision integers have no runtime yet; the type exists so interfaces
         // that mention one (`FileInfo.exact`) can be declared.

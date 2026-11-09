@@ -1551,12 +1551,12 @@ impl Checker {
             let cases = cases(error);
             let reported = |c: &Case| {
                 c.fields.iter().all(|f| {
-                    (self.syms.str(f.name) == EXTERN_ERROR_CODE && self.syms.str(f.ty.id) == "Int")
+                    (self.syms.str(f.name) == EXTERN_ERROR_CODE && f.ty.is(Builtin::Int))
                         || (self.syms.str(f.name) == EXTERN_ERROR_MESSAGE
-                            && self.syms.str(f.ty.id) == "String")
+                            && f.ty.is(Builtin::String))
                 })
             };
-            if self.syms.str(ok.id) != "Unit" && !crosses_native(self.syms, ok) {
+            if !ok.is(Builtin::Unit) && !crosses_native(self.syms, ok) {
                 self.type_error(
                     f.result.pos,
                     format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Unit", self.syms.str(ok.name)),
@@ -1567,7 +1567,7 @@ impl Checker {
                     format!("extern error type {} must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out", self.syms.str(error.name)),
                 );
             }
-        } else if self.syms.str(result.id) != "Unit" && !crosses_native(self.syms, &result) {
+        } else if !result.is(Builtin::Unit) && !crosses_native(self.syms, &result) {
             self.type_error(
                 f.result.pos,
                 format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Unit, or a Result of one", self.syms.str(result.name)),
@@ -1687,7 +1687,7 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        if fall && !is_test && self.syms.str(result_ty.id) != "Unit" && !result_ty.is_invalid() {
+        if fall && !is_test && !result_ty.is(Builtin::Unit) && !result_ty.is_invalid() {
             self.type_error(
                 d.pos(),
                 format!(
@@ -1958,7 +1958,7 @@ pub(crate) const MAX_CALLBACK_PARAMS: usize = 6;
 /// Whether the function type `t` can be passed to a user extern as an `ms_fn`.
 fn crosses_callback(syms: ms_syntax::Names, t: &Ty) -> bool {
     let result_ok = t.result.as_ref().is_none_or(|r| {
-        syms.str(r.id) == "Unit" || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
+        r.is(Builtin::Unit) || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
     });
     t.params.len() <= MAX_CALLBACK_PARAMS
         && t.params.iter().all(|p| crosses_element(syms, &p.ty))

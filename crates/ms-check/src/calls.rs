@@ -522,7 +522,7 @@ impl Checker {
         } else {
             result.clone()
         });
-        if result.is_never(self.syms) {
+        if result.is_never() {
             i.no_return = true;
         }
         i
@@ -883,10 +883,10 @@ impl Checker {
             None => self.infer(e, literal.or(expected)),
         };
         let actual = info.ty.clone();
-        if compatible(self.syms, &actual, expected_optional) {
+        if compatible(&actual, expected_optional) {
             return self.check_expression(e, info, expected);
         }
-        let payload_ok = compatible(self.syms, &actual, &payload)
+        let payload_ok = compatible(&actual, &payload)
             || actual
                 .as_ref()
                 .is_some_and(|a| self.interface_assignable(a, &payload));

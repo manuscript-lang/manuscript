@@ -294,27 +294,20 @@ impl DataBlocker {
 
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
-fn builtin_comparable(syms: ms_syntax::Names, t: &Ty) -> bool {
-    matches!(
-        syms.str(t.id),
-        "Int"
-            | "Int8"
-            | "Int16"
-            | "Int32"
-            | "Int64"
-            | "UInt8"
-            | "UInt16"
-            | "UInt32"
-            | "UInt64"
-            | "Float"
-            | "Float32"
-            | "Float64"
-            | "String"
-            | "@std/Decimal"
-            | "@std/BigInt"
-    ) || ["Duration", "Instant", "Timestamp"]
-        .iter()
-        .any(|name| t.is_time(syms, name))
+fn builtin_comparable(t: &Ty) -> bool {
+    t.builtin.is_some_and(|b| {
+        b.is_int()
+            || b.is_float()
+            || matches!(
+                b,
+                Builtin::String
+                    | Builtin::Decimal
+                    | Builtin::BigInt
+                    | Builtin::Duration
+                    | Builtin::Instant
+                    | Builtin::Timestamp
+            )
+    })
 }
 
 fn operation_names(syms: ms_syntax::Names, ops: &[Operation]) -> Vec<String> {
@@ -402,8 +395,7 @@ impl Checker {
             && !own_extern
             && !self.m().is_standard(self.syms);
         // A bundled module may add source-written methods to a built-in scalar or String.
-        let scalar_extension =
-            self.m().is_standard(self.syms) && builtin_comparable(self.syms, &receiver);
+        let scalar_extension = self.m().is_standard(self.syms) && builtin_comparable(&receiver);
         if !scalar_extension
             && (nominal.is_none()
                 || foreign_native
@@ -867,7 +859,7 @@ impl Checker {
                 return true;
             }
         }
-        contract.is(Builtin::Comparable) && builtin_comparable(self.syms, receiver)
+        contract.is(Builtin::Comparable) && builtin_comparable(receiver)
     }
 
     /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
@@ -1015,7 +1007,7 @@ impl Checker {
                     blocked(DataReason::Unbounded, path)
                 };
             }
-            Kind::Primitive if t.is_never(self.syms) => return blocked(DataReason::Never, path),
+            Kind::Primitive if t.is_never() => return blocked(DataReason::Never, path),
             Kind::Primitive => return None,
             Kind::Function => return blocked(DataReason::Function, path),
             Kind::Contract => return blocked(DataReason::Interface, path),
@@ -1027,11 +1019,7 @@ impl Checker {
                 .first()
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
-        if t.is(Builtin::Map)
-            && t.args
-                .first()
-                .is_some_and(|k| self.syms.str(k.id) == "String")
-        {
+        if t.is(Builtin::Map) && t.args.first().is_some_and(|k| k.is(Builtin::String)) {
             // A `Map[String, T]` is a JSON object.
             return t
                 .args
@@ -1206,14 +1194,14 @@ impl Checker {
         match t.kind {
             Kind::Function | Kind::Contract => return false,
             Kind::Primitive => {
-                return float_bits(self.syms, t).is_none() || property != Property::Hashable;
+                return float_bits(t).is_none() || property != Property::Hashable;
             }
             _ => {}
         }
         if t.is(Builtin::Decimal)
             || t.is(Builtin::Bytes)
-            || t.is_time(self.syms, "Duration")
-            || t.is_time(self.syms, "Instant")
+            || t.is(Builtin::Duration)
+            || t.is(Builtin::Instant)
         {
             return true;
         }
@@ -1223,7 +1211,7 @@ impl Checker {
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
-        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is_time(self.syms, "Timestamp") {
+        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is(Builtin::Timestamp) {
             return property == Property::Equal && !t.is(Builtin::Regex);
         }
         if t.kind == Kind::Native {
@@ -1569,7 +1557,7 @@ impl Checker {
         {
             return blocker.message(self.syms, t);
         }
-        if bound.is(Builtin::Hashable) && float_bits(self.syms, t).is_some() {
+        if bound.is(Builtin::Hashable) && float_bits(t).is_some() {
             return format!(
                 "{t_t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal",
                 t_t = t.display(self.syms)
@@ -1643,7 +1631,7 @@ pub(crate) fn native_method(
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
-            || (t.kind == Kind::Primitive && syms.str(t.id) == "String")
+            || (t.kind == Kind::Primitive && t.is(Builtin::String))
             || t.is(Builtin::List)
             || t.is(Builtin::Map)
             || t.is(Builtin::Set)

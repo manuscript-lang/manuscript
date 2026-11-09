@@ -215,6 +215,7 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
         )),
         kind,
     );
+    t.builtin = Builtin::source(syms.str(module.file), syms.str(name));
     t.def = Some(def);
     *s.ty.borrow_mut() = Some(Rc::new(t));
     s
@@ -688,7 +689,10 @@ impl Loader<'_> {
     }
 
     fn register(&mut self, syms: ms_syntax::Names, module: &ModRef) -> Result<(), String> {
-        self.c.session.world(|w| w.sources.push(module.clone()));
+        self.c.session.world(|w| {
+            w.sources.push(module.clone());
+            w.func_modules = None;
+        });
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
             for d in &module.decls {
@@ -1230,7 +1234,6 @@ impl Session {
         self.world(|w| w.operation_variables.get(key).cloned().unwrap_or_default())
     }
 
-    /// Whether a bundled module is a source module (it has bodies).
     /// The bundled module that declares the function or method `f`.
     pub fn func_module(self: &Rc<Self>, f: &ms_syntax::ast::Func) -> Option<ModRef> {
         self.world(|w| {
@@ -1674,7 +1677,11 @@ impl Session {
             .unwrap_or_else(|e| panic!("standard declarations: {e}"));
         for module in modules {
             self.register_source(&module);
-            self.world(|w| w.sources.push(module));
+            self.world(|w| {
+                w.sources.push(module);
+                // A module loaded later declares functions the index has not seen.
+                w.func_modules = None;
+            });
         }
         self.world(|w| {
             w.sources
