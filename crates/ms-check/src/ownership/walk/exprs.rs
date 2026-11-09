@@ -516,10 +516,9 @@ impl Walker<'_> {
                     format!("this closure would move `{name_t}` out of the variable it captured, but a closure can run more than once, and a resource cannot be cloned; use `{name_t}` in place inside the closure", name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix_opt(
+                self.error(
                     e.pos,
                     format!("this closure would move `{name_t}` out of the variable it captured, but a closure can run more than once; return `{name_t}.{CLONE}()` instead", name_t = self.syms.str(name)),
-                    copy_after(e),
                 );
             }
             self.record(e.id, b, Access::Move);
@@ -546,10 +545,9 @@ impl Walker<'_> {
                     format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); {why}, so use `{name_t}` in place", role_text(role, perm), name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix(
+                self.error(
                     e.pos,
                     format!("cannot move `{name_t}` out: it is borrowed, not owned ({}); borrow it in place or restructure to avoid the copy, and use `{name_t}.{CLONE}()` only if a second owner is needed", role_text(role, perm), name_t = self.syms.str(name)),
-                    insert_at(forward(e.pos, self.syms.str(name).len()), &format!(".{CLONE}()")),
                 );
             }
             self.record(e.id, b, Access::Move);
@@ -562,10 +560,9 @@ impl Walker<'_> {
                 format!("cannot move `{name_t}` out of the function: the caller keeps ownership of a var parameter and closes it; a resource cannot be cloned, so change it in place", name_t = self.syms.str(name)),
             );
         } else if var_param || (receiver && perm == Perm::Mutable) {
-            self.error_fix_opt(
+            self.error(
                 e.pos,
                 format!("cannot move `{name_t}` out of the function: the caller keeps ownership of a var parameter; return `{name_t}.{CLONE}()` or change the value in place", name_t = self.syms.str(name)),
-                copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
             let later = self
@@ -588,10 +585,9 @@ impl Walker<'_> {
                     format!("`{name_t}` is moved here but used again{later}; {why}, so move it only at its last use", name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix(
+                self.error(
                     e.pos,
                     format!("`{name_t}` is moved here but used again{later}; a value has one owner, so move it only at its last use, or pass `{name_t}.{CLONE}()` if the original is still needed", name_t = self.syms.str(name)),
-                    insert_at(forward(e.pos, self.syms.str(name).len()), &format!(".{CLONE}()")),
                 );
             }
         }
@@ -689,17 +685,7 @@ impl Walker<'_> {
                 )
             };
             // A member's position is its name, so the copy goes right after it.
-            match &e.kind {
-                ExprKind::Member { name, .. } => self.error_fix(
-                    e.pos,
-                    message,
-                    insert_at(
-                        forward(e.pos, self.syms.str(name).len()),
-                        &format!(".{CLONE}()"),
-                    ),
-                ),
-                _ => self.error(e.pos, message),
-            }
+            self.error(e.pos, message);
         }
         self.read_place(e.pos, &info);
     }

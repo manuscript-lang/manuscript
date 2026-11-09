@@ -132,19 +132,6 @@ impl Walker<'_> {
         });
     }
 
-    /// Reports like `error_fix`, when a fix could be built.
-    pub(super) fn error_fix_opt(
-        &mut self,
-        pos: Pos,
-        message: impl Into<String>,
-        fix: Option<DiagnosticFix>,
-    ) {
-        match fix {
-            Some(fix) => self.error_fix(pos, message, fix),
-            None => self.error(pos, message),
-        }
-    }
-
     /// Reports like `error`, with a machine-applicable fix.
     pub(super) fn error_fix(&mut self, pos: Pos, message: impl Into<String>, fix: DiagnosticFix) {
         let message = message.into();
