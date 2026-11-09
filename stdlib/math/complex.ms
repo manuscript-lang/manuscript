@@ -9,6 +9,7 @@ import (
     ldexp,
     infinity,
     log,
+    log1p,
     sign_bit,
     sin,
     sinh,
@@ -310,7 +311,34 @@ impl Complex:
         let diff = Complex(re: 1.0, im: 0.0).subtract(iz).log().subtract(
             Complex(re: 1.0, im: 0.0).add(iz).log()
         )
-        return Complex(re: -diff.im / 2.0, im: diff.re / 2.0)
+        var imaginary = diff.re / 2.0
+        let magnitude = self.re.abs().max(self.im.abs())
+
+        // The logarithms cancel for a small imaginary part or large components.
+        // log1p of their squared-magnitude ratio keeps the small difference.
+        // Scaling avoids squares overflowing; near either pole keep the logs,
+        // whose separate magnitudes do not underflow like a squared distance.
+        if (
+            self.re.is_finite()
+            and self.im.is_finite()
+            and (self.im.abs() < 0.5 or magnitude > 2.0)
+        ):
+            let scale = magnitude.max(1.0)
+            let real = self.re / scale
+            let offset = (self.im.abs() - 1.0) / scale
+            let denominator = real * real + offset * offset
+            let ratio = 4.0 * (self.im.abs() / scale) / denominator / scale
+
+            if ratio < 1e-300:
+                // log1p(t) is t here. Divide before the factor of four could
+                // round a subnormal result twice.
+                imaginary = copy_sign(
+                    self.im.abs() / denominator / scale / scale, self.im
+                )
+            else:
+                imaginary = copy_sign(log1p(ratio) / 4.0, self.im)
+
+        return Complex(re: -diff.im / 2.0, im: imaginary)
 
     // Formats as `a+bi` or `a-bi` using the Float text of each part, e.g. `1.5-2i`.
     fn format() String:
