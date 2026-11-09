@@ -47,7 +47,7 @@ impl<'a> FnLower<'a> {
             .unwrap_or_default();
         if let Some(&(_, sym, param, as_text)) = FORMAT_METHODS
             .iter()
-            .find(|(n, ..)| *n == self.syms.str(m.native))
+            .find(|(n, ..)| *n == m.native.text(self.syms))
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
@@ -130,7 +130,7 @@ impl<'a> FnLower<'a> {
             let out = self.call_runtime(sym, &[r, d, n], rty)?;
             return Ok(Val { v: out, own: true });
         }
-        if self.syms.str(m.native) == "hash" && !matches!(self.b.m.types.kind(rty), TyKind::Str) {
+        if m.native.is(self.syms, "hash") && !matches!(self.b.m.types.kind(rty), TyKind::Str) {
             return self.structural_hash(recv);
         }
         self.native_method_tail(

@@ -237,8 +237,9 @@ pub struct Info {
     pub case: Option<Name>,
     /// Resolved method.
     pub method: Option<MethodRef>,
-    /// Native identity ("index", "view", "to_string", ...).
-    pub native: Option<Name>,
+    /// What the expression binds to: a builtin identity ("index", "view", "to_string", ...), an
+    /// extern, or a contract operation.
+    pub native: Native,
     /// The expression cannot complete normally.
     pub no_return: bool,
     /// The expression contains a `break`.
@@ -276,9 +277,9 @@ impl Info {
         self.ty.clone().unwrap_or_else(invalid)
     }
 
-    /// Native identity text.
+    /// The builtin identity's text, or "" when the expression binds to no builtin.
     pub fn native_str(&self, syms: ms_syntax::Names) -> &str {
-        self.native.map(|n| syms.str(n)).unwrap_or("")
+        self.native.builtin().map(|n| syms.str(n)).unwrap_or("")
     }
 }
 

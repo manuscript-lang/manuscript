@@ -1097,6 +1097,11 @@ impl FnLower<'_> {
         code: Value,
         sym: &str,
     ) -> Result<Value, Error> {
+        if rt_sig(sym).is_none() {
+            return Err(Error::new(format!(
+                "{sym}: no runtime function names this status"
+            )));
+        }
         let table = status_table(sym);
         let domain = domain_of(sym);
         self.status_chain(er, code, &table, &domain)
@@ -1321,19 +1326,4 @@ pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> 
 /// How the failures of `sym` name their domain, as its runtime source declares.
 fn domain_of(sym: &str) -> String {
     rt_flags(sym).domain.unwrap_or("runtime").to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The checker's list of callback-keeping externs and the runtime's `// ms: keeps:` markers agree.
-    #[test]
-    fn kept_callbacks_have_a_closure_parameter() {
-        for (sym, params, ..) in SYMBOLS {
-            let marked = params.iter().any(|p| p.3);
-            let listed = ms_check::api::stdlib::keeps_callbacks(&format!("extern:{sym}"));
-            assert_eq!(marked, listed, "{sym}");
-        }
-    }
 }

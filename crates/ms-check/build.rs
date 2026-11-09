@@ -51,8 +51,48 @@ fn main() {
         .unwrap();
     }
     out.push_str("];\n");
+    runtime_facts(&manifest, &mut out);
     let dest = PathBuf::from(std::env::var("OUT_DIR").expect("out dir")).join("std_sources.rs");
     std::fs::write(dest, out).expect("write");
+}
+
+/// The ownership facts the checker reads from the runtime's declarations (`rt_symbols.txt`, written
+/// by `cargo xtask symbols`): the externs that keep the function values they are given
+/// (`@keeps:`), and the value parameters a runtime function takes ownership of (`@takes:`).
+fn runtime_facts(manifest: &std::path::Path, out: &mut String) {
+    let path = manifest.join("../ms-lower/rt_symbols.txt");
+    println!("cargo:rerun-if-changed={}", path.display());
+    let table = std::fs::read_to_string(&path).expect("read rt_symbols.txt");
+    let mut keeps = Vec::new();
+    let mut takes = Vec::new();
+    for line in table.lines().filter(|l| !l.starts_with('#')) {
+        let name = line.split('(').next().unwrap_or_default();
+        let flags = line.split(" @").skip(1);
+        for flag in flags {
+            if flag.starts_with("keeps:") && keeps.last() != Some(&name) {
+                keeps.push(name);
+            }
+            if let Some(param) = flag.strip_prefix("takes:") {
+                takes.push((name, param));
+            }
+        }
+    }
+    writeln!(
+        out,
+        "/// Runtime functions that keep the function values they are given."
+    )
+    .unwrap();
+    writeln!(out, "pub const RUNTIME_KEEPS: &[&str] = &{keeps:?};").unwrap();
+    writeln!(
+        out,
+        "/// Runtime functions and the value parameter each takes ownership of."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "pub const RUNTIME_TAKES: &[(&str, &str)] = &{takes:?};"
+    )
+    .unwrap();
 }
 
 #[path = "src/bundled.rs"]

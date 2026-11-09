@@ -112,14 +112,14 @@ pub enum HelperKey {
         addr: bool,
     },
     BoundNative {
-        native: Name,
+        native: ct::Native,
         rty: MTy,
         fty: MTy,
         held: Held,
         scope: Option<Name>,
     },
     NativeThunk {
-        native: Name,
+        native: ct::Native,
         fty: MTy,
     },
     TostringThunk(MTy, bool),
@@ -282,8 +282,8 @@ pub struct IfaceNativeJob {
 
 /// A native function value waiting to be lowered.
 pub struct NativeThunkJob {
-    /// The native, `module/name`.
-    pub native: String,
+    /// The native function.
+    pub native: ct::Native,
     /// Declared parameters under the use site's substitution.
     pub params: Vec<ct::Param>,
     /// Declared result under the use site's substitution.

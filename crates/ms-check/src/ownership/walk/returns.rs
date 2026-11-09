@@ -228,7 +228,7 @@ impl Walker<'_> {
         if !matches!(e.kind, ExprKind::Call { .. }) {
             return None;
         }
-        let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
+        let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
         if !ret_borrow.returns_borrow || ret_borrow.view {
             return None;
         }
@@ -832,7 +832,7 @@ impl Walker<'_> {
             return Some(src);
         }
         if let ExprKind::Call { .. } = &e.kind {
-            let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
+            let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
             if !ret_borrow.returns_borrow {
                 return None;
             }
@@ -920,7 +920,7 @@ impl Walker<'_> {
     pub(super) fn returns_borrow(&self, call: &Expr) -> bool {
         self.class_of(call) != Class::Copy
             && (self.native_borrow_receiver(call).is_some()
-                || result_borrow(self.syms, self.cx.m, call, self.cx.summaries).returns_borrow)
+                || result_borrow(self.cx.m, call, self.cx.summaries).returns_borrow)
     }
 
     /// The label of the parameter `operand` is written for in call `e`.
@@ -955,7 +955,7 @@ impl Walker<'_> {
         let Resolution::Method(method) = self.cx.m.resolution(e) else {
             return None;
         };
-        if self.syms.str(method.native).is_empty() {
+        if method.native == Native::Source {
             return None;
         }
         let recv = self.cx.m.ty(left);
@@ -1012,7 +1012,7 @@ impl Walker<'_> {
         self.syms.str(name) == "get"
             && args.len() == 1
             && self.cx.m.ty(left).is(Builtin::Map)
-            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !self.syms.str(m.native).is_empty())
+            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if m.native != Native::Source)
     }
 
     /// `value` is `map.get(key).get()`: the `map.get(key)` call whose payload it reads.

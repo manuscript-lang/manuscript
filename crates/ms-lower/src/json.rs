@@ -1516,7 +1516,7 @@ impl FnLower<'_> {
                 Ok(Some(v.v))
             },
             &mut |s| {
-                let e = s.status_failure(rty, code, "msstd_json_status")?;
+                let e = s.status_failure(rty, code, sym)?;
                 Ok(Some(e))
             },
         )

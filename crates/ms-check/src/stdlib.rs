@@ -137,26 +137,16 @@ impl Session {
     }
 }
 
-/// Externs that store their function arguments instead of running them before they return.
-const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msrt_promise_start",
-    "extern:msrt_promise_start_here",
-    "extern:msrt_promise_defer",
-    "extern:msstd_http_serving_new",
-    "extern:msrt_fn_new",
-];
-
-/// Externs that take ownership of the generic value argument (it moves into the runtime).
-const OWNING_VALUES: &[&str] = &["extern:msrt_pipe_write", "extern:msrt_promise_put"];
-
-/// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
-pub fn owns_value(native: &str) -> bool {
-    OWNING_VALUES.contains(&native)
+/// Whether the runtime function `symbol` takes ownership of its argument `param` (it moves into
+/// the runtime), as its `// ms: takes:<param>` declares.
+pub fn takes_argument(symbol: &str, param: &str) -> bool {
+    RUNTIME_TAKES.contains(&(symbol, param))
 }
 
-/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
-pub fn keeps_callbacks(native: &str) -> bool {
-    KEPT_CALLBACKS.contains(&native)
+/// Whether the runtime function `symbol` keeps the function values it is given instead of running
+/// them before it returns, as its `// ms: keeps:<param>` declares.
+pub fn keeps_callbacks(symbol: &str) -> bool {
+    RUNTIME_KEEPS.contains(&symbol)
 }
 
 /// Native types that declare fields, so they cannot be written `extern type`. A record in a native
@@ -208,7 +198,7 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
         )),
         kind: SymKind::Type,
         module: module.file,
-        native: n(""),
+        native: Native::Source,
         export: d.decl().export,
         ty: RefCell::new(None),
         variables: RefCell::new(Vec::new()),
@@ -677,7 +667,7 @@ impl Loader<'_> {
             id,
             kind: SymKind::Type,
             module: module.file,
-            native: name,
+            native: Native::Builtin(name),
             export: d.decl().export,
             ty: RefCell::new(None),
             variables: RefCell::new(Vec::new()),
@@ -745,11 +735,11 @@ impl Loader<'_> {
                 _ => (None, SymKind::Type),
             };
             let mut id = n(&format!("@std/{name_t}", name_t = syms.str(name)));
-            let mut native = name;
+            let mut native = Native::Builtin(name);
             if sym_kind == SymKind::Fn {
                 // Identities are module/name.
                 let ident = format!("{}/{}", module_stem(syms.str(module.file)), syms.str(name));
-                native = n(&ident);
+                native = Native::Builtin(n(&ident));
                 id = n(&format!("@std/{ident}"));
             }
             let s = Rc::new(Sym {
@@ -831,7 +821,7 @@ impl Loader<'_> {
                 id: n(primitive_id(name)),
                 kind: SymKind::Type,
                 module: n(""),
-                native: n(""),
+                native: Native::Source,
                 export: true,
                 ty: RefCell::new(Some(primitive(primitive_id(name)))),
                 variables: RefCell::new(Vec::new()),
@@ -1009,7 +999,7 @@ impl Loader<'_> {
                         module_stem(syms.str(contract_module.unwrap_or(module.file))),
                         syms.str(name)
                     );
-                    method.native = n(&native);
+                    method.native = Native::Builtin(n(&native));
                     self.c.p.methods[index] = Rc::new(method);
                 }
             }

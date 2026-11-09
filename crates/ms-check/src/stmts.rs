@@ -1511,7 +1511,7 @@ impl Checker {
             // An unresolved receiver was reported; its bracket argument is probably a type argument.
             return Info {
                 ty: Some(invalid()),
-                native: Some(n("index")),
+                native: Native::Builtin(n("index")),
                 no_return: receiver.no_return,
                 ..Info::default()
             };
@@ -1528,7 +1528,7 @@ impl Checker {
         let index = self.expression(right, expected.as_ref());
         let mut info = Info {
             ty: Some(invalid()),
-            native: Some(n("index")),
+            native: Native::Builtin(n("index")),
             no_return: receiver.no_return || index.no_return,
             ..Info::default()
         };

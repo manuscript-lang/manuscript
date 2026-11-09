@@ -213,7 +213,7 @@ fn contract_operation(
             &s,
         ),
         decl: op.decl.clone(),
-        native: n("contract"),
+        native: Native::Contract,
     }))
 }
 
@@ -397,9 +397,7 @@ impl Checker {
             && nominal
                 .as_ref()
                 .is_some_and(|s| s.module == self.current_file());
-        let foreign_native = nominal
-            .as_ref()
-            .is_some_and(|s| !self.syms.str(s.native).is_empty())
+        let foreign_native = nominal.as_ref().is_some_and(|s| s.native != Native::Source)
             && !self.standard_declarations
             && !own_extern
             && !self.m().is_standard(self.syms);
@@ -529,7 +527,7 @@ impl Checker {
                 .is_some_and(|s| {
                     // A bundled module's methods on a native standard type apply wherever it is used.
                     let extends_native =
-                        this.m().is_standard(this.syms) && !this.syms.str(s.native).is_empty();
+                        this.m().is_standard(this.syms) && s.native != Native::Source;
                     s.module != this.current_file() && !extends_native
                 })
         };
@@ -699,7 +697,7 @@ impl Checker {
                     decl: d.clone(),
                     index: Some(index),
                 }),
-                native: n(""),
+                native: Native::Source,
             };
             for v in &own {
                 self.scope.types.borrow_mut().remove(&v.name);
@@ -731,7 +729,7 @@ impl Checker {
                 ty: contract.clone(),
                 variables: vars.clone(),
                 decl: None,
-                native: n(""),
+                native: Native::Source,
             }));
         }
         for op in &ops {
@@ -775,7 +773,7 @@ impl Checker {
                     ty: op.ty.clone(),
                     variables: vars.clone(),
                     decl: Some(FuncRef::of_decl(decl)),
-                    native: n(""),
+                    native: Native::Source,
                 };
                 self.add_method(Rc::new(m));
             } else {
@@ -1340,7 +1338,7 @@ impl Checker {
                     ty: operation.ty,
                     variables: Vec::new(),
                     decl: stdlib::standard_method_declaration(&contract, name),
-                    native: name,
+                    native: Native::Builtin(name),
                 })];
             }
         }
@@ -1603,7 +1601,7 @@ impl Checker {
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)
             && let Some(symbol) = t.symbol()
-            && (self.syms.str(symbol.native).is_empty() || self.standard_declarations)
+            && (symbol.native == Native::Source || self.standard_declarations)
         {
             return format!(
                 "{prefix}add 'impl {bound_t} for {t_t}:' or {alternative}",
@@ -1640,7 +1638,7 @@ pub(crate) fn native_method(
             ty,
             variables,
             decl,
-            native,
+            native: Native::Builtin(native),
         };
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
@@ -1701,9 +1699,7 @@ fn native_method_of(
     let binding = session.is_receiver_native(&key);
     let bindings = substitution(&receiver);
     let opaque_alternative = receiver.kind == Kind::Alternative
-        && receiver
-            .symbol()
-            .is_some_and(|s| !syms.str(s.native).is_empty());
+        && receiver.symbol().is_some_and(|s| s.native.is_bodiless());
     if receiver.kind == Kind::Native || !Rc::ptr_eq(&receiver, t) || binding || opaque_alternative {
         let def = receiver.def.as_ref()?;
         let operations = def.operations.borrow();

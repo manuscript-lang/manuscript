@@ -113,7 +113,7 @@ impl<'a> FnLower<'a> {
         for (n, a) in view.arguments.iter().enumerate() {
             let at = self.b.current();
             // A native takes a reading function for a `var` function parameter as written.
-            let reader = matches!(&view.target, Resolution::Method(m) if !self.syms.str(m.native).is_empty())
+            let reader = matches!(&view.target, Resolution::Method(m) if m.native != ct::Native::Source)
                 && self.hir.info(a.expr).function_source.is_some();
             let val = if reader {
                 self.expr_unfit(a.expr)?

@@ -102,37 +102,69 @@ impl<'a> FnLower<'a> {
         &mut self,
         e: &Expr,
         view: &CallView<'_>,
-        native: &str,
+        native: ct::Native,
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
-        if let Some(symbol) = native.strip_prefix("extern:") {
-            if !self.syms.str(sym.module).starts_with("@std/") {
-                return self.extern_call(e, view, symbol, sym);
+        let native = match native {
+            ct::Native::Builtin(identity) => self.syms.str(identity),
+            ct::Native::Extern { symbol, bundled } => {
+                return self.runtime_function(e, view, self.syms.str(symbol), bundled, params, sym);
             }
-            // A runtime function that is one instruction on its arguments is emitted as that instruction.
-            if let Some(op) = crate::rtcall::rt_flags(symbol).op {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let result = self.emty(e)?;
-                self.at(e.pos);
-                return self.single_op(symbol, op, &args, result);
+            ct::Native::Source | ct::Native::Contract => {
+                return Err(Error::new("a function with a body is not native"));
             }
-            // A symbol that is lowered by hand keeps its native identity.
-            if let Some(hand) = crate::stdnative::by_symbol(symbol) {
-                return self.native_function(e, view, hand.identity, params, sym);
-            }
-            // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
+        };
+        self.builtin_function(e, view, native, params, sym)
+    }
+
+    /// A call of an `extern fn`: a bundled one is a runtime function whose convention the runtime
+    /// table declares; a user one calls its shim.
+    fn runtime_function(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        symbol: &str,
+        bundled: bool,
+        params: &[ct::Param],
+        sym: &ct::SymRef,
+    ) -> Result<Val, Error> {
+        if !bundled {
+            return self.extern_call(e, view, symbol, sym);
+        }
+        // A runtime function that is one instruction on its arguments is emitted as that instruction.
+        if let Some(op) = crate::rtcall::rt_flags(symbol).op {
             let args = self.native_args(view)?;
             if self.dead {
                 return Ok(self.dummy(MTy::UNIT));
             }
             let result = self.emty(e)?;
             self.at(e.pos);
-            return self.rt_function(symbol, params, &args, result);
+            return self.single_op(symbol, op, &args, result);
         }
+        // A symbol that is lowered by hand keeps its native identity.
+        if let Some(hand) = crate::stdnative::by_symbol(symbol) {
+            return self.builtin_function(e, view, hand.identity, params, sym);
+        }
+        // A bundled extern is a runtime symbol; its convention comes from the runtime's declaration.
+        let args = self.native_args(view)?;
+        if self.dead {
+            return Ok(self.dummy(MTy::UNIT));
+        }
+        let result = self.emty(e)?;
+        self.at(e.pos);
+        self.rt_function(symbol, params, &args, result)
+    }
+
+    /// A call of a bodiless standard function the compiler lowers, by its `module/name` identity.
+    fn builtin_function(
+        &mut self,
+        e: &Expr,
+        view: &CallView<'_>,
+        native: &str,
+        params: &[ct::Param],
+        sym: &ct::SymRef,
+    ) -> Result<Val, Error> {
         match native {
             "collections/range" => {
                 let args = self.native_args(view)?;

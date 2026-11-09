@@ -206,10 +206,10 @@ impl<'a> FnLower<'a> {
 
     /// A method used as a value (`value.name`).
     fn method_value(&mut self, e: &Expr, left: &Expr, m: &ct::MethodRef) -> Result<Val, Error> {
-        if self.syms.str(m.native) == "to_string" && m.ty.params.is_empty() {
+        if m.native.is(self.syms, "to_string") && m.ty.params.is_empty() {
             return self.bound_to_string(e, left);
         }
-        if !self.syms.str(m.native).is_empty() && self.syms.str(m.native) != "contract" {
+        if m.native != ct::Native::Source && m.native != ct::Native::Contract {
             return self.bound_native_method(e, left, m);
         }
         self.bound_method(e, left, m)
@@ -226,7 +226,7 @@ impl<'a> FnLower<'a> {
             r => r,
         };
         match (&left.kind, res) {
-            (_, Resolution::Function(sym)) if self.syms.str(sym.native).is_empty() => {
+            (_, Resolution::Function(sym)) if sym.native == ct::Native::Source => {
                 self.function_value(e, &sym)
             }
             (_, Resolution::Function(sym)) => self.native_function_value(e, &sym),
@@ -463,7 +463,7 @@ impl<'a> FnLower<'a> {
             }
             Resolution::Constant(_) => self.call_expr(e),
             Resolution::Constructor { ty, case } => self.construct_unit(e, &ty, case),
-            Resolution::Function(sym) if self.syms.str(sym.native).is_empty() => {
+            Resolution::Function(sym) if sym.native == ct::Native::Source => {
                 self.function_value(e, &sym)
             }
             Resolution::Function(sym) => self.native_function_value(e, &sym),

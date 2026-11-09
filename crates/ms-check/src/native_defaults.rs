@@ -94,7 +94,7 @@ impl Checker {
                 args.is_empty()
                     && self.info_of(callee).is_some_and(|i| {
                         i.method.as_ref().is_some_and(|m| {
-                            self.syms.str(m.native) == "to_bytes"
+                            m.native.is(self.syms, "to_bytes")
                                 && self.syms.str(m.receiver.id) == "String"
                         })
                     })

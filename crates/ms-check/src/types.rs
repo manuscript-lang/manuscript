@@ -583,6 +583,60 @@ pub enum SymKind {
     Fn,
 }
 
+/// What a declaration binds to: a source body, a contract operation, or a bodiless native.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub enum Native {
+    /// A source body.
+    #[default]
+    Source,
+    /// An interface operation, dispatched through the receiver's implementation.
+    Contract,
+    /// An `extern fn`: a runtime symbol. A bundled one follows the runtime table's convention;
+    /// a user one follows the shim ABI.
+    Extern {
+        /// The symbol the declaration is named after.
+        symbol: Name,
+        /// Declared by an embedded standard module.
+        bundled: bool,
+    },
+    /// A bodiless standard declaration lowered by the compiler: `module/name` for a function,
+    /// the method name for a receiver method, the type name for a native type.
+    Builtin(Name),
+}
+
+impl Native {
+    /// Whether the declaration has no body of its own (an extern or a builtin).
+    pub fn is_bodiless(self) -> bool {
+        matches!(self, Native::Extern { .. } | Native::Builtin(_))
+    }
+
+    /// The builtin identity, if any.
+    pub fn builtin(self) -> Option<Name> {
+        match self {
+            Native::Builtin(name) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// Whether this is the builtin identity spelled `text`.
+    pub fn is(self, syms: ms_syntax::Names, text: &str) -> bool {
+        self.builtin().is_some_and(|b| syms.str(b) == text)
+    }
+
+    /// The builtin identity's text, or "" when the declaration is not a builtin.
+    pub fn text(self, syms: ms_syntax::Names) -> &'static str {
+        self.builtin().map_or("", |b| syms.str(b))
+    }
+
+    /// The runtime symbol of an extern.
+    pub fn extern_symbol(self) -> Option<Name> {
+        match self {
+            Native::Extern { symbol, .. } => Some(symbol),
+            _ => None,
+        }
+    }
+}
+
 /// A module-level symbol.
 pub struct Sym {
     /// Name.
@@ -593,8 +647,8 @@ pub struct Sym {
     pub kind: SymKind,
     /// Declaring module file.
     pub module: Name,
-    /// Native binding identity ("" when the symbol has a source body).
-    pub native: Name,
+    /// What the symbol binds to.
+    pub native: Native,
     /// Exported.
     pub export: bool,
     /// Type (function type for functions, the nominal type for types).
@@ -699,8 +753,8 @@ pub struct Method {
     pub variables: Vec<Ty>,
     /// Declaration.
     pub decl: Option<FuncRef>,
-    /// Native identity ("contract" for a contract operation).
-    pub native: Name,
+    /// What the method binds to.
+    pub native: Native,
 }
 
 /// A shared method.

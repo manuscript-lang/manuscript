@@ -3,7 +3,7 @@
 # flags the source declares with a `// ms: leaf pure fresh` comment above the function:
 # `@leaf` never reaches a cancellation point, `@pure` only reads memory and cannot fault,
 # `@fresh` returns a value that borrows none of its arguments, `@keeps:<param>` stores that
-# function value, `@spawns` starts a task running program code, `@op=<mnemonic>` is exactly
+# function value, `@takes:<param>` takes ownership of that value, `@spawns` starts a task running program code, `@op=<mnemonic>` is exactly
 # that MIR instruction on its arguments, and `@domain=<words>` names its failures' domain.
 msrt_alloc(size: usize) -> *mut u8 @leaf
 msrt_alloc_zeroed(size: usize) -> *mut u8 @leaf
@@ -193,7 +193,7 @@ msrt_pipe_flush(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_new(capacity: i64) -> i64 @domain=pipe
 msrt_pipe_read(pipe: i64) -> i64 @domain=pipe
 msrt_pipe_try(pipe: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=pipe
-msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64 @domain=pipe
+msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64 @domain=pipe @takes:value
 msrt_process_exit(code: i64) -> !
 msrt_process_on_exit(hook: extern "C" fn())
 msrt_promise_cancel(id: i64) @domain=promise
@@ -205,7 +205,7 @@ msrt_promise_finished() -> i64 @domain=promise
 msrt_promise_limit(id: i64, timeout_ns: i64) @domain=promise
 msrt_promise_new() -> i64 @domain=promise
 msrt_promise_on_cancel(id: i64, cancel: i64) @domain=promise
-msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64) @domain=promise
+msrt_promise_put(id: i64, value: *mut u8, d: ValueDesc, failed: i64) @domain=promise @takes:value
 msrt_promise_ready(fd: i64, events: i64, timeout_ns: i64) -> i64 @domain=promise
 msrt_promise_sleep(ns: i64) -> i64 @domain=promise
 msrt_promise_start(id: i64, work: *mut Closure) @domain=promise @keeps:work @spawns

@@ -411,6 +411,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
 ///
 /// # Safety
 /// `value` holds an owned value of `d`, which the callee takes.
+// ms: takes:value
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_put(
     id: i64,

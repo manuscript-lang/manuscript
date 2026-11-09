@@ -682,7 +682,7 @@ impl Checker {
                 id: n(primitive_id(name)),
                 kind: SymKind::Type,
                 module: n(""),
-                native: n(""),
+                native: Native::Source,
                 export: true,
                 ty: RefCell::new(Some(primitive(primitive_id(name)))),
                 variables: RefCell::new(Vec::new()),
@@ -729,7 +729,7 @@ impl Checker {
                     id: n(primitive_id(name)),
                     kind: SymKind::Type,
                     module: n(""),
-                    native: n(""),
+                    native: Native::Source,
                     export: true,
                     ty: RefCell::new(Some(primitive(primitive_id(name)))),
                     variables: RefCell::new(Vec::new()),
@@ -884,7 +884,7 @@ impl Checker {
             id,
             kind: SymKind::Type,
             module: module.file,
-            native: n(""),
+            native: Native::Source,
             export: d.decl().export,
             ty: RefCell::new(None),
             variables: RefCell::new(Vec::new()),
@@ -943,10 +943,11 @@ impl Checker {
             };
             // An `extern fn` calls the native symbol named after it.
             let native = match &d.decl().kind {
-                DeclKind::Fn(f) if f.external => {
-                    n(&format!("extern:{name_t}", name_t = self.syms.str(name)))
-                }
-                _ => n(""),
+                DeclKind::Fn(f) if f.external => Native::Extern {
+                    symbol: name,
+                    bundled: self.session.is_source_module(module),
+                },
+                _ => Native::Source,
             };
             let s = Rc::new(Sym {
                 name,

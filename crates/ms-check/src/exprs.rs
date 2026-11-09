@@ -516,7 +516,7 @@ impl Checker {
             } else {
                 string()
             });
-            i.native = Some(name);
+            i.native = Native::Builtin(name);
             return finish_info(self.syms, i);
         }
         let (typ, cs, ambiguous) = self.find_case(name, e.pos);
@@ -566,9 +566,7 @@ impl Checker {
                 e.pos,
                 &callee_name(self.syms, e),
             ));
-            if callable.native_str(self.syms).is_empty()
-                || callable.native_str(self.syms) == "contract"
-            {
+            if !callable.native.is_bodiless() {
                 i.type_args = opt_args;
             }
             self.set_info(left, i.clone());
@@ -769,12 +767,8 @@ impl Checker {
         }
         let m = methods[0].clone();
         i.ty = Some(m.ty.clone());
-        i.native = if self.syms.str(m.native).is_empty() {
-            None
-        } else {
-            Some(m.native)
-        };
-        let native = !self.syms.str(m.native).is_empty() && self.syms.str(m.native) != "contract";
+        i.native = m.native;
+        let native = m.native.is_bodiless();
         let source_generic = arity.is_none() && !native && !m.variables.is_empty();
         if (native && !m.variables.is_empty()) || source_generic {
             self.type_error(

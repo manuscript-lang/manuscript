@@ -385,7 +385,7 @@ impl Checker {
         }
         if let Some(s) = symbol {
             i.symbol = Some(s.clone());
-            i.native = (!self.syms.str(s.native).is_empty()).then_some(s.native);
+            i.native = s.native;
             let mut sig = s.ty(self.syms);
             let vars = s.variables();
             if !vars.is_empty() {

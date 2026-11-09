@@ -381,7 +381,7 @@ impl Walker<'_> {
         // borrow of them, storing or returning it needs a copy, and when a source is a
         // temporary the caller owns the result (lowering copies it out before the temporary
         // is dropped).
-        let ret_borrow = result_borrow(self.syms, cx.m, e, cx.summaries);
+        let ret_borrow = result_borrow(cx.m, e, cx.summaries);
         if ret_borrow.returns_borrow && self.class_of(e) != Class::Copy {
             match self.pure_origins(e) {
                 Some(origins) if d == Demand::Move => {

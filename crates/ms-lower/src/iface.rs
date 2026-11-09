@@ -125,7 +125,7 @@ impl Cx {
             let changed: Vec<usize>;
             let op_vars = self.iface_op_vars(iface, &s.name);
             // A hook a `TestHooks` implementation leaves out has no body: it does nothing.
-            let missing = self.syms.str(native).is_empty()
+            let missing = native == ct::Native::Source
                 && s.ret == MTy::UNIT
                 && !self.callables.contains_key(&(module, id));
             if missing {
@@ -138,7 +138,7 @@ impl Cx {
                 methods.push(m.add_func(f));
                 continue;
             }
-            let callee = if !self.syms.str(native).is_empty() {
+            let callee = if native != ct::Native::Source {
                 let f = self.iface_native_thunk(m, &mref, &subst, scope, data_ty, &ps, s.ret)?;
                 methods.push(f);
                 continue;
@@ -255,7 +255,7 @@ impl Cx {
         ret: MTy,
     ) -> Result<ms_mir::ir::FuncId, Error> {
         let mut f = ms_mir::ir::Func::new(
-            &format!("vt.{}", self.syms.str(mref.native)),
+            &format!("vt.{}", mref.native.text(self.syms)),
             params.to_vec(),
             ret,
         );
@@ -355,7 +355,7 @@ impl Cx {
             let mm = &self.methods[at];
             let Some(decl) = &mm.decl else { continue };
             if self.syms.str(mm.id).is_empty()
-                || !self.syms.str(mm.native).is_empty()
+                || mm.native != ct::Native::Source
                 || !mm.visible_in(scope)
             {
                 continue;

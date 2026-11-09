@@ -138,8 +138,9 @@ fn symbols(check: bool) -> Result<String, String> {
          # flags the source declares with a `// ms: leaf pure fresh` comment above the function:\n\
          # `@leaf` never reaches a cancellation point, `@pure` only reads memory and cannot fault,\n\
          # `@fresh` returns a value that borrows none of its arguments, `@keeps:<param>` stores that\n\
-         # function value, `@spawns` starts a task running program code, `@op=<mnemonic>` is exactly\n\
-         # that MIR instruction on its arguments, and `@domain=<words>` names its failures' domain.\n",
+         # function value, `@takes:<param>` takes ownership of that value, `@spawns` starts a task\n\
+         # running program code, `@op=<mnemonic>` is exactly that MIR instruction on its arguments,\n\
+         # and `@domain=<words>` names its failures' domain.\n",
     );
     for name in table.keys() {
         let declared = flags
@@ -216,7 +217,8 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 /// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
 /// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
 /// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `keeps:<param>`
-/// for a function value the runtime stores and drops itself, `domain=<word>` for how its failures
+/// for a function value the runtime stores and drops itself, `takes:<param>` for a value
+/// argument the runtime takes ownership of, `domain=<word>` for how its failures
 /// name their domain when it differs from the file's `//! ms: domain`, `spawns` for a function that starts a
 /// task running code of the program, and `op=<mnemonic>` for a function
 /// that is exactly one MIR instruction on its arguments); an unknown flag or a
@@ -231,6 +233,7 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
             if let Some(bad) = list.iter().find(|f| {
                 !["leaf", "pure", "fresh", "spawns"].contains(&f.as_str())
                     && !f.starts_with("keeps:")
+                    && !f.starts_with("takes:")
                     && !f.starts_with("op=")
                     && !f.starts_with("domain=")
             }) {

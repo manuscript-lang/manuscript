@@ -11,7 +11,7 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         recv: Val,
     ) -> Result<Val, Error> {
-        let native = self.syms.str(m.native);
+        let native = m.native.text(self.syms);
         let at = self.b.current();
         // The receiver is evaluated first: an argument that reassigns its variable must not
         // change what the call reads.
@@ -185,7 +185,7 @@ impl<'a> FnLower<'a> {
         recv: Val,
         mut args: Vec<NArg>,
     ) -> Result<Val, Error> {
-        let native = self.syms.str(m.native);
+        let native = m.native.text(self.syms);
         let recv_ty = self.ty_of(recv.v);
         let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         // `Float.to_float32()` is a runtime call: it returns none when the value overflows.

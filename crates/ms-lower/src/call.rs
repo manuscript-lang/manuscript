@@ -51,7 +51,7 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("call without resolution"));
         };
         let out = match &view.target {
-            Resolution::Function(sym) if self.syms.str(sym.native).is_empty() => {
+            Resolution::Function(sym) if sym.native == ct::Native::Source => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
@@ -83,7 +83,7 @@ impl<'a> FnLower<'a> {
                     .as_ref()
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
-                self.native_function(e, &view, self.syms.str(sym.native), &params, sym)?
+                self.native_function(e, &view, sym.native, &params, sym)?
             }
             // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
@@ -864,13 +864,11 @@ impl<'a> FnLower<'a> {
         let recv_expr = self
             .receiver_expr(e)
             .ok_or_else(|| Error::new("method call without receiver"))?;
-        let native = self.syms.str(m.native);
-        if native.is_empty() {
-            return self.source_method_call(e, view, m, recv_expr);
-        }
-        if native == "contract" {
-            return self.contract_call(e, view, m, recv_expr);
-        }
+        let native = match m.native {
+            ct::Native::Source => return self.source_method_call(e, view, m, recv_expr),
+            ct::Native::Contract => return self.contract_call(e, view, m, recv_expr),
+            native => native.text(self.syms),
+        };
         let method = m
             .name()
             .map(|n| self.syms.str(n).to_string())

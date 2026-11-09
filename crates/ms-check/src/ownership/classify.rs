@@ -333,7 +333,7 @@ mod tests {
             id: n("test/Pair"),
             kind: SymKind::Type,
             module: n("test.ms"),
-            native: n(""),
+            native: Native::Source,
             export: true,
             ty: RefCell::new(None),
             variables: RefCell::new(vec![]),
