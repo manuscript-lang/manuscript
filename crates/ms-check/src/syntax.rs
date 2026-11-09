@@ -438,6 +438,14 @@ impl ModuleData {
         self.facts.borrow_mut()
     }
 
+    /// Whether `f` is a function, method or interface operation declared in this module.
+    pub fn declares(&self, f: &Func) -> bool {
+        self.decls.iter().any(|d| {
+            d.func().is_some_and(|g| std::ptr::eq(g, f))
+                || d.methods().iter().any(|m| std::ptr::eq(&m.func, f))
+        })
+    }
+
     /// What the parameter default `e`, written in this module, is, from its checked resolution:
     /// a local named `none` or `caller_site` is an ordinary expression.
     pub fn default_form(&self, syms: ms_syntax::Names, e: &ms_syntax::ast::Expr) -> DefaultForm {

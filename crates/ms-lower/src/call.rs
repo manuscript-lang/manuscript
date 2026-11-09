@@ -1314,8 +1314,8 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new(format!("no checked module {}", self.syms.str(file))))
     }
 
-    /// The checked module declaring `f`: by its file when known (a native method of the
-    /// standard library records none), otherwise by the declaration itself.
+    /// The checked module declaring `f`, found by the declaration itself: a native method of the
+    /// standard library and an interface operation viewed through a contract name no file.
     pub(crate) fn func_decl_module(
         &self,
         file: ct::Name,
@@ -1323,6 +1323,10 @@ impl<'a> FnLower<'a> {
     ) -> Result<ms_check::api::syntax::ModRef, Error> {
         if let Some(m) = self.cx.session.func_module(f) {
             return Ok(m);
+        }
+        // An operation of a program interface is viewed through a method that names no file.
+        if let Some(m) = self.cx.mods.values().find(|m| m.data.declares(f)) {
+            return Ok(m.data.clone());
         }
         self.decl_module(file)
     }

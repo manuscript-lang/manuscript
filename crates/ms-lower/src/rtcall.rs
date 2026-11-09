@@ -368,16 +368,16 @@ impl FnLower<'_> {
                     vals.push(self.type_desc(t));
                 }
                 _ if p.ty == "ElemDesc" => {
-                    // A function has no receiver: the descriptor is that of its first list
-                    // argument, or of its list result.
+                    // A function has no receiver: the descriptor is that of its list result
+                    // (`flatten` takes lists of lists), or of its first list argument.
                     let first_list = inputs
                         .iter()
                         .filter_map(|input| input.val)
                         .map(|v| self.ty_of(v.v))
                         .find(|t| matches!(self.b.m.types.kind(*t), TyKind::List(_)));
                     let recv_ty = recv_ty
-                        .or(first_list)
                         .or_else(|| self.result_list(result))
+                        .or(first_list)
                         .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
