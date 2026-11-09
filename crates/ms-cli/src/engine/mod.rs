@@ -275,11 +275,21 @@ impl Failure {
 
 /// The JSON shape of one source diagnostic.
 pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
-    let position = |pos: Pos| Position {
-        file: issue.file.to_string(),
-        line: pos.line as usize,
-        column: pos.column as usize,
-        offset: pos.offset as usize,
+    placed_command_diagnostic(issue, &|position| position)
+}
+
+/// Place every source coordinate, including machine-applicable edit boundaries.
+pub(crate) fn placed_command_diagnostic(
+    issue: &Diagnostic,
+    place: &dyn Fn(Position) -> Position,
+) -> CommandDiagnostic {
+    let position = |pos: Pos| {
+        place(Position {
+            file: issue.file.to_string(),
+            line: pos.line as usize,
+            column: pos.column as usize,
+            offset: pos.offset as usize,
+        })
     };
     CommandDiagnostic {
         severity: String::new(),
