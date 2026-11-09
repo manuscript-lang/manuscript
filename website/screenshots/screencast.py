@@ -23,7 +23,7 @@ SCENES = [
          sub="One owner per value. No GC, no refcounts, no surprises.",
          src="own.ms", steps=[("ms run own.ms", first(1))], cut=";"),
     dict(title="*No GC pauses.* C-class speed.",
-         sub="Run time relative to C, seven kernels (bench/perf, 2026-11-05).",
+         sub="Run time vs C with bounds checks, seven kernels (bench/perf, 2026-11-09).",
          chart=True),
     dict(title="*All cores.* Regular functions.",
          sub="No async, no await, no function coloring.",
@@ -57,9 +57,9 @@ SCENES = [
          sub="Call graph here; --format html writes an offline interactive code map.",
          src=None, steps=[("ms diagram par.ms --format ascii", first(6))]),
 ]
-# Time relative to C (1.0 = same), from bench/perf/results-2026-11-05.md: ms us / c us per kernel.
-KERNELS = [("sieve", 26373 / 26202), ("nbody", 6229 / 7239), ("life", 3524 / 29784), ("matmul", 6262 / 3890),
-           ("trees", 25083 / 28358), ("collatz", 159335 / 195847), ("map_count", 12566 / 10227)]
+# Time relative to C compiled with bounds checks (1.0 = same), from bench/perf/results-2026-11-09.md: ms us / c-bounds us per kernel.
+KERNELS = [("sieve", 28410 / 28204), ("nbody", 9024 / 8942), ("life", 4958 / 37967), ("matmul", 9098 / 10188),
+           ("trees", 25892 / 25855), ("collatz", 244873 / 286587), ("map_count", 17136 / 13002)]
 URL = "manuscript-lang.github.io/manuscript"
 
 W, H = 1280, 720
@@ -182,7 +182,7 @@ def chart_frame(sc, n, total, bars):
     terminal(d)
     x0, y, scale = CARD[0] + 190, CARD[1] + 70, 480
     d.line([(x0 + scale, CARD[1] + 60), (x0 + scale, CARD[3] - 50)], fill=C["edge"], width=2)
-    d.text((x0 + scale, CARD[3] - 34), "C = 1.0", font=SMALL, fill=C["dim"], anchor="mm")
+    d.text((x0 + scale, CARD[3] - 34), "C + bounds checks = 1.0", font=SMALL, fill=C["dim"], anchor="mm")
     d.text((x0, CARD[3] - 34), "faster", font=SMALL, fill=C["dim"], anchor="lm")
     d.text((x0 + scale * 1.8, CARD[3] - 34), "slower", font=SMALL, fill=C["dim"], anchor="rm")
     for i, (name, ratio) in enumerate(KERNELS):
