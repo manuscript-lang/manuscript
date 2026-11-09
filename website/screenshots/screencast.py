@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "screencast")
 
-# title: "*word*" is highlighted. steps: (command, keep(lines) -> lines shown). split: code beside the output.
+# title: "*word*" is highlighted. steps: (command, keep(lines) -> lines shown); hold: extra ms on the last frame.
 def first(n): return lambda ls: ls[:n]
 def last(n): return lambda ls: ls[-n:]
 def clock(ls): return [l for l in ls if l.startswith(("real", "user"))]
@@ -25,25 +25,29 @@ SCENES = [
     dict(title="*No GC pauses.* C-class speed.",
          sub="Run time relative to C, seven kernels (bench/perf, 2026-11-05).",
          chart=True),
-    dict(title="*async/await?* Not needed.",
-         sub="Plain functions run concurrently on every core. Compare user and real time.",
-         src="par.ms", split=True, hold=4200,
-         steps=[("ms build par.ms -o par", first(1)), ("time ./par", lambda ls: ls[:1] + clock(ls))]),
-    dict(title="*Declare* your effects. We *check* them.",
-         sub="Mark db.write once; lint flags every caller that did not allow it.",
-         src="effects.ms", split=True, hold=3200,
+    dict(title="Without promises: *one core.*",
+         sub="Four Fibonacci jobs, one after another. User time equals real time.",
+         src="seq.ms", hold=3000,
+         steps=[("ms build seq.ms -o seq && time ./seq", clock)]),
+    dict(title="*async/await?* Not needed. More cores.",
+         sub="Wrap each job in promise(fn: ...). Same work, real time drops, no async or await.",
+         src="par.ms", hold=4600,
+         steps=[("ms build par.ms -o par && time ./par", clock)]),
+    dict(title="*Declare* effects. *Compiler checks* them.",
+         sub="Mark db.write once; ms lint flags every caller that did not allow it.",
+         src="effects.ms", hold=3200,
          steps=[("ms lint effects.ms", first(1))], cut=";"),
     dict(title="Compiler errors that *name the fix*.",
          sub="Cause and remedy in every diagnostic. --json for agents.",
          src="fixme.ms", steps=[("ms check fixme.ms", first(1))], cut=";"),
     dict(title="A *complete toolchain*, in the box.",
          sub="Agents do better when nothing is missing: test and bench are keywords.",
-         src="tb.ms", split=True,
-         steps=[("ms test tb.ms", last(1)), ("ms bench tb.ms", bench_line)]),
+         src="tb.ms",
+         steps=[("ms test tb.ms && ms bench tb.ms",
+                 lambda ls: [l for l in ls if l.startswith("1 tests")] + bench_line(ls))], cut=" ("),
     dict(title="Including a *native profiler*.",
          sub="ms profile: source attribution, pprof, folded stacks. Nothing to install.",
-         src="prof.ms", split=True,
-         steps=[("ms profile prof.ms", lambda ls: ls[2:4])]),
+         src="prof.ms", steps=[("ms profile prof.ms", lambda ls: ls[2:4])]),
     dict(title="Can't read all that agent code? *Map it.*",
          sub="Call graph here; --format html writes an offline interactive code map.",
          src=None, steps=[("ms diagram par.ms --format ascii", first(6))]),
@@ -62,10 +66,12 @@ KEYWORDS = set("fn let var if else for in return try import from export type imp
 D = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono"
 CODE, HEAD, SUB, SMALL = (ImageFont.truetype(D + ".ttf", 27), ImageFont.truetype(D + "-Bold.ttf", 47),
                           ImageFont.truetype(D + ".ttf", 22), ImageFont.truetype(D + ".ttf", 17))
-CODE_S = ImageFont.truetype(D + ".ttf", 21)
+CODE_S = ImageFont.truetype(D + ".ttf", 22)
+CODE_XS = ImageFont.truetype(D + ".ttf", 20)
+CODE_M = ImageFont.truetype(D + ".ttf", 24)
 BIG = ImageFont.truetype(D + "-Bold.ttf", 104)
 CW, LH, CARD = CODE.getlength("M"), 37, (60, 196, 1220, 650)
-CW_S, LH_S = CODE_S.getlength("M"), 30
+CW_S = CODE_S.getlength("M")
 COLS = int((CARD[2] - CARD[0] - 64) / CW)
 _bg = None
 
@@ -119,9 +125,15 @@ def terminal(d):
     for i, c in enumerate([(237, 106, 94), (245, 191, 79), (97, 197, 84)]):
         d.ellipse([CARD[0] + 20 + i * 24, CARD[1] + 13, CARD[0] + 34 + i * 24, CARD[1] + 27], fill=c)
 
-def pane_x(code):
-    """Left edge of the output pane when the code sits beside it."""
-    return CARD[0] + 32 + max(len(l) for l in code) * CW_S + 48
+FONTS = [(CODE, CW, LH), (CODE_M, CODE_M.getlength("M"), 33), (CODE_S, CW_S, 31), (CODE_XS, CODE_XS.getlength("M"), 28)]
+
+def fit(code, nrows):
+    """Largest code font whose rows (code, gap, commands, output) fit in the terminal."""
+    room = CARD[3] - CARD[1] - 62 - 34
+    for f in FONTS:
+        if (len(code) + (0.35 if code else 0) + nrows) * f[2] <= room:
+            return f
+    return FONTS[-1]
 
 def scene_frame(sc, n, total, code, shown, rows, cursor):
     """rows: list of (kind, text) shown after the code: 'cmd', 'out', 'err'."""
@@ -129,32 +141,25 @@ def scene_frame(sc, n, total, code, shown, rows, cursor):
     d = ImageDraw.Draw(im)
     header(d, sc["title"], sc["sub"])
     terminal(d)
-    split = sc.get("split")
-    fnt, cw, lh = (CODE_S, CW_S, LH_S) if split else (CODE, CW, LH)
-    x0, y0 = CARD[0] + 32, CARD[1] + 62
-    y = y0
+    fnt, cw, lh = sc["_font"]
+    x0, y = CARD[0] + 32, CARD[1] + 62
     for line in code[:shown]:
         x = x0
         for s_, c in tokens(line):
             d.text((x, y), s_, font=fnt, fill=c)
             x += cw * len(s_)
         y += lh
-    if split:
-        xr, y = pane_x(code), y0
-        d.line([(xr - 24, CARD[1] + 52), (xr - 24, CARD[3] - 14)], fill=C["edge"], width=2)
-    else:
-        xr = x0
-        if code: y += 12
+    if code: y += int(lh * 0.35)
     cur = None
     if cursor and shown and not rows and code:
-        cur = (x0 + len(code[shown - 1]) * cw, y0 + (shown - 1) * lh)
+        cur = (x0 + len(code[shown - 1]) * cw, y0 if False else CARD[1] + 62 + (shown - 1) * lh)
     for kind, text in rows:
         if kind == "cmd":
-            d.text((xr, y), "$", font=fnt, fill=C["ok"])
-            d.text((xr + cw * 2, y), text, font=fnt, fill=C["fg"])
-            cur = (xr + cw * (2 + len(text)), y)
+            d.text((x0, y), "$", font=fnt, fill=C["ok"])
+            d.text((x0 + cw * 2, y), text, font=fnt, fill=C["fg"])
+            cur = (x0 + cw * (2 + len(text)), y)
         else:
-            d.text((xr, y), text, font=fnt, fill=C["err"] if kind == "err" else C["fg"])
+            d.text((x0, y), text, font=fnt, fill=C["err"] if kind == "err" else C["fg"])
             cur = None
         y += lh
     if cursor and cur:
@@ -249,19 +254,28 @@ def main():
                 durs[-1] += 2600
                 continue
             code = open(os.path.join(SRC, sc["src"])).read().rstrip("\\n".replace("\\n", "\n")).split("\n") if sc["src"] else []
+            raws = [keep(run(cmd, work, ms_dir)) for cmd, keep in sc["steps"]]
+            room = CARD[3] - CARD[1] - 62 - 34
+            for font in FONTS:
+                cols = int((CARD[2] - CARD[0] - 64) / font[1])
+                outs = [wrap(raw, sc.get("cut"), cols) for raw in raws]
+                need = len(code) + (0.35 if code else 0) + sum(1 + len(o) for o in outs)
+                if need * font[2] <= room:
+                    break
+            else:
+                print(f"warning: {sc['title']} may not fit", file=sys.stderr)
+            sc["_font"] = font
             add(scene_frame(sc, n, total, code, 0, [], False), 1100)
             for k, line in enumerate(code, 1):
                 add(scene_frame(sc, n, total, code, k, [], True), read(line))
             if code: durs[-1] += 700
             rows = []
-            for cmd, keep in sc["steps"]:
+            for (cmd, _), out in zip(sc["steps"], outs):
                 step = max(1, len(cmd) // 6)
                 for k in range(step, len(cmd), step):
                     add(scene_frame(sc, n, total, code, len(code), rows + [("cmd", cmd[:k])], True), 70)
                 rows = rows + [("cmd", cmd)]
                 add(scene_frame(sc, n, total, code, len(code), rows, True), 450)
-                width = int((CARD[2] - 32 - pane_x(code)) / CW_S) if sc.get("split") else COLS
-                out = wrap(keep(run(cmd, work, ms_dir)), sc.get("cut"), width)
                 for line in out:
                     kind = "err" if re.search(r"error|warning|type:|resolution:", line) else "out"
                     rows = rows + [(kind, line)]
