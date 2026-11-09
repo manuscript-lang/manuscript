@@ -51,6 +51,13 @@ fn product(left: Float, right: Float) Float:
 
     return left * right
 
+// Computes sin(2*x) without overflowing a finite phase when doubling it.
+fn sin_double(phase: Float) Float:
+    if phase.abs() > 8.988465674311579e307:
+        return 2.0 * sin(phase) * cos(phase)
+
+    return sin(2.0 * phase)
+
 // Divides by the larger part of the divisor (Smith's algorithm).
 fn smith_divide(numerator: Complex, other: Complex) Complex:
     let abs_re = other.re.abs()
@@ -240,7 +247,7 @@ impl Complex:
         // Past |b| = 40 sine and cosine overflow into inf / inf; the quotient is `sign(b) * i` plus a real part below 1e-34.
         if self.im.abs() > 40.0:
             return Complex(
-                re: 2.0 * sin(2.0 * self.re) * exp(
+                re: 2.0 * sin_double(self.re) * exp(
                     -2.0 * self.im.abs()
                 ),
                 im: copy_sign(1.0, self.im)
@@ -268,7 +275,9 @@ impl Complex:
         if self.re.abs() > 40.0:
             return Complex(
                 re: copy_sign(1.0, self.re),
-                im: 2.0 * sin(2.0 * self.im) * exp(-2.0 * self.re.abs())
+                im: 2.0 * sin_double(self.im) * exp(
+                    -2.0 * self.re.abs()
+                )
             )
 
         return self.sinh().divide(self.cosh())
