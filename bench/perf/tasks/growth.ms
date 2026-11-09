@@ -38,10 +38,18 @@ export fn main() Int:
     let t3 = monotonic()
     let main_above = loop_depth(3400, rounds)
     let t4 = monotonic()
-    print("task 3000 frames x {rounds}: {t1.difference(t0).to_nanoseconds() / 1000000} ms ({below})")
-    print("task 3400 frames x {rounds}: {t2.difference(t1).to_nanoseconds() / 1000000} ms ({above})")
-    print("main 3000 frames x {rounds}: {t3.difference(t2).to_nanoseconds() / 1000000} ms ({main_below})")
-    print("main 3400 frames x {rounds}: {t4.difference(t3).to_nanoseconds() / 1000000} ms ({main_above})")
+    print(
+        "task 3000 frames x {rounds}: {t1.difference(t0).to_nanoseconds() / 1000000} ms ({below})"
+    )
+    print(
+        "task 3400 frames x {rounds}: {t2.difference(t1).to_nanoseconds() / 1000000} ms ({above})"
+    )
+    print(
+        "main 3000 frames x {rounds}: {t3.difference(t2).to_nanoseconds() / 1000000} ms ({main_below})"
+    )
+    print(
+        "main 3400 frames x {rounds}: {t4.difference(t3).to_nanoseconds() / 1000000} ms ({main_above})"
+    )
 
     // Deep recursion: 900k frames in a task and on the main task.
     let t5 = monotonic()

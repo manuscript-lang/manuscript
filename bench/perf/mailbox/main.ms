@@ -34,5 +34,10 @@ export fn main() Int:
 
     let t1 = monotonic()
     print("total " + total.to_string())
-    print("ns/promise " + (t1.difference(t0).to_nanoseconds() / (n * rounds)).to_string())
+    print(
+        "ns/promise " + (
+            t1.difference(t0).to_nanoseconds()
+            / (n * rounds)
+        ).to_string()
+    )
     return 0
