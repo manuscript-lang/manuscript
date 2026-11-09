@@ -1,4 +1,4 @@
-import from_list, fold, lines, map from "@std/io/streams.ms"
+import from_list, from_bytes, fold, lines, map from "@std/io/streams.ms"
 import keep, measure from "@std/test/bench.ms"
 import Bytes from "@std/bytes.ms"
 import Source, ReadStream from "@std/io/io.ms"
@@ -68,3 +68,15 @@ bench "io.stages.map3_fold":
         return keep(total)
 
     try measure(10, work)
+
+bench "io.lines long fragmented":
+    let text = try "x".repeat(262144)
+    let data = "{text}\n".to_bytes()
+
+    fn work() Unit!:
+        var input = lines(from_bytes(data.clone(), 64))
+        let result = try input.next()
+        try input.close()
+        return keep(result.get("").byte_length())
+
+    try measure(1, work)
