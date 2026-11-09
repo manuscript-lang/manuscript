@@ -5,3 +5,4 @@
 ^tests/(conformance|e2e|ownership-counts|scaling)/
 ^(Cargo\.(toml|lock)|rust-toolchain.*|Makefile)$
 ^\.github/(workflows|actions|platform-paths\.txt)
+^crates/ms-lsp/
