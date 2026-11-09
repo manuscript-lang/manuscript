@@ -168,25 +168,40 @@ export type DescriptorSink:
     // The runtime descriptor written to.
     id: Int
 
+// An OS write failure is terminal: bytes may have been partly written, so later drains must not hide it.
+fn descriptor_write_result(id: Int) Unit!:
+    let message = msrt_streams_error(id)
+    if message.length() > 0:
+        return error(Error(message, kind: "EIO"))
+
+    return ok(unit)
+
+fn flush_descriptor(id: Int) Unit!:
+    try adopt[Unit](msrt_streams_flush(id)).wait()
+    return descriptor_write_result(id)
+
 impl Sink[Bytes] for DescriptorSink:
     // Queues the bytes for the descriptor; `EBADF` once it is closed. Back pressure: a write that leaves more than
     // `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
+    // An OS write failure returns `EIO`; later writes and flushes retain it until the descriptor closes.
     var fn write(value: Bytes) Unit!:
         if msrt_streams_write(self.id, value) != 0:
             return error(Error("stream: closed", kind: "EBADF"))
+
+        try descriptor_write_result(self.id)
         if msrt_streams_buffered(self.id) > HIGH_WATER:
-            return adopt[Unit](msrt_streams_flush(self.id)).wait()
+            return flush_descriptor(self.id)
 
         return ok(unit)
 
-    // Waits until the queued bytes have been handed to the descriptor.
+    // Waits until the queued bytes have been handed to the descriptor; an OS write failure returns `EIO`.
     var fn flush() Unit!:
-        return adopt[Unit](msrt_streams_flush(self.id)).wait()
+        return flush_descriptor(self.id)
 
     // Waits until the queued bytes have been handed to the descriptor, then releases it. The descriptor is released
     // even when the wait fails or is cancelled, and that failure is returned.
     var fn close() Unit!:
-        let drained = adopt[Unit](msrt_streams_flush(self.id)).wait()
+        let drained = flush_descriptor(self.id)
         msrt_streams_close(self.id)
         return drained
 
