@@ -99,3 +99,15 @@ test "take and drop clamp on ASCII and non-ASCII text":
             let kept = if count < n: count else: n
             try expect_equal(text.take(count), text.slice(0, kept).get(""))
             try expect_equal(text.drop(count), text.slice(kept, n).get(""))
+
+test "negative get and scalar_at index from the end on non-ASCII text":
+    let text = "aé😀b日"
+
+    for back in [1, 2, 3, 4, 5]:
+        let at = text.length() - back
+        try expect_equal(text.get(-back), text.get(at))
+        try expect_equal(text.scalar_at(-back), text.scalar_at(at))
+
+    try expect_equal(text.get(-6, "none"), "none")
+    try expect_equal(text.scalar_at(-6, -1), -1)
+    try expect_equal(text.get(-9223372036854775807 - 1, "none"), "none")

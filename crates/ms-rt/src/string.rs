@@ -347,6 +347,9 @@ unsafe fn string_get(
         let off = if index >= 0 && !(*s).flagged_ascii() {
             // Non-ASCII text: walk to the scalar instead of counting the whole string first.
             utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
+        } else if index < 0 && !(*s).flagged_ascii() {
+            // Negative index: walk back from the end, again without a whole-string count.
+            utf8::retreat(text, text.len(), index.unsigned_abs() as usize)
         } else {
             let n = scalar_count(s);
             relative(n, index).map(|i| {
@@ -388,6 +391,8 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
         let text = bytes(s);
         let off = if index >= 0 && !(*s).flagged_ascii() {
             utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
+        } else if index < 0 && !(*s).flagged_ascii() {
+            utf8::retreat(text, text.len(), index.unsigned_abs() as usize)
         } else {
             let n = scalar_count(s);
             relative(n, index).map(|i| {
