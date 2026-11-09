@@ -52,6 +52,19 @@ fn product(left: Float, right: Float) Float:
 
     return left * right
 
+// A finite sinh/cosh argument can overflow before a small trig factor is
+// applied. Grow that factor through exp(|argument|)/2 without materializing
+// the full exponential; its reciprocal term is negligible in this range.
+fn hyperbolic_product(factor: Float, argument: Float, value: Float) Float:
+    if value.is_finite() or value.is_nan() or not argument.is_finite():
+        return product(factor, value)
+
+    let quarter = exp(argument.abs() / 4.0)
+    var result = factor
+    for _step in 0..3:
+        result = product(result, quarter)
+    return product(result, quarter / 2.0) * copy_sign(1.0, value)
+
 // Computes sin(2*x) without overflowing a finite phase when doubling it.
 fn sin_double(phase: Float) Float:
     if phase.abs() > 8.988465674311579e307:
@@ -243,15 +256,15 @@ impl Complex:
     // Returns the complex sine, `sin(a)cosh(b) + cos(a)sinh(b)i` for `a+bi`.
     fn sin() Complex:
         return Complex(
-            re: product(sin(self.re), cosh(self.im)),
-            im: product(cos(self.re), sinh(self.im))
+            re: hyperbolic_product(sin(self.re), self.im, cosh(self.im)),
+            im: hyperbolic_product(cos(self.re), self.im, sinh(self.im))
         )
 
     // Returns the complex cosine, `cos(a)cosh(b) - sin(a)sinh(b)i` for `a+bi`.
     fn cos() Complex:
         return Complex(
-            re: product(cos(self.re), cosh(self.im)),
-            im: -product(sin(self.re), sinh(self.im))
+            re: hyperbolic_product(cos(self.re), self.im, cosh(self.im)),
+            im: -hyperbolic_product(sin(self.re), self.im, sinh(self.im))
         )
 
     // Returns the complex tangent, sine divided by cosine; poles give infinities or NaN.
@@ -270,15 +283,15 @@ impl Complex:
     // Returns the hyperbolic sine.
     fn sinh() Complex:
         return Complex(
-            re: product(sinh(self.re), cos(self.im)),
-            im: product(cosh(self.re), sin(self.im))
+            re: hyperbolic_product(cos(self.im), self.re, sinh(self.re)),
+            im: hyperbolic_product(sin(self.im), self.re, cosh(self.re))
         )
 
     // Returns the hyperbolic cosine.
     fn cosh() Complex:
         return Complex(
-            re: product(cosh(self.re), cos(self.im)),
-            im: product(sinh(self.re), sin(self.im))
+            re: hyperbolic_product(cos(self.im), self.re, cosh(self.re)),
+            im: hyperbolic_product(sin(self.im), self.re, sinh(self.re))
         )
 
     // Returns the hyperbolic tangent.
