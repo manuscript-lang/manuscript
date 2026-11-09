@@ -80,6 +80,7 @@ pub fn serve_recycling(
         roots: Vec::new(),
         snippets: false,
         shutdown: false,
+        initialized: false,
         defer_diagnostics: false,
         diagnostics_dirty: false,
     };
@@ -299,6 +300,8 @@ struct Server<'a> {
     roots: Vec<String>,
     snippets: bool,
     shutdown: bool,
+    /// Whether `initialize` has been answered; other requests before it are refused.
+    initialized: bool,
     defer_diagnostics: bool,
     diagnostics_dirty: bool,
 }
@@ -651,6 +654,12 @@ impl Server<'_> {
                 None => Ok(()),
             };
         }
+        if !self.initialized && !matches!(r.method.as_str(), "initialize" | "exit") {
+            return match &r.id {
+                Some(id) => self.reply_error(Some(id), -32002, "server not initialized"),
+                None => Ok(()),
+            };
+        }
         let outcome = if self.request_canceled(&r) {
             Outcome::Error(failure(-32800, "request canceled"))
         } else {
@@ -683,7 +692,10 @@ impl Server<'_> {
     fn handle(&mut self, syms: ms_syntax::Names, r: &Request) -> Result<Outcome, Stop> {
         let p = &r.fields;
         match r.method.as_str() {
-            "initialize" => return Ok(ok(self.initialize(r))),
+            "initialize" => {
+                self.initialized = true;
+                return Ok(ok(self.initialize(r)));
+            }
             "manuscript/standardLibrarySource" => {
                 return Ok(
                     match analysis::standard_library_source(syms, &self.session, &p.document.uri) {
