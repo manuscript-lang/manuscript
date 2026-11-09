@@ -473,3 +473,56 @@ fn many_appends_in_one_function_take_linear_time() {
     );
     assert_eq!(text.matches("@msrt_string_concat (").count(), 0, "{text}");
 }
+
+/// A leaf that is dropped on another path (a branch that returns elsewhere) is not dropped before
+/// the join, so the chain still fuses. A leaf the loop drops and redefines each iteration is a
+/// different value than the one a later iteration joins.
+const SIBLING_DROP: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_concat(str, str) -> str string_concat
+extern @msrt_string_empty() -> str
+extern @msrt_int_to_string(int) -> str int_to_string
+entry @main
+
+fn @pick(%0: move str, %1: move str, %2: int, %3: bool) -> str inline(never) {
+b0:
+  br_if %3, b1(), b2()
+b1():
+  %7: str = call.rt @msrt_string_empty ()
+  drop %0
+  drop %1
+  ret %7
+b2():
+  %4: str = call.rt @msrt_string_concat (%0, %1)
+  %5: str = call.rt @msrt_int_to_string (%2)
+  %6: str = call.rt @msrt_string_concat (%4, %5)
+  drop %4
+  drop %5
+  drop %0
+  drop %1
+  ret %6
+}
+
+fn @main() -> int export {
+b0:
+  %0: str = call.rt @msrt_string_empty ()
+  %1: str = call.rt @msrt_string_empty ()
+  %2: int = iconst 7
+  %3: bool = bconst false
+  %4: str = call @pick (%0, %1, %2, %3)
+  drop %4
+  %5: int = iconst 0
+  ret %5
+}
+"#;
+
+#[test]
+fn a_leaf_dropped_on_a_sibling_path_still_fuses() {
+    let mut m = parse_module(SIBLING_DROP).expect("parse");
+    verify_module(&m).expect("verify");
+    opt::optimize(&mut m, opt::Level::Speed, true);
+    verify_module(&m).expect("verify after");
+    let text = print_module(&m);
+    assert_eq!(text.matches("@msrt_string_fmt3 (").count(), 1, "{text}");
+    assert_eq!(text.matches("@msrt_int_to_string (").count(), 0, "{text}");
+}

@@ -185,7 +185,8 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 
     let chs = load_challenges(split_ids(o.challenges))
     let langs = load_languages(split_ids(o.languages))
-    let h = find(if oracle: "oracle" else: o.harness).get()
+    let which = if oracle: "oracle" else: o.harness.clone()  // workaround for #3218; remove once fixed
+    let h = find(which).get()
     var todo = List[Job]()
 
     for ch in chs:
@@ -207,27 +208,23 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
     let tag = if oracle: "oracle" else: o.tag.clone()
     var bad = 0
     var running: List[Promise[Int]] = []
-
     for w in 0..jobs:
-        let mine = todo.entries().filter(fn e: e.index % jobs == w).map(
-            fn e: (e.value.clone())
-        )
-        let me = h.name()
-        let own = o.clone()
-        let label = tag.clone()
         running.append(
-            promise(
-                fn: ok(
-                    work(
-                        mine.clone(), me.clone(), own.clone(), label.clone()
-                    )
-                )
+            spawn(
+                todo.entries().filter(fn e: e.index % jobs == w).map(
+                    fn e: (e.value.clone())
+                ),
+                h.name(),
+                o.clone(),
+                tag.clone()
             )
         )
-
     for n in wait_all(running).get([]): bad += n
     if oracle: remove(o.out, recursive: false).to_optional()
     return ok(if bad > 0 and oracle: 1 else: 0)
+
+fn spawn(mine: List[Job], me: String, own: Options, label: String) Promise[Int]:
+    return promise(fn: ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
 
 export fn main() Int:
     let flags = [

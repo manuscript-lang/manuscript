@@ -24,10 +24,13 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
         syms: ms_syntax::Names::global(),
         session: &program.session,
         module,
-        source_len: source.len(),
+        source,
+        colons: None,
+        removed: 0,
         cuts: Vec::new(),
     };
     walk_module(module, &mut scan);
+    let count = scan.removed;
     let mut cuts = scan.cuts;
     if cuts.is_empty() {
         return (source.to_string(), 0);
@@ -40,15 +43,54 @@ pub fn drop_redundant_labels(program: &Program, source: &str) -> (String, usize)
         cursor = to;
     }
     edited.push_str(&source[cursor..]);
-    (edited, cuts.len())
+    (edited, count)
 }
 
 struct Scan<'a> {
     syms: ms_syntax::Names,
     session: &'a std::rc::Rc<ms_check::Session>,
     module: &'a ms_check::ModuleData,
-    source_len: usize,
+    source: &'a str,
+    colons: Option<Vec<usize>>,
+    removed: usize,
     cuts: Vec<(usize, usize)>,
+}
+
+impl Scan<'_> {
+    fn drop_label(&mut self, from: usize, to: usize, name: &str) {
+        let gap = &self.source[from..to];
+        if gap.contains("//") || gap.contains("/*") {
+            // Checked label gaps contain only the name, colon and trivia.
+            // Preserve comments and line breaks; colons inside comments are not
+            // label punctuation. Index actual colon tokens once, only when needed.
+            let colons = self.colons.get_or_insert_with(|| {
+                let file = self.syms.str(self.module.file).into();
+                ms_syntax::lexer::lex(&file, self.source)
+                    .map(|lexed| {
+                        lexed
+                            .tokens
+                            .iter()
+                            .filter(|t| t.kind == ms_syntax::token::Tok::Colon)
+                            .map(|t| t.pos.offset as usize)
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            });
+            let at = colons.partition_point(|&offset| offset < from + name.len());
+            let Some(&colon) = colons.get(at).filter(|&&offset| offset < to) else {
+                return;
+            };
+            self.cuts.push((from, from + name.len()));
+            let spaces = self.source[colon + 1..to]
+                .bytes()
+                .take_while(|b| matches!(b, b' ' | b'\t'))
+                .count();
+            self.cuts.push((colon, colon + 1 + spaces));
+        } else {
+            self.cuts.push((from, to));
+        }
+        self.removed += 1;
+    }
 }
 
 /// The declared parameters of a function, method, or record constructor call.
@@ -108,10 +150,13 @@ impl Visitor for Scan<'_> {
                         && matches!(&arg.value.kind, ExprKind::Name(n) if syms.str(n) == label)
                         && !arg.mutable
                         && arg.pos.offset < arg.value.pos.offset
-                        && arg.value.pos.offset as usize <= self.source_len
+                        && arg.value.pos.offset as usize <= self.source.len()
                     {
-                        self.cuts
-                            .push((arg.pos.offset as usize, arg.value.pos.offset as usize));
+                        self.drop_label(
+                            arg.pos.offset as usize,
+                            arg.value.pos.offset as usize,
+                            label,
+                        );
                     }
                     label
                 }

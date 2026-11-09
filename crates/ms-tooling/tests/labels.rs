@@ -103,6 +103,39 @@ fn skips_broken_source() {
 }
 
 #[test]
+fn redundant_label_edits_preserve_intervening_comments() {
+    for newline in ["\n", "\r\n"] {
+        for (argument, comment) in [
+            (
+                "value: // explanation: keep this\n        value",
+                "// explanation: keep this",
+            ),
+            (
+                "value // explanation: before colon 😀\n        : value",
+                "// explanation: before colon 😀",
+            ),
+            (
+                "value:\n        /* explanation: block comment */\n        value",
+                "/* explanation: block comment */",
+            ),
+        ] {
+            let source = format!("fn identity(value: Int, other: Int) Int: value + other\nfn use(value: Int, other: Int) Int:\n    return identity({argument}, other: other)\n")
+                .replace('\n', newline);
+            let program = check(&source);
+            assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+            let (edited, count) = drop_redundant_labels(&program, &source);
+            assert_eq!(count, 2);
+            assert!(edited.contains(comment), "{edited}");
+            let checked = check(&edited);
+            assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
+            let formatted = ms_syntax::format(&"labels.ms".into(), &edited).unwrap();
+            assert!(formatted.contains(comment), "{formatted}");
+            assert_eq!(drop_redundant_labels(&checked, &edited), (edited, 0));
+        }
+    }
+}
+
+#[test]
 fn many_label_edits_preserve_source_and_are_idempotent() {
     for newline in ["\n", "\r\n"] {
         let mut source = include_str!("labels/many-header.ms").to_string();

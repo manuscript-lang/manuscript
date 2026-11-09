@@ -58,3 +58,19 @@ test "lines decode in place across chunks with non-ASCII text and a final unterm
 
     let found = try collect(lines(memory(source, 7)), none)
     try expect_equal(found, expected)
+
+test "long lines cross small chunks without changing output":
+    let text = try "é日本".repeat(8192)
+
+    for chunk in [1, 7, 64, 4096]:
+        let source = "{text}\r\nnext\n{text}"
+        let found = try collect(lines(from_bytes(source.to_bytes(), chunk)), none)
+        try expect_equal(found, [text.clone(), "next", text.clone()])
+
+test "empty chunks preserve pending carriage returns and byte budgets":
+    for tail in ["\n", ""]:
+        let chunks = ["abc\r".to_bytes(), "".to_bytes(), "".to_bytes(), tail.to_bytes()]
+        let found = collect(lines(from_list(chunks), 3), none)
+
+        if tail == "\n": try expect_equal(found, ok(["abc"]))
+        else: try expect_equal(found.err().kind, "EOVERFLOW")

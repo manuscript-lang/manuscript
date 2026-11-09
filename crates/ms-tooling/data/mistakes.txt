@@ -3,7 +3,7 @@
 # and `right` must check clean. Both replace `{}` in `body` (default `{}`), inside `main`;
 # `;;` starts a new line (rendered `; `). `setup` lines precede `main`.
 # Sources: rejection corpus (bughunt/neg, bughunt/cli-diag), re-probed against the current compiler;
-# agent first-build failure rates (bench/agent-python) motivate the list but record no error text.
+# agent first-build failure rates (bench/agent) motivate the list but record no error text.
 
 wrong: println("hi")
 right: print("hi")

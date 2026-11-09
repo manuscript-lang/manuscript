@@ -367,6 +367,8 @@ impl Checker {
         }
         let signature: Option<Ty>;
         let callable: Info;
+        // Where this call reported that a type argument cannot be inferred.
+        let mut undetermined: Option<usize> = None;
         if let Some(s) = symbol.as_ref().filter(|s| s.is_constant() && !const_use) {
             self.type_error(
                 e.pos,
@@ -403,6 +405,7 @@ impl Checker {
                 if supplied.len() >= required_type_arguments(&vars) {
                     supplied = complete_type_arguments(&vars, &supplied);
                 }
+                let before = self.p.diagnostics.len();
                 sig = self.specialize(
                     &sig,
                     &vars,
@@ -410,6 +413,12 @@ impl Checker {
                     e.pos,
                     &callee_name(self.syms, callee),
                 );
+                if self.p.diagnostics[before..]
+                    .first()
+                    .is_some_and(|d| d.message.starts_with("cannot infer type argument"))
+                {
+                    undetermined = Some(before);
+                }
                 if context.conflict {
                     sig = with_result(&sig, invalid());
                 }
@@ -460,7 +469,19 @@ impl Checker {
             signature = c.ty.clone();
             callable = c;
         }
-        self.finish_call(e, callee, args, i, signature, callable)
+        let info = self.finish_call(e, callee, args, i, signature, callable);
+        if let Some(at) = undetermined
+            && self.p.diagnostics[at + 1..]
+                .iter()
+                .any(|d| !d.message.starts_with("cannot infer callback parameter"))
+        {
+            // An argument reported its own error (an empty literal with no type): the type
+            // argument it left undetermined is that error's consequence, so the argument's
+            // diagnostic stands alone. A callback parameter left without a type is the other
+            // direction: the undetermined type argument is why, so both stay.
+            self.p.diagnostics.remove(at);
+        }
+        info
     }
 
     fn finish_call(
@@ -797,10 +818,15 @@ impl Checker {
                                     && inference_type_known(e, &self.inference_variables)))
                     });
                     if !elsewhere && !self.argument_failed_inference(args) {
-                        self.type_error(
-                            pos,
-                            format!("cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding", self.syms.str(v.name)),
-                        );
+                        let message = if t.is(Builtin::Optional) {
+                            "cannot infer the type of none; give it a target, e.g. `let x: Int? = none`, or pass a value".to_string()
+                        } else {
+                            format!(
+                                "cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding",
+                                self.syms.str(v.name)
+                            )
+                        };
+                        self.type_error(pos, message);
                     }
                     self.unresolved_constructors.insert(pos);
                     invalid()

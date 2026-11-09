@@ -124,3 +124,38 @@ test "CSV rejects malformed records invalid options and limits":
 
     let invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
     try expect_equal(stringify([["a"]], CsvOptions("::", "\n")), invalid)
+
+test "CSV quoted fields preserve zero one and many escaped quotes":
+    for value in ["", "plain", "\"", "a\"b", "\"\"", "é\"日\"fin", "a\r\nb\"c\"d"]:
+        let encoded = "\"{value.replace("\"", "\"\"")}\""
+        let expected = [[value.replace("\r\n", "\n"), "tail"]]
+
+        for delimiter in [",", ";", "\t"]:
+            let options = CsvOptions(delimiter.clone())
+            for ending in ["", "\n", "\r\n"]:
+                try expect_equal(
+                    (
+                        try parse(
+                            "{encoded}{delimiter}tail{ending}", options
+                        )
+                    ),
+                    expected
+                )
+
+    let value = try "a\"日".repeat(8000)
+    let encoded = "\"{value.replace("\"", "\"\"")}\"\n"
+    try expect_equal((try parse(encoded)), [[value]])
+
+test "CSV escaped fields preserve malformed closing quote locations":
+    for text in ["\"a\"\"b", "\"a\"\"b\"\"c", "\"é\"\"日\"x"]:
+        let result = parse(text)
+        try expect_true(result.is_error())
+        try expect_equal(result.err().kind, "EBADMSG")
+
+    try expect_equal(
+        parse("\"a\"\"b").err().message, "CSV 1:1: unterminated quoted cell"
+    )
+    try expect_equal(
+        parse("\"é\"\"日\"x").err().message,
+        "CSV 1:7: expected a delimiter or line end after the closing quote"
+    )

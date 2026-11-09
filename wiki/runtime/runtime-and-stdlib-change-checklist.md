@@ -15,6 +15,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Use ownership and borrowing from `crates/ms-check/OWNERSHIP.md`: mutation requires `var`, and `.clone()` makes a deep value copy; `Clonable` is the bound for generic copying. Native resource handles cannot be cloned. Guard validation covers actual operations and reads where required.
 - Native I/O remains interruptible after descriptor metadata access. Completeness includes blocked I/O, concurrent close, bounded streaming, and shutdown, beyond successful return values. Process `stdin`/`stdout` reads and writes need not be cancellable (the user dropped that item).
 - Concurrency is promises and pipes: see [concurrency is promises and pipes only](concurrency-is-promises-and-pipes-only.md); extend `@std/concurrency/promise.ms`, not new groups or locks.
+- Line streams buffer unfinished fragments once and join only at newline/EOF (#3212). Keep whole-chunk decoding direct; test split CRLF, empty chunks, UTF-8 and exact byte limits without rescanning or copying the growing prefix.
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - User code binds a native symbol with `extern fn name(...) T` (symbol is the function name, linked with `--link`; may return `Result` with a payload-free error type; not generic, not a method). Stdlib natives are `extern fn` declarations wrapped by ordinary functions; the few generic natives are bodiless and named in `ms-lower/src/rtcall.rs`. `extern type` and source-level `Shared[T]`, `Weak[T]`, `Arena[T]` are planned, not shipped.
 - Preserve declared error types/cases/causes and checked binding identities.
@@ -37,6 +38,8 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - `make repo-check` fails an `extern fn` in `stdlib/internal/*.ms` that no other `stdlib` file names (`ms-repo-check/src/internal_externs.rs`). Remove the declaration, the Rust function and its `rt_symbols.txt` line (`cargo xtask symbols`) in the change that drops the last use.
 - New native sources are embedded through `ms-native`; verify built programs as well as crate tests. See [runtime conventions](../../documentation/contributing/runtime-conventions.md).
 - Run affected crate tests (`cargo nextest run -p <crate>`) and `make conform`; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
+
+- Complex asymptotic trig must not overflow a finite phase while evaluating double-angle sine. Beyond half Float.max, use the bounded sine/cosine identity; test the tiny component with relative accuracy rather than a fixed tolerance that accepts zero (`complex.ms`, #3196).
 
 ## Rust runtime
 
@@ -63,3 +66,7 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   turns use back-to-front moves; near-whole negative turns keep the shorter
   forward route. Test wrapped and partially filled rings, half-turn boundaries,
   and Int limits; a faster negative-unit case must not regress near-size counts.
+- CSV quoted-cell decoding scans for its closing quote before decoding the span.
+  Do not concatenate a growing prefix for every doubled quote: it makes a large
+  valid field quadratic (#3197). Keep zero/single-escape, Unicode, CRLF and
+  malformed-termination controls alongside the many-escape workload.

@@ -97,3 +97,31 @@ test "complex sqrt keeps a finite root for a subnormal input":
 
     let below = complex(0.0, -5.0e-324).sqrt()
     try expect_true(below.re > 0.0 and below.im < 0.0)
+
+// The small component needs relative checks: the ordinary near helper would
+// accept zero here and conceal lost phase information.
+test "complex tangent preserves huge finite phases":
+    for phase in [1.0e308, -1.0e308]:
+        let expected = if phase > 0.0: -3.948379522881268e-36 else: 3.948379522881268e-36
+
+        for magnitude in [41.0, -41.0]:
+            let tangent = complex(phase, magnitude).tan()
+            try expect_true(tangent.re.is_finite())
+            try expect_true((tangent.re / expected - 1.0).abs() < 1e-12)
+            try expect_equal(tangent.im, if magnitude > 0.0: 1.0 else: -1.0)
+
+            let hyperbolic = complex(magnitude, phase).tanh()
+            try expect_true(hyperbolic.im.is_finite())
+            try expect_true((hyperbolic.im / expected - 1.0).abs() < 1e-12)
+            try expect_equal(hyperbolic.re, if magnitude > 0.0: 1.0 else: -1.0)
+
+test "complex tangent handles the largest finite phase":
+    let phase = 1.7976931348623157e308
+    let expected = -4.847970089451913e-38
+    let tangent = complex(phase, 41.0).tan()
+    try expect_true((tangent.re / expected - 1.0).abs() < 1e-12)
+    try expect_equal(tangent.im, 1.0)
+
+    let hyperbolic = complex(41.0, phase).tanh()
+    try expect_true((hyperbolic.im / expected - 1.0).abs() < 1e-12)
+    try expect_equal(hyperbolic.re, 1.0)

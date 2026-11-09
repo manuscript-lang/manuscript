@@ -103,3 +103,23 @@ test "cycle empty input skips repetition after validating count":
 
     let _invalid = try expect_fault(fn: discard(cycle(List[Int](), -1)))
     try expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])
+
+test "full-size combinations do not consume call depth":
+    var values: List[Int] = []
+    for i in 0..1000000:
+        values.append(i)
+
+    let result = combinations(values, values.length())
+    try expect_equal(result.length(), 1)
+    try expect_equal(result[0], values)
+
+test "combinations distinguish equal positions and own nested copies":
+    try expect_equal(combinations([1, 1, 2], 2), [[1, 1], [1, 2], [1, 2]])
+
+    let input = [[1], [2], [3]]
+    var result = combinations(input, 2)
+    result[0][0].append(9)
+    try expect_equal(input, [[1], [2], [3]])
+    try expect_equal(result[1], [[1], [3]])
+
+    let _too_large = try expect_fault(fn: discard(combinations([1], 2)))

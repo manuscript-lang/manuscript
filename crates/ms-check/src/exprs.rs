@@ -212,13 +212,15 @@ impl Checker {
         }
         if let Some(exp) = expected {
             // A part left invalid by an inference failure was reported already ("cannot infer
-            // callback parameter"); restating it would print `<invalid>` to the user.
+            // callback parameter", "cannot infer list element type"); restating it would print
+            // `<invalid>` to the user.
             let inference_reported = (invalid_type(&Some(actual.clone()))
                 || invalid_type(&Some(exp.clone())))
-                && self.p.diagnostics.iter().any(|d| {
-                    d.message.starts_with("cannot infer callback parameter")
-                        && d.pos.line == e.pos.line
-                });
+                && self
+                    .p
+                    .diagnostics
+                    .iter()
+                    .any(|d| d.message.starts_with("cannot infer") && d.pos.line == e.pos.line);
             if !actual.is_invalid()
                 && !exp.is_invalid()
                 && !inference_reported
@@ -568,7 +570,11 @@ impl Checker {
             self.set_info(left, i.clone());
             return i;
         }
-        if let Some(s) = self.function_symbol(left) {
+        // `table[i]` on a module-level constant indexes its value; only functions take type arguments.
+        let function = self
+            .function_symbol(left)
+            .filter(|s| !(s.is_constant() && value.is_some()));
+        if let Some(s) = function {
             let args = self.resolve_arguments(types);
             let mut supplied: Vec<Option<Ty>> = args.into_iter().map(Some).collect();
             let vars = s.variables();

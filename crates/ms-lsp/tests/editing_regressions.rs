@@ -333,6 +333,35 @@ fn organize_imports_moves_whole_multiline_declarations() {
     }
 }
 
+#[test]
+fn organize_imports_preserves_eof_separator() {
+    for newline in ["\n", "\r\n"] {
+        for last in [
+            "import sqrt from \"@std/math/math.ms\"",
+            "import sqrt from \"@std/math/math.ms\" // math",
+            "import (\n    sqrt,\n    sin,\n) from \"@std/math/math.ms\"",
+        ] {
+            let source = format!("import StringBuilder from \"@std/string.ms\"\n{last}")
+                .replace('\n', newline);
+            let (_, found) = actions(&source, "source.organizeImports");
+            let organized = apply(&source, found.first().expect("organize imports"));
+            ms_syntax::format(&"main.ms".into(), &organized).expect("organized source parses");
+            assert!(organized.starts_with("import "), "{organized}");
+            assert!(organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap());
+            assert!(!organized.ends_with('\n'), "preserve missing final newline");
+            let (_, repeated) = actions(&organized, "source.organizeImports");
+            assert!(repeated.is_empty(), "organization is idempotent");
+        }
+    }
+    let source = "import StringBuilder from \"@std/string.ms\"\nimport parse from \"@std/data/json.ms\"\r\nimport sqrt from \"@std/math/math.ms\"";
+    let (_, found) = actions(source, "source.organizeImports");
+    let organized = apply(source, found.first().expect("mixed-newline imports"));
+    ms_syntax::format(&"main.ms".into(), &organized).expect("mixed newline result parses");
+    assert!(organized.ends_with("import StringBuilder from \"@std/string.ms\""));
+    let (_, repeated) = actions(&organized, "source.organizeImports");
+    assert!(repeated.is_empty());
+}
+
 const IDENTITY: &str = "fn identity(value: Int) Int:\n    return value\n";
 
 fn rename_edit(uri: &str) -> Json {
@@ -657,5 +686,62 @@ fn checkout_stdlib_sources_report_no_diagnostics() {
             })
             .collect();
         assert!(messages.is_empty(), "{file}: {messages:?}");
+    }
+}
+
+#[test]
+fn whitespace_actions_preserve_multiline_string_data() {
+    for raw in ["", "r"] {
+        let source = format!(
+            "fn text() String:  \n    return {raw}\"\"\"\n        é{{1 + 2}}  \t\n            \t\n        \"\"\"\n"
+        );
+        for input in [source.clone(), source.replace('\n', "\r\n")] {
+            let (_, found) = actions(&input, "quickfix");
+            let whitespace: Vec<_> = found
+                .iter()
+                .filter(|a| title(a) == "Remove trailing whitespace")
+                .collect();
+            assert_eq!(whitespace.len(), 1, "{found:?}");
+            let fixed = apply(&input, whitespace[0]);
+            assert_eq!(fixed, input.replacen("String:  ", "String:", 1));
+        }
+    }
+}
+
+#[test]
+fn completion_distinguishes_multiline_payload_and_interpolation() {
+    for newline in ["\n", "\r\n"] {
+        let source = "fn greet(name: String) String:\n    return \"\"\"\n        hello {name.}\n        \"\"\"\n".replace('\n', newline);
+        let found = labels(&source, 2, 20);
+        assert!(found.iter().any(|l| l == "trim"), "{found:?}");
+        let raw = "fn greet(name: String) String:\n    return r\"\"\"\n        {\"name\": name.member}\n        \"\"\"\n".replace('\n', newline);
+        assert!(labels(&raw, 2, 13).is_empty());
+    }
+}
+
+#[test]
+fn completion_recovers_incomplete_multiline_interpolation() {
+    for newline in ["\n", "\r\n"] {
+        for suffix in ["", "}\n        \"\"\"\nlet broken = \""] {
+            for prefix in ["", "let broken = \"\n"] {
+                let source = format!(
+                "{prefix}fn greet(name: String) String:\n    return \"\"\"\n        hello {{name.{suffix}"
+            )
+            .replace('\n', newline);
+                let found = labels(&source, 2 + usize::from(!prefix.is_empty()), 20);
+                assert!(found.iter().any(|l| l == "trim"), "{source:?}: {found:?}");
+            }
+        }
+        let raw =
+            "fn greet(name: String) String:\n    return r\"\"\"\n        {\"name\": name.member"
+                .replace('\n', newline);
+        assert!(labels(&raw, 2, 13).is_empty());
+        for prefix in ["", "r"] {
+            for quotes in ["", "\"", "\"\""] {
+                let source = format!("fn greet(name: String) String:\n    return {prefix}\"\"\"\n        payload\n        {quotes}")
+                    .replace('\n', newline);
+                assert!(labels(&source, 3, 8 + quotes.len()).is_empty(), "{source}");
+            }
+        }
     }
 }

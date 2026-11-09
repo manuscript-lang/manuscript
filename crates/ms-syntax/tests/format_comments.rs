@@ -42,3 +42,23 @@ fn syntax_shape(module: &ms_syntax::Module) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
+
+#[test]
+fn private_use_payloads_do_not_exhaust_formatter_placeholders() {
+    let file: Arc<str> = Arc::from("private-use.ms");
+    let payload: String = ('\u{e000}'..='\u{f8ff}').collect();
+    // Include runs and numbered marker candidates to exercise compact fallback collisions.
+    let payload = format!(
+        "{payload}{}\u{e000}0\u{e000}\u{e000}1\u{e000}",
+        "\u{e000}".repeat(65)
+    );
+    let source = format!(
+        "/* {payload} */\nfn text() String:\n    return \"\"\"\n        {payload}\n        \"\"\"\n"
+    );
+    for input in [source.clone(), source.replace('\n', "\r\n")] {
+        ms_syntax::parser::parse(&file, &input).unwrap();
+        let formatted = ms_syntax::format(&file, &input).unwrap();
+        assert_eq!(formatted, source);
+        assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
+    }
+}

@@ -7,8 +7,53 @@ use ms_check::api::types::BindingRef;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
 
-/// Indentation-based folding, so it remains available before parsing succeeds.
+/// Lexical suites end at their last code token, excluding trailing comments.
+/// Unfinished sources that cannot lex retain forgiving indentation folding.
 pub fn folding_ranges(d: &Document) -> Json {
+    let file = std::sync::Arc::from(d.path().as_str());
+    if let Ok(lexed) = ms_syntax::lexer::lex(&file, &d.text) {
+        use ms_syntax::token::Tok;
+        let mut starts = Vec::new();
+        let mut ranges = Vec::new();
+        let mut header = 0;
+        let mut last = 0;
+        for token in lexed.tokens {
+            match token.kind {
+                Tok::Indent => starts.push(header),
+                Tok::Dedent => {
+                    if let Some(start) = starts.pop()
+                        && last > start
+                    {
+                        ranges.push((start, last));
+                    }
+                }
+                Tok::Comment | Tok::Newline | Tok::Eof => {}
+                kind => {
+                    last = token.end.line as usize - 1;
+                    if kind == Tok::Colon {
+                        header = token.pos.line as usize - 1;
+                    }
+                }
+            }
+        }
+        ranges.sort_unstable();
+        return Json::Arr(
+            ranges
+                .into_iter()
+                .map(|(start, end)| {
+                    obj([
+                        ("startLine", start.into()),
+                        ("endLine", end.into()),
+                        ("kind", "region".into()),
+                    ])
+                })
+                .collect(),
+        );
+    }
+    indentation_folding(d)
+}
+
+fn indentation_folding(d: &Document) -> Json {
     let lines: Vec<&str> = d.text.split('\n').collect();
     let indent = |line: &str| line.len() - line.trim_start_matches(' ').len();
     let mut result = Vec::new();
@@ -113,6 +158,79 @@ pub fn inlay_hints(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn folding_ignores_multiline_payload_structure() {
+        for source in [
+            "/*\nheading:\n    fake body\n*/\n",
+            "let text = \"\"\"\nheading:\n    fake body\n\"\"\"\n",
+            "let text = r\"\"\"\nheading:\n    fake body 😀\n\"\"\"\n",
+        ] {
+            ms_syntax::parser::parse(&std::sync::Arc::from("folding.ms"), source).unwrap();
+            let d = Document::new("file:///folding.ms", source);
+            assert_eq!(folding_ranges(&d), Json::Arr(Vec::new()));
+        }
+    }
+
+    #[test]
+    fn folding_follows_suites_not_payload_indentation() {
+        let cases: &[(&str, &[(usize, usize)])] = &[
+            (
+                "fn f() Int:\n    let x = 1\n// outside indentation is not a dedent\n    return x\n",
+                &[(0, 3)],
+            ),
+            (
+                "fn f() Int:\n    if true:\n        return 1\n    return 0\n",
+                &[(0, 3), (1, 2)],
+            ),
+            (
+                "fn f() String:\n    return \"\"\"\npayload:\n    not code\n\"\"\"\n",
+                &[(0, 4)],
+            ),
+            (
+                "fn f() Int:\n    return 1\n    // trailing comment\n",
+                &[(0, 1)],
+            ),
+            ("interface Empty:\nfn f() Int:\n    return 1\n", &[(1, 2)]),
+            ("fn f(\n    x: Int,\n) Int:\n    return x\n", &[(2, 3)]),
+            (
+                "fn f() Int:\n    let x = (\n        1 + 2\n    )\n    return x\n",
+                &[(0, 4)],
+            ),
+        ];
+        for (source, ranges) in cases {
+            let expected = Json::Arr(
+                ranges
+                    .iter()
+                    .map(|&(start, end)| {
+                        obj([
+                            ("startLine", start.into()),
+                            ("endLine", end.into()),
+                            ("kind", "region".into()),
+                        ])
+                    })
+                    .collect(),
+            );
+            for source in [source.to_string(), source.replace('\n', "\r\n")] {
+                ms_syntax::lexer::lex(&std::sync::Arc::from("folding.ms"), &source).unwrap();
+                let d = Document::new("file:///folding.ms", source);
+                assert_eq!(folding_ranges(&d), expected, "{}", d.text);
+            }
+        }
+    }
+
+    #[test]
+    fn folding_keeps_unfinished_source_fallback() {
+        let d = Document::new("file:///folding.ms", "fn f() Int:\n    return (\n");
+        assert_eq!(
+            folding_ranges(&d),
+            Json::Arr(vec![obj([
+                ("startLine", 0usize.into()),
+                ("endLine", 1usize.into()),
+                ("kind", "region".into()),
+            ])])
+        );
+    }
 
     #[test]
     fn folding_headers_allow_comments_and_hashes_in_strings() {
