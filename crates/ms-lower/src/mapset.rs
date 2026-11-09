@@ -16,6 +16,11 @@ use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
 use ms_mir::types::Native;
 use ms_mir::types::{Ty as MTy, TyKind};
 
+/// Entries above which a map literal is built in chunks.
+const LONG_MAP_LITERAL: usize = 256;
+/// Entries per chunk of a long map literal.
+const LONG_MAP_CHUNK: usize = 64;
+
 /// Whether `t` is a `Map` or `Set`.
 pub(crate) fn is_map_or_set(m: &ms_mir::ir::Module, t: MTy) -> bool {
     matches!(m.types.kind(t), TyKind::Obj(n, _) if n.is_map_or_set())
@@ -579,10 +584,16 @@ impl<'a> FnLower<'a> {
 
     /// `{key: value, ...}`.
     pub(crate) fn map_literal(&mut self, ty: MTy, entries: &[MapEntry]) -> Result<Val, Error> {
-        let mut acc = self.map_new(ty)?;
         let early = entries
             .iter()
             .any(|en| crate::mutation::has_try(&en.key) || crate::mutation::has_try(&en.value));
+        if !early && entries.len() > LONG_MAP_LITERAL {
+            return self.long_map_literal(ty, entries);
+        }
+        let mut acc = self.map_new(ty)?;
+        if !early && entries.len() > 1 {
+            return self.map_literal_in_place(ty, acc, entries);
+        }
         for en in entries {
             // A `try` in a later key or value may return early: the map and key built so far
             // stay registered as temporaries until then.
@@ -608,6 +619,82 @@ impl<'a> FnLower<'a> {
             acc = self.map_insert(acc, k, v)?;
         }
         Ok(Val { v: acc, own: true })
+    }
+
+    /// A long literal is built in chunks, each a small map made by its own helper function when
+    /// the chunk's code can move there (`FuncBuilder::outline`), and merged in order so a later
+    /// entry still replaces an earlier one. One function holding every `msrt_map_add` call keeps
+    /// the map's address and descriptors live across all of them, and register allocation is
+    /// quadratic in that (5000 entries took 13 s of `llc`).
+    fn long_map_literal(&mut self, ty: MTy, entries: &[MapEntry]) -> Result<Val, Error> {
+        let (kd, vd) = self.map_descs(ty)?;
+        let vd = vd.ok_or_else(|| Error::new("a set literal is not supported"))?;
+        let mut acc: Option<Value> = None;
+        for chunk in entries.chunks(LONG_MAP_CHUNK) {
+            let mark = self.b.mark();
+            let temps = self.temps.len();
+            let empty = self.map_new(ty)?;
+            let mut part = self.map_literal_in_place(ty, empty, chunk)?.v;
+            if self.dead {
+                return Ok(self.dummy(ty));
+            }
+            if self.temps.len() == temps {
+                let name = format!("map.literal.{}", self.b.m.funcs.len());
+                part = self.b.outline(mark, part, &name).unwrap_or(part);
+            }
+            acc = Some(match acc {
+                None => part,
+                Some(head) => {
+                    let into = self.put_slot(head);
+                    let from = self.borrow_slot(part);
+                    self.call_runtime("msrt_map_merge", &[into, from, kd, vd], MTy::UNIT)?;
+                    self.drop_value(part);
+                    self.take_slot(into, ty)
+                }
+            });
+        }
+        let v = acc.expect("a long literal has entries");
+        Ok(Val { v, own: true })
+    }
+
+    /// The entries of a literal with no early return, added to the map `acc` held in one slot.
+    /// Each `msrt_map_add` takes its key and value out of two slots that the next entry fills
+    /// again, so an entry costs two stores and a call; moving the map and the slots in and out
+    /// per entry made a 20000-entry literal half a million IR lines.
+    fn map_literal_in_place(
+        &mut self,
+        ty: MTy,
+        acc: Value,
+        entries: &[MapEntry],
+    ) -> Result<Val, Error> {
+        let (kd, vd) = self.map_descs(ty)?;
+        let vd = vd.ok_or_else(|| Error::new("a set literal is not supported"))?;
+        let slot = self.put_slot(acc);
+        let mut held: Option<(Value, Value)> = None;
+        for en in entries {
+            let k = self.expr(&en.key)?;
+            let k = if self.dead { k.v } else { self.owned(k) };
+            let v = self.expr(&en.value)?;
+            if self.dead {
+                return Ok(self.dummy(ty));
+            }
+            let v = self.owned(v);
+            let (ks, vs) = match held {
+                Some(slots) => slots,
+                None => {
+                    let slots = (self.new_slot(self.ty_of(k)), self.new_slot(self.ty_of(v)));
+                    held = Some(slots);
+                    slots
+                }
+            };
+            self.fill_slot(ks, k);
+            self.fill_slot(vs, v);
+            self.call_runtime("msrt_map_add", &[slot, kd, vd, ks, vs], MTy::UNIT)?;
+        }
+        Ok(Val {
+            v: self.take_slot(slot, ty),
+            own: true,
+        })
     }
 
     /// The owned map `old` with `key` bound to `value`; both are consumed.
@@ -637,19 +724,27 @@ impl<'a> FnLower<'a> {
         Ok((kd, vd))
     }
 
-    /// A stack slot holding the owned `x`.
-    pub(crate) fn put_slot(&mut self, x: Value) -> Value {
-        let t = self.ty_of(x);
-        let slot = self
-            .b
+    /// A stack slot for a value of type `t`.
+    fn new_slot(&mut self, t: MTy) -> Value {
+        self.b
             .emit(Op::Slot, &[], Imm::Ty(t), Some(MTy::PTR))
-            .expect("slot");
-        let op = if self.needs_drop(t) {
+            .expect("slot")
+    }
+
+    /// Stores the owned `x` in `slot`.
+    fn fill_slot(&mut self, slot: Value, x: Value) {
+        let op = if self.needs_drop(self.ty_of(x)) {
             Op::Put
         } else {
             Op::Store
         };
         self.b.emit(op, &[slot, x], Imm::None, None);
+    }
+
+    /// A stack slot holding the owned `x`.
+    pub(crate) fn put_slot(&mut self, x: Value) -> Value {
+        let slot = self.new_slot(self.ty_of(x));
+        self.fill_slot(slot, x);
         slot
     }
 
