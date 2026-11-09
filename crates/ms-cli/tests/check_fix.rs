@@ -161,6 +161,122 @@ fn check_json_carries_the_fix_that_fix_applies() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn fix_repeats_until_later_diagnostics_are_fixed() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-passes-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // The checker reports the immutable `xs` only after the misspelled member is fixed.
+    std::fs::write(dir.join("a.ms"), include_str!("check_fix/repeat_passes.ms")).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("var xs = [1, 2]"), "{fixed}");
+    assert!(fixed.contains("xs.append(3)"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn fix_removes_a_group_of_only_redundant_prelude_imports() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-redundant-group-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/redundant_group.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(!fixed.contains("import"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn fix_adds_each_missing_import_once() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-import-once-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/missing_imports.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert_eq!(fixed.matches("import Duration").count(), 1, "{fixed}");
+    assert_eq!(fixed.matches("import Bytes").count(), 1, "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn integer_literal_fix_is_text_not_an_interpolation() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-literal-text-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/int_literal_to_text.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("greet(\"3\")"), "{fixed}");
+    let (status, text) = ms(&["lint", "a.ms"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(!text.contains("MSL117"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn conversion_fix_never_rewrites_a_compound_assignment_target() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-compound-fix-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/compound_mixed.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(!text.contains("\"fix\""), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn closure_capture_diagnostic_carries_no_clone_fix() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-capture-fix-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        include_str!("check_fix/closure_capture.ms"),
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("outlives the statement"), "{text}");
+    assert!(!text.contains("\"fix\""), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn option_type_is_not_fixed_to_an_unwritable_spelling() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-option-type-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.ms"), include_str!("check_fix/option_type.ms")).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("written T?"), "{text}");
+    assert!(!text.contains("\"fix\""), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[cfg(unix)]
 #[test]
 fn directory_symlink_named_like_source_is_skipped() {

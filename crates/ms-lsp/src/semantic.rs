@@ -1,7 +1,7 @@
 //! `textDocument/semanticTokens/full`.
 
 use crate::analysis::{Analysis, Document};
-use crate::index::{Occurrence, expr_text};
+use crate::index::{Occurrence, expr_text, type_references};
 use crate::json::{Json, obj};
 use crate::text::{self, EditorKind, ForwardPositions};
 use ms_check::api::types::Kind;
@@ -215,6 +215,14 @@ pub fn semantic_tokens(
             };
             for decl in &module.decls {
                 visit::walk_decl(&mut kinds, decl.decl());
+            }
+            // A written type is a type even when it has no declaration to index, like `Int`.
+            let facts = module.facts();
+            for site in type_references(&module) {
+                if let Some(ty) = facts.type_refs.get(&site.id) {
+                    let kind = if ty.kind == Kind::Variable { 10 } else { 6 };
+                    resolved.entry(site.pos.offset as usize).or_insert(kind);
+                }
             }
         }
     }

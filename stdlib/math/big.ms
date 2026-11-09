@@ -87,9 +87,7 @@ export fn parse_rat(text: String) BigRat!:
 
     if exponent_parts.length() == 2:
         // `parse_exponent` takes the one optional sign itself, so a second sign is malformed.
-        exponent = parse_exponent(exponent_parts[1])
-        if exponent == -1000001:
-            return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+        exponent = try parse_exponent(exponent_parts[1])
         if exponent > 100000 or exponent < -100000:
             return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 
@@ -115,12 +113,15 @@ export fn parse_rat(text: String) BigRat!:
 
     return rat(numerator, pow10(scale))
 
-// Parses a signed decimal exponent; returns -1000001 for malformed text, a value the EOVERFLOW check would otherwise reject.
-fn parse_exponent(text: String) Int:
-    if let value = parse_int(text, 10):
-        return value
+// Keep malformed decimal syntax distinct from an exponent exceeding the integer range.
+fn parse_exponent(text: String) Int!:
+    let parsed = parse_int(text, 10)
+    if let value = parsed:
+        return ok(value)
+    if parsed.err().kind == "ERANGE":
+        return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 
-    return -1000001
+    return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 impl BigRat:
     // Returns the numerator, which carries the sign.

@@ -347,6 +347,9 @@ unsafe fn string_get(
         let off = if index >= 0 && !(*s).flagged_ascii() {
             // Non-ASCII text: walk to the scalar instead of counting the whole string first.
             utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
+        } else if index < 0 && !(*s).flagged_ascii() {
+            // Negative index: walk back from the end, again without a whole-string count.
+            utf8::retreat(text, text.len(), index.unsigned_abs() as usize)
         } else {
             let n = scalar_count(s);
             relative(n, index).map(|i| {
@@ -388,6 +391,8 @@ pub unsafe extern "C-unwind" fn msrt_string_scalar_at(
         let text = bytes(s);
         let off = if index >= 0 && !(*s).flagged_ascii() {
             utf8::advance(text, 0, index as usize).filter(|&o| o < text.len())
+        } else if index < 0 && !(*s).flagged_ascii() {
+            utf8::retreat(text, text.len(), index.unsigned_abs() as usize)
         } else {
             let n = scalar_count(s);
             relative(n, index).map(|i| {
@@ -1572,15 +1577,38 @@ pub unsafe extern "C-unwind" fn msrt_string_slice_scalars(
     }
 }
 
-/// Faults on a negative `count`, else clamps it to the scalar length.
-unsafe fn scalar_count_arg(name: &str, s: *const StrVal, count: i64) -> usize {
+/// Faults on a negative `count`.
+fn check_count(name: &str, count: i64) {
     if count < 0 {
         fault::fault_fmt(format_args!(
             "String.{name}: count must be nonnegative, found {count}"
         ));
     }
-    // SAFETY: caller passes a live string.
-    (count as usize).min(unsafe { scalar_count(s) })
+}
+
+/// Byte offset after the first `count` scalars, clamped to the end of the text. Walks only that
+/// prefix (no whole-string count) unless the string is known to be ASCII, where it is the count.
+unsafe fn offset_after(s: *const StrVal, count: usize) -> usize {
+    // SAFETY: `s` live.
+    unsafe {
+        let text = bytes(s);
+        if (*s).flagged_ascii() {
+            return count.min(text.len());
+        }
+        utf8::advance(text, 0, count).unwrap_or(text.len())
+    }
+}
+
+/// A copy of `text[a..b]`, sharing nothing; the whole string is cloned when the range covers it.
+unsafe fn sub_bytes(s: *const StrVal, a: usize, b: usize) -> StrVal {
+    // SAFETY: `s` live; `a <= b <= len`.
+    unsafe {
+        let text = bytes(s);
+        if a == 0 && b == text.len() {
+            return cloned(&*s);
+        }
+        from_bytes(&text[a..b])
+    }
 }
 
 /// `take(count)`: the first `count` scalars, clamped to the string.
@@ -1589,8 +1617,9 @@ unsafe fn scalar_count_arg(name: &str, s: *const StrVal, count: i64) -> usize {
 pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let n = scalar_count_arg("take", s, count);
-        *out = sub_scalars(s, 0, n);
+        check_count("take", count);
+        let end = offset_after(s, count as usize);
+        *out = sub_bytes(s, 0, end);
     }
 }
 
@@ -1600,8 +1629,9 @@ pub unsafe extern "C-unwind" fn msrt_string_take(s: *const StrVal, count: i64, o
 pub unsafe extern "C-unwind" fn msrt_string_drop_n(s: *const StrVal, count: i64, out: *mut StrVal) {
     // SAFETY: caller passes a live string and a writable out.
     unsafe {
-        let n = scalar_count_arg("drop", s, count);
-        *out = sub_scalars(s, n, scalar_count(s));
+        check_count("drop", count);
+        let start = offset_after(s, count as usize);
+        *out = sub_bytes(s, start, bytes(s).len());
     }
 }
 
@@ -1622,6 +1652,25 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
                     STATUS_OK
                 }
                 None => STATUS_OUT_OF_RANGE,
+            };
+        }
+        if (start < 0 || end < 0) && !(*s).flagged_ascii() {
+            // A bound from the end walks back from the end, one from the start walks forward; offsets
+            // grow with scalar positions, so `a <= b` is the same check on bytes.
+            let text = bytes(s);
+            let offset = |bound: i64| {
+                if bound < 0 {
+                    utf8::retreat(text, text.len(), bound.unsigned_abs() as usize)
+                } else {
+                    utf8::advance(text, 0, bound as usize)
+                }
+            };
+            return match (offset(start), offset(end)) {
+                (Some(a), Some(b)) if a <= b => {
+                    *out = sub_bytes(s, a, b);
+                    STATUS_OK
+                }
+                _ => STATUS_OUT_OF_RANGE,
             };
         }
         let n = scalar_count(s) as i64;

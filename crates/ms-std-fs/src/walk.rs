@@ -1,11 +1,11 @@
 //! Tree operations: glob queries and `copy`.
 use crate::err::{Fail, Res};
 use crate::ops;
+use crate::ops::poll_cancel;
 use crate::path;
 use crate::sys::{self, CPath};
 use alloc::string::String;
 use alloc::vec::Vec;
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_ALREADY_EXISTS, STATUS_LIMIT_EXCEEDED};
 use ms_std_path::glob::Glob;
 
@@ -102,7 +102,7 @@ fn open_out(dest: &[u8], mode: u32) -> Res<sys::Fd> {
 fn copy_stream(input: sys::Fd, output: sys::Fd, dest: &[u8], bytes: &mut i64) -> Res<()> {
     let mut buffer = alloc::vec![0u8; 65536];
     loop {
-        poll_cancel();
+        poll_cancel()?;
         let n = sys::read(input, &mut buffer).map_err(|e| Fail::errno(e, "read", b""))?;
         if n == 0 {
             return Ok(());
@@ -215,7 +215,7 @@ fn clone_file(source: &[u8], destination: &[u8]) -> Result<(), Fail> {
 
 impl Copier<'_, '_> {
     fn copy(&mut self, source: &[u8], dest: &[u8]) -> Res<()> {
-        poll_cancel();
+        poll_cancel()?;
         if self.o.entries <= 0 {
             return Err(limit_exceeded());
         }
@@ -519,7 +519,7 @@ impl GlobState {
         o: &GlobOptions<'_>,
         exclude: &mut ExcludeFn<'_>,
     ) -> Res<()> {
-        poll_cancel();
+        poll_cancel()?;
         if self.remaining == 0 {
             return Err(limit_exceeded());
         }

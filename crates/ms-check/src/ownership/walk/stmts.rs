@@ -17,13 +17,13 @@ impl Walker<'_> {
         self.pending.extend(outer);
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
         self.promises_outliving(&ended);
-        self.active.retain(|a| !ended.contains(&a.holder));
+        self.active.release(&ended, |_| true);
     }
 
     /// A promise kept by a binding that outlives the block must not read a local that ends with it.
     pub(super) fn promises_outliving(&mut self, ended: &[usize]) {
         let mut found: Vec<(Pos, String, String)> = Vec::new();
-        for a in &self.active {
+        for a in self.active.iter() {
             if a.why != PROMISE_WHY || ended.contains(&a.holder) {
                 continue;
             }
@@ -110,7 +110,6 @@ impl Walker<'_> {
         else_body: &[Stmt],
     ) {
         let mark = self.declared.len();
-        let arm_mark = self.active.len();
         match binding {
             Some(p) => {
                 // A scalar entry is copied out of the map, so the entry's place is the map itself.
@@ -141,12 +140,10 @@ impl Walker<'_> {
         let then_state = std::mem::replace(&mut self.active, entry);
         // The payload bindings and their borrows end with the then-branch.
         let ended: Vec<usize> = self.declared.drain(mark..).collect();
-        self.active.retain(|a| !ended.contains(&a.holder));
-        self.active
-            .truncate(self.active.len().max(arm_mark).min(self.active.len()));
+        self.active.release(&ended, |_| true);
         self.block(else_body);
         let else_state = std::mem::take(&mut self.active);
-        let then_state: Vec<Borrow> = then_state
+        let then_state: super::active::ActiveBorrows = then_state
             .into_iter()
             .filter(|a| !ended.contains(&a.holder))
             .collect();
@@ -632,8 +629,10 @@ impl Walker<'_> {
             }
         }
         // A call closes a resource entry the mutator discards; a method value does not, so the
-        // entry would leak.
+        // entry would leak. Source-defined methods with the same names keep their own semantics.
         if let Some((m, _)) = self.method_value_parts(e)
+            && !self.syms.str(m.native).is_empty()
+            && crate::effects::collection_mutation(self.syms, &m)
             && m.name()
                 .is_some_and(|n| crate::effects::discards_entries(self.syms.str(n)))
             // An operation that also stores its argument was rejected above, with that reason.
@@ -691,7 +690,7 @@ impl Walker<'_> {
         escaping: bool,
     ) -> Vec<(Place, bool)> {
         if let Some((m, _)) = self.method_value_parts(e)
-            && let Some(payload) = bound_passthrough(&m, &self.cx.m.ty(recv))
+            && let Some(payload) = wrapper_passthrough(&m, &self.cx.m.ty(recv))
         {
             // A function value can run repeatedly and cannot move out its captured receiver.
             // Only the preserved payload needs copying; callback inputs remain borrowed.

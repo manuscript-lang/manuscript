@@ -98,6 +98,17 @@ const HUGE_FUNCTION_LINES: usize = 60_000;
 const LARGE_FUNCTION_LINES: usize = 25_000;
 const _: () = assert!(LARGE_FUNCTION_LINES < HUGE_FUNCTION_LINES);
 
+/// One LLVM module of the program.
+pub struct Unit {
+    /// The module's IR text.
+    pub ir: String,
+    /// Every function in it is `optnone`. Code generation then runs at `-O0`: the optimizing
+    /// register allocator is superlinear in one function's size, and `optnone` does not make
+    /// `llc -O2` skip it (8000 statements in `main` took 7.9 s, 16000 took 28 s, against 1.6 s and
+    /// 3.3 s at `-O0`).
+    pub unoptimized: bool,
+}
+
 /// Whether a function body is long enough to skip optimization.
 fn is_huge(body: &str) -> bool {
     body.bytes().filter(|&b| b == b'\n').count() > HUGE_FUNCTION_LINES
@@ -1454,11 +1465,28 @@ impl LlvmModule {
     pub fn finish(&self, triple: &str, pinned: &HashSet<String>, anchored: bool) -> String {
         self.finish_units(triple, pinned, anchored, 1)
             .swap_remove(0)
+            .ir
     }
 
     /// Records the function symbols in the vtable `name`, slot by slot.
     pub fn set_vtable(&mut self, name: String, slots: Vec<String>) {
         self.vtables.insert(name, slots);
+    }
+
+    /// Whether `d` is written `optnone` (see [`HUGE_FUNCTION_LINES`]).
+    fn is_unoptimized(&self, d: &Def, deep: &HashSet<String>) -> bool {
+        d.avx2.is_none() && !deep.contains(&d.name) && is_huge(&d.body)
+    }
+
+    /// Whether some function is compiled without optimization, which gets a unit of its own.
+    pub fn has_unoptimized(&self) -> bool {
+        let deep = self.deep_glue();
+        self.defs.iter().any(|d| self.is_unoptimized(d, &deep))
+    }
+
+    /// What `d` adds to its unit's size when the functions are cut into units.
+    fn weight(d: &Def) -> usize {
+        d.body.len() * if d.avx2.is_some() { 3 } else { 1 }
     }
 
     /// Total bytes of function text, which decides how many units a module is worth.
@@ -1484,23 +1512,33 @@ impl LlvmModule {
         pinned: &HashSet<String>,
         anchored: bool,
         units: usize,
-    ) -> Vec<String> {
-        let units = units.clamp(1, self.defs.len().max(1));
-        let anchored = anchored && units == 1;
+    ) -> Vec<Unit> {
         let deep = self.deep_glue();
-        // Unit k holds defs[cuts[k]..cuts[k + 1]].
-        let mut cuts = vec![0usize];
-        if units > 1 {
-            let total = self.code_bytes();
-            let mut seen = 0usize;
-            for (i, d) in self.defs.iter().enumerate() {
-                if seen * units >= total * cuts.len() {
-                    cuts.push(i);
-                }
-                seen += d.body.len() * if d.avx2.is_some() { 3 } else { 1 };
+        // Functions compiled without optimization go to a unit of their own, which `llc` runs at
+        // `-O0` (see `Unit::unoptimized`); the rest are cut into `units` of similar size.
+        let (plain, bare): (Vec<&Def>, Vec<&Def>) = self
+            .defs
+            .iter()
+            .partition(|d| !self.is_unoptimized(d, &deep));
+        let units = units.clamp(1, plain.len().max(1));
+        let mut groups: Vec<(Vec<&Def>, bool)> = Vec::new();
+        let total: usize = plain.iter().map(|d| Self::weight(d)).sum();
+        let mut seen = 0usize;
+        for d in plain {
+            if groups.is_empty() || (units > 1 && seen * units >= total * groups.len()) {
+                groups.push((Vec::new(), false));
             }
+            seen += Self::weight(d);
+            groups.last_mut().expect("group").0.push(d);
         }
-        cuts.push(self.defs.len());
+        if !bare.is_empty() {
+            groups.push((bare, true));
+        }
+        if groups.is_empty() {
+            groups.push((Vec::new(), false));
+        }
+        let units = groups.len();
+        let anchored = anchored && units == 1;
         let mut tail = String::new();
         tail.push_str(
             "declare void @llvm.trap() cold noreturn nounwind\n\
@@ -1571,7 +1609,7 @@ impl LlvmModule {
             let _ = writeln!(tail, "!{i} = {n}");
         }
         let mut out = Vec::with_capacity(units);
-        for k in 0..cuts.len() - 1 {
+        for (members, unoptimized) in &groups {
             let mut s = String::new();
             let _ = writeln!(s, "target triple = \"{triple}\"");
             if anchored {
@@ -1581,15 +1619,12 @@ impl LlvmModule {
                 );
             }
             let mut uses_level = false;
-            for d in &self.defs[cuts[k]..cuts[k + 1]] {
+            for d in members {
                 uses_level |= self.write_def(&mut s, d, &deep, anchored, pinned);
             }
             // References can precede definitions, and with several units point into another:
             // declare what this unit calls and does not define, found in one scan of its text.
-            let local: HashSet<&str> = self.defs[cuts[k]..cuts[k + 1]]
-                .iter()
-                .map(|d| d.name.as_str())
-                .collect();
+            let local: HashSet<&str> = members.iter().map(|d| d.name.as_str()).collect();
             let mut used = referenced(&s);
             // A vtable this unit names is written with its slots; the functions they name are
             // then referenced too, so the scan below declares the ones another unit defines.
@@ -1645,7 +1680,10 @@ impl LlvmModule {
                 s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
             }
             s.push_str(&tail);
-            out.push(s);
+            out.push(Unit {
+                ir: s,
+                unoptimized: *unoptimized,
+            });
         }
         out
     }
@@ -1749,6 +1787,49 @@ mod tests {
         assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
     }
 
+    fn plain_def(name: &str, lines: usize) -> Def {
+        Def {
+            header: format!("void @\"{name}\"() #0 {{\n"),
+            name: name.to_string(),
+            public: false,
+            glue: false,
+            body: format!(
+                "b0:\n{}  ret void\n}}\n\n",
+                "  call void @\"x\"()\n".repeat(lines)
+            ),
+            avx2: None,
+        }
+    }
+
+    #[test]
+    fn huge_functions_form_one_unoptimized_unit_of_their_own() {
+        let mut module = LlvmModule::new(vec![Some("a.ms".into())], ".".into());
+        module.defs.push(plain_def("small_a", 10));
+        module.defs.push(plain_def("huge", HUGE_FUNCTION_LINES + 1));
+        module.defs.push(plain_def("small_b", 10));
+        assert!(module.has_unoptimized());
+        let units = module.finish_units("x86_64-unknown-linux-gnu", &HashSet::new(), true, 1);
+        let flags: Vec<bool> = units.iter().map(|u| u.unoptimized).collect();
+        assert_eq!(flags, [false, true]);
+        let defines =
+            |u: &Unit, name: &str| u.ir.contains(&format!("define hidden void @\"{name}\""));
+        assert!(defines(&units[0], "small_a") && defines(&units[0], "small_b"));
+        assert!(!units[0].ir.contains("define hidden void @\"huge\""));
+        assert!(defines(&units[1], "huge"));
+        // The huge function's neighbours are declared where they are only called.
+        assert!(!units[1].ir.contains("optnone") || units[1].ir.contains("#4"));
+    }
+
+    #[test]
+    fn a_module_without_huge_functions_stays_one_optimized_unit() {
+        let mut module = LlvmModule::new(vec![Some("a.ms".into())], ".".into());
+        module.defs.push(plain_def("small", 10));
+        assert!(!module.has_unoptimized());
+        let units = module.finish_units("x86_64-unknown-linux-gnu", &HashSet::new(), true, 1);
+        assert_eq!(units.len(), 1);
+        assert!(!units[0].unoptimized);
+    }
+
     #[test]
     fn a_large_body_is_optimized_for_size() {
         assert!(!is_large(&"  ret void\n".repeat(LARGE_FUNCTION_LINES)));
@@ -1843,9 +1924,12 @@ mod tests {
         let mut m = LlvmModule::new(vec![Some(file.clone())], "dir\r\n}\ndefine cwd".into());
         m.add_function("metadata", display, (0, 1), &f, &Inlined, true);
         let triple = format!("{}-unknown-linux-gnu", std::env::consts::ARCH);
-        let text = m.finish(&triple, &HashSet::new(), false);
+        let unit = Unit {
+            ir: m.finish(&triple, &HashSet::new(), false),
+            unoptimized: false,
+        };
         let object = crate::llvm_obj::compile_all(
-            std::slice::from_ref(&text),
+            std::slice::from_ref(&unit),
             "3",
             &crate::BuildOptions::default(),
         )

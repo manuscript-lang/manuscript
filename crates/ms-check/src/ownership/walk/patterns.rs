@@ -33,7 +33,7 @@ impl Walker<'_> {
                 return;
             };
             // The read-only borrow `?N` held becomes the exclusive one.
-            self.active.retain(|a| a.holder != root.uid);
+            self.active.release(&[root.uid], |_| true);
             let before = self.diags.len();
             self.mutate(pos, &place, what);
             if self.diags.len() == before {

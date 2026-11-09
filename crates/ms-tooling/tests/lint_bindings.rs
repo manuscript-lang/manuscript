@@ -112,3 +112,19 @@ fn unused_import_fix_ignores_quotes_in_group_comments() {
         }
     }
 }
+
+#[test]
+fn explicit_generic_recursion_without_base_case_is_reported() {
+    assert_eq!(
+        recursive(include_str!("lint_bindings/generic-recursion.ms")),
+        1
+    );
+}
+
+#[test]
+fn explicit_generic_calls_with_base_cases_or_other_targets_are_clean() {
+    assert_eq!(
+        recursive(include_str!("lint_bindings/generic-recursion-controls.ms")),
+        0
+    );
+}

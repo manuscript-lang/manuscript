@@ -991,7 +991,7 @@ impl<'a> FnLower<'a> {
                 && !x.own
                 && !binding.mutable
                 && !self.slotted.contains(&binding.uid)
-                && self.temps.is_empty()
+                && !self.temp_rooted(x.v, 0)
                 && self.needs_drop(ty)
                 && matches!(
                     self.b.defining_op(x.v),
@@ -1163,6 +1163,24 @@ impl<'a> FnLower<'a> {
                 self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
             }
         }
+    }
+
+    /// Whether `v` is, or borrows from, an owned temporary that is still pending: the statement
+    /// end drops it, so a binding must not keep pointing into it. A value owned by a local (or a
+    /// borrowed parameter) is not pending, whatever else is.
+    fn temp_rooted(&self, v: Value, depth: u32) -> bool {
+        if self.temps.is_empty() {
+            return false;
+        }
+        if self.temps.contains(&v) {
+            return true;
+        }
+        if depth > 32 || !self.b.is_borrowed(v) {
+            return depth > 32;
+        }
+        self.b
+            .defining_args_anywhere(v)
+            .is_some_and(|args| args.iter().any(|a| self.temp_rooted(*a, depth + 1)))
     }
 
     /// Whether the value `parent` that `v` was read from is itself borrowed, looking through the

@@ -91,3 +91,20 @@ test "secure_int covers wide and empty ranges":
     let empty: List[Int] = []
     try expect_equal(try choice(empty), none)
     try expect_equal(try shuffle([5]), [5])
+
+fn draw_wide(min: Int, max_exclusive: Int) Unit:
+    var rng = seeded(1)
+    discard(rng.int(min, max_exclusive))
+
+test "seeded int names a range wider than the largest Int":
+    let message = try expect_fault(
+        fn: draw_wide(-9223372036854775807, 9223372036854775807)
+    )
+    try expect_true(message.contains("wider than the largest Int"))
+
+    let edge = try expect_fault(fn: draw_wide(-1, 9223372036854775807))
+    try expect_true(edge.contains("wider than the largest Int"))
+
+    var rng = seeded(1)
+    let widest = rng.int(-1, 9223372036854775806)
+    try expect_true(widest >= -1 and widest < 9223372036854775806)

@@ -182,3 +182,11 @@ fn a_collection_cannot_hand_over_one_of_its_elements() {
         "{got:?}"
     );
 }
+
+#[test]
+fn source_discard_names_do_not_imply_native_collection_effects() {
+    let got = diagnostics(include_str!(
+        "wrapper_passthrough/accept-source-discard-names.ms"
+    ));
+    assert!(got.is_empty(), "{got:?}");
+}

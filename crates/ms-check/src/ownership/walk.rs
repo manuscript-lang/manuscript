@@ -5,7 +5,7 @@ use super::classify::{Class, Classifier, declares_close};
 use super::live::Liveness;
 use super::modes::{
     BORROWED_ERROR, BORROWED_OK, CallModes, ParamMode, ResultBorrow, Summaries, Summary,
-    bound_passthrough, call_modes, element_handed_out, method_callee, receiver_mode, result_borrow,
+    call_modes, element_handed_out, method_callee, receiver_mode, result_borrow,
     takes_element_mutator, wrapper_passthrough,
 };
 use super::places::{Place, Step};
@@ -14,6 +14,7 @@ use ms_syntax::ast::*;
 use ms_syntax::{DiagnosticFix, Phase, Pos, visit};
 use std::sync::Arc;
 
+mod active;
 mod calls;
 mod exprs;
 mod patterns;
@@ -205,7 +206,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         facts: CallableOwnership::default(),
         diags: Vec::new(),
         meta: HashMap::new(),
-        active: Vec::new(),
+        active: Default::default(),
         pending: Vec::new(),
         carried: Vec::new(),
         declared: Vec::new(),
@@ -313,7 +314,7 @@ struct Walker<'a> {
     facts: CallableOwnership,
     diags: Vec<Diagnostic>,
     meta: HashMap<usize, Meta>,
-    active: Vec<Borrow>,
+    active: active::ActiveBorrows,
     /// Holders whose last use ran in this statement: released at its end.
     pending: Vec<usize>,
     /// Promise borrows of a promise just moved on: its new holder (a binding, a local container)
@@ -612,7 +613,7 @@ impl Walker<'_> {
         let borrowed_before = self.borrowed_return;
         let view_before = self.view_return;
         let entry = self.active.clone();
-        let mut joined: Vec<Borrow> = Vec::new();
+        let mut joined = active::ActiveBorrows::default();
         for arm in arms {
             self.active = entry.clone();
             let mark = self.declared.len();
@@ -644,7 +645,7 @@ impl Walker<'_> {
                 self.release_pending();
             }
             let ended: Vec<usize> = self.declared.drain(mark..).collect();
-            let end: Vec<Borrow> = std::mem::take(&mut self.active)
+            let end: active::ActiveBorrows = std::mem::take(&mut self.active)
                 .into_iter()
                 .filter(|a| !ended.contains(&a.holder))
                 .collect();
@@ -849,10 +850,9 @@ impl Walker<'_> {
                     format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; {why}, so capture an owned value instead", name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix_opt(
+                self.error(
                     e.pos,
                     format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; capture `{name_t}.{CLONE}()` instead", name_t = self.syms.str(name)),
-                    copy_after(e),
                 );
             }
         } else if !self.is_last(e.id, b) {
@@ -871,10 +871,9 @@ impl Walker<'_> {
                     format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; a resource cannot be cloned, so use `{name_t}` only inside the closure, or capture it at its last use", name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix_opt(
+                self.error(
                     e.pos,
                     format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; capture `{name_t}.{CLONE}()` to keep the original", name_t = self.syms.str(name)),
-                    copy_after(e),
                 );
             }
         }

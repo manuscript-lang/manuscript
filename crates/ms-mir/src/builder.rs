@@ -152,6 +152,16 @@ impl<'m> FuncBuilder<'m> {
             .and_then(|i| i.args.first().copied())
     }
 
+    /// The operands of the instruction that defined `v`, looking through every block.
+    pub fn defining_args_anywhere(&self, v: Value) -> Option<&[Value]> {
+        self.f
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .find(|i| i.res == Some(v))
+            .map(|i| i.args.as_slice())
+    }
+
     /// Sets the source location attached to subsequently emitted instructions.
     pub fn set_loc(&mut self, loc: Loc) {
         self.loc = loc;
@@ -517,7 +527,7 @@ impl<'m> FuncBuilder<'m> {
     /// scheduler are all quadratic in that). The function takes the values the run reads from
     /// outside as parameters and returns `result`, the one value the caller uses afterwards.
     /// Returns the call's result, or `None` (leaving the code in place) when the run is not
-    /// self-contained: it spans blocks, defines a value that needs a drop besides `result`, reads
+    /// self-contained: it spans blocks, defines a value that needs a drop besides `result` and what it `put`s into a slot, reads
     /// a value that needs one from outside, or uses frame-bound operations.
     pub fn outline(&mut self, mark: Mark, result: Value, name: &str) -> Option<Value> {
         let cur = self.cur.index();
@@ -530,11 +540,20 @@ impl<'m> FuncBuilder<'m> {
         }
         let mut defined = std::collections::HashSet::new();
         let mut free: Vec<Value> = Vec::new();
+        // A value `put` into a slot is moved there, and a literal is static: neither is dropped.
+        let put: std::collections::HashSet<Value> = run
+            .iter()
+            .filter(|i| i.op == Op::Put)
+            .flat_map(|i| i.args.iter().skip(1).copied())
+            .collect();
         for i in run {
+            // A slot is frame-bound too, but one that the run makes and uses stays in the
+            // helper's frame: the caller reads `result` only.
             if matches!(
                 i.op,
-                Op::Slot | Op::CleanupPush | Op::CleanupRun | Op::DepthEnter | Op::DepthLeave
-            ) {
+                Op::CleanupPush | Op::CleanupRun | Op::DepthEnter | Op::DepthLeave
+            ) || (i.op == Op::Slot && i.res == Some(result))
+            {
                 return None;
             }
             for a in &i.args {
@@ -546,7 +565,11 @@ impl<'m> FuncBuilder<'m> {
                 }
             }
             if let Some(r) = i.res {
-                if r != result && self.m.needs_drop(self.f.ty(r)) {
+                if r != result
+                    && !put.contains(&r)
+                    && !matches!(i.op, Op::StrLit | Op::BytesLit)
+                    && self.m.needs_drop(self.f.ty(r))
+                {
                     return None;
                 }
                 defined.insert(r);

@@ -45,8 +45,90 @@ const STORED: usize = 1 << 62;
 /// A live place: a binding identity and the fields below it.
 type Key = (usize, Vec<Name>);
 
-/// Places live after a point, each with its earliest later use.
-type Live = HashMap<Key, NodeId>;
+/// Places live after a point, each with its earliest later use, grouped by binding so a query or a
+/// kill touches only the places of one binding, however many others are live (a function with N
+/// bindings used after their definitions otherwise paid N per query, N^2 in all).
+#[derive(Clone, Default)]
+struct Live {
+    by_binding: HashMap<usize, Vec<(Vec<Name>, NodeId)>>,
+    /// Places in all, so the loop fixpoint can tell whether a join added any.
+    len: usize,
+}
+
+impl Live {
+    fn new() -> Live {
+        Live::default()
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    fn get(&self, key: &Key) -> Option<&NodeId> {
+        self.by_binding
+            .get(&key.0)?
+            .iter()
+            .find(|(p, _)| *p == key.1)
+            .map(|(_, n)| n)
+    }
+
+    /// Records the place with `node`, replacing its earlier use.
+    fn insert(&mut self, key: Key, node: NodeId) {
+        let places = self.by_binding.entry(key.0).or_default();
+        match places.iter_mut().find(|(p, _)| *p == key.1) {
+            Some(known) => known.1 = node,
+            None => {
+                places.push((key.1, node));
+                self.len += 1;
+            }
+        }
+    }
+
+    /// Keeps the earlier of two uses of a place.
+    fn merge(&mut self, key: &Key, node: NodeId) {
+        let places = self.by_binding.entry(key.0).or_default();
+        match places.iter_mut().find(|(p, _)| *p == key.1) {
+            Some(known) => {
+                if node.0 < known.1.0 {
+                    known.1 = node;
+                }
+            }
+            None => {
+                places.push((key.1.clone(), node));
+                self.len += 1;
+            }
+        }
+    }
+
+    /// Drops every place of `uid` that `drop` accepts.
+    fn remove_where(&mut self, uid: usize, drop: impl Fn(&[Name]) -> bool) {
+        let Some(places) = self.by_binding.get_mut(&uid) else {
+            return;
+        };
+        let before = places.len();
+        places.retain(|(p, _)| !drop(p));
+        self.len -= before - places.len();
+        if places.is_empty() {
+            self.by_binding.remove(&uid);
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (Key, NodeId)> + '_ {
+        self.by_binding
+            .iter()
+            .flat_map(|(u, places)| places.iter().map(|(p, n)| ((*u, p.clone()), *n)))
+    }
+}
+
+impl FromIterator<(Key, NodeId)> for Live {
+    fn from_iter<I: IntoIterator<Item = (Key, NodeId)>>(iter: I) -> Live {
+        let mut out = Live::new();
+        for (k, n) in iter {
+            out.insert(k, n);
+        }
+        out
+    }
+}
 
 /// Whether one path is a prefix of the other.
 fn related(a: &[Name], b: &[Name]) -> bool {
@@ -63,10 +145,10 @@ fn store_step() -> Name {
 /// `b.f` does not read the `b.f` an earlier move took.
 fn next_use(live: &Live, uid: usize, path: &[Name]) -> Option<NodeId> {
     let store = store_step();
-    live.iter()
-        .filter(|((u, p), _)| {
-            *u == uid && related(p, path) && (path.is_empty() || p.last() != Some(&store))
-        })
+    live.by_binding
+        .get(&uid)?
+        .iter()
+        .filter(|(p, _)| related(p, path) && (path.is_empty() || p.last() != Some(&store)))
         .map(|(_, n)| *n)
         .min()
 }
@@ -87,14 +169,8 @@ fn field_chain<'a>(m: &ModuleHir, e: &'a Expr) -> Option<(&'a Expr, BindingRef, 
 }
 
 fn join(into: &mut Live, from: &Live) {
-    for (k, v) in from {
-        into.entry(k.clone())
-            .and_modify(|n| {
-                if v.0 < n.0 {
-                    *n = *v;
-                }
-            })
-            .or_insert(*v);
+    for (key, node) in from.iter() {
+        into.merge(&key, node);
     }
 }
 
@@ -165,7 +241,8 @@ impl Pass<'_> {
     /// grows the live set by one entry per assigned binding, so every statement after a long run
     /// of bindings costs the run (quadratic).
     fn kill(live: &mut Live, uid: usize) {
-        live.retain(|(u, _), _| *u != uid && *u != uid | STORED);
+        live.remove_where(uid, |_| true);
+        live.remove_where(uid | STORED, |_| true);
     }
 
     /// Marks `uid` as assigned at `node`, for closures created before it.
@@ -199,7 +276,7 @@ impl Pass<'_> {
                         if let Some((root, b, mut path)) = field_chain(self.m, t) {
                             // The store ends the life of what the place held, and of the parts
                             // below it; the binding itself is used.
-                            live.retain(|(u, p), _| *u != b.uid || !p.starts_with(&path));
+                            live.remove_where(b.uid, |p| p.starts_with(&path));
                             path.push(store_step());
                             self.record_at(root.id, t.id, &b, path, &mut live);
                         } else {

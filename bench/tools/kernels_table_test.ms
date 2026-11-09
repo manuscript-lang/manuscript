@@ -2,6 +2,7 @@ import (
     ablations,
     base_versions,
     c_versions,
+    omitted,
     suite_names,
     summarize
 ) from "./kernels_table.ms"
@@ -9,7 +10,8 @@ import must, Ran from "./lib.ms"
 import expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 
 fn trial(version: String, suite: String, micros: Int) List[String]:
-    var lines = suite_names(suite).map(fn name: "{version} {name} {micros} 1")
+    let names = suite_names(suite).filter(fn n: not omitted(version).contains(n))
+    var lines = names.map(fn name: "{version} {name} {micros} 1")
     lines.append("{version} # end")
     return lines
 
@@ -41,6 +43,19 @@ test "ablation versions and folded times":
     )
     try expect_contains(report, "c-ms-unchecked us")
     try expect_contains(report, "folded")
+
+test "plain C omits map_count and reports n/a":
+    let versions = kernel_versions()
+    let report = try expect_ok(
+        summarize(trials(versions, "kernels", 100), "kernels", 1, versions)
+    )
+    try expect_contains(
+        report,
+        "| map_count_2M | 100 | 100 | 1.00x | 100 | 1.00x | 100 | 1.00x | n/a | n/a |"
+    )
+
+    let with_map = trials(versions, "kernels", 100).concat(["c map_count_2M 100 1"])
+    let _extra = try expect_error(summarize(with_map, "kernels", 1, versions))
 
 test "rejects invalid evidence":
     let versions = kernel_versions()

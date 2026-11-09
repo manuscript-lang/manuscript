@@ -3,6 +3,7 @@
 //! Both are driven from `next`, which waits in short slices and polls
 //! for cancellation between them, so no worker thread is needed.
 use crate::err::{Fail, Res};
+use crate::ops::poll_cancel;
 use crate::path;
 use crate::sys::{self, CPath};
 use alloc::collections::BTreeMap;
@@ -10,7 +11,6 @@ use alloc::collections::BTreeMap;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 
 const SLICE_MS: i32 = 50;
@@ -40,7 +40,7 @@ fn visit(
     max: i64,
     out: &mut BTreeMap<Vec<u8>, Stamp>,
 ) -> Res<()> {
-    poll_cancel();
+    poll_cancel()?;
     if out.len() as i64 >= max {
         return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
     }
@@ -65,7 +65,9 @@ fn visit(
 #[cfg(target_os = "linux")]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
-    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
+    // A stop request ends the wait early; the caller's next `poll_cancel()?` returns it.
+    let _ =
+        ms_rt::glue::try_task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
     sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
@@ -117,7 +119,8 @@ fn valid_native(root: &[u8], recursive: bool, max: i64, events: i64, overflow: &
 
 fn sleep_slice() {
     #[cfg(not(test))]
-    ms_rt::glue::task_sleep(i64::from(SLICE_MS) * 1_000_000);
+    // A stop request ends the sleep early; the caller's next `poll_cancel()?` returns it.
+    let _ = ms_rt::glue::try_task_sleep(i64::from(SLICE_MS) * 1_000_000);
     #[cfg(test)]
     sys::sleep_ms(SLICE_MS);
 }
@@ -150,7 +153,7 @@ impl Poll {
         loop {
             let mut waited = 0i64;
             while waited < self.interval_ns {
-                poll_cancel();
+                poll_cancel()?;
                 if closed.load(Ordering::Relaxed) {
                     return Err(Fail::status(STATUS_CLOSED));
                 }
@@ -226,7 +229,7 @@ impl Native {
     }
 
     fn add_dir(&mut self, root: &[u8], p: &[u8]) -> Res<()> {
-        poll_cancel();
+        poll_cancel()?;
         if core::str::from_utf8(p).is_err() {
             return Err(Fail::status(STATUS_UNSUPPORTED));
         }
@@ -388,7 +391,7 @@ impl Native {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
             }
-            poll_cancel();
+            poll_cancel()?;
             wait_events(self.fd);
         }
     }

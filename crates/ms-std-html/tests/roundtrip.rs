@@ -40,3 +40,12 @@ fn escaped_text_unescapes_to_itself() {
         assert_eq!(unescape(&escape(&text)), text, "{text:?}");
     }
 }
+
+#[test]
+fn numeric_references_saturate_and_decode_one_digit() {
+    assert_eq!(unescape("&#4294967361;"), "\u{fffd}");
+    assert_eq!(unescape("&#x100000041;"), "\u{fffd}");
+    assert_eq!(unescape("&#9F"), "\u{9}F");
+    assert_eq!(unescape("&#1"), "\u{1}");
+    assert_eq!(unescape("&#x;"), "&#x;");
+}

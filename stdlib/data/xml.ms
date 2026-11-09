@@ -237,11 +237,13 @@ impl Reader:
 
             self.at += 1
 
-            let raw = try self.take_until(quote)
-            if raw.contains("<"): return error(
+            let source = try self.take_until(quote)
+            if source.contains("<"): return error(
                 Error("XML: invalid data", kind: "EBADMSG")
             )
 
+            // XML 1.0 section 3.3.3: literal tabs and line ends in a value become spaces; references are decoded afterwards.
+            let raw = source.replace("\n", " ").replace("\t", " ")
             for existing in attributes:
                 if existing.name == attribute_name: return error(
                     Error("XML: invalid data", kind: "EBADMSG")
@@ -411,7 +413,11 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
             Error("XML: invalid data", kind: "EBADMSG")
         )
 
-    var reader = Reader(chars: text.chars(), at: 0, max_depth: max_depth)
+    // XML 1.0 section 2.11: `\r\n` and a lone `\r` reach the parser as `\n`; `&#13;` is unaffected.
+    let normalized = if text.contains("\r"): text.replace("\r\n", "\n").replace(
+        "\r", "\n"
+    ) else: text.clone()
+    var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
     try reader.skip_misc()
 
@@ -421,9 +427,11 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 
     return ok(root)
 
-// Escapes `&`, `<` and `>` for text content.
+// Escapes `&`, `<`, `>` and carriage return for text content; a raw `\r` would read back as `\n`.
 export fn escape_text(text: String) String:
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
+        "\r", "&#13;"
+    )
 
 // Escapes text for a double-quoted attribute value.
 export fn escape_attribute(text: String) String:

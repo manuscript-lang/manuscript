@@ -3,13 +3,13 @@
 //! pending call stays cancellable, and the request is cancelled before its buffer is freed.
 use super::{Event, sleep_slice, valid_native};
 use crate::err::{Fail, Res};
+use crate::ops::poll_cancel;
 use crate::path;
 use crate::sys;
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicBool, Ordering};
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 use std::fs::OpenOptions;
 use std::os::windows::fs::OpenOptionsExt;
@@ -175,7 +175,7 @@ impl Native {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
             }
-            poll_cancel();
+            poll_cancel()?;
             if closed.load(Ordering::Relaxed) {
                 return Err(Fail::status(STATUS_CLOSED));
             }

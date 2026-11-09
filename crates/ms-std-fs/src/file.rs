@@ -4,8 +4,8 @@
 //! serves as the `reader()` / `writer()` `@std/io` views. Every operation first returns bytes a
 //! line reader took ahead to the file, so offsets agree with what the program has consumed.
 use crate::err::{Fail, Res};
-use crate::ops::poll_cancel;
 use crate::ops::{self, Info, offload};
+use crate::ops::{poll_cancel, poll_cancel_errno};
 use crate::path;
 use crate::stream::Stream;
 use crate::sys::{self, CPath};
@@ -67,7 +67,7 @@ impl Stream {
         if self.is_closed() {
             return Err(Fail::status(STATUS_CLOSED));
         }
-        poll_cancel();
+        poll_cancel()?;
         if (kind == Access::Read && self.no_read) || (kind == Access::Write && self.no_write) {
             return Err(Fail::invalid());
         }
@@ -130,7 +130,7 @@ impl Stream {
         }
         let mut out = Vec::with_capacity(sizes.len());
         for &size in sizes {
-            poll_cancel();
+            poll_cancel()?;
             let mut b = alloc::vec![0u8; size as usize];
             let n = if offset == -1 {
                 self.read_raw(&mut b).map_err(|e| self.fail("read", e))?
@@ -288,7 +288,7 @@ fn pread_full(fd: sys::Fd, buf: &mut [u8], offset: i64) -> Result<usize, i32> {
         let mut buf = alloc::vec![0u8; len];
         let mut done = 0;
         while done < len {
-            poll_cancel();
+            poll_cancel_errno()?;
             match sys::pread(fd, &mut buf[done..], offset + done as i64)? {
                 0 => break,
                 n => done += n,
@@ -305,7 +305,7 @@ fn pread_full(fd: sys::Fd, buf: &mut [u8], offset: i64) -> Result<usize, i32> {
 fn write_all_fd(fd: sys::Fd, data: &[u8], regular: bool) -> Result<(), i32> {
     fn run(fd: sys::Fd, mut data: &[u8]) -> Result<(), i32> {
         while !data.is_empty() {
-            poll_cancel();
+            poll_cancel_errno()?;
             let end = data.len().min(65536);
             match sys::write(fd, &data[..end]) {
                 Ok(0) => return Err(sys::EIO),
@@ -325,7 +325,7 @@ fn pwrite_all(fd: sys::Fd, data: &[u8], offset: i64) -> Result<(), i32> {
     offload((fd, offset), data, |&(fd, offset), data| {
         let mut done = 0;
         while done < data.len() {
-            poll_cancel();
+            poll_cancel_errno()?;
             let end = (done + 65536).min(data.len());
             match sys::pwrite(fd, &data[done..end], offset + done as i64)? {
                 0 => return Err(sys::EIO),

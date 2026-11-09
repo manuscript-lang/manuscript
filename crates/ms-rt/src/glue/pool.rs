@@ -357,16 +357,16 @@ pub const ADMIT_BYTES: usize = 64 * 1024;
 /// Takes a permit for copying a payload of `bytes` for a pool job, parking the task while
 /// `threads()` permits are out. True when a permit is held and [`release`] must follow; false
 /// for a small payload or a program with one task, which need none. A stop request ends the
-/// wait without a permit and unwinds.
-pub fn admit(bytes: usize) -> bool {
+/// wait without a permit and returns `Err(Cancelled)`.
+pub fn admit(bytes: usize) -> Result<bool, Cancelled> {
     if bytes < ADMIT_BYTES || on_pool_thread() || alone() {
-        return false;
+        return Ok(false);
     }
     let token = {
         let mut pool = lock();
         if pool.permits < threads() {
             pool.permits += 1;
-            return true;
+            return Ok(true);
         }
         // SAFETY: creates a token on the runtime thread.
         let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
@@ -391,9 +391,9 @@ pub fn admit(bytes: usize) -> bool {
         if granted {
             release();
         }
-        crate::glue::cancelled();
+        return Err(Cancelled);
     }
-    true
+    Ok(true)
 }
 
 /// Returns a permit from [`admit`]: the oldest parked caller takes it over, else it is freed.
@@ -413,14 +413,15 @@ pub fn release() {
 
 /// Runs `f(&input, bytes)` on a pool thread and parks the task until it finishes, however long
 /// that takes. A stop request takes effect once the job is done, which is
-/// what lets the job borrow `bytes`. For jobs that always finish (a regular-file read or write),
+/// what lets the job borrow `bytes`; it then returns `Err(Cancelled)` and the caller returns and
+/// raises the cancel. For jobs that always finish (a regular-file read or write),
 /// never for ones that can hang. `f` follows the rules of [`run`].
 pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     lane: Lane,
     input: I,
     bytes: &[u8],
     f: fn(&I, &[u8]) -> O,
-) -> O {
+) -> Result<O, Cancelled> {
     let lent = Lent {
         input,
         ptr: bytes.as_ptr(),
@@ -446,9 +447,11 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     // SAFETY: the lend ended with the job.
     unsafe { crate::task::pin_current(false) };
     if got & WAIT_CANCELLED != 0 {
-        crate::glue::cancelled();
+        // The caller returns, so the output is released here.
+        drop(output);
+        return Err(Cancelled);
     }
-    output
+    Ok(output)
 }
 
 /// Ends the wait for an unfinished job: a queued one is removed and dropped, a running one is
@@ -618,7 +621,7 @@ mod tests {
         let caller = std::vec![7u8; 1 << 20];
         assert_eq!(
             run_shielded(Lane::General, 3usize, &caller, summed),
-            7 * (1 << 20) + 3
+            Ok(7 * (1 << 20) + 3)
         );
 
         // A timed-out wait returns at once; the job is abandoned and reaped after it finishes.

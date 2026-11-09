@@ -406,6 +406,10 @@ native! {
                 let env = valid_environment(cwd, &env_names, &env_values)?;
                 command::run(program, &args, input, limit, t, cwd, &env)
             });
+        // `run` returns early when cancelled, its child already reaped by its frame's drop.
+        if ms_rt::glue::cancel_pending() {
+            ms_rt::glue::cancelled();
+        }
         command_status(program, cwd, ran, &err).map(|o| CommandOut {
             exit_code: o.code,
             stdout: Bytes::new(&o.stdout),

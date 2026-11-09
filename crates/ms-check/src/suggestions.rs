@@ -163,9 +163,21 @@ pub(crate) fn append_call(source: &str, e: &Expr, call: &str) -> Option<Diagnost
 
 /// `f"{value}"` for the expression `e`, unless its text would not nest.
 pub(crate) fn interpolate(source: &str, e: &Expr) -> Option<DiagnosticFix> {
+    // A plain integer literal is its own text; `"{3}"` would read as a regex quantifier.
+    let digits = matches!(e.kind, ExprKind::Number(_));
     rewrite_expr(source, e, |text, _| {
+        if digits && !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) {
+            return Some(format!("\"{text}\""));
+        }
         (!text.contains(['"', '{', '}', '\n'])).then(|| format!("\"{{{text}}}\""))
     })
+}
+
+/// Whether the operator of the binary expression at `pos` is the `op` of a compound
+/// assignment (`x += y`). The parser desugars that to `x = x + y`, so the left operand
+/// is the assignment target and no fix may rewrite it.
+pub(crate) fn is_compound_operator(source: &str, pos: Pos, op: &str) -> bool {
+    source.as_bytes().get(pos.offset as usize + op.len()) == Some(&b'=')
 }
 
 /// Converts the Int expression `e` to Float: `3` becomes `3.0`, else `.to_float()`.

@@ -7,7 +7,7 @@
 //! wait, while `run` still checks its pipes in short slices. Either way other tasks run and a
 //! pending cancellation kills the tree and unwinds.
 use alloc::vec::Vec;
-use ms_rt::glue::{cancel_pending, cancelled};
+use ms_rt::glue::cancel_pending;
 use ms_rt_abi::{STATUS_FAILED, STATUS_OUTPUT_LIMIT, STATUS_TIMEOUT};
 use ms_std_fs::err::{Fail, Res, describe};
 use ms_std_fs::sys;
@@ -43,9 +43,10 @@ pub fn now_ns() -> i64 {
 }
 use plat::{Waiter, set_nonblocking, wait_io, would_block};
 
-/// Parks the task `ms` milliseconds so other tasks run meanwhile.
-fn sleep_ms(ms: i64) {
-    ms_rt::glue::task_sleep(ms.max(0) * 1_000_000);
+/// Parks the task `ms` milliseconds so other tasks run meanwhile; `Err` when a stop request ends
+/// the sleep, so the caller returns and drops what it holds.
+fn try_sleep_ms(ms: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
+    ms_rt::glue::try_task_sleep(ms.max(0) * 1_000_000)
 }
 
 /// A descriptor closed on drop.
@@ -145,109 +146,94 @@ pub fn run(
     let mut buf = alloc::vec![0u8; 64 * 1024];
     let mut waiter = Waiter::new(child.0.exit_fd(), [in_w.0, out_r.0, err_r.0]);
 
-    // Cancellation leaves this frame by a jump, which skips `Reaper`'s drop, so a cleanup entry
-    // kills and reaps the child instead.
-    let reaper: *mut Reaper = &raw mut child;
-    ms_rt::fault::with_cleanup(
-        &mut || {
-            // SAFETY: the body that used `child` was abandoned; `child` outlives this call.
-            #[allow(unsafe_code)]
-            let child = unsafe { &mut *reaper };
-            child.0.kill_group();
-            child.0.wait();
-        },
-        || {
-            loop {
-                if cancel_pending() {
-                    cancelled();
-                }
-                if !child.0.poll() {
-                    exited_at = None;
-                } else if exited_at.is_none() {
-                    exited_at = Some(now_ns());
-                    if let Some(w) = &mut waiter {
-                        w.exited();
-                    }
-                }
-                if exited_at.is_some() && !out_r.is_open() && !err_r.is_open() {
-                    break;
-                }
-                let now = now_ns();
-                if deadline.is_some_and(|d| now >= d) {
-                    timed_out = true;
-                    child.0.kill_group();
-                    break;
-                }
-                if exited_at.is_some_and(|t| now - t >= WAIT_DELAY_NS) {
-                    kept_open = true;
-                    break;
-                }
-                let park = || {
-                    let until = [deadline, exited_at.map(|t| t + WAIT_DELAY_NS)]
-                        .into_iter()
-                        .flatten()
-                        .min();
-                    if let Some(w) = &waiter {
-                        w.park(until.map_or(-1, |u| u - now));
-                    } else {
-                        sleep_ms(
-                            until.map_or(POLL_MS, |u| ((u - now) / 1_000_000).clamp(1, POLL_MS)),
-                        );
-                    }
-                };
-                let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
-                if !ready.contains(&true) {
-                    park();
-                    continue;
-                }
-
-                // Whether a read or write did anything; when none did, the pipes are idle.
-                let mut progressed = false;
-                if ready[0] && in_w.is_open() {
-                    let (before, end) = (written, input.len().min(written + 64 * 1024));
-                    match plat::write(in_w.0, &input[written..end]) {
-                        Ok(n) => written += n,
-                        Err(e) if would_block(e) => {}
-                        // The child closed its input early; the remainder is dropped.
-                        Err(_) => written = input.len(),
-                    }
-                    progressed = written != before;
-                    if written >= input.len() {
-                        in_w.close();
-                    }
-                }
-                for (slot, is_err) in [(1usize, false), (2usize, true)] {
-                    if !ready[slot] {
-                        continue;
-                    }
-                    let reader = if is_err { &mut err_r } else { &mut out_r };
-                    let result = plat::read(reader.0, &mut buf);
-                    progressed |= !matches!(result, Err(e) if would_block(e));
-                    match result {
-                        Ok(0) => reader.close(),
-                        Ok(n) => {
-                            let accepted = n.min(remaining.max(0) as usize);
-                            let sink = if is_err { &mut stderr } else { &mut stdout };
-                            sink.extend_from_slice(&buf[..accepted]);
-                            remaining -= accepted as i64;
-                            if accepted != n {
-                                overflow = true;
-                            }
-                        }
-                        Err(e) if would_block(e) => {}
-                        Err(_) => reader.close(),
-                    }
-                }
-                if overflow {
-                    child.0.kill_group();
-                    break;
-                }
-                if !progressed {
-                    park();
-                }
+    loop {
+        // `child`'s drop kills and reaps; the caller raises the cancel once this frame is gone.
+        if cancel_pending() {
+            return Err(Fail::status(STATUS_FAILED));
+        }
+        if !child.0.poll() {
+            exited_at = None;
+        } else if exited_at.is_none() {
+            exited_at = Some(now_ns());
+            if let Some(w) = &mut waiter {
+                w.exited();
             }
-        },
-    );
+        }
+        if exited_at.is_some() && !out_r.is_open() && !err_r.is_open() {
+            break;
+        }
+        let now = now_ns();
+        if deadline.is_some_and(|d| now >= d) {
+            timed_out = true;
+            child.0.kill_group();
+            break;
+        }
+        if exited_at.is_some_and(|t| now - t >= WAIT_DELAY_NS) {
+            kept_open = true;
+            break;
+        }
+        let park = || {
+            let until = [deadline, exited_at.map(|t| t + WAIT_DELAY_NS)]
+                .into_iter()
+                .flatten()
+                .min();
+            if let Some(w) = &waiter {
+                w.park(until.map_or(-1, |u| u - now))
+            } else {
+                try_sleep_ms(until.map_or(POLL_MS, |u| ((u - now) / 1_000_000).clamp(1, POLL_MS)))
+            }
+        };
+        let ready = wait_io([in_w.0, out_r.0, err_r.0], 0);
+        if !ready.contains(&true) {
+            park().map_err(|_| Fail::status(STATUS_FAILED))?;
+            continue;
+        }
+
+        // Whether a read or write did anything; when none did, the pipes are idle.
+        let mut progressed = false;
+        if ready[0] && in_w.is_open() {
+            let (before, end) = (written, input.len().min(written + 64 * 1024));
+            match plat::write(in_w.0, &input[written..end]) {
+                Ok(n) => written += n,
+                Err(e) if would_block(e) => {}
+                // The child closed its input early; the remainder is dropped.
+                Err(_) => written = input.len(),
+            }
+            progressed = written != before;
+            if written >= input.len() {
+                in_w.close();
+            }
+        }
+        for (slot, is_err) in [(1usize, false), (2usize, true)] {
+            if !ready[slot] {
+                continue;
+            }
+            let reader = if is_err { &mut err_r } else { &mut out_r };
+            let result = plat::read(reader.0, &mut buf);
+            progressed |= !matches!(result, Err(e) if would_block(e));
+            match result {
+                Ok(0) => reader.close(),
+                Ok(n) => {
+                    let accepted = n.min(remaining.max(0) as usize);
+                    let sink = if is_err { &mut stderr } else { &mut stdout };
+                    sink.extend_from_slice(&buf[..accepted]);
+                    remaining -= accepted as i64;
+                    if accepted != n {
+                        overflow = true;
+                    }
+                }
+                Err(e) if would_block(e) => {}
+                Err(_) => reader.close(),
+            }
+        }
+        if overflow {
+            child.0.kill_group();
+            break;
+        }
+        if !progressed {
+            park().map_err(|_| Fail::status(STATUS_FAILED))?;
+        }
+    }
     let code = child.0.wait();
     if overflow {
         return Err(Fail::status(STATUS_OUTPUT_LIMIT));
@@ -330,7 +316,9 @@ impl Subprocess {
     pub fn wait(&mut self, timeout_ns: Option<i64>) -> Res<i64> {
         let deadline = timeout_ns.map(|t| now_ns().saturating_add(t));
         loop {
-            ms_rt::glue::poll_cancel();
+            if ms_rt::glue::cancel_pending() {
+                return Err(Fail::failed("cancelled"));
+            }
             if self.child.poll() {
                 return Ok(self.child.code.unwrap_or(-1));
             }
@@ -338,8 +326,15 @@ impl Subprocess {
             if deadline.is_some_and(|d| now >= d) {
                 return Err(Fail::status(STATUS_TIMEOUT));
             }
-            if !self.child.park_until_exit(deadline.map_or(-1, |d| d - now)) {
-                sleep_ms(deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)));
+            let parked = self
+                .child
+                .park_until_exit(deadline.map_or(-1, |d| d - now))
+                .map_err(|_| Fail::failed("cancelled"))?;
+            if !parked {
+                try_sleep_ms(
+                    deadline.map_or(POLL_MS, |d| ((d - now) / 1_000_000).clamp(1, POLL_MS)),
+                )
+                .map_err(|_| Fail::failed("cancelled"))?;
             }
         }
     }

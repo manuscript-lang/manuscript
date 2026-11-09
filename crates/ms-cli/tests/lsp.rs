@@ -46,3 +46,59 @@ fn lsp_initializes_and_exits_cleanly() {
     drop(stdin);
     assert!(child.wait().expect("wait").success());
 }
+
+#[test]
+fn lsp_exit_without_shutdown_fails() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("lsp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn ms lsp");
+    let mut stdin = child.stdin.take().expect("stdin");
+    let initialize =
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}"#;
+    stdin
+        .write_all(&frame(initialize))
+        .expect("write initialize");
+    stdin
+        .write_all(&frame(r#"{"jsonrpc":"2.0","method":"exit"}"#))
+        .expect("write exit");
+    stdin.flush().expect("flush");
+    drop(stdin);
+    let output = child.wait_with_output().expect("wait");
+    // The protocol requires a nonzero status when `exit` arrives before `shutdown`.
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("exit before shutdown"));
+}
+
+#[test]
+fn lsp_refuses_requests_before_initialize() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .arg("lsp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("spawn ms lsp");
+    let mut stdin = child.stdin.take().expect("stdin");
+    let mut stdout = std::io::BufReader::new(child.stdout.take().expect("stdout"));
+    let hover = r#"{"jsonrpc":"2.0","id":1,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///x.ms"},"position":{"line":0,"character":0}}}"#;
+    stdin.write_all(&frame(hover)).expect("write hover");
+    stdin.flush().expect("flush");
+    let mut header = String::new();
+    stdout.read_line(&mut header).expect("header");
+    let length: usize = header
+        .trim()
+        .strip_prefix("Content-Length: ")
+        .and_then(|n| n.parse().ok())
+        .expect("content length");
+    stdout.read_line(&mut header).expect("blank line");
+    let mut body = vec![0; length];
+    stdout.read_exact(&mut body).expect("body");
+    // ServerNotInitialized, as the protocol requires before `initialize`.
+    let text = String::from_utf8_lossy(&body);
+    assert!(text.contains("-32002"), "{text}");
+    drop(stdin);
+    let _ = child.wait();
+}

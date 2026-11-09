@@ -17,7 +17,7 @@ use crate::error::{IoErr, WsErr};
 use crate::h2::{self, Event, Header, error_code};
 use crate::http::exchange::ExSt;
 use crate::sys::Ev;
-use crate::wait::{Deadline, Wait, wait_token};
+use crate::wait::{Deadline, Wait, try_wait_token};
 use crate::ws::handshake;
 
 /// Receive window per stream and for the connection.
@@ -435,15 +435,19 @@ impl Server {
 
     /// Parks until the reactor next serves the connection: frames arrived, output
     /// drained, a stream expired, or the connection closed. `false` when the deadline
-    /// passed or the connection is gone.
-    pub(in crate::http) fn h2_wait(&self, conn: &Rc<Conn>, deadline: Deadline) -> bool {
+    /// passed or the connection is gone; `Err` when the task was cancelled.
+    pub(in crate::http) fn h2_wait(
+        &self,
+        conn: &Rc<Conn>,
+        deadline: Deadline,
+    ) -> Result<bool, rt::Cancelled> {
         let token = rt::Token::new();
         if with_h2(conn, |h| h.waiters.push(token.id())).is_none() {
-            return false;
+            return Ok(false);
         }
-        let got = wait_token(&token, deadline);
+        let got = try_wait_token(&token, deadline);
         with_h2(conn, |h| h.waiters.retain(|&w| w != token.id()));
-        got == Wait::Ready
+        Ok(got? == Wait::Ready)
     }
 
     // ----------------------------------------------------------------- events
@@ -845,7 +849,7 @@ impl Exchange {
                 Got::End => return Ok(None),
                 Got::Broken => return Err(IoErr::failed("unexpected EOF")),
                 Got::Wait => {
-                    if !self.server.h2_wait(&self.conn, deadline) {
+                    if !self.server.h2_wait(&self.conn, deadline)? {
                         return Err(timed_out());
                     }
                 }
@@ -897,7 +901,7 @@ impl Exchange {
         let mut rest = data;
         while !rest.is_empty() {
             while self.h2_unsent() > OUT_HOLD {
-                if !self.server.h2_wait(&self.conn, deadline) {
+                if !self.server.h2_wait(&self.conn, deadline)? {
                     return Err(timed_out());
                 }
             }
@@ -907,7 +911,7 @@ impl Exchange {
             };
             rest = &rest[n..];
             self.server.h2_pump_out(&self.conn, &self.reactor);
-            if !rest.is_empty() && !self.server.h2_wait(&self.conn, deadline) {
+            if !rest.is_empty() && !self.server.h2_wait(&self.conn, deadline)? {
                 return Err(timed_out());
             }
         }

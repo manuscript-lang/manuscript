@@ -53,7 +53,7 @@ impl Directory {
         if self.closed {
             return Err(Fail::status(STATUS_CLOSED));
         }
-        poll_cancel();
+        poll_cancel()?;
         let (name, kind) = match self.dir.read_entry() {
             Ok(Some(entry)) => entry,
             Ok(None) => return Ok(None),

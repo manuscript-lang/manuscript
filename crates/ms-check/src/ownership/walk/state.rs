@@ -1,5 +1,6 @@
 //! Walker state: declarations, diagnostics, liveness, borrows and place resolution.
 
+use super::active::ActiveBorrows;
 use super::*;
 
 impl Walker<'_> {
@@ -221,7 +222,7 @@ impl Walker<'_> {
             let (moved, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.active)
                 .into_iter()
                 .partition(|a| a.holder == b.uid && a.why == PROMISE_WHY);
-            self.active = kept;
+            self.active = kept.into_iter().collect();
             self.carried.extend(moved);
         }
     }
@@ -237,11 +238,16 @@ impl Walker<'_> {
         shown: &str,
         ignore: Option<usize>,
     ) {
+        // Only a borrow rooted at one of these places can conflict; the per-root counts tell
+        // that without scanning every live borrow.
+        if !places.iter().any(|p| self.active.touches(p.root, false)) {
+            return;
+        }
         let found = self.active.iter().find(|a| {
-            !ignore.is_some_and(|i| self.related(a.holder, i))
-                && a.origins
-                    .iter()
-                    .any(|(o, _)| places.iter().any(|p| p.overlaps(o)))
+            a.origins
+                .iter()
+                .any(|(o, _)| places.iter().any(|p| p.overlaps(o)))
+                && !ignore.is_some_and(|i| self.related(a.holder, i))
         });
         if let Some(a) = found {
             let (holder, why, bpos) = (a.holder_name, a.why.clone(), a.pos);
@@ -286,11 +292,14 @@ impl Walker<'_> {
     /// Reports a read of `places` while a closure or a `var` borrow holds them
     /// exclusively; `reader` is the binding the read goes through.
     pub(super) fn check_read(&mut self, pos: Pos, places: &[Place], shown: &str, reader: usize) {
+        if !places.iter().any(|p| self.active.touches(p.root, true)) {
+            return;
+        }
         let found = self.active.iter().find(|a| {
-            !self.related(a.holder, reader)
-                && a.origins
-                    .iter()
-                    .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
+            a.origins
+                .iter()
+                .any(|(o, exclusive)| *exclusive && places.iter().any(|p| p.overlaps(o)))
+                && !self.related(a.holder, reader)
         });
         if let Some(a) = found {
             let (holder, bpos, why) = (a.holder_name, a.pos, a.why.clone());
@@ -314,15 +323,17 @@ impl Walker<'_> {
     }
 
     pub(super) fn release_pending(&mut self) {
+        if self.pending.is_empty() {
+            return;
+        }
         let pending = std::mem::take(&mut self.pending);
-        self.active
-            .retain(|a| a.why == PROMISE_WHY || !pending.contains(&a.holder));
+        self.active.release(&pending, |a| a.why != PROMISE_WHY);
     }
 
-    pub(super) fn join_active(a: Vec<Borrow>, b: Vec<Borrow>) -> Vec<Borrow> {
+    pub(super) fn join_active(a: ActiveBorrows, b: ActiveBorrows) -> ActiveBorrows {
         let mut out = a;
         for x in b {
-            if !out.iter().any(|y| y.holder == x.holder) {
+            if !out.held_by(x.holder) {
                 out.push(x);
             }
         }

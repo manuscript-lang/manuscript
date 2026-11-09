@@ -56,6 +56,19 @@ test "percentile and quantiles interpolate":
     try expect_equal(quantiles(data, 4), [2.0, 3.0, 4.0])
     try expect_equal(quantiles(List[Float](), 4), List[Float]())
 
+test "percentile and quantiles return the element at an exact rank":
+    var data = List[Float]()
+    for i in 0..101:
+        data.append(i.to_float())
+    for percent in 0..101:
+        try expect_equal(
+            try expect_some(percentile(data, percent.to_float())), percent.to_float()
+        )
+
+    let cuts = quantiles(data, 100)
+    for i in 0..99:
+        try expect_equal(cuts[i], (i + 1).to_float())
+
 test "percentile keeps infinite neighbors from becoming NaN":
     let inf = 1.0 / 0.0
     try expect_equal(try expect_some(percentile([1.0, inf], 0.0)), 1.0)

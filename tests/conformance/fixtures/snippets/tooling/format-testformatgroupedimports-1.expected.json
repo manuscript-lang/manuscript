@@ -64,8 +64,8 @@
           "end": {
             "file": "format-testformatgroupedimports-1.ms",
             "line": 4,
-            "column": 28,
-            "offset": 201
+            "column": 27,
+            "offset": 200
           },
           "replacement": ""
         }

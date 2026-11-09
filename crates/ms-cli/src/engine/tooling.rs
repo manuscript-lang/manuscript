@@ -86,7 +86,7 @@ fn facts_of(syms: ms_syntax::Names, checked: &Checked) -> Facts {
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
 pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     if !request.watch {
-        return Ok(analysis_once(syms, request, io).0);
+        return Ok(analysis_once(syms, request, FIX_PASSES, io).0);
     }
     let stops = Stops::catch();
     let mut watched = BTreeMap::new();
@@ -95,7 +95,7 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
         if due.is_some_and(|at| Instant::now() >= at) {
             due = None;
             let started = SystemTime::now();
-            let (_, files) = analysis_once(syms, request, io);
+            let (_, files) = analysis_once(syms, request, FIX_PASSES, io);
             // A file that dropped out of the graph (a broken import loads no modules) stays
             // watched, so repairing it reruns the check.
             watched = observed(
@@ -122,10 +122,14 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
     }
 }
 
+/// Rounds of `--fix` per run; fixes that regenerate each other stop here.
+const FIX_PASSES: u8 = 8;
+
 /// One run of the command, and the files that decide its result.
 fn analysis_once(
     syms: ms_syntax::Names,
     request: &AnalysisRequest,
+    fix_passes: u8,
     io: &mut Io,
 ) -> (i32, Vec<String>) {
     let check = request.command == AnalysisCommand::Check;
@@ -218,7 +222,7 @@ fn analysis_once(
         }
     }
     if request.fix {
-        let (applied, edited, waited) = apply_fixes(fixes, io);
+        let (applied, edited) = apply_fixes(fixes, io);
         if applied > 0 {
             let _ = writeln!(
                 io.stderr,
@@ -226,12 +230,13 @@ fn analysis_once(
                 plural(applied, "fix", "fixes"),
                 plural(edited, "file", "files")
             );
-            // A fix that overlapped an applied one is found again on the rerun.
+            // A fix that overlapped an applied one, or a diagnostic the checker only
+            // reaches once an earlier one is gone, is found again on the rerun.
             let rerun = AnalysisRequest {
-                fix: waited,
+                fix: fix_passes > 1,
                 ..request.clone()
             };
-            return analysis_once(syms, &rerun, io);
+            return analysis_once(syms, &rerun, fix_passes.saturating_sub(1), io);
         }
     }
     // Keep compiler diagnostics ahead of lint findings and defer output until
@@ -332,17 +337,22 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
 /// Applies the fixes in place, last edit first so offsets stay valid. A fix
 /// that is repeated or overlaps an earlier one waits for the next run.
 /// Returns the fixes applied, the files changed, and whether any fix waited.
-fn apply_fixes(
-    fixes: Vec<(String, ms_driver::DiagnosticFix)>,
-    io: &mut Io,
-) -> (usize, usize, bool) {
+fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (usize, usize) {
     let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
     for (path, fix) in fixes {
         by_file.entry(path).or_default().push(fix);
     }
-    let (mut applied, mut edited, mut waited) = (0, 0, false);
+    let (mut applied, mut edited) = (0, 0);
     for (path, mut file_fixes) in by_file {
-        file_fixes.sort_by_key(|f| (f.pos.offset, f.end.offset));
+        // Equal fixes must sit next to each other for `dedup`: several diagnostics can ask
+        // for the same import while others ask for different ones at the same offset.
+        file_fixes.sort_by(|a, b| {
+            (a.pos.offset, a.end.offset, &a.replacement).cmp(&(
+                b.pos.offset,
+                b.end.offset,
+                &b.replacement,
+            ))
+        });
         file_fixes.dedup();
         let Ok(mut text) = std::fs::read_to_string(&path) else {
             continue;
@@ -358,8 +368,6 @@ fn apply_fixes(
             if valid && (chosen.is_empty() || start >= last_end) {
                 last_end = end;
                 chosen.push(fix);
-            } else if valid {
-                waited = true;
             }
         }
         if chosen.is_empty() {
@@ -378,7 +386,7 @@ fn apply_fixes(
         applied += chosen.len();
         edited += 1;
     }
-    (applied, edited, waited)
+    (applied, edited)
 }
 
 /// The check summary for one input that passed.

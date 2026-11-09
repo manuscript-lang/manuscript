@@ -94,3 +94,14 @@ test "unified_diff clamps a context larger than the input":
         ),
         ""
     )
+
+test "identical text comparisons preserve scalar semantics":
+    for text in ["", "same", "café🙂", "a\n\tb", "é", "\u{0}"]:
+        let copy = text.clone()
+        try expect_equal(edit_distance(text, copy), 0)
+        try expect_equal(similarity_ratio(text, copy), 1.0)
+
+    try expect_equal(edit_distance("é", "é"), 2)
+    try expect_close(similarity_ratio("é", "é"), 0.0, 0.000001)
+    try expect_equal(edit_distance("abc", "abd"), 1)
+    try expect_close(similarity_ratio("abc", "abd"), 2.0 / 3.0, 0.000001)

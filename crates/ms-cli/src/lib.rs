@@ -83,15 +83,66 @@ const PROJECT_COMMANDS: &[&str] = &[
     "diagram", "review", "profile",
 ];
 
+/// Commands whose arguments after `--` are more inputs, not program arguments.
+const TARGET_LIST_COMMANDS: &[&str] = &["check", "lint", "fmt", "verify"];
+
 /// Inside a project directory, `ms run` means `ms run ms.toml`: when the command
 /// names no target (nothing after it, or only options and `-- program arguments`), insert
-/// the manifest in the current directory.
+/// the manifest in the current directory. A target written after options (`ms run --json
+/// main.ms`, `ms check -- main.ms`) replaces the default and, where the command wants its file
+/// first, moves ahead of the options.
 fn default_project_target(args: &[String]) -> Option<Vec<String>> {
-    if !PROJECT_COMMANDS.contains(&args[0].as_str()) {
+    let command = args[0].as_str();
+    if !PROJECT_COMMANDS.contains(&command) {
         return None;
     }
     if args.len() > 1 && args[1] != "--" && !args[1].starts_with('-') {
         return None;
+    }
+    let lists = TARGET_LIST_COMMANDS.contains(&command);
+    // Positions of the arguments that are inputs, before and after any `--`.
+    let mut inputs: Vec<usize> = Vec::new();
+    let mut dashes = args.len();
+    let mut i = 1;
+    while i < args.len() {
+        let arg = args[i].as_str();
+        if arg == "--" {
+            dashes = i;
+            break;
+        }
+        if arg.starts_with('-') {
+            i += usize::from(invocation::takes_value(arg));
+        } else {
+            inputs.push(i);
+        }
+        i += 1;
+    }
+    if lists {
+        inputs.extend(dashes + 1..args.len());
+    }
+    if let Some(&first) = inputs.first() {
+        // `fmt` and `verify` take options anywhere, and `--` leading the arguments already
+        // puts the file first.
+        if matches!(command, "fmt" | "verify") || dashes == 1 {
+            return None;
+        }
+        let mut out = vec![args[0].clone(), args[first].clone()];
+        if lists {
+            // Further inputs follow `--` so they are not read as options.
+            let others = (1..args.len()).filter(|i| !inputs.contains(i) && *i != dashes);
+            out.extend(others.map(|i| args[i].clone()));
+            if inputs.len() > 1 {
+                out.push("--".to_string());
+                out.extend(inputs[1..].iter().map(|&i| args[i].clone()));
+            }
+        } else {
+            out.extend(
+                (1..args.len())
+                    .filter(|&i| i != first)
+                    .map(|i| args[i].clone()),
+            );
+        }
+        return Some(out);
     }
     if !std::path::Path::new("ms.toml").is_file() {
         return None;
@@ -260,4 +311,60 @@ fn run_source_command<L: Lower>(
         ),
     };
     finish(result, io)
+}
+
+#[cfg(test)]
+mod default_target_tests {
+    use super::default_project_target;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|a| a.to_string()).collect()
+    }
+
+    #[test]
+    fn dash_dash_inputs_replace_the_default_manifest() {
+        for command in ["check", "lint", "fmt", "verify"] {
+            assert_eq!(
+                default_project_target(&args(&[command, "--", "a.ms"])),
+                None
+            );
+        }
+        assert_eq!(
+            default_project_target(&args(&["check", "--json", "--", "a.ms", "b.ms"])),
+            Some(args(&["check", "a.ms", "--json", "--", "b.ms"]))
+        );
+        assert_eq!(
+            default_project_target(&args(&["fmt", "--check", "--", "a.ms"])),
+            None
+        );
+        assert_eq!(
+            default_project_target(&args(&["verify", "--no-test", "a.ms"])),
+            None
+        );
+        assert_eq!(
+            default_project_target(&args(&["check", "--json", "a.ms", "b.ms"])),
+            Some(args(&["check", "a.ms", "--json", "--", "b.ms"]))
+        );
+    }
+
+    #[test]
+    fn a_file_after_options_moves_ahead_of_them() {
+        assert_eq!(
+            default_project_target(&args(&["run", "--json", "a.ms", "--", "x"])),
+            Some(args(&["run", "a.ms", "--json", "--", "x"]))
+        );
+        // The value of `-o` is not the input.
+        assert_eq!(
+            default_project_target(&args(&["build", "-o", "out", "a.ms"])),
+            Some(args(&["build", "a.ms", "-o", "out"]))
+        );
+        assert_eq!(
+            default_project_target(&args(&["test", "--filter=x", "a.ms", "b.ms"])),
+            Some(args(&["test", "a.ms", "--filter=x", "b.ms"]))
+        );
+        assert_eq!(
+            default_project_target(&args(&["diagram", "--view", "calls", "a.ms"])),
+            Some(args(&["diagram", "a.ms", "--view", "calls"]))
+        );
+    }
 }

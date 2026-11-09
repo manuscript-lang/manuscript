@@ -13,3 +13,5 @@ Verified 2026-11-08: `@std/test/boundary.ms` supplies `int_boundaries`, `float_b
 Apply when: adding or changing a numeric stdlib function; add its cases to that fixture, or call the helper from a new one.
 Evidence: [helper](../../stdlib/test/boundary.ms), [fixture](../../tests/e2e/testdata/stdlib/numeric-reference-boundaries.ms).
 Verify: `ms test tests/e2e/testdata/stdlib/numeric-reference-boundaries.ms` reports 28 tests, 0 failed.
+
+Decimal-exponent tests must distinguish malformed syntax from a valid magnitude beyond the parser's bound, including values beyond Int and former error sentinels. `parse_rat` once classified `-1000001` and Int-overflowing exponents as malformed; explicit Result propagation preserves `EOVERFLOW` versus `EBADMSG` (#3178). Check malformed suffixes after long digit sequences too, since magnitude alone must not hide a syntax error (`big-rat-exponent-errors.ms`).

@@ -225,7 +225,7 @@ impl Walker<'_> {
             // parameter copies as its bound allows.
             let result_ty = self.cx.m.ty(e);
             let passthrough = match self.cx.m.resolution(e) {
-                Resolution::Method(m) => wrapper_passthrough(self.syms, &m, &self.cx.m.ty(r)),
+                Resolution::Method(m) => wrapper_passthrough(&m, &self.cx.m.ty(r)),
                 _ => None,
             };
             let takes_payload = self.class_of(e) != Class::Copy
@@ -273,6 +273,20 @@ impl Walker<'_> {
                 }
             }
             let held = self.held(r, mode);
+            // `xs[i] = v` is a call of `[]=`: on a value no variable holds, nothing would keep the
+            // store.
+            if mode == ParamMode::Mutate
+                && !self.is_place(r)
+                && self.constant_root(r).is_none()
+                && self.borrowed_call_root(r).is_none()
+                && matches!(&callee.kind, ExprKind::Member { name, .. }
+                    if self.syms.str(name) == ms_syntax::parser::INDEX_SET)
+            {
+                self.error(
+                    r.pos,
+                    "an assignment target must be a variable or a field path of one, like `xs[i]` or `p.items[i]`; a call result or literal is dropped after the store, so bind it to a var first",
+                );
+            }
             self.receiver(r, mode);
             operands.push((Operand::Receiver(r), held, Vec::new()));
         } else {
@@ -761,11 +775,64 @@ impl Walker<'_> {
                     if let Some((info, _)) = self.place(r) {
                         self.mutate(r.pos, &info, "change");
                     }
+                } else if let Some(call) = self.borrowed_call_root(r) {
+                    // The result is a reference into another value, not a temporary of its own:
+                    // changing it would change (or copy out of) the lender.
+                    let text = self.expr_text(call);
+                    self.error(
+                        r.pos,
+                        format!(
+                            "cannot change the result of `{text}`: it is a read-only reference into another value; change the owner itself, or copy it into a `var` first with `.{CLONE}()`"
+                        ),
+                    );
+                    self.expr(r, Demand::Read);
+                } else if let Some(constant) = self.constant_root(r) {
+                    // Each use of a constant runs its initializer, so the change would land on a
+                    // fresh value and vanish.
+                    self.error(
+                        r.pos,
+                        format!(
+                            "cannot change constant `{constant}`: every use of a constant evaluates a fresh value, so the change would be lost; copy it into a `var` first, as in `var copy = {constant}.{CLONE}()`"
+                        ),
+                    );
+                    self.expr(r, Demand::Read);
                 } else {
                     // A temporary changed in place: nothing keeps it.
                     self.expr(r, Demand::Read);
                 }
             }
+        }
+    }
+
+    /// The borrow-returning call a field, element or whole-value chain starts from: `id(a).items`
+    /// is a part of `id(a)`, which is a reference into `a`.
+    fn borrowed_call_root<'e>(&self, e: &'e Expr) -> Option<&'e Expr> {
+        match &e.kind {
+            ExprKind::Call { .. } => self.returns_borrow(e).then_some(e),
+            ExprKind::Member { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => self.borrowed_call_root(left),
+            _ => None,
+        }
+    }
+
+    /// The module constant a field, element or whole-value chain starts from, as written.
+    fn constant_root(&self, e: &Expr) -> Option<String> {
+        match &e.kind {
+            ExprKind::Name(n) => matches!(self.cx.m.resolution(e), Resolution::Constant(_))
+                .then(|| self.syms.str(n).to_string()),
+            ExprKind::Member { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Apply {
+                left,
+                value: Some(_),
+                ..
+            } => self.constant_root(left),
+            _ => None,
         }
     }
 

@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-08, checked against `main` at the merge of #3088. Stages 1 (dial path) and 2a (ms-std-net client, connection, TLS and HTTP/2 client parks) and 2b (`Parked`, `HeldIo`, `HeldWire` and the read-state cleanup deleted; DNS pool wait returns `Cancelled`) implemented. A skeptical review found the original shielding claim false and the site list incomplete; both are fixed below.
+Proposal, 2026-11-08, checked against `main` at the merge of #3088. Stages 1 (dial path) and 2a (ms-std-net client, connection, TLS and HTTP/2 client parks) and 2b and 3 in part (`Parked`, `HeldIo`, `HeldWire` and the read-state cleanup deleted; DNS pool wait returns `Cancelled`; HTTP/2 server `h2_wait`; `process::command::run`; `heap:` hits fail the sweep) implemented. A skeptical review found the original shielding claim false and the site list incomplete; both are fixed below.
 
 ## Problem
 
@@ -52,4 +52,4 @@ An allocation trace shows the extra blocks are locals of `Client::dial` (the res
 
 1. (done for the dial path: `try_wait_fd`, `rt::Cancelled`, `ffi::report`/`code` jump; sweep on `http-fault-leak.ms` no longer shows the +1 block) `wait` returns `Result` and the error enums gain `Cancelled`; the FFI boundary jumps. Gate: `cargo nextest run --workspace`, `make conform`.
 2. (2a and 2b done: conn, tls, exchange, client, h2 client, DNS pool wait, wrappers deleted; server-side token parks keep the jump) Convert `ms-std-net` sites and delete the wrappers one by one. Gate: `make cancel-sweep` shows no `heap:` line.
-3. Convert process, terminal and pool parks. Gate: sweep on their fixtures.
+3. (done: process, `h2_wait`, fs, streams, terminal, server drain; Windows pipes, subprocess and signal waits, pool `run_shielded` and `admit` too; #3161) Gate: sweep on their fixtures.

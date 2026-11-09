@@ -867,3 +867,83 @@ fn unquoted_git_paths_preserve_spaces_before_the_header_tab() {
         assert_eq!(files[0].new, path);
     }
 }
+
+#[test]
+fn reverse_diff_preserves_final_newline_on_each_side() {
+    for old_newline in [false, true] {
+        for new_newline in [false, true] {
+            let marker = |present| {
+                if present {
+                    ""
+                } else {
+                    "\\ No newline at end of file\n"
+                }
+            };
+            let patch = format!(
+                "--- a/example.ms\n+++ b/example.ms\n@@ -1 +1 @@\n-old\n{}+new\n{}",
+                marker(old_newline),
+                marker(new_newline)
+            );
+            let files = parse_diff(&patch).unwrap();
+            let head = if new_newline { "new\n" } else { "new" };
+            let base = if old_newline { "old\n" } else { "old" };
+            assert_eq!(reverse_apply(head, &files[0].hunks).unwrap(), base);
+            let wrong_head = if new_newline { "new" } else { "new\n" };
+            assert!(reverse_apply(wrong_head, &files[0].hunks).is_err());
+            if !new_newline {
+                assert!(reverse_apply("new\ntail", &files[0].hunks).is_err());
+            }
+        }
+    }
+}
+
+#[test]
+fn reverse_diff_keeps_unterminated_context_and_untouched_tail() {
+    let files = parse_diff("--- a/x.ms\n+++ b/x.ms\n@@ -1,2 +1,2 @@\n-old\n+new\n tail\n\\ No newline at end of file\n").unwrap();
+    assert_eq!(
+        reverse_apply("new\ntail", &files[0].hunks).unwrap(),
+        "old\ntail"
+    );
+    let files = parse_diff("--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n+new\n").unwrap();
+    assert_eq!(
+        reverse_apply("new\ntail", &files[0].hunks).unwrap(),
+        "old\ntail"
+    );
+    assert_eq!(
+        reverse_apply("new\ntail\n\n", &files[0].hunks).unwrap(),
+        "old\ntail\n\n"
+    );
+}
+
+#[test]
+fn added_and_deleted_files_keep_empty_and_unterminated_content() {
+    for newline in [false, true] {
+        let marker = if newline {
+            ""
+        } else {
+            "\\ No newline at end of file\n"
+        };
+        let removed = parse_diff(&format!(
+            "--- a/x.ms\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n{marker}"
+        ))
+        .unwrap();
+        let base = if newline { "old\n" } else { "old" };
+        assert_eq!(removed_content(&removed[0].hunks), base);
+        assert_eq!(reverse_apply("", &removed[0].hunks).unwrap(), base);
+        let added = parse_diff(&format!(
+            "--- /dev/null\n+++ b/x.ms\n@@ -0,0 +1 @@\n+new\n{marker}"
+        ))
+        .unwrap();
+        let head = if newline { "new\n" } else { "new" };
+        assert_eq!(reverse_apply(head, &added[0].hunks).unwrap(), "");
+    }
+    assert_eq!(removed_content(&[]), "");
+    assert_eq!(reverse_apply("", &[]).unwrap(), "");
+}
+
+#[test]
+fn localized_no_newline_notes_keep_the_same_structural_meaning() {
+    let patch = "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n\\ Sin salto de línea al final del archivo\n+new\n";
+    let files = parse_diff(patch).unwrap();
+    assert_eq!(reverse_apply("new\n", &files[0].hunks).unwrap(), "old");
+}

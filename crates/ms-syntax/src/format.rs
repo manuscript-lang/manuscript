@@ -86,8 +86,8 @@ fn shift_lines(text: &str, before: usize, after: usize) -> String {
     let mut out = String::from(lines.next().unwrap_or(""));
     for line in lines {
         out.push('\n');
-        if line.trim().is_empty() {
-            out.push_str(line);
+        if line.is_empty() {
+            continue;
         } else if after >= before {
             out.push_str(&" ".repeat(after - before));
             out.push_str(line);
@@ -1817,5 +1817,32 @@ mod edit_tests {
             .map(|at| (at + 1, at + 3, "λ"))
             .collect();
         assert_eq!(apply_edits(&source, edits), "aλd".repeat(4096));
+    }
+}
+
+#[cfg(test)]
+mod shift_tests {
+    use super::shift_lines;
+
+    #[test]
+    fn literal_lines_shift_left_without_losing_whitespace_payloads() {
+        assert_eq!(
+            shift_lines(
+                "\"\"\"\n            a\n                \n\n            \"\"\"",
+                8,
+                4
+            ),
+            "\"\"\"\n        a\n            \n\n        \"\"\""
+        );
+        let text = "\"\"\"\n            a\n  \n            \"\"\"";
+        assert_eq!(shift_lines(text, 8, 4), text);
+    }
+
+    #[test]
+    fn block_comment_lines_keep_relative_whitespace() {
+        let text = "/*\n    body\n        \n\n    */";
+        let shifted = shift_lines(text, 4, 8);
+        assert_eq!(shifted, "/*\n        body\n            \n\n        */");
+        assert_eq!(shift_lines(&shifted, 8, 4), text);
     }
 }

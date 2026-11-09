@@ -10,6 +10,9 @@ Strings are compared by Unicode scalar, lines by exact equality.
 // Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
 // Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
 export fn edit_distance(left: String, right: String) Int:
+    if left == right:
+        return 0
+
     let a = left.chars()
     let b = right.chars()
     var previous: List[Int] = []
@@ -58,6 +61,9 @@ Two empty strings give 1.0. Use `close_matches` to rank a list of candidates by 
 Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 */
 export fn similarity_ratio(left: String, right: String) Float:
+    if left == right:
+        return 1.0
+
     let a = left.chars()
     let b = right.chars()
     let total = a.length() + b.length()

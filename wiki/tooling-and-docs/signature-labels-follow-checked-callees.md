@@ -9,3 +9,5 @@ Verified: mutation now belongs to checked function parameters, including methods
 Apply when: changing signature help, callee text, or repaired editor snapshots.
 Evidence: [signature labels](../../crates/ms-lsp/src/completion.rs); [completion edits](../../crates/ms-lsp/tests/completion.rs); [boundary and server-edit regressions](../../crates/ms-lsp/tests/signature_help.rs).
 Verify: operator prefixes stay out of labels, `(pair).combine` remains balanced inside interpolation, and LF/CRLF server edits use the current snapshot.
+
+Source API rendering must preserve `var` inside function types too, including nested callbacks. Compare parameter mutability as well as nested type structure in parse/render/parse tests; check real generated signatures so documentation cannot silently change a callback contract ([guide regressions](../../crates/ms-tooling/tests/guide_type_display.rs), [#3165](https://github.com/manuscript-lang/manuscript/issues/3165)).

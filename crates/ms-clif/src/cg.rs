@@ -876,7 +876,7 @@ fn compile_with_isa(
         let pinned = g.pinned.iter().map(|id| syms.symbol_of(*id)).collect();
         let units = llvm_units(opts.build.llvm_units, llvm.code_bytes());
         // Separate objects have no common anchor: every function keeps a symbol.
-        let anchored = g.anchor.is_some() && units == 1;
+        let anchored = g.anchor.is_some() && units == 1 && !llvm.has_unoptimized();
         if !anchored {
             g.anchor = None;
         }
