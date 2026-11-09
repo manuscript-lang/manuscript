@@ -344,7 +344,7 @@ impl Network:
 
     // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     // Invalid or negative options return EINVAL. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) HttpClient!:
+    fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
         return msstd_net_network_http_client(self.native, options)
 
     // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
@@ -477,7 +477,7 @@ fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 // ms: effect std.net.connect
-export fn http_client(options: HttpClientOptions) HttpClient!:
+export fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
     return host_network().http_client(options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
