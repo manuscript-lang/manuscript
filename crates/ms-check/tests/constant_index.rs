@@ -21,6 +21,6 @@ fn diagnostics(source: &str) -> Vec<String> {
 
 #[test]
 fn a_constant_list_and_map_index_like_locals() {
-    let source = "let table = [1, 2, 3]\nlet names = {\"a\": 1}\nfn at(i: Int) Int:\n    return table[i] + names[\"a\"]\nexport fn main() Int:\n    return at(1)\n";
+    let source = include_str!("constant_index/list_and_map.ms");
     assert_eq!(diagnostics(source), Vec::<String>::new());
 }
