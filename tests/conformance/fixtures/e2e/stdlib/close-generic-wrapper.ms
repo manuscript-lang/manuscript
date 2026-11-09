@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,generics,records,tier-io
 // conform: phase=run
 // conform: origin=value-semantics-audit
-import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 // A generic wrapper closes the resource its instance holds; a plain instance closes nothing.
@@ -10,7 +9,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed {self.name}\n").get()
+        print("closed {self.name}")
         return ok(unit)
 
 type Wrap[T]:
@@ -28,5 +27,5 @@ export fn main() Int:
     let a = keep(Door("wrapped"))
     let b = keep_optional(Door("optional"))
     let c = keep(5)
-    stdout().write("end {a + b + c}\n").get()
+    print("end {a + b + c}")
     return 0

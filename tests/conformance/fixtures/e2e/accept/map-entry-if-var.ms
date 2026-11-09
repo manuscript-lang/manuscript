@@ -15,16 +15,16 @@ export fn main() Int:
         q.append(3)
 
     if var q = m.get("missing"): q.append(9)
-    stdout().write("{m.get("a").get([]).length()} {m.length()}\n").get()
+    stdout().write("{m.get_or("a", []).length()} {m.length()}\n").get()
 
     // A `var` of a primitive element copies it.
     var xs = [1, 2, 3]
     var y = xs[0]
     y += 10
-    stdout().write("{xs[0]} {y}\n").get()
+    print("{xs[0]} {y}")
 
     // A `let` of a record borrows it; the record stays usable.
     let p = [7, 8]
     let alias = p
-    stdout().write("{alias.length()} {p.length()}\n").get()
+    print("{alias.length()} {p.length()}")
     return 0

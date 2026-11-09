@@ -9,7 +9,7 @@ fn limit() Int:
 
 fn probe(input: ReadStream[Bytes]) Bool:
     if let line = read_line(input, limit()):
-        return line.length() > 0
+        return not line.is_empty()
 
     return false
 

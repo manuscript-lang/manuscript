@@ -1,7 +1,6 @@
 // conform: tags=control-flow,tier-core
 // conform: phase=run
 // conform: origin=break and continue in if let bodies and else branches with condition temporaries
-import stdout from "@std/io/io.ms"
 
 fn maybe(name: String, present: Bool) List[String]?:
     return if present: [name] else: none
@@ -12,7 +11,7 @@ fn stop_in_body() Unit:
             if i == 1:
                 break
 
-            stdout().write("{r[0]}\n").get()
+            print("{r[0]}")
 
 fn skip_in_body() Unit:
     for i in 0..3:
@@ -20,19 +19,19 @@ fn skip_in_body() Unit:
             if i == 1:
                 continue
 
-            stdout().write("{r[0]}\n").get()
+            print("{r[0]}")
 
 fn stop_in_else() Unit:
     for i in 0..3:
         if let r = maybe("else{i}", i == 0):
-            stdout().write("{r[0]}\n").get()
+            print("{r[0]}")
         else:
             break
 
 fn skip_in_else() Unit:
     for i in 0..3:
         if let r = maybe("else{i}", i != 1):
-            stdout().write("{r[0]}\n").get()
+            print("{r[0]}")
         else:
             continue
 

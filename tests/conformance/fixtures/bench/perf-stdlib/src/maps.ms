@@ -11,7 +11,7 @@ export fn bench_map_set() Unit:
 
             var n = 0
             for i in 0..100000:
-                n += m.get(i).get(0)
+                n += m.get_or(i, 0)
             return n
     )
 
@@ -26,7 +26,7 @@ export fn bench_map_set() Unit:
 
             var n = 0
             for k in keys:
-                n += m.get(k).get(0)
+                n += m.get_or(k, 0)
             return n
     )
 

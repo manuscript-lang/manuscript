@@ -15,9 +15,7 @@ fn index(values: List[Int], count: Int) Int:
     return total
 
 fn iterate(values: List[Int]) Int:
-    var total = 0
-    for value in values:
-        total += value
+    var total = values.sum()
     return total
 
 type Total:

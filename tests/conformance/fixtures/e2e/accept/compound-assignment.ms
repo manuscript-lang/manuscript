@@ -11,9 +11,7 @@ type Outer:
     inner: Counter
 
 fn tally(values: List[Int]) Int:
-    var total = 0
-    for value in values:
-        total += value
+    var total = values.sum()
     return total
 
 test "compound assignment on bindings":
