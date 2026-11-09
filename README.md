@@ -16,6 +16,8 @@ Under the hood, the compiler enforces one owner per value with no GC. Programs r
 
 The whole toolchain is tuned for agents. Errors tell you how to fix them, and built-in commands let you verify, test, fuzz, benchmark and profile. I use agent benchmarks to evolve the language and toolchain together, and I probe the compiler and standard library adversarially to find and fix correctness and performance bugs.
 
+Here's a simple HTTP server:
+
 ```rust
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
@@ -30,6 +32,8 @@ export fn main() Int:
     if listen().is_ok(): return 0
     return 1
 ```
+
+HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this safe to hand to an agent.
 
 ## Ownership without annotations
 
