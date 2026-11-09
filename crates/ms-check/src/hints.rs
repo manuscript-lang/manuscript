@@ -439,7 +439,9 @@ impl Checker {
         names
     }
 
-    /// Type names visible at the current scope.
+    /// Type names visible at the current scope that can be written as a type.
+    /// `Optional` is the prelude type behind `T?` but has no `Optional[T]` spelling,
+    /// so it is never a spelling to suggest.
     pub(crate) fn type_names(&self) -> Vec<String> {
         let mut names: Vec<String> = Vec::new();
         let mut s = Some(self.scope.clone());
@@ -457,6 +459,7 @@ impl Checker {
                 names.push(self.syms.str(name).to_string());
             }
         }
+        names.retain(|name| name != "Optional");
         names
     }
 
@@ -858,6 +861,11 @@ impl Checker {
         if matches!(self.syms.str(name), "Callable" | "Function" | "Func" | "Fn") {
             return format!(
                 "{message}; function types are written fn(Int) Int: parameter types in parentheses, then the result type"
+            );
+        }
+        if matches!(self.syms.str(name), "Option" | "Maybe") {
+            return format!(
+                "{message}; an optional type is written T?, e.g. Int? or (fn(Int) Int)?"
             );
         }
         if let Some(builtin) = type_alias(self.syms.str(name)) {

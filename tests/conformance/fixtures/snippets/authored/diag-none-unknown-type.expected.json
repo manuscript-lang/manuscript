@@ -9,34 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Option; did you mean 'Optional'?",
+        "message": "unknown type Option; an optional type is written T?, e.g. Int? or (fn(Int) Int)?",
         "position": {
           "file": "diag-none-unknown-type.ms",
           "line": 5,
           "column": 12,
           "offset": 151
-        },
-        "fix": {
-          "position": {
-            "file": "diag-none-unknown-type.ms",
-            "line": 5,
-            "column": 12,
-            "offset": 151
-          },
-          "end": {
-            "file": "diag-none-unknown-type.ms",
-            "line": 5,
-            "column": 18,
-            "offset": 157
-          },
-          "replacement": "Optional"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-none-unknown-type.ms:5:12: resolution: unknown type Option; did you mean 'Optional'?\n   |\n 5 |     let y: Option[Int] = none\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-none-unknown-type.ms:5:12: resolution: unknown type Option; an optional type is written T?, e.g. Int? or (fn(Int) Int)?\n   |\n 5 |     let y: Option[Int] = none\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

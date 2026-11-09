@@ -850,10 +850,9 @@ impl Walker<'_> {
                     format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; {why}, so capture an owned value instead", name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix_opt(
+                self.error(
                     e.pos,
                     format!("this closure outlives the statement but captures `{name_t}`, which is borrowed, not owned; capture `{name_t}.{CLONE}()` instead", name_t = self.syms.str(name)),
-                    copy_after(e),
                 );
             }
         } else if !self.is_last(e.id, b) {
@@ -872,10 +871,9 @@ impl Walker<'_> {
                     format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; a resource cannot be cloned, so use `{name_t}` only inside the closure, or capture it at its last use", name_t = self.syms.str(name)),
                 );
             } else {
-                self.error_fix_opt(
+                self.error(
                     e.pos,
                     format!("this closure outlives the statement, so it takes `{name_t}` with it, but `{name_t}` is used again{later}; capture `{name_t}.{CLONE}()` to keep the original", name_t = self.syms.str(name)),
-                    copy_after(e),
                 );
             }
         }

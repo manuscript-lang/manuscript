@@ -168,6 +168,13 @@ pub(crate) fn interpolate(source: &str, e: &Expr) -> Option<DiagnosticFix> {
     })
 }
 
+/// Whether the operator of the binary expression at `pos` is the `op` of a compound
+/// assignment (`x += y`). The parser desugars that to `x = x + y`, so the left operand
+/// is the assignment target and no fix may rewrite it.
+pub(crate) fn is_compound_operator(source: &str, pos: Pos, op: &str) -> bool {
+    source.as_bytes().get(pos.offset as usize + op.len()) == Some(&b'=')
+}
+
 /// Converts the Int expression `e` to Float: `3` becomes `3.0`, else `.to_float()`.
 pub(crate) fn to_float(source: &str, e: &Expr) -> Option<DiagnosticFix> {
     float_literal(source, e).or_else(|| append_call(source, e, "to_float()"))
