@@ -297,3 +297,62 @@ fn an_option_with_no_file_and_no_manifest_says_which_default_is_missing() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn options_before_separator_preserve_positional_source_paths() {
+    let dir = crate::common::scratch("dash-input-options");
+    let ms_in = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(args)
+            .current_dir(&dir)
+            .output()
+            .unwrap()
+    };
+    for name in ["-input.ms", "--help", "-h", "--"] {
+        std::fs::write(dir.join(name), "").unwrap();
+    }
+    for command in ["check", "lint"] {
+        for name in ["-input.ms", "--help", "-h", "--"] {
+            for extra in [false, true] {
+                let mut args = vec![command, "--json", "--", name];
+                if extra {
+                    args.push("--help");
+                }
+                let output = ms_in(&args);
+                assert!(output.status.success(), "{args:?}: {output:?}");
+                assert!(output.stderr.is_empty(), "{args:?}: {output:?}");
+                let document =
+                    ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+                assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
+                assert!(
+                    document
+                        .get("diagnostics")
+                        .unwrap()
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+                );
+            }
+        }
+        let missing = ms_in(&[command, "--json", "--", "-missing.ms"]);
+        assert_eq!(missing.status.code(), Some(1), "{missing:?}");
+        let document = ms_json::parse(std::str::from_utf8(&missing.stdout).unwrap()).unwrap();
+        assert_eq!(
+            document
+                .get("diagnostics")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        let help = ms_in(&[command, "--help"]);
+        assert!(help.status.success());
+        assert!(
+            std::str::from_utf8(&help.stdout)
+                .unwrap()
+                .starts_with("Usage:")
+        );
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
