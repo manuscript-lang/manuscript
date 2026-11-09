@@ -1101,7 +1101,6 @@ fn encode_png(image: Image) Bytes!:
 
 // ---- JPEG ----
 
-// Indexed with `.get(i)`: `table[i]` on a module-level list fails to check (#3231); remove once fixed.
 let zigzag = [
     0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41,
     34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
@@ -1277,8 +1276,9 @@ fn jpeg_block(
                     bits.failed = true
                     return
 
-                let slot = base + zigzag.get(zi)
-                comp.coef[slot] = jpeg_extend(bits.receive(data, size), size)
+                comp.coef[base + zigzag[zi]] = jpeg_extend(
+                    bits.receive(data, size), size
+                )
                 zi += 1
 
         return
@@ -1321,9 +1321,10 @@ fn jpeg_block(
                     bits.failed = true
                     return
 
-                let slot = base + zigzag.get(zi)
-                let level = jpeg_extend(bits.receive(data, size), size)
-                comp.coef[slot] = level * shift_left(1, scan.al)
+                comp.coef[base + zigzag[zi]] = (
+                    jpeg_extend(bits.receive(data, size), size)
+                    * shift_left(1, scan.al)
+                )
                 zi += 1
             else if r == 15:
                 zi += 16
@@ -1349,15 +1350,14 @@ fn jpeg_block(
             var value = 0
 
             if rs % 16 != 0:
-                value = m1
-                if bits.bit(data) == 1: value = p1
+                value = if bits.bit(data) == 1: p1 else: m1
             else if r != 15:
                 bits.eobrun = shift_left(1, r)
                 if r > 0: bits.eobrun += bits.receive(data, r)
                 break
 
             while zi <= scan.se:
-                let at = base + zigzag.get(zi)
+                let at = base + zigzag[zi]
 
                 if comp.coef[at] != 0:
                     if bits.bit(data) == 1 and bit_and(comp.coef[at], p1) == 0:
@@ -1373,15 +1373,14 @@ fn jpeg_block(
                     bits.failed = true
                     return
 
-                let slot = base + zigzag.get(zi)
-                comp.coef[slot] = value
+                comp.coef[base + zigzag[zi]] = value
 
             zi += 1
             if bits.failed: return
 
     if bits.eobrun > 0:
         while zi <= scan.se:
-            let at = base + zigzag.get(zi)
+            let at = base + zigzag[zi]
             if comp.coef[at] != 0:
                 if bits.bit(data) == 1 and bit_and(comp.coef[at], p1) == 0:
                     comp.coef[at] += if comp.coef[at] >= 0: p1 else: m1
@@ -1407,7 +1406,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
                     for u in 0..8:
                         let f = comp.coef[base + y * 8 + u]
                         if f != 0: sum += (
-                            dct_matrix.get(x * 8 + u)
+                            dct_matrix[x * 8 + u]
                             * f
                             * comp.quant[y * 8 + u]
                         )
@@ -1418,7 +1417,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
                 for y in 0..8:
                     var sum = 0
                     for v in 0..8:
-                        sum += dct_matrix.get(y * 8 + v) * tmp[v * 8 + x]
+                        sum += dct_matrix[y * 8 + v] * tmp[v * 8 + x]
                     plane[(by * 8 + y) * stride + bx * 8 + x] = byte(
                         shift_right(sum + 131072, 18) + 128
                     )
@@ -1502,8 +1501,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         if precision == 1: v = be16(data, p + 1 + zi * 2)
                         if v == 0: return error(bad("zero JPEG quantizer"))
 
-                        let slot = zigzag.get(zi)
-                        table[slot] = v
+                        table[zigzag[zi]] = v
 
                     quants[id] = table
                     p += 1 + size
@@ -2037,9 +2035,8 @@ fn jpeg_codes(counts: List[Int], values: List[Int]) JpegCodes:
 
     for length in 1..17:
         for _slot in 0..counts.get(length - 1):
-            let slot = values.get(index)
-            code[slot] = next
-            size[slot] = length
+            code[values.get(index)] = next
+            size[values.get(index)] = length
             next += 1
             index += 1
 
@@ -2094,7 +2091,7 @@ fn jpeg_forward(
             var sum = 0
             for x in 0..8:
                 sum += (
-                    dct_matrix.get(x * 8 + u)
+                    dct_matrix[x * 8 + u]
                     * (plane[(y0 + y) * stride + x0 + x] - 128)
                 )
             tmp[y * 8 + u] = sum
@@ -2102,12 +2099,12 @@ fn jpeg_forward(
     var levels = zeroed_ints(64)
 
     for zi in 0..64:
-        let at = zigzag.get(zi)
+        let at = zigzag[zi]
         let v = at / 8
         let u = at % 8
         var sum = 0
         for y in 0..8:
-            sum += dct_matrix.get(y * 8 + v) * tmp[y * 8 + u]
+            sum += dct_matrix[y * 8 + v] * tmp[y * 8 + u]
 
         let q = quant.get(zi)
         let half = q * 8388608
@@ -2238,10 +2235,26 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
         for y in 0..ph / 2:
             for x in 0..cw:
                 let i = 2 * y * pw + 2 * x
-                let sum_b = cb[i] + cb[i + 1] + cb[i + pw] + cb[i + pw + 1]
-                let sum_r = cr[i] + cr[i + 1] + cr[i + pw] + cr[i + pw + 1]
-                small_cb[y * cw + x] = (sum_b + 2) / 4
-                small_cr[y * cw + x] = (sum_r + 2) / 4
+                small_cb[y * cw + x] = (
+                    (
+                        cb[i]
+                        + cb[i + 1]
+                        + cb[i + pw]
+                        + cb[i + pw + 1]
+                        + 2
+                    )
+                    / 4
+                )
+                small_cr[y * cw + x] = (
+                    (
+                        cr[i]
+                        + cr[i + 1]
+                        + cr[i + pw]
+                        + cr[i + pw + 1]
+                        + 2
+                    )
+                    / 4
+                )
 
         cb = small_cb
         cr = small_cr
