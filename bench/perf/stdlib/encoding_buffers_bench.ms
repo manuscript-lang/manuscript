@@ -1,6 +1,5 @@
 import (
     base64_encode,
-    base64_encode_unpadded,
     base32_encode,
     Base32Options,
     base32_decode,
@@ -25,7 +24,7 @@ fn unpadded(length: Int, url: Bool) Unit!:
     let expected = base64_encode(data, url).replace("=", "")
 
     fn work() Unit!:
-        let actual = base64_encode_unpadded(data, url)
+        let actual = base64_encode(data, url, false)
         try expect_equal(actual, expected)
         return keep(actual.byte_length())
 

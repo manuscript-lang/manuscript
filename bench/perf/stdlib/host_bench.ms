@@ -4,7 +4,7 @@ import pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms"
 import sse_events from "@std/net/sse.ms"
 import ReadStream, Source from "@std/io/io.ms"
 import parse_timestamp from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
+import uuid_v4 from "@std/data/uuid.ms"
 
 fn entries(count: Int) List[ArchiveEntry]:
     var out: List[ArchiveEntry] = []
