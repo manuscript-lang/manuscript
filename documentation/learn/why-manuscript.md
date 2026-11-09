@@ -116,6 +116,6 @@ The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/be
 
 ## Where it stands
 
-The language core, the `ms` toolchain and the standard library work today. Syntax and APIs still evolve, and each release hardens them further. The [vision](https://github.com/manuscript-lang/manuscript/blob/main/VISION.md) describes where this is heading.
+The language core, the `ms` toolchain and the standard library work today. The syntax is mostly stable and will not change much; APIs and the standard library may change, and each release hardens them further. The [vision](https://github.com/manuscript-lang/manuscript/blob/main/VISION.md) describes where this is heading.
 
 **Next:** [Run your first program](getting-started.md)

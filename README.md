@@ -139,4 +139,4 @@ ms init hello
 
 Download `ms` from the [releases page](https://github.com/manuscript-lang/manuscript/releases) and run the command above.
 
-Everything here works today and is hardened with each release. Syntax and APIs still evolve.
+Everything here works today and is hardened with each release. The syntax is mostly stable and will not change much; APIs and the standard library may change.
