@@ -8,6 +8,7 @@ use ms_rt as _;
 extern crate alloc;
 
 pub mod ffi;
+mod template;
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -411,7 +412,11 @@ impl Regex {
                 let Some(c) = self.pattern.captures_at(text, a) else {
                     continue;
                 };
-                c.expand(template, &mut out);
+                if max == usize::MAX {
+                    c.expand(template, &mut out);
+                } else {
+                    template::expand(&c, template, &mut out, max)?;
+                }
             } else {
                 if template.len() > max - out.len() {
                     return Err(Fail::LimitExceeded);
