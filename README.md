@@ -33,7 +33,7 @@ export fn main() Int:
     return 1
 ```
 
-HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this safe to hand to an agent.
+HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this easy to hand to an agent.
 
 ## Ownership without annotations
 
