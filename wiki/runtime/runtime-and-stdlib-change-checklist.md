@@ -21,6 +21,10 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
   validate negative counts before the empty return. Keep a nonempty nested-copy
   control so a fast path does not weaken cloning or output order.
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
+- TOML dotted-key traversal defines existing implicit parents as well as new
+  tables. Persist the `dotted` flag so a later header cannot redefine them;
+  ordinary header traversal must still leave untouched implicit parents
+  promotable. `toml.ms` tests both paths, quoted keys and table arrays (#3297).
 - User code binds a native symbol with `extern fn name(...) T` (symbol is the function name, linked with `--link`; may return `Result` with a payload-free error type; not generic, not a method). Stdlib natives are `extern fn` declarations wrapped by ordinary functions; the few generic natives are bodiless and named in `ms-lower/src/rtcall.rs`. `extern type` and source-level `Shared[T]`, `Weak[T]`, `Arena[T]` are planned, not shipped.
 - Preserve declared error types/cases/causes and checked binding identities.
 - Interpolation of finite endpoints must not overflow solely in their difference. Use a weighted blend when the finite endpoint span overflows, retaining the existing finite-span formula for tiny/subnormal rounding and existing nonfinite-input behavior; For median, halve finite neighbors only when their sum overflows; always halving loses subnormal precision. `statistics.ms` tests these boundaries (#2955, #2956).
