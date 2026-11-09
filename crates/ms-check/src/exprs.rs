@@ -570,7 +570,11 @@ impl Checker {
             self.set_info(left, i.clone());
             return i;
         }
-        if let Some(s) = self.function_symbol(left) {
+        // `table[i]` on a module-level constant indexes its value; only functions take type arguments.
+        let function = self
+            .function_symbol(left)
+            .filter(|s| !(s.is_constant() && value.is_some()));
+        if let Some(s) = function {
             let args = self.resolve_arguments(types);
             let mut supplied: Vec<Option<Ty>> = args.into_iter().map(Some).collect();
             let vars = s.variables();

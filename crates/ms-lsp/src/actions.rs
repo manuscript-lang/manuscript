@@ -426,12 +426,30 @@ pub fn editor_actions(
             at = end + 1;
         }
         let before = block.concat();
+        // EOF's missing newline belongs to the block, not to the declaration
+        // that happened to come last before sorting.
+        let missing_final_newline = !before.ends_with('\n');
+        let newline = if before.contains("\r\n") {
+            "\r\n"
+        } else {
+            "\n"
+        };
+        if missing_final_newline {
+            block
+                .last_mut()
+                .expect("nonempty import run")
+                .push_str(newline);
+        }
         // Group by module path, the part of the statement after `from`.
         block.sort_by_key(|statement| {
             let path = statement.rsplit_once(" from ").map_or("", |(_, path)| path);
             (path.trim().to_string(), statement.clone())
         });
-        let after = block.concat();
+        let mut after = block.concat();
+        if missing_final_newline {
+            let trailing = if after.ends_with("\r\n") { 2 } else { 1 };
+            after.truncate(after.len() - trailing);
+        }
         if before != after {
             let range = Range {
                 start: line_range(&d.text, start).start,
