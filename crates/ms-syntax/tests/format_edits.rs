@@ -121,3 +121,12 @@ fn long_bare_import_wraps_one_name_per_line() {
     assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
     assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
 }
+
+#[test]
+fn a_long_index_assignment_wraps_only_its_value() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/index_assign.src");
+    let expected = include_str!("format_edits/index_assign.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}

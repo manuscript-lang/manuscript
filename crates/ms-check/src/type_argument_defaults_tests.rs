@@ -75,3 +75,116 @@ fn type_defaults_validate_nested_applications_without_explicit_bounds() {
         "{got:?}"
     );
 }
+
+#[test]
+fn nontrailing_type_defaults_report_errors_without_panicking() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/missing_trailing.ms"
+    ));
+    assert!(
+        got.iter()
+            .any(|d| d.message.starts_with("type parameter B needs a default")),
+        "{got:?}"
+    );
+    assert_eq!(
+        got.iter()
+            .filter(|d| d.message.starts_with("Broken requires 2 type arguments"))
+            .count(),
+        2,
+        "{got:?}"
+    );
+}
+
+#[test]
+fn invalid_trailing_type_defaults_report_errors_without_panicking() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/invalid_trailing.ms"
+    ));
+    assert!(
+        got.iter()
+            .any(|d| d.message.starts_with("unknown type Missing;")),
+        "{got:?}"
+    );
+    assert_eq!(
+        got.iter()
+            .filter(|d| d.message.starts_with("Broken requires 2 type arguments"))
+            .count(),
+        2,
+        "{got:?}"
+    );
+}
+
+#[test]
+fn nontrailing_type_defaults_keep_type_and_function_application_diagnostics() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/application_gap.ms"
+    ));
+    assert_eq!(
+        got.iter()
+            .filter(|d| d.message.starts_with("type parameter B needs a default"))
+            .count(),
+        2,
+        "{got:?}"
+    );
+    assert!(
+        got.iter()
+            .any(|d| d.message.starts_with("generic type arity mismatch;")),
+        "{got:?}"
+    );
+    assert!(
+        got.iter()
+            .any(|d| d.message.starts_with("generic arity mismatch;")),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn recovered_type_defaults_still_complete_a_fully_defaulted_suffix() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/recovered_suffix.ms"
+    ));
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0]
+            .message
+            .starts_with("type parameter B needs a default"),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn required_type_arity_omits_only_a_fully_defaulted_suffix() {
+    use crate::types::*;
+    use std::rc::Rc;
+
+    let syms = ms_syntax::Names::global();
+    for len in 0..=6 {
+        for mask in 0..1usize << len {
+            let vars: Vec<Ty> = (0..len)
+                .map(|index| {
+                    let id = n(&format!("test/T{index}"));
+                    let variable = Type::new(syms, id, id, Kind::Variable);
+                    if mask & (1 << index) != 0 {
+                        *variable.default.borrow_mut() = Some(int());
+                    }
+                    Rc::new(variable)
+                })
+                .collect();
+            let expected = (0..len)
+                .rfind(|index| mask & (1 << index) == 0)
+                .map_or(0, |index| index + 1);
+            assert_eq!(
+                required_type_arguments(&vars),
+                expected,
+                "len {len}, mask {mask}"
+            );
+            for supplied in expected..=len {
+                let args = vec![string(); supplied];
+                let completed = with_default_arguments(&vars, &args);
+                assert_eq!(completed.len(), len);
+                assert!(completed[..supplied].iter().all(|t| same(t, &string())));
+                assert!(completed[supplied..].iter().all(|t| same(t, &int())));
+            }
+        }
+    }
+}
