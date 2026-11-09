@@ -18,6 +18,7 @@ mod module_exports;
 mod opaque_cases;
 mod optional_result_return;
 mod ownership;
+mod prelude_import_fixes;
 mod promise_fixes;
 mod subcodes;
 mod type_display;

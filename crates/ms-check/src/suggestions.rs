@@ -163,7 +163,12 @@ pub(crate) fn append_call(source: &str, e: &Expr, call: &str) -> Option<Diagnost
 
 /// `f"{value}"` for the expression `e`, unless its text would not nest.
 pub(crate) fn interpolate(source: &str, e: &Expr) -> Option<DiagnosticFix> {
+    // A plain integer literal is its own text; `"{3}"` would read as a regex quantifier.
+    let digits = matches!(e.kind, ExprKind::Number(_));
     rewrite_expr(source, e, |text, _| {
+        if digits && !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) {
+            return Some(format!("\"{text}\""));
+        }
         (!text.contains(['"', '{', '}', '\n'])).then(|| format!("\"{{{text}}}\""))
     })
 }
