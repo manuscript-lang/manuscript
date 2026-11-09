@@ -28,6 +28,7 @@ Start with the [first-program workflow](../learn/getting-started.md) for a compl
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
 - `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
+- A failed source read or write while applying `--fix` returns status 1 and appears in the diagnostics, including `--json`. Independent writable files are still fixed and rechecked.
 - Final stdout handling reports failed writes or flushes with status 1 when the command would otherwise succeed. It preserves existing nonzero statuses and does not add a failure for a broken pipe.
 
 ## Rebuild on save
