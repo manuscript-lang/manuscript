@@ -105,3 +105,29 @@ test "identical text comparisons preserve scalar semantics":
     try expect_close(similarity_ratio("é", "é"), 0.0, 0.000001)
     try expect_equal(edit_distance("abc", "abd"), 1)
     try expect_close(similarity_ratio("abc", "abd"), 2.0 / 3.0, 0.000001)
+
+test "unified_diff joins overlapping context without losing earlier changes":
+    let old = ["0", "a", "2", "b", "4", "c", "6"]
+    let new = ["0", "A", "2", "B", "4", "C", "6"]
+    let merged = "--- a\n+++ b\n@@ -1,7 +1,7 @@\n 0\n-a\n+A\n 2\n-b\n+B\n 4\n-c\n+C\n 6\n"
+    try expect_equal(unified_diff(old, new, UnifiedDiffOptions(context: 1)), merged)
+    try expect_equal(unified_diff(old, new, UnifiedDiffOptions(context: 2)), merged)
+    try expect_equal(
+        unified_diff(old, new, UnifiedDiffOptions(context: 0)),
+        "--- a\n+++ b\n@@ -2 +2 @@\n-a\n+A\n@@ -4 +4 @@\n-b\n+B\n@@ -6 +6 @@\n-c\n+C\n"
+    )
+
+test "unified_diff handles dense changes with full-file context":
+    var lines: List[String] = []
+    for i in 0..4000:
+        lines.append("line {i}")
+
+    let inserted = lines.map(fn line: "+{line}").join("\n")
+    let removed = lines.map(fn line: "-{line}").join("\n")
+    let full = UnifiedDiffOptions(context: 9223372036854775807)
+    try expect_equal(
+        unified_diff([], lines, full), "--- a\n+++ b\n@@ -0,0 +1,4000 @@\n{inserted}\n"
+    )
+    try expect_equal(
+        unified_diff(lines, [], full), "--- a\n+++ b\n@@ -1,4000 +0,0 @@\n{removed}\n"
+    )
