@@ -119,7 +119,8 @@ impl RateLimiter:
         if earned <= 0:
             return unit
 
-        if self.tokens + earned >= self.burst:
+        // Compare with remaining room before adding: a valid large burst can overflow the sum.
+        if earned >= self.burst - self.tokens:
             self.tokens = self.burst
             self.stamp = now
         else:
