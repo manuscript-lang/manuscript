@@ -22,3 +22,9 @@ forward cursor and an append-only output. Searching and replacing each marker
 from the beginning rescans and shifts an increasingly large document. Compute
 indentation from the restored prefix, not the masked input: an earlier multiline
 literal on the same line can change the prefix seen by a later placeholder.
+
+Choose a source-absent marker sequence, not a character from a fixed alphabet.
+Valid Unicode payloads can contain every BMP private-use character (#3193).
+Use a compact numbered fallback, not a marker proportional to the longest text
+run that multiplies masked-source size across spans. Check payload preservation
+and idempotence for both block comments and multiline text, with LF and CRLF.
