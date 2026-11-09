@@ -879,92 +879,106 @@ type StructureScan:
     marker: Int
     closed: Bool
 
-// Scan quoted and flow nodes without interpreting quotes or brackets inside plain text.
+// State shared by consecutive physical lines of a flow value.
+type StructureState:
+    quote: Int = 0
+    depth: Int = 0
+    node_start: Bool = true
+    json_node: Bool = false
+    tag: Bool = false
+
 fn scan_structure(text: String, target: String) StructureScan:
-    let chars = text.split("")
-    var quote = ""
-    var depth = 0
-    var node_start = true
-    var json_node = false
+    var state = StructureState()
+    return scan_structure_part(text, target, var state)
+
+// Scan quoted and flow nodes without interpreting quotes or brackets inside plain text.
+fn scan_structure_part(
+    text: String,
+    target: String,
+    var state: StructureState
+) StructureScan:
+    let chars = text.scalar_values()
+    var quote = state.quote
+    var depth = state.depth
+    var node_start = state.node_start
+    var json_node = state.json_node
+    var tag = state.tag
     var index = 0
 
     while index < chars.length():
-        let c = chars.get(index)
-        let next = chars.get(index + 1, default: "")
+        if tag:
+            while index < chars.length() and chars.get(index) != 62: index += 1
+            if index == chars.length(): break
 
-        if quote != "":
-            if c == "\\" and quote == "\"": index += 1
+            tag = false
+            index += 1
+            continue
+
+        let c = chars.get(index)
+        let next = chars.get(index + 1, default: 0)
+
+        if quote != 0:
+            if c == 92 and quote == 34: index += 1
             else if c == quote:
-                if quote == "'" and next == "'": index += 1
+                if quote == 39 and next == 39: index += 1
                 else:
-                    quote = ""
+                    quote = 0
                     json_node = true
 
             index += 1
             continue
 
-        let before = chars.get(index - 1, default: "")
+        let before = chars.get(index - 1, default: 0)
 
-        if (
-            c == "#"
-            and (
-                index == 0
-                or before == " "
-                or before == "\t"
-                or before == "\n"
-            )
-        ):
-            if target == "#": return StructureScan(index, closed: false)
+        if (c == 35 and (index == 0 or before == 32 or before == 9 or before == 10)):
+            if target == "#":
+                state = StructureState(quote, depth, node_start, json_node, tag)
+                return StructureScan(index, closed: false)
 
-            while index < chars.length() and chars.get(index) != "\n": index += 1
+            while index < chars.length() and chars.get(index) != 10: index += 1
             node_start = true
             json_node = false
             continue
 
-        if node_start and (c == "&" or c == "!"):
+        if node_start and (c == 38 or c == 33):
             index += 1
 
-            if c == "!" and next == "<":
-                while index < chars.length() and chars.get(index) != ">": index += 1
+            if c == 33 and next == 60:
+                while index < chars.length() and chars.get(index) != 62: index += 1
+
                 if index < chars.length(): index += 1
+                else: tag = true
             else:
                 while (
                     index < chars.length()
-                    and not " \t\n,[]\{\}".contains(
-                        chars.get(index)
-                    )
+                    and not structure_delimiter(chars.get(index))
                 ):
                     index += 1
 
             json_node = false
             continue
 
-        if node_start and (c == "\"" or c == "'"):
-            quote = c.clone()
+        if node_start and (c == 34 or c == 39):
+            quote = c
             node_start = false
             json_node = false
-        else if node_start and (c == "[" or c == "\{"):
+        else if node_start and (c == 91 or c == 123):
             depth += 1
             json_node = false
-        else if depth > 0 and (c == "]" or c == "\}"):
+        else if depth > 0 and (c == 93 or c == 125):
             depth -= 1
             node_start = false
             json_node = true
-        else if depth > 0 and c == ",":
+        else if depth > 0 and c == 44:
             node_start = true
             json_node = false
-        else if c == ":":
-            let separates = (
-                json_node
-                or separates_colon(
-                    next.scalar_at(0, default: 0), depth > 0
-                )
-            )
+        else if c == 58:
+            let separates = (json_node or separates_colon(next, depth > 0))
 
             if separates:
-                if target == ":" and depth == 0: return StructureScan(
-                    index, closed: false
-                )
+                if target == ":" and depth == 0:
+                    state = StructureState(quote, depth, node_start, json_node, tag)
+                    return StructureScan(index, closed: false)
 
                 node_start = true
             else: node_start = false
@@ -972,17 +986,30 @@ fn scan_structure(text: String, target: String) StructureScan:
             json_node = false
         else if (
             node_start
-            and (c == "-" or c == "?")
-            and (next == "" or next == " " or next == "\t" or next == "\n")
+            and (c == 45 or c == 63)
+            and (next == 0 or next == 32 or next == 9 or next == 10)
         ):
             json_node = false
-        else if c != " " and c != "\t" and c != "\n":
+        else if c != 32 and c != 9 and c != 10:
             node_start = false
             json_node = false
 
         index += 1
 
-    return StructureScan(-1, closed: quote == "" and depth == 0)
+    state = StructureState(quote, depth, node_start, json_node, tag)
+    return StructureScan(-1, closed: quote == 0 and depth == 0)
+
+fn structure_delimiter(code: Int) Bool:
+    return (
+        code == 32
+        or code == 9
+        or code == 10
+        or code == 44
+        or code == 91
+        or code == 93
+        or code == 123
+        or code == 125
+    )
 
 // Find a mapping colon or comment outside quoted/flow values.
 fn boundary(text: String, colon: Bool) Int:
@@ -1163,21 +1190,27 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
         and boundary(context.lines.get(context.index - 1), colon: false) >= 0
     ): stops.append(joined.scalar_length())
 
+    var state = StructureState()
+    if structured:
+        let _scan = scan_structure_part(joined, "", var state)
+
+    var joined_length = joined.scalar_length()
+
     while (
         structured
-        and not complete(joined)
+        and (state.quote != 0 or state.depth != 0)
         and context.index < context.lines.length()
     ):
-        let next = context.lines.get(context.index)
+        let next = "\n".concat(context.lines.get(context.index))
+        let scan = scan_structure_part(next, "#", var state)
 
-        // Keep quote state and physical empty lines when removing comments.
-        let combined = joined.concat("\n").concat(next)
-        let comment = boundary(combined, colon: false)
-
-        if comment < 0: joined = combined
+        if scan.marker < 0:
+            joined = joined.concat(next)
+            joined_length += next.scalar_length()
         else:
-            stops.append(comment)
-            joined = combined.slice(0, comment).get("")
+            stops.append(joined_length + scan.marker)
+            joined = joined.concat(next.slice(0, scan.marker).get(""))
+            joined_length += scan.marker
 
         context.index += 1
 
