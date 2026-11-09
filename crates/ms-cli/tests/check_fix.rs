@@ -2,6 +2,92 @@
 
 use std::process::Command;
 
+#[test]
+fn fix_reports_readonly_source_failures() {
+    for command in ["check", "lint"] {
+        for json in [false, true] {
+            for mixed in [false, true] {
+                let dir = crate::common::scratch(&format!("fix-readonly-{command}-{json}-{mixed}"));
+                let source = if command == "lint" {
+                    include_str!("analysis/lint-shared.ms")
+                } else {
+                    include_str!("check_fix/float_fix.ms")
+                };
+                let path = dir.join("readonly.ms");
+                std::fs::write(&path, source).unwrap();
+                let permissions = std::fs::metadata(&path).unwrap().permissions();
+                let mut readonly = permissions.clone();
+                readonly.set_readonly(true);
+                std::fs::set_permissions(&path, readonly).unwrap();
+                let mut args = vec![command, "readonly.ms", "--fix"];
+                if json {
+                    args.push("--json");
+                }
+                if mixed {
+                    std::fs::write(dir.join("writable.ms"), source).unwrap();
+                    args.push("writable.ms");
+                }
+                let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+                    .args(&args)
+                    .current_dir(&dir)
+                    .output()
+                    .unwrap();
+                std::fs::set_permissions(&path, permissions).unwrap();
+                assert_eq!(std::fs::read_to_string(&path).unwrap(), source);
+                assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+                if mixed {
+                    assert_ne!(
+                        std::fs::read_to_string(dir.join("writable.ms")).unwrap(),
+                        source
+                    );
+                }
+                let text = if json {
+                    let document =
+                        ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+                    let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+                    assert!(
+                        diagnostics.iter().all(|d| {
+                            !d.get("position")
+                                .unwrap()
+                                .get("file")
+                                .unwrap()
+                                .as_str()
+                                .unwrap()
+                                .ends_with("writable.ms")
+                        }),
+                        "{document:?}"
+                    );
+                    let failures: Vec<_> = diagnostics
+                        .iter()
+                        .filter(|d| {
+                            d.get("message")
+                                .unwrap()
+                                .as_str()
+                                .unwrap()
+                                .contains("cannot write source for --fix")
+                        })
+                        .collect();
+                    assert_eq!(failures.len(), 1, "{document:?}");
+                    failures[0]
+                        .get("message")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .to_string()
+                } else {
+                    String::from_utf8(output.stderr).unwrap()
+                };
+                assert!(
+                    text.contains("cannot write source for --fix"),
+                    "{args:?}: {text}"
+                );
+                assert!(text.contains("re-run"), "{text}");
+                std::fs::remove_dir_all(dir).unwrap();
+            }
+        }
+    }
+}
+
 fn ms(args: &[&str], dir: &std::path::Path) -> (Option<i32>, String) {
     let out = Command::new(env!("CARGO_BIN_EXE_ms"))
         .args(args)

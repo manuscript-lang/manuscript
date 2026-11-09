@@ -86,7 +86,7 @@ fn facts_of(syms: ms_syntax::Names, checked: &Checked) -> Facts {
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
 pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
     if !request.watch {
-        return Ok(analysis_once(syms, request, FIX_PASSES, io).0);
+        return Ok(analysis_once(syms, request, FIX_PASSES, &mut BTreeMap::new(), io).0);
     }
     let stops = Stops::catch();
     let mut watched = BTreeMap::new();
@@ -95,7 +95,7 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
         if due.is_some_and(|at| Instant::now() >= at) {
             due = None;
             let started = SystemTime::now();
-            let (_, files) = analysis_once(syms, request, FIX_PASSES, io);
+            let (_, files) = analysis_once(syms, request, FIX_PASSES, &mut BTreeMap::new(), io);
             // A file that dropped out of the graph (a broken import loads no modules) stays
             // watched, so repairing it reruns the check.
             watched = observed(
@@ -130,6 +130,7 @@ fn analysis_once(
     syms: ms_syntax::Names,
     request: &AnalysisRequest,
     fix_passes: u8,
+    fix_errors: &mut BTreeMap<String, CommandDiagnostic>,
     io: &mut Io,
 ) -> (i32, Vec<String>) {
     let check = request.command == AnalysisCommand::Check;
@@ -222,7 +223,7 @@ fn analysis_once(
         }
     }
     if request.fix {
-        let (applied, edited) = apply_fixes(fixes, io);
+        let (applied, edited) = apply_fixes(fixes, fix_errors);
         if applied > 0 {
             let _ = writeln!(
                 io.stderr,
@@ -236,9 +237,13 @@ fn analysis_once(
                 fix: fix_passes > 1,
                 ..request.clone()
             };
-            return analysis_once(syms, &rerun, fix_passes.saturating_sub(1), io);
+            return analysis_once(syms, &rerun, fix_passes.saturating_sub(1), fix_errors, io);
         }
     }
+    diagnostics.extend(fix_errors.values().cloned().map(|mut issue| {
+        issue.position = selection.position("", &issue.position);
+        issue
+    }));
     // Keep compiler diagnostics ahead of lint findings and defer output until
     // every input has been checked, without retaining their checked programs.
     let has_errors = !diagnostics.is_empty();
@@ -336,14 +341,30 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
 
 /// Applies the fixes in place, last edit first so offsets stay valid. A fix
 /// that is repeated or overlaps an earlier one waits for the next run.
-/// Returns the fixes applied, the files changed, and whether any fix waited.
-fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (usize, usize) {
+/// Retain I/O failures across passes and do not retry those paths in this invocation.
+/// Returns the fixes applied and the files changed.
+fn apply_fixes(
+    fixes: Vec<(String, ms_driver::DiagnosticFix)>,
+    errors: &mut BTreeMap<String, CommandDiagnostic>,
+) -> (usize, usize) {
     let mut by_file: BTreeMap<String, Vec<ms_driver::DiagnosticFix>> = BTreeMap::new();
     for (path, fix) in fixes {
         by_file.entry(path).or_default().push(fix);
     }
     let (mut applied, mut edited) = (0, 0);
     for (path, mut file_fixes) in by_file {
+        if errors.contains_key(&path) {
+            continue;
+        }
+        let failure = |operation: &str, error: std::io::Error| {
+            CommandDiagnostic::source(
+                "resolution",
+                &format!(
+                    "cannot {operation} source for --fix: {error}; check the file and its permissions, then re-run the command"
+                ),
+                Position::new(path.clone(), 1, 1),
+            )
+        };
         // Equal fixes must sit next to each other for `dedup`: several diagnostics can ask
         // for the same import while others ask for different ones at the same offset.
         file_fixes.sort_by(|a, b| {
@@ -354,8 +375,12 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
             ))
         });
         file_fixes.dedup();
-        let Ok(mut text) = std::fs::read_to_string(&path) else {
-            continue;
+        let mut text = match std::fs::read_to_string(&path) {
+            Ok(text) => text,
+            Err(error) => {
+                errors.insert(path.clone(), failure("read", error));
+                continue;
+            }
         };
         let mut chosen: Vec<&ms_driver::DiagnosticFix> = Vec::new();
         let mut last_end = 0;
@@ -380,7 +405,7 @@ fn apply_fixes(fixes: Vec<(String, ms_driver::DiagnosticFix)>, io: &mut Io) -> (
             );
         }
         if let Err(error) = std::fs::write(&path, &text) {
-            let _ = writeln!(io.stderr, "ms: cannot write {path}: {error}");
+            errors.insert(path.clone(), failure("write", error));
             continue;
         }
         applied += chosen.len();
@@ -934,6 +959,55 @@ pub fn format_source(file: &FormatFile, source: &str) -> Result<String, FormatFa
     let name: std::sync::Arc<str> = file.display.as_str().into();
     ms_syntax::format::format(&name, source)
         .map_err(|issue| FormatFailure::Syntax(Box::new(command_diagnostic(&issue))))
+}
+
+#[cfg(test)]
+mod fix_tests {
+    use super::apply_fixes;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn failed_fix_reads_are_reported_once_and_other_files_are_edited() {
+        let dir = std::env::temp_dir().join(format!("ms-fix-read-error-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let missing = dir.join("missing.ms").to_str().unwrap().to_string();
+        let writable = dir.join("writable.ms").to_str().unwrap().to_string();
+        std::fs::write(&writable, "").unwrap();
+        let fix = ms_driver::DiagnosticFix {
+            pos: ms_driver::Pos::default(),
+            end: ms_driver::Pos::default(),
+            replacement: "x".to_string(),
+        };
+        let mut errors = BTreeMap::new();
+        assert_eq!(
+            apply_fixes(
+                vec![
+                    (missing.clone(), fix.clone()),
+                    (writable.clone(), fix.clone())
+                ],
+                &mut errors
+            ),
+            (1, 1)
+        );
+        assert_eq!(std::fs::read_to_string(&writable).unwrap(), "x");
+        assert_eq!(errors.len(), 1);
+        assert!(
+            errors[&missing]
+                .message
+                .starts_with("cannot read source for --fix:")
+        );
+        assert_eq!(errors[&missing].position.file, missing);
+        // A later pass retains the original failure rather than retrying this path.
+        std::fs::write(&missing, "").unwrap();
+        assert_eq!(
+            apply_fixes(vec![(missing.clone(), fix)], &mut errors),
+            (0, 0)
+        );
+        assert_eq!(std::fs::read_to_string(missing).unwrap(), "");
+        assert_eq!(errors.len(), 1);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 }
 
 #[cfg(test)]
