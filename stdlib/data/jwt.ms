@@ -12,6 +12,7 @@ import (
 	base64_encode, base64_decode from "@std/data/encoding.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	now from "@std/time.ms",
+	from_int from "@std/math/math.ms",
 )
 
 fn jwt_invalid_key() Error:
@@ -89,7 +90,8 @@ Checks a token's signature and claims, and returns its claims decoded as `T` (a 
 The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
 The payload must be a JSON object; any other JSON value returns EBADMSG.
 Critical header extensions and unencoded payloads are unsupported and rejected.
-`exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
+`exp` and `nbf` (seconds since the Unix epoch, including fractions) are compared exactly when present, with integer clock skew from `check.leeway`.
+`iss` and `aud` are enforced when `check` names them.
 `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
 Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
 */
@@ -231,13 +233,15 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
 
 	if exp := claims.get("exp"):
 		limit := try numeric_date(exp, "exp")
-		if limit + check.leeway.to_float() <= moment.to_float(): return error(
+		boundary := (from_int(moment) - from_int(check.leeway)).to_string()
+		if date_compare(limit, boundary) <= 0: return error(
 			Error("jwt: token expired", kind: "EBADMSG")
 		)
 
 	if nbf := claims.get("nbf"):
 		start := try numeric_date(nbf, "nbf")
-		if start - check.leeway.to_float() > moment.to_float(): return error(
+		boundary := (from_int(moment) + from_int(check.leeway)).to_string()
+		if date_compare(start, boundary) > 0: return error(
 			Error("jwt: token not yet valid", kind: "EBADMSG")
 		)
 
@@ -269,10 +273,100 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
 		)
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
-fn numeric_date(claim: JsonValue, name: String) Float!:
-	if value := claim.as_float(): return ok(value)
+fn numeric_date(claim: JsonValue, name: String) String!:
+	match claim:
+		NumberValue(text): return ok(text)
+		_: unit
 
 	return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
+
+// Both inputs come from validated JSON or an exact integer conversion. The
+// boundary is moment +/- leeway: at most 20 magnitude digits, even at Int limits.
+fn date_compare(text: String, boundary: String) Int:
+	bytes := text.to_bytes()
+	target := boundary.to_bytes()
+	negative := bytes.get(0) == 45
+	target_negative := target.get(0) == 45
+	target_first := if target_negative: 1 else: 0
+	var first = if negative: 1 else: 0
+	var end = first
+	var before_point = 0
+	var fraction = false
+
+	while end < bytes.length():
+		byte := bytes.get(end)
+		if byte == 101 or byte == 69: break
+
+		if byte == 46:
+			fraction = true
+		else if not fraction:
+			before_point += 1
+
+		end += 1
+
+	var leading_zeros = 0
+
+	while first < end:
+		byte := bytes.get(first)
+		if byte != 48 and byte != 46: break
+
+		if byte == 48: leading_zeros += 1
+		first += 1
+
+	zero := first == end
+	target_zero := boundary == "0"
+	if zero and target_zero: return 0
+	if zero: return if target_negative: 1 else: -1
+	if target_zero: return if negative: -1 else: 1
+	if negative != target_negative: return if negative: -1 else: 1
+
+	// Saturation is only a comparison shortcut, not a limit on accepted dates.
+	// An exponent beyond token length + 21 dominates any coefficient offset
+	// and the boundary's <= 20 digits. Never construct its power of ten.
+	cap := bytes.length() + 21
+	var exponent = 0
+	var exponent_negative = false
+	var at = end + 1
+
+	if at < bytes.length() and (bytes.get(at) == 43 or bytes.get(at) == 45):
+		exponent_negative = bytes.get(at) == 45
+		at += 1
+
+	while at < bytes.length():
+		digit := bytes.get(at).to_int() - 48
+		exponent = if exponent > (cap - digit) / 10: cap else: exponent * 10 + digit
+		at += 1
+
+	order := (
+		before_point
+		- leading_zeros
+		+ (if exponent_negative: -exponent else: exponent)
+	)
+	target_order := target.length() - target_first
+	var comparison = if order < target_order: -1 else if order > target_order: 1 else: 0
+
+	if comparison == 0:
+		var digit_at = target_first
+		at = first
+
+		while at < end:
+			byte := bytes.get(at)
+			at += 1
+			if byte == 46: continue
+
+			other := if digit_at < target.length(): target.get(digit_at) else: 48
+
+			if byte != other:
+				comparison = if byte < other: -1 else: 1
+				break
+
+			digit_at += 1
+
+		while comparison == 0 and digit_at < target.length():
+			if target.get(digit_at) != 48: comparison = -1
+			digit_at += 1
+
+	return if negative: -comparison else: comparison
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
 	if single := claim.as_string(): return single == audience
