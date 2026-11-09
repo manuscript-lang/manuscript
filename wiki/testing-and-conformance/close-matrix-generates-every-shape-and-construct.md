@@ -6,10 +6,10 @@ Verified (2026-11-09): the resource matrix covers standard operations, but the s
 
 First run (792 runs, Debug and Release) found two leaks, both in staging an argument that changes type on the way into a call:
 
-- A temporary converted to an `Optional` parameter (`take(Door("x"), try fails())`) was held as the generated optional, which has no checker type, so `part_closer_mir` found no closer and a later argument's `try` error leaked it. `args` now resolves the payload closer before the conversion and composes `optional_resource_closer` around it, as function-value calls already do.
-- A temporary passed to a `Closeable` interface parameter (`look(Door("x"))`) became an owned interface value with no checker type, and was dropped without its close. `part_closer_mir` reads the closer from the interface's vtable entry first.
+- A temporary converted to an `Optional` parameter (`take(Door("x"), try fails())`) was held as the optional lowering built, and `part_closer_mir` found no closer, so a later argument's `try` error leaked it.
+- A temporary passed to a `Closeable` interface parameter (`look(Door("x"))`) became an owned interface value that was dropped without its close.
 
-Both share the cause that the wiki already records for function-value calls: a MIR type made by lowering (optional shell, interface box) has no checker-type entry, so any closer lookup keyed by checker type silently returns "not a resource". Resolve the closer from the payload before the conversion, or from the MIR kind, never from `source_tys` of the converted value.
+Root cause: `source_tys` (MIR type to checker type, read by every closer lookup) is filled when a checker type is lowered. The optional built for an argument conversion exists before the callee's `T?` parameter is lowered, so its entry is missing (order-dependent), and interface types are never entered. A missing entry reads as "not a resource" and nothing closes. `part_closer_mir` now takes the closer from the MIR kind when there is no entry: an interface from its vtable entry, an optional from its payload's closer (`generated_closer`). A record, alternative, list or object type with no entry is a debug assertion, so a lowering-made type that holds resources fails loudly instead of leaking. Never decide "not a resource" from a missing `source_tys` entry.
 
 Design note (not implemented): `close()` is documented as idempotent, and an explicit close followed by the scope-end close is intended, so use-after-close is a runtime result (`EBADF` for handles), not a compile error. Rejecting a use after an explicit `close()` would change that contract and needs the owner's decision.
 
