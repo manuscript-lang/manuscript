@@ -7,6 +7,7 @@ Decision (coordinator default, pending Chinmay's module answer): `retry`, `rate_
 Constraints found while writing it:
 - `map_concurrent` runs its callback in stripes of promises that only read it.
 - `Result` payloads are borrowed, so `CircuitBreaker.call` needs `T` and `E` `Clonable`.
+- A token-bucket refill compares earned tokens with remaining room before adding: a full or nearly full maximum-Int burst can overflow a sum even though the capped result fits. `flow.ms` tests use a past stamp instead of sleeps to exercise this boundary.
 - `Optional.get(default)` evaluates its default eagerly; do not pass `panic(...)`.
 - The embedded stdlib is baked into `ms`; after adding a module run `cargo build --release -p ms-cli` before `ms test` sees it.
 
