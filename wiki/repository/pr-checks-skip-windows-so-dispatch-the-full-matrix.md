@@ -11,3 +11,5 @@ Reversed (2026-11-09): a path list (`.github/platform-paths.txt`) added Windows 
 Apply when: changing runtime, sockets, workers, paths, linking, or anything host-specific.
 Evidence: `.github/workflows/cicd.yml` (`workflow_dispatch`); [create-pr](../../skills/create-pr/SKILL.md#merging).
 Verify: the dispatched run's Windows and macOS jobs pass; no test was skipped or gated to get there.
+
+Lesson (2026-11-09): #3227 and #3234 added `ms-lsp` signature-help tests that used `file:///x.ms` documents, which name no real directory on Windows. Tests that analyze a document use `Workspace::uri`, not a literal Unix path.

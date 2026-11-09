@@ -274,9 +274,10 @@ fn multiline_interpolation_signature_help() {
     let syms = ms_syntax::Names::global();
     let session = ms_check::Session::new();
     for newline in ["\n", "\r\n"] {
+        let ws = Workspace::new("multiline-help");
         let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, 2)}\n        \"\"\"\n".replace('\n', newline);
         let offset = source.find(", 2").unwrap() + 2;
-        let d = Document::new("file:///multiline-help.ms", source.clone());
+        let d = Document::new(ws.uri("signature.ms"), source.clone());
         let answer = signature_help(
             syms,
             &session,
@@ -291,7 +292,7 @@ fn multiline_interpolation_signature_help() {
         );
         let raw = source.replace("return \"\"\"", "return r\"\"\"");
         let offset = raw.find(", 2").unwrap() + 2;
-        let d = Document::new("file:///raw-help.ms", raw.clone());
+        let d = Document::new(ws.uri("raw.ms"), raw.clone());
         assert_eq!(
             signature_help(
                 syms,
@@ -310,8 +311,9 @@ fn multiline_interpolation_signature_help() {
 fn unfinished_multiline_interpolation_signature_help() {
     let syms = ms_syntax::Names::global();
     for newline in ["\n", "\r\n"] {
+        let ws = Workspace::new("unfinished-help");
         let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, ".replace('\n', newline);
-        let d = Document::new("file:///unfinished-help.ms", source.clone());
+        let d = Document::new(ws.uri("signature.ms"), source.clone());
         let answer = signature_help(
             syms,
             &ms_check::Session::new(),
