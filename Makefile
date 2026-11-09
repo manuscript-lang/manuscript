@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check cancel-sweep scaling-check count-check resource-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check unit test build conform drift-check e2e leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -88,6 +88,10 @@ cancel-sweep: build
 # Generates a program per resource operation, call form and argument form; each one the checker accepts must close every resource it made once.
 resource-matrix: build
 	$(MS) run tools/resource-matrix.ms
+
+# Generates a program per resource shape and language construct (scope end, early exits, loops, moves, generics, closures, promises, cancellation); each one the checker accepts must close every resource it made once.
+close-matrix: build
+	$(MS) run tools/close-matrix.ms
 
 copy-check: build
 	$(MS) run tools/copy-check.ms

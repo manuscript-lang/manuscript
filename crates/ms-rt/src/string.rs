@@ -1686,6 +1686,61 @@ pub unsafe extern "C-unwind" fn msrt_string_slice(
     }
 }
 
+/// The byte range of scalars `[start, end)` with the bounds of `slice` (negative bounds count from
+/// the end); `None` when they fall outside `0 <= start <= end <= scalar length`.
+unsafe fn scalar_range(s: *const StrVal, start: i64, end: i64) -> Option<(usize, usize)> {
+    // SAFETY: caller passes a live string.
+    unsafe {
+        let text = bytes(s);
+        if (*s).flagged_ascii() {
+            let n = text.len() as i64;
+            let (a, b) = (
+                if start < 0 { n + start } else { start },
+                if end < 0 { n + end } else { end },
+            );
+            return (a >= 0 && b >= a && b <= n).then_some((a as usize, b as usize));
+        }
+        // Offsets grow with scalar positions, so `a <= b` on bytes is the same check on scalars.
+        let offset = |bound: i64| {
+            if bound < 0 {
+                utf8::retreat(text, text.len(), bound.unsigned_abs() as usize)
+            } else {
+                utf8::advance(text, 0, bound as usize)
+            }
+        };
+        let (a, b) = (offset(start)?, offset(end)?);
+        (a <= b).then_some((a, b))
+    }
+}
+
+/// `String.view(start, end)`: the scalars `[start, end)` borrowed from the receiver, nothing
+/// allocated. Bounds as in `slice`; a bound outside the string faults. Valid while the receiver is
+/// neither changed nor dropped (the borrow check guarantees that).
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_view(
+    s: *const StrVal,
+    start: i64,
+    end: i64,
+    out: *mut StrVal,
+) {
+    // SAFETY: caller passes a live string and a writable `out`.
+    unsafe {
+        let Some((a, b)) = scalar_range(s, start, end) else {
+            fault::fault_fmt(format_args!(
+                "String.view: bounds {start}..{end} are outside the string"
+            ));
+        };
+        let view = if a == b {
+            // An empty result borrows nothing.
+            StrVal::literal((&raw mut EMPTY).cast(), 0)
+        } else {
+            view_of(bytes(s)[a..b].as_ptr(), b - a)
+        };
+        view.write_to(out)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Lists produced from strings (List[String] = VecVal of 8-byte string pointers)
 // ---------------------------------------------------------------------------
