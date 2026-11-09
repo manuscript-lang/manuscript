@@ -10,7 +10,7 @@
 
 </div>
 
-I built Manuscript to make agent-generated code practical to work with. It's designed to be safe for agents to write: the common footguns are gone, and the syntax is token-efficient and readable at a glance. Built-in diagrams and an interactive code map let you explore what an agent built without reading it line by line.
+I built Manuscript to make agent-generated code practical to work with. It's designed so agents get it right: the common footguns are gone, and the syntax is token-efficient and readable at a glance. Built-in diagrams and an interactive code map let you explore what an agent built without reading it line by line.
 
 Under the hood, the compiler enforces one owner per value with no GC. Programs run close to C speed and scale across all cores, and a simple effects system tracks what your code is allowed to do.
 
