@@ -13,7 +13,9 @@
 use crate::desc::slot_drop;
 use crate::sched::{self, Event, Start};
 use crate::{alloc, fault, task};
+use core::cell::UnsafeCell;
 use core::cmp::Reverse;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt_abi::TypeDesc;
 use std::collections::BinaryHeap;
 
@@ -234,32 +236,54 @@ fn ask(id: i64, job: impl FnOnce() -> Answer + Send + 'static) -> Answer {
     if owner >= sched::MAX_THREADS || owner == sched::NONE || owner >= sched::started() {
         return Answer::Missing;
     }
-    let reply = std::sync::Arc::new(std::sync::Mutex::new(None::<Answer>));
-    let theirs = reply.clone();
+    let reply = Reply {
+        ready: AtomicBool::new(false),
+        answer: UnsafeCell::new(None),
+    };
+    let theirs = ReplyPtr(&reply);
     // SAFETY: the token is ours until freed; the owner posts it once the answer is stored.
     let token = unsafe { task::msrt_token_new(task::TOKEN_REMOTE) };
     sched::post(
         owner,
         Event::Call(Box::new(move || {
             let answer = job();
-            *theirs.lock().unwrap_or_else(|e| e.into_inner()) = Some(answer);
+            let reply = theirs;
+            // SAFETY: the caller parks, shielded, until `ready` is set, so the slot outlives
+            // this write, and nothing else writes it.
+            unsafe {
+                *(*reply.0).answer.get() = Some(answer);
+                (*reply.0).ready.store(true, Ordering::Release);
+            }
             task::msrt_token_post_remote(token, 1);
         })),
     );
     fault::msrt_shield_enter();
-    let answer = loop {
-        if let Some(answer) = reply.lock().unwrap_or_else(|e| e.into_inner()).take() {
-            break answer;
-        }
+    while !reply.ready.load(Ordering::Acquire) {
         let mut value = 0;
         // SAFETY: single scheduler per isolate; the token is ours.
         unsafe { task::msrt_token_park(token, -1, &mut value) };
-    };
+    }
+    // SAFETY: `ready` is set, so the job has stored the answer and no longer touches the slot.
+    let answer = unsafe { (*reply.answer.get()).take() }.expect("an answer before ready");
     fault::msrt_shield_exit();
     // SAFETY: the answer arrived, so nothing posts the token again.
     unsafe { task::msrt_token_free(token) };
     answer
 }
+
+/// Where a job run by `ask` stores its answer, on the asking task's stack.
+struct Reply {
+    ready: AtomicBool,
+    answer: UnsafeCell<Option<Answer>>,
+}
+
+/// The job's pointer to the asker's `Reply`.
+#[derive(Clone, Copy)]
+struct ReplyPtr(*const Reply);
+
+// SAFETY: the job writes the slot once and publishes it with `ready`; the asker reads it only
+// after that, and stays parked until then.
+unsafe impl Send for ReplyPtr {}
 
 /// The faulting answer for an id that no longer exists, as a local lookup would give.
 fn missing() -> ! {
