@@ -1,0 +1,6 @@
+fn head() String: "é中🦀"
+
+fn broken() Int:
+    let value = (1]
+    return 0
+fn tail() Int: 3
