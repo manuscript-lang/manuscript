@@ -23,6 +23,7 @@ impl Checker {
         );
         let name = &item.name;
         self.p.diagnostics.push(Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: self.syms.str(module.file).into(),
             pos: item.name_pos,

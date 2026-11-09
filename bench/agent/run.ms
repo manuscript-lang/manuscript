@@ -12,7 +12,7 @@ import (
 ) from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
-import uuid_v4 from "@std/random.ms"
+import uuid_v4 from "@std/data/uuid.ms"
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 import now from "@std/time.ms"
 import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"

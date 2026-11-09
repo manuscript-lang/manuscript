@@ -73,6 +73,7 @@ pub fn load_module(syms: ms_syntax::Names, m: &Module) -> ModRef {
     data.inherent = errors
         .into_iter()
         .map(|e| Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: m.file.clone(),
             pos: e.pos,

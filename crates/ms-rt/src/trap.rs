@@ -4,6 +4,7 @@
 //! child's stderr is a pipe, runs the operation, and calls `msrt_trap_end` (exit 0) when it
 //! returns. The parent calls `msrt_trap_wait`, which reports whether the child faulted and
 //! with which message (the first line of the fault report).
+//! ms: domain trap
 
 use crate::string;
 use crate::sys;

@@ -51,7 +51,6 @@ import (
     msrt_bits_bit_and,
     msrt_bits_bit_or,
     msrt_bits_bit_xor,
-    msrt_bits_bit_not,
     msrt_bits_shift_left,
     msrt_bits_shift_right,
     msrt_bits_shift_right_unsigned,
@@ -332,7 +331,8 @@ export let sqrt_half: Float = 0.7071067811865476
 export fn parse_float(text: String) Float!:
     return msrt_numbers_parse_float(text)
 
-// Parses an integer in a radix from 2 through 36.
+// Parses an integer with an optional sign in a radix from 2 through 36; `_` separators and white space are not accepted.
+// Radix 0 reads a `0x`, `0o` or `0b` prefix and otherwise uses 10. A bad digit is EBADMSG, an overflow ERANGE and an unsupported radix EINVAL.
 export fn parse_int(text: String, radix: Int) Int!:
     return msrt_numbers_parse_int(text, radix)
 
@@ -350,19 +350,26 @@ export fn bit_xor(left: Int, right: Int) Int:
 
 // Returns the bitwise complement, so every bit of the two's-complement value flips.
 export fn bit_not(value: Int) Int:
-    return msrt_bits_bit_not(value)
+    return msrt_bits_bit_xor(value, -1)
 
 // Shifts bits toward the high end, discarding bits shifted out; `count` must be 0 through 63 or the call faults.
 export fn shift_left(value: Int, count: Int) Int:
+    check_shift_count("shift_left", count)
     return msrt_bits_shift_left(value, count)
 
 // Shifts bits toward the low end, filling with the sign bit; `count` must be 0 through 63 or the call faults.
 export fn shift_right(value: Int, count: Int) Int:
+    check_shift_count("shift_right", count)
     return msrt_bits_shift_right(value, count)
 
 // Shifts bits toward the low end, filling with zeros; `count` must be 0 through 63 or the call faults.
 export fn shift_right_unsigned(value: Int, count: Int) Int:
+    check_shift_count("shift_right_unsigned", count)
     return msrt_bits_shift_right_unsigned(value, count)
+
+fn check_shift_count(operation: String, count: Int) Unit:
+    if count < 0 or count > 63:
+        panic("{operation}: count must be between 0 and 63, found {count}")
 
 // Rotates the 64-bit pattern toward the high end; any `count` is reduced modulo 64.
 export fn rotate_left(value: Int, count: Int) Int:

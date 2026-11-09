@@ -11,7 +11,7 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         recv: Val,
     ) -> Result<Val, Error> {
-        let native = self.syms.str(m.native);
+        let native = m.native.text(self.syms);
         let at = self.b.current();
         // The receiver is evaluated first: an argument that reassigns its variable must not
         // change what the call reads.
@@ -74,10 +74,6 @@ impl<'a> FnLower<'a> {
         let str_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Str);
         // `NormalizationForm` is the only alternative whose native `normalize` this lowers.
         let form_recv = matches!(self.b.m.types.kind(self.ty_of(recv.v)), TyKind::Alt(_));
-        if let Some(sym) = hash_algorithm_symbol(native) {
-            let result = self.emty(e)?;
-            return self.hash_algorithm_call(sym, recv, &args, result);
-        }
         if str_recv && native == "chars" && self.chars_iter_for == Some(e as *const Expr) {
             // `for c in text.chars()`: the loop scans the string itself, so no list is built.
             self.chars_iter_for = None;
@@ -189,7 +185,7 @@ impl<'a> FnLower<'a> {
         recv: Val,
         mut args: Vec<NArg>,
     ) -> Result<Val, Error> {
-        let native = self.syms.str(m.native);
+        let native = m.native.text(self.syms);
         let recv_ty = self.ty_of(recv.v);
         let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         // `Float.to_float32()` is a runtime call: it returns none when the value overflows.
@@ -237,16 +233,6 @@ impl<'a> FnLower<'a> {
         }
         let name = native.rsplit('/').next().unwrap_or(native);
         let rty = self.ty_of(recv.v);
-        // `map_add`, `set_values`: the receiver type already says which.
-        // `Map.map_keys` is itself the method's name, which the `map_` rule would cut.
-        let keep = name == "map_keys";
-        let name = if !keep && crate::mapset::is_map_or_set(self.b.m, rty) {
-            name.strip_prefix("map_")
-                .or_else(|| name.strip_prefix("set_"))
-                .unwrap_or(name)
-        } else {
-            name
-        };
         match (self.b.m.types.kind(rty).clone(), name) {
             (TyKind::Obj(n, _), "length" | "is_empty") if n == Native::Map || n == Native::Set => {
                 let r = self.borrow(recv);
@@ -526,9 +512,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime("msrt_int_to_string_radix", &[v, r], MTy::STR)?;
                 Ok(Val { v: out, own: true })
             }
-            (_, "to_string") if m.receiver.is_time(self.syms, "Duration") => {
-                self.duration_text(recv)
-            }
+            (_, "to_string") if m.receiver.is(Builtin::Duration) => self.duration_text(recv),
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
                 let v = self.clone_value(recv.v);

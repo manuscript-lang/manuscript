@@ -7,6 +7,7 @@ use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
 use crate::tytable::TyId;
+use ms_syntax::Cause;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::HashSet;
@@ -54,26 +55,18 @@ impl Checker {
     /// A member of the optional itself (`get`, `map`, ...) written inside a `?.` chain runs on
     /// the payload, which does not have it: say how to apply it to the whole chain.
     fn explain_chain_optional_member(&mut self, from: usize) {
-        const OPTIONAL_MEMBERS: [&str; 9] = [
-            "get",
-            "get_or_else",
-            "map",
-            "and_then",
-            "is_some",
-            "is_none",
-            "ok_or",
-            "ok_or_else",
-            "or_else",
-        ];
+        let optional = self.session.standard("Optional", vec![invalid()]);
+        let members = self.member_names(&optional);
         for d in &mut self.p.diagnostics[from..] {
-            let Some(rest) = d.message.strip_prefix("unknown or ambiguous member ") else {
+            let Cause::UnknownMember {
+                name,
+                optional_receiver: false,
+            } = d.cause
+            else {
                 continue;
             };
-            let Some((name, receiver)) = rest.split_once(" on ") else {
-                continue;
-            };
-            let receiver = receiver.split(';').next().unwrap_or("");
-            if OPTIONAL_MEMBERS.contains(&name) && !receiver.ends_with('?') {
+            let name = self.syms.str(name);
+            if members.iter().any(|m| m == name) {
                 d.message.push_str(&format!(
                     "; this call is part of the `?.` chain, so it runs on the present value; to use the optional's {name} on the whole chain, parenthesize it: (a?.b()).{name}(...)"
                 ));
@@ -268,7 +261,7 @@ impl Checker {
                         );
                     } else {
                         let msg = self.unknown_name(name);
-                        self.res_error_name(s.pos, self.syms.str(name).len(), msg);
+                        self.unknown_error(s.pos, name, msg);
                     }
                     self.expression(value, None);
                     return (true, false);
@@ -284,6 +277,7 @@ impl Checker {
                     let fix = suggestions::let_to_var(&self.m().source, b.decl);
                     self.type_error_with_fix(
                         s.pos,
+                        Cause::Other,
                         format!(
                             "cannot assign immutable binding {name_t}; declare it with 'var {name_t} = ...' instead of 'let'"
                         , name_t = self.syms.str(name)),
@@ -319,7 +313,7 @@ impl Checker {
         match value {
             None => {
                 let result = self.result_ty();
-                if self.syms.str(result.id) != "Unit" && !in_test {
+                if !result.is(Builtin::Unit) && !in_test {
                     self.type_error(
                         s.pos,
                         format!(
@@ -361,7 +355,7 @@ impl Checker {
             }
         ) {
             let t = i.t();
-            if self.syms.str(t.id) != "Unit" && !t.is_invalid() {
+            if !t.is(Builtin::Unit) && !t.is_invalid() {
                 self.type_error(
                     value.pos,
                     format!(
@@ -908,7 +902,7 @@ impl Checker {
         if t.is_invalid() {
             return (false, false);
         }
-        if arms.first().is_some_and(|a| a.from_if) && self.syms.str(t.id) != "Bool" {
+        if arms.first().is_some_and(|a| a.from_if) && !t.is(Builtin::Bool) {
             self.type_error(
                 pos,
                 format!(
@@ -1089,10 +1083,7 @@ impl Checker {
         for (index, arm) in arms.iter().enumerate() {
             self.set_arm_bindings(arm, Vec::new());
             if self.syms.str(path_text(&arm.path)) == "_" {
-                if wildcard
-                    || index != arms.len() - 1
-                    || (self.syms.str(t.id) == "Bool" && seen.len() == 2)
-                {
+                if wildcard || index != arms.len() - 1 || both_bools(t, &seen) {
                     self.type_error(
                         arm.pos,
                         "unreachable wildcard or wildcard is not last; keep one '_' arm at the end, and only when values remain",
@@ -1123,7 +1114,7 @@ impl Checker {
             breaks = breaks || br;
             self.scope = old;
         }
-        let covered = wildcard || (self.syms.str(t.id) == "Bool" && seen.len() == 2);
+        let covered = wildcard || both_bools(t, &seen);
         if !covered {
             self.type_error(
                 pos,
@@ -1517,7 +1508,7 @@ impl Checker {
             // An unresolved receiver was reported; its bracket argument is probably a type argument.
             return Info {
                 ty: Some(invalid()),
-                native: Some(n("index")),
+                native: Native::Builtin(n("index")),
                 no_return: receiver.no_return,
                 ..Info::default()
             };
@@ -1534,7 +1525,7 @@ impl Checker {
         let index = self.expression(right, expected.as_ref());
         let mut info = Info {
             ty: Some(invalid()),
-            native: Some(n("index")),
+            native: Native::Builtin(n("index")),
             no_return: receiver.no_return || index.no_return,
             ..Info::default()
         };
@@ -1549,7 +1540,7 @@ impl Checker {
         } else if bytes {
             info.ty = Some(primitive("UInt8"));
         } else {
-            let hint = if self.syms.str(rt.id) == "String" {
+            let hint = if rt.is(Builtin::String) {
                 "indexing a String by scalar position is not supported; use s.get(index) or for c in s.chars()"
             } else {
                 "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types"
@@ -1664,7 +1655,7 @@ impl Checker {
                         let t = info.t();
                         invalid_arm = invalid_arm || t.is_invalid();
                         if result.is_none()
-                            && !t.is_never(self.syms)
+                            && !t.is_never()
                             && crate::inference::inference_type_known(&t, &self.inference_variables)
                         {
                             let t = required_type(&t);
@@ -1723,7 +1714,7 @@ impl Checker {
                 }
             } else if normal
                 && let Some(r) = &result
-                && !compatible(self.syms, &Some(unit()), r)
+                && !compatible(&Some(unit()), r)
             {
                 self.type_error(
                             arm.pos,
@@ -1740,8 +1731,9 @@ impl Checker {
             None => {
                 if fall {
                     if !self.unknown_type {
-                        self.type_error(
+                        self.type_error_with_cause(
                             e.pos,
+                            Cause::CannotInfer,
                             "cannot infer match result type; annotate the binding or give an arm an independently known type",
                         );
                     }
@@ -1894,4 +1886,9 @@ fn is_place_path(e: &Expr) -> bool {
         ExprKind::Member { left, .. } => is_place_path(left),
         _ => false,
     }
+}
+
+/// Whether the literal arms of a match on `t` cover both `Bool` values.
+fn both_bools(t: &Ty, seen: &std::collections::HashSet<String>) -> bool {
+    t.is(Builtin::Bool) && seen.contains("true") && seen.contains("false")
 }

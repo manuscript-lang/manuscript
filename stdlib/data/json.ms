@@ -404,7 +404,7 @@ impl Transform[Bytes, T] for JsonReading[T]:
             let stepped = self.advance(byte)
             if stepped.is_error(): return self.fail(stepped.err())
 
-            if let found = stepped.get(): out.append(found)
+            if let found = stepped.get(none): out.append(found)
 
         return ok(unit)
 

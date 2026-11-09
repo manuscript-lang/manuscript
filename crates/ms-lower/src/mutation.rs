@@ -7,7 +7,7 @@
 
 use ms_check::api::ast::*;
 use ms_check::api::hir::{Body, Callable, ModuleHir, Resolution};
-use ms_check::api::types::{Kind, Name};
+use ms_check::api::types::{self as ct, Kind, Name};
 use ms_check::api::visit::Visitor;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -287,7 +287,7 @@ impl Visitor for Mutations<'_> {
             c = left;
         }
         match &view.target {
-            Resolution::Method(m) if !syms.str(m.native).is_empty() => {
+            Resolution::Method(m) if m.native != ct::Native::Source => {
                 if let ExprKind::Member { left, .. } = &c.kind
                     && ms_check::api::effects::collection_mutation(syms, m)
                 {
@@ -308,7 +308,7 @@ impl Visitor for Mutations<'_> {
                 }
                 self.argument_edges(syms, &view, callee_key);
             }
-            Resolution::Function(sym) if syms.str(sym.native).is_empty() => {
+            Resolution::Function(sym) if sym.native == ct::Native::Source => {
                 let Some(decl) = &sym.decl else { return };
                 self.argument_edges(syms, &view, (sym.module, decl.id()));
             }
@@ -376,10 +376,10 @@ pub(crate) fn method_changes_receiver(
     m: &ms_check::api::types::MethodRef,
     mutated: &HashSet<ParamKey>,
 ) -> bool {
-    match (&m.decl, syms.str(m.native)) {
-        (Some(d), "contract") => d.method().is_some_and(|x| x.mutating),
-        (_, "contract") => false,
-        (_, native) if !native.is_empty() => ms_check::api::effects::collection_mutation(syms, m),
+    match (&m.decl, m.native) {
+        (Some(d), ct::Native::Contract) => d.method().is_some_and(|x| x.mutating),
+        (_, ct::Native::Contract) => false,
+        (_, native) if native.is_bodiless() => ms_check::api::effects::collection_mutation(syms, m),
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
         _ => false,
     }

@@ -36,6 +36,43 @@ impl Phase {
     }
 }
 
+/// Why the checker reported a diagnostic, for passes that decide from earlier diagnostics
+/// (whether an argument already explained a failure, whether a name was left out on purpose).
+/// The message text is for people; decisions read this.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Cause {
+    /// No cause another pass reads.
+    #[default]
+    Other,
+    /// A type the checker could not infer (a literal, a match result, a pattern).
+    CannotInfer,
+    /// A type argument of a generic call that nothing determined.
+    CannotInferTypeArgument,
+    /// A callback parameter without a type or a known function context.
+    CannotInferCallback,
+    /// A value whose type does not fit the expected type.
+    Mismatch,
+    /// A name that resolves to no binding or type.
+    Unknown(crate::Symbol),
+    /// A member that the receiver does not have; whether the receiver is an `Optional`.
+    UnknownMember {
+        /// The member's name.
+        name: crate::Symbol,
+        /// Whether the receiver is an `Optional`.
+        optional_receiver: bool,
+    },
+}
+
+impl Cause {
+    /// Whether this is any of the inference failures.
+    pub fn is_inference(self) -> bool {
+        matches!(
+            self,
+            Cause::CannotInfer | Cause::CannotInferTypeArgument | Cause::CannotInferCallback
+        )
+    }
+}
+
 /// A machine-applicable replacement of one exact source range
 ///. Absence of a fix means human judgment is
 /// required.
@@ -68,6 +105,8 @@ pub struct Diagnostic {
     /// when it reports none): the cause by which two reports of one mistake are
     /// recognised as one.
     pub opener_line: u32,
+    /// Why it was reported, for decisions that read earlier diagnostics.
+    pub cause: Cause,
 }
 
 impl Diagnostic {
@@ -81,6 +120,7 @@ impl Diagnostic {
             end: None,
             fix: None,
             opener_line: 0,
+            cause: Cause::Other,
         }
     }
 

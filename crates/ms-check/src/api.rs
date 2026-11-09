@@ -14,9 +14,10 @@
 pub mod types {
     pub use crate::types::{
         BindingRef, Builtin, Definition, EXTERN_ERROR_CODE, EXTERN_ERROR_MESSAGE, Kind, Method,
-        MethodRef, Name, Operation, Param, Subst, Sym, SymKind, SymRef, Ty, bool_, case_of, cases,
-        constructor_signature, contract_mutates, fields, float_bits, function, int_bits,
-        invalid_ty, n, primitive, same, same_opt, show, sub, substitution, unify, variable_set,
+        MethodRef, Name, Native, Operation, Param, Subst, Sym, SymKind, SymRef, Ty, bool_, case_of,
+        cases, constructor_signature, contract_mutates, fields, float_bits, function, int_bits,
+        int_range, invalid_ty, n, primitive, same, same_opt, show, sub, substitution, unify,
+        variable_set,
     };
 }
 
@@ -36,7 +37,7 @@ pub mod ownership {
 }
 
 pub mod syntax {
-    pub use crate::syntax::{DeclRef, FuncRef, Info, ModRef, ScopeState};
+    pub use crate::syntax::{DeclRef, DefaultForm, FuncRef, Info, ModRef, ScopeState};
 }
 
 pub mod checker {

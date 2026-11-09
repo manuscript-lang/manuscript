@@ -1,5 +1,5 @@
 import StringBuilder, from_scalars from "@std/string.ms"
-import parse_int_radix from "@std/text.ms"
+import parse_int from "@std/math/math.ms"
 
 /*
 XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
@@ -377,7 +377,10 @@ fn decode(text: String) String!:
 fn digits(text: String, radix: Int) Int?:
     if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
 
-    return parse_int_radix(text, radix)
+    let value = parse_int(text, radix)
+    if value.is_error(): return none
+
+    return value.get(0)
 
 // Whether a code point is in XML 1.0's Char production, which excludes NUL, most controls, and U+FFFE and U+FFFF.
 fn is_xml_char(code: Int) Bool:

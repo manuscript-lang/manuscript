@@ -9,6 +9,7 @@
 //! Outcome codes returned by [`msrt_promise_wait`]:
 //! `0` ok (the result is in the slot), `1` the operation's own error (the error value is in the slot),
 //! `2` timed out, `3` cancelled, `4` closed (the result was already taken), `5` failed (a fault inside).
+//! ms: domain promise
 use crate::desc::slot_drop;
 use crate::sched::{self, Event, Start};
 use crate::{alloc, fault, task};
@@ -410,6 +411,7 @@ pub extern "C-unwind" fn msrt_promise_new() -> i64 {
 ///
 /// # Safety
 /// `value` holds an owned value of `d`, which the callee takes.
+// ms: takes:value
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_put(
     id: i64,
@@ -1159,7 +1161,7 @@ pub(crate) fn has_timers() -> bool {
 ///
 /// # Safety
 /// `work` is a live closure object.
-// ms: keeps:work
+// ms: keeps:work spawns
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.
@@ -1172,7 +1174,7 @@ pub unsafe extern "C-unwind" fn msrt_promise_start(id: i64, work: *mut ms_rt_abi
 ///
 /// # Safety
 /// `work` is a live closure object.
-// ms: keeps:work
+// ms: keeps:work spawns
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_promise_start_here(id: i64, work: *mut ms_rt_abi::Closure) {
     // SAFETY: forwarded contract.

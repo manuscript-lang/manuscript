@@ -90,6 +90,7 @@ fn missing_enums_opaque_types_and_grouped_constants_get_import_fixes() {
         ("type", "Outcome"),
     ] {
         let mut issues = vec![Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: main.as_str().into(),
             pos: Pos::new(0, 1, 1),

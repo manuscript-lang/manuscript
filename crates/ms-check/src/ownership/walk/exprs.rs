@@ -18,6 +18,22 @@ impl Walker<'_> {
         self.pure_origins(e)
     }
 
+    /// Whether `e` is the last use of a whole owned (not parameter or borrowed) local that holds more than plain words.
+    pub(super) fn owned_local_at_last_use(&self, e: &Expr) -> bool {
+        if !matches!(e.kind, ExprKind::Name(_)) || self.class_of(e) == Class::Copy {
+            return false;
+        }
+        let Resolution::Local(b) = self.cx.m.resolution(e) else {
+            return false;
+        };
+        self.is_last(e.id, &b)
+            && self.meta.get(&b.uid).is_some_and(|m| {
+                !matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed)
+                    && m.role != Role::Parameter
+                    && m.role != Role::SelfValue
+            })
+    }
+
     /// The places a conditional's value is a reference into, when every arm yields one.
     pub(super) fn arm_origins(&self, arms: &[Arm]) -> Option<Vec<Place>> {
         let mut out: Vec<Place> = Vec::new();
@@ -62,11 +78,14 @@ impl Walker<'_> {
         {
             // A function that borrows only its error leaves the `ok` payload an owned value.
             if matches!(operand.kind, ExprKind::Call { .. }) {
-                let cases =
-                    result_borrow(self.syms, self.cx.m, operand, self.cx.summaries).borrowed_cases;
+                let cases = result_borrow(self.cx.m, operand, self.cx.summaries).borrowed_cases;
                 if cases != 0 && cases & BORROWED_OK == 0 {
                     return None;
                 }
+            }
+            // `try r` at the last use of an owned local takes the payload out of `r`.
+            if self.owned_local_at_last_use(operand) {
+                return None;
             }
             return if self.is_place(operand) {
                 self.pure_places(operand)
@@ -80,7 +99,7 @@ impl Walker<'_> {
         let operands = match self.native_borrow_receiver(e) {
             Some(recv) => vec![recv],
             None => {
-                let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
+                let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
                 if !ret_borrow.returns_borrow {
                     return None;
                 }
@@ -129,8 +148,8 @@ impl Walker<'_> {
             return false;
         }
         match self.cx.m.resolution(e) {
-            Resolution::Function(s) => self.syms.str(s.native).is_empty(),
-            Resolution::Method(m) => self.syms.str(m.native).is_empty(),
+            Resolution::Function(s) => s.native == Native::Source,
+            Resolution::Method(m) => m.native == Native::Source,
             _ => false,
         }
     }
@@ -405,7 +424,7 @@ impl Walker<'_> {
                 // A function that borrows only its error leaves the payload an owned value the
                 // `try` takes out of the temporary result; the borrowed error is relayed.
                 let owns_ok = matches!(operand.kind, ExprKind::Call { .. }) && {
-                    let cases = result_borrow(self.syms, self.cx.m, operand, self.cx.summaries)
+                    let cases = result_borrow(self.cx.m, operand, self.cx.summaries)
                         .borrowed_cases;
                     cases != 0 && cases & BORROWED_OK == 0
                 };

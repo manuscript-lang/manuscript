@@ -982,7 +982,7 @@ mod type_query_tests {
             id: n(&format!("{module}/Promise")),
             kind: SymKind::Type,
             module: n(module),
-            native: n(""),
+            native: Native::Source,
             export: true,
             ty: RefCell::new(None),
             variables: RefCell::new(vec![]),

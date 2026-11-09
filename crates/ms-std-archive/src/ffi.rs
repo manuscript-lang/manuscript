@@ -3,6 +3,7 @@
 //! `ArchiveEntry` records are passed at their natural layout ([`EntryRec`]): a `List[ArchiveEntry]`
 //! holds them inline. The optional `ArchiveLimits` argument is flattened to a presence flag plus
 //! three `has`/value pairs. `format` is the `ArchiveFormat` case name ("zip" or "tar").
+//! ms: domain archive
 
 use crate::{Entry, Limits};
 use alloc::vec::Vec;

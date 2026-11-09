@@ -48,23 +48,18 @@ impl Checker {
         // dispatch through the contract, rather than native receiver operations.
         // A source or interface operation with type parameters of its own is specialized here too.
         let generic = |m: &crate::types::Method| {
-            !m.variables.is_empty()
-                && (self.syms.str(m.native).is_empty()
-                    || self.syms.str(m.native) == "contract"
-                    || m.contract.is_some())
+            !m.variables.is_empty() && (!m.native.is_bodiless() || m.contract.is_some())
         };
         if methods.len() != 1
             || (!generic(&methods[0])
-                && (methods[0].contract.is_some()
-                    || self.syms.str(methods[0].native).is_empty()
-                    || self.syms.str(methods[0].native) == "contract"))
+                && (methods[0].contract.is_some() || !methods[0].native.is_bodiless()))
         {
             return None;
         }
         let m = methods[0].clone();
         let mut signature = m.ty.clone();
         if rt.is(Builtin::Optional)
-            && self.syms.str(m.native) == "ok_or"
+            && m.native.is(self.syms, "ok_or")
             && let Some(defaults) = &signature.defaults
             && let Some(cause) = signature.params.first()
         {
@@ -75,7 +70,7 @@ impl Checker {
         }
         let info = Info {
             ty: Some(signature),
-            native: (!self.syms.str(m.native).is_empty()).then_some(m.native),
+            native: m.native,
             method: Some(m),
             no_return: receiver.no_return,
             ..Info::default()
@@ -126,7 +121,7 @@ impl Checker {
         if supplied.len() >= required_type_arguments(&vars) {
             supplied = complete_type_arguments(&vars, &supplied);
         }
-        if self.syms.str(method.native).is_empty() || self.syms.str(method.native) == "contract" {
+        if !method.native.is_bodiless() {
             info.type_args = supplied.clone();
         }
         if !vars.is_empty() || applied {

@@ -75,7 +75,8 @@ export fn main() Int:
 
         let accepted = server.accept(nanoseconds(500000000)).wait()
         if accepted.is_ok():
-            accepted.get().close().get(none)
+            var connection = accepted.get(none)
+            connection.close().get(none)
 
     server.close().get(none)
     print("cancelled reads rebound: {rebound(third_address.clone())}")

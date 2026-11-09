@@ -1,4 +1,5 @@
 //! C ABI shims for `@std/random.ms` (`msstd_random_*`): the operating-system `Entropy` source.
+//! ms: domain random
 use super::RandomFail;
 use alloc::vec::Vec;
 use ms_rt::ffi::{ErrOut, StatusCode, native};

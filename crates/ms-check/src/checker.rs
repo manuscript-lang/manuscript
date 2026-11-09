@@ -6,7 +6,7 @@ use crate::types::*;
 use crate::types::{Case, Param};
 use crate::tytable::{TyId, TyTable};
 use ms_syntax::ast::*;
-use ms_syntax::{Diagnostic, Phase, Pos};
+use ms_syntax::{Cause, Diagnostic, Phase, Pos};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -344,14 +344,19 @@ impl Checker {
 
     // ------------------------------------------------------------ diagnostics
 
-    fn import_reported(&self, name: &str, pos: Pos) -> bool {
-        let hint = format!("; add: import {name} from ");
-        let file = self.current_file();
-        let _ = pos;
+    /// Whether this file already reported `name` as unknown (and so suggested its import).
+    pub(crate) fn unknown_reported(&self, name: Name) -> bool {
+        let file = self.syms.str(self.current_file());
         self.p
             .diagnostics
             .iter()
-            .any(|d| d.file.as_ref() == self.syms.str(file) && d.message.contains(&hint))
+            .any(|d| d.file.as_ref() == file && d.cause == Cause::Unknown(name))
+    }
+
+    /// Whether `e` is the prelude's `none`: the name, not shadowed by a local of that name
+    /// (module declarations cannot reuse a prelude constructor name).
+    pub(crate) fn names_none(&self, e: &Expr) -> bool {
+        matches!(&e.kind, ExprKind::Name(nm) if self.syms.str(nm) == "none" && self.scope.binding(*nm).is_none())
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -361,36 +366,52 @@ impl Checker {
         self.error_in(file, pos, phase, message);
     }
 
+    /// Reports a diagnostic and records why, for later decisions that read it.
+    pub(crate) fn error_with_cause(
+        &mut self,
+        pos: Pos,
+        phase: Phase,
+        cause: Cause,
+        message: impl Into<String>,
+    ) {
+        let file = self.current_file();
+        self.report(file, pos, phase, message.into(), cause);
+    }
+
+    /// A type-phase diagnostic with its cause.
+    pub(crate) fn type_error_with_cause(
+        &mut self,
+        pos: Pos,
+        cause: Cause,
+        message: impl Into<String>,
+    ) {
+        self.error_with_cause(pos, Phase::Type, cause, message);
+    }
+
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
-        if phase == Phase::Resolution
-            && message.starts_with("Decimal literal requires")
-            && self.import_reported("Decimal", pos)
-        {
-            return;
-        }
+        self.report(file, pos, phase, message, Cause::Other);
+    }
+
+    fn report(&mut self, file: Name, pos: Pos, phase: Phase, message: String, cause: Cause) {
         if let Some(m) = &self.module {
             for span in &m.recovered {
                 if in_span(pos.offset, span) {
                     return;
                 }
             }
-            if phase == Phase::Resolution {
-                for name in &m.omitted {
-                    if message == format!("unknown binding {name}")
-                        || message.starts_with(&format!("unknown binding {name};"))
-                        || message.starts_with(&format!("unknown type {name};"))
-                        || message == format!("unknown type {name}")
-                    {
-                        return;
-                    }
-                }
+            // A name the editor left out of a partial parse is not unknown.
+            if let Cause::Unknown(name) = cause
+                && m.omitted.iter().any(|o| o == self.syms.str(name))
+            {
+                return;
             }
         }
         if self.unknown_type && phase != Phase::Resolution && message.contains("<invalid>") {
             return;
         }
         self.p.diagnostics.push(Diagnostic {
+            cause,
             opener_line: 0,
             file: self.syms.str(file).into(),
             pos,
@@ -496,19 +517,20 @@ impl Checker {
     /// `Self` is limited to whole parameter and result types, the positions where a call can
     /// substitute the implementing type.
     pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
-        fn mentions(syms: ms_syntax::Names, t: &Ty) -> bool {
-            syms.str(t.id).ends_with("/Self")
-                || t.args.iter().any(|a| mentions(syms, a))
-                || t.params.iter().any(|p| mentions(syms, &p.ty))
-                || t.result.as_ref().is_some_and(|r| mentions(syms, r))
+        fn mentions(t: &Ty) -> bool {
+            t.is(Builtin::SelfType)
+                || t.args.iter().any(mentions)
+                || t.params.iter().any(|p| mentions(&p.ty))
+                || t.result.as_ref().is_some_and(mentions)
         }
-        let misplaced =
-            op.params
-                .iter()
-                .any(|p| !self.syms.str(p.ty.id).ends_with("/Self") && mentions(self.syms, &p.ty))
-                || op.result.as_ref().is_some_and(|r| {
-                    !self.syms.str(r.id).ends_with("/Self") && mentions(self.syms, r)
-                });
+        let misplaced = op
+            .params
+            .iter()
+            .any(|p| !p.ty.is(Builtin::SelfType) && mentions(&p.ty))
+            || op
+                .result
+                .as_ref()
+                .is_some_and(|r| !r.is(Builtin::SelfType) && mentions(r));
         if misplaced {
             self.type_error(
                 pos,
@@ -660,7 +682,7 @@ impl Checker {
                 id: n(primitive_id(name)),
                 kind: SymKind::Type,
                 module: n(""),
-                native: n(""),
+                native: Native::Source,
                 export: true,
                 ty: RefCell::new(Some(primitive(primitive_id(name)))),
                 variables: RefCell::new(Vec::new()),
@@ -707,7 +729,7 @@ impl Checker {
                     id: n(primitive_id(name)),
                     kind: SymKind::Type,
                     module: n(""),
-                    native: n(""),
+                    native: Native::Source,
                     export: true,
                     ty: RefCell::new(Some(primitive(primitive_id(name)))),
                     variables: RefCell::new(Vec::new()),
@@ -825,6 +847,7 @@ impl Checker {
                 );
                 let message = self.export_message(item);
                 self.p.diagnostics.push(Diagnostic {
+                    cause: Default::default(),
                     opener_line: 0,
                     file: self.syms.str(module.file).into(),
                     pos: item.name_pos,
@@ -861,7 +884,7 @@ impl Checker {
             id,
             kind: SymKind::Type,
             module: module.file,
-            native: n(""),
+            native: Native::Source,
             export: d.decl().export,
             ty: RefCell::new(None),
             variables: RefCell::new(Vec::new()),
@@ -920,10 +943,11 @@ impl Checker {
             };
             // An `extern fn` calls the native symbol named after it.
             let native = match &d.decl().kind {
-                DeclKind::Fn(f) if f.external => {
-                    n(&format!("extern:{name_t}", name_t = self.syms.str(name)))
-                }
-                _ => n(""),
+                DeclKind::Fn(f) if f.external => Native::Extern {
+                    symbol: name,
+                    bundled: self.session.is_source_module(module),
+                },
+                _ => Native::Source,
             };
             let s = Rc::new(Sym {
                 name,
@@ -1186,7 +1210,8 @@ impl Checker {
                         self.scope = self.variable_scope(&vars);
                         let typ = self.resolve(param.ty.as_ref());
                         self.expression(default, Some(&typ));
-                        let is_none = matches!(&default.kind, ExprKind::Name(nm) if self.syms.str(nm) == "none");
+                        let is_none =
+                            self.m().default_form(self.syms, default) == DefaultForm::None;
                         // Bundled interfaces are implemented by the runtime, which fills any default.
                         let bundled = self.session.is_source_module(module);
                         if !bundled && (self.syms.str(typ.id) != "@std/Optional" || !is_none) {
@@ -1408,7 +1433,7 @@ impl Checker {
                     s.ty(self.syms)
                 } else {
                     let msg = self.unknown_type_message(name);
-                    self.res_error_name(t.pos, self.syms.str(name).len(), msg);
+                    self.unknown_error(t.pos, name, msg);
                     self.unknown_type = true;
                     return invalid();
                 };
@@ -1526,12 +1551,12 @@ impl Checker {
             let cases = cases(error);
             let reported = |c: &Case| {
                 c.fields.iter().all(|f| {
-                    (self.syms.str(f.name) == EXTERN_ERROR_CODE && self.syms.str(f.ty.id) == "Int")
+                    (self.syms.str(f.name) == EXTERN_ERROR_CODE && f.ty.is(Builtin::Int))
                         || (self.syms.str(f.name) == EXTERN_ERROR_MESSAGE
-                            && self.syms.str(f.ty.id) == "String")
+                            && f.ty.is(Builtin::String))
                 })
             };
-            if self.syms.str(ok.id) != "Unit" && !crosses_native(self.syms, ok) {
+            if !ok.is(Builtin::Unit) && !crosses_native(self.syms, ok) {
                 self.type_error(
                     f.result.pos,
                     format!("extern Result value has type {}, which cannot cross the native boundary; an extern Result holds {CROSSES}, or Unit", self.syms.str(ok.name)),
@@ -1542,7 +1567,7 @@ impl Checker {
                     format!("extern error type {} must be an alternative whose cases carry nothing, `code: Int`, `message: String`, or both; the native returns the status 1 + the case index and fills code_out and message_out", self.syms.str(error.name)),
                 );
             }
-        } else if self.syms.str(result.id) != "Unit" && !crosses_native(self.syms, &result) {
+        } else if !result.is(Builtin::Unit) && !crosses_native(self.syms, &result) {
             self.type_error(
                 f.result.pos,
                 format!("extern result has type {}, which cannot cross the native boundary; an extern returns {CROSSES}, Unit, or a Result of one", self.syms.str(result.name)),
@@ -1662,7 +1687,7 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        if fall && !is_test && self.syms.str(result_ty.id) != "Unit" && !result_ty.is_invalid() {
+        if fall && !is_test && !result_ty.is(Builtin::Unit) && !result_ty.is_invalid() {
             self.type_error(
                 d.pos(),
                 format!(
@@ -1897,11 +1922,11 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
 /// The implicit `Self` type of an interface: a variable that implementations and calls replace
 /// with the receiver.
 pub fn self_variable(syms: ms_syntax::Names, owner: Name) -> Ty {
-    Rc::new(Type::new(
-        syms,
+    Rc::new(Type::with_builtin(
         n("Self"),
         n(&format!("{owner_t}/Self", owner_t = syms.str(owner))),
         Kind::Variable,
+        Some(Builtin::SelfType),
     ))
 }
 
@@ -1933,7 +1958,7 @@ pub(crate) const MAX_CALLBACK_PARAMS: usize = 6;
 /// Whether the function type `t` can be passed to a user extern as an `ms_fn`.
 fn crosses_callback(syms: ms_syntax::Names, t: &Ty) -> bool {
     let result_ok = t.result.as_ref().is_none_or(|r| {
-        syms.str(r.id) == "Unit" || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
+        r.is(Builtin::Unit) || (crosses_element(syms, r) && !is_user_extern_type(syms, r))
     });
     t.params.len() <= MAX_CALLBACK_PARAMS
         && t.params.iter().all(|p| crosses_element(syms, &p.ty))

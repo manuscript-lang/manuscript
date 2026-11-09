@@ -249,7 +249,7 @@ impl ModuleHir {
         if let Some(m) = info.method.clone() {
             return Resolution::Method(m);
         }
-        match info.native {
+        match info.native.builtin() {
             Some(native) => Resolution::Native(native),
             None => Resolution::Value,
         }
