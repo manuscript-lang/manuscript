@@ -174,3 +174,52 @@ test "complex tangent handles the largest finite phase":
     let hyperbolic = complex(41.0, phase).tanh()
     try expect_true((hyperbolic.im / expected - 1.0).abs() < 1e-12)
     try expect_equal(hyperbolic.re, 1.0)
+
+// Exact binary64 inputs evaluated with 750 decimal digits. An absolute
+// complex-distance check would accept zero for every small component here.
+test "complex inverse tangent preserves small imaginary components":
+    let inputs = [
+        complex(1.0, 1e-30), complex(0.0, 1e-30), complex(2.0, 1e-300),
+        complex(1e200, 1e200), complex(1e308, 1e308), complex(1e200, 1e100),
+        complex(0.0, 1e200)
+    ]
+    let expected = [5e-31, 1e-30, 2e-301, 5e-201, 5e-309, 1e-300, 1e-200]
+
+    for index in 0..inputs.length():
+        let value = inputs[index]
+        let positive = value.atan()
+        let negative = value.conjugate().atan()
+        try expect_true((positive.im / expected[index] - 1.0).abs() < 1e-12)
+        try expect_true((negative.im / -expected[index] - 1.0).abs() < 1e-12)
+        if value.re != 0.0:
+            try expect_equal(positive.re, negative.re)
+
+test "complex inverse tangent retains subnormal components":
+    for real in [0.0, 0.8, -0.8]:
+        try expect_equal(complex(real, 5e-324).atan().im, 5e-324)
+        try expect_equal(complex(real, -5e-324).atan().im, -5e-324)
+
+    let largest = complex(1.7976931348623157e308, 1.7976931348623157e308).atan()
+    try expect_equal(largest.im, 2.781342323134e-309)
+
+test "complex inverse tangent preserves poles and ordinary controls":
+    let upper_pole = complex(0.0, 1.0).atan()
+    let lower_pole = complex(0.0, -1.0).atan()
+    try expect_equal(upper_pole.im, infinity)
+    try expect_equal(lower_pole.im, -infinity)
+
+    let near_pole = complex(1e-300, 1.0).atan()
+    try expect_true((near_pole.re / 0.7853981633974483 - 1.0).abs() < 1e-12)
+    try expect_true((near_pole.im / 345.7343375393868 - 1.0).abs() < 1e-12)
+    try expect_true(
+        near(
+            complex(1.0, 0.5).atan(), complex(0.847575660670829, 0.2388778612568591)
+        )
+    )
+    try expect_true(near(complex(0.3, 0.4).tan().atan(), complex(0.3, 0.4)))
+    try expect_true(complex(infinity, 1.0).atan().is_nan())
+    try expect_true(complex(1.0, 0.0 / 0.0).atan().is_nan())
+
+    let negative_zero = complex(1.0, -0.0).atan()
+    try expect_equal(negative_zero.im, 0.0)
+    try expect_true(sign_bit(negative_zero.im))
