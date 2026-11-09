@@ -6,6 +6,7 @@
 
 use crate::checker::Checker;
 use crate::types::{Ty, same};
+use ms_syntax::Cause;
 use ms_syntax::ast::{Expr, ExprKind};
 use ms_syntax::{DiagnosticFix, Phase, Pos};
 
@@ -214,11 +215,12 @@ impl Checker {
     pub(crate) fn type_error_with_fix(
         &mut self,
         pos: Pos,
+        cause: Cause,
         message: String,
         fix: Option<DiagnosticFix>,
     ) {
         let count = self.p.diagnostics.len();
-        self.error(pos, Phase::Type, message);
+        self.error_with_cause(pos, Phase::Type, cause, message);
         if self.p.diagnostics.len() > count
             && let Some(last) = self.p.diagnostics.last_mut()
         {
@@ -242,20 +244,32 @@ impl Checker {
         }
     }
 
-    /// A resolution diagnostic about the `len`-byte name at `pos`, with its fix.
-    pub(crate) fn res_error_name(&mut self, pos: Pos, len: usize, message: String) {
-        self.error_fixed(pos, len, Phase::Resolution, message);
-    }
-
     /// A type diagnostic about the `len`-byte name at `pos`, with its fix.
     pub(crate) fn type_error_name(&mut self, pos: Pos, len: usize, message: String) {
         self.error_fixed(pos, len, Phase::Type, message);
     }
 
+    /// A resolution diagnostic that `name` (at `pos`) is unknown, with its fix.
+    pub(crate) fn unknown_error(&mut self, pos: Pos, name: ms_syntax::Symbol, message: String) {
+        let len = self.syms.str(name).len();
+        self.error_fixed_caused(pos, len, Phase::Resolution, Cause::Unknown(name), message);
+    }
+
     fn error_fixed(&mut self, pos: Pos, len: usize, phase: Phase, message: String) {
+        self.error_fixed_caused(pos, len, phase, Cause::Other, message);
+    }
+
+    pub(crate) fn error_fixed_caused(
+        &mut self,
+        pos: Pos,
+        len: usize,
+        phase: Phase,
+        cause: Cause,
+        message: String,
+    ) {
         let fix = fix_for(&message, pos, len);
         let count = self.p.diagnostics.len();
-        self.error(pos, phase, message);
+        self.error_with_cause(pos, phase, cause, message);
         if self.p.diagnostics.len() > count
             && let Some(last) = self.p.diagnostics.last_mut()
         {

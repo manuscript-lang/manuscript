@@ -1,4 +1,5 @@
 //! Unicode properties and UTF-8 validation, using Rust's character tables and validator.
+//! ms: domain unicode
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::native;
@@ -8,6 +9,7 @@ fn scalar(value: i64) -> Option<char> {
 }
 
 native! {
+    // ms: domain=utf8
     fn msstd_utf8_is_valid(data: &[u8]) -> bool {
         core::str::from_utf8(data).is_ok()
     }

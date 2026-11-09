@@ -20,8 +20,7 @@ import (
     ClientResponse,
     HttpClient,
     HttpClientOptions,
-    HttpHeaders,
-    HttpMethod
+    HttpHeaders
 ) from "@std/net/http.ms"
 import Duration, Timestamp from "@std/time.ms"
 
@@ -203,7 +202,7 @@ export extern fn msstd_net_network_lookup(
 
 export extern fn msstd_net_network_request_bytes(
     net: NativeNetwork,
-    method: HttpMethod,
+    method: String,
     url: String,
     headers: HttpHeaders,
     body: Bytes,

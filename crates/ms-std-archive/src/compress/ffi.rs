@@ -2,6 +2,7 @@
 //! (`"gzip"`, `"zlib"`, `"deflate"`); `compress` and `decompress` pass the case name.
 //! Statuses: `STATUS_INVALID_INPUT`, `STATUS_INVALID_DATA`, `STATUS_LIMIT_EXCEEDED` and
 //! `STATUS_UNSUPPORTED` (9); `Failed(message)` is never produced.
+//! ms: domain compression
 
 use super::Format;
 use super::{Decoder, Encoder};

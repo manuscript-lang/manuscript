@@ -5,6 +5,7 @@
 //! both are passed by pointer and returned through a trailing `out`. Fallible functions return a
 //! status (`0` ok, else an `ms-rt-abi` `STATUS_*` code) and write the result only on success.
 //! Arithmetic faults carry a message text.
+//! ms: domain time
 #![no_std]
 
 extern crate alloc;

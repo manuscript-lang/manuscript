@@ -188,7 +188,7 @@ fn effects_line(
     let program = analysis.program.as_ref()?;
     let id = match (&info.method, &info.symbol) {
         (Some(m), _) if !syms.str(m.id).is_empty() => m.id,
-        (_, Some(s)) if syms.str(s.native).is_empty() => s.id,
+        (_, Some(s)) if s.native == ms_check::api::types::Native::Source => s.id,
         _ => return None,
     };
     let reach = program

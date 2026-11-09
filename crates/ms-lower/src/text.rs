@@ -567,7 +567,7 @@ impl<'a> FnLower<'a> {
     /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
     pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
         let n = self.borrow(x);
-        let v = self.time_call("Duration", "to_string", &[n])?;
+        let v = self.time_call(ms_check::api::types::Builtin::Duration, "to_string", &[n])?;
         Ok(Val { v, own: true })
     }
 
@@ -575,7 +575,7 @@ impl<'a> FnLower<'a> {
     /// `Timestamp`) with the receiver first.
     pub(crate) fn time_call(
         &mut self,
-        record: &str,
+        record: ms_check::api::types::Builtin,
         name: &str,
         args: &[Value],
     ) -> Result<Value, Error> {
@@ -584,12 +584,12 @@ impl<'a> FnLower<'a> {
             .methods
             .iter()
             .find(|m| {
-                m.receiver.is_time(self.syms, record)
+                m.receiver.is(record)
                     && m.decl
                         .as_ref()
                         .is_some_and(|d| self.syms.str(d.name()) == name)
             })
-            .ok_or_else(|| Error::new(format!("{record}.{name} not found")))?;
+            .ok_or_else(|| Error::new(format!("{record:?}.{name} not found")))?;
         let callable =
             self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
         let f = self
@@ -637,7 +637,7 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Record;
-                    if self.ety(e).is_time(self.syms, "Duration") {
+                    if self.ety(e).is(ms_check::api::types::Builtin::Duration) {
                         self.duration_text(x)?
                     } else {
                         self.format_value(x)?

@@ -715,7 +715,7 @@ impl FnLower<'_> {
             }
             (BoundTarget::Iface(iface.0, k), Err((iface, k as u32)), recv)
         } else {
-            let im = if self.syms.str(m.native) == "contract" {
+            let im = if m.native == ct::Native::Contract {
                 self.contract_impl(m, &recv_ty).ok_or_else(|| {
                     Error::new(format!(
                         "{recv_ty_t} has no method {name}",
@@ -725,7 +725,7 @@ impl FnLower<'_> {
             } else {
                 m.clone()
             };
-            if !self.syms.str(im.native).is_empty() {
+            if im.native != ct::Native::Source {
                 return Err(Error::new(format!("unsupported member access .{name}")));
             }
             let decl = im
@@ -943,7 +943,7 @@ impl FnLower<'_> {
                 self.cx.queue.push(Job {
                     func: id,
                     kind: JobKind::NativeThunk(Rc::new(NativeThunkJob {
-                        native: self.syms.str(sym.native).to_string(),
+                        native: sym.native,
                         params,
                         result: ct::sub(&declared.result_ty(), &subst),
                         sym: sym.clone(),
@@ -1010,7 +1010,7 @@ impl FnLower<'_> {
                     ty: *t,
                     mode: Mode::Borrow,
                 }));
-                let mut f = ms_mir::ir::Func::new(self.syms.str(m.native), ps, ret);
+                let mut f = ms_mir::ir::Func::new(m.native.text(self.syms), ps, ret);
                 f.kind = FuncKind::Closure {
                     captures: vec![held.capture(rty)],
                 };
@@ -1534,12 +1534,18 @@ fn lower_native_thunk(
     let func = job.sym.decl.as_ref().and_then(|d| d.func());
     let mut args = fl.thunk_native_args(job.sym.module, func, &job.params, &params[1..])?;
     let ret = fl.ret_ty;
-    match crate::native::json_native(job.native.as_str()) {
+    let identity = match job.native {
+        ct::Native::Extern { symbol, .. } => {
+            crate::stdnative::by_symbol(syms.str(symbol)).map_or("", |h| h.identity)
+        }
+        native => native.text(syms),
+    };
+    match identity {
         "json/parse" | "json/stringify" => {
             // Generic natives with their own lowering: the type argument comes from the instance.
             fl.fill_native_defaults(job.sym.module, func, &job.params, &mut args)?;
             let have = fl.mty(&job.result)?;
-            let r = if crate::native::json_native(&job.native) == "json/parse" {
+            let r = if identity == "json/parse" {
                 let t = job.result.args.first().cloned();
                 let t = t.ok_or_else(|| Error::new("parse without a result type"))?;
                 fl.json_parse(&t, have, &args)?
@@ -1567,7 +1573,13 @@ fn lower_native_thunk(
             }
         }
     }
-    let out = fl.native_call(&job.native, &job.params, &args, ret)?;
+    let out = match job.native {
+        ct::Native::Extern {
+            symbol,
+            bundled: true,
+        } => fl.rt_function(syms.str(symbol), &job.params, &args, ret)?,
+        _ => fl.native_call(identity, &job.params, &args, ret)?,
+    };
     fl.emit_return(Some(out));
     Ok(())
 }
@@ -1594,9 +1606,14 @@ impl FnLower<'_> {
             };
             let lifted = passed != declared;
             let none_default = p.ty.is(Builtin::Optional)
-                && default.is_none_or(
-                    |d| matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none"),
-                );
+                && match default {
+                    None => true,
+                    Some(d) => {
+                        let f = func.expect("a default has a declaration");
+                        self.func_decl_module(module, f)?.default_form(self.syms, d)
+                            == ms_check::api::syntax::DefaultForm::None
+                    }
+                };
             let val = if lifted && none_default {
                 // Native/interface arguments borrow their caller's values. A supplied payload and
                 // the implicit none both live through this call; copying here would make

@@ -90,6 +90,7 @@ impl Failure {
 
 fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Diagnostic {
     Diagnostic {
+        cause: Default::default(),
         opener_line: 0,
         file: file.clone(),
         pos,

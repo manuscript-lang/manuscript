@@ -122,6 +122,7 @@ impl Walker<'_> {
             return;
         }
         self.diags.push(Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: Arc::from(self.syms.str(self.cx.m.data.file)),
             pos,

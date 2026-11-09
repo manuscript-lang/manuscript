@@ -1,5 +1,6 @@
 //! Natives for the client half of `@std/net/http.ms` and the `Network.request` entry points of
 //! `@std/net/net.ms`: headers, clients, response bodies and one-shot requests.
+//! ms: domain HTTP
 
 use super::tls::TlsOptionsWire;
 use super::{BodyH, ClientH, HeadersH, NetH, code, opt, report};
@@ -285,6 +286,7 @@ native! {
     // -------------------------------------------------------------------- client
 
     /// `Network.http_client(options) -> Result[HttpClient, Error]`.
+    // ms: domain=network
     fn msstd_net_network_http_client(
         net: ObjRef<NetH>,
         opts: &HttpClientOptionsWire,
@@ -378,6 +380,7 @@ native! {
     // ----------------------------------------------------------------- one-shot
 
     /// `Network.request` with a `Bytes` body.
+    // ms: domain=network
     fn msstd_net_network_request_bytes(
         net: ObjRef<NetH>,
         method: &str,

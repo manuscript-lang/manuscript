@@ -167,6 +167,7 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
         };
     }
     Some(Diagnostic {
+        cause: Default::default(),
         opener_line: 0,
         file,
         pos: position,

@@ -62,8 +62,7 @@ impl Walker<'_> {
         {
             // A function that borrows only its error leaves the `ok` payload an owned value.
             if matches!(operand.kind, ExprKind::Call { .. }) {
-                let cases =
-                    result_borrow(self.syms, self.cx.m, operand, self.cx.summaries).borrowed_cases;
+                let cases = result_borrow(self.cx.m, operand, self.cx.summaries).borrowed_cases;
                 if cases != 0 && cases & BORROWED_OK == 0 {
                     return None;
                 }
@@ -80,7 +79,7 @@ impl Walker<'_> {
         let operands = match self.native_borrow_receiver(e) {
             Some(recv) => vec![recv],
             None => {
-                let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
+                let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
                 if !ret_borrow.returns_borrow {
                     return None;
                 }
@@ -129,8 +128,8 @@ impl Walker<'_> {
             return false;
         }
         match self.cx.m.resolution(e) {
-            Resolution::Function(s) => self.syms.str(s.native).is_empty(),
-            Resolution::Method(m) => self.syms.str(m.native).is_empty(),
+            Resolution::Function(s) => s.native == Native::Source,
+            Resolution::Method(m) => m.native == Native::Source,
             _ => false,
         }
     }
@@ -405,7 +404,7 @@ impl Walker<'_> {
                 // A function that borrows only its error leaves the payload an owned value the
                 // `try` takes out of the temporary result; the borrowed error is relayed.
                 let owns_ok = matches!(operand.kind, ExprKind::Call { .. }) && {
-                    let cases = result_borrow(self.syms, self.cx.m, operand, self.cx.summaries)
+                    let cases = result_borrow(self.cx.m, operand, self.cx.summaries)
                         .borrowed_cases;
                     cases != 0 && cases & BORROWED_OK == 0
                 };

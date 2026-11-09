@@ -438,7 +438,11 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
                                 decl: d.clone(),
                                 index: Some(index),
                             }),
-                            native: if contract { n("contract") } else { n("") },
+                            native: if contract {
+                                ms_check::api::types::Native::Contract
+                            } else {
+                                ms_check::api::types::Native::Source
+                            },
                         };
                         let at = b.header(
                             m.file,

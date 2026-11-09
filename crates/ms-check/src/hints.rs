@@ -1014,7 +1014,7 @@ impl Checker {
             );
         }
         if let Some(sym) = actual.symbol()
-            && self.syms.str(sym.native).is_empty()
+            && sym.native == Native::Source
             && matches!(actual.kind, Kind::Record | Kind::Alternative)
         {
             return format!(

@@ -1,5 +1,6 @@
 //! C ABI shims for `@std/string.ms`. Symbols are `msstd_regex_<function>`; a compiled `Regex` is a
 //! runtime handle object (`Obj` header + boxed state).
+//! ms: domain regular expression
 
 use crate::Regex;
 use alloc::string::String;
