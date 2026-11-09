@@ -21,6 +21,13 @@ export fn base_versions() List[String]:
 export fn c_versions() List[String]:
     return ["c", "c-ms"]
 
+// Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64 open-addressing
+// table is not a like-for-like comparison with the general insertion-ordered `Map`.
+export fn omitted(version: String) List[String]:
+    if version == "c": return ["map_count_2M"]
+
+    return []
+
 export fn ablations() List[String]:
     return ["c-ms-no-poll", "c-ms-no-overflow", "c-ms-no-bounds", "c-ms-unchecked"]
 
@@ -74,9 +81,10 @@ export fn summarize(
         active = version.clone()
 
         if parts.length() == 3 and parts[1] == "#" and parts[2] == "end":
+            let expected = names.filter(fn n: not omitted(active).contains(n))
             if (
-                pending.length() != names.length()
-                or not names.all(fn n: pending.contains(n))
+                pending.length() != expected.length()
+                or not expected.all(fn n: pending.contains(n))
             ):
                 return invalid("incomplete {version} trial")
 
@@ -85,7 +93,12 @@ export fn summarize(
             active = ""
             continue
 
-        if parts.length() != 4 or not names.contains(name) or pending.contains(name):
+        if (
+            parts.length() != 4
+            or not names.contains(name)
+            or omitted(version).contains(name)
+            or pending.contains(name)
+        ):
             return invalid("invalid kernel: {line.trim()}")
 
         let micros = parts[2].parse_int()
@@ -125,11 +138,14 @@ export fn summarize(
     for name in names:
         var times = Map[String, Float]()
         for v in versions:
-            times.add(v.clone(), minimum(samples.get("{name} {v}").get([])))
+            if not omitted(v).contains(name):
+                times.add(v.clone(), minimum(samples.get("{name} {v}").get([])))
 
         let go = times.get("go").get(0.0)
         var cells = others.map(
-            fn v: "{times.get(v).get(0.0).to_fixed(0)} | {ratio(times.get(v).get(0.0), go)}"
+            fn v: if omitted(v).contains(
+                name
+            ): "n/a | n/a" else: "{times.get(v).get(0.0).to_fixed(0)} | {ratio(times.get(v).get(0.0), go)}"
         )
         let ms = times.get("ms").get(0.0)
         for v in others:
