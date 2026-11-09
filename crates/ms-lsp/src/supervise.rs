@@ -37,6 +37,8 @@ struct Supervisor<'a, W: Write> {
     inflight: BTreeMap<String, Json>,
     initialize: Option<Json>,
     initialized: bool,
+    /// The next initialize answer belongs to this worker's private state replay.
+    replay_pending: bool,
     docs: BTreeMap<String, Document>,
     restarts: VecDeque<Instant>,
     exiting: bool,
@@ -69,6 +71,7 @@ pub fn supervise(
         inflight: BTreeMap::new(),
         initialize: None,
         initialized: false,
+        replay_pending: false,
         docs: BTreeMap::new(),
         restarts: VecDeque::new(),
         exiting: false,
@@ -236,7 +239,8 @@ impl<W: Write> Supervisor<'_, W> {
                 .filter(|_| message.get("method").is_none())
                 .cloned();
             if let Some(id) = answered {
-                if id.as_str() == Some(REPLAY_ID) {
+                if self.replay_pending && id.as_str() == Some(REPLAY_ID) {
+                    self.replay_pending = false;
                     return Ok(());
                 }
                 self.inflight.remove(&id.compact(ms_json::Escape::Plain));
@@ -282,6 +286,7 @@ impl<W: Write> Supervisor<'_, W> {
         self.start()?;
         if let Some(mut initialize) = self.initialize.clone() {
             initialize.set("id", REPLAY_ID.into());
+            self.replay_pending = true;
             self.send_worker(initialize.compact(ms_json::Escape::Plain).as_bytes());
             if self.initialized {
                 let notice = obj([

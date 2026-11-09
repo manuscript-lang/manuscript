@@ -894,6 +894,7 @@ impl ListCopiesKeyed[T] for List[T]:
     fn repeated(count: Int) List[T]:
         if count < 0:
             panic("List.repeated: count {count} must not be negative")
+        if self.length() == 0: return []
 
         // One element repeated is a native fill, as fast as `filled`; a native failure falls through to the loop below.
         if self.length() == 1:

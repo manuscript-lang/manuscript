@@ -27,3 +27,6 @@ Perf and agent benchmarks, profiling.
 - [A returned `Map.get` is a borrow, not a copy](a-returned-map-get-is-a-borrow-not-a-copy.md): `JsonValue.get` stops deep-copying; callers that mutate the map need `.clone()`.
 - [A read-modify-write is one API, not a syntactic pattern](a-read-modify-write-is-one-api-not-a-syntactic-pattern.md): `Map.update` is one lookup via the inlined word probe; the `get(k).get(d)` matcher was deleted (7.6 vs 10.1 vs 13.9 ms).
 - [String fusion must not treat other-block drops as early](string-fusion-must-not-treat-other-block-drops-as-early.md): a leaf dropped on a sibling path is not dropped before the join; `Info::dropped_before` uses reachability, c36 -6.8% instructions.
+
+- [Deque rotation uses the shorter signed remainder](deque-rotation-uses-the-shorter-signed-remainder.md): normalize both directions without negating Int.min; retain partial-ring and unit-step controls.
+- [Diff context windows need only new flags](diff-context-windows-need-only-new-flags.md): mark each Boolean once while preserving overlapping hunk windows and ordinary diff controls.

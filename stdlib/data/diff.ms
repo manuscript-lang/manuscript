@@ -251,8 +251,13 @@ export fn unified_diff(
 
             let from = (i - context).max(0)
             let to = i + context.min(steps.length() - 1 - i)
-            for j in from..to + 1:
+
+            // Windows move right: the first marked position joins the prior window.
+            var j = to
+
+            while j >= from and not keep[j]:
                 keep.set(j, true)
+                j -= 1
 
     if not any_change:
         return ""
