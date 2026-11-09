@@ -4,6 +4,7 @@
 
 Cancellation, cleanup, resources, networking, promises, test helpers.
 
+- [Image codecs are pure Manuscript and allocate only after validating the header](image-codecs-are-pure-manuscript-and-allocate-after-validating.md): `@std/image` PNG/JPEG/BMP/PPM with fuzzing; limits optional, sizes checked before allocation; pitfalls found.
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 
 - [Linux programs link glibc unless `--static` is asked](linux-programs-link-glibc-unless-static-is-asked.md): static musl's resolver misses mixed-case `/etc/hosts` names, so musl is opt-in; glibc programs link 2.28 stubs and run on any later glibc.
