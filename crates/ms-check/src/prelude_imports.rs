@@ -77,7 +77,13 @@ fn prelude_import_fix(
         }
     };
     if count > 1 {
-        if at + 1 < tokens.len() && tokens[at + 1].kind == Tok::Comma {
+        // The last binding of a group takes the comma before it, not its trailing
+        // comma: its edit then overlaps its neighbor's, so redundant names are
+        // removed over successive runs until the whole import goes, never leaving
+        // an empty `import ( ) from ...`.
+        let last = tokens.get(at + 2).is_none_or(|t| t.kind == Tok::RParen);
+        let previous_comma = at > 0 && tokens[at - 1].kind == Tok::Comma;
+        if at + 1 < tokens.len() && tokens[at + 1].kind == Tok::Comma && !(last && previous_comma) {
             let comma = tokens[at + 1];
             let mut end = comma.end;
             if at + 2 < tokens.len() && tokens[at + 2].pos.line == comma.end.line {
@@ -93,7 +99,9 @@ fn prelude_import_fix(
         if at > 0 && tokens[at - 1].kind == Tok::Comma {
             let comma = tokens[at - 1];
             let mut end = name.end;
-            if at + 1 < tokens.len() && tokens[at + 1].pos.line == name.end.line {
+            if at + 1 < tokens.len() && tokens[at + 1].kind == Tok::Comma {
+                end = tokens[at + 1].end;
+            } else if at + 1 < tokens.len() && tokens[at + 1].pos.line == name.end.line {
                 end = tokens[at + 1].pos;
             }
             let trivia = trivia_of(text(comma.end.offset, name.pos.offset));

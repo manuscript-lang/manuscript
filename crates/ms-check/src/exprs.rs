@@ -1221,8 +1221,9 @@ impl Checker {
                 hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }
             let source = self.m().source.clone();
+            let compound = suggestions::is_compound_operator(&source, e.pos, op.as_str());
             let fix = match (self.syms.str(at.id), self.syms.str(bt.id)) {
-                ("Int", "Float") => suggestions::to_float(&source, left),
+                ("Int", "Float") if !compound => suggestions::to_float(&source, left),
                 ("Float", "Int") => suggestions::to_float(&source, right),
                 _ => None,
             };

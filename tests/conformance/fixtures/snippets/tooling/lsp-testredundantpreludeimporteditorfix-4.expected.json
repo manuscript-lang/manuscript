@@ -57,9 +57,9 @@
         "fix": {
           "position": {
             "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
-            "line": 6,
-            "column": 5,
-            "offset": 228
+            "line": 5,
+            "column": 9,
+            "offset": 213
           },
           "end": {
             "file": "lsp-testredundantpreludeimporteditorfix-4.ms",
@@ -67,7 +67,7 @@
             "column": 15,
             "offset": 238
           },
-          "replacement": ""
+          "replacement": "  // keep\n    "
         }
       }
     ],

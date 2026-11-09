@@ -57,9 +57,9 @@
         "fix": {
           "position": {
             "file": "testnamedimports-4.ms",
-            "line": 6,
-            "column": 5,
-            "offset": 196
+            "line": 5,
+            "column": 14,
+            "offset": 180
           },
           "end": {
             "file": "testnamedimports-4.ms",
@@ -67,7 +67,7 @@
             "column": 14,
             "offset": 205
           },
-          "replacement": ""
+          "replacement": "  // first\n    "
         }
       }
     ],
