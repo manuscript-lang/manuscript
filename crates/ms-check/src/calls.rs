@@ -9,6 +9,7 @@ use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use ms_syntax::Cause;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
@@ -331,6 +332,7 @@ impl Checker {
                 );
                 self.type_error_with_fix(
                     e.pos,
+                    Cause::Other,
                     format!(
                         "nullary cases omit call parentheses; write {0} instead of {0}()",
                         self.syms.str(cs.name)
@@ -415,7 +417,7 @@ impl Checker {
                 );
                 if self.p.diagnostics[before..]
                     .first()
-                    .is_some_and(|d| d.message.starts_with("cannot infer type argument"))
+                    .is_some_and(|d| d.cause == Cause::CannotInferTypeArgument)
                 {
                     undetermined = Some(before);
                 }
@@ -473,7 +475,7 @@ impl Checker {
         if let Some(at) = undetermined
             && self.p.diagnostics[at + 1..]
                 .iter()
-                .any(|d| !d.message.starts_with("cannot infer callback parameter"))
+                .any(|d| d.cause != Cause::CannotInferCallback)
         {
             // An argument reported its own error (an empty literal with no type): the type
             // argument it left undetermined is that error's consequence, so the argument's
@@ -615,7 +617,7 @@ impl Checker {
                 let at = arg.pos;
                 let explained = self.p.diagnostics[checkpoint..]
                     .iter()
-                    .any(|d| d.pos == at && d.message.starts_with("expected "));
+                    .any(|d| d.pos == at && d.cause == Cause::Mismatch);
                 if explained
                     && let Some(i) = self.p.diagnostics[..checkpoint]
                         .iter()
@@ -717,8 +719,9 @@ impl Checker {
             subst.insert(v.id, a);
         }
         if !missing.is_empty() && !self.label_mismatch {
-            self.type_error(
+            self.type_error_with_cause(
                 pos,
+                Cause::CannotInferTypeArgument,
                 missing_type_argument_hint(self.syms, name, &missing, vars, &args),
             );
         }
@@ -826,7 +829,7 @@ impl Checker {
                                 self.syms.str(v.name)
                             )
                         };
-                        self.type_error(pos, message);
+                        self.type_error_with_cause(pos, Cause::CannotInfer, message);
                     }
                     self.unresolved_constructors.insert(pos);
                     invalid()

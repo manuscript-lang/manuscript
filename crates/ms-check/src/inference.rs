@@ -7,6 +7,7 @@ use crate::hints::arity_mismatch_hint;
 use crate::syntax::*;
 use crate::types::Param;
 use crate::types::*;
+use ms_syntax::Cause;
 use ms_syntax::Phase;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
@@ -335,8 +336,9 @@ impl Checker {
             && pattern.kind == Kind::Contract
             && actual_ty.kind != Kind::Contract
         {
-            self.type_error(
+            self.type_error_with_cause(
                 arg.pos,
+                Cause::CannotInfer,
                 format!(
                     "cannot infer {pattern_t} from {actual_ty_t}; passing a value as an interface adds no inference evidence, so give type arguments explicitly, e.g. f[Int](...)"
                 , pattern_t = pattern.display(self.syms), actual_ty_t = actual_ty.display(self.syms)),
@@ -431,7 +433,7 @@ impl Checker {
             // final check reports, so the call must not also ask for explicit types.
             if self.p.diagnostics[checkpoint..]
                 .iter()
-                .any(|d| d.phase == Phase::Resolution || !d.message.starts_with("cannot infer"))
+                .any(|d| d.phase == Phase::Resolution || !d.cause.is_inference())
             {
                 self.label_mismatch = true;
             }

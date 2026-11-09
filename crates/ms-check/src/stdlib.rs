@@ -1553,6 +1553,7 @@ impl Session {
                 Some(1) if session.is_source_module(module) => return,
                 Some(1) => {
                     diagnostics.push(Diagnostic {
+                        cause: Default::default(),
                         opener_line: 0,
                         file: Arc::from(syms.str(module.file)),
                         pos: ms_syntax::Pos::new(0, 1, 1),

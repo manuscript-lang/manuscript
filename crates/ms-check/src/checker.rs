@@ -6,7 +6,7 @@ use crate::types::*;
 use crate::types::{Case, Param};
 use crate::tytable::{TyId, TyTable};
 use ms_syntax::ast::*;
-use ms_syntax::{Diagnostic, Phase, Pos};
+use ms_syntax::{Cause, Diagnostic, Phase, Pos};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -344,14 +344,13 @@ impl Checker {
 
     // ------------------------------------------------------------ diagnostics
 
-    fn import_reported(&self, name: &str, pos: Pos) -> bool {
-        let hint = format!("; add: import {name} from ");
-        let file = self.current_file();
-        let _ = pos;
+    /// Whether this file already reported `name` as unknown (and so suggested its import).
+    pub(crate) fn unknown_reported(&self, name: Name) -> bool {
+        let file = self.syms.str(self.current_file());
         self.p
             .diagnostics
             .iter()
-            .any(|d| d.file.as_ref() == self.syms.str(file) && d.message.contains(&hint))
+            .any(|d| d.file.as_ref() == file && d.cause == Cause::Unknown(name))
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -361,36 +360,52 @@ impl Checker {
         self.error_in(file, pos, phase, message);
     }
 
+    /// Reports a diagnostic and records why, for later decisions that read it.
+    pub(crate) fn error_with_cause(
+        &mut self,
+        pos: Pos,
+        phase: Phase,
+        cause: Cause,
+        message: impl Into<String>,
+    ) {
+        let file = self.current_file();
+        self.report(file, pos, phase, message.into(), cause);
+    }
+
+    /// A type-phase diagnostic with its cause.
+    pub(crate) fn type_error_with_cause(
+        &mut self,
+        pos: Pos,
+        cause: Cause,
+        message: impl Into<String>,
+    ) {
+        self.error_with_cause(pos, Phase::Type, cause, message);
+    }
+
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
-        if phase == Phase::Resolution
-            && message.starts_with("Decimal literal requires")
-            && self.import_reported("Decimal", pos)
-        {
-            return;
-        }
+        self.report(file, pos, phase, message, Cause::Other);
+    }
+
+    fn report(&mut self, file: Name, pos: Pos, phase: Phase, message: String, cause: Cause) {
         if let Some(m) = &self.module {
             for span in &m.recovered {
                 if in_span(pos.offset, span) {
                     return;
                 }
             }
-            if phase == Phase::Resolution {
-                for name in &m.omitted {
-                    if message == format!("unknown binding {name}")
-                        || message.starts_with(&format!("unknown binding {name};"))
-                        || message.starts_with(&format!("unknown type {name};"))
-                        || message == format!("unknown type {name}")
-                    {
-                        return;
-                    }
-                }
+            // A name the editor left out of a partial parse is not unknown.
+            if let Cause::Unknown(name) = cause
+                && m.omitted.iter().any(|o| o == self.syms.str(name))
+            {
+                return;
             }
         }
         if self.unknown_type && phase != Phase::Resolution && message.contains("<invalid>") {
             return;
         }
         self.p.diagnostics.push(Diagnostic {
+            cause,
             opener_line: 0,
             file: self.syms.str(file).into(),
             pos,
@@ -826,6 +841,7 @@ impl Checker {
                 );
                 let message = self.export_message(item);
                 self.p.diagnostics.push(Diagnostic {
+                    cause: Default::default(),
                     opener_line: 0,
                     file: self.syms.str(module.file).into(),
                     pos: item.name_pos,
@@ -1409,7 +1425,7 @@ impl Checker {
                     s.ty(self.syms)
                 } else {
                     let msg = self.unknown_type_message(name);
-                    self.res_error_name(t.pos, self.syms.str(name).len(), msg);
+                    self.unknown_error(t.pos, name, msg);
                     self.unknown_type = true;
                     return invalid();
                 };

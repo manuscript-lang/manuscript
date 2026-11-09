@@ -6,6 +6,7 @@ use crate::inference::inference_type_known;
 use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
+use ms_syntax::Cause;
 use ms_syntax::ast::*;
 use std::rc::Rc;
 
@@ -220,7 +221,7 @@ impl Checker {
                     .p
                     .diagnostics
                     .iter()
-                    .any(|d| d.message.starts_with("cannot infer") && d.pos.line == e.pos.line);
+                    .any(|d| d.cause.is_inference() && d.pos.line == e.pos.line);
             if !actual.is_invalid()
                 && !exp.is_invalid()
                 && !inference_reported
@@ -247,7 +248,7 @@ impl Checker {
                             self.syms.str(exp.id),
                         )
                     };
-                    self.type_error_with_fix(e.pos, msg, fix);
+                    self.type_error_with_fix(e.pos, Cause::Mismatch, msg, fix);
                 }
             }
             if exp.kind == Kind::Function && same(&i.t(), exp) {
@@ -366,10 +367,13 @@ impl Checker {
                 .sym(n("Decimal"))
                 .zip(self.session.standard_symbol("Decimal"))
                 .is_some_and(|(a, b)| Rc::ptr_eq(&a, &b));
-            if !ok {
-                self.res_error_name(
+            if !ok && !self.unknown_reported(n("Decimal")) {
+                // Reported as a missing `Decimal`, so later literals in the file stay quiet.
+                self.error_fixed_caused(
                     e.pos,
                     text.len(),
+                    ms_syntax::Phase::Resolution,
+                    Cause::Unknown(n("Decimal")),
                     "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/math/decimal.ms\"".to_string(),
                 );
             }
@@ -525,7 +529,7 @@ impl Checker {
             i.constructor = Some(constructor);
         } else {
             let msg = self.unknown_name(name);
-            self.res_error_name(e.pos, self.syms.str(name).len(), msg);
+            self.unknown_error(e.pos, name, msg);
         }
         finish_info(self.syms, i)
     }
@@ -605,7 +609,7 @@ impl Checker {
                 && self.sym(*nm).is_none()
             {
                 let msg = self.unknown_name(*nm);
-                self.res_error_name(left.pos, self.syms.str(nm).len(), msg);
+                self.unknown_error(left.pos, *nm, msg);
                 i.ty = Some(invalid());
                 return i;
             }
@@ -752,7 +756,12 @@ impl Checker {
                 let fix = suggestions::append_call(&self.m().source, left, "wait()");
                 self.res_error_with_fix(e.pos, msg, fix);
             } else {
-                self.res_error_name(e.pos, self.syms.str(name).len(), msg);
+                let cause = Cause::UnknownMember {
+                    name,
+                    optional_receiver: rt.is(Builtin::Optional),
+                };
+                let len = self.syms.str(name).len();
+                self.error_fixed_caused(e.pos, len, ms_syntax::Phase::Resolution, cause, msg);
             }
             // Later diagnostics that only restate the missing member are noise.
             i.ty = Some(invalid());
@@ -807,8 +816,9 @@ impl Checker {
                     return self.unknown_literal(items, expected, &independent, i);
                 }
                 if !self.unknown_type {
-                    self.type_error(
+                    self.type_error_with_cause(
                         e.pos,
+                        Cause::CannotInfer,
                         "cannot infer list element type; add an annotation, e.g. let xs: List[Int] = []",
                     );
                 }
@@ -859,8 +869,9 @@ impl Checker {
                 if unknown_expected(expected) {
                     return self.unknown_literal_refs(&items, expected, &independent, i);
                 }
-                self.type_error(
+                self.type_error_with_cause(
                     e.pos,
+                    Cause::CannotInfer,
                     "cannot infer map key or value type; add an annotation, e.g. let m: Map[String, Int] = {}",
                 );
                 types[index] = Some(invalid());
@@ -1077,6 +1088,7 @@ impl Checker {
                 let fix = suggestions::append_call(&self.m().source, inner, "wait()");
                 self.type_error_with_fix(
                     e.pos,
+                    Cause::Other,
                     format!("try requires Result, found {result_t}; a promise gives its result from wait(), so write `try ...wait()`", result_t = result.display(self.syms)),
                     fix,
                 );
@@ -1235,6 +1247,7 @@ impl Checker {
             };
             self.type_error_with_fix(
                 e.pos,
+                Cause::Other,
                 format!(
                     "operator operands require the same independently known type, found {at_t} {} {bt_t}; {hint}",
                     op.as_str()

@@ -7,6 +7,7 @@ use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
 use crate::tytable::TyId;
+use ms_syntax::Cause;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::HashSet;
@@ -54,26 +55,18 @@ impl Checker {
     /// A member of the optional itself (`get`, `map`, ...) written inside a `?.` chain runs on
     /// the payload, which does not have it: say how to apply it to the whole chain.
     fn explain_chain_optional_member(&mut self, from: usize) {
-        const OPTIONAL_MEMBERS: [&str; 9] = [
-            "get",
-            "get_or_else",
-            "map",
-            "and_then",
-            "is_some",
-            "is_none",
-            "ok_or",
-            "ok_or_else",
-            "or_else",
-        ];
+        let optional = self.session.standard("Optional", vec![invalid()]);
+        let members = self.member_names(&optional);
         for d in &mut self.p.diagnostics[from..] {
-            let Some(rest) = d.message.strip_prefix("unknown or ambiguous member ") else {
+            let Cause::UnknownMember {
+                name,
+                optional_receiver: false,
+            } = d.cause
+            else {
                 continue;
             };
-            let Some((name, receiver)) = rest.split_once(" on ") else {
-                continue;
-            };
-            let receiver = receiver.split(';').next().unwrap_or("");
-            if OPTIONAL_MEMBERS.contains(&name) && !receiver.ends_with('?') {
+            let name = self.syms.str(name);
+            if members.iter().any(|m| m == name) {
                 d.message.push_str(&format!(
                     "; this call is part of the `?.` chain, so it runs on the present value; to use the optional's {name} on the whole chain, parenthesize it: (a?.b()).{name}(...)"
                 ));
@@ -268,7 +261,7 @@ impl Checker {
                         );
                     } else {
                         let msg = self.unknown_name(name);
-                        self.res_error_name(s.pos, self.syms.str(name).len(), msg);
+                        self.unknown_error(s.pos, name, msg);
                     }
                     self.expression(value, None);
                     return (true, false);
@@ -284,6 +277,7 @@ impl Checker {
                     let fix = suggestions::let_to_var(&self.m().source, b.decl);
                     self.type_error_with_fix(
                         s.pos,
+                        Cause::Other,
                         format!(
                             "cannot assign immutable binding {name_t}; declare it with 'var {name_t} = ...' instead of 'let'"
                         , name_t = self.syms.str(name)),
@@ -1740,8 +1734,9 @@ impl Checker {
             None => {
                 if fall {
                     if !self.unknown_type {
-                        self.type_error(
+                        self.type_error_with_cause(
                             e.pos,
+                            Cause::CannotInfer,
                             "cannot infer match result type; annotate the binding or give an arm an independently known type",
                         );
                     }

@@ -319,6 +319,7 @@ mod tests {
 
     fn unknown(file: &str) -> Diagnostic {
         Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: file.into(),
             pos: Pos::new(12, 1, 13),
