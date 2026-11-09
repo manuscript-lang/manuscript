@@ -594,10 +594,7 @@ interface ListSearch[T: Equal]:
 impl ListSearch[T] for List[T]:
     // Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
     fn contains(value: T) Bool:
-        for x in self:
-            if x.equals(value):
-                return true
-        return false
+        return self.any(fn x: x.equals(value))
 
     // Returns the first equal element's zero-based index, or none; elements require Equal.
     fn index_of(value: T) Int?:
@@ -897,6 +894,11 @@ impl ListCopiesKeyed[T] for List[T]:
     fn repeated(count: Int) List[T]:
         if count < 0:
             panic("List.repeated: count {count} must not be negative")
+
+        // One element repeated is a native fill, as fast as `filled`; a native failure falls through to the loop below.
+        if self.length() == 1:
+            if let same = msrt_list_filled(self[0].clone(), count, none):
+                return same
 
         var out = List[T](reserve: self.length() * count)
         for _round in 0..count:

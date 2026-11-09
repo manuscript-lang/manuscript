@@ -481,9 +481,8 @@ fn report[T](
     let reason = final.failure.get(message)
 
     // The failure keeps the details of the assertion that failed, which name its source position.
-    return error(
-        Error(
-            "property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason.message}",
-            kind: "EIO", details: reason.details
-        )
-    )
+    return error(Error("""
+    property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})
+    counterexample: {shown}
+    {reason.message}
+    """, kind: "EIO", details: reason.details))

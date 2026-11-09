@@ -59,10 +59,7 @@ impl BitSet:
 
     // Reports whether the set has no members.
     fn is_empty() Bool:
-        for word in self.words:
-            if word != 0:
-                return false
-        return true
+        return not self.words.any(fn word: word != 0)
 
     // Removes every member and releases the bitmap.
     var fn clear() Unit:

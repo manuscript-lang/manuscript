@@ -79,7 +79,7 @@ export fn parse_address(text: String) Address!:
 
 fn valid_address(address: String) Bool:
     let at = address.last_index_of("@")
-    if not at.is_some(): return false
+    if at.is_none(): return false
 
     let local = address.take(at.get(0))
     let domain = address.drop(at.get(0) + 1)
@@ -195,7 +195,7 @@ export fn decode_words(text: String) String:
                 fields[index + 1], fields[index + 2], fields[index + 3]
             )
 
-        if not decoded.is_some():
+        if decoded.is_none():
             out.append(literal)
             out.append("=?")
             previous_encoded = false

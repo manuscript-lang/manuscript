@@ -651,7 +651,7 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Unit!:
 // Renders usage, commands, arguments and flags for one node.
 fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
     var out = ""
-    if not node.about.is_empty(): out += node.about + "\n\n"
+    if not node.about.is_empty(): out += "{node.about}\n\n"
 
     var usage = "  " + path.join(" ")
     if not node.children.is_empty(): usage += " <command>"
@@ -661,21 +661,21 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
         let label = arg.name + (if arg.rest: "..." else: "")
         usage += if arg.required: " <{label}>" else: " [{label}]"
 
-    out += "Usage:\n" + usage + "\n"
+    out += "Usage:\n{usage}\n"
 
     if not node.children.is_empty():
         var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
         for child in node.children: help_row(
             var commands, [child.name.clone(), child.about.clone()]
         )
-        out += "\nCommands:\n" + commands.render() + "\n"
+        out += "\nCommands:\n{commands.render()}\n"
 
     if not node.args.is_empty():
         var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
         for arg in node.args: help_row(
             var arguments, [arg.name.clone(), arg.help.clone()]
         )
-        out += "\nArguments:\n" + arguments.render() + "\n"
+        out += "\nArguments:\n{arguments.render()}\n"
 
     out += flag_section("Flags", node.flags.concat([help_flag()]))
     out += flag_section("Global Flags", inherited)
@@ -701,7 +701,7 @@ fn flag_section(title: String, flags: List[Flag]) String:
         if flag.required: help += " (required)"
         help_row(var table, [label, help])
 
-    return "\n{title}:\n" + table.render() + "\n"
+    return "\n{title}:\n{table.render()}\n"
 
 // Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row with other controls is omitted.
 fn help_row(var table: Table, row: List[String]) Unit:

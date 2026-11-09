@@ -85,9 +85,7 @@ To accept a variable number of values, declare an ordinary list parameter:
 
 ```manuscript
 fn sum(values: List[Int]) Int:
-    var total = 0
-    for value in values:
-        total += value
+    let total = values.sum()
 
     return total
 
