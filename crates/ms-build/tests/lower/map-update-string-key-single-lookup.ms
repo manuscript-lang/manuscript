@@ -7,5 +7,5 @@ export fn main() Int:
     var values: Map[String, Int] = Map()
     values.add_default(key.clone(), 0)
     values.add(key.clone(), 0)
-    values.add(key.clone(), values.get(key).get(0) + 1)
+    values.update(key.clone(), 0, fn n: n + 1)
     return values[key] - 1

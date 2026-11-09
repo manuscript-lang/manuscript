@@ -854,29 +854,11 @@ pub unsafe extern "C-unwind" fn msrt_map_add_sw8(
     }
 }
 
-/// The value slot of `key`, appending the entry with the 8-byte scalar at `default` when it is
-/// absent; `key` is consumed. One hash and probe serve a read-modify-write such as `m[k] += 1`:
-/// the caller loads, changes and stores through the returned pointer before the map is used again.
-#[unsafe(no_mangle)]
-// ms: leaf
-pub unsafe extern "C-unwind" fn msrt_map_slot(
-    m: *mut MapVal,
-    kd: KeyDesc,
-    vd: ValDesc,
-    key: *mut u8,
-    default: *mut u8,
-) -> *mut u8 {
-    let kd = key_desc(m, kd);
-    // SAFETY: caller contract; the value type is an 8-byte scalar.
-    unsafe {
-        let (m, kd, vd) = (&mut *m, &*kd, &*vd);
-        keyed!(kd, |K| upsert_k::<K>(m, kd, Some(vd), key, default, false)
-            .0)
-    }
-}
-
-/// Like [`msrt_map_slot`] but `key` is only borrowed: it is copied into the map when the entry is
-/// absent, so a lookup that hits never allocates a key.
+/// The value slot of `key`, appending the entry with `default` when it is absent. `key` is only
+/// borrowed: it is copied into the map when the entry is new, so a lookup that hits never allocates
+/// a key. `default` is consumed either way: stored when the entry is new, dropped when it exists.
+/// One hash and probe serve a read-modify-write: the caller reads and writes through the returned
+/// pointer before the map is used again.
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
@@ -894,6 +876,9 @@ pub unsafe extern "C-unwind" fn msrt_map_slot_lent(
             let l = layout(kd, Some(vd));
             let h = hash_key::<K>(kd, key);
             if let Some(i) = find::<K>(m, kd, &l, key, h) {
+                if !needs_no_drop(vd) {
+                    slot_drop(vd, default);
+                }
                 return slot(m, &l, i).add(l.voff);
             }
             // Absent: own a copy of the key and insert it.
@@ -2017,7 +2002,7 @@ mod tests {
             let slot = msrt_map_slot_lent(&mut cloned, foreign, foreign, kp, vp);
             *(slot as *mut i64) = 9;
             assert_eq!(cloned.len, 1);
-            let slot = msrt_map_slot(&mut cloned, foreign, foreign, kp, vp);
+            let slot = msrt_map_slot_lent(&mut cloned, foreign, foreign, kp, vp);
             assert_eq!(*(slot as *const i64), 9);
             kp.cast::<i64>().write(21);
             msrt_map_add_default(&mut cloned, foreign, foreign, kp, vp);
@@ -2380,11 +2365,11 @@ mod tests {
             for round in 0..3i64 {
                 for i in 0..40i64 {
                     let (mut k, mut def) = (i, 10i64);
-                    let p = msrt_map_slot(
+                    let p = msrt_map_slot_lent(
                         &mut m,
                         d,
                         d,
-                        &mut k as *mut i64 as *mut u8,
+                        &mut k as *mut i64 as *const u8,
                         &mut def as *mut i64 as *mut u8,
                     ) as *mut i64;
                     assert_eq!(*p, 10 + round);
