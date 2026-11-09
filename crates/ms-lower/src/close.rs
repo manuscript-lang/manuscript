@@ -492,12 +492,14 @@ impl FnLower<'_> {
     fn generated_closer(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
         let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() else {
             // A record, alternative, list or object type is registered when its checker type is
-            // lowered; one that is not would be taken for plain data and never closed.
+            // lowered; one that is not would be taken for plain data and never closed. A
+            // borrowing variant of an alternative owns only the cases it does not borrow.
             debug_assert!(
-                !matches!(
-                    self.b.m.types.kind(ty),
-                    TyKind::Rec(_) | TyKind::Alt(_) | TyKind::List(_) | TyKind::Obj(..)
-                ),
+                match self.b.m.types.kind(ty) {
+                    TyKind::Rec(_) | TyKind::List(_) | TyKind::Obj(..) => false,
+                    TyKind::Alt(a) => self.b.m.alts[a.index()].borrowed != 0,
+                    _ => true,
+                },
                 "MIR type {ty:?} has no checker type, so its resources cannot be closed"
             );
             return Ok(None);
