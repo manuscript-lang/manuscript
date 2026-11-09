@@ -18,6 +18,22 @@ impl Walker<'_> {
         self.pure_origins(e)
     }
 
+    /// Whether `e` is the last use of a whole owned (not parameter or borrowed) local that holds more than plain words.
+    pub(super) fn owned_local_at_last_use(&self, e: &Expr) -> bool {
+        if !matches!(e.kind, ExprKind::Name(_)) || self.class_of(e) == Class::Copy {
+            return false;
+        }
+        let Resolution::Local(b) = self.cx.m.resolution(e) else {
+            return false;
+        };
+        self.is_last(e.id, &b)
+            && self.meta.get(&b.uid).is_some_and(|m| {
+                !matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed)
+                    && m.role != Role::Parameter
+                    && m.role != Role::SelfValue
+            })
+    }
+
     /// The places a conditional's value is a reference into, when every arm yields one.
     pub(super) fn arm_origins(&self, arms: &[Arm]) -> Option<Vec<Place>> {
         let mut out: Vec<Place> = Vec::new();
@@ -67,6 +83,10 @@ impl Walker<'_> {
                 if cases != 0 && cases & BORROWED_OK == 0 {
                     return None;
                 }
+            }
+            // `try r` at the last use of an owned local takes the payload out of `r`.
+            if self.owned_local_at_last_use(operand) {
+                return None;
             }
             return if self.is_place(operand) {
                 self.pure_places(operand)

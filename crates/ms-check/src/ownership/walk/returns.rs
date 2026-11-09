@@ -966,7 +966,11 @@ impl Walker<'_> {
             ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(self.syms),
             _ => false,
         };
-        returns_borrow.then_some(&**left)
+        // `get()` on the last use of an owned local hands its payload over instead of borrowing it.
+        let takes_payload = matches!(self.syms.str(name), "get")
+            && args.is_empty()
+            && self.owned_local_at_last_use(left);
+        (returns_borrow && !takes_payload).then_some(&**left)
     }
 
     /// The variable whose `Bytes.view` the call `e` is, when it is returned: a function returns
