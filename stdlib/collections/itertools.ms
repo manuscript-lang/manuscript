@@ -145,27 +145,21 @@ export fn combinations[T: Clonable](values: List[T], size: Int) List[List[T]]:
 
     var out: List[List[T]] = []
     var chosen: List[Int] = []
-    extend_combinations(values, size, 0, var chosen, var out)
-    return out
-
-fn extend_combinations[T: Clonable](
-    values: List[T],
-    k: Int,
-    start: Int,
-    var chosen: List[Int],
-    var out: List[List[T]]
-) Unit:
-    if chosen.length() == k:
-        out.append(chosen.map(fn i: values[i].clone()))
-        return
-
-    // An item is chosen only while enough items remain after it to reach `k`.
-    let last = values.length() - (k - chosen.length())
-
-    for i in start..last + 1:
+    for i in 0..size:
         chosen.append(i)
-        extend_combinations(values, k, i + 1, var chosen, var out)
-        chosen.pop()
+
+    while true:
+        out.append(chosen.map(fn i: values[i].clone()))
+
+        // Advance the rightmost position with room, then reset its suffix.
+        var pivot = size - 1
+        while pivot >= 0 and chosen[pivot] == values.length() - size + pivot:
+            pivot -= 1
+        if pivot < 0: return out
+
+        chosen[pivot] += 1
+        for i in pivot + 1..size:
+            chosen[i] = chosen[i - 1] + 1
 
 /*
 Returns the cartesian product: one list per way of taking one item from each input list, in lexicographic order, the last list varying fastest.

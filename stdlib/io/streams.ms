@@ -1,17 +1,20 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
+import Bytes, BytesBuilder, join from "@std/bytes.ms"
 import (ReadStream, WriteStream, Source) from "@std/io/io.ms"
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A step pulls its input only
 // inside its own `next`, so a slow consumer slows every step and the source, and closing a step closes its input.
 
 // Lines of bytes, without their `\n` or `\r\n`, cut only at line ends; the unterminated last line comes at the end.
-// `data` is the bytes held so far and `start` the first one not yet returned.
+// `data` is the current chunk and `start` the first unread byte; `pending` owns earlier unfinished fragments.
 type Lines:
     input: ReadStream[Bytes]
     max_bytes: Int?
     data: Bytes
     start: Int
     ended: Bool
+    pending: List[Bytes]
+    pending_size: Int
+    pending_cr: Bool
 
 impl Lines:
     // Fails with `EOVERFLOW` when a line of `size` bytes is longer than the limit.
@@ -28,42 +31,73 @@ impl Lines:
 
         return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
+impl Lines:
+    // Joins only a completed line; incomplete chunks are copied once, not as a growing prefix.
+    var fn take(stop: Int, terminated: Bool) String!:
+        if self.pending_size == 0:
+            var end = stop
+            if terminated and end > self.start and self.data.get(end - 1, 0) == 13:
+                end -= 1
+            try self.check(end - self.start)
+
+            let from = self.start
+            self.start = if terminated: stop + 1 else: stop
+            return self.decode(from, end)
+
+        let size = self.pending_size + stop - self.start
+        let cr = if stop > self.start: self.data.get(stop - 1, 0) == 13 else: self.pending_cr
+        let trimmed = if terminated and cr: size - 1 else: size
+        try self.check(trimmed)
+        self.pending.append(try self.data.slice(self.start, stop))
+
+        let all = join(self.pending)
+        self.pending = []
+        self.pending_size = 0
+        self.pending_cr = false
+        self.start = if terminated: stop + 1 else: stop
+        if let text = all.decode_utf8_range(0, trimmed): return ok(text)
+
+        return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
+
 impl Source[String] for Lines:
     var fn next() String?!:
         while true:
-            let end = self.data.index_of_byte(10, self.start)
+            if let end = self.data.index_of_byte(10, self.start):
+                if self.pending_size > 0: return ok(try self.take(end, true))
 
-            if end.is_some():
-                let found = end.get()
-                var stop = found
+                var stop = end
                 if stop > self.start and self.data.get(stop - 1, 0) == 13:
                     stop -= 1
                 try self.check(stop - self.start)
 
                 let from = self.start
-                self.start = found + 1
+                self.start = end + 1
                 return ok(try self.decode(from, stop))
 
             if self.ended:
-                if self.start < self.data.length():
-                    let from = self.start
-                    try self.check(self.data.length() - from)
-                    self.start = self.data.length()
-                    return ok(try self.decode(from, self.data.length()))
+                if self.pending_size > 0 or self.start < self.data.length():
+                    return ok(try self.take(self.data.length(), false))
 
                 return ok(none)
 
-            // A final `\r` may be the first half of a `\r\n` split across chunks, so it does not count toward the limit yet.
-            var pending = self.data.length() - self.start
-            if pending > 0 and self.data.get(self.data.length() - 1, 0) == 13:
-                pending -= 1
-            try self.check(pending)
+            // A trailing CR may belong to a split CRLF, so defer counting it until the next chunk or EOF.
+            let rest = self.data.length() - self.start
+            let cr = if rest > 0: self.data.get(self.data.length() - 1, 0) == 13 else: self.pending_cr
+            try self.check(self.pending_size + rest - if cr: 1 else: 0)
 
             let chunk = try self.input.next()
 
             if let more = chunk:
-                let held = try self.data.slice(self.start, self.data.length())
-                self.data = held.concat(more)
+                if rest > 0:
+                    self.pending.append(
+                        try self.data.slice(
+                            self.start, self.data.length()
+                        )
+                    )
+                    self.pending_size += rest
+                    self.pending_cr = cr
+
+                self.data = more
                 self.start = 0
             else:
                 self.ended = true
@@ -75,7 +109,9 @@ impl Source[String] for Lines:
 
 // Reads lines of text from a byte stream such as `stdin()`: splits `input` at `\n`, removing a trailing `\r`; a line longer than `max_bytes` is an error.
 export fn lines(input: ReadStream[Bytes], max_bytes: Int? = none) ReadStream[String]:
-    return ReadStream[String](Lines(input, max_bytes, "".to_bytes(), 0, false))
+    return ReadStream[String](
+        Lines(input, max_bytes, "".to_bytes(), 0, false, [], 0, false)
+    )
 
 // Items of a list, in order. The list is the stream's own, held last item first so `pop` moves the next one out.
 type ListSource[T]:

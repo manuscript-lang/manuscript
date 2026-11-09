@@ -94,7 +94,9 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
             && offset > t.start
             && (offset < t.end
                 || (t.kind == EditorKind::Comment && offset == t.end)
-                || (t.kind == EditorKind::Str && !t.text.ends_with('"')))
+                || (t.kind == EditorKind::Str
+                    && offset == t.end
+                    && !text::literal_is_closed(t.text)))
         {
             c.comment = t.kind == EditorKind::Comment;
             c.literal = t.kind == EditorKind::Str;
@@ -209,7 +211,8 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
 
 /// The offset where the text interpolation containing `offset` begins
 /// (just after its `{`), or `None` when the cursor is outside every
-/// interpolation. Literals sit on one line, so only the cursor's line is read.
+/// interpolation. Multiline literals use forgiving whole-literal boundaries;
+/// ordinary snapshots retain the line scanner.
 pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
     #[derive(PartialEq)]
     enum State {
@@ -223,8 +226,15 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
         .iter()
         .rposition(|&b| b == b'\n')
         .map_or(0, |at| at + 1);
-    let (mut state, mut depth, mut from) = (State::Code, 0, 0);
+    let mut state = State::Code;
     let mut at = line;
+    if let Some(spans) = text::multiline_string_spans(source) {
+        let span = spans.into_iter().find(|span| {
+            offset > span.start && (offset < span.end || (!span.closed && offset == span.end))
+        })?;
+        return span.interpolation_at(offset);
+    }
+    let (mut depth, mut from) = (0, 0);
     while at < offset {
         let b = bytes[at];
         match state {
@@ -486,6 +496,16 @@ pub fn query_editor(
     }
     let mut modified = d.clone();
     modified.text = format!("{}{}{}", &d.text[..c.start], replacement, &d.text[c.end..]);
+    // Only the private query snapshot receives delimiters. Keep an unfinished
+    // interpolation's surrounding declaration so its parameters remain visible.
+    if interpolation_start(&d.text, c.offset).is_some()
+        && let Some(spans) = text::multiline_string_spans(&modified.text)
+        && let Some(span) = spans
+            .into_iter()
+            .find(|span| !span.closed && c.start > span.start && c.start <= span.end)
+    {
+        modified.text.push_str(&span.closing);
+    }
     if c.type_context {
         let bytes = modified.text.as_bytes();
         let line_start = bytes[..c.start]
@@ -816,5 +836,129 @@ pub fn call_arguments(
                 )
             })
             .collect(),
+    }
+}
+
+#[cfg(test)]
+mod literal_context_tests {
+    use super::*;
+
+    #[test]
+    fn incomplete_multiline_closing_quotes_remain_literal() {
+        for newline in ["\n", "\r\n"] {
+            for prefix in ["", "r"] {
+                for quotes in ["", "\"", "\"\""] {
+                    let source = format!("let text = {prefix}\"\"\"\n    payload\n    {quotes}")
+                        .replace('\n', newline);
+                    let d = Document::new("file:///closing.ms", &source);
+                    assert!(
+                        context_at(&d, text::position(&source, source.len()))
+                            .unwrap()
+                            .literal,
+                        "{source}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn incomplete_multiline_context_survives_unrelated_errors() {
+        for newline in ["\n", "\r\n"] {
+            for (source, literal, member) in [
+                ("let text = \"\"\"\n    é😀 {value.member", false, true),
+                (
+                    "let broken = \"bad\nlet text = \"\"\"\n    ok\n    \"\"\"\nlet other = value.member",
+                    false,
+                    true,
+                ),
+                (
+                    "let broken = \"\nlet text = \"\"\"\n    {value.member}\n    \"\"\"\n",
+                    false,
+                    true,
+                ),
+                (
+                    "let text = \"\"\"\n    {value.member}\n    \"\"\"\nlet broken = \"",
+                    false,
+                    true,
+                ),
+                (
+                    "let broken = @\nlet text = \"\"\"\n    {value.member}\n    \"\"\"\n",
+                    false,
+                    true,
+                ),
+                (
+                    "let text = r\"\"\"\n    {\"key\": value.member",
+                    true,
+                    false,
+                ),
+                ("let text = \"\"\"\n    \\{value.member", true, false),
+                ("let text = \"\"\"\n    {join(\"value.member", true, false),
+            ] {
+                let source = source.replace('\n', newline);
+                let d = Document::new("file:///incomplete.ms", &source);
+                let offset = source.find("member").unwrap() + 6;
+                let c = context_at(&d, text::position(&source, offset)).unwrap();
+                assert_eq!(c.literal, literal, "{source}");
+                assert_eq!(c.member, member, "{source}");
+            }
+        }
+    }
+
+    #[test]
+    fn multiline_literal_context_preserves_payload_and_code_boundaries() {
+        for newline in ["\n", "\r\n"] {
+            for (body, cursor, expected) in [
+                ("say \"hello\" there", "hello", true),
+                ("escaped \\{name}", "name", true),
+                ("value {name.length()}", "name", false),
+                ("value {join(\"quoted\", name)}", "name", false),
+                ("value {join(\"quoted\", name)}", "quoted", true),
+                ("nested {\"{name.length()}\"}", "name", false),
+                ("unicode \\u{1F600}", "1F600", true),
+            ] {
+                let source = format!("let s = \"\"\"\n    {body}\n    \"\"\"\nlet after = 1\n")
+                    .replace('\n', newline);
+                let d = Document::new("file:///contexts.ms", source.clone());
+                let offset = source.find(cursor).unwrap() + cursor.len();
+                assert_eq!(
+                    context_at(&d, text::position(&source, offset))
+                        .unwrap()
+                        .literal,
+                    expected,
+                    "{source}"
+                );
+                let offset = source.find("after").unwrap() + 5;
+                assert!(
+                    !context_at(&d, text::position(&source, offset))
+                        .unwrap()
+                        .literal
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn raw_multiline_payload_is_not_code() {
+        let source = "let text = r\"\"\"\n    {\"key\": value.member}\n    \"\"\"\n";
+        ms_syntax::parser::parse(&std::sync::Arc::from("raw.ms"), source).unwrap();
+        let d = Document::new("file:///raw.ms", source);
+        let offset = source.find("key").unwrap() + "key".len();
+        assert!(
+            context_at(&d, text::position(source, offset))
+                .unwrap()
+                .literal
+        );
+    }
+
+    #[test]
+    fn multiline_interpolation_is_code() {
+        let source = "let text = \"\"\"\n    {value.member}\n    \"\"\"\n";
+        ms_syntax::parser::parse(&std::sync::Arc::from("text.ms"), source).unwrap();
+        let d = Document::new("file:///text.ms", source);
+        let offset = source.find("member").unwrap() + "member".len();
+        let c = context_at(&d, text::position(source, offset)).unwrap();
+        assert!(!c.literal);
+        assert!(c.member);
     }
 }
