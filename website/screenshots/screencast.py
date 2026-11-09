@@ -13,39 +13,44 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "screencast")
 
-# title: "*word*" is highlighted. steps: (command, keep(lines) -> lines shown).
+# title: "*word*" is highlighted. steps: (command, keep(lines) -> lines shown). split: code beside the output.
 def first(n): return lambda ls: ls[:n]
 def last(n): return lambda ls: ls[-n:]
+def clock(ls): return [l for l in ls if l.startswith(("real", "user"))]
+def bench_line(ls): return [l[len("BENCH "):].split(" (")[0] for l in ls if l.startswith("BENCH")]
 SCENES = [
     dict(title="*Use-after-move?* Compile error.",
          sub="One owner per value. No GC, no refcounts, no surprises.",
          src="own.ms", steps=[("ms run own.ms", first(1))], cut=";"),
     dict(title="*No GC pauses.* C-class speed.",
-         sub="5M sieve: 26 ms, C 26 ms (bench/perf, 2026-11-05).",
-         src=None, steps=[("ms build sieve.ms -o sieve && ./sieve", first(2))]),
+         sub="Run time relative to C, seven kernels (bench/perf, 2026-11-05).",
+         chart=True),
     dict(title="*async/await?* Not needed.",
-         sub="Any function can run concurrently. No colored functions to rewrite.",
-         src="conc.ms", steps=[("ms run conc.ms", first(1))]),
-    dict(title="*Every core.* Zero threads to manage.",
-         sub="Four CPU-bound promises, spread across the machine by the runtime.",
-         src=None, steps=[("ms run par.ms", first(1))]),
-    dict(title="Does it *really* just add numbers?",
-         sub="Printing, files and network must be declared, or lint says so.",
-         src="effects.ms", steps=[("ms lint effects.ms", first(1))], cut=";"),
+         sub="Plain functions run concurrently on every core. Compare user and real time.",
+         src="par.ms", split=True, hold=4200,
+         steps=[("ms build par.ms -o par", first(1)), ("time ./par", lambda ls: ls[:1] + clock(ls))]),
+    dict(title="*Declare* your effects. We *check* them.",
+         sub="Mark db.write once; lint flags every caller that did not allow it.",
+         src="effects.ms", split=True, hold=3200,
+         steps=[("ms lint effects.ms", first(1))], cut=";"),
     dict(title="Compiler errors that *name the fix*.",
          sub="Cause and remedy in every diagnostic. --json for agents.",
          src="fixme.ms", steps=[("ms check fixme.ms", first(1))], cut=";"),
-    dict(title="Zero setup: *test, bench, profile.*",
-         sub="No framework, no harness, no extra tools to install.",
-         src=None, steps=[
-             ("ms test tb.ms", last(1)),
-             ("ms bench tb.ms --time 20ms --samples 3", lambda ls: [l for l in ls if l.startswith("BENCH")]),
-             ("ms profile prof.ms --out-dir pr --top 3", lambda ls: ls[1:4]),
-         ], cut=" ("),
+    dict(title="*test* and *bench* are keywords.",
+         sub="Write them beside the code; ms test and ms bench run them.",
+         src="tb.ms", split=True,
+         steps=[("ms test tb.ms", last(1)), ("ms bench tb.ms", bench_line)]),
+    dict(title="A *profiler* ships in the binary.",
+         sub="ms profile: source attribution, pprof, folded stacks. Nothing to install.",
+         src="prof.ms", split=True,
+         steps=[("ms profile prof.ms", lambda ls: ls[2:4])]),
     dict(title="Can't read all that agent code? *Map it.*",
-         sub="Call graphs and code maps from checked source.",
-         src=None, steps=[("ms diagram conc.ms --format ascii", first(6))]),
+         sub="Call graph here; --format html writes an offline interactive code map.",
+         src=None, steps=[("ms diagram par.ms --format ascii", first(6))]),
 ]
+# Time relative to C (1.0 = same), from bench/perf/results-2026-11-05.md: ms us / c us per kernel.
+KERNELS = [("sieve", 26373 / 26202), ("nbody", 6229 / 7239), ("life", 3524 / 29784), ("matmul", 6262 / 3890),
+           ("trees", 25083 / 28358), ("collatz", 159335 / 195847), ("map_count", 12566 / 10227)]
 URL = "manuscript-lang.github.io/manuscript"
 
 W, H = 1280, 720
@@ -57,8 +62,10 @@ KEYWORDS = set("fn let var if else for in return try import from export type imp
 D = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono"
 CODE, HEAD, SUB, SMALL = (ImageFont.truetype(D + ".ttf", 27), ImageFont.truetype(D + "-Bold.ttf", 47),
                           ImageFont.truetype(D + ".ttf", 22), ImageFont.truetype(D + ".ttf", 17))
+CODE_S = ImageFont.truetype(D + ".ttf", 21)
 BIG = ImageFont.truetype(D + "-Bold.ttf", 104)
 CW, LH, CARD = CODE.getlength("M"), 37, (60, 196, 1220, 650)
+CW_S, LH_S = CODE_S.getlength("M"), 30
 COLS = int((CARD[2] - CARD[0] - 64) / CW)
 _bg = None
 
@@ -112,33 +119,66 @@ def terminal(d):
     for i, c in enumerate([(237, 106, 94), (245, 191, 79), (97, 197, 84)]):
         d.ellipse([CARD[0] + 20 + i * 24, CARD[1] + 13, CARD[0] + 34 + i * 24, CARD[1] + 27], fill=c)
 
+def pane_x(code):
+    """Left edge of the output pane when the code sits beside it."""
+    return CARD[0] + 32 + max(len(l) for l in code) * CW_S + 48
+
 def scene_frame(sc, n, total, code, shown, rows, cursor):
-    """rows: list of (kind, text) below the code: 'cmd', 'out', 'err'."""
+    """rows: list of (kind, text) shown after the code: 'cmd', 'out', 'err'."""
     im = background()
     d = ImageDraw.Draw(im)
     header(d, sc["title"], sc["sub"])
     terminal(d)
-    x0, y = CARD[0] + 32, CARD[1] + 62
-    last_y = None
-    for i, line in enumerate(code[:shown]):
+    split = sc.get("split")
+    fnt, cw, lh = (CODE_S, CW_S, LH_S) if split else (CODE, CW, LH)
+    x0, y0 = CARD[0] + 32, CARD[1] + 62
+    y = y0
+    for line in code[:shown]:
         x = x0
-        for s, c in tokens(line):
-            d.text((x, y), s, font=CODE, fill=c)
-            x += CW * len(s)
-        last_y, last_x = y, x
-        y += LH
-    if code: y += 12
+        for s_, c in tokens(line):
+            d.text((x, y), s_, font=fnt, fill=c)
+            x += cw * len(s_)
+        y += lh
+    if split:
+        xr, y = pane_x(code), y0
+        d.line([(xr - 24, CARD[1] + 52), (xr - 24, CARD[3] - 14)], fill=C["edge"], width=2)
+    else:
+        xr = x0
+        if code: y += 12
+    cur = None
+    if cursor and shown and not rows and code:
+        cur = (x0 + len(code[shown - 1]) * cw, y0 + (shown - 1) * lh)
     for kind, text in rows:
         if kind == "cmd":
-            d.text((x0, y), "$", font=CODE, fill=C["ok"])
-            d.text((x0 + CW * 2, y), text, font=CODE, fill=C["fg"])
-            last_y, last_x = y, x0 + CW * (2 + len(text))
+            d.text((xr, y), "$", font=fnt, fill=C["ok"])
+            d.text((xr + cw * 2, y), text, font=fnt, fill=C["fg"])
+            cur = (xr + cw * (2 + len(text)), y)
         else:
-            d.text((x0, y), text, font=CODE, fill=C["err"] if kind == "err" else C["fg"])
-            last_y, last_x = None, 0
-        y += LH
-    if cursor and last_y is not None:
-        d.rectangle([last_x + 3, last_y + 3, last_x + CW * 0.55 + 3, last_y + 29], fill=C["acc"])
+            d.text((xr, y), text, font=fnt, fill=C["err"] if kind == "err" else C["fg"])
+            cur = None
+        y += lh
+    if cursor and cur:
+        d.rectangle([cur[0] + 3, cur[1] + 3, cur[0] + cw * 0.55 + 3, cur[1] + lh - 8], fill=C["acc"])
+    chrome(d, n, total)
+    return im
+
+def chart_frame(sc, n, total, bars):
+    im = background()
+    d = ImageDraw.Draw(im)
+    header(d, sc["title"], sc["sub"])
+    terminal(d)
+    x0, y, scale = CARD[0] + 190, CARD[1] + 70, 480
+    d.line([(x0 + scale, CARD[1] + 60), (x0 + scale, CARD[3] - 50)], fill=C["edge"], width=2)
+    d.text((x0 + scale, CARD[3] - 34), "C = 1.0", font=SMALL, fill=C["dim"], anchor="mm")
+    d.text((x0, CARD[3] - 34), "faster", font=SMALL, fill=C["dim"], anchor="lm")
+    d.text((x0 + scale * 1.8, CARD[3] - 34), "slower", font=SMALL, fill=C["dim"], anchor="rm")
+    for i, (name, ratio) in enumerate(KERNELS):
+        d.text((CARD[0] + 32, y + 6), name, font=CODE_S, fill=C["fg"])
+        if i < bars:
+            w = max(4, scale * ratio)
+            d.rounded_rectangle([x0, y, x0 + w, y + 30], 6, fill=C["acc"] if ratio <= 1.1 else C["acc2"])
+            d.text((x0 + w + 12, y + 6), f"{ratio:.2f}x", font=CODE_S, fill=C["fg"])
+        y += 46
     chrome(d, n, total)
     return im
 
@@ -147,7 +187,7 @@ def card_frame(kind, n, total, typed="", chips=0):
     d = ImageDraw.Draw(im)
     if kind == "intro":
         d.text((W // 2, 250), "Manuscript", font=BIG, fill=C["fg"], anchor="mm")
-        d.text((W // 2, 345), "Agents write it. People understand it.", font=HEAD, fill=C["acc"], anchor="mm")
+        d.text((W // 2, 345), "The language for the agentic era.", font=HEAD, fill=C["acc"], anchor="mm")
         names = ["no GC", "no async", "checked effects", "native speed"]
     else:
         d.text((W // 2, 200), "Try it.", font=BIG, fill=C["fg"], anchor="mm")
@@ -170,15 +210,15 @@ def card_frame(kind, n, total, typed="", chips=0):
 
 def run(cmd, cwd, ms_dir):
     env = dict(os.environ, PATH=ms_dir + os.pathsep + os.environ["PATH"], NO_COLOR="1")
-    p = subprocess.run(cmd, shell=True, cwd=cwd, env=env, capture_output=True, text=True)
-    return [l.rstrip() for l in (p.stdout + p.stderr).replace(cwd + "/", "").splitlines()]
+    p = subprocess.run(cmd, shell=True, executable="/bin/bash", cwd=cwd, env=env, capture_output=True, text=True)
+    return [l.replace("\t", "  ").rstrip() for l in (p.stdout + p.stderr).replace(cwd + "/", "").splitlines()]
 
-def wrap(lines, cut):
+def wrap(lines, cut, width=COLS):
     out = []
     for l in lines:
         if cut and cut in l:
             l = l.split(cut)[0] + (" …" if cut == ";" else "")
-        out += textwrap.wrap(l, COLS, subsequent_indent="  ", drop_whitespace=False) or [""]
+        out += textwrap.wrap(l, width, subsequent_indent="  ", drop_whitespace=False) or [""]
     return out
 
 def main():
@@ -202,6 +242,12 @@ def main():
             add(card_frame("intro", 0, total, chips=chips), 350)
         durs[-1] += 1400
         for n, sc in enumerate(SCENES, 1):
+            if sc.get("chart"):
+                add(chart_frame(sc, n, total, 0), 1100)
+                for k in range(1, len(KERNELS) + 1):
+                    add(chart_frame(sc, n, total, k), 450)
+                durs[-1] += 2600
+                continue
             code = open(os.path.join(SRC, sc["src"])).read().rstrip("\\n".replace("\\n", "\n")).split("\n") if sc["src"] else []
             add(scene_frame(sc, n, total, code, 0, [], False), 1100)
             for k, line in enumerate(code, 1):
@@ -214,12 +260,13 @@ def main():
                     add(scene_frame(sc, n, total, code, len(code), rows + [("cmd", cmd[:k])], True), 70)
                 rows = rows + [("cmd", cmd)]
                 add(scene_frame(sc, n, total, code, len(code), rows, True), 450)
-                out = wrap(keep(run(cmd, work, ms_dir)), sc.get("cut"))
+                width = int((CARD[2] - 32 - pane_x(code)) / CW_S) if sc.get("split") else COLS
+                out = wrap(keep(run(cmd, work, ms_dir)), sc.get("cut"), width)
                 for line in out:
                     kind = "err" if re.search(r"error|warning|type:|resolution:", line) else "out"
                     rows = rows + [(kind, line)]
                     add(scene_frame(sc, n, total, code, len(code), rows, False), 400 + 10 * len(line))
-            durs[-1] += 1300
+            durs[-1] += sc.get("hold", 2200)
         add(card_frame("outro", total - 1, total), 900)
         cmd = "ms init hello"
         for k in range(2, len(cmd) + 1, 2):
