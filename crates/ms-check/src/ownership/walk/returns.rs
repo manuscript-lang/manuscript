@@ -115,12 +115,17 @@ impl Walker<'_> {
                 }
             }
         }
-        // A returned `Bytes` is owned, and a view only borrows its receiver.
+        // A returned `Bytes` or `String` is owned, and a view only borrows its receiver.
         if let Some(local) = self.returned_bytes_view(e) {
+            let kind = if self.cx.m.ty(e).is(Builtin::Bytes) {
+                "Bytes"
+            } else {
+                "String"
+            };
             self.error(
                 e.pos,
                 format!(
-                    "cannot return a view of `{0}`: a returned `Bytes` is owned and a view only borrows `{0}`; copy it with `.{CLONE}()` after the view",
+                    "cannot return a view of `{0}`: a returned `{kind}` is owned and a view only borrows `{0}`; copy it with `.{CLONE}()` after the view",
                     self.syms.str(local)
                 ),
             );
@@ -958,7 +963,7 @@ impl Walker<'_> {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
             ("get", 0) => recv.is(Builtin::Optional),
             ("first" | "last", 0) => recv.is(Builtin::List),
-            ("view", 2) => recv.is(Builtin::Bytes),
+            ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(self.syms),
             _ => false,
         };
         returns_borrow.then_some(&**left)
@@ -968,7 +973,14 @@ impl Walker<'_> {
     /// bytes it owns, so a view of a local or a parameter must be copied first.
     pub(super) fn returned_bytes_view(&self, e: &Expr) -> Option<Name> {
         let recv = self.native_borrow_receiver(e)?;
-        if !self.cx.m.ty(e).is(Builtin::Bytes) {
+        let ExprKind::Call { callee, .. } = &e.kind else {
+            return None;
+        };
+        let ExprKind::Member { name, .. } = &callee.kind else {
+            return None;
+        };
+        let ty = self.cx.m.ty(e);
+        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string(self.syms)) {
             return None;
         }
         let root = self.root_name(recv)?;

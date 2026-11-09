@@ -426,6 +426,22 @@ impl Walker<'_> {
                 }
             }
         }
+        // `String.view` and `Bytes.view` borrow their receiver: a position that would keep the view
+        // needs an owner, so it takes a `.clone()` of the view. A temporary receiver is copied out.
+        if d == Demand::Move
+            && name == "view"
+            && let Some(source) = self.native_borrow_receiver(e)
+            && self.is_place(source)
+        {
+            self.error_fix_opt(
+                e.pos,
+                format!(
+                    "`view` borrows `{}`, which this position would keep; store `.{CLONE}()` of it, or use it in place",
+                    self.expr_text(source)
+                ),
+                copy_after(e),
+            );
+        }
         if modes.returns_receiver && d != Demand::Discard {
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
             self.error(
