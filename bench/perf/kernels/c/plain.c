@@ -172,45 +172,6 @@ static int64_t collatz(int64_t limit) {
     return best;
 }
 
-static uint64_t hash(int64_t k) {
-    uint64_t z = (uint64_t)k + 0x9e3779b97f4a7c15u;
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9u;
-    z = (z ^ (z >> 27)) * 0x94d049bb133111ebu;
-    return z ^ (z >> 31);
-}
-
-// Unordered open addressing with linear probing; one probe per increment.
-static int64_t wordfreq(int64_t n) {
-    size_t cap = 16, len = 0;
-    int64_t *keys = xmalloc(sizeof(int64_t) * cap), *vals = xmalloc(sizeof(int64_t) * cap);
-    uint8_t *used = calloc(cap, 1);
-    for (int64_t i = 0; i < n; i++) {
-        int64_t k = (i * 7919) % 5003;
-        size_t mask = cap - 1, h = hash(k) & mask;
-        while (used[h] && keys[h] != k) h = (h + 1) & mask;
-        if (used[h]) {
-            vals[h]++;
-            continue;
-        }
-        used[h] = 1, keys[h] = k, vals[h] = 1, len++;
-        if (len * 4 >= cap * 3) {
-            size_t ncap = cap * 2;
-            int64_t *nk = xmalloc(sizeof(int64_t) * ncap), *nv = xmalloc(sizeof(int64_t) * ncap);
-            uint8_t *nu = calloc(ncap, 1);
-            for (size_t s = 0; s < cap; s++) {
-                if (!used[s]) continue;
-                size_t p = hash(keys[s]) & (ncap - 1);
-                while (nu[p]) p = (p + 1) & (ncap - 1);
-                nu[p] = 1, nk[p] = keys[s], nv[p] = vals[s];
-            }
-            free(keys), free(vals), free(used);
-            keys = nk, vals = nv, used = nu, cap = ncap;
-        }
-    }
-    free(keys), free(vals), free(used);
-    return (int64_t)len;
-}
-
 static int64_t now_us(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -236,6 +197,5 @@ int main(void) {
     TIMED("matmul_200", (int64_t)matmul(opaque(200)));
     TIMED("trees_d16_x20", trees(opaque(20)));
     TIMED("collatz_1M", collatz(opaque(1000000)));
-    TIMED("map_count_2M", wordfreq(opaque(2000000)));
     return 0;
 }
