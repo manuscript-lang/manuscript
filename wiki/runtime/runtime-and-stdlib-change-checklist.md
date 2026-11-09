@@ -45,6 +45,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Run affected crate tests (`cargo nextest run -p <crate>`) and `make conform`; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
 
 - Complex asymptotic trig must not overflow a finite phase while evaluating double-angle sine. Beyond half Float.max, use the bounded sine/cosine identity; test the tiny component with relative accuracy rather than a fixed tolerance that accepts zero (`complex.ms`, #3196).
+- Complex exponentials can have finite components after their radius overflows. Multiply the trig components by four quarter-exponential factors; a half-exponential split still overflows for tiny phases near real part 1450. Check each component relatively, including minimum-subnormal phases (`complex.ms`, #3298).
 
 ## Rust runtime
 
