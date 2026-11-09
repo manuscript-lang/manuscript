@@ -32,6 +32,14 @@ test "text conversions and quoting":
         "tab\there \"q\" \\ é🙂\u{1}"
     )
 
+test "parse_int_radix borrows its text":
+    let text = "-0x1f"
+    parse_int_radix(text, 0) | try expect_equal(-31)
+    parse_int_radix(text, 16) | try expect_equal(none)
+    parse_int_radix("+ff", 16) | try expect_equal(255)
+    parse_int_radix("-", 10) | try expect_equal(none)
+    parse_int_radix(text, 10) | try expect_equal(none)
+
 test "text quoting escapes interpolation braces and literal controls":
     quote("\{x\}") | try expect_equal("\"\\\{x\\\}\"")
     unquote("\"\\\{x\\\}\"") | try expect_ok | try expect_equal("\{x\}")
