@@ -61,8 +61,8 @@ fn loop_borrow_remedy_clones_the_iterable_not_its_root() {
 #[test]
 fn ownership_errors_never_carry_a_clone_fix() {
     let sources = [
-        "export fn main() Int:\n    let xs = [\"a\"]\n    var out = [\"b\"]\n    let first = xs[0]\n    out.append(first)\n    return 0\n",
-        "export fn main() Int:\n    let s = \"x\"\n    var xs = [\"b\"]\n    xs.append(s)\n    xs.append(s)\n    return 0\n",
+        include_str!("diagnostic_wording/clone-fix-borrow-store.ms"),
+        include_str!("diagnostic_wording/clone-fix-moved-again.ms"),
     ];
     for source in sources {
         let syms = ms_syntax::Names::global();
