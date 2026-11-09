@@ -87,6 +87,7 @@ export fn sign_token[T: Data](
 /*
 Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
 The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
+The payload must be a JSON object; any other JSON value returns EBADMSG.
 `exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
 `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
 Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
@@ -203,6 +204,10 @@ fn verify_bytes(
     return ok(verify(key, data, signature))
 
 fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
+    match claims:
+        ObjectValue(_): unit
+        _: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
+
     var moment = 0
 
     if let given = check.at:
