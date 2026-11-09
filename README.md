@@ -16,7 +16,7 @@ Under the hood, the compiler enforces one owner per value with no GC. Programs r
 
 The whole toolchain is tuned for agents. Errors tell you how to fix them, and built-in commands let you verify, test, fuzz, benchmark and profile. I use agent benchmarks to evolve the language and toolchain together, and I probe the compiler and standard library adversarially to find and fix correctness and performance bugs.
 
-```manuscript
+```rust
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
@@ -33,7 +33,7 @@ export fn main() Int:
 
 ## Ownership without annotations
 
-```manuscript
+```rust
 export fn main() Int:
     var names = List[String]()
     let first = "ada"
@@ -51,7 +51,7 @@ Use-after-move is a compile error. Every value has one owner and borrows are the
 
 ## All cores, regular functions
 
-```manuscript
+```rust
 import promise, wait_all from "@std/concurrency/promise.ms"
 
 fn fib(n: Int) Int:
@@ -67,7 +67,7 @@ No async, no await, no function coloring. Wrap a call in `promise(fn: ...)` and 
 
 ## Effects the compiler checks
 
-```manuscript
+```rust
 import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
@@ -94,7 +94,7 @@ Every diagnostic gives the cause and the remedy, and `ms check --json` is there 
 
 ## Batteries included
 
-```manuscript
+```rust
 import parse, stringify, StringifyOptions from "@std/data/json.ms"
 
 type Config:
