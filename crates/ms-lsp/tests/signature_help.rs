@@ -268,3 +268,40 @@ fn signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments() {
         );
     }
 }
+
+#[test]
+fn multiline_interpolation_signature_help() {
+    let syms = ms_syntax::Names::global();
+    let session = ms_check::Session::new();
+    for newline in ["\n", "\r\n"] {
+        let source = "fn join(first: Int, second: Int) Int: first + second\nfn f() String:\n    return \"\"\"\n        😀 {join(1, 2)}\n        \"\"\"\n".replace('\n', newline);
+        let offset = source.find(", 2").unwrap() + 2;
+        let d = Document::new("file:///multiline-help.ms", source.clone());
+        let answer = signature_help(
+            syms,
+            &session,
+            &d,
+            &Documents::new(),
+            text::position(&source, offset),
+        )
+        .unwrap();
+        assert_eq!(
+            answer.get("activeParameter").and_then(|v| v.as_i64()),
+            Some(1)
+        );
+        let raw = source.replace("return \"\"\"", "return r\"\"\"");
+        let offset = raw.find(", 2").unwrap() + 2;
+        let d = Document::new("file:///raw-help.ms", raw.clone());
+        assert_eq!(
+            signature_help(
+                syms,
+                &session,
+                &d,
+                &Documents::new(),
+                text::position(&raw, offset)
+            )
+            .unwrap(),
+            ms_lsp::json::Json::Null
+        );
+    }
+}

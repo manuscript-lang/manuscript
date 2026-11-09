@@ -279,15 +279,41 @@ pub fn header(source: &str, offset: usize, name: &str) -> Option<usize> {
         .map(|token| start + token.start)
 }
 
+/// Complete string spans when multiline syntax requires more than the forgiving
+/// one-quote scanner. Failure leaves incomplete snapshots on the existing path.
+pub(crate) fn multiline_string_spans(source: &str) -> Option<Vec<(usize, usize)>> {
+    if !source.contains("\"\"\"") {
+        return None;
+    }
+    let file = std::sync::Arc::from("editor");
+    let lexed = ms_syntax::lexer::lex(&file, source).ok()?;
+    Some(
+        lexed
+            .tokens
+            .iter()
+            .filter(|t| t.kind == ms_syntax::token::Tok::String)
+            .map(|t| (t.pos.offset as usize, t.end.offset as usize))
+            .collect(),
+    )
+}
+
 /// Scans tolerating unfinished strings and delimiters. It is only a cursor
 /// context scanner; semantic types and visibility always come from the checker.
 pub fn editor_tokens(source: &str) -> Vec<EditorToken<'_>> {
     let bytes = source.as_bytes();
+    let strings = multiline_string_spans(source).unwrap_or_default();
+    let mut strings = strings.into_iter().peekable();
     let mut result = Vec::new();
     let mut at = 0;
     while at < bytes.len() {
         let start = at;
         let b = bytes[at];
+        if strings.peek().is_some_and(|&(start, _)| start == at) {
+            let (_, end) = strings.next().expect("peeked string");
+            result.push(token(source, EditorKind::Str, at, end));
+            at = end;
+            continue;
+        }
         if b == b' ' || b == b'\r' || b == b'\t' {
             at += 1;
             continue;

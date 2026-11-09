@@ -209,7 +209,8 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
 
 /// The offset where the text interpolation containing `offset` begins
 /// (just after its `{`), or `None` when the cursor is outside every
-/// interpolation. Literals sit on one line, so only the cursor's line is read.
+/// interpolation. Complete multiline literals use their real lexer span;
+/// ordinary and incomplete snapshots retain the forgiving line scanner.
 pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
     #[derive(PartialEq)]
     enum State {
@@ -223,8 +224,21 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
         .iter()
         .rposition(|&b| b == b'\n')
         .map_or(0, |at| at + 1);
-    let (mut state, mut depth, mut from) = (State::Code, 0, 0);
+    let mut state = State::Code;
     let mut at = line;
+    let mut multiline = false;
+    if let Some(spans) = text::multiline_string_spans(source) {
+        let (start, _) = spans
+            .into_iter()
+            .find(|&(start, end)| offset > start && offset < end)?;
+        if source[start..].starts_with("r\"\"\"") {
+            return None;
+        }
+        multiline = source[start..].starts_with("\"\"\"");
+        at = start + if multiline { 3 } else { 1 };
+        state = State::Text;
+    }
+    let (mut depth, mut from) = (0, 0);
     while at < offset {
         let b = bytes[at];
         match state {
@@ -240,7 +254,7 @@ pub(crate) fn interpolation_start(source: &str, offset: usize) -> Option<usize> 
             },
             State::Text => match b {
                 b'\\' => at += 1,
-                b'"' => state = State::Code,
+                b'"' if !multiline => state = State::Code,
                 b'{' => {
                     (state, depth, from) = (State::Expr, 0, at + 1);
                 }
@@ -816,5 +830,65 @@ pub fn call_arguments(
                 )
             })
             .collect(),
+    }
+}
+
+#[cfg(test)]
+mod literal_context_tests {
+    use super::*;
+
+    #[test]
+    fn multiline_literal_context_preserves_payload_and_code_boundaries() {
+        for newline in ["\n", "\r\n"] {
+            for (body, cursor, expected) in [
+                ("say \"hello\" there", "hello", true),
+                ("escaped \\{name}", "name", true),
+                ("value {name.length()}", "name", false),
+                ("value {join(\"quoted\", name)}", "name", false),
+                ("value {join(\"quoted\", name)}", "quoted", true),
+            ] {
+                let source = format!("let s = \"\"\"\n    {body}\n    \"\"\"\nlet after = 1\n")
+                    .replace('\n', newline);
+                let d = Document::new("file:///contexts.ms", source.clone());
+                let offset = source.find(cursor).unwrap() + cursor.len();
+                assert_eq!(
+                    context_at(&d, text::position(&source, offset))
+                        .unwrap()
+                        .literal,
+                    expected,
+                    "{source}"
+                );
+                let offset = source.find("after").unwrap() + 5;
+                assert!(
+                    !context_at(&d, text::position(&source, offset))
+                        .unwrap()
+                        .literal
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn raw_multiline_payload_is_not_code() {
+        let source = "let text = r\"\"\"\n    {\"key\": value.member}\n    \"\"\"\n";
+        ms_syntax::parser::parse(&std::sync::Arc::from("raw.ms"), source).unwrap();
+        let d = Document::new("file:///raw.ms", source);
+        let offset = source.find("key").unwrap() + "key".len();
+        assert!(
+            context_at(&d, text::position(source, offset))
+                .unwrap()
+                .literal
+        );
+    }
+
+    #[test]
+    fn multiline_interpolation_is_code() {
+        let source = "let text = \"\"\"\n    {value.member}\n    \"\"\"\n";
+        ms_syntax::parser::parse(&std::sync::Arc::from("text.ms"), source).unwrap();
+        let d = Document::new("file:///text.ms", source);
+        let offset = source.find("member").unwrap() + "member".len();
+        let c = context_at(&d, text::position(source, offset)).unwrap();
+        assert!(!c.literal);
+        assert!(c.member);
     }
 }
