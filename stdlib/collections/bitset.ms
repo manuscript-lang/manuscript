@@ -122,9 +122,7 @@ impl BitSet:
     // Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3 symmetric difference.
     fn combine(other: BitSet, mode: Int) BitSet:
         var out: List[Int] = []
-        var count = self.words.length()
-        if other.words.length() > count:
-            count = other.words.length()
+        let count = self.words.length().max(other.words.length())
 
         for word in 0..count:
             let left = if word < self.words.length(): self.words.get(word) else: 0
@@ -155,9 +153,7 @@ impl BitSet:
 
     // Reports whether the sets share no member.
     fn is_disjoint_from(other: BitSet) Bool:
-        var count = self.words.length()
-        if other.words.length() < count:
-            count = other.words.length()
+        let count = self.words.length().min(other.words.length())
         for word in 0..count:
             if bit_and(self.words[word], other.words[word]) != 0:
                 return false

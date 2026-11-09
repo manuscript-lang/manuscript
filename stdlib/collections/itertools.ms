@@ -55,9 +55,7 @@ export fn zip_longest[A: Clonable, B: Clonable](
     right: List[B]
 ) List[Pair[A?, B?]]:
     var out: List[Pair[A?, B?]] = []
-    var longest = left.length()
-    if right.length() > longest:
-        longest = right.length()
+    let longest = left.length().max(right.length())
 
     for i in 0..longest:
         var first: A? = none
