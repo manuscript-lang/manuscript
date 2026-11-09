@@ -38,6 +38,8 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - New native sources are embedded through `ms-native`; verify built programs as well as crate tests. See [runtime conventions](../../documentation/contributing/runtime-conventions.md).
 - Run affected crate tests (`cargo nextest run -p <crate>`) and `make conform`; lifetime changes need bounded cancellation/shutdown cases. Report material untested platform limits.
 
+- Complex asymptotic trig must not overflow a finite phase while evaluating double-angle sine. Beyond half Float.max, use the bounded sine/cosine identity; test the tiny component with relative accuracy rather than a fixed tolerance that accepts zero (`complex.ms`, #3196).
+
 ## Rust runtime
 
 The runtime is `crates/ms-rt`, `ms-rt-abi`, and one `crates/ms-std-*` crate per native module, embedded through `ms-native`; `unsafe` is confined to the listed locations (`make repo-check`, [development](../../documentation/contributing/development.md#rust-unsafe-boundary)). Values are owned and moved, not shared; see [differences](../../documentation/contributing/rust-toolchain.md#differences-users-can-see). Native standard identities come from `stdlib/*.ms`; a signature change reaches the declaration and the `ms-std-*` crate.
