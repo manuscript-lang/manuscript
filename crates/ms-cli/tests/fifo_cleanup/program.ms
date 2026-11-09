@@ -2,7 +2,6 @@ import list, read_file, read_symlink from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
-import stdout from "@std/io/io.ms"
 
 fn read_pipe(path: String) Int:
     let _data = read_file(path).wait()
@@ -39,5 +38,5 @@ export fn main() Int:
         waited += 1
         open = open_on(path.clone())
 
-    stdout().write("{cancelled} {open}\n").get()
+    print("{cancelled} {open}")
     return 0

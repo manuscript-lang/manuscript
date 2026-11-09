@@ -200,9 +200,7 @@ fn bench_for_list() Int:
         i += 1
 
     let t = monotonic()
-    var fs = 0
-    for x in big:
-        fs += x
+    var fs = big.sum()
     report("for_list", 1000000, t)
     return fs
 

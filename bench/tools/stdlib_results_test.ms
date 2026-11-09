@@ -71,15 +71,15 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 
 test "labels disambiguate only collisions":
     let labels = case_labels(["a.ms::x", "b.ms::x", "b.ms::y"])
-    try expect_equal(labels.get("a.ms::x").get(""), "a.ms::x")
-    try expect_equal(labels.get("b.ms::x").get(""), "b.ms::x")
-    try expect_equal(labels.get("b.ms::y").get(""), "y")
+    try expect_equal(labels.get_or("a.ms::x", ""), "a.ms::x")
+    try expect_equal(labels.get_or("b.ms::x", ""), "b.ms::x")
+    try expect_equal(labels.get_or("b.ms::y", ""), "y")
 
 test "a user label cannot collide with a qualified display name":
     let names = ["a.ms::x", "b.ms::x", "c.ms::a.ms::x"]
     let labels = case_labels(names)
     for name in names:
-        try expect_equal(labels.get(name).get(""), name)
+        try expect_equal(labels.get_or(name, ""), name)
 
 test "reads operations and median per case":
     let sample = try expect_ok(
@@ -92,9 +92,9 @@ test "reads operations and median per case":
             none
         )
     )
-    try expect_equal(sample.operations.get("m.ms::a").get(0), 10)
-    try expect_equal(sample.medians.get("m.ms::a").get(0.0), 2.5)
-    try expect_equal(sample.medians.get("m.ms::b").get(1.0), 0.0)
+    try expect_equal(sample.operations.get_or("m.ms::a", 0), 10)
+    try expect_equal(sample.medians.get_or("m.ms::a", 0.0), 2.5)
+    try expect_equal(sample.medians.get_or("m.ms::b", 1.0), 0.0)
 
 test "qualified case identity":
     let before = document([bench("a", "passed", "10", "2")])

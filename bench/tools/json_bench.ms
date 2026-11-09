@@ -118,9 +118,9 @@ fn run(names: List[String]) Result[String, Error]:
         if not (m.contains(key) and r.contains(key)): continue
 
         let f = key.split("\t")
-        let nr = n.get(key).get(Rate(1, 0))
-        let rr = r.get(key).get(Rate(1, 0))
-        let mr = m.get(key).get(Rate(1, 0))
+        let nr = n.get_or(key, Rate(1, 0))
+        let rr = r.get_or(key, Rate(1, 0))
+        let mr = m.get_or(key, Rate(1, 0))
         rows.append(
             left(f[0], 14) + left(f[1], 11) + right(
                 mbps(nr).to_fixed(0), 10

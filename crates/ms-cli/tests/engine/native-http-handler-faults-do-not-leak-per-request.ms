@@ -10,7 +10,7 @@ fn handle(request: HttpRequest) HttpResponse:
 export fn main() Int:
     if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         let server = acquired
-        stdout().write("{server.address()}\n").get()
+        print("{server.address()}")
 
         let _flushed = stdout().flush()
         let _ignored = server.wait()

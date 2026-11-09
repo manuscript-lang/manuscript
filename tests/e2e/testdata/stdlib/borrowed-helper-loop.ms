@@ -14,9 +14,7 @@ impl Grid:
         return self.rows[0]
 
 fn total(rows: List[List[Int]]) Int:
-    var sum = 0
-    for value in row(rows, 0):
-        sum += value
+    var sum = row(rows, 0).sum()
     return sum
 
 fn fresh_row() List[Int]:
@@ -24,9 +22,7 @@ fn fresh_row() List[Int]:
 
 test "borrowed helper iterables keep scalar and string elements in place":
     let rows = [[1, 2], [3, 4]]
-    var sum = 0
-    for value in first_row(rows):
-        sum += value
+    var sum = first_row(rows).sum()
     try expect_equal(sum, 3)
     try expect_equal(total(rows), 3)
     sum = 0
@@ -64,9 +60,7 @@ test "borrowed receiver iterable handles break and continue":
     try expect_equal(grid.rows[0], [1, 2, 3, 4])
 
 test "fresh results and temporary owners remain owned":
-    var sum = 0
-    for value in fresh_row():
-        sum += value
+    var sum = fresh_row().sum()
     try expect_equal(sum, 15)
     sum = 0
     for value in row([[7, 8]], 0):

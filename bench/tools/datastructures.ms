@@ -39,7 +39,7 @@ export fn main() Int:
     var n = 5
     let args = arguments()
 
-    if args.length() > 0:
+    if not args.is_empty():
         if let parsed = repeats(args[0]):
             n = parsed
         else:

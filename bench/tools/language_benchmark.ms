@@ -33,19 +33,19 @@ fn execute(binary: String, cpu: String) Result[Unit, Error]:
     return ok(unit)
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
-    let out = absolute(opts.get("output").get(""))
+    let out = absolute(opts.get_or("output", ""))
     ensure_directory(out)
 
-    let cpu = opts.get("cpu").get("")
+    let cpu = opts.get_or("cpu", "")
     var clis = Map[String, String]()
-    clis.add("before", absolute(opts.get("before").get("")))
-    clis.add("after", absolute(opts.get("after").get("")))
+    clis.add("before", absolute(opts.get_or("before", "")))
+    clis.add("after", absolute(opts.get_or("after", "")))
 
     let workloads = ["numeric", "calls", "list", "life"]
 
     for name in workloads:
         for label in ["before", "after"]:
-            let cli = clis.get(label).get("")
+            let cli = clis.get_or(label, "")
             let source = "bench/language/{name}.ms"
             let _bin = try must(
                 "ms build {name}",
@@ -84,7 +84,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
                 try execute("{out}/{name}-{label}", cpu)
 
                 let elapsed = (now_ns() - start).to_float() / 1000000000.0
-                var list = samples.get(label).get([])
+                var list = samples.get_or(label, [])
                 list.append(elapsed)
                 samples.add(label.clone(), list)
                 (
@@ -93,14 +93,14 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
                     ).get()
                 )
 
-        let before = median(samples.get("before").get([]))
-        let after = median(samples.get("after").get([]))
+        let before = median(samples.get_or("before", []))
+        let after = median(samples.get_or("after", []))
         var entry = Map[String, JsonValue]()
         var seconds = Map[String, JsonValue]()
         var medians = Map[String, JsonValue]()
         for label in ["before", "after"]:
             seconds.add(
-                label.clone(), jlist(samples.get(label).get([]).map(fn s: jfloat(s)))
+                label.clone(), jlist(samples.get_or(label, []).map(fn s: jfloat(s)))
             )
         medians.add("before", jfloat(before))
         medians.add("after", jfloat(after))
@@ -119,7 +119,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
     var names = Map[String, JsonValue]()
     for label in ["before", "after"]:
-        names.add(label.clone(), jstr(clis.get(label).get("")))
+        names.add(label.clone(), jstr(clis.get_or(label, "")))
     report.add("clis", jobject(names))
     report.add("results", jobject(results))
 
@@ -135,7 +135,7 @@ export fn main() Int:
     if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
-    let runs = opts.get("runs").get("3").parse_int().get(0)
+    let runs = opts.get_or("runs", "3").parse_int().get(0)
     if runs < 1: return fail("--runs must be positive")
 
     return finish(run(opts, runs))

@@ -3,7 +3,7 @@ import parse, from_int, BigInt from "@std/math/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
-    try expect_false(not big.to_int().is_none())
+    try expect_false(big.to_int().is_some())
     try expect_equal(big.subtract(from_int(1)).to_int(), 9223372036854775807)
     try expect_equal(from_int(7).multiply(from_int(6)).to_string_radix(10), "42")
     try expect_equal((try from_int(-7).divide(from_int(3))).to_int(), -2)

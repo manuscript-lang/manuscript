@@ -60,4 +60,4 @@ export fn second_value_transform() Int:
     input.add(Key(5, "original"), 2)
 
     let mapped = remap_values(input, fn key, value: value + 1)
-    return mapped.get(Key(5, "different")).get(0)
+    return mapped.get_or(Key(5, "different"), 0)

@@ -1,6 +1,5 @@
 // conform: tags=lists,mutation,tier-stdlib
 // conform: phase=run
-import stdout from "@std/io/io.ms"
 
 type Counter:
     n: Int
@@ -17,5 +16,5 @@ export fn main() Int:
     let two = xs[c.next()].clone()
     let len = xs[c.next()].length()
     xs[c.next()] = "z"
-    stdout().write("{one} {two} {len} {xs} {c.n}\n").get()
+    print("{one} {two} {len} {xs} {c.n}")
     return 0

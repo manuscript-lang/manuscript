@@ -298,10 +298,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
     for index in 148..156:
         block[index] = 32
 
-    var sum = 0
-    for byte in block:
-        sum += byte
-
+    var sum = block.sum()
     var rest = sum
 
     for index in 0..6:

@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,control-flow,closures,records,tier-io
 // conform: phase=run
 // conform: origin=close-gap-probes
-import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Door:
@@ -9,7 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed {self.name}\n").get()
+        print("closed {self.name}")
         return ok(unit)
 
 impl Door:
@@ -57,21 +56,21 @@ fn captured(c: Bool) fn() Int:
 
 export fn main() Int:
     var_unmoved()
-    stdout().write("--var_moved true\n").get()
+    print("--var_moved true")
     var_moved(true)
-    stdout().write("--var_moved false\n").get()
+    print("--var_moved false")
     var_moved(false)
-    stdout().write("--var_reassign\n").get()
+    print("--var_reassign")
     var_reassign()
-    stdout().write("--var_move_reassign true\n").get()
+    print("--var_move_reassign true")
     var_move_reassign(true)
-    stdout().write("--var_move_reassign false\n").get()
+    print("--var_move_reassign false")
     var_move_reassign(false)
-    stdout().write("--captured true\n").get()
+    print("--captured true")
 
     let _f = captured(true)
-    stdout().write("--captured false\n").get()
+    print("--captured false")
 
     let _g = captured(false)
-    stdout().write("--end\n").get()
+    print("--end")
     return 0

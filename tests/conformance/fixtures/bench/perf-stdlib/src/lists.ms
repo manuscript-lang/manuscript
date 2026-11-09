@@ -27,9 +27,7 @@ export fn bench_list() Unit:
         "list.for_in",
         100000,
         fn() Int:
-            var n = 0
-            for x in data:
-                n += x
+            var n = data.sum()
             return n
     )
 

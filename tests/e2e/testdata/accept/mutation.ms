@@ -120,7 +120,7 @@ test "list growth and saved clone methods preserve current contents":
     let empty: List[Int] = []
     var empty_copy = empty.clone()
     empty_copy.append(1)
-    try expect_false(not (empty.length() == 0 and empty_copy.length() == 1))
+    try expect_false(not (empty.is_empty() and empty_copy.length() == 1))
 
 test "collection clones keep independent lengths":
     let child = Val(1)
@@ -168,7 +168,7 @@ test "map and set clear affect their owner while copies retain contents":
         )
     )
     entries.clear()
-    try expect_false(not (entries.length() == 0 and copy.length() == 1))
+    try expect_false(not (entries.is_empty() and copy.length() == 1))
 
     var values = Set[Int]([1])
     let set_copy = values.clone()
@@ -177,7 +177,7 @@ test "map and set clear affect their owner while copies retain contents":
     values.remove(9)
     try expect_false(not (values.values() == [1, 2] and set_copy.values() == [1]))
     values.clear()
-    try expect_false(not (values.length() == 0 and set_copy.length() == 1))
+    try expect_false(not (values.is_empty() and set_copy.length() == 1))
 
 enum Choice:
     Present(value: Val)

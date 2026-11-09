@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,stdlib-promise,tier-io
 // conform: phase=run
 import Closeable from "@std/core.ms"
-import stdout from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 
 type Door:
@@ -9,7 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed\n").get()
+        print("closed")
         return ok(unit)
 
 impl Door:
@@ -25,5 +24,5 @@ fn use(var door: Door) Int!:
 export fn main() Int:
     var door = Door(["front", "back"])
     let moved = promise(fn: use(var door))
-    stdout().write("{moved.wait().get(0)}\n").get()
+    print("{moved.wait().get(0)}")
     return 0

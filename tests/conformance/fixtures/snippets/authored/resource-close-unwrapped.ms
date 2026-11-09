@@ -2,14 +2,13 @@
 // conform: phase=run
 // conform: origin=a resource unwrapped or passed through a call closes at scope end
 import Closeable from "@std/core.ms"
-import stdout from "@std/io/io.ms"
 
 type Res:
     name: String
 
 impl Closeable for Res:
     var fn close() Unit!:
-        stdout().write("close {self.name}\n").get()
+        print("close {self.name}")
         return ok(unit)
 
 fn make(name: String) Res!Error:
@@ -20,21 +19,21 @@ fn keep(r: Res) Res:
 
 fn via_try() Unit!Error:
     let r = try make("try")
-    stdout().write("body {r.name}\n").get()
+    print("body {r.name}")
     return ok(unit)
 
 fn via_get() Unit:
     let r = make("get").get()
-    stdout().write("body {r.name}\n").get()
+    print("body {r.name}")
 
 fn via_optional_get() Unit:
     let o: Res? = Res("optional")
     let r = o.get(Res("default"))
-    stdout().write("body {r.name}\n").get()
+    print("body {r.name}")
 
 fn via_passthrough() Unit:
     let r = keep(Res("keep"))
-    stdout().write("body {r.name}\n").get()
+    print("body {r.name}")
 
 export fn main() Int:
     let _ = via_try()

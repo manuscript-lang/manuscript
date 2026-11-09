@@ -21,7 +21,7 @@ test "literals":
             floats.length() == 2
             and flags.length() == 3
             and words.length() == 2
-            and empty.length() == 0
+            and empty.is_empty()
         )
     )
     floats.append(value: 3.5)

@@ -3,11 +3,11 @@ import PriorityQueue, Queue from "@std/collections/queue.ms"
 
 test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)
-    try expect_false(not queue.is_empty() or not queue.peek().is_none())
+    try expect_false(not queue.is_empty() or queue.peek().is_some())
     try expect_false((not queue.enqueue(1) or not queue.enqueue(2) or queue.enqueue(3)))
     try expect_false(queue.peek() != 1 or queue.length() != 2)
     try expect_false(queue.dequeue() != 1 or queue.dequeue() != 2)
-    try expect_false(not queue.dequeue().is_none() or not queue.enqueue(4))
+    try expect_false(queue.dequeue().is_some() or not queue.enqueue(4))
 
 test "priority queue orders values and honors capacity":
     var queue = PriorityQueue[Int](3)

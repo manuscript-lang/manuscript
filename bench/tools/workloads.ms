@@ -45,7 +45,7 @@ fn largest_input(path: String) String!:
     for c in cases.get([]):
         if c.stdin.length() > best.length(): best = c.stdin.clone()
 
-    let size = if best.length() > 0: best.length() else: 1
+    let size = if not best.is_empty(): best.length() else: 1
     let copies = if 3000000 / size > 1: 3000000 / size else: 1
     return ok(best.repeat(copies).get(""))
 
@@ -127,7 +127,7 @@ export fn main() Int:
     var n = 3
     let args = arguments()
 
-    if args.length() > 0:
+    if not args.is_empty():
         if let parsed = repeats(args[0]):
             n = parsed
         else:

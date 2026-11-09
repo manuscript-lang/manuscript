@@ -13,7 +13,7 @@ Use instead of:
 - `if let`, `get(default)`, `try` over `is_none()` guards and `match` unwrapping. Avoid chained `.get(a).get(b)`; use `get_or(key, default)` on a Map (`Headers`, `JsonValue` and `Result` lack it). Inside a type's own `get_or` do not write `self.get_or`: it recurses.
 - `"""` multi-line literals over `+ "\n" +` chains.
 
-Do not rewrite `tests/conformance` fixtures for style: their expected output holds line numbers, so edits fail the corpus. Keep fixtures that exist to exercise the verbose form. `repeated` loops and clones, so keep native `filled` in hot paths.
+Tests and bench sources follow the same idioms (2026-11-09, Chinmay). Rewriting a conformance fixture shifts recorded line numbers: re-record only the `-fmt` twins (`ms-conform record --ms target/release/ms --id <id>`) and revert any other fixture whose output changes. Leave `tests/ownership-counts` (allocation counts depend on the code), `bench/perf` and `bench/language` kernels (they measure the written loop), fuzz fixtures (generated), and fixtures that exercise the verbose form. `repeated` loops and clones, so keep native `filled` in hot paths.
 Evidence: scan with counts in the project file terse-manuscript/catalog.md (2026-11-09).
 Verify: `ms fmt --check`, `make conform`, `make e2e`, `make repo-check`.
 

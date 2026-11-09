@@ -47,7 +47,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
             return invalid("unknown sample: {line.trim()}")
 
         let key = "{trial.get(0)} {version}"
-        var cases = seen.get(key).get(Set[String]())
+        var cases = seen.get_or(key, Set[String]())
         if (
             cases.contains(name)
             or check.get(0) != checksum(name)
@@ -78,8 +78,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
     ]
 
     for name in names.sorted():
-        let ms = best.get("{name} ms").get(0)
-        let rust = best.get("{name} rust").get(1)
+        let ms = best.get_or("{name} ms", 0)
+        let rust = best.get_or("{name} rust", 1)
         rows.append(
             left(name, 12) + " " + right("{ms}", 10) + " " + right(
                 "{rust}", 10
