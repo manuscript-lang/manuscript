@@ -4,6 +4,7 @@ import HashAlgorithm from "@std/crypto.ms"
 import bit_and, bit_or, shift_right_unsigned from "@std/math/math.ms"
 import random_bytes from "@std/random.ms"
 import now from "@std/time.ms"
+import draw_uuid from "@std/internal/random.ms"
 
 // The namespace for fully qualified domain names, for `uuid_v5`.
 export let namespace_dns = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
@@ -13,6 +14,11 @@ export let namespace_url = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
 export let namespace_oid = "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
 // The namespace for X.500 distinguished names, for `uuid_v5`.
 export let namespace_x500 = "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
+
+// Creates a version-4 UUID from the operating system's entropy.
+// ms: effect std.random.read
+export fn uuid_v4() String!:
+    return draw_uuid()
 
 /*
 Creates the version-5 (SHA-1, name-based) UUID of `name` within `namespace`.

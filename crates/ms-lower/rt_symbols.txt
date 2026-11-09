@@ -506,7 +506,6 @@ msstd_http_body_metadata(handle b: *const ObjCell<BodyH>, out: *mut MetadataWire
 msstd_http_body_read(handle b: *const ObjCell<BodyH>, has_max: HasRaw, max: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_http_body_read_all(handle b: *const ObjCell<BodyH>, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_http_client_close(handle c: *const ObjCell<ClientH>)
-msstd_http_client_request(handle c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
 msstd_http_client_request_bytes(handle c: *const ObjCell<ClientH>, method: *const StrVal, address: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<BodyH>, err: ErrSlot) -> u8
 msstd_http_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle
 msstd_http_exchange_close(handle x: *const ObjCell<ExchH>)
@@ -668,7 +667,6 @@ msstd_net_network_listen(handle net: *const ObjCell<NetH>, address: *const StrVa
 msstd_net_network_listen_tls(handle net: *const ObjCell<NetH>, address: *const StrVal, opts: *const TlsOptionsWire, has_timeout: HasRaw, timeout: i64, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8
 msstd_net_network_listen_unix(handle net: *const ObjCell<NetH>, path: *const StrVal, out: *mut *mut ObjCell<ListenerH>, err: ErrSlot) -> u8
 msstd_net_network_lookup(handle net: *const ObjCell<NetH>, name: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8
-msstd_net_network_request(handle net: *const ObjCell<NetH>, method: *const StrVal, address: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const StrVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut ClientResponseWire, err: ErrSlot) -> u8
 msstd_net_network_request_bytes(handle net: *const ObjCell<NetH>, method: *const StrVal, address: *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut ClientResponseWire, err: ErrSlot) -> u8
 msstd_net_network_resolve(handle net: *const ObjCell<NetH>, name: *const StrVal, kind: i64, has_max: HasRaw, max: i64, has_timeout: HasRaw, timeout: i64, out: *mut VecVal, err: ErrSlot) -> u8
 msstd_net_network_restrict(handle net: *const ObjCell<NetH>, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut ObjCell<NetH>, err: ErrSlot) -> u8
@@ -691,7 +689,6 @@ msstd_process_info(out: *mut ProcessInfoOut, err: ErrSlot) -> u8
 msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: ErrSlot) -> u8
 msstd_process_load_environment(path: *const StrVal, has_max: HasRaw, max: i64, err: ErrSlot) -> u8
 msstd_process_memory_usage(out: *mut MemoryOut, err: ErrSlot) -> u8
-msstd_process_monotonic_time() -> i64
 msstd_process_replace(program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, err: ErrSlot) -> u8
 msstd_process_resource_usage(out: *mut ResourceOut, err: ErrSlot) -> u8
 msstd_process_send_signal(pid: i64, signal: i64, err: ErrSlot) -> u8

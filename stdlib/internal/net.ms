@@ -201,16 +201,6 @@ export extern fn msstd_net_network_lookup(
     timeout: Duration?
 ) List[String]!
 
-export extern fn msstd_net_network_request(
-    net: NativeNetwork,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: String,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ClientResponse!
-
 export extern fn msstd_net_network_request_bytes(
     net: NativeNetwork,
     method: HttpMethod,

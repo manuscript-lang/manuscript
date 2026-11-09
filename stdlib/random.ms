@@ -1,5 +1,5 @@
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import base64_encode_unpadded from "@std/data/encoding.ms"
+import base64_encode from "@std/data/encoding.ms"
 import now from "@std/time.ms"
 import panic from "@std/core.ms"
 import (
@@ -17,7 +17,6 @@ import (
 import (
     msstd_random_os_bytes,
     draw_int,
-    draw_uuid,
     draw_float,
     draw_shuffle,
     draw_choice,
@@ -28,11 +27,6 @@ import (
 // ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
     return draw_int(min, max_exclusive)
-
-// Creates a version-4 UUID from the operating system's entropy.
-// ms: effect std.random.read
-export fn uuid_v4() String!:
-    return draw_uuid()
 
 /*
 Creates a ULID: 26 uppercase Crockford Base32 characters holding the Unix time in milliseconds and 80 random bits.
@@ -80,7 +74,7 @@ The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API ke
 // ms: effect std.random.read
 export fn token(size: Int = 32) String!:
     let data = try random_bytes(size)
-    return ok(base64_encode_unpadded(data, url_safe: true))
+    return ok(base64_encode(data, url_safe: true, padded: false))
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the operating system's entropy.
 // ms: effect std.random.read
