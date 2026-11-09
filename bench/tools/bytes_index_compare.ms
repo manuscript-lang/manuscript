@@ -84,16 +84,16 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
     var per = Map[String, List[Float]]()
 
     for name in names:
-        let _warm = try run_rows(paths.get(name).get(""), expected, cpu)
+        let _warm = try run_rows(paths.get_or(name, ""), expected, cpu)
         validated.append(jstr("warmup {name}"))
 
     for pair in 0..orders.length():
         for variant in orders[pair]:
-            for row in try run_rows(paths.get(variant).get(""), expected, cpu):
+            for row in try run_rows(paths.get_or(variant, ""), expected, cpu):
                 csv.append("{pair},{variant},{row.line}")
 
                 let key = "{row.name} {variant}"
-                var list = per.get(key).get([])
+                var list = per.get_or(key, [])
                 list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
                 per.add(key.clone(), list)
 
@@ -108,7 +108,7 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
     record.add("expected_cases", jint(expected.length()))
     record.add(
         "executables",
-        binaries_json(names.map(fn n: labeled(n.clone(), paths.get(n).get(""))))
+        binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, ""))))
     )
     record.add("validated_producers", jlist(validated))
     write_json("{out}/record.json", jobject(record))
@@ -122,7 +122,7 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
         var cells = List[String]()
 
         for variant in names:
-            let s = per.get("{name} {variant}").get([])
+            let s = per.get_or("{name} {variant}", [])
             let sorted = s.sorted()
             cells = cells.concat(
                 [
@@ -130,8 +130,8 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
                 ]
             )
 
-        let b = per.get("{name} before").get([])
-        let a = per.get("{name} after").get([])
+        let b = per.get_or("{name} before", [])
+        let a = per.get_or("{name} after", [])
         var deltas = List[Float]()
         var slower = 0
 

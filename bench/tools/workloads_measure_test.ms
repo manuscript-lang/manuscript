@@ -11,7 +11,7 @@ type Producer:
 
 impl Producer:
     var fn run(version: String) String!:
-        let count = self.counts.get(version).get(0)
+        let count = self.counts.get_or(version, 0)
         self.counts.add(version.clone(), count + 1)
         self.order.append(version.clone())
 

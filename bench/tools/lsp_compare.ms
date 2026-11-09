@@ -136,7 +136,7 @@ fn compare(
         var seen = false
 
         for name in ["before", "after"]:
-            let first = try run_harness(paths.get(name).get(""), c, 1, cpu)
+            let first = try run_harness(paths.get_or(name, ""), c, 1, cpu)
 
             if not seen:
                 expected = Run(0, first.checksum, first.size, 0)
@@ -161,20 +161,20 @@ fn compare(
 
         for s in 0..samples:
             for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
-                let r = rounds.get(name).get(1)
-                let got = try run_harness(paths.get(name).get(""), c, r, cpu)
+                let r = rounds.get_or(name, 1)
+                let got = try run_harness(paths.get_or(name, ""), c, r, cpu)
                 if got.checksum != expected.checksum or got.size != expected.size:
                     return invalid("{c.mode} {c.count} {c.shape}: output changed")
 
-                var list = observed.get(name).get([])
+                var list = observed.get_or(name, [])
                 list.append(got.elapsed.to_float() / r.to_float())
                 observed.add(name.clone(), list)
                 rows.append(
                     "{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
                 )
 
-        let old = median(observed.get("before").get([]))
-        let new = median(observed.get("after").get([]))
+        let old = median(observed.get_or("before", []))
+        let new = median(observed.get_or("after", []))
         (
             stdout()
             .write(
@@ -200,12 +200,12 @@ export fn main() Int:
 
     let opts = parsed.get(Map[String, String]())
     let default_samples = if args[0] == "hover": 9 else: 10
-    let samples = opts.get("samples").get("{default_samples}").parse_int().get(0)
+    let samples = opts.get_or("samples", "{default_samples}").parse_int().get(0)
     if samples < 5: return fail("--samples must be at least 5")
 
     let result = compare(
         args[0], absolute(args[1].clone()), absolute(args[2].clone()),
-        opts.get("out").get(""), samples, opts.get("cpu").get("")
+        opts.get_or("out", ""), samples, opts.get_or("cpu", "")
     )
     if result.is_error(): return fail(result.err().message)
 

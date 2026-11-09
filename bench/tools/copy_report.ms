@@ -44,11 +44,11 @@ fn report(mir: String) List[String]:
                 let ty = line.slice(colon + 2, line.length()).get("")
                 let shown = ty.slice(0, ty.index_of(" = copy").get(ty.length())).get("")
                 let src = if words.length() > 1: words[1].clone() else: ""
-                let key = "{shown} <- {defs.get(src).get("?")}"
-                counts.add(key.clone(), counts.get(key).get(0) + 1)
+                let key = "{shown} <- {defs.get_or(src, "?")}"
+                counts.add(key.clone(), counts.get_or(key, 0) + 1)
 
     // uniq -c | sort -rn: count descending, ties in descending text order.
-    var rows = counts.keys().map(fn k: Row(counts.get(k).get(0), k.clone()))
+    var rows = counts.keys().map(fn k: Row(counts.get_or(k, 0), k.clone()))
     rows = rows.sorted(
         fn(a: Row, b: Row) Int: if a.count != b.count: b.count - a.count else: b.text.compare(
             a.text
@@ -62,9 +62,7 @@ type Row:
 
 export fn main() Int:
     let targets = arguments()
-    if targets.length() == 0: return usage(
-        "usage: copy_report.ms -- <ms.toml|file.ms>..."
-    )
+    if targets.is_empty(): return usage("usage: copy_report.ms -- <ms.toml|file.ms>...")
 
     let tmp = temporary("copy-report-").get()
     let out = "{tmp.path()}/out.mir"
@@ -74,7 +72,7 @@ export fn main() Int:
         let ran = capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])
         if not ran.ok or ran.code != 0: return finish(must("ms emit {target}", ran))
 
-        stdout().write("== {target}\n").get()
+        print("== {target}")
         for row in report(read_text(out)):
             stdout().write(row + "\n").get()
 

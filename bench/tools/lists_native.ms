@@ -24,7 +24,6 @@ import (
 ) from "./lib.ms"
 import arguments from "@std/os/env.ms"
 import JsonValue from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
 
 type Workload:
     name: String
@@ -38,11 +37,11 @@ fn body(w: Workload) String:
     return text + "    return 0\n"
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
-    let out = absolute(opts.get("output").get(""))
+    let out = absolute(opts.get_or("output", ""))
     ensure_directory(out)
 
-    let cli = absolute(opts.get("cli").get(""))
-    let cpu = opts.get("cpu").get("")
+    let cli = absolute(opts.get_or("cli", ""))
+    let cpu = opts.get_or("cpu", "")
     let source = read_text("bench/lists/program.ms")
     var results = List[JsonValue]()
 
@@ -89,7 +88,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
             sample.add("seconds", jfloat(elapsed))
             sample.add("peak_rss_kib", jint(measured.kib))
             samples.append(jobject(sample))
-            stdout().write("{label} {elapsed.to_fixed(6)}s {measured.kib} KiB\n").get()
+            print("{label} {elapsed.to_fixed(6)}s {measured.kib} KiB")
 
         var result = Map[String, JsonValue]()
         result.add("name", jstr(w.name.clone()))
@@ -117,7 +116,7 @@ export fn main() Int:
     if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
-    let runs = opts.get("runs").get("3").parse_int().get(0)
+    let runs = opts.get_or("runs", "3").parse_int().get(0)
     if runs < 1: return fail("runs must be positive")
 
     return finish(run(opts, runs))

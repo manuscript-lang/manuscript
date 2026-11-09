@@ -45,18 +45,18 @@ fn run(work: String, n: Int) Result[String, Error]:
 
                 let key = "{f[0]} {v}"
                 let value = f[1].parse_float().get(0.0)
-                if value > best.get(key).get(0.0) or not best.contains(key): best.add(
+                if value > best.get_or(key, 0.0) or not best.contains(key): best.add(
                     key.clone(), value
                 )
 
-    var rows = best.keys().sorted().map(fn k: "{k} {best.get(k).get(0.0).to_fixed(2)}")
+    var rows = best.keys().sorted().map(fn k: "{k} {best.get_or(k, 0.0).to_fixed(2)}")
     return ok(rows.join("\n"))
 
 export fn main() Int:
     var n = 5
     let args = arguments()
 
-    if args.length() > 0:
+    if not args.is_empty():
         if let parsed = repeats(args[0]):
             n = parsed
         else:
