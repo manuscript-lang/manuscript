@@ -46,11 +46,7 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
         panic("cycle: times must not be negative")
 
     let count = if values.is_empty(): 0 else: times
-    var out: List[T] = []
-    for unused1 in 0..count:
-        for value in values:
-            out.append(value.clone())
-    return out
+    return values.repeated(count)
 
 // Pairs items by position and pads the shorter list with none, so the result is as long as the longer list.
 // Example: `zip_longest([1, 2, 3], ["a"])` pairs `(1, "a")`, `(2, none)` and `(3, none)`.
@@ -108,10 +104,8 @@ export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[Lis
         panic("permutations: size must be from 0 to the list length")
 
     var out: List[List[T]] = []
-    var used: List[Bool] = []
+    var used = [false].repeated(n)
     var chosen: List[Int] = []
-    for unused2 in 0..n:
-        used.append(false)
     extend_permutations(values, k, var used, var chosen, var out)
     return out
 

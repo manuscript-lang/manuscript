@@ -197,7 +197,7 @@ export fn main() Int:
                 if line.starts_with("heap: "): heaps += 1
                 else: leaks += 1
 
-                stdout().write("{line}\n").get()
+                print("{line}")
 
     change_directory(root).get()
     (

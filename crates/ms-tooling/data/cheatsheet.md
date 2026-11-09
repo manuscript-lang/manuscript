@@ -27,7 +27,7 @@ export fn main() Int:
         let top = doc.longest() // borrows doc
         let keep = top.clone() // copy
         let long = doc.lines.filter(fn l: l.length() > 3)
-        stdout().write("{keep} {long.length()}\n").get()
+        print("{keep} {long.length()}")
     return 0
 ```
 

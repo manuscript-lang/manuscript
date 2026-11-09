@@ -56,7 +56,7 @@ export fn main() Int:
 
     if hugo_ok: stdout().write(hugo_output).get()
     else:
-        stdout().write("MISSING Hugo Extended 0.146.7 or newer (book checks)\n").get()
+        print("MISSING Hugo Extended 0.146.7 or newer (book checks)")
         failed += 1
 
     if host() == "windows":
