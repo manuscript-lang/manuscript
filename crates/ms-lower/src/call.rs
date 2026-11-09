@@ -681,11 +681,24 @@ impl<'a> FnLower<'a> {
         if !owned_args.get(k).copied().unwrap_or(false) {
             return None;
         }
+        let arg_ty = self.ty_of(arg);
+        if let TyKind::Opt(inner) = self.b.m.types.kind(self.ty_of(v)).clone()
+            && inner == arg_ty
+        {
+            // The callee converted the whole temporary to an optional (`fn f[T](x: T) T?: x`).
+            self.unhold_temp(arg);
+            let arg = if self.resource_temps.contains_key(&arg) {
+                self.take_resource_temp(arg).0
+            } else {
+                arg
+            };
+            let out = self.b.opt_some(arg);
+            return Some(self.val(out, true));
+        }
         let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone() else {
             return None;
         };
         let def = self.b.m.alts[a.index()].clone();
-        let arg_ty = self.ty_of(arg);
         let mut cases = (0..def.cases.len())
             .filter(|&i| matches!(def.cases[i].fields.as_slice(), [(_, t)] if *t == arg_ty));
         let case = cases.next()?;
