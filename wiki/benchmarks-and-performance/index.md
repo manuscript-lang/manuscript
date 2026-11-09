@@ -29,3 +29,4 @@ Perf and agent benchmarks, profiling.
 - [String fusion must not treat other-block drops as early](string-fusion-must-not-treat-other-block-drops-as-early.md): a leaf dropped on a sibling path is not dropped before the join; `Info::dropped_before` uses reachability, c36 -6.8% instructions.
 
 - [Deque rotation uses the shorter signed remainder](deque-rotation-uses-the-shorter-signed-remainder.md): normalize both directions without negating Int.min; retain partial-ring and unit-step controls.
+- [Diff context windows need only new flags](diff-context-windows-need-only-new-flags.md): mark each Boolean once while preserving overlapping hunk windows and ordinary diff controls.
