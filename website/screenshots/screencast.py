@@ -48,6 +48,11 @@ SCENES = [
     dict(title="Including a *native profiler*.",
          sub="ms profile: source attribution, pprof, folded stacks. Nothing to install.",
          src="prof.ms", steps=[("ms profile prof.ms", lambda ls: ls[2:4])]),
+    dict(title="*Token-lean* syntax, *benchmark-driven*.",
+         sub="Fewer tokens to write and read, and we measure it.",
+         points=["Compact syntax: less to generate, less to read.",
+                 "20 challenges, 4 languages, scored on hidden tests.",
+                 "Pass rate, tokens, turns and cost guide every change."]),
     dict(title="Can't read all that agent code? *Map it.*",
          sub="Call graph here; --format html writes an offline interactive code map.",
          src=None, steps=[("ms diagram par.ms --format ascii", first(6))]),
@@ -190,6 +195,19 @@ def chart_frame(sc, n, total, bars):
     chrome(d, n, total)
     return im
 
+def points_frame(sc, n, total, shown):
+    im = background()
+    d = ImageDraw.Draw(im)
+    header(d, sc["title"], sc["sub"])
+    terminal(d)
+    y = CARD[1] + 80
+    for i, text in enumerate(sc["points"][:shown]):
+        d.ellipse([CARD[0] + 40, y + 9, CARD[0] + 58, y + 27], fill=C["acc"])
+        d.text((CARD[0] + 84, y), text, font=CODE_M, fill=C["fg"])
+        y += 110
+    chrome(d, n, total)
+    return im
+
 def card_frame(kind, n, total, typed="", chips=0):
     im = background()
     d = ImageDraw.Draw(im)
@@ -255,6 +273,12 @@ def main():
                 for k in range(1, len(KERNELS) + 1):
                     add(chart_frame(sc, n, total, k), 450)
                 durs[-1] += 2600
+                continue
+            if sc.get("points"):
+                add(points_frame(sc, n, total, 0), 900)
+                for k in range(1, len(sc["points"]) + 1):
+                    add(points_frame(sc, n, total, k), 2600)
+                durs[-1] += 1800
                 continue
             phases = sc.get("phases") or [sc]
             codes = [open(os.path.join(SRC, ph["src"])).read().rstrip("\n").split("\n") if ph.get("src") else [] for ph in phases]
