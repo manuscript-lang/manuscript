@@ -27,9 +27,8 @@ impl Deque[T]:
             next = 4
 
         if self.start != 0:
-            let tail = self.slots.drop(self.start)
-            let head = self.slots.take(self.start)
-            self.slots = tail.concat(head)
+            // Growth moves every value, including resource owners; slices would copy.
+            self.slots.rotate(self.start)
             self.start = 0
 
         for slot in capacity..next:

@@ -21,6 +21,10 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Empty `List.repeated` must not traverse the repetition count (#3204), but
   validate negative counts before the empty return. Keep a nonempty nested-copy
   control so a fast path does not weaken cloning or output order.
+- Deque growth must move ring-buffer slots, including nested resource owners.
+  Unwrap in place with `List.rotate`; `take`, `drop` and `concat` copy values and
+  can close the same resource repeatedly. `deque-resource-growth.ms` checks both
+  ends, wrapped/unwrapped growth, optional payloads and error/fault cleanup (#3339).
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
 - TOML dotted-key traversal defines existing implicit parents as well as new
   tables. Persist the `dotted` flag so a later header cannot redefine them;
