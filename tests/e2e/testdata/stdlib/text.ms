@@ -1,18 +1,11 @@
 import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import from_scalars from "@std/string.ms"
-import (parse_bool, parse_int_radix, quote, quote_ascii, unquote) from "@std/text.ms"
+import parse_int from "@std/math/math.ms"
+import (parse_bool, quote, quote_ascii, unquote) from "@std/text.ms"
 
 test "text conversions and quoting":
     parse_bool("YES") | try expect_equal(true)
     parse_bool("x") | try expect_equal(none)
-    parse_int_radix("-ff", 16) | try expect_equal(-255)
-    parse_int_radix("0b101", 0) | try expect_equal(5)
-    parse_int_radix("9223372036854775807", 10) | try expect_equal(9223372036854775807)
-    parse_int_radix("-9223372036854775808", 10) | try expect_equal(
-        -9223372036854775807 - 1
-    )
-    parse_int_radix("9223372036854775808", 10) | try expect_equal(none)
-    parse_int_radix("12", 2) | try expect_equal(none)
     quote("a\"b\n") | try expect_equal("\"a\\\"b\\n\"")
     quote_ascii("é🙂") | try expect_equal("\"\\u\{e9\}\\u\{1f642\}\"")
     unquote("\"a\\tb\\u\{e9\}\"") | try expect_ok | try expect_equal("a\tbé")
@@ -32,13 +25,21 @@ test "text conversions and quoting":
         "tab\there \"q\" \\ é🙂\u{1}"
     )
 
-test "parse_int_radix borrows its text":
+test "parse_int radix 0 reads a prefix and others reject it":
     let text = "-0x1f"
-    parse_int_radix(text, 0) | try expect_equal(-31)
-    parse_int_radix(text, 16) | try expect_equal(none)
-    parse_int_radix("+ff", 16) | try expect_equal(255)
-    parse_int_radix("-", 10) | try expect_equal(none)
-    parse_int_radix(text, 10) | try expect_equal(none)
+    try expect_equal(try parse_int(text, 0), -31)
+    try expect_equal(try parse_int("0b101", 0), 5)
+    try expect_equal(try parse_int("-ff", 16), -255)
+    try expect_equal(try parse_int("+ff", 16), 255)
+    try expect_equal(
+        try parse_int("-9223372036854775808", 10), -9223372036854775807 - 1
+    )
+    try expect_equal(parse_int(text, 16).is_error(), true)
+    try expect_equal(parse_int(text, 10).is_error(), true)
+    try expect_equal(parse_int("-", 10).is_error(), true)
+    try expect_equal(parse_int("0x", 0).is_error(), true)
+    try expect_equal(parse_int("9223372036854775808", 10).is_error(), true)
+    try expect_equal(parse_int("12", 2).is_error(), true)
 
 test "text quoting escapes interpolation braces and literal controls":
     quote("\{x\}") | try expect_equal("\"\\\{x\\\}\"")

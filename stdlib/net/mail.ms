@@ -1,6 +1,6 @@
 import StringBuilder from "@std/string.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import parse_int_radix from "@std/text.ms"
+import parse_int from "@std/math/math.ms"
 import base64_decode, latin1_decode from "@std/data/encoding.ms"
 import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 
@@ -245,9 +245,9 @@ fn q_decode(payload: String) Bytes:
         if c == "_":
             out.append(32)
         else if c == "=" and i + 2 < chars.length():
-            let value = parse_int_radix("{chars[i + 1]}{chars[i + 2]}", 16)
+            let value = parse_int("{chars[i + 1]}{chars[i + 2]}", 16)
 
-            if value.is_some():
+            if value.is_ok():
                 out.append(value.get(0).to_uint8().get(0))
                 i += 2
             else:

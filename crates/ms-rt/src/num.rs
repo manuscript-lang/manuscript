@@ -88,16 +88,26 @@ pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
     core::str::from_utf8(text).ok()?.parse().ok()
 }
 
-/// `Numbers.parse_int`: Err carries the status code.
+/// `Numbers.parse_int`: Err carries the status code. Radix 0 reads a `0x`, `0o` or `0b` prefix (any case) after
+/// the sign and otherwise means 10.
 pub fn parse_int_radix(text: &[u8], radix: i64) -> Result<i64, u8> {
-    if !(2..=36).contains(&radix) {
+    if radix != 0 && !(2..=36).contains(&radix) {
         return Err(STATUS_INVALID_INPUT);
     }
-    let radix = radix as u64;
     let (neg, digits) = match text.first() {
         Some(b'+') => (false, &text[1..]),
         Some(b'-') => (true, &text[1..]),
         _ => (false, text),
+    };
+    let (radix, digits) = if radix != 0 {
+        (radix as u64, digits)
+    } else {
+        match digits {
+            [b'0', b'x' | b'X', rest @ ..] => (16, rest),
+            [b'0', b'o' | b'O', rest @ ..] => (8, rest),
+            [b'0', b'b' | b'B', rest @ ..] => (2, rest),
+            _ => (10, digits),
+        }
     };
     if digits.is_empty() {
         return Err(STATUS_INVALID_DATA);
@@ -736,6 +746,11 @@ mod tests {
         );
         assert_eq!(parse_int_radix(b"12", 2), Err(STATUS_INVALID_DATA));
         assert_eq!(parse_int_radix(b"1", 1), Err(STATUS_INVALID_INPUT));
+        assert_eq!(parse_int_radix(b"-0x1f", 0), Ok(-31));
+        assert_eq!(parse_int_radix(b"0B101", 0), Ok(5));
+        assert_eq!(parse_int_radix(b"017", 0), Ok(17));
+        assert_eq!(parse_int_radix(b"0x", 0), Err(STATUS_INVALID_DATA));
+        assert_eq!(parse_int_radix(b"0x1f", 10), Err(STATUS_INVALID_DATA));
     }
 
     #[test]

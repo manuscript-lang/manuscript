@@ -332,7 +332,8 @@ export let sqrt_half: Float = 0.7071067811865476
 export fn parse_float(text: String) Float!:
     return msrt_numbers_parse_float(text)
 
-// Parses an integer in a radix from 2 through 36.
+// Parses an integer with an optional sign in a radix from 2 through 36; `_` separators and white space are not accepted.
+// Radix 0 reads a `0x`, `0o` or `0b` prefix and otherwise uses 10. A bad digit is EBADMSG, an overflow ERANGE and an unsupported radix EINVAL.
 export fn parse_int(text: String, radix: Int) Int!:
     return msrt_numbers_parse_int(text, radix)
 
