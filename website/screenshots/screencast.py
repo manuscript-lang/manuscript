@@ -41,7 +41,7 @@ SCENES = [
          sub="Cause and remedy in every diagnostic. --json for agents.",
          src="fixme.ms", steps=[("ms check fixme.ms", first(1))], cut=";"),
     dict(title="A *complete toolchain*, in the box.",
-         sub="Agents do better when nothing is missing: test and bench are keywords.",
+         sub="Agents do better when everything is in the box.",
          src="tb.ms",
          steps=[("ms test tb.ms && ms bench tb.ms",
                  lambda ls: [l for l in ls if l.startswith("1 tests")] + bench_line(ls))], cut=" ("),
