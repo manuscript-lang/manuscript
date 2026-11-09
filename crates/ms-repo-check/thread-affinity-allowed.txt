@@ -2,7 +2,7 @@
 // Each count only goes down: migrate a file to Arc, atomics or a lock (or a `Bound` handle) and lower it.
 crates/ms-std-archive/src/compress/ffi.rs 5
 crates/ms-std-json/src/lib.rs 1
-crates/ms-std-net/src/conn.rs 27
+crates/ms-std-net/src/conn.rs 24
 crates/ms-std-net/src/ffi/handler.rs 2
 crates/ms-std-net/src/ffi/http_client.rs 8
 crates/ms-std-net/src/ffi/http_server.rs 6
