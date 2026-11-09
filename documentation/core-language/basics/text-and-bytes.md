@@ -108,6 +108,8 @@ All slice operations include `start` and exclude `end`. Let `n` be the receiver'
 | `List.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is a new owned List with independent storage. |
 | `Bytes.slice(start:, end:)` | Add `n` to each negative bound, then require `0 <= start <= end <= n`. Invalid bounds return an `Error` of kind `"ERANGE"`; success is an owned copy of the selected bytes. |
 
+`String.view(start, end)` takes the same scalar bounds as `slice` and borrows the range without copying, like `Bytes.view`. A bound outside the string raises a fault, not an `Error`. The receiver must stay unchanged while the view is used; storing or returning a view is rejected, so call `.clone()` on it to keep an independent `String`. Use `slice` when you want an owned copy or an `ERANGE` error.
+
 Equal bounds give an empty range. Bounds are never clamped or swapped; `text.slice(start: 0, end: n + 1)` is an `"ERANGE"` error, not a fault. `"aé🙂z".slice(start: -2, end: 4)` is `ok("🙂z")`; `slice(start: 3, end: 1)` and `slice(start: 1, end: 10)` are errors of kind `"ERANGE"`. See the [String](../../standard-library/reference/prelude.md#string), [collection](../../standard-library/reference/collections/collections.ms.md), and [Bytes](../../standard-library/reference/bytes.ms.md) references.
 
 `Bytes.view(start, end)` uses the same byte bounds and borrows the range without copying. Invalid bounds raise a fault. The receiver must stay available while the view is used; call `.clone()` on the view to keep an independent value.

@@ -476,10 +476,38 @@ impl FnLower<'_> {
 
     /// The close operation of a value of the MIR type `ty` holding a resource, if it is one.
     pub(crate) fn part_closer_mir(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
+        // An interface value with `close` carries its closer in the vtable, whatever the checker type.
+        if let TyKind::Iface(iface) = self.b.m.types.kind(ty).clone() {
+            return Ok(self.iface_closer(iface));
+        }
         let Some(ct) = self.cx.source_tys.get(ty.0 as usize).cloned() else {
-            return Ok(None);
+            return self.generated_closer(ty);
         };
         self.part_closer(&ct)
+    }
+
+    /// The closer of a MIR type with no checker type recorded: `source_tys` is filled when a checker
+    /// type is lowered, so an optional lowering builds first (an argument converted to `T?` before the
+    /// callee's parameter type is lowered) has no entry yet. An optional closes what it holds.
+    fn generated_closer(&mut self, ty: MTy) -> Result<Option<CloseKind>, Error> {
+        let TyKind::Opt(inner) = self.b.m.types.kind(ty).clone() else {
+            // A record, alternative, list or object type is registered when its checker type is
+            // lowered; one that is not would be taken for plain data and never closed. A
+            // borrowing variant of an alternative owns only the cases it does not borrow.
+            debug_assert!(
+                match self.b.m.types.kind(ty) {
+                    TyKind::Rec(_) | TyKind::List(_) | TyKind::Obj(..) => false,
+                    TyKind::Alt(a) => self.b.m.alts[a.index()].borrowed != 0,
+                    _ => true,
+                },
+                "MIR type {ty:?} has no checker type, so its resources cannot be closed"
+            );
+            return Ok(None);
+        };
+        let Some(kind) = self.part_closer_mir(inner)? else {
+            return Ok(None);
+        };
+        Ok(Some(self.optional_resource_closer(ty, inner, kind)))
     }
 
     /// The extra ABI optional around an owned function-value argument closes that

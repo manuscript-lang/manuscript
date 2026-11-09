@@ -291,6 +291,26 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(Val { v, own: false })
             }
+            (TyKind::Str, "view") => {
+                // Like `Bytes.view`: a borrow of the receiver's text, or a copy of a temporary's.
+                let r = self.borrow(recv);
+                let (start, end) = (self.borrow(args[0].val), self.borrow(args[1].val));
+                let slot = self
+                    .b
+                    .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
+                    .expect("slot");
+                self.call_runtime("msrt_string_view", &[r, start, end, slot], MTy::UNIT)?;
+                let v = self
+                    .b
+                    .emit(Op::Load, &[slot], Imm::Ty(MTy::STR), Some(MTy::STR))
+                    .expect("load");
+                if recv.own {
+                    // The view of a temporary cannot outlive it: the result is the copy.
+                    let o = self.clone_value(v);
+                    return Ok(Val { v: o, own: true });
+                }
+                Ok(Val { v, own: false })
+            }
             (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
                 let r = self.borrow(recv);
                 let n = self.b.list_len(r);
