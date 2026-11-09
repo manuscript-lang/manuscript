@@ -40,3 +40,36 @@ fn every_rule_has_a_severity_and_findings_carry_it() {
         assert!(!rule.family.is_empty());
     }
 }
+
+#[test]
+fn trailing_space_hygiene_preserves_multiline_text_payloads() {
+    for raw in ["", "r"] {
+        let source = format!(
+            "fn text() String:  \n    return {raw}\"\"\"\n        é{{1 + 2}}  \t\n            \t\n        \"\"\"  \n"
+        );
+        for input in [source.clone(), source.replace('\n', "\r\n")] {
+            ms_syntax::parser::parse(&"text.ms".into(), &input).unwrap();
+            let findings = ms_tooling::lint::lint_source(&"text.ms".into(), &input);
+            assert_eq!(findings.len(), 2, "{findings:?}");
+            assert_eq!(findings[0].pos.line, 1);
+            assert_eq!(findings[1].pos.line, 5);
+            for finding in findings {
+                assert_eq!(finding.code, "MSL001");
+                assert!(input[finding.pos.offset as usize..].starts_with("  "));
+            }
+        }
+    }
+}
+
+#[test]
+fn unknown_text_boundaries_do_not_offer_whitespace_deletions() {
+    for source in [
+        "let value = 1\t\n",
+        "let text = \"unfinished  ",
+        "let text = \"\"\"\n    payload  \n",
+        "let text = \"\"\"\n    bad \\q  \n    \"\"\"\n",
+    ] {
+        let findings = ms_tooling::lint::lint_source(&"text.ms".into(), source);
+        assert!(findings.iter().all(|f| f.code != "MSL001"), "{findings:?}");
+    }
+}

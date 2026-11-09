@@ -659,3 +659,22 @@ fn checkout_stdlib_sources_report_no_diagnostics() {
         assert!(messages.is_empty(), "{file}: {messages:?}");
     }
 }
+
+#[test]
+fn whitespace_actions_preserve_multiline_string_data() {
+    for raw in ["", "r"] {
+        let source = format!(
+            "fn text() String:  \n    return {raw}\"\"\"\n        é{{1 + 2}}  \t\n            \t\n        \"\"\"\n"
+        );
+        for input in [source.clone(), source.replace('\n', "\r\n")] {
+            let (_, found) = actions(&input, "quickfix");
+            let whitespace: Vec<_> = found
+                .iter()
+                .filter(|a| title(a) == "Remove trailing whitespace")
+                .collect();
+            assert_eq!(whitespace.len(), 1, "{found:?}");
+            let fixed = apply(&input, whitespace[0]);
+            assert_eq!(fixed, input.replacen("String:  ", "String:", 1));
+        }
+    }
+}

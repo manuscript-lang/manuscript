@@ -34,33 +34,16 @@ pub struct Hygiene;
 
 impl Lint for Hygiene {
     fn source(&self, filename: &str, source: &str) -> Vec<LintFinding> {
-        let mut findings = Vec::new();
-        let mut offset = 0;
-        for text in source.split_inclusive('\n') {
-            let body = text.strip_suffix('\n').unwrap_or(text);
-            let body = body.strip_suffix('\r').unwrap_or(body);
-            let trimmed = body.trim_end_matches([' ', '\t']);
-            if trimmed.len() != body.len() {
-                findings.push(LintFinding {
-                    code: "MSL001".to_string(),
-                    severity: 2,
-                    message: "Remove trailing whitespace".to_string(),
-                    file: filename.to_string(),
-                    offset: offset + trimmed.len(),
-                });
-            }
-            offset += text.len();
-        }
-        if !source.is_empty() && !source.ends_with('\n') {
-            findings.push(LintFinding {
-                code: "MSL002".to_string(),
+        ms_tooling::lint::lint_source(&filename.into(), source)
+            .into_iter()
+            .map(|finding| LintFinding {
+                code: finding.code.to_string(),
                 severity: 2,
-                message: "End the file with a newline".to_string(),
+                message: finding.message,
                 file: filename.to_string(),
-                offset: source.len(),
-            });
-        }
-        findings
+                offset: finding.pos.offset as usize,
+            })
+            .collect()
     }
 
     fn program(&self, _program: &Program) -> Vec<LintFinding> {
