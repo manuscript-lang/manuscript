@@ -401,13 +401,12 @@ impl Walker<'_> {
                             ),
                         );
                     } else {
-                        self.error_fix_opt(
+                        self.error(
                             e.pos,
                             format!(
                                 "`{name}` returns a reference into `{}`, which this position would keep; store `.{CLONE}()` of it, or use it in place",
                                 roots.join("`, `")
                             ),
-                            copy_after(e),
                         );
                     }
                 }
@@ -433,13 +432,12 @@ impl Walker<'_> {
             && let Some(source) = self.native_borrow_receiver(e)
             && self.is_place(source)
         {
-            self.error_fix_opt(
+            self.error(
                 e.pos,
                 format!(
                     "`view` borrows `{}`, which this position would keep; store `.{CLONE}()` of it, or use it in place",
                     self.expr_text(source)
                 ),
-                copy_after(e),
             );
         }
         if modes.returns_receiver && d != Demand::Discard {
