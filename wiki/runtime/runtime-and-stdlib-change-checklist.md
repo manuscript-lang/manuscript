@@ -91,3 +91,5 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   Do not concatenate a growing prefix for every doubled quote: it makes a large
   valid field quadratic (#3197). Keep zero/single-escape, Unicode, CRLF and
   malformed-termination controls alongside the many-escape workload.
+
+- Weighted selection normalizes finite nonnegative weights by their largest entry when the raw total overflows or is subnormal. Reuse the validated normal total and preserve its direct selection loop. Raw sums can overflow, and raw subnormal draw points round equal weights into unequal bins. Keep secure and seeded selection on the same scale, exclude zero weights, and use fixed-seed comparisons across huge/subnormal and ordinary equivalent ratios (`random-weight-ranges.ms`, #3348). Do not multiply by a reciprocal: a minimum-subnormal scale has an infinite reciprocal.
