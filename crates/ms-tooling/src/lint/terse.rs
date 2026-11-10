@@ -145,6 +145,7 @@ impl Visitor for Scan<'_> {
             self.accumulate_loop(body, at);
             self.index_loop(&body[at]);
             self.append_all(&body[at]);
+            self.map_update(&body[at]);
         }
     }
 
@@ -270,6 +271,117 @@ impl Scan<'_> {
     fn expr_text(&self, e: &Expr) -> Option<&str> {
         self.span(e.start().offset as usize, e.end.offset as usize)
             .filter(|t| balanced(t) && !t.contains('\n'))
+    }
+
+    /// `m[k.clone()] = m.get(k).get() op rest` on a map is `m[k] op= rest`: both fault when
+    /// the key is missing, and the compound form needs no clone of the key.
+    fn map_update(&mut self, s: &Stmt) {
+        let StmtKind::Call(call) = &s.kind else {
+            return;
+        };
+        let ExprKind::Call { callee, args } = &call.kind else {
+            return;
+        };
+        let ExprKind::Member { left: map, name } = &callee.kind else {
+            return;
+        };
+        let [index, value] = args.as_slice() else {
+            return;
+        };
+        if self.syms.str(name) != ms_syntax::parser::INDEX_SET
+            || index.name.is_some()
+            || !is_path(map)
+            || !self.is_map(map)
+        {
+            return;
+        }
+        let ExprKind::Binary { op, left, right } = &value.value.kind else {
+            return;
+        };
+        let symbol = match op {
+            BinaryOp::Add => "+=",
+            BinaryOp::Sub => "-=",
+            BinaryOp::Mul => "*=",
+            BinaryOp::Div => "/=",
+            BinaryOp::Rem => "%=",
+            _ => return,
+        };
+        // `map.get(key).get()`
+        let ExprKind::Call {
+            callee: outer,
+            args: none,
+        } = &left.kind
+        else {
+            return;
+        };
+        let ExprKind::Member {
+            left: inner,
+            name: unwrap,
+        } = &outer.kind
+        else {
+            return;
+        };
+        let ExprKind::Call {
+            callee: lookup,
+            args: key,
+        } = &inner.kind
+        else {
+            return;
+        };
+        let ExprKind::Member {
+            left: again,
+            name: get,
+        } = &lookup.kind
+        else {
+            return;
+        };
+        let ([key], true) = (key.as_slice(), none.is_empty()) else {
+            return;
+        };
+        if self.syms.str(unwrap) != "get"
+            || self.syms.str(get) != "get"
+            || key.name.is_some()
+            || !is_path(&key.value)
+        {
+            return;
+        }
+        let (Some(map_text), Some(again_text), Some(key_text), Some(index_text), Some(rest)) = (
+            self.expr_text(map),
+            self.expr_text(again),
+            self.expr_text(&key.value),
+            self.expr_text(&index.value),
+            self.expr_text(right),
+        ) else {
+            return;
+        };
+        let cloned = format!("{key_text}.clone()");
+        if map_text != again_text || (index_text != key_text && index_text != cloned) {
+            return;
+        }
+        let (from, to) = (s.pos.offset as usize, right.end.offset as usize);
+        let Some(whole) = self.span(from, to) else {
+            return;
+        };
+        if whole.contains("//") || whole.contains('\n') {
+            return;
+        }
+        let text = format!("{map_text}[{key_text}] {symbol} {rest}");
+        self.report(
+            "MSL127",
+            "Update the map entry in place with `m[k] op= value`".to_string(),
+            s.pos,
+            from,
+            to,
+            text,
+        );
+    }
+
+    fn is_map(&self, e: &Expr) -> bool {
+        self.module
+            .facts()
+            .info(e.id)
+            .and_then(|i| i.ty.as_ref())
+            .is_some_and(|t| t.is(Builtin::Map))
     }
 
     /// `m.get(k).get(d)` on a map is `m.get_or(k, d)`.
@@ -775,4 +887,13 @@ fn balanced(text: &str) -> bool {
         }
     }
     open == 0
+}
+
+/// A name or a field path over names: `k`, `it.sku`.
+fn is_path(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Name(_) => true,
+        ExprKind::Member { left, .. } => is_path(left),
+        _ => false,
+    }
 }

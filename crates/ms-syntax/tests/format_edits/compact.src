@@ -19,4 +19,11 @@ fn f(xs: List[Int], n: Int) Int:
             return 1
         else:
             return 2
+    var counts = Map[String, Int]()
+    var key = "a"
+    counts[key] = counts[key] + 1
+    xs[i] = xs[i] * 2
+    xs[i + 1] = xs[i + 1] + 1
+    xs[i] = xs[i] + xs[0]
+    xs[0] = xs[1] + 1
     return total

@@ -52,7 +52,7 @@ impl Histogram:
         if value < 0: panic("Histogram.record: value {value} must be at least 0")
 
         let index = bucket_of(value)
-        self.counts[index] = self.counts[index] + 1
+        self.counts[index] += 1
         if self.total == 0 or value < self.low: self.low = value
         if value > self.high: self.high = value
         self.total += 1
