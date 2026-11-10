@@ -1,6 +1,8 @@
-import keep, measure from "@std/test/bench.ms"
-import StringBuilder from "@std/string.ms"
-import parse from "@std/data/toml.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    StringBuilder from "@std/string.ms",
+    parse from "@std/data/toml.ms",
+)
 
 fn toml_doc(count: Int) String:
     var sb = StringBuilder()

@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
     DirectoryEntry,
     FileKind,
     OpenMode,
@@ -12,10 +12,10 @@ import (
     stat,
     temporary,
     write_atomic,
-    write_file
-) from "@std/os/fs.ms"
-import ReadStream from "@std/io/io.ms"
-import collect from "@std/io/streams.ms"
+    write_file from "@std/os/fs.ms",
+    ReadStream from "@std/io/io.ms",
+    collect from "@std/io/streams.ms",
+)
 
 test "whole-file writes take text or bytes and complete through promises":
     let dir = temporary("manuscript-writable-") | try expect_ok

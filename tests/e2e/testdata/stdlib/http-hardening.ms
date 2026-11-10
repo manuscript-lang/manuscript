@@ -1,6 +1,6 @@
-import send, recv from "./support/conn.ms"
-import expect_ok from "@std/test/test.ms"
 import (
+    send, recv from "./support/conn.ms",
+    expect_ok from "@std/test/test.ms",
     headers,
     reply,
     text,
@@ -8,12 +8,12 @@ import (
     HttpRequest,
     HttpResponse,
     buffered,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import Connection, connect, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import sleep from "@std/time.ms"
+    HttpServerOptions from "@std/net/http.ms",
+    Connection, connect, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    sleep from "@std/time.ms",
+)
 
 fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())

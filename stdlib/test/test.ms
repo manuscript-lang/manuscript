@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import (msstd_test_catch_fault, msstd_test_repr) from "@std/internal/test.ms"
+import (
+    panic from "@std/core.ms",
+    msstd_test_catch_fault, msstd_test_repr from "@std/internal/test.ms",
+)
 
 /*
 Setup and cleanup for tests that need a fixture. Define `fn make_fixture() T` in the test file,

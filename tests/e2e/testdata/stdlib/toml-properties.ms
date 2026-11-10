@@ -1,6 +1,8 @@
-import expect_not_equal, fail from "@std/test/test.ms"
-import parse, stringify, TomlValue from "@std/data/toml.ms"
-import Rng, next, text, mutate from "./support/generator.ms"
+import (
+    expect_not_equal, fail from "@std/test/test.ms",
+    parse, stringify, TomlValue from "@std/data/toml.ms",
+    Rng, next, text, mutate from "./support/generator.ms",
+)
 
 fn generated(var rng: Rng, depth: Int) TomlValue:
     var choices = 7

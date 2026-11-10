@@ -1,8 +1,10 @@
 // Generator for c14-dp-suite. Deterministic; run: ms run bench/agent/gen.ms -- c14
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
-import full_match from "../../lib/text.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+    full_match from "../../lib/text.ms",
+)
 
 let NUM = "[0-9]\{1,6\}"
 

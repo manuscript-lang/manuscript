@@ -13,10 +13,10 @@ import (
     platform,
     read_text,
     sample,
-    write_text
-) from "./lib.ms"
-import append_file, create_directory from "@std/os/fs.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    append_file, create_directory from "@std/os/fs.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+)
 
 // A labeled prebuilt binary.
 export type Labeled:

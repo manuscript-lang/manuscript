@@ -1,6 +1,8 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import Source, Sink, ReadStream, WriteStream from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    Source, Sink, ReadStream, WriteStream from "@std/io/io.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 // A stream closes its source or sink once, whether the stream is closed by hand or dropped.
 type Counted:

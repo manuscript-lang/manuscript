@@ -1,7 +1,9 @@
 // Runs the packaged ms for this host (built by package.ms) on the hello example, from a path that
 // contains spaces. Usage: ms run tools/dist-check.ms
-import dist_arch, dist_os, host, note, run_program, capture from "./lib.ms"
-import create_directory, temporary from "@std/os/fs.ms"
+import (
+    dist_arch, dist_os, host, note, run_program, capture from "./lib.ms",
+    create_directory, temporary from "@std/os/fs.ms",
+)
 
 fn main() Int:
     if host() == "windows":

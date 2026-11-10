@@ -1,5 +1,5 @@
-import expect_equal from "@std/test/test.ms"
 import (
+    expect_equal from "@std/test/test.ms",
     buffered,
     headers,
     read_body,
@@ -8,9 +8,9 @@ import (
     HttpExchange,
     HttpMethod,
     HttpRequest,
-    HttpResponse
-) from "@std/net/http.ms"
-import http_client, serve from "@std/net/net.ms"
+    HttpResponse from "@std/net/http.ms",
+    http_client, serve from "@std/net/net.ms",
+)
 
 fn echo(request: HttpRequest) HttpResponse:
     return text(201, "{request.path}:{request.body.decode_utf8().get("")}")

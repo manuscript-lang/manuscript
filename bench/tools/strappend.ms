@@ -2,10 +2,12 @@
 // 1 MB) and List[Int].append against Vec::push for 10K to 1M items, min of N runs (bench/perf/strappend).
 // Usage: ms run bench/tools/strappend.ms [-- repeats]; MS, RUSTC pick tools; RUSTC_LINKER names the linker when PATH has the
 // wrong one (Git's `link` shadows MSVC's on Windows runners).
-import build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms"
-import summarize from "./strappend_table.ms"
-import copy, CopyOptions, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+import (
+    build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms",
+    summarize from "./strappend_table.ms",
+    copy, CopyOptions, temporary from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn run(work: String, n: Int) Result[String, Error]:
     try copy(

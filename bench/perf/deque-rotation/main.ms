@@ -1,6 +1,8 @@
-import Deque from "@std/collections/deque.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    Deque from "@std/collections/deque.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn main() Int:
     let args = arguments()

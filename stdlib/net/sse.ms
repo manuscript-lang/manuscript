@@ -1,6 +1,8 @@
 // Server-Sent Events decoder implemented in Manuscript.
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+)
 
 // One dispatched event, with the `message` type used when no `event:` field was sent.
 export type SseEvent:

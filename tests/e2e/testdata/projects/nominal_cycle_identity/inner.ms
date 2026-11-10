@@ -1,5 +1,7 @@
-import Closeable from "@std/core.ms"
-import write_file from "@std/os/fs.ms"
+import (
+    Closeable from "@std/core.ms",
+    write_file from "@std/os/fs.ms",
+)
 
 export type Door:
     path: String

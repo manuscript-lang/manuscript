@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_fault from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
+import (
+    expect_equal, expect_error, expect_fault from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+)
 
 type Gate:
     name: String

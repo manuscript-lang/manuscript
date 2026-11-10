@@ -1,7 +1,9 @@
-import expect_true, expect_ok from "@std/test/test.ms"
-import pipe, WriteStream from "@std/io/io.ms"
-import promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms"
-import create_directory, temporary, watch from "@std/os/fs.ms"
+import (
+    expect_true, expect_ok from "@std/test/test.ms",
+    pipe, WriteStream from "@std/io/io.ms",
+    promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms",
+    create_directory, temporary, watch from "@std/os/fs.ms",
+)
 
 // Tells the test the watch is registered, reads events until `last` shows up, tells the test again, then waits for more inside the native watcher.
 fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:

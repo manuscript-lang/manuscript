@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import from_int, BigInt from "@std/math/math.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    from_int, BigInt from "@std/math/math.ms",
+)
 
 test "zero shifts have zero result bits at every nonnegative count":
     for count in [0, 16777216, 16777217, 9223372036854775807]:

@@ -1,6 +1,8 @@
 // Parser fixture: lexical forms, independent of name resolution.
-import stdout from "@std/io/io.ms"
-import Sample from "./support.ms"
+import (
+    stdout from "@std/io/io.ms",
+    Sample from "./support.ms",
+)
 
 extern type Native
 

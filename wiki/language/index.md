@@ -48,6 +48,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Standard and user code share one method syntax](standard-and-user-code-share-one-method-syntax.md): the user required that the standard library, as the reference, use only forms user code can write.
 - [String conversion is available on every value](string-conversion-is-available-on-every-value.md): the user requested conversion with `to_string()` on everything.
 - [Surface syntax is its own, not Python's](surface-syntax-is-its-own-not-python-s.md): agents slip into Python when the surface looks like Python (the Haiku bench logged 20 capitalized `True`/`False` errors), so the surface now…
+- [Grouped imports cover several modules](grouped-imports-cover-several-modules.md): one parenthesized import with `names from "path"` clauses; fmt groups consecutive imports.
 - [Syntax improvements need examples across their boundaries](syntax-improvements-need-examples-across-their-boundaries.md): support grouped symbol imports and brace Map literals.
 - [Multi-line text is one token that line-based passes must mask](multi-line-text-is-a-token-the-line-passes-must-mask.md): `"""` and `r"""` literals and the formatter placeholder.
 - [`T!` and `T?` are type suffixes; there is no `some`](t-and-t-are-type-suffixes-there-is-no-some.md): `T!` is `Result[T, Error]` and `T!E` is `Result[T, E]` (no space before `E`), mirroring `T?` for optionals.

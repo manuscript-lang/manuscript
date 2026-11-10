@@ -3,9 +3,9 @@ Terminal detection, size, and raw input with cursor control.
 
 `terminal_capabilities` reports whether the standard streams are terminals and how many colors they support. `raw_mode` acquires a `RawTerminal` whose `events()` stream yields keys, text and resizes.
 */
-import Closeable from "@std/core.ms"
-import ReadStream, Source from "@std/io/io.ms"
 import (
+    Closeable from "@std/core.ms",
+    ReadStream, Source from "@std/io/io.ms",
     msstd_terminal_raw_terminal_next_event,
     msstd_terminal_event_kind,
     msstd_terminal_event_text,
@@ -31,8 +31,8 @@ import (
     msstd_terminal_size_status,
     msstd_terminal_size_columns,
     msstd_terminal_size_rows,
-    msstd_terminal_raw_mode
-) from "@std/internal/io.ms"
+    msstd_terminal_raw_mode from "@std/internal/io.ms",
+)
 
 // Character columns and rows of a terminal window.
 export type TerminalSize:

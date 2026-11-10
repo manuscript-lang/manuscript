@@ -4,22 +4,20 @@ import (
     expect_error,
     expect_false,
     expect_not_equal,
-    fail
-) from "@std/test/test.ms"
-import (
+    fail from "@std/test/test.ms",
     parse,
     stringify,
     JsonValue,
     JsonOptions,
     StringifyOptions,
-    JsonEncode
-) from "@std/data/json.ms"
-import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms"
-import Url from "@std/net/url.ms"
-import Bytes from "@std/bytes.ms"
-import Decimal from "@std/math/decimal.ms"
-import Data from "@std/core.ms"
-import BigInt from "@std/math/math.ms"
+    JsonEncode from "@std/data/json.ms",
+    timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms",
+    Url from "@std/net/url.ms",
+    Bytes from "@std/bytes.ms",
+    Decimal from "@std/math/decimal.ms",
+    Data from "@std/core.ms",
+    BigInt from "@std/math/math.ms",
+)
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"

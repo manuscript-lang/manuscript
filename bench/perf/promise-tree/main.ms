@@ -1,6 +1,8 @@
-import promise, Promise, wait_all from "@std/concurrency/promise.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    promise, Promise, wait_all from "@std/concurrency/promise.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn fib(n: Int) Int:
     if n < 2: return n

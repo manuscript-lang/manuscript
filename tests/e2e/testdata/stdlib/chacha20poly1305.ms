@@ -1,12 +1,12 @@
-import hex_decode, hex_encode from "@std/data/encoding.ms"
 import (
+    hex_decode, hex_encode from "@std/data/encoding.ms",
     chacha20,
     chacha20poly1305_open,
     chacha20poly1305_seal,
-    poly1305
-) from "@std/crypto/chacha20poly1305.ms"
-import Bytes from "@std/bytes.ms"
-import expect_equal, expect_error, expect_true from "@std/test/test.ms"
+    poly1305 from "@std/crypto/chacha20poly1305.ms",
+    Bytes from "@std/bytes.ms",
+    expect_equal, expect_error, expect_true from "@std/test/test.ms",
+)
 
 fn bytes_of(hex: String) Bytes:
     return hex_decode(hex, none).get(Bytes([]))

@@ -1,12 +1,12 @@
-import seeded, weighted_choice from "@std/random.ms"
-import infinity, max_float, min_float, nan from "@std/math/math.ms"
 import (
+    seeded, weighted_choice from "@std/random.ms",
+    infinity, max_float, min_float, nan from "@std/math/math.ms",
     expect_equal,
     expect_error,
     expect_fault,
     expect_none,
-    expect_some
-) from "@std/test/test.ms"
+    expect_some from "@std/test/test.ms",
+)
 
 fn compare_draws(weights: List[Float], ordinary: List[Float]) Unit!:
     var scaled = seeded(1)

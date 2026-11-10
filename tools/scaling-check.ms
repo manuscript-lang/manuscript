@@ -8,13 +8,15 @@
 // that exceeds TIMEOUT seconds fails.
 // MS names the ms to measure (default target/release/ms); SCALING_BOUND and SCALING_TIMEOUT override the limits.
 // Usage: ms run tools/scaling-check.ms [-- shape...]
-import tool_ms, env from "./lib.ms"
-import temporary, write_file from "@std/os/fs.ms"
-import run, RunOptions from "@std/os/process.ms"
-import arguments, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import monotonic, seconds from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    tool_ms, env from "./lib.ms",
+    temporary, write_file from "@std/os/fs.ms",
+    run, RunOptions from "@std/os/process.ms",
+    arguments, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+    monotonic, seconds from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 // Source of `shape` with `n` units.
 fn generate(shape: String, n: Int) String:

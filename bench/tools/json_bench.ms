@@ -17,10 +17,10 @@ import (
     output_of,
     right,
     run_in,
-    write_text
-) from "./lib.ms"
-import create_directory from "@std/os/fs.ms"
-import JsonValue, stringify from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    create_directory from "@std/os/fs.ms",
+    JsonValue, stringify from "@std/data/json.ms",
+)
 
 let DATA = "bench/perf/json/data"
 

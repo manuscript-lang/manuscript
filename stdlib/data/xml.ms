@@ -1,5 +1,7 @@
-import StringBuilder, from_scalars from "@std/string.ms"
-import parse_int from "@std/math/math.ms"
+import (
+    StringBuilder, from_scalars from "@std/string.ms",
+    parse_int from "@std/math/math.ms",
+)
 
 /*
 XML documents as a tree of elements, text and comments, parsed and written in Manuscript.

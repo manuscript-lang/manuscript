@@ -1,15 +1,13 @@
-import Closeable from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
-import Promise, owned_task from "@std/concurrency/promise.ms"
 import (
+    Closeable from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    Duration from "@std/time.ms",
+    Promise, owned_task from "@std/concurrency/promise.ms",
     ReadStream,
     WriteStream,
     Source,
     DescriptorSource,
-    DescriptorSink
-) from "@std/io/io.ms"
-import (
+    DescriptorSink from "@std/io/io.ms",
     msstd_process_command_run,
     msstd_process_command_spawn,
     msstd_process_subprocess_stream_id,
@@ -34,8 +32,8 @@ import (
     msstd_process_umask,
     msstd_process_watch_signals,
     msstd_system_get_priority,
-    msstd_system_set_priority
-) from "@std/internal/process.ms"
+    msstd_system_set_priority from "@std/internal/process.ms",
+)
 
 // Captured exit status and standard output/error from a completed command.
 export type CommandOutput:

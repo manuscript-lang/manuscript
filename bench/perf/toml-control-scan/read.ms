@@ -1,7 +1,9 @@
-import arguments from "@std/os/env.ms"
-import read_file, write_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    arguments from "@std/os/env.ms",
+    read_file, write_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn main() Int:
     let args = arguments()

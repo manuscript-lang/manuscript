@@ -1,7 +1,9 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, remove, temporary_root from "@std/os/fs.ms"
-import secure_int from "@std/random.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, remove, temporary_root from "@std/os/fs.ms",
+    secure_int from "@std/random.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 // A resource with only scalar fields has no drop glue but still has one owner that closes it. Its
 // id names the file the close appends to, since it has nowhere to keep a log path.

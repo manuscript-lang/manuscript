@@ -1,8 +1,10 @@
-import Bytes, join from "@std/bytes.ms"
-import local_promise, PromiseOptions from "@std/concurrency/promise.ms"
-import Connection from "@std/net/net.ms"
-import Duration from "@std/time.ms"
-import ReadStream from "@std/io/io.ms"
+import (
+    Bytes, join from "@std/bytes.ms",
+    local_promise, PromiseOptions from "@std/concurrency/promise.ms",
+    Connection from "@std/net/net.ms",
+    Duration from "@std/time.ms",
+    ReadStream from "@std/io/io.ms",
+)
 
 // Writes `text` to the connection and waits until it is handed to the socket.
 export fn send(var connection: Connection, text: String) Unit!:

@@ -1,5 +1,7 @@
-import pipe, stdout, ReadStream, WriteStream from "@std/io/io.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    pipe, stdout, ReadStream, WriteStream from "@std/io/io.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 fn fill(var out: WriteStream[Int], from: Int, count: Int) Unit!:
     for i in from..from + count:

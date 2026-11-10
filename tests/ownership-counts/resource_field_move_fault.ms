@@ -2,10 +2,12 @@
 // expect-stdout: close two
 // expect-stdout: waited: true
 // A guarded task faults after moving a resource field: the cleanup stack closes the moved door through its new owner and the other one through the record, once each.
-import stdout from "@std/io/io.ms"
-import Closeable from "@std/core.ms"
-import panic from "@std/core.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    stdout from "@std/io/io.ms",
+    Closeable from "@std/core.ms",
+    panic from "@std/core.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 type Door:
     name: String

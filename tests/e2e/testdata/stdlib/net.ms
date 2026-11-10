@@ -1,7 +1,7 @@
-import expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import within from "./support/conn.ms"
 import (
+    expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    within from "./support/conn.ms",
     DnsOptions,
     bind_datagram,
     connect,
@@ -14,10 +14,10 @@ import (
     Datagram,
     DatagramSocket,
     Listener,
-    Connection
-) from "@std/net/net.ms"
-import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
-import promise from "@std/concurrency/promise.ms"
+    Connection from "@std/net/net.ms",
+    parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")

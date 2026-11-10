@@ -1,6 +1,8 @@
-import Bytes from "@std/bytes.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
     let checked = data.index_of_byte(255, start)

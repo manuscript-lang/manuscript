@@ -1,7 +1,9 @@
-import StringBuilder from "@std/string.ms"
-import Bytes, join from "@std/bytes.ms"
-import ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms"
-import Promise from "@std/concurrency/promise.ms"
+import (
+    StringBuilder from "@std/string.ms",
+    Bytes, join from "@std/bytes.ms",
+    ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms",
+    Promise from "@std/concurrency/promise.ms",
+)
 
 // Delimiter and line ending used when parsing or writing CSV, and the row and cell bounds for `parse`.
 export type CsvOptions:

@@ -1,6 +1,8 @@
-import insertion_sort from "./src/main.ms"
-import check, ints, lists from "@std/test/property.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
+import (
+    insertion_sort from "./src/main.ms",
+    check, ints, lists from "@std/test/property.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+)
 
 // Each property runs on 100 generated lists. A failure prints a shrunk counterexample and a seed.
 test "sorting keeps every element":

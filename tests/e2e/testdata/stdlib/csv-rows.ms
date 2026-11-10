@@ -1,8 +1,10 @@
-import expect_equal, fail from "@std/test/test.ms"
-import csv_rows, parse, CsvOptions from "@std/data/csv.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import from_list, collect from "@std/io/streams.ms"
+import (
+    expect_equal, fail from "@std/test/test.ms",
+    csv_rows, parse, CsvOptions from "@std/data/csv.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    from_list, collect from "@std/io/streams.ms",
+)
 
 // Hands out the chunks in order, then ends.
 type Chunks:

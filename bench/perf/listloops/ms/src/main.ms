@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn say(text: String) Unit:
     let _ignored = stdout().write(text)

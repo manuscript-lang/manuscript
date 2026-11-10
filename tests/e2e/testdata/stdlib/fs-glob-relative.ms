@@ -1,14 +1,14 @@
-import Closeable from "@std/core.ms"
-import change_directory, working_directory from "@std/os/env.ms"
 import (
+    Closeable from "@std/core.ms",
+    change_directory, working_directory from "@std/os/env.ms",
     GlobOptions,
     PathEntry,
     create_directory,
     glob,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import expect_equal from "@std/test/test.ms"
+    write_file from "@std/os/fs.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 type RestoreDirectory:
     path: String

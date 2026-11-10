@@ -1,6 +1,6 @@
 // Request routing and middleware over `HttpExchange`, implemented in Manuscript.
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
     headers,
     HttpExchange,
     HttpHeaders,
@@ -8,14 +8,12 @@ import (
     HttpRequest,
     HttpResponse,
     reply,
-    text
-) from "@std/net/http.ms"
-import NativeWebSocket from "@std/net/websocket.ms"
-import Logger from "@std/log.ms"
-import uuid_v4 from "@std/data/uuid.ms"
-import monotonic from "@std/time.ms"
-import Closeable from "@std/core.ms"
-import (
+    text from "@std/net/http.ms",
+    NativeWebSocket from "@std/net/websocket.ms",
+    Logger from "@std/log.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+    monotonic from "@std/time.ms",
+    Closeable from "@std/core.ms",
     msrt_promise_drop,
     msrt_promise_take,
     msrt_promise_wait,
@@ -23,8 +21,8 @@ import (
     msrt_pipe_close_writer,
     msrt_pipe_new,
     msrt_pipe_read,
-    msrt_pipe_write
-) from "@std/internal/promises.ms"
+    msrt_pipe_write from "@std/internal/promises.ms",
+)
 
 // A value with one holder at a time, kept in a one-message in-memory pipe whose id is the slot: `take_slot` moves it out
 // (waiting while another holder has it) and `put_slot` moves it back. The exchange state below lives in one because

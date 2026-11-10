@@ -1,8 +1,10 @@
-import expect_equal, fail from "@std/test/test.ms"
-import stderr from "@std/io/io.ms"
-import stdout from "@std/io/io.ms"
-import WriteStream from "@std/io/io.ms"
-import Closeable from "@std/core.ms"
+import (
+    expect_equal, fail from "@std/test/test.ms",
+    stderr from "@std/io/io.ms",
+    stdout from "@std/io/io.ms",
+    WriteStream from "@std/io/io.ms",
+    Closeable from "@std/core.ms",
+)
 
 type Resource:
     label: String

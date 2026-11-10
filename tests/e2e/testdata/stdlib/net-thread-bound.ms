@@ -1,10 +1,12 @@
 // A native handle built on `Rc` and `RefCell` holds non-atomic state, so using it from the thread of another
 // promise is a named fault rather than a data race (#3047). The main thread stays busy so an idle thread takes
 // the promise. A `Network` is shared between threads on purpose (see `net.ms`, "resolve returns typed DNS records").
-import expect_error, expect_contains, expect_true, expect_ok from "@std/test/test.ms"
-import with_resolver, Network from "@std/net/net.ms"
-import headers, HttpHeaders from "@std/net/http.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    expect_error, expect_contains, expect_true, expect_ok from "@std/test/test.ms",
+    with_resolver, Network from "@std/net/net.ms",
+    headers, HttpHeaders from "@std/net/http.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 fn open_one(net: Network) String!:
     let l = try net.listen("127.0.0.1:0")

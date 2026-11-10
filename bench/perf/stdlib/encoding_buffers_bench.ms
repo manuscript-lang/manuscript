@@ -4,11 +4,11 @@ import (
     Base32Options,
     base32_decode,
     ascii85_encode,
-    ascii85_decode
-) from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import keep, measure from "@std/test/bench.ms"
-import expect_equal from "@std/test/test.ms"
+    ascii85_decode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    keep, measure from "@std/test/bench.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn sample(length: Int, zero: Bool = false) Bytes:
     var out = BytesBuilder()

@@ -1,5 +1,7 @@
-import JsonValue from "@std/data/json.ms"
-import Harness, Usage, events, int_at from "./harness.ms"
+import (
+    JsonValue from "@std/data/json.ms",
+    Harness, Usage, events, int_at from "./harness.ms",
+)
 
 // UNTESTED: pi's JSON event schema is assumed; sums `usage` blocks on assistant messages.
 export type Pi:

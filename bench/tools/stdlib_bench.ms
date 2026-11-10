@@ -10,10 +10,10 @@ import (
     repeats,
     right,
     stdlib_bench,
-    usage
-) from "./lib.ms"
-import Stats, case_labels, read_cases from "./stdlib_results.ms"
-import arguments from "@std/os/env.ms"
+    usage from "./lib.ms",
+    Stats, case_labels, read_cases from "./stdlib_results.ms",
+    arguments from "@std/os/env.ms",
+)
 
 export fn stdlib_table(output: String) String!:
     let cases = try read_cases(output)

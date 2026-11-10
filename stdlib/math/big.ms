@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import BigInt, frexp, from_int, ldexp, max, parse, parse_int from "@std/math/math.ms"
+import (
+    panic from "@std/core.ms",
+    BigInt, frexp, from_int, ldexp, max, parse, parse_int from "@std/math/math.ms",
+)
 
 /*
 An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,

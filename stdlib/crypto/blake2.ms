@@ -1,14 +1,14 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import panic from "@std/core.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    panic from "@std/core.ms",
     bit_and,
     bit_or,
     bit_xor,
     rotate_right,
     shift_left,
     shift_right_unsigned,
-    wrapping_add
-) from "@std/math/math.ms"
+    wrapping_add from "@std/math/math.ms",
+)
 
 // Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and BLAKE2s (10 rounds).
 fn sigma() List[List[Int]]:

@@ -7,11 +7,13 @@
 // A change may not raise a count without a stated reason; update the header in the same change.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/count-check.ms [-- files]
-import tool_ms, use_stats_runtime from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    tool_ms, use_stats_runtime from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The text after `prefix` on every line that starts with it.
 fn after(text: String, prefix: String) List[String]:

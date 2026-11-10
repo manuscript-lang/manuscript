@@ -1,5 +1,7 @@
-import expect_equal, expect_true, expect_false from "@std/test/test.ms"
-import (BigInt, binomial, factorial, from_int, parse) from "@std/math/math.ms"
+import (
+    expect_equal, expect_true, expect_false from "@std/test/test.ms",
+    BigInt, binomial, factorial, from_int, parse from "@std/math/math.ms",
+)
 
 test "factorial and binomial are exact":
     try expect_equal((try factorial(0)).to_string_radix(10), "1")

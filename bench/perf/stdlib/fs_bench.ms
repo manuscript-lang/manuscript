@@ -1,7 +1,9 @@
-import keep, measure from "@std/test/bench.ms"
-import Bytes from "@std/bytes.ms"
-import list, read_file, stat, temporary, write_file from "@std/os/fs.ms"
-import create, file_transport, LoggerOptions from "@std/log.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    Bytes from "@std/bytes.ms",
+    list, read_file, stat, temporary, write_file from "@std/os/fs.ms",
+    create, file_transport, LoggerOptions from "@std/log.ms",
+)
 
 fn block() Bytes:
     return "0123456789abcdef".repeat(4096).get("").to_bytes()

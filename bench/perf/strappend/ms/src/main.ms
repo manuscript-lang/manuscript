@@ -1,6 +1,8 @@
-import stdout from "@std/io/io.ms"
-import StringBuilder from "@std/string.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    StringBuilder from "@std/string.ms",
+    monotonic from "@std/time.ms",
+)
 
 // Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
 fn run(piece: String, count: Int) Int:

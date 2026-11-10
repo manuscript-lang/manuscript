@@ -1,9 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import Timestamp from "@std/time.ms"
 import (
+    Bytes from "@std/bytes.ms",
+    Timestamp from "@std/time.ms",
     msstd_tls_parse_certificates,
-    msstd_tls_verify_certificates
-) from "@std/internal/net.ms"
+    msstd_tls_verify_certificates from "@std/internal/net.ms",
+)
 
 // Parsed certificate identity, validity range, and original DER bytes.
 export type CertificateInfo:

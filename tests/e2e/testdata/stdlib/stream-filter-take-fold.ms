@@ -1,6 +1,8 @@
-import expect_equal, expect_error from "@std/test/test.ms"
-import Source, ReadStream from "@std/io/io.ms"
-import from_list, filter, take, fold, collect, map from "@std/io/streams.ms"
+import (
+    expect_equal, expect_error from "@std/test/test.ms",
+    Source, ReadStream from "@std/io/io.ms",
+    from_list, filter, take, fold, collect, map from "@std/io/streams.ms",
+)
 
 // An endless source that counts how many items were pulled.
 type Counting:

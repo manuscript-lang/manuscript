@@ -1,5 +1,7 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+)
 
 fn unsigned(value: UInt64) Bytes:
     var out = BytesBuilder()

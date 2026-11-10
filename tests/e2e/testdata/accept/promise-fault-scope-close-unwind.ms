@@ -1,6 +1,8 @@
-import Closeable, panic from "@std/core.ms"
-import expect_equal from "@std/test/test.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    Closeable, panic from "@std/core.ms",
+    expect_equal from "@std/test/test.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 interface Src:
     var fn read(max: Int) Int?!Error

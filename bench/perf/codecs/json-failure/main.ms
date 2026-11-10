@@ -1,7 +1,9 @@
-import parse from "@std/data/json.ms"
-import StringBuilder from "@std/string.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse from "@std/data/json.ms",
+    StringBuilder from "@std/string.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 extern fn codec_bench_cpu_ns() Int
 

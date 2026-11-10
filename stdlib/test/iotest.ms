@@ -1,8 +1,10 @@
-import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
-import Promise from "@std/concurrency/promise.ms"
-import read_all, from_bytes from "@std/io/streams.ms"
-import fail from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
+    Promise from "@std/concurrency/promise.ms",
+    read_all, from_bytes from "@std/io/streams.ms",
+    fail from "@std/test/test.ms",
+)
 
 /*
 Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the

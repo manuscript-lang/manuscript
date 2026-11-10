@@ -1,6 +1,8 @@
-import expect_equal from "@std/test/test.ms"
-import Deque from "@std/collections/deque.ms"
-import Queue from "@std/collections/queue.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Deque from "@std/collections/deque.ms",
+    Queue from "@std/collections/queue.ms",
+)
 
 test "reading string elements while iterating does not change the container":
     var deque = Deque[String]()

@@ -1,5 +1,7 @@
-import parse_rat, parse_big_float from "@std/math/big.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    parse_rat, parse_big_float from "@std/math/big.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "big rational oversized decimal exponents are limit errors":
     for exponent in [

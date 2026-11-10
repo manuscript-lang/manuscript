@@ -1,8 +1,10 @@
-import panic from "@std/core.ms"
-import Deque from "@std/collections/deque.ms"
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms"
-import float from "@std/random.ms"
+import (
+    panic from "@std/core.ms",
+    Deque from "@std/collections/deque.ms",
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
+    float from "@std/random.ms",
+)
 
 /*
 How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;

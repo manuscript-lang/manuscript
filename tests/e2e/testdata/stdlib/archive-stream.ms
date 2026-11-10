@@ -1,5 +1,5 @@
-import expect_equal, fail from "@std/test/test.ms"
 import (
+    expect_equal, fail from "@std/test/test.ms",
     compressed,
     decompressed,
     tar_entries,
@@ -10,11 +10,11 @@ import (
     ArchiveEntry,
     ArchiveFormat,
     ArchiveOptions,
-    CompressionFormat
-) from "@std/io/archive.ms"
-import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+    CompressionFormat from "@std/io/archive.ms",
+    Bytes, BytesBuilder, join from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // Hands out the chunks in order, then ends.
 type Chunks:

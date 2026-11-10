@@ -1,8 +1,10 @@
-import Bytes from "@std/bytes.ms"
-import environment from "@std/os/env.ms"
-import create_directory, read_file, write_file from "@std/os/fs.ms"
-import dirname, join from "@std/os/path.ms"
-import fail from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    environment from "@std/os/env.ms",
+    create_directory, read_file, write_file from "@std/os/fs.ms",
+    dirname, join from "@std/os/path.ms",
+    fail from "@std/test/test.ms",
+)
 
 /*
 Golden files: expected output kept in a file next to the test and compared by `expect_golden`.

@@ -1,6 +1,6 @@
-import Data, panic from "@std/core.ms"
-import random_bytes from "@std/random.ms"
 import (
+    Data, panic from "@std/core.ms",
+    random_bytes from "@std/random.ms",
     msstd_math_acos,
     msstd_math_asin,
     msstd_math_atan,
@@ -91,8 +91,8 @@ import (
     msstd_bigint_to_int,
     msstd_bigint_to_string_radix,
     msstd_bigint_from_int,
-    msstd_bigint_parse
-) from "@std/internal/math.ms"
+    msstd_bigint_parse from "@std/internal/math.ms",
+)
 
 // Returns the inverse cosine in radians.
 export fn acos(value: Float) Float:

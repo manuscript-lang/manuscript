@@ -1,7 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import csv_rows from "@std/data/csv.ms"
-import monotonic from "@std/time.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    csv_rows from "@std/data/csv.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Chunks:
     data: Bytes

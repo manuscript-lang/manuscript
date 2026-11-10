@@ -1,6 +1,8 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import infinity, sign_bit from "@std/math/math.ms"
-import Complex, complex, complex_polar, imaginary_unit from "@std/math/complex.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    infinity, sign_bit from "@std/math/math.ms",
+    Complex, complex, complex_polar, imaginary_unit from "@std/math/complex.ms",
+)
 
 fn near(left: Complex, right: Complex) Bool:
     return left.subtract(right).abs() < 1e-12

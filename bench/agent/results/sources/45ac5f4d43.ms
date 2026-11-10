@@ -1,5 +1,7 @@
-import stdin, stdout, read_line from "@std/io.ms"
-import from_scalars from "@std/string.ms"
+import (
+    stdin, stdout, read_line from "@std/io.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn is_blank(line: String) Bool:
     for c in line.scalar_values():
@@ -65,19 +67,15 @@ fn vigenere_key(key: String) List[Int]:
 
 fn run_line(line: String) String:
     let parts = line.split(" ")
-    if parts.length() < 4:
-        return "error: bad command"
+    if parts.length() < 4: return "error: bad command"
 
     let cipher = parts[0]
     let mode = parts[1]
     let key = parts[2]
     let text = parts.slice(3, parts.length()).get().join(" ")
-    if text.length() == 0:
-        return "error: bad command"
-    if cipher != "caesar" and cipher != "vigenere":
-        return "error: bad cipher"
-    if mode != "enc" and mode != "dec":
-        return "error: bad mode"
+    if text.length() == 0: return "error: bad command"
+    if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
+    if mode != "enc" and mode != "dec": return "error: bad mode"
 
     let encrypt = mode == "enc"
     var out = List[Int]()
@@ -91,8 +89,7 @@ fn run_line(line: String) String:
             return "error: bad key"
     else:
         let ks = vigenere_key(key)
-        if ks.length() == 0:
-            return "error: bad key"
+        if ks.length() == 0: return "error: bad key"
 
         var p = 0
 

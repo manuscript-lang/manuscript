@@ -1,13 +1,13 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
     bit_and,
     bit_or,
     shift_left,
     shift_right,
-    shift_right_unsigned
-) from "@std/math/math.ms"
-import crc32 from "@std/data/checksum.ms"
-import (compress, decompress, CompressionFormat) from "@std/io/archive.ms"
+    shift_right_unsigned from "@std/math/math.ms",
+    crc32 from "@std/data/checksum.ms",
+    compress, decompress, CompressionFormat from "@std/io/archive.ms",
+)
 
 /*
 Raster images as one flat, interleaved byte buffer, decoded from and encoded to PNG, JPEG, BMP and PPM/PGM.

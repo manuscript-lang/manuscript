@@ -14,20 +14,18 @@ import (
     jbool,
     median,
     options,
-    write_text
-) from "./lib.ms"
-import (
+    write_text from "./lib.ms",
     all_ints,
     append_json_line,
     binaries_json,
     fresh_directory,
     labeled,
     run_pinned,
-    write_json
-) from "./study.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+    write_json from "./study.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+)
 
 type Decode:
     size: Int

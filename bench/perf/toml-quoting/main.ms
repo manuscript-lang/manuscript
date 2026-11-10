@@ -1,8 +1,10 @@
-import TomlValue, stringify from "@std/data/toml.ms"
-import arguments from "@std/os/env.ms"
-import read_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    TomlValue, stringify from "@std/data/toml.ms",
+    arguments from "@std/os/env.ms",
+    read_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn main() Int:
     let args = arguments()

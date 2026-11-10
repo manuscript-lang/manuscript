@@ -1,14 +1,10 @@
-import expect_equal, expect_error from "@std/test/test.ms"
-import (compress, decompress, CompressionFormat) from "@std/io/archive.ms"
 import (
-    pack,
-    unpack,
-    ArchiveEntry,
-    ArchiveFormat,
-    ArchiveOptions
-) from "@std/io/archive.ms"
-import Bytes from "@std/bytes.ms"
-import hex_decode from "@std/data/encoding.ms"
+    expect_equal, expect_error from "@std/test/test.ms",
+    compress, decompress, CompressionFormat from "@std/io/archive.ms",
+    pack, unpack, ArchiveEntry, ArchiveFormat, ArchiveOptions from "@std/io/archive.ms",
+    Bytes from "@std/bytes.ms",
+    hex_decode from "@std/data/encoding.ms",
+)
 
 test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()

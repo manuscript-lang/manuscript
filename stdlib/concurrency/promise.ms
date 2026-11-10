@@ -1,6 +1,6 @@
-import Closeable from "@std/core.ms"
-import Duration from "@std/time.ms"
 import (
+    Closeable from "@std/core.ms",
+    Duration from "@std/time.ms",
     msrt_promise_new,
     msrt_promise_put,
     msrt_promise_take,
@@ -18,8 +18,8 @@ import (
     msrt_cancel_free,
     msrt_promise_wait_any,
     msrt_promise_fault_report,
-    msrt_promise_drop
-) from "@std/internal/promises.ms"
+    msrt_promise_drop from "@std/internal/promises.ms",
+)
 
 // Promises: operations whose results are taken once with `wait()`.
 //

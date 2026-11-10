@@ -1,9 +1,11 @@
-import Closeable, Iterator from "@std/core.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import promise from "@std/concurrency/promise.ms"
-import milliseconds, sleep from "@std/time.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok, expect_error from "@std/test/test.ms"
+import (
+    Closeable, Iterator from "@std/core.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    promise from "@std/concurrency/promise.ms",
+    milliseconds, sleep from "@std/time.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok, expect_error from "@std/test/test.ms",
+)
 
 type Token:
     id: Int

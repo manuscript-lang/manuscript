@@ -1,15 +1,10 @@
-import expect_equal from "@std/test/test.ms"
-import from_bytes, copy, read_all, lines, collect from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
 import (
-    OpenMode,
-    OpenOptions,
-    open,
-    read_file,
-    temporary,
-    write_file
-) from "@std/os/fs.ms"
-import memory, closed_reader from "./support/streams.ms"
+    expect_equal from "@std/test/test.ms",
+    from_bytes, copy, read_all, lines, collect from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    OpenMode, OpenOptions, open, read_file, temporary, write_file from "@std/os/fs.ms",
+    memory, closed_reader from "./support/streams.ms",
+)
 
 test "stream compositions preserve line endings and EOF":
     let found = try collect(lines(memory("one\r\ntwo\nlast")), none)

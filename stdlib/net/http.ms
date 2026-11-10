@@ -1,19 +1,17 @@
-import Closeable, Data, Writable from "@std/core.ms"
-import Bytes, join from "@std/bytes.ms"
-import Duration from "@std/time.ms"
 import (
+    Closeable, Data, Writable from "@std/core.ms",
+    Bytes, join from "@std/bytes.ms",
+    Duration from "@std/time.ms",
     Promise,
     PromiseOptions,
     deferred,
     complete,
-    set_options
-) from "@std/concurrency/promise.ms"
-import stringify from "@std/data/json.ms"
-import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
-import TlsOptions from "@std/net/tls.ms"
-import NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms"
-import (
+    set_options from "@std/concurrency/promise.ms",
+    stringify from "@std/data/json.ms",
+    ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+    TlsOptions from "@std/net/tls.ms",
+    NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms",
     msstd_http_client_close,
     msstd_http_headers_append,
     msstd_http_headers_values,
@@ -25,8 +23,8 @@ import (
     msstd_http_body_close,
     msstd_http_body_metadata,
     msstd_http_body_read,
-    msstd_http_body_read_all
-) from "@std/internal/http.ms"
+    msstd_http_body_read_all from "@std/internal/http.ms",
+)
 
 /*
 Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.

@@ -1,7 +1,9 @@
 // Generator for c58-mini-vcs. The expected outputs come from the Go oracle in oracle/*.ref (built with the
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c58
-import Cases, build_oracle, write_cases, solve_with from "../../lib/gen.ms"
-import compile from "@std/string.ms"
+import (
+    Cases, build_oracle, write_cases, solve_with from "../../lib/gen.ms",
+    compile from "@std/string.ms",
+)
 
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a dummy id finds them.
 fn resolve_hashes(oracle: String, script: String) String:

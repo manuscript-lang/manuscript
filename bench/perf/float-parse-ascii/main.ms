@@ -1,6 +1,8 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import infinity, nan from "@std/math/math.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    infinity, nan from "@std/math/math.ms",
+)
 
 fn main() Int:
     let args = arguments()

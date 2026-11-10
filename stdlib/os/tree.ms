@@ -1,5 +1,7 @@
-import Bytes from "@std/bytes.ms"
-import DirectoryEntry, list, read_file from "@std/os/fs.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    DirectoryEntry, list, read_file from "@std/os/fs.ms",
+)
 
 fn fs_invalid_input() Error:
     return Error("filesystem: invalid input", kind: "EINVAL")

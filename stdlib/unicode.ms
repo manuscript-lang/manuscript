@@ -1,5 +1,5 @@
-import compile, from_scalars from "@std/string.ms"
 import (
+    compile, from_scalars from "@std/string.ms",
     msstd_unicode_is_alphabetic,
     msstd_unicode_is_alphanumeric,
     msstd_unicode_is_numeric,
@@ -7,8 +7,8 @@ import (
     msstd_unicode_is_uppercase,
     msstd_unicode_is_whitespace,
     msstd_unicode_is_control,
-    msstd_unicode_is_ascii
-) from "@std/internal/unicode.ms"
+    msstd_unicode_is_ascii from "@std/internal/unicode.ms",
+)
 
 /*
 Tests Unicode scalar values (integers), using the Unicode data of the pinned Rust toolchain.

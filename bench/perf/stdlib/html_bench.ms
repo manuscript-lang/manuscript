@@ -1,7 +1,9 @@
-import keep, measure from "@std/test/bench.ms"
-import words from "./src/harness.ms"
-import StringBuilder from "@std/string.ms"
-import parse, escape, unescape from "@std/data/html.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    words from "./src/harness.ms",
+    StringBuilder from "@std/string.ms",
+    parse, escape, unescape from "@std/data/html.ms",
+)
 
 fn html_doc(count: Int) String:
     var sb = StringBuilder()

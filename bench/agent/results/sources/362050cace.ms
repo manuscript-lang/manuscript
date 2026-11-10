@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // Kinds of script entries.
 let SAME = 0
@@ -7,8 +9,7 @@ let DEL = 1
 let INS = 2
 
 fn range_str(start: Int, len: Int) String:
-    if len == 1:
-        return "{start}"
+    if len == 1: return "{start}"
 
     return "{start},{len}"
 
@@ -146,8 +147,7 @@ export fn main() Int:
         let e = if last + ctx < total - 1: last + ctx else: total - 1
         emit_hunk(kinds, texts, var ia, var jb, s, e, var out)
 
-    if out.length() == 0:
-        return 0
+    if out.length() == 0: return 0
 
     var buf = "--- {name_a}\n+++ {name_b}\n"
     for line in out:

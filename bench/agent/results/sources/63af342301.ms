@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import bit_and, bit_xor, shift_right_unsigned, wrapping_multiply from "@std/math.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    bit_and, bit_xor, shift_right_unsigned, wrapping_multiply from "@std/math.ms",
+)
 
 let FNV_OFFSET = -3750763034362895579
 let FNV_PRIME = 1099511628211
@@ -61,7 +63,7 @@ fn fnv(text: String) Int:
 fn hex16(h: Int) String:
     var s = ""
     for i in 0..16:
-        s = s + HEX_DIGITS.get(bit_and(shift_right_unsigned(h, 60 - 4 * i), 15))
+        s += HEX_DIGITS.get(bit_and(shift_right_unsigned(h, 60 - 4 * i), 15))
     return s
 
 fn short(id: String) String:
@@ -74,8 +76,7 @@ fn tree_hash(tree: Map[String, String]) Int:
     return fnv(text)
 
 fn same_tree(a: Map[String, String], b: Map[String, String]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for name in a.keys():
         if not b.contains(name) or a.get(name).get("") != b.get(name).get(""):
@@ -95,7 +96,7 @@ fn words(line: String) List[String]:
                 out.append(cur)
                 cur = ""
         else:
-            cur = cur + c
+            cur += c
 
     if not cur.is_empty():
         out.append(cur)
@@ -111,7 +112,7 @@ fn rest_of(line: String) String:
 
     var s = ""
     for k in i..cs.length():
-        s = s + cs[k]
+        s += cs[k]
     return s.trim().clone()
 
 fn rstrip(line: String) String:
@@ -122,49 +123,41 @@ fn rstrip(line: String) String:
 
     var s = ""
     for k in 0..n:
-        s = s + cs[k]
+        s += cs[k]
     return s
 
 fn name_char(c: String, dash: Bool) Bool:
     if (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (c >= "0" and c <= "9"):
         return true
-    if c == "." or c == "_" or c == "/":
-        return true
+    if c == "." or c == "_" or c == "/": return true
 
     return dash and c == "-"
 
 fn valid_name(name: String) Bool:
     let cs = name.chars()
-    if cs.is_empty():
-        return false
+    if cs.is_empty(): return false
 
     for k in 0..cs.length():
-        if not name_char(cs[k], k > 0):
-            return false
+        if not name_char(cs[k], k > 0): return false
     return true
 
 fn is_digits(text: String) Bool:
-    if text.is_empty():
-        return false
+    if text.is_empty(): return false
 
     for c in text.chars():
-        if not (c >= "0" and c <= "9"):
-            return false
+        if not (c >= "0" and c <= "9"): return false
     return true
 
 fn is_hex_lower(text: String) Bool:
-    if text.is_empty():
-        return false
+    if text.is_empty(): return false
 
     for c in text.chars():
-        if not ((c >= "0" and c <= "9") or (c >= "a" and c <= "f")):
-            return false
+        if not ((c >= "0" and c <= "9") or (c >= "a" and c <= "f")): return false
     return true
 
 fn lines_of(content: String) List[String]:
     var out = List[String]()
-    if content.is_empty():
-        return out
+    if content.is_empty(): return out
 
     let parts = content.split("\n")
     for k in 0..parts.length() - 1:
@@ -172,18 +165,15 @@ fn lines_of(content: String) List[String]:
     return out
 
 fn join_lines(lines: List[String]) String:
-    if lines.is_empty():
-        return ""
+    if lines.is_empty(): return ""
 
     return lines.join("\n") + "\n"
 
 fn same_lines(a: List[String], b: List[String]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for k in 0..a.length():
-        if a[k] != b[k]:
-            return false
+        if a[k] != b[k]: return false
     return true
 
 fn span(lines: List[String], start: Int, stop: Int) List[String]:
@@ -343,53 +333,45 @@ impl Repo:
         self.out.append("error: " + message)
 
     var fn section(title: String, items: List[String]) Unit:
-        if items.is_empty():
-            return
+        if items.is_empty(): return
 
         self.out.append(title)
         for item in items:
             self.out.append("  " + item)
 
     fn head_id() String:
-        if self.detached:
-            return self.detached_at.clone()
+        if self.detached: return self.detached_at.clone()
 
         return self.branches.get(self.head_branch).get("")
 
     fn label() String:
-        if self.detached:
-            return "detached"
+        if self.detached: return "detached"
 
         return self.head_branch.clone()
 
     fn tree_at(id: String) Map[String, String]:
-        if let c = self.commits.get(id):
-            return c.tree.clone()
+        if let c = self.commits.get(id): return c.tree.clone()
 
         return Map[String, String]()
 
     fn parents_of(id: String) List[String]:
-        if let c = self.commits.get(id):
-            return c.parents.clone()
+        if let c = self.commits.get(id): return c.parents.clone()
 
         return List[String]()
 
     fn message_of(id: String) String:
-        if let c = self.commits.get(id):
-            return c.message.clone()
+        if let c = self.commits.get(id): return c.message.clone()
 
         return ""
 
     fn number_of(id: String) Int:
-        if let c = self.commits.get(id):
-            return c.number
+        if let c = self.commits.get(id): return c.number
 
         return 0
 
     fn ancestors(id: String) Set[String]:
         var seen = Set[String]()
-        if id.is_empty():
-            return seen
+        if id.is_empty(): return seen
 
         var todo = List[String]()
         todo.append(id)
@@ -426,14 +408,11 @@ impl Repo:
     fn resolve_name(name: String, spec: String) Found:
         if name == "HEAD":
             let h = self.head_id()
-            if not h.is_empty():
-                return Found(id: h, error: "")
+            if not h.is_empty(): return Found(id: h, error: "")
 
         if let b = self.branches.get(name):
-            if not b.is_empty():
-                return Found(id: b.clone(), error: "")
-        if let t = self.tags.get(name):
-            return Found(id: t.clone(), error: "")
+            if not b.is_empty(): return Found(id: b.clone(), error: "")
+        if let t = self.tags.get(name): return Found(id: t.clone(), error: "")
 
         if name.length() >= 4 and is_hex_lower(name):
             var found = ""
@@ -444,8 +423,7 @@ impl Repo:
                     found = id
                     count += 1
 
-            if count == 1:
-                return Found(id: found, error: "")
+            if count == 1: return Found(id: found, error: "")
             if count > 1:
                 return Found(id: "", error: "ambiguous revision '" + spec + "'")
 
@@ -457,8 +435,7 @@ impl Repo:
             return Found(id: "", error: "unknown revision '" + spec + "'")
 
         let found = self.resolve_name(parts[0], spec)
-        if parts.length() == 1 or not found.error.is_empty():
-            return found
+        if parts.length() == 1 or not found.error.is_empty(): return found
 
         let text = parts[1]
         let steps = text.parse_int().get(-1)
@@ -517,21 +494,17 @@ impl Repo:
         self.index = target.clone()
 
     fn is_dirty() Bool:
-        if not same_tree(self.index, self.tree_at(self.head_id())):
-            return true
+        if not same_tree(self.index, self.tree_at(self.head_id())): return true
 
         for n in self.index.keys():
-            if not self.work.contains(n):
-                return true
-            if self.work.get(n).get("") != self.index.get(n).get(""):
-                return true
+            if not self.work.contains(n): return true
+            if self.work.get(n).get("") != self.index.get(n).get(""): return true
 
         return false
 
     fn untracked_in(target: Map[String, String]) String:
         for n in target.keys().sorted():
-            if not self.index.contains(n) and self.work.contains(n):
-                return n
+            if not self.index.contains(n) and self.work.contains(n): return n
         return ""
 
     var fn can_switch(target: Map[String, String]) Bool:
@@ -1013,8 +986,7 @@ impl Repo:
             return
 
         let tree = self.tree_at(head)
-        if not self.can_switch(tree):
-            return
+        if not self.can_switch(tree): return
 
         self.branches[name.clone()] = head.clone()
         self.load_tree(tree)
@@ -1033,8 +1005,7 @@ impl Repo:
                 return
 
             let tree = self.tree_at(self.branches.get(target).get(""))
-            if not self.can_switch(tree):
-                return
+            if not self.can_switch(tree): return
 
             self.load_tree(tree)
             self.head_branch = target.clone()
@@ -1049,8 +1020,7 @@ impl Repo:
             return
 
         let tree = self.tree_at(f.id)
-        if not self.can_switch(tree):
-            return
+        if not self.can_switch(tree): return
 
         self.load_tree(tree)
         self.detached = true
@@ -1107,8 +1077,7 @@ impl Repo:
 
         if self.ancestors(other.clone()).contains(cur.clone()):
             let tree = self.tree_at(other)
-            if not self.can_switch(tree):
-                return
+            if not self.can_switch(tree): return
 
             self.load_tree(tree)
             self.move_head(other)

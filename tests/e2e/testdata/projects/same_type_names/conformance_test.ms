@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import flip, shifted from "./other.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    flip, shifted from "./other.ms",
+)
 
 // The same type names in two modules lower to distinct Go types.
 type Point:

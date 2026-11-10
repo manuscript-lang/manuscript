@@ -1,5 +1,7 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn main() Int:
     let args = arguments()

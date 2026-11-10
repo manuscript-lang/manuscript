@@ -7,15 +7,17 @@
 // environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.ms,cases.json,...}, solution/solve.sh. Hidden cases
 // live only in tests/, which Harbor uploads at verification time. The verifier runs `ms` inside the task, so every
 // image carries the binary given by --ms-binary. The output is generated; do not commit it.
-import Flag, FlagKind, command from "@std/cli/command.ms"
-import chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms"
-import JsonValue from "@std/data/json.ms"
-import stderr from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
-import make_workspace from "./core/workspace.ms"
-import dumps from "./lib/pyjson.ms"
-import read_text, write_text from "./lib/text.ms"
+import (
+    Flag, FlagKind, command from "@std/cli/command.ms",
+    chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms",
+    JsonValue from "@std/data/json.ms",
+    stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms",
+    make_workspace from "./core/workspace.ms",
+    dumps from "./lib/pyjson.ms",
+    read_text, write_text from "./lib/text.ms",
+)
 
 type Options:
     out: String

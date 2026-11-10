@@ -1,19 +1,9 @@
-import Closeable, panic from "@std/core.ms"
-import Deque from "@std/collections/deque.ms"
 import (
-    append_file,
-    read_file,
-    temporary,
-    open,
-    FileHandle,
-    OpenMode
-) from "@std/os/fs.ms"
-import (
-    expect_contains,
-    expect_equal,
-    expect_error,
-    expect_fault
-) from "@std/test/test.ms"
+    Closeable, panic from "@std/core.ms",
+    Deque from "@std/collections/deque.ms",
+    append_file, read_file, temporary, open, FileHandle, OpenMode from "@std/os/fs.ms",
+    expect_contains, expect_equal, expect_error, expect_fault from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
