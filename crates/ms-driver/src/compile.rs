@@ -120,7 +120,8 @@ pub fn check_graph_in(
     checked
 }
 
-/// Entry validation: an exported, nongeneric, parameterless `main` returning `Int`.
+/// Entry validation: a nongeneric, parameterless `main` returning `Unit`, `Unit!`, or `Int`;
+/// `export` is optional.
 fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option<Diagnostic> {
     let file: Arc<str> = Arc::from(entry);
     let main = program
@@ -128,7 +129,8 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
         .get(&n(entry))
         .and_then(|names| names.borrow().get(&n("main")).cloned());
     let mut position = Pos::new(0, 1, 1);
-    let mut detail = "no main function is declared, so add 'export fn main() Int:' with an indented 'return 0' body".to_string();
+    let mut detail =
+        "no main function is declared, so add 'fn main() Unit:' with an indented body".to_string();
     if let Some(main) = &main {
         let ty = main.ty_opt();
         let constant = main.is_constant();
@@ -136,11 +138,14 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
         let parameters = ty.as_ref().map_or(0, |t| t.params.len());
         let result = ty.as_ref().and_then(|t| t.result.clone());
         if main.kind == SymKind::Fn
-            && main.export
             && !constant
             && !generic
             && parameters == 0
-            && result.as_ref().is_some_and(|r| r.id == n("Int"))
+            && result.as_ref().is_none_or(|r| {
+                r.id == n("Int")
+                    || r.id == n("Unit")
+                    || ms_check::api::types::is_close_result(syms, r)
+            })
         {
             return None;
         }
@@ -148,12 +153,9 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
             position = decl.pos();
         }
         detail = if constant {
-            "main is a constant, so rename it and declare 'export fn main() Int:'".to_string()
+            "main is a constant, so rename it and declare 'fn main() Unit:'".to_string()
         } else if main.kind != SymKind::Fn {
-            "main is declared as a type, so rename it and declare 'export fn main() Int:'"
-                .to_string()
-        } else if !main.export {
-            "main is not exported, so write 'export fn main() Int:'".to_string()
+            "main is declared as a type, so rename it and declare 'fn main() Unit:'".to_string()
         } else if generic {
             "main cannot be generic, so remove its type parameters".to_string()
         } else if parameters > 0 {
@@ -162,7 +164,7 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
             let shown =
                 result.map_or_else(|| "<invalid>".to_string(), |r| r.display(syms).to_string());
             format!(
-                "main returns {shown}, so declare its result type Int and return an exit status, e.g. 'return 0'"
+                "main returns {shown}, so return Unit, Unit! (an error prints and exits 1), or an Int exit status"
             )
         };
     }
@@ -172,7 +174,7 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
         file,
         pos: position,
         phase: Phase::Type,
-        message: format!("entry must export fn main() Int; {detail}"),
+        message: format!("entry must declare fn main; {detail}"),
         end: None,
         fix: None,
     })

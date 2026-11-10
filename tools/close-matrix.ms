@@ -339,7 +339,7 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 
     return counts
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let ms = tool_ms(root)
     let scratch = temporary("ms-close-matrix-").get()

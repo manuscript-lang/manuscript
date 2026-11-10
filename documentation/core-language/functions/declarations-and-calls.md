@@ -24,6 +24,20 @@ Parameters and return types are explicit; local annotations are optional.
 - Duplicate module names and overloads are rejected. Generics follow [generics](../types/generics.md).
 - Parameters live in the body's scope; a local cannot reuse a parameter name there. Branches, arms, loop bodies, and closures open nested scopes, which cannot reuse an enclosing local or parameter name.
 
+## The program entry
+
+An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Unit`, `Unit!`, or `Int`. `Unit` exits 0. `Unit!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int` is the exit status.
+
+<!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
+```manuscript
+fn check() Unit!:
+    print("checking")
+    return ok(unit)
+
+fn main() Unit!:
+    return check()
+```
+
 ## Argument names
 
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.

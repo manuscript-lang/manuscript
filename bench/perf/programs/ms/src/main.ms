@@ -210,7 +210,7 @@ fn bench_for_list() Int:
     report("for_list", 100000000, t)
     return fs
 
-export fn main() Int:
+fn main() Unit:
     let built = bench_string()
     bench_read_line()
 
@@ -223,4 +223,3 @@ export fn main() Int:
     let ln = bench_length()
     let fs = bench_for_list()
     say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
-    return 0

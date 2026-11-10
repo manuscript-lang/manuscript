@@ -3,7 +3,7 @@ import monotonic from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 import parse, encode_component, decode_component from "@std/net/url.ms"
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let count = args[0].parse_int().get()
     let operation = args[1]

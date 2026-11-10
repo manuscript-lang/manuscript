@@ -1,7 +1,6 @@
 import approve, Approved, Mode, safe from "./gate.ms"
 import parse, stringify from "@std/data/json.ms"
 
-export fn main() Int:
+fn main() Unit:
     var a = approve("u")
     a.nonce = "z"
-    return 0

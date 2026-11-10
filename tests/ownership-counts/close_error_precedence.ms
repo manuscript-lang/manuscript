@@ -28,7 +28,7 @@ fn borrowed(cause: Error) Int!:
     let _resource = Token(3)
     return error(cause)
 
-export fn main() Int:
+fn main() Unit:
     let first = owned()
     let cause = first.err()
     print(cause.message)
@@ -43,4 +43,3 @@ export fn main() Int:
     print(returned.details["id"])
     print(original.message)
     print(original.details["id"])
-    return 0

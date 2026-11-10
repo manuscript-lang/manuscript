@@ -14,7 +14,7 @@ Save as `callback.ms` and run `ms run callback.ms`:
 fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
 
-export fn main() Int:
+fn main() Int:
     let offset = 1
     let decrement = fn(value: Int) Int:
         return value - offset

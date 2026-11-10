@@ -29,7 +29,7 @@ fn show(x: Int?) Unit:
 fn tick(var c: C?) Int?:
     return c?.bump()
 
-export fn main() Int:
+fn main() Unit:
     var c: C? = C(1, List[String]())
     var none_c: C? = none
     show(c?.bump())
@@ -47,4 +47,3 @@ export fn main() Int:
 
     var hn = H(none)
     show(hn.c?.bump())
-    return 0

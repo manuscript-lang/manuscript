@@ -59,7 +59,7 @@ type Row:
     count: Int
     text: String
 
-export fn main() Int:
+fn main() Int:
     let targets = arguments()
     if targets.is_empty(): return usage("usage: copy_report.ms -- <ms.toml|file.ms>...")
 

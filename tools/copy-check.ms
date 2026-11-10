@@ -21,7 +21,7 @@ fn copies(text: String) List[String]:
         )
     return sites
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())

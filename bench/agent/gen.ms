@@ -24,7 +24,7 @@ import gen_c58 from "./challenges/c58-mini-vcs/gen.ms"
 import gen_c59 from "./challenges/c59-spreadsheet/gen.ms"
 import gen_c60 from "./challenges/c60-issue-tracker/gen.ms"
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
 
     if args.length() != 1:

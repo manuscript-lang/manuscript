@@ -10,5 +10,5 @@ fn f(s: S) Int:
         A:
             return 1
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

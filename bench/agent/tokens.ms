@@ -22,7 +22,7 @@ fn count_tokens(paths: List[String]) List[Int]?:
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
 
-export fn main() Int:
+fn main() Int:
     // Each challenge with a reference solution in every language, as a row of file paths in LANGS order.
     var names = List[String]()
     var paths = List[String]()

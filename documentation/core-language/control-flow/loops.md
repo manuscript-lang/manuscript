@@ -136,10 +136,9 @@ impl Iterator[Int] for Countdown:
         self.left -= 1
         return self.left + 1
 
-export fn main() Int:
+fn main() Unit:
     for n in Countdown(3):
         print(n)
-    return 0
 ```
 
 Output:
@@ -159,13 +158,12 @@ A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn le
 ```manuscript
 import Deque from "@std/collections/deque.ms"
 
-export fn main() Int:
+fn main() Unit:
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)
     for step in steps:
         print(step)
-    return 0
 ```
 
 Output:

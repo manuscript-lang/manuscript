@@ -11,5 +11,5 @@ impl Sink for Buf:
     var fn put(x: Int) Unit:
         self.n = x
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

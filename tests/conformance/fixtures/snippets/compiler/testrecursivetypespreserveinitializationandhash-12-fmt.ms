@@ -11,7 +11,6 @@ impl I[T] for Box[T]:
     fn f(x: I[List[T]]) Int:
         return 1
 
-export fn main() Int:
+fn main() Unit:
     let b = Box[Int](v: 1)
     let i = I[Int](value: b)
-    return 0

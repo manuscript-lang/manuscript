@@ -14,10 +14,9 @@ Save as `greeting.ms` and run `ms run greeting.ms`:
 fn greeting(name: String?) String:
     return "Hello, {name.get("guest")}!"
 
-export fn main() Int:
+fn main() Unit:
     print(greeting("Ada"))
     print(greeting())
-    return 0
 ```
 
 ```text

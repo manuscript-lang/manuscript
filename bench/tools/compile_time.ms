@@ -360,7 +360,7 @@ fn rust_timed(
     remove("{out}/rs/target", recursive: true).get(unit)
     return timed(label, "{out}/rs", cargo, args)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     var dims = [40, 25, 10]
 

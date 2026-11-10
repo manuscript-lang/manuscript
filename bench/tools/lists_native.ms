@@ -109,7 +109,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     write_text("{out}/results.json", text)
     return ok(text)
 
-export fn main() Int:
+fn main() Int:
     let parsed = options(
         arguments(), ["cli", "output", "runs", "cpu"], ["cli", "output"]
     )

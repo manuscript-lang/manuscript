@@ -145,7 +145,7 @@ fn stdlib_lines(data: Bytes) Int!:
         count += line.length()
     return ok(count)
 
-export fn main() Int:
+fn main() Unit:
     let n = 5000000
     var xs = List[Int]()
     for i in 0..n:
@@ -202,4 +202,3 @@ export fn main() Int:
     let f = data.clone()
     t = monotonic()
     report("stream-lines", rows, t, stdlib_lines(f).get(-1))
-    return 0

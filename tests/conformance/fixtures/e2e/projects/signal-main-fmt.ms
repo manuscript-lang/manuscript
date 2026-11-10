@@ -14,7 +14,7 @@ impl Closeable for Resource:
         let _ignored = self.output.write("close {self.label}\n")
         return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     let output = stdout()
     var _resource = Resource("parent", output)
     let _child = Resource("child", output)
@@ -22,4 +22,3 @@ export fn main() Int:
     while true:
         continue
     _resource.close()
-    return 0

@@ -1,5 +1,4 @@
 fn id[T](x: T) T: x
 
-fn main() Int:
+fn main() Unit:
     let _x = id(none)
-    return 0

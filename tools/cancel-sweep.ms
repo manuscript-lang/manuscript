@@ -138,7 +138,7 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 
     return lines
 
-export fn main() Int:
+fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 

@@ -72,7 +72,7 @@ fn shared_owner() Unit:
 
     let _still_present = value.id
 
-export fn main() Int:
+fn main() Unit:
     let a = ordinary()
     print("ordinary {a}")
 
@@ -85,4 +85,3 @@ export fn main() Int:
     print("after borrowed")
     shared_owner()
     print("after shared")
-    return 0

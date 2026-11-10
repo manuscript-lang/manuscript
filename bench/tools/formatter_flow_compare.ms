@@ -100,7 +100,7 @@ fn compare(
     write_text(out, rows.join("\n") + "\n")
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 2: return fail(
         "usage: formatter_flow_compare.ms -- BEFORE AFTER --out FILE [--samples N] [--cpu N]"

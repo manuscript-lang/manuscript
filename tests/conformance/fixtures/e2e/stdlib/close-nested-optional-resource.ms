@@ -16,8 +16,7 @@ fn nested(n: String) Door??:
     let inner: Door? = Door(n)
     return inner
 
-export fn main() Int:
+fn main() Unit:
     let bound = nested("bound")
     let present = nested("temporary").is_some()
     print("end {bound.is_some()} {present}")
-    return 0

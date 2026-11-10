@@ -15,7 +15,7 @@ fn rows_of(shape: String) String:
 
     return text
 
-export fn main() Int:
+fn main() Unit:
     for shape in ["quoted", "plain"]:
         let text = rows_of(shape)
         var best = 9223372036854775807
@@ -31,5 +31,3 @@ export fn main() Int:
         let _written = stdout().write(
             "manuscript {shape} rows={count} best_us={best / 1000}\n"
         )
-
-    return 0

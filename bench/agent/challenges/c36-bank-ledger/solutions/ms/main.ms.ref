@@ -70,8 +70,7 @@ fn step(var l: Ledger, t: List[String]) String:
         return "error: unknown account {t[1]}"
     return money(var l, t[0], t)
 
-export fn main() Int:
+fn main() Unit:
     var l = Ledger(Map[String, Account](), 0)
     if let ls = stdin() | lines | collect(none):
         for t in ls.map(fn s: s.replace("\t", " ").split(" ").filter(fn p: not p.is_empty())).filter(fn t: not t.is_empty()): print(step(var l, t))
-    return 0

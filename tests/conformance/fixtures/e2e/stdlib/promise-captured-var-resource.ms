@@ -21,8 +21,7 @@ fn use(var door: Door) Int!:
 
 // A promise that passes a captured `var` resource on owns it from the capture: it closes the door once
 // when its work ends and drops its names (`make leak-check` reports a block left behind).
-export fn main() Int:
+fn main() Unit:
     var door = Door(["front", "back"])
     let moved = promise(fn: use(var door))
     print("{moved.wait().get(0)}")
-    return 0

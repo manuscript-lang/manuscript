@@ -18,7 +18,7 @@ fn supported(target_os: String, target_arch: String) Bool:
         "windows/arm64"
     ].contains(key)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     var target_os = dist_os()
     var target_arch = dist_arch()

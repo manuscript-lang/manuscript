@@ -7,5 +7,5 @@ fn both(n: Int) Int:
     else:
         return both(n + 1)
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

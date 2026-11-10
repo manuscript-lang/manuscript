@@ -32,7 +32,7 @@ fn show(n: Int) Result[Unit, Error]:
     try stdout().flush()
     return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     show(total(Sq(s: 4))).get()
     show(twice(3).get()).get()
 
@@ -42,5 +42,3 @@ export fn main() Int:
         show(v).get()
     else:
         show(99).get()
-
-    return 0

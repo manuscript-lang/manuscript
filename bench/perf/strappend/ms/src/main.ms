@@ -20,7 +20,7 @@ fn fill(count: Int) Int:
 
     return items.length()
 
-export fn main() Int:
+fn main() Unit:
     var piece = "x"
 
     for size in [4, 16, 64, 256, 1024, 8192]:
@@ -53,5 +53,3 @@ export fn main() Int:
                 best = elapsed
 
         let _ignored = stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
-
-    return 0

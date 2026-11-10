@@ -184,14 +184,12 @@ and standalone run/test/debug/profile artifacts.
 parse	1	3	2	indentation must be a multiple of four spaces, found 2; use 0 or 4import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit!:
     let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(message).is_error():
-        return 1
-
-    return 0
+    try stdout().write(message)
+    return ok(unit)
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
-resolution	5	32	132	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
+resolution	5	32	127	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
 
 test "arithmetic":
     if not (2 + 3 == 5):
@@ -840,19 +838,16 @@ export fn main() Int:
 resolution	1	8	7	unknown standard module @std/faults.ms
 resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/time.ms"
 import stdout from "@std/io/io.ms"
-export fn main() Int:
+fn main() Unit:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
-    return 0
-type	4	20	122	unknown argument data; parameters of write: value
-type	4	14	116	missing argument value: String in call to write; add 'value: <String>'
-type	4	5	107	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
+type	4	20	116	unknown argument data; parameters of write: value
+type	4	14	110	missing argument value: String in call to write; add 'value: <String>'
+type	4	5	101	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
 
-export fn main() Int:
-    if stdout().write(data: %q).is_error():
-        return 1
-    return 0
-parse	4	29	86	expected an expression, found '%'; write a value, name, call, or literal hereenum A:
+fn main() Unit!:
+    return stdout().write(data: %q)
+parse	4	33	85	expected an expression, found '%'; write a value, name, call, or literal hereenum A:
     X
 enum B:
     X
@@ -2827,11 +2822,10 @@ type Box[T]:
 impl I[T] for Box[T]:
     fn f(x: I[List[T]]) Int:
         return 1
-export fn main() Int:
+fn main() Unit:
     let b = Box[Int](v: 1)
     let i = I[Int](value: b)
-    return 0
-type	11	13	196	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
+type	11	13	190	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
 type	2	8	23	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycleenum Expr:
     Num(value: Int)
     Add(left: Expr, right: Expr)
@@ -4648,8 +4642,9 @@ impl T:
     fn f(self) Int:
         return 1
 
-export fn main() Int:
-    return 0
+fn main() Unit!:
+
+    return ok(unit)
 parse	5	10	37	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodylet LIMIT = 10
 fn size() Int:
     return LIMIT
@@ -4853,10 +4848,9 @@ fn render(
         inp|
     return unit
 parse	4	13	80	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import stdout from "@std/io/io.ms"
-export fn main() Int:
+fn main() Unit:
     stdout().wr|
-    return 0
-parse	3	17	73	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'interface Reader:
+parse	3	17	67	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'interface Reader:
     fn read() String
 fn answer[T: Reader](reader: T) String:
     return reader.|
@@ -5884,17 +5878,15 @@ let A = 2
 resolution	2	1	10	duplicate or intrinsic name A; this name is already declared, imported, or built in, so rename one of themexport let main = 0
 fn crash(%s) %s:
     return %s
-export fn main() Int:
+fn main() Unit:
     let values = %s
     let result = values.%s(%s)
-    return 0
 parse	1	10	9	expected a name, found '%'import TextError from "@std/errors.ms"
 fn crash() TextError:
     return TextError((1 / 0).to_string())
-export fn main() Int:
+fn main() Unit:
     let value: Int? = none
     let result = value.ok_or_else(crash)
-    return 0
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	12	50	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	3	12	72	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport Closeable from "@std/cleanup.ms"
@@ -5968,12 +5960,11 @@ resolution	4	6	82	unknown type Closeable; add: import Closeable from "@std/core.
     return sum
 parse	1	9	8	expected '(', found '%'; a call or parameter list starts with '('import stderr from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     let stream = stderr()
-    let chunk = "parse	5	18	101	unterminated text literal".to_bytes()
+    let chunk = "parse	5	18	95	unterminated text literal".to_bytes()
     while true:
         let _written = stream.write_bytes(data: chunk)
-    return 0
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn add(a: Int, b: Int) Int:
     let sum = a + b
     return sum
@@ -5986,11 +5977,10 @@ export fn main() Int:
 fn never() Int:
     return 1
 
-export fn main() Int:
+fn main() Unit:
     let _written = stdout().write(data: "TARGET_RAN\n")
-    return 0
-type	7	35	122	unknown argument data; parameters of write: value
-type	7	29	116	missing argument value: String in call to write; add 'value: <String>'test "continues after decimal overflow":
+type	7	35	116	unknown argument data; parameters of write: value
+type	7	29	110	missing argument value: String in call to write; add 'value: <String>'test "continues after decimal overflow":
     let finite = 1d / 3d
 resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/math/decimal.ms"interface Shape:
     fn area() Int
@@ -6625,10 +6615,9 @@ test "check must not execute tests":
 resolution	4	12	84	unknown binding panic; add: import panic from "@std/core.ms"fn number() Int: return 1
 type Node:
     next: Node?
-export fn main() Int:
+fn main() Unit:
     let node = Node(node)
-    return 0
-resolution	4	21	69	unknown binding node; declare it with 'let node = ...' before use, define 'fn node(...) T:', or import it from a moduletype Node:
+resolution	4	21	63	unknown binding node; declare it with 'let node = ...' before use, define 'fn node(...) T:', or import it from a moduletype Node:
     next: Node?
 export fn main() Int:
     let node = Node(none)

@@ -20,7 +20,7 @@ fn hugo_new_enough(version: String) Bool:
     let patch = parts[2].parse_int().get(0)
     return major > 0 or minor > 146 or (minor == 146 and patch >= 7)
 
-export fn main() Int:
+fn main() Int:
     var failed = 0
     for command in ["git", "tar"]:
         if not say(works(command, ["--version"]), command, command): failed += 1

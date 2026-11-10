@@ -9,7 +9,7 @@ fn diagnostic(text: String) String:
         ok(_): return "accepted"
         error(cause): return cause.message()
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let path = args.get(0)
     let text = filesystem().read_file(path).get().decode_utf8().get()

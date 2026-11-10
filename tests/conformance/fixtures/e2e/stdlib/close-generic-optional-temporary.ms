@@ -15,7 +15,6 @@ impl Closeable for Door:
 
 fn opt[T](v: T) T?: v
 
-export fn main() Int:
+fn main() Unit:
     let _a = opt(Door("temp"))
     print("end")
-    return 0

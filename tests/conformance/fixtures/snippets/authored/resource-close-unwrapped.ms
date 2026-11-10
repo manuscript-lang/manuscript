@@ -35,9 +35,8 @@ fn via_passthrough() Unit:
     let r = keep(Res("keep"))
     print("body {r.name}")
 
-export fn main() Int:
+fn main() Unit:
     let _ = via_try()
     via_get()
     via_optional_get()
     via_passthrough()
-    return 0

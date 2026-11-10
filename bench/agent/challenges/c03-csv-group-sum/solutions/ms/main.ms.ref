@@ -28,7 +28,7 @@ fn parse_line(line: String) Rec?:
         if let cents = parse_amount(amount): return Rec(cat, cents)
     return none
 
-export fn main() Int:
+fn main() Unit:
     var totals = Map[String, Int]()
     var bad = 0
     if let ls = stdin() | lines | collect(none):
@@ -37,4 +37,3 @@ export fn main() Int:
             else: bad += 1
     for e in totals.entries().sorted(fn a, b: a.key.compare(b.key)): print("{e.key}: {e.value / 100}.{if e.value % 100 < 10: "0" else: ""}{e.value % 100}")
     if bad > 0: print("skipped: {bad}")
-    return 0

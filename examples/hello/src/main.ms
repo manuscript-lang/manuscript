@@ -1,5 +1,4 @@
 import arguments from "@std/os/env.ms"
 
-export fn main() Int:
+fn main() Unit:
     print("Arguments: {arguments().length()}")
-    return 0
