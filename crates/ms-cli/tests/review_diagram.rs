@@ -991,3 +991,87 @@ fn review_and_diagram_accept_git_quoted_unicode_paths() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn review_and_diagram_reject_mismatched_added_and_deleted_sources() {
+    let dir = scratch("diff-after-state");
+    let head = include_str!("review_quoted/head.ms");
+    std::fs::write(dir.join("main.ms"), head).unwrap();
+    let added = |body: &str, start: usize| {
+        format!(
+            "diff --git a/main.ms b/main.ms\nnew file mode 100644\n--- /dev/null\n+++ b/main.ms\n@@ -0,0 +{start},{} @@\n{}",
+            body.lines().count(),
+            body.lines()
+                .map(|line| format!("+{line}\n"))
+                .collect::<String>()
+        )
+    };
+    let deleted = format!(
+        "diff --git a/main.ms b/main.ms\ndeleted file mode 100644\n--- a/main.ms\n+++ /dev/null\n@@ -1,{} +0,0 @@\n{}",
+        head.lines().count(),
+        head.lines()
+            .map(|line| format!("-{line}\n"))
+            .collect::<String>()
+    );
+    for patch in [
+        added(&head.replace("new", "old"), 1),
+        added(head.lines().nth(1).unwrap(), 2),
+        "diff --git a/main.ms b/main.ms\nnew file mode 100644\n--- /dev/null\n+++ b/main.ms\n"
+            .to_string(),
+        added(head, 1).replace("main.ms", "missing.ms"),
+        deleted,
+    ] {
+        std::fs::write(dir.join("change.patch"), patch).unwrap();
+        for command in ["review", "diagram"] {
+            let mut args = vec![command, "main.ms", "--diff", "change.patch", "--json"];
+            if command == "diagram" {
+                args.extend(["--view", "calls"]);
+            }
+            let output = ms(&dir, &args);
+            assert_eq!(output.status.code(), Some(2), "{output:?}");
+            assert!(output.stdout.is_empty());
+            assert!(
+                String::from_utf8_lossy(&output.stderr).contains("diff does not match the tree")
+            );
+        }
+    }
+    std::fs::write(dir.join("change.patch"), added(head, 1)).unwrap();
+    let report = json(&ms(
+        &dir,
+        &["review", "main.ms", "--diff", "change.patch", "--json"],
+    ));
+    assert_eq!(report.get("base_checked"), Some(&Json::Bool(true)));
+    assert_eq!(report.get("findings").unwrap().as_array().unwrap().len(), 1);
+    let _ = json(&ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--view",
+            "calls",
+            "--diff",
+            "change.patch",
+            "--json",
+        ],
+    ));
+    std::fs::write(dir.join("empty.ms"), "").unwrap();
+    std::fs::write(dir.join("change.patch"), "diff --git a/empty.ms b/empty.ms\nnew file mode 100644\n--- /dev/null\n+++ b/empty.ms\ndiff --git a/gone.ms b/gone.ms\ndeleted file mode 100644\n--- a/gone.ms\n+++ /dev/null\n").unwrap();
+    let report = json(&ms(
+        &dir,
+        &["review", "main.ms", "--diff", "change.patch", "--json"],
+    ));
+    assert_eq!(report.get("base_checked"), Some(&Json::Bool(true)));
+    let _ = json(&ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--view",
+            "calls",
+            "--diff",
+            "change.patch",
+            "--json",
+        ],
+    ));
+    let _ = std::fs::remove_dir_all(dir);
+}

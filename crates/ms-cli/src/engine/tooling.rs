@@ -893,9 +893,23 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
             continue;
         }
         input.sources += 1;
-        if file.old.is_empty() {
-            input.added.insert(relative.clone());
-        } else if file.new.is_empty() {
+        if file.new.is_empty() {
+            match std::fs::symlink_metadata(&absolute) {
+                Ok(_) => {
+                    return Err(format!(
+                        "{}: deleted source still exists in the working tree",
+                        file.path()
+                    ));
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(format!(
+                        "{}: {}",
+                        file.path(),
+                        file_error(&ProjectError::path("inspect", &absolute, &error))
+                    ));
+                }
+            }
             overlay.insert(absolute, removed_content(&file.hunks));
         } else {
             let head = std::fs::read(&absolute).map_err(|error| {
@@ -907,7 +921,17 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
             })?;
             let base = reverse_apply(&String::from_utf8_lossy(&head), &file.hunks)
                 .map_err(|message| format!("{}: {message}", file.path()))?;
-            overlay.insert(absolute, base);
+            if file.old.is_empty() {
+                if !base.is_empty() {
+                    return Err(format!(
+                        "{}: added source diff does not cover the whole file",
+                        file.path()
+                    ));
+                }
+                input.added.insert(relative.clone());
+            } else {
+                overlay.insert(absolute, base);
+            }
         }
         if !file.new.is_empty() {
             input.touched.insert(relative, file.touched_lines());
