@@ -86,7 +86,26 @@ pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
         }
         return Some(if neg { -acc } else { acc });
     }
-    core::str::from_utf8(text).ok()?.parse().ok()
+    // Longer text is valid only with leading zeros; at most nineteen significant digits can fit, so the
+    // untouched suffix of an overlong input is never scanned.
+    let zeros = digits.iter().take_while(|&&c| c == b'0').count();
+    let significant = &digits[zeros..];
+    if significant.len() > 19 {
+        return None;
+    }
+    let mut acc = 0u64;
+    for &c in significant {
+        let d = c.wrapping_sub(b'0');
+        if d > 9 {
+            return None;
+        }
+        acc = acc * 10 + d as u64;
+    }
+    if neg {
+        0i64.checked_sub_unsigned(acc)
+    } else {
+        i64::try_from(acc).ok()
+    }
 }
 
 /// `Numbers.parse_int`: Err carries the status code. Radix 0 reads a `0x`, `0o` or `0b` prefix (any case) after
@@ -719,6 +738,21 @@ mod tests {
         assert_eq!(parse_int_decimal(b"-"), None);
         assert_eq!(parse_int_decimal(b"+-1"), None);
         assert_eq!(parse_int_decimal(b"1 "), None);
+        let zeros = "0".repeat(40);
+        let long =
+            |sign: &str, tail: &str| parse_int_decimal(format!("{sign}{zeros}{tail}").as_bytes());
+        assert_eq!(long("", "9223372036854775807"), Some(i64::MAX));
+        assert_eq!(long("-", "9223372036854775808"), Some(i64::MIN));
+        assert_eq!(long("", "9223372036854775808"), None);
+        assert_eq!(long("-", "9223372036854775809"), None);
+        assert_eq!(long("+", ""), Some(0));
+        assert_eq!(long("-", "7"), Some(-7));
+        assert_eq!(long("", "-1"), None);
+        assert_eq!(long("", "1x"), None);
+        assert_eq!(long("", "\u{e9}"), None);
+        assert_eq!(parse_int_decimal(b"99999999999999999999"), None);
+        assert_eq!(parse_int_decimal(b"18446744073709551616"), None);
+        assert_eq!(parse_int_decimal(b"!0000000000000000000000"), None);
         let mut tmp = [0u8; 20];
         for v in [
             0,
