@@ -36,6 +36,9 @@ pub struct Fact {
     pub result: Option<Slot>,
     /// Ownership of the result established by the checker.
     pub result_ownership: ResultOwnership,
+    /// How a method takes `self`: `var` (it may change the receiver), `move`, or `borrow`; empty
+    /// for anything that is not a method.
+    pub receiver: &'static str,
     /// The entity's head-side line range, for mapping a diff.
     pub first: usize,
     pub last: usize,
