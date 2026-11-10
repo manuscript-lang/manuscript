@@ -164,6 +164,76 @@ fn review_and_diagram_reject_invalid_ranges_without_panicking() {
 }
 
 #[test]
+fn review_and_diagram_reject_inconsistent_hunk_structure() {
+    let dir = scratch("inconsistent-hunk-structure");
+    let head = include_str!("review_quoted/head.ms");
+    std::fs::write(dir.join("main.ms"), head).unwrap();
+    let old = head.replace("new", "old");
+    let body = old
+        .lines()
+        .map(|line| format!("-{line}\n"))
+        .chain(head.lines().map(|line| format!("+{line}\n")))
+        .collect::<String>();
+    for (old_start, hunk_body, reason) in [
+        (1, format!("{body}+not in the file\n"), "hunk is longer"),
+        (1, format!("{body}\n+not in the file\n"), "hunk is longer"),
+        (5, body.clone(), "old hunk position"),
+        (
+            1,
+            body.replacen('\n', "\n\\ No newline at end of file\n", 1),
+            "no-newline marker",
+        ),
+    ] {
+        std::fs::write(dir.join("change.patch"), format!("diff --git a/main.ms b/main.ms\n--- a/main.ms\n+++ b/main.ms\n@@ -{old_start},2 +1,2 @@\n{hunk_body}")).unwrap();
+        for command in ["review", "diagram"] {
+            let mut args = vec![command, "main.ms", "--diff", "change.patch", "--json"];
+            if command == "diagram" {
+                args.extend(["--view", "calls"]);
+            }
+            let output = ms(&dir, &args);
+            assert_eq!(output.status.code(), Some(2), "{output:?}");
+            assert!(output.stdout.is_empty());
+            assert!(
+                String::from_utf8_lossy(&output.stderr).contains(reason),
+                "{output:?}"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn review_and_diagram_validate_complete_deletion_hunks() {
+    let dir = scratch("complete-deletion-hunks");
+    std::fs::write(dir.join("main.ms"), include_str!("review_quoted/head.ms")).unwrap();
+    for (hunk, valid) in [
+        ("@@ -200 +0,0 @@\n-old\n", false),
+        ("@@ -1 +4,0 @@\n-old\n", false),
+        ("@@ -1 +1 @@\n-old\n+new\n", false),
+        ("@@ -1 +0,0 @@\n-old\n", true),
+        ("@@ -1 +0,0 @@\n-old\n\\ No newline at end of file\n", true),
+        ("", true),
+    ] {
+        std::fs::write(dir.join("change.patch"), format!("diff --git a/gone.ms b/gone.ms\ndeleted file mode 100644\n--- a/gone.ms\n+++ /dev/null\n{hunk}")).unwrap();
+        for command in ["review", "diagram"] {
+            let mut args = vec![command, "main.ms", "--diff", "change.patch", "--json"];
+            if command == "diagram" {
+                args.extend(["--view", "calls"]);
+            }
+            let output = ms(&dir, &args);
+            if valid {
+                json(&output);
+            } else {
+                assert_eq!(output.status.code(), Some(2), "{hunk}: {output:?}");
+                assert!(output.stdout.is_empty());
+                assert!(String::from_utf8_lossy(&output.stderr).contains("gone.ms"));
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn diagram_ambiguous_entity_remedies_are_usable() {
     let dir = scratch("selectors");
     std::fs::write(

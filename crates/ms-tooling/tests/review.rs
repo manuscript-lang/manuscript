@@ -192,6 +192,84 @@ fn hunk_ranges_keep_zero_length_and_safe_extreme_boundaries() {
 }
 
 #[test]
+fn hunk_structure_rejects_surplus_body_lines() {
+    for extra in ["+extra\n", "-extra\n", " extra\n", "\n+extra\n"] {
+        let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n+new\n{extra}");
+        assert!(parse_diff(&patch).is_err(), "{patch}");
+    }
+    let repeated = "diff --git a/x.ms b/x.ms\n--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n+new\n--- a/x.ms\n+++ b/x.ms\n";
+    assert!(parse_diff(repeated).is_err());
+}
+
+#[test]
+fn hunk_structure_checks_old_coordinates_and_keeps_patch_boundaries() {
+    for (old, new, body, head) in [
+        ("5", "1", "-old\n+new\n", "new\n"),
+        ("200", "0,0", "-old\n", ""),
+        ("1", "4,0", "-old\n", ""),
+        ("1,0", "1", "+new\n", "new\n"),
+        ("1", "2", "-old\n+new\n", "keep\nnew\n"),
+    ] {
+        let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -{old} +{new} @@\n{body}");
+        let files = parse_diff(&patch).unwrap();
+        assert!(reverse_apply(head, &files[0].hunks).is_err(), "{patch}");
+    }
+    let first = "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n+new\n";
+    let second = "--- a/y.ms\n+++ b/y.ms\n@@ -1 +1 @@\n-before\n+after\n";
+    assert_eq!(parse_diff(&format!("{first}{second}")).unwrap().len(), 2);
+    let files = parse_diff(&format!("{first}-- \n2.51.0\n")).unwrap();
+    assert_eq!(reverse_apply("new\n", &files[0].hunks).unwrap(), "old\n");
+    let mail_stream = format!(
+        "{first}-- \n+signature\n signer\n-next\nFrom next-message\nSubject: another change\ndiff --git a/y.ms b/y.ms\n{second}-- \n+second signature\n"
+    );
+    let files = parse_diff(&mail_stream).unwrap();
+    assert_eq!(files.len(), 2);
+    assert_eq!(reverse_apply("new\n", &files[0].hunks).unwrap(), "old\n");
+    assert_eq!(
+        reverse_apply("after\n", &files[1].hunks).unwrap(),
+        "before\n"
+    );
+    let files = parse_diff(include_str!("review_diff/mail_without_signatures.patch")).unwrap();
+    assert_eq!(files.len(), 2);
+    assert_eq!((files[0].path(), files[1].path()), ("x.ms", "y.ms"));
+    let multiple =
+        "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old_a\n+new_a\n@@ -3 +3 @@\n-old_b\n+new_b\n";
+    let files = parse_diff(multiple).unwrap();
+    assert_eq!(
+        reverse_apply("new_a\nkeep\nnew_b\n", &files[0].hunks).unwrap(),
+        "old_a\nkeep\nold_b\n"
+    );
+    let grows = "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1,2 @@\n-old_a\n+new_a\n+extra\n@@ -3 +4 @@\n-old_b\n+new_b\n";
+    let files = parse_diff(grows).unwrap();
+    assert_eq!(
+        reverse_apply("new_a\nextra\nkeep\nnew_b\n", &files[0].hunks).unwrap(),
+        "old_a\nkeep\nold_b\n"
+    );
+}
+
+#[test]
+fn hunk_structure_retains_each_sides_eof_across_split_hunks() {
+    let split = "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new\n@@ -1,0 +2 @@\n+extra\n";
+    let files = parse_diff(split).unwrap();
+    assert_eq!(
+        reverse_apply("new\nextra\n", &files[0].hunks).unwrap(),
+        "old"
+    );
+    let split = "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n+new\n\\ No newline at end of file\n@@ -2 +1,0 @@\n-extra\n";
+    let files = parse_diff(split).unwrap();
+    assert_eq!(
+        reverse_apply("new", &files[0].hunks).unwrap(),
+        "old\nextra\n"
+    );
+    let premature = "--- a/x.ms\n+++ b/x.ms\n@@ -1,2 +1,2 @@\n-old_a\n\\ No newline at end of file\n-old_b\n+new_a\n+new_b\n";
+    assert!(parse_diff(premature).is_err());
+    let before_tail =
+        "--- a/x.ms\n+++ b/x.ms\n@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new\n";
+    let files = parse_diff(before_tail).unwrap();
+    assert!(reverse_apply("new\nuntouched\n", &files[0].hunks).is_err());
+}
+
+#[test]
 fn diff_eof_terminators_are_not_context_lines() {
     for newline in ["\n", "\r\n"] {
         for ending in ["", "\n"] {

@@ -1,0 +1,37 @@
+From dcf363a7ee2f7da3f130a95ffd156020a8a453c1 Mon Sep 17 00:00:00 2001
+From: Probe <probe@example.invalid>
+Date: Tue, 10 Nov 2026 07:15:05 +0000
+Subject: [PATCH 1/2] add x.ms
+
+---
+ x.ms | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 x.ms
+
+diff --git a/x.ms b/x.ms
+new file mode 100644
+index 0000000..15e7abb
+--- /dev/null
++++ b/x.ms
+@@ -0,0 +1,2 @@
++export fn value() Int:
++    return 1
+
+From ea4b92e1eddfb6af80e6ad20fd0beb2f256498fe Mon Sep 17 00:00:00 2001
+From: Probe <probe@example.invalid>
+Date: Tue, 10 Nov 2026 07:15:05 +0000
+Subject: [PATCH 2/2] add y.ms
+
+---
+ y.ms | 2 ++
+ 1 file changed, 2 insertions(+)
+ create mode 100644 y.ms
+
+diff --git a/y.ms b/y.ms
+new file mode 100644
+index 0000000..15e7abb
+--- /dev/null
++++ b/y.ms
+@@ -0,0 +1,2 @@
++export fn value() Int:
++    return 1
