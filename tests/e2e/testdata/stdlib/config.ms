@@ -129,3 +129,44 @@ test "ini preserves literal markers and quoted whitespace":
     values.get("quoted").get() | try expect_equal(" # text ; 界 ")
     values.get("single").get() | try expect_equal(" ; text # é ")
     values.get("empty").get() | try expect_equal("")
+
+test "dotenv keeps CRLF inside a quoted value and accepts CRLF records":
+    let values = (
+        parse_dotenv(
+            "A=\"one\r\ntwo\"\r\nB=3\r\nC='x\r\n\r\ny' # c\r\nD=\"z\"\r\n"
+        ) | try expect_ok
+    )
+    try expect_equal(values.get("A").get(""), "one\r\ntwo")
+    try expect_equal(values.get("B").get(""), "3")
+    try expect_equal(values.get("C").get(""), "x\r\n\r\ny")
+    try expect_equal(values.get("D").get(""), "z")
+
+    let mixed = (parse_dotenv("A=\"a\nb\r\nc\"\nB=1") | try expect_ok)
+    try expect_equal(mixed.get("A").get(""), "a\nb\r\nc")
+
+test "INI comments follow quoted values":
+    let ini = (
+        parse_ini(
+            "a = \"x # y\" # comment\nb = 'p ; q' ; note\nc = \"plain\" # n\nd = \"k\"#tight\ne = \"q\"\nf = \"w\" tail\""
+        ) | try expect_ok
+    )
+    let top = ini.get("").get(Map[String, String]())
+    try expect_equal(top.get("a").get(""), "x # y")
+    try expect_equal(top.get("b").get(""), "p ; q")
+    try expect_equal(top.get("c").get(""), "plain")
+    try expect_equal(top.get("d").get(""), "\"k\"#tight")
+    try expect_equal(top.get("e").get(""), "q")
+    try expect_equal(top.get("f").get(""), "w\" tail")
+
+test "INI comments after quotes may contain the quote and ignore tab-only markers":
+    let ini = (
+        parse_ini(
+            "a=\"x\" # note \"\nb='y' ; it's\nc=\"z\"  ;   \"q\"\nd=\"x\"\t#literal\ne='t'\t;literal"
+        ) | try expect_ok
+    )
+    let top = ini.get("").get(Map[String, String]())
+    try expect_equal(top.get("a").get(""), "x")
+    try expect_equal(top.get("b").get(""), "y")
+    try expect_equal(top.get("c").get(""), "z")
+    try expect_equal(top.get("d").get(""), "\"x\"\t#literal")
+    try expect_equal(top.get("e").get(""), "'t'\t;literal")

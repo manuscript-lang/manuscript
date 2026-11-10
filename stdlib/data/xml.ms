@@ -265,6 +265,7 @@ impl Reader:
         self.at += 1
 
         let text = try self.take_until(quote)
+
         if public_id:
             for c in text.chars():
                 let code = c.scalar_at(0)
@@ -275,6 +276,7 @@ impl Reader:
                 )
                 if not alphanumeric and not " \r\n-'()+,./:=?;!*#@$_%".contains(c):
                     return error(Error("XML: invalid data", kind: "EBADMSG"))
+
         return ok(unit)
 
     // Requires at least one whitespace scalar.
