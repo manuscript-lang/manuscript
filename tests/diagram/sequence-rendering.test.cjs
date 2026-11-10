@@ -62,3 +62,25 @@ test('event budget bounds repeated calls and still unwinds nested returns', () =
     assert.deepEqual(ev[i + 1], ret(2, 1));
   }
 });
+
+test('self calls render loop-shaped messages and dotted returns', () => {
+  const {p} = model([[call(0)]]);
+  const {ev, parts} = p.sequenceEvents(p.D.entities[0], 4, false);
+  const svg = p.sequenceDiagram(ev, parts);
+  assert.match(svg, /class="msg " d="M90 64h42v12h-42" marker-end="url\(#a\)"/);
+  assert.match(svg, /class="msg ret" d="M90 94h42v12h-42" marker-end="url\(#a\)"/);
+  assert.match(svg, />f0\(\)<\/text>/);
+  assert.equal((svg.match(/<path class="msg /g) || []).length, 2);
+  assert.doesNotMatch(svg, /NaN|undefined/);
+});
+
+test('ordinary calls retain straight arrows and escaped labels', () => {
+  const {p} = model([[call(1)], []]);
+  const {ev, parts} = p.sequenceEvents(p.D.entities[0], 3, false);
+  ev[0].label = 'leaf<&"()';
+  const svg = p.sequenceDiagram(ev, parts);
+  assert.match(svg, /class="msg " d="M90 64L260 64"/);
+  assert.match(svg, /class="msg ret" d="M260 94L90 94"/);
+  assert.match(svg, />leaf&lt;&amp;&quot;\(\)<\/text>/);
+  assert.doesNotMatch(svg, /h42v12h-42/);
+});
