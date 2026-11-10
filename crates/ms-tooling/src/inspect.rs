@@ -144,6 +144,20 @@ fn decl_name(syms: ms_syntax::Names, decl: &DeclRef) -> String {
 /// Inspects a checked program: every module of it, bundled standard source
 /// modules included.
 pub fn inspect(syms: ms_syntax::Names, program: &Program) -> Inspection {
+    let mut result = collect(syms, program);
+    result.build_id = sha256::hex(
+        result
+            .to_json()
+            .compact(ms_json::Escape::HtmlSafe)
+            .as_bytes(),
+    );
+    result
+}
+
+/// The inspection without its `build_id`, for consumers that read only entities
+/// and calls: same collection and ordering as [`inspect`], minus the digest of
+/// the serialized document.
+pub fn collect(syms: ms_syntax::Names, program: &Program) -> Inspection {
     let mut result = Inspection::default();
     let modules: Vec<_> = program
         .modules
@@ -287,12 +301,6 @@ pub fn inspect(syms: ms_syntax::Names, program: &Program) -> Inspection {
     result.sources.sort_by(|a, b| a.file.cmp(&b.file));
     result.entities.sort_by(|a, b| a.id.cmp(&b.id));
     result.calls.sort_by(|a, b| a.id.cmp(&b.id));
-    result.build_id = sha256::hex(
-        result
-            .to_json()
-            .compact(ms_json::Escape::HtmlSafe)
-            .as_bytes(),
-    );
     result
 }
 

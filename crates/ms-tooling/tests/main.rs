@@ -7,6 +7,7 @@ mod guide_extensions;
 mod guide_opaque;
 mod guide_pages;
 mod guide_type_display;
+mod inspect_rows;
 mod labels;
 mod lint_bindings;
 mod lint_effects;
