@@ -5,7 +5,7 @@ weight = 8
 
 # Concurrent tasks
 
-`promise(fn: ...)` starts concurrent work on a thread the runtime picks and returns a `Promise[T]`; `wait()` takes its result. Any function can wait, including functions that return a value directly, so there is no `async` or `await`. Streams are pulled lazily: a promise returned by `ReadStream.read()` defers its read until it is waited on. Values that arrive over time travel on [streams](streams.md), and an in-memory `pipe` connects promises.
+`promise(fn: ...)` starts concurrent work on a thread the runtime picks and returns a `Promise[T]`; `wait()` takes its result. Any function can wait, including functions that return a value directly, so there is no `async` or `await`. Streams are pulled lazily: `ReadStream.next()` asks its source for one item and waits when needed. Values that arrive over time travel on [streams](streams.md), and an in-memory `pipe` connects promises.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
