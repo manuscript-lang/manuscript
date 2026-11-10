@@ -237,9 +237,14 @@ fn anthropic_request(
 
 	body.add("stream", flag(true))
 	body.add("system", str(system))
-	body.add("messages", arr(history.clone()))
 	if not tools.is_empty(): body.add("tools", arr(tools.clone()))
-	return render(obj(body))
+	body.add("messages", str("@@msgs@@"))
+	head := try render(obj(body))
+
+	// Render each stored message in place instead of cloning the whole history into the body.
+	var parts = List[String]()
+	for message in history: parts.append(try render(message))
+	return ok(head.replace("\"@@msgs@@\"", "[{parts.join(",")}]"))
 
 // Converts the stored Anthropic-format history into OpenAI chat messages.
 fn openai_messages(system: String, history: List[JsonValue]) List[JsonValue]:
