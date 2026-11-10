@@ -1,6 +1,8 @@
-import expect_equal, expect_fault, expect_ok from "@std/test/test.ms"
-import Closeable, panic from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
+    Closeable, panic from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 // A close that changes its receiver works on the value where it lives: a holder, a part, a
 // closure's capture or the cleanup stack sees the closed state afterwards, so a second close of
@@ -17,14 +19,11 @@ impl Closeable for Latch:
 
             let _ = append_file(self.log, "{self.id},").wait()
 
-        return ok(unit)
-
 fn latch(log: String, id: Int) Latch:
     return Latch(log, id, true)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -47,8 +46,7 @@ fn holder_part(log: String) Int:
 
 fn optional_part(log: String) Int:
     let maybe: Latch? = latch(log, 3)
-    if maybe.is_some():
-        return 1
+    if maybe.is_some(): return 1
 
     return 0
 
@@ -124,8 +122,7 @@ fn made_by_resource(log: String) Int:
 
 fn found_by_resource(log: String) Int:
     var maker = Maker(0)
-    if let found = maker.find(log, 17):
-        return found.id
+    if let found = maker.find(log, 17): return found.id
 
     return 0
 

@@ -1,6 +1,8 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 // Close appends the id to a log file, so the log is the order in which the closes ran.
 type Tracked:
@@ -10,14 +12,12 @@ type Tracked:
 impl Closeable for Tracked:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn track(log: String, id: Int) Tracked:
     return Tracked(log, id)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -42,7 +42,6 @@ type Wrapper:
 impl Closeable for Wrapper:
     var fn close() Unit!:
         let _ = append_file(self.log, "wrapper,").wait()
-        return ok(unit)
 
 fn holds_fields(log: String) Int:
     let p = Pair(track(log.clone(), 1), track(log, 2))
@@ -82,8 +81,7 @@ fn holds_wrapper(log: String) Int:
 
 fn returns_early(log: String, early: Bool) Int:
     let p = Pair(track(log.clone(), 1), track(log, 2))
-    if early:
-        return 1
+    if early: return 1
 
     return p.first.id
 

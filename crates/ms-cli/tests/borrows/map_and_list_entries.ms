@@ -15,7 +15,7 @@ fn grow(var rows: List[List[Int]]) Unit:
     head.append(5)
     rows.append([9])
 
-export fn main() Int:
+fn main() Unit:
     var cs = [Counter(count: 1, tags: [])]
     let n = bump(var cs)
     var rows = [[1], [2]]
@@ -39,4 +39,3 @@ export fn main() Int:
     let _ = stdout().write(
         "{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
     )
-    return 0

@@ -1,7 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import panic from "@std/core.ms"
-import parse_int from "@std/math/math.ms"
-import StringBuilder, from_scalars from "@std/string.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    panic from "@std/core.ms",
+    parse_int from "@std/math/math.ms",
+    StringBuilder, from_scalars from "@std/string.ms",
+)
 
 /*
 Conversions between text and values: booleans, integers in any base, and quoted literals.
@@ -20,10 +22,8 @@ Scalar classification lives in `@std/unicode.ms`; whole-string operations such a
 // Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
 export fn parse_bool(text: String) Bool?:
     let word = text.trim().lower()
-    if ["true", "t", "1", "yes", "on"].contains(word):
-        return true
-    if ["false", "f", "0", "no", "off"].contains(word):
-        return false
+    if ["true", "t", "1", "yes", "on"].contains(word): return true
+    if ["false", "f", "0", "no", "off"].contains(word): return false
 
     return none
 
@@ -89,8 +89,7 @@ export fn unquote(text: String) String!:
 
     while i < end:
         let c = cs[i]
-        if c == 34:
-            return error(Error("string: invalid input", kind: "EINVAL"))
+        if c == 34: return error(Error("string: invalid input", kind: "EINVAL"))
 
         if c != 92:
             out.append(c)

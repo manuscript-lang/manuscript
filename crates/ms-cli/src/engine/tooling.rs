@@ -323,10 +323,22 @@ fn analysis_once(
 /// Each fixable diagnostic of `checked` with the path of the file it edits.
 fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
     let mut fixes = Vec::new();
+    // A failed import leaves its names unbound, so every other diagnostic in that file may
+    // only follow from it; only the import's own fix is trustworthy.
+    let failed_import = |issue: &ms_driver::Diagnostic| {
+        issue.message.starts_with("module does not export")
+            || issue.message.starts_with("unknown standard module")
+    };
+    let broken: BTreeSet<&str> = checked
+        .diagnostics
+        .iter()
+        .filter(|issue| failed_import(issue))
+        .map(|issue| issue.file.as_ref())
+        .collect();
     for issue in &checked.diagnostics {
         let Some(fix) = &issue.fix else { continue };
         let file = issue.file.as_ref();
-        if file.starts_with("@std/") {
+        if file.starts_with("@std/") || (broken.contains(file) && !failed_import(issue)) {
             continue;
         }
         let path = if pathops::is_abs(file) || checked.source_root.is_empty() {

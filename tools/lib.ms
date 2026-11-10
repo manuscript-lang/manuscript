@@ -1,12 +1,14 @@
 // Shared helpers for the repository tools in this directory. Run a tool from the repository root
 // with `ms run tools/<name>.ms [-- arguments]`.
-import SpawnOptions, Stdio, run, spawn from "@std/os/process.ms"
-import (environment, set_environment) from "@std/os/env.ms"
-import (os, Os) from "@std/os/system.ms"
-import canonicalize, read_file from "@std/os/fs.ms"
-import stderr from "@std/io/io.ms"
-import hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto.ms"
+import (
+    SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
+    environment, set_environment from "@std/os/env.ms",
+    os, Os from "@std/os/system.ms",
+    canonicalize, read_file from "@std/os/fs.ms",
+    stderr from "@std/io/io.ms",
+    hex_encode from "@std/data/encoding.ms",
+    sha256 from "@std/crypto.ms",
+)
 
 // `linux`, `macos` or `windows`.
 export fn host() String:

@@ -1,6 +1,8 @@
-import keep, measure from "@std/test/bench.ms"
-import StringBuilder from "@std/string.ms"
-import parse, stringify, JsonValue from "@std/data/json.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    StringBuilder from "@std/string.ms",
+    parse, stringify, JsonValue from "@std/data/json.ms",
+)
 
 fn json_doc(count: Int) String:
     var sb = StringBuilder()
@@ -16,8 +18,7 @@ fn json_doc(count: Int) String:
     return sb.build()
 
 fn encoded_length(value: JsonValue) Int:
-    if let text = stringify(value):
-        return text.length()
+    if let text = stringify(value): return text.length()
 
     return 0
 
@@ -39,8 +40,7 @@ bench "json.parse":
     let doc = json_doc(5000)
 
     fn work() Result[Unit, Error]:
-        if parse(doc).is_ok():
-            return keep(1)
+        if parse(doc).is_ok(): return keep(1)
 
         return keep(0)
 
@@ -50,8 +50,7 @@ bench "json.roundtrip":
     let doc = json_doc(5000)
 
     fn work() Result[Unit, Error]:
-        if let v = parse(doc):
-            return keep(encoded_length(v))
+        if let v = parse(doc): return keep(encoded_length(v))
 
         return keep(0)
 

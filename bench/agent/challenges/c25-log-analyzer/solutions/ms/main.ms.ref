@@ -1,139 +1,46 @@
-import stdin, stdout from "@std/io/io.ms"
+import stdin from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 
-fn all_digits(s: String) Bool:
-    if s.is_empty():
-        return false
-
-    for c in s.scalar_values():
-        if c < 48 or c > 57:
-            return false
-    return true
-
-fn is_level(s: String) Bool:
-    return s == "DEBUG" or s == "INFO" or s == "WARN" or s == "ERROR"
-
-fn is_method(s: String) Bool:
-    return s == "GET" or s == "POST" or s == "PUT" or s == "DELETE"
+fn digits(s: String) Bool: return not s.is_empty() and s.scalar_values().all(fn c: c >= 48 and c <= 57)
 
 type Stat:
     count: Int
     total: Int
 
-fn run() Result[Unit, Error]:
-    let data = try read_all(stdin(), none)
-    let text = data.decode_utf8().get("")
+fn main() Unit:
+    let data = read_all(stdin(), none).get()
     var valid = 0
-    var malformed = 0
-    var classes = [0, 0, 0, 0, 0]
-    var latencies = List[Int]()
+    var bad = 0
+    var classes = [0].repeated(5)
+    var lats = List[Int]()
+    var slow = ""
     var slowest = -1
-    var slowest_text = ""
     var levels = Map[String, Int]()
     var stats = Map[String, Stat]()
-
-    for line in text.split("\n"):
-        if line.trim().is_empty():
-            continue
-
+    for line in data.decode_utf8().get("").split("\n").filter(fn l: not l.trim().is_empty()):
         let f = line.split(" ")
-        var ok = f.length() == 6
-        if ok:
-            ok = (
-                not f.get(0).is_empty()
-                and is_level(f.get(1))
-                and is_method((f.get(2)))
-            )
-
-        if ok:
-            let status = f.get(4)
-            let latency = f.get(5)
-            ok = (
-                f.get(3).starts_with("/")
-                and status.length() == 3
-                and all_digits(status)
-                and all_digits(latency)
-                and latency.length() <= 9
-            )
-
-        if not ok:
-            malformed = malformed + 1
+        if f.length() != 6 or f[0].is_empty() or not ["DEBUG", "INFO", "WARN", "ERROR"].contains(f[1]) or not ["GET", "POST", "PUT", "DELETE"].contains(f[2]) or not f[3].starts_with("/") or f[4].length() != 3 or not digits(f[4]) or not digits(f[5]) or f[5].length() > 9:
+            bad += 1
             continue
-
-        valid = valid + 1
-
-        let level = f.get(1)
-        levels.add(
-            key: level.clone(), value: levels.get_or(key: level, fallback: 0) + 1
-        )
-
-        let first = f.get(4).scalar_at(0)
-        var cls = 4
-        if first >= 50 and first <= 53:
-            cls = first - 50
-        classes.set(cls, classes.get(cls) + 1)
-
-        let path = f.get(3)
-        let lat = f.get(5).parse_int().get()
-        latencies.append(lat)
-
+        valid += 1
+        levels[f[1].clone()] = levels.get_or(f[1], 0) + 1
+        let first = f[4].scalar_at(0)
+        let cls = if first >= 50 and first <= 53: first - 50 else: 4
+        classes[cls] += 1
+        let lat = f[5].parse_int().get()
+        lats.append(lat)
         if lat > slowest:
             slowest = lat
-            slowest_text = "{lat} {f.get(2)} {path} {f.get(0)}"
-
-        let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
-        stats.add(
-            key: path.clone(), value: Stat(count: old.count + 1, total: old.total + lat)
-        )
-
-    var out = List[String]()
-    out.append("valid: {valid}")
-    out.append("malformed: {malformed}")
-    for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append("{level}: {levels.get_or(key: level, fallback: 0)}")
-
-    let sorted_lat = latencies.sorted(
-        compare: fn(left: Int, right: Int) Int: return left - right
-    )
-    var p95 = 0
-    if sorted_lat.length() > 0:
-        p95 = sorted_lat.get((95 * sorted_lat.length() + 99) / 100 - 1)
-    out.append(
-        "status: 2xx={classes.get(0)} 3xx={classes.get(1)} 4xx={classes.get(2)} 5xx={classes.get(3)} other={classes.get(4)}"
-    )
-    out.append("p95: {p95}")
-    if slowest >= 0:
-        out.append("slowest: {slowest_text}")
-    out.append("top:")
-
-    let ranked = (
-        stats
-        .entries()
-        .sorted(
-            compare: fn(
-                left: MapEntry[String, Stat],
-                right: MapEntry[String, Stat]
-            ) Int:
-                if left.value.count != right.value.count:
-                    return right.value.count - left.value.count
-
-                return left.key.compare(right.key)
-        )
-    )
-
-    var shown = 0
-
-    for e in ranked:
-        if shown >= 3:
-            break
-
-        out.append("{e.key} {e.value.count} avg={e.value.total / e.value.count}")
-        shown = shown + 1
-
-    try stdout().write("{out.join("\n")}\n")
-    return stdout().flush()
-
-export fn main() Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+            slow = "{lat} {f[2]} {f[3]} {f[0]}"
+        let old = stats.get_or(f[3], Stat(0, 0))
+        stats[f[3].clone()] = Stat(old.count + 1, old.total + lat)
+    lats = lats.sorted(fn a, b: a - b)
+    print("valid: {valid}\nmalformed: {bad}")
+    for l in ["DEBUG", "INFO", "WARN", "ERROR"]: print("{l}: {levels.get_or(l, 0)}")
+    print("status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}")
+    print("p95: {if lats.is_empty(): 0 else: lats[(95 * lats.length() + 99) / 100 - 1]}")
+    if slowest >= 0: print("slowest: {slow}")
+    print("top:")
+    let ranked = stats.entries().sorted(fn a, b: if a.value.count != b.value.count: b.value.count - a.value.count else: a.key.compare(b.key))
+    for e in ranked.slice(0, ranked.length().min(3)).get():
+        print("{e.key} {e.value.count} avg={e.value.total / e.value.count}")

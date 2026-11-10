@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic, Instant from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic, Instant from "@std/time.ms",
+)
 
 // ns per interface call. One line per case: `name ns checksum`.
 
@@ -45,7 +47,7 @@ fn run_direct_add(n: Int) Int:
         total += i + 1
     return total
 
-export fn main() Int:
+fn main() Unit:
     let n = 50000000
     var start = monotonic()
     let a = run_direct_add(n)
@@ -74,4 +76,3 @@ export fn main() Int:
 
     let t3 = run_through(make_scale(3), n)
     report("iface-param", n, start, t3)
-    return 0

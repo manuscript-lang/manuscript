@@ -1,12 +1,14 @@
 // Reports build prerequisites without downloading or changing the checkout (`make doctor`).
 // Usage: ms run tools/doctor.ms
-import env, host, works, capture from "./lib.ms"
-import read_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
+import (
+    env, host, works, capture from "./lib.ms",
+    read_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
-    if ok: stdout().write("OK      {ok_text}\n").get()
-    else: stdout().write("MISSING {missing_text}\n").get()
+    if ok: print("OK      {ok_text}")
+    else: print("MISSING {missing_text}")
 
     return ok
 
@@ -20,7 +22,7 @@ fn hugo_new_enough(version: String) Bool:
     let patch = parts[2].parse_int().get(0)
     return major > 0 or minor > 146 or (minor == 146 and patch >= 7)
 
-export fn main() Int:
+fn main() Int:
     var failed = 0
     for command in ["git", "tar"]:
         if not say(works(command, ["--version"]), command, command): failed += 1

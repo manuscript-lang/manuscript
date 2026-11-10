@@ -1,5 +1,7 @@
-import Bytes from "@std/bytes.ms"
-import (ArchiveEntry, NativeDecoder, NativeEncoder) from "@std/io/archive.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ArchiveEntry, NativeDecoder, NativeEncoder from "@std/io/archive.ms",
+)
 
 // Native unpack bounds; `unpack` builds them from `ArchiveOptions`.
 export type ArchiveLimits:

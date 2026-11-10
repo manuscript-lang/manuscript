@@ -1,6 +1,8 @@
-import Bytes from "@std/bytes.ms"
-import read_all, stdin, stdout from "@std/io.ms"
-import range from "@std/collections.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    read_all, stdin, stdout from "@std/io.ms",
+    range from "@std/collections.ms",
+)
 
 fn is_cell(ch: String) Bool: ch == "#" or ch == "." or ch == "S" or ch == "E"
 

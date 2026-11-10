@@ -1,5 +1,7 @@
-import Pair from "@std/collections/collections.ms"
-import panic from "@std/core.ms"
+import (
+    Pair from "@std/collections/collections.ms",
+    panic from "@std/core.ms",
+)
 
 /*
 Build combinations, consecutive groups, and running totals from lists.
@@ -100,8 +102,7 @@ export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[Lis
     let k = size.get(n)
 
     if k <= 0 or k > n:
-        if k == 0:
-            return [[]]
+        if k == 0: return [[]]
 
         panic("permutations: size must be from 0 to the list length")
 

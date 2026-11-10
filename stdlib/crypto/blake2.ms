@@ -1,14 +1,14 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import panic from "@std/core.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    panic from "@std/core.ms",
     bit_and,
     bit_or,
     bit_xor,
     rotate_right,
     shift_left,
     shift_right_unsigned,
-    wrapping_add
-) from "@std/math/math.ms"
+    wrapping_add from "@std/math/math.ms",
+)
 
 // Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and BLAKE2s (10 rounds).
 fn sigma() List[List[Int]]:
@@ -75,7 +75,7 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
         2270897969802886507, 6620516959819538809
     ]
     var h = iv.clone()
-    h.set(0, bit_xor(h.get(0), 16842752 + key.length() * 256 + length))
+    h.set(0, bit_xor(h[0], 16842752 + key.length() * 256 + length))
 
     let message = padded(key, data, 128)
     let blocks = message.length() / 128
@@ -100,13 +100,13 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
 
         var v = h.clone()
         for index in 0..8:
-            v.append(iv.get(index))
-        v.set(12, bit_xor(v.get(12), counted))
+            v.append(iv[index])
+        v.set(12, bit_xor(v[12], counted))
         if last:
-            v.set(14, bit_xor(v.get(14), -1))
+            v.set(14, bit_xor(v[14], -1))
 
         for round in 0..12:
-            let s = schedule.get(round % 10)
+            let s = schedule[round % 10]
 
             for step in 0..8:
                 var a = step % 4
@@ -117,19 +117,19 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
                 var y = 0
 
                 if step < 4:
-                    x = m.get(s.get(2 * step))
-                    y = m.get(s.get(2 * step + 1))
+                    x = m[s[2 * step]]
+                    y = m[s[2 * step + 1]]
                 else:
                     b = 4 + (step + 1) % 4
                     c = 8 + (step + 2) % 4
                     d = 12 + (step + 3) % 4
-                    x = m.get(s.get(2 * step))
-                    y = m.get(s.get(2 * step + 1))
+                    x = m[s[2 * step]]
+                    y = m[s[2 * step + 1]]
 
-                var va = v.get(a)
-                var vb = v.get(b)
-                var vc = v.get(c)
-                var vd = v.get(d)
+                var va = v[a]
+                var vb = v[b]
+                var vc = v[c]
+                var vd = v[d]
                 va = wrapping_add(wrapping_add(va, vb), x)
                 vd = rotate_right(bit_xor(vd, va), 32)
                 vc = wrapping_add(vc, vd)
@@ -144,12 +144,12 @@ export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
                 v.set(d, vd)
 
         for index in 0..8:
-            h.set(index, bit_xor(bit_xor(h.get(index), v.get(index)), v.get(index + 8)))
+            h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
 
     var out = BytesBuilder()
 
     for index in 0..length:
-        let w = h.get(index / 8)
+        let w = h[index / 8]
         out.append(
             bit_and(
                 shift_right_unsigned(w, 8 * (index % 8)), 255
@@ -180,7 +180,7 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
         528734635, 1541459225
     ]
     var h = iv.clone()
-    h.set(0, bit_xor(h.get(0), 16842752 + key.length() * 256 + length))
+    h.set(0, bit_xor(h[0], 16842752 + key.length() * 256 + length))
 
     let message = padded(key, data, 64)
     let blocks = message.length() / 64
@@ -198,14 +198,14 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
 
         var v = h.clone()
         for index in 0..8:
-            v.append(iv.get(index))
-        v.set(12, bit_xor(v.get(12), bit_and(counted, 4294967295)))
-        v.set(13, bit_xor(v.get(13), shift_right_unsigned(counted, 32)))
+            v.append(iv[index])
+        v.set(12, bit_xor(v[12], bit_and(counted, 4294967295)))
+        v.set(13, bit_xor(v[13], shift_right_unsigned(counted, 32)))
         if last:
-            v.set(14, bit_xor(v.get(14), 4294967295))
+            v.set(14, bit_xor(v[14], 4294967295))
 
         for round in 0..10:
-            let s = schedule.get(round)
+            let s = schedule[round]
 
             for step in 0..8:
                 let a = step % 4
@@ -218,12 +218,12 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
                     c = 8 + (step + 2) % 4
                     d = 12 + (step + 3) % 4
 
-                let x = m.get(s.get(2 * step))
-                let y = m.get(s.get(2 * step + 1))
-                var va = v.get(a)
-                var vb = v.get(b)
-                var vc = v.get(c)
-                var vd = v.get(d)
+                let x = m[s[2 * step]]
+                let y = m[s[2 * step + 1]]
+                var va = v[a]
+                var vb = v[b]
+                var vc = v[c]
+                var vd = v[d]
                 va = bit_and(va + vb + x, 4294967295)
                 vd = rotr32(bit_xor(vd, va), 16)
                 vc = bit_and(vc + vd, 4294967295)
@@ -238,12 +238,12 @@ export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
                 v.set(d, vd)
 
         for index in 0..8:
-            h.set(index, bit_xor(bit_xor(h.get(index), v.get(index)), v.get(index + 8)))
+            h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
 
     var out = BytesBuilder()
 
     for index in 0..length:
-        let w = h.get(index / 4)
+        let w = h[index / 4]
         out.append(
             bit_and(
                 shift_right_unsigned(w, 8 * (index % 4)), 255

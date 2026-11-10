@@ -8,6 +8,13 @@ Verified: the forgiving editor scanner must consume a rejected Unicode character
 
 Verified: a byte scanner can have consumed only the first byte of a rejected Unicode character. Report its start rather than that cursor: diagnostic offsets must remain UTF-8 boundaries, including nested literals and CRLF source. [Lexer span regressions](../../crates/ms-syntax/tests/lexer_spans.rs) cover bidi text controls and non-ASCII Unicode-escape digits.
 
+Verified: replacing a symbolic operator with a word must preserve token boundaries.
+An edit of `left&&right` to `leftandright` parses as one name instead of a logical
+expression. Add spaces only where the replacement would join an adjacent word;
+retain existing whitespace and delimiters. [Logical-fix regressions](../../crates/ms-syntax/tests/logical_fixes.rs)
+apply the actual edits to direct and nested interpolated expressions with LF/CRLF,
+then check the parsed operator and formatter idempotence.
+
 Apply when: adding or rewording any lexer, parser, checker, project, compiler, CLI, or runtime message.
 Evidence: [message-shape rule](../../documentation/developer-tooling/source/diagnostics.md), [code classification](../../crates/ms-syntax/src/diag.rs), [checker hints](../../crates/ms-check/src/hints.rs), [recovery](../../crates/ms-syntax/src/partial.rs).
 Verify: run `cargo nextest run -p ms-syntax -p ms-check -p ms-lsp -p ms-cli` and `make conform` (check-phase fixtures compare code, phase, message, and position); extend the hint tests with the new message.

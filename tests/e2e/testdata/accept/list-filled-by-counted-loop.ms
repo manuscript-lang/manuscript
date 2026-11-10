@@ -12,7 +12,7 @@ fn row(width: Int, seed: Int) List[Int]:
         else:
             cells.append(-j)
 
-        j = j + 1
+        j += 1
 
     return cells
 
@@ -22,7 +22,7 @@ fn table(n: Int) List[Int]:
 
     while j <= n:
         prev.append(j)
-        j = j + 1
+        j += 1
 
     for k in [1, 2, 3]:
         var cur = List[Int]()
@@ -30,7 +30,7 @@ fn table(n: Int) List[Int]:
 
         while j < prev.length():
             cur.append(prev.get(j) + k)
-            j = j + 1
+            j += 1
 
         prev = cur
 

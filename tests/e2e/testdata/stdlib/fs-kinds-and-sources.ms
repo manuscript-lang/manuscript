@@ -1,5 +1,5 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
     DirectoryEntry,
     FileKind,
     OpenMode,
@@ -12,10 +12,10 @@ import (
     stat,
     temporary,
     write_atomic,
-    write_file
-) from "@std/os/fs.ms"
-import ReadStream from "@std/io/io.ms"
-import collect from "@std/io/streams.ms"
+    write_file from "@std/os/fs.ms",
+    ReadStream from "@std/io/io.ms",
+    collect from "@std/io/streams.ms",
+)
 
 test "whole-file writes take text or bytes and complete through promises":
     let dir = temporary("manuscript-writable-") | try expect_ok
@@ -55,3 +55,24 @@ test "a directory is a stream source of entries and seek takes an origin":
     let entries = open_directory(root) | try expect_ok
     let all = ReadStream[DirectoryEntry](entries) | collect(none) | try expect_ok
     all.length() | try expect_equal(2)
+
+test "opening a directory classifies invalid and missing paths":
+    let dir = temporary("manuscript-directory-errors-") | try expect_ok
+    let root = dir.path()
+    let file = "{root}/file.txt"
+    write_file(file, "hello").wait() | try expect_ok
+
+    let invalid = open_directory(file) | try expect_error
+    invalid.kind | try expect_equal("EINVAL")
+    invalid.message.contains(file) | try expect_equal(true)
+
+    let missing = open_directory("{root}/missing") | try expect_error
+    missing.kind | try expect_equal("ENOENT")
+
+    let child = "{file}/child"
+    let nested = open_directory(child) | try expect_error
+    let host_error = stat(child) | try expect_error
+    nested.kind | try expect_equal(host_error.kind)
+
+    let valid = open_directory(root) | try expect_ok
+    valid.path() | try expect_equal(root)

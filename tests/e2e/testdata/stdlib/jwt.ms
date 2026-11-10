@@ -1,15 +1,15 @@
-import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
 import (
+    expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
     ecdsa_generate,
     public_key_der,
     rsa_generate,
     public_key,
-    Curve
-) from "@std/crypto.ms"
-import JsonValue, parse from "@std/data/json.ms"
-import (sign_token, verify_token, JwtAlgorithm, JwtCheck) from "@std/data/jwt.ms"
-import random_bytes from "@std/random.ms"
+    Curve from "@std/crypto.ms",
+    JsonValue, parse from "@std/data/json.ms",
+    sign_token, verify_token, JwtAlgorithm, JwtCheck from "@std/data/jwt.ms",
+    random_bytes from "@std/random.ms",
+)
 
 type Profile:
     sub: String

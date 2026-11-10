@@ -8,6 +8,67 @@ use ms_tooling::guide::docgen::{
 use ms_tooling::guide::json::{self, Json};
 use ms_tooling::guide::{ApiDeclaration, ApiMember, ApiModule, standard_library};
 
+#[test]
+fn coverage_inside_artifacts_survives_regeneration() {
+    let root = std::env::temp_dir().join(format!(
+        "ms-docgen-coverage-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let artifacts = root.join("docs");
+    let coverage = artifacts.join("coverage.json");
+    std::fs::create_dir_all(&artifacts).unwrap();
+    std::fs::write(artifacts.join("stale.md"), "retired page").unwrap();
+    let result = std::process::Command::new(env!("CARGO_BIN_EXE_ms-docgen"))
+        .arg("-artifacts")
+        .arg(&artifacts)
+        .arg("-static")
+        .arg(root.join("static"))
+        .arg("-coverage")
+        .arg(&coverage)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{result:?}");
+    assert!(!artifacts.join("stale.md").exists());
+    assert!(
+        artifacts
+            .join("documentation/standard-library/reference/_index.md")
+            .is_file()
+    );
+    let report = std::fs::read_to_string(&coverage).unwrap();
+    assert!(
+        json::parse(&report)
+            .unwrap()
+            .get("declarations")
+            .unwrap()
+            .as_i64()
+            .unwrap()
+            > 0
+    );
+    assert!(root.join("static/stdlib.json").is_file());
+
+    // A bad report destination must fail before retiring the existing pages.
+    let invalid_coverage = root.join("report-directory");
+    std::fs::create_dir(&invalid_coverage).unwrap();
+    let marker = artifacts.join("keep-on-error.md");
+    std::fs::write(&marker, "existing page").unwrap();
+    let failed = std::process::Command::new(env!("CARGO_BIN_EXE_ms-docgen"))
+        .arg("-artifacts")
+        .arg(&artifacts)
+        .arg("-static")
+        .arg(root.join("static"))
+        .arg("-coverage")
+        .arg(&invalid_coverage)
+        .output()
+        .unwrap();
+    assert!(!failed.status.success());
+    assert_eq!(std::fs::read_to_string(marker).unwrap(), "existing page");
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 fn member(name: &str, kind: &str, signature: &str, doc: &str) -> ApiMember {
     ApiMember {
         name: name.into(),

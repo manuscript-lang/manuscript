@@ -1,6 +1,8 @@
-import expect_equal from "@std/test/test.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
-import from_list, collect from "@std/io/streams.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+    from_list, collect from "@std/io/streams.ms",
+)
 
 type Acc:
     items: List[Int]
@@ -16,7 +18,6 @@ impl Step for Doubler:
     var fn step(value: Int, var out: Acc) Unit!:
         self.count += 1
         out.items.append(value * 2)
-        return ok(unit)
 
 // Declares `var` but only reads it: the caller's value is unchanged.
 type Reader:
@@ -25,7 +26,6 @@ type Reader:
 impl Step for Reader:
     var fn step(value: Int, var out: Acc) Unit!:
         self.seen += out.items.length() + value
-        return ok(unit)
 
 type Holder:
     step: Step
@@ -61,11 +61,8 @@ impl Transform[String, String] for Words:
             self.count += 1
             out.append(word)
 
-        return ok(unit)
-
     var fn finish(var out: List[String]) Unit!:
         out.append("{self.count}")
-        return ok(unit)
 
 test "a transform writes zero or more items per input and more at the end":
     let words = through[String, String](from_list(["a b", "", "c"]), Words(0))
@@ -79,8 +76,6 @@ impl Transform[Int, Int] for Checked:
     var fn step(value: Int, var out: List[Int]) Unit!:
         out.append(value)
         if value < 0: return error(Error("negative", kind: "EBADMSG"))
-
-        return ok(unit)
 
     var fn finish(var out: List[Int]) Unit!:
         return ok(unit)
@@ -97,8 +92,7 @@ test "a failed step's partial output is dropped and the failure is the next item
             failed = true
             break
 
-        if item.get().is_none():
-            break
+        if item.get().is_none(): break
 
         seen.append(item.get().get(0))
 

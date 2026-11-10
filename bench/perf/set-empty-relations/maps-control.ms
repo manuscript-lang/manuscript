@@ -1,7 +1,9 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let mode = args[0]
     let size = args[1].parse_int().get()
@@ -41,4 +43,3 @@ export fn main() Int:
 
     let elapsed = monotonic().difference(start).to_nanoseconds()
     print("{elapsed} {checksum}")
-    return 0

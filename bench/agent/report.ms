@@ -3,12 +3,14 @@
 // Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs only,
 // so a cheap wrong answer never improves a language's numbers.
 // Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
-import parse from "@std/data/json.ms"
-import stdout, stderr from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import root from "./core/model.ms"
-import fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms"
-import nonblank_lines, read_text from "./lib/text.ms"
+import (
+    parse from "@std/data/json.ms",
+    stdout, stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    root from "./core/model.ms",
+    fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms",
+    nonblank_lines, read_text from "./lib/text.ms",
+)
 
 type Usage:
     tokens_in: Int = 0
@@ -45,7 +47,7 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
         out
         + "| group | runs | pass | first build ok | tokens (in+out) | turns | wall s | cost $ |\n"
     )
-    out = out + "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+    out += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
 
     for k in runs.map(key).distinct().sorted():
         let rs = runs.filter(fn r: key(r) == k)
@@ -68,11 +70,11 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
             out
             + "| {tokens} | {average(ok, fn r: r.usage.turns.to_float())} | {wall_mean(ok)} "
         )
-        out = out + "| {average(ok, fn r: r.usage.cost_usd)} |\n"
+        out += "| {average(ok, fn r: r.usage.cost_usd)} |\n"
 
     return out
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let path = if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
     var runs = List[Run]()

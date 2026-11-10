@@ -1,5 +1,7 @@
-import expect_equal, expect_fault, expect_contains from "@std/test/test.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_fault, expect_contains from "@std/test/test.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 test "bound list mutators copy named string inputs without consuming callers":
     var values = ["old"]

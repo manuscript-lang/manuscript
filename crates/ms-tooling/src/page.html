@@ -408,30 +408,40 @@ function types(){
   return graph(list,edges);
 }
 /* sequence: lifelines for functions, messages in execution order */
-function sequence(){
-  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
-  const depth=+$('depth').value+1,all=$('all').checked,ev=[],parts=[];let cap=0;
+function sequenceEvents(e,depth,all){
+  const ev=[],parts=[];let cap=0;
   const part=k=>{if(!parts.includes(k)&&parts.length<14)parts.push(k)};
   const walk=(k,nodes,d,path)=>{for(const n of nodes){if(cap>160)return;
     const ref=n.reference&&E[n.reference];
     if(n.kind==='call'&&ref){cap++;part(n.reference);if(!parts.includes(n.reference))continue;ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')});
       if(d>0&&!path.includes(n.reference))walk(n.reference,ref.flow,d-1,path.concat(n.reference));
-      if(ev[ev.length-1].t!=='msg')ev.push({t:'ret',from:n.reference,to:k})}
+      ev.push({t:'ret',from:n.reference,to:k})}
     else if(n.kind==='native'&&all){cap++;part('stdlib');if(parts.includes('stdlib'))ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^call\s+/,'')})}
     else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
     else if(['try','scope','branch','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:(n.kind==='try'?'try ⚠ ':'')+n.label.slice(0,30)})}
     if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
   part(e.key);walk(e.key,e.flow,depth-1,[e.key]);
+  return {ev,parts};
+}
+function sequenceDiagram(ev,parts){
   const X=170,top=50,row=30,W=140;const px=k=>20+parts.indexOf(k)*X+W/2;const H=top+ev.length*row+40;
   const sv=['<svg data-w="'+(40+parts.length*X)+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--fg)"/></marker></defs>'];
   parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';
     sv.push('<line class="life" x1="'+x+'" y1="'+(top-6)+'" x2="'+x+'" y2="'+H+'"/><g class="node '+(E[k]?fcls(E[k]):'ext')+'" data-id="'+esc(k)+'" data-kind="'+(E[k]?'fn':'ext')+'"><title>'+esc(t)+'</title><rect x="'+(x-W/2)+'" y="8" width="'+W+'" height="32" rx="6"/><text x="'+x+'" y="29" text-anchor="middle" font-weight="600">'+esc(t.slice(0,20))+'</text></g>')});
   ev.forEach((v,i)=>{const y=top+i*row+14;
     if(v.t==='note'){const x=px(v.at),w=Math.min(190,v.label.length*6.4+14);sv.push('<g class="note"><rect x="'+(x+6)+'" y="'+(y-12)+'" width="'+w+'" height="20" rx="4"/><text x="'+(x+12)+'" y="'+(y+2)+'">'+esc(v.label)+'</text></g>');return}
-    const a=px(v.from),b=px(v.to);if(v.from===v.to)return;
+    const a=px(v.from),b=px(v.to);
+    if(v.from===v.to){
+      sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'h42v12h-42" marker-end="url(#a)"/>');
+      if(v.t==='msg')sv.push('<text x="'+(a+21)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(v.label.slice(0,32))+'</text>');return}
     sv.push('<path class="msg '+(v.t==='ret'?'ret':'')+'" d="M'+a+' '+y+'L'+b+' '+y+'" marker-end="url(#a)"/>');
     if(v.t==='msg')sv.push('<text x="'+((a+b)/2)+'" y="'+(y-4)+'" text-anchor="middle">'+esc(v.label.slice(0,32))+'</text>')});
   return stage(sv.join('')+'</svg>','time runs down · dotted = return');
+}
+function sequence(){
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
+  const {ev,parts}=sequenceEvents(e,+$('depth').value+1,$('all').checked);
+  return sequenceDiagram(ev,parts);
 }
 function flowHTML(nodes,level){
   return '<ul>'+nodes.map(n=>{const ref=n.reference&&E[n.reference],kids=n.children&&n.children.length;

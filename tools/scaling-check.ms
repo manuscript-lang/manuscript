@@ -8,13 +8,15 @@
 // that exceeds TIMEOUT seconds fails.
 // MS names the ms to measure (default target/release/ms); SCALING_BOUND and SCALING_TIMEOUT override the limits.
 // Usage: ms run tools/scaling-check.ms [-- shape...]
-import tool_ms, env from "./lib.ms"
-import temporary, write_file from "@std/os/fs.ms"
-import run, RunOptions from "@std/os/process.ms"
-import arguments, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import monotonic, seconds from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    tool_ms, env from "./lib.ms",
+    temporary, write_file from "@std/os/fs.ms",
+    run, RunOptions from "@std/os/process.ms",
+    arguments, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+    monotonic, seconds from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 // Source of `shape` with `n` units.
 fn generate(shape: String, n: Int) String:
@@ -96,7 +98,7 @@ fn show(ratio: Float) String:
     let tenths = (ratio * 10.0).truncate_to_int().get(0)
     return "{tenths / 10}.{tenths % 10}x"
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let ms = tool_ms(root.clone())
     let bound = env("SCALING_BOUND", "30").parse_float().get(30.0)
@@ -105,7 +107,7 @@ export fn main() Int:
     for a in arguments(): shapes.append(a.clone())
 
     let compile_only = shapes.length() > 0
-    if shapes.length() == 0: shapes = SHAPES.clone()
+    if shapes.is_empty(): shapes = SHAPES.clone()
 
     let scratch = temporary("ms-scaling-").get()
     var failures = 0
@@ -171,7 +173,7 @@ export fn main() Int:
         let big = run_phases(ms.clone(), program.clone(), 100000, limit)
         checked += 1
 
-        if mid.length() == 0 or big.length() == 0:
+        if mid.is_empty() or big.is_empty():
             failures += 1
             say(
                 "fail: tests/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"

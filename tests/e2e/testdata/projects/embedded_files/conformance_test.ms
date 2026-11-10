@@ -1,6 +1,8 @@
-import files from "@assets"
-import walk from "@std/os/tree.ms"
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+import (
+    files from "@assets",
+    walk from "@std/os/tree.ms",
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+)
 
 test "embedded files read back byte for byte":
     let tree = files()

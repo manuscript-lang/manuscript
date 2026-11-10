@@ -1,5 +1,7 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import compile from "@std/string.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    compile from "@std/string.ms",
+)
 
 test "regex receivers execute matching replacement and empty results":
     let regex = try compile("[0-9]+")
@@ -169,6 +171,22 @@ test "regex compile errors preserve columns after anchors and numbered lines":
         ["^(", "unclosed group at column 2"], ["^ (", "unclosed group at column 3"],
         ["é🙂(", "unclosed group at column 3"], ["a\n(", "unclosed group at column 1"],
         ["(?x)\n^(", "unclosed group at column 2"]
+    ]:
+        let invalid = compile(item[0])
+        try expect_equal(invalid.err().kind, "EBADMSG")
+        try expect_equal(
+            invalid.err().message, "regular expression: invalid data: " + item[1]
+        )
+
+test "regex compile errors point to duplicate flags and group names":
+    for item in [
+        ["(?ii)", "duplicate flag at column 4"],
+        ["(?i-i)", "duplicate flag at column 5"],
+        ["(?-i-m)", "flag negation operator repeated at column 5"],
+        ["(?P<word>a)(?P<word>b)", "duplicate capture group name at column 16"],
+        ["(?P<名字>a)\n  (?P<名字>b)", "duplicate capture group name at column 7"],
+        ["a\n(?ii)", "duplicate flag at column 4"],
+        ["a\n(?-i-m)", "flag negation operator repeated at column 5"]
     ]:
         let invalid = compile(item[0])
         try expect_equal(invalid.err().kind, "EBADMSG")

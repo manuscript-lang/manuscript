@@ -1,26 +1,26 @@
 // Agent-effectiveness benchmark runner. See README.md.
 // Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
-import Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import (
+    Command, Flag, FlagKind, command from "@std/cli/command.ms",
     append_file,
     copy,
     CopyOptions,
     remove,
     stat,
     temporary_directory,
-    create_directory
-) from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import uuid_v4 from "@std/data/uuid.ms"
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import now from "@std/time.ms"
-import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
-import Grade, grade, make_workspace, read_log from "./core/workspace.ms"
-import Harness, AgentRun, Usage, run_agent from "./harnesses/harness.ms"
-import find, names from "./harnesses/all.ms"
-import dumps_data from "./lib/pyjson.ms"
-import bash, read_text from "./lib/text.ms"
+    create_directory from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    now from "@std/time.ms",
+    Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms",
+    Grade, grade, make_workspace, read_log from "./core/workspace.ms",
+    Harness, AgentRun, Usage, run_agent from "./harnesses/harness.ms",
+    find, names from "./harnesses/all.ms",
+    dumps_data from "./lib/pyjson.ms",
+    bash, read_text from "./lib/text.ms",
+)
 
 // One line of `results/runs.jsonl`.
 type RunRecord:
@@ -128,7 +128,7 @@ fn run_one(
     append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
     if keep:
-        stdout().write("  workspace kept: {ws}\n").get()
+        print("  workspace kept: {ws}")
     else:
         remove(base, recursive: true).get()
 
@@ -173,7 +173,7 @@ fn cmd_list(o: Options) Int!:
             "languages: {load_languages([]).map(fn l: l.id.clone()).join(", ")}\n"
         ).get()
     )
-    stdout().write("harnesses: {names().join(", ")}\n").get()
+    print("harnesses: {names().join(", ")}")
     return ok(0)
 
 fn cmd_run(opts: Options, oracle: Bool) Int!:
@@ -185,8 +185,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 
     let chs = load_challenges(split_ids(o.challenges))
     let langs = load_languages(split_ids(o.languages))
-    let which = if oracle: "oracle" else: o.harness.clone()  // workaround for #3218; remove once fixed
-    let h = find(which).get()
+    let h = find(if oracle: "oracle" else: o.harness).get()
     var todo = List[Job]()
 
     for ch in chs:
@@ -226,7 +225,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 fn spawn(mine: List[Job], me: String, own: Options, label: String) Promise[Int]:
     return promise(fn: ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
 
-export fn main() Int:
+fn main() Int:
     let flags = [
         Flag(
             "challenges", help: "comma list of ids or prefixes (default all)",

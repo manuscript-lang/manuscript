@@ -9,7 +9,6 @@ type R:
 impl Closeable for R:
     var fn close() Unit!:
         print("close {self.name}")
-        return ok(unit)
 
 fn replace(var r: R) Unit:
     r = R("new")
@@ -24,7 +23,7 @@ fn replace_field(var w: W) Unit:
 type W:
     r: R
 
-export fn main() Int:
+fn main() Unit:
     var v = R("old")
     replace(var v)
     print("after replace")
@@ -33,4 +32,3 @@ export fn main() Int:
     var w = W(R("field-old"))
     replace_field(var w)
     print("end")
-    return 0

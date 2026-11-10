@@ -136,4 +136,3 @@ test "a fault inside a property shrinks like an error":
 fn faults_at(n: Int, limit: Int) Unit!:
     if n >= limit:
         panic("too big")
-    return ok(unit)

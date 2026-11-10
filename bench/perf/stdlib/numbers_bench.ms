@@ -1,14 +1,15 @@
-import keep, measure from "@std/test/bench.ms"
-import Bytes from "@std/bytes.ms"
-import Decimal from "@std/math/decimal.ms"
-import from_int from "@std/math/math.ms"
-import compress, decompress, CompressionFormat from "@std/io/archive.ms"
-import parse_timestamp from "@std/time.ms"
-import PriorityQueue, Queue from "@std/collections/queue.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    Bytes from "@std/bytes.ms",
+    Decimal from "@std/math/decimal.ms",
+    from_int from "@std/math/math.ms",
+    compress, decompress, CompressionFormat from "@std/io/archive.ms",
+    parse_timestamp from "@std/time.ms",
+    PriorityQueue, Queue from "@std/collections/queue.ms",
+)
 
 fn unpacked_length(data: Bytes) Int:
-    if let b = decompress(data, CompressionFormat.Gzip):
-        return b.length()
+    if let b = decompress(data, CompressionFormat.Gzip): return b.length()
 
     return 0
 
@@ -53,8 +54,7 @@ bench "compress.gzip":
     let size = blob.length()
 
     fn work() Result[Unit, Error]:
-        if let b = compress(blob, CompressionFormat.Gzip):
-            return keep(b.length())
+        if let b = compress(blob, CompressionFormat.Gzip): return keep(b.length())
 
         return keep(0)
 

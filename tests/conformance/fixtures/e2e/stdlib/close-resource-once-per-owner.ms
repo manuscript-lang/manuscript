@@ -10,7 +10,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         print("closed {self.name}")
-        return ok(unit)
 
 type Pair:
     door: Door
@@ -35,7 +34,7 @@ fn collect() List[Door]!Error:
     say("read {(try second).name}")
     return ok(found)
 
-export fn main() Int:
+fn main() Unit:
     let count = doors().length()
     say("--result")
 
@@ -52,4 +51,3 @@ export fn main() Int:
     var pairs: Map[String, Pair] = {}
     pairs.add("p", Pair(Door("pair")))
     say("end {count} {opened} {found.length()} {many.length()} {pairs.length()}")
-    return 0

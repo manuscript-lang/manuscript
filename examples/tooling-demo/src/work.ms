@@ -7,10 +7,9 @@ fn compute() Int:
 fn compare() Int:
     let left = compute()
     let right = compute()
-    if left != right:
-        return 1
+    if left != right: return 1
 
     return 0
 
-export fn main() Int:
+fn main() Int:
     return compare()

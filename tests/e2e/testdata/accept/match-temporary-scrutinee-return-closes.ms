@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -9,12 +11,10 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -24,8 +24,7 @@ fn open(id: Int, log: String) Door?:
 fn early(log: String) Int:
     match open(1, log.clone()):
         d:
-            if d.id == 1:
-                return 10
+            if d.id == 1: return 10
 
             return 20
         none:

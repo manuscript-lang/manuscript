@@ -1,6 +1,8 @@
-import expect_contains, expect_fault, expect_true from "@std/test/test.ms"
-import ListCopies from "@std/collections/collections.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    expect_contains, expect_fault, expect_true from "@std/test/test.ms",
+    ListCopies from "@std/collections/collections.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 type Folded:
     name: String

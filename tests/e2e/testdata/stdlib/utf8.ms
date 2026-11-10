@@ -1,19 +1,13 @@
-import Bytes from "@std/bytes.ms"
-import from_scalars from "@std/string.ms"
 import (
-    decode_first,
-    decode_last,
-    is_valid,
-    Utf8Scalar,
-    Utf8Error
-) from "@std/data/utf8.ms"
-import (
+    Bytes from "@std/bytes.ms",
+    from_scalars from "@std/string.ms",
+    decode_first, decode_last, is_valid, Utf8Scalar, Utf8Error from "@std/data/utf8.ms",
     expect_equal,
     expect_ok,
     expect_error,
     expect_fault,
-    expect_contains
-) from "@std/test/test.ms"
+    expect_contains from "@std/test/test.ms",
+)
 
 test "UTF8 validity checks the complete buffer without replacement":
     for data in [Bytes([]), "aé🙂e\u{301}\u{0}".to_bytes(), Bytes([239, 191, 189])]:
@@ -109,7 +103,7 @@ test "UTF8 supports forward and reverse walks without normalization":
     while position < data.length():
         let decoded = decode_first(data, position) | try expect_ok
         forward.append(decoded.scalar)
-        position = position + decoded.width
+        position += decoded.width
 
     forward | try expect_equal([233, 128578, 101, 769, 0])
 
@@ -118,7 +112,7 @@ test "UTF8 supports forward and reverse walks without normalization":
     while position > 0:
         let decoded = decode_last(data, position) | try expect_ok
         backward.append(decoded.scalar)
-        position = position - decoded.width
+        position -= decoded.width
 
     backward | try expect_equal([0, 769, 101, 128578, 233])
 

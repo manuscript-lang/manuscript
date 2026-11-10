@@ -30,8 +30,10 @@
 // expect-stdout: close d2
 // expect-stdout: close b1
 // A resource field moves out of an owned record: the new owner closes it once, and the record closes only the other fields, last declared first.
-import stdout from "@std/io/io.ms"
-import Closeable from "@std/core.ms"
+import (
+    stdout from "@std/io/io.ms",
+    Closeable from "@std/core.ms",
+)
 
 type Door:
     name: String
@@ -39,7 +41,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         stdout().write("close {self.name}\n").get()
-        return ok(unit)
 
 type Room:
     first: Door
@@ -52,8 +53,7 @@ fn say(s: String) Unit:
     stdout().write("{s}\n").get()
 
 fn check(fail: Bool) Int!Oops:
-    if fail:
-        return error(Oops("no"))
+    if fail: return error(Oops("no"))
 
     return ok(1)
 

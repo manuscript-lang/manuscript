@@ -7,7 +7,7 @@ fn identity[T](value: T) T: value
 
 fn run(f: fn(Int) Int) Int: f(1)
 
-export fn main() Int:
+fn main() Unit:
     let items = [4, 5]
     let count = items.count
     let lookup = items.get
@@ -18,7 +18,6 @@ export fn main() Int:
 
     let n = selected(3)
     let _r = stdout().write("{lookup(1)} {n} {run(same)} {count(fn(x: Int): x > 4)}\n")
-    return 0
 
 fn present[T](value: T) T?:
     return value

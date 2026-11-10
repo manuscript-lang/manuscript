@@ -1,5 +1,7 @@
-import max from "@std/math/math.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    max from "@std/math/math.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 // Horizontal placement of a cell within its column's measured display width.
 // Example: `Table(columns: [Align.Left, Align.Right])`.
@@ -67,7 +69,6 @@ impl Table:
             self.widths[col] = max(self.widths[col], measured[col])
         self.cell_widths.append(measured)
         self.rows.append(row)
-        return ok(unit)
 
     // Lays out the rows added so far; the table is unchanged and can keep growing.
     fn render() String:
@@ -83,8 +84,7 @@ impl Table:
             var last = row.length() - 1
             while last >= 0 and row[last].is_empty():
                 last -= 1
-            if last < 0:
-                continue
+            if last < 0: continue
 
             out.append(lead)
 

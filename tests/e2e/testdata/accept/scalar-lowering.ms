@@ -3,10 +3,10 @@ import (
     expect_false,
     expect_not_equal,
     expect_ok,
-    expect_true
-) from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
+    expect_true from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+)
 
 type Counter:
     value: Int = 0
@@ -18,7 +18,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true).wait()
-        return ok(unit)
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
 

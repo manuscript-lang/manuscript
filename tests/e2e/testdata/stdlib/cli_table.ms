@@ -1,5 +1,7 @@
-import Align, Table from "@std/cli/table.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Align, Table from "@std/cli/table.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn build(columns: List[Align], rows: List[List[String]]) Table!:
     var table = Table(columns: columns)

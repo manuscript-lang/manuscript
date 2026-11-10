@@ -1,7 +1,9 @@
-import expect_equal, expect_true, expect_fault from "@std/test/test.ms"
-import nan, infinity from "@std/math/math.ms"
-import histogram from "@std/data/histogram.ms"
-import milliseconds from "@std/time.ms"
+import (
+    expect_equal, expect_true, expect_fault from "@std/test/test.ms",
+    nan, infinity from "@std/math/math.ms",
+    histogram from "@std/data/histogram.ms",
+    milliseconds from "@std/time.ms",
+)
 
 test "histogram summarizes exact small values":
     var h = histogram()

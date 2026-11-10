@@ -1,211 +1,60 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import stdin from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
 
 fn parse_num(s: String) Int?:
-    let codes = s.scalar_values()
-    if codes.length() < 1 or codes.length() > 6:
-        return none
-
-    var n = 0
-
-    for c in codes:
-        if c < 48 or c > 57:
-            return none
-
-        n = n * 10 + (c - 48)
-
-    return n
-
-fn min_int(a: Int, b: Int) Int:
-    if a < b:
-        return a
-
-    return b
-
-fn max_int(a: Int, b: Int) Int:
-    if a > b:
-        return a
-
-    return b
+    if s.length() < 1 or s.length() > 6 or not s.scalar_values().all(fn c: c >= 48 and c <= 57): return none
+    return s.parse_int().get()
 
 fn lcs(a: String, b: String) Int:
-    let x = a.scalar_values()
     let y = b.scalar_values()
-    var prev = List[Int]()
-    var j = 0
-
-    while j <= y.length():
-        prev.append(0)
-        j = j + 1
-
-    for ch in x:
-        var cur = List[Int]()
-        cur.append(0)
-        j = 0
-
-        while j < y.length():
-            if ch == y.get(j):
-                cur.append(prev.get(j) + 1)
-            else:
-                cur.append(max_int(prev.get(j + 1), cur.get(j)))
-
-            j = j + 1
-
+    var prev = [0].repeated(y.length() + 1)
+    for ch in a.scalar_values():
+        var cur = [0]
+        for j in 0..y.length(): cur.append(if ch == y[j]: prev[j] + 1 else: prev[j + 1].max(cur[j]))
         prev = cur
-
-    return prev.get(y.length())
+    return prev[y.length()]
 
 fn edit(a: String, b: String) Int:
     let x = a.scalar_values()
     let y = b.scalar_values()
-    var prev = List[Int]()
-    var j = 0
-
-    while j <= y.length():
-        prev.append(j)
-        j = j + 1
-
-    var i = 1
-
-    while i <= x.length():
-        var cur = List[Int]()
-        cur.append(i)
-        j = 1
-
-        while j <= y.length():
-            var sub = 1
-            if x.get(i - 1) == y.get(j - 1):
-                sub = 0
-
-            var best = min_int(
-                min_int(prev.get(j) + 1, (cur.get(j - 1) + 1)),
-                (prev.get((j - 1)) + sub)
-            )
-            cur.append(best)
-            j = j + 1
-
+    var prev = (0..y.length() + 1)
+    for i in 1..x.length() + 1:
+        var cur = [i]
+        for j in 1..y.length() + 1: cur.append((prev[j] + 1).min(cur[j - 1] + 1).min(prev[j - 1] + (if x[i - 1] == y[j - 1]: 0 else: 1)))
         prev = cur
-        i = i + 1
-
-    return prev.get(y.length())
+    return prev[y.length()]
 
 fn knap(t: List[String]) String:
-    if t.length() < 2:
-        return "error: bad command"
-
-    let cap_opt = parse_num(t.get(1))
-    if cap_opt.is_none():
-        return "error: bad command"
-
-    let capacity = cap_opt.get()
-    var best = List[Int]()
-    var c = 0
-
-    while c <= capacity:
-        best.append(0)
-        c = c + 1
-
-    var i = 2
-
-    while i < t.length():
-        let p = t.get(i).split(":")
-        if p.length() != 2:
-            return "error: bad command"
-
-        let w_opt = parse_num(p.get(0))
-        let v_opt = parse_num(p.get(1))
-        if w_opt.is_none() or v_opt.is_none() or w_opt.get() < 1:
-            return "error: bad command"
-
-        let w = w_opt.get()
-        let v = v_opt.get()
-        c = capacity
-
-        while c >= w:
-            let candidate = best.get(c - w) + v
-            if candidate > best.get(c):
-                best.set(c, candidate)
-            c = c - 1
-
-        i = i + 1
-
-    return "{best.get(capacity)}"
+    if t.length() < 2: return "error: bad command"
+    let cap = parse_num(t[1])
+    if not cap.is_some(): return "error: bad command"
+    var best = [0].repeated(cap.get() + 1)
+    for item in t.slice(2, t.length()).get():
+        let p = item.split(":")
+        if p.length() != 2 or not parse_num(p[0]).is_some() or not parse_num(p[1]).is_some() or p[0].parse_int().get() < 1: return "error: bad command"
+        let w = p[0].parse_int().get()
+        let v = p[1].parse_int().get()
+        for c in (w..cap.get() + 1).reversed(): best[c] = best[c].max(best[c - w] + v)
+    return "{best[cap.get()]}"
 
 fn coins(t: List[String]) String:
-    if t.length() < 3:
-        return "error: bad command"
-
-    let amount_opt = parse_num(t.get(1))
-    if amount_opt.is_none():
-        return "error: bad command"
-
-    let amount = amount_opt.get()
-    var cs = List[Int]()
-    var i = 2
-
-    while i < t.length():
-        let c = parse_num(t.get(i))
-        if c.is_none() or c.get() < 1:
-            return "error: bad command"
-
-        cs.append(c.get())
-        i = i + 1
-
+    if t.length() < 3: return "error: bad command"
+    let amount = parse_num(t[1])
+    let cs = t.slice(2, t.length()).get().map(fn s: parse_num(s).get(0))
+    if not amount.is_some() or cs.any(fn c: c < 1): return "error: bad command"
     let inf = 1000000000
-    var best = List[Int]()
-    best.append(0)
-
-    var a = 1
-
-    while a <= amount:
-        var here = inf
-        for c in cs:
-            if c <= a and best.get(a - c) + 1 < here:
-                here = best.get(a - c) + 1
-        best.append(here)
-        a = a + 1
-
-    let answer = best.get(amount)
-    if answer >= inf:
-        return "impossible"
-
-    return "{answer}"
+    var best = [0]
+    for a in 1..amount.get() + 1: best.append(cs.filter(fn c: c <= a).map(fn c: best[a - c] + 1).fold(inf, fn m, x: m.min(x)))
+    return if best[amount.get()] >= inf: "impossible" else: "{best[amount.get()]}"
 
 fn solve_line(line: String) String:
     let t = line.split(" ")
-    let name = t.get(0)
+    if t[0] == "lcs" or t[0] == "edit":
+        if t.length() != 3 or t[1].is_empty() or t[2].is_empty(): return "error: bad command"
+        return "{if t[0] == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
+    if t[0] == "knap": return knap(t)
+    return if t[0] == "coins": coins(t) else: "error: bad command"
 
-    if name == "lcs" or name == "edit":
-        if (t.length() != 3 or t.get(1).is_empty() or t.get(2).is_empty()):
-            return "error: bad command"
-        if name == "lcs":
-            return "{lcs(t.get(1), t.get(2))}"
-
-        return "{edit(t.get(1), t.get(2))}"
-
-    if name == "knap":
-        return knap(t)
-    if name == "coins":
-        return coins(t)
-
-    return "error: bad command"
-
-fn run() Result[Unit, Error]:
-    var input = lines(stdin(), 1048576)
-    while true:
-        let next = try input.next()
-        if next.is_none():
-            break
-
-        let line = next.get()
-        if line.replace(old: " ", new: "").is_empty():
-            continue
-
-        try stdout().write("{solve_line(line)}\n")
-
-    return stdout().flush()
-
-export fn main() Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+fn main() Unit:
+    if let ls = stdin() | lines | collect(none):
+        for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(solve_line(l))

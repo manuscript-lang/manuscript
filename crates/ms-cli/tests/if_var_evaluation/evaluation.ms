@@ -14,7 +14,7 @@ fn early(var entries: Map[String, List[Int]], var count: Int) Unit:
         item.append(7)
         return
 
-export fn main() Int:
+fn main() Unit:
     var count = 0
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [1])
@@ -58,5 +58,3 @@ export fn main() Int:
         item.append(99)
     else:
         let _ = stdout().write("empty {count} {empty}\n")
-
-    return 0

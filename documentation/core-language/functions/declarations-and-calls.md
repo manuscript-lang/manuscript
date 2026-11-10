@@ -24,6 +24,19 @@ Parameters and return types are explicit; local annotations are optional.
 - Duplicate module names and overloads are rejected. Generics follow [generics](../types/generics.md).
 - Parameters live in the body's scope; a local cannot reuse a parameter name there. Branches, arms, loop bodies, and closures open nested scopes, which cannot reuse an enclosing local or parameter name.
 
+## The program entry
+
+An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Unit`, `Unit!`, `Int?!`, or `Int`. `Unit` exits 0. `Unit!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
+
+<!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
+```manuscript
+fn check() Unit!:
+    print("checking")
+
+fn main() Unit!:
+    return check()
+```
+
 ## Argument names
 
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.
@@ -109,7 +122,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 ## Unit and Never
 
-`unit` is the single value of `Unit`. A `Unit` function may `return`, `return unit`, or fall off the end. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`unit` is the single value of `Unit`. A `Unit` function may `return`, `return unit`, or fall off the end. A function returning `Unit!` (or `Unit!E`) may fall off the end too, which returns `ok(unit)`. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
 import panic from "@std/core.ms"

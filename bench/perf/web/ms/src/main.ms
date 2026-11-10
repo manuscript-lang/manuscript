@@ -1,17 +1,17 @@
 // Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on one of that many scheduler threads. The Go server in ../go answers the same requests.
-import Bytes from "@std/bytes.ms"
-import read_file, write_file from "@std/os/fs.ms"
 import (
+    Bytes from "@std/bytes.ms",
+    read_file, write_file from "@std/os/fs.ms",
     HttpServerOptions,
     headers,
     HttpExchange,
     HttpRequest,
     HttpResponse,
-    buffered
-) from "@std/net/http.ms"
-import lookup, serve from "@std/net/net.ms"
-import max from "@std/math/math.ms"
-import arguments from "@std/os/env.ms"
+    buffered from "@std/net/http.ms",
+    lookup, serve from "@std/net/net.ms",
+    max from "@std/math/math.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn score(id: Int) Int:
     return id * 7919 % 1000
@@ -56,18 +56,15 @@ fn top(k: Int) String:
 
 fn top_reply(query: String) HttpResponse:
     let parts = query.split("=")
-    if parts.length() != 2 or parts.get(0) != "n":
-        return reply(400, "bad n\n")
+    if parts.length() != 2 or parts.get(0) != "n": return reply(400, "bad n\n")
 
     if let k = parts.get(1).parse_int():
-        if k >= 1 and k <= 50:
-            return reply(200, top(k))
+        if k >= 1 and k <= 50: return reply(200, top(k))
     return reply(400, "bad n\n")
 
 fn user_reply(path: String) HttpResponse:
     let parts = path.split("/")
-    if parts.length() != 3:
-        return reply(404, "not found\n")
+    if parts.length() != 3: return reply(404, "not found\n")
 
     if let id = parts.get(2).parse_int():
         if id >= 0 and id < 1000:
@@ -104,14 +101,10 @@ fn make_handler(dir: String) fn(var HttpExchange) Result[Unit, Error]:
     let dir_copy = dir.clone()
 
     let handler = fn(request: HttpRequest) HttpResponse:
-        if request.path == "/health":
-            return reply(200, "ok\n")
-        if request.path == "/top":
-            return top_reply(request.query)
-        if request.path == "/io":
-            return io_reply(dir_copy, request.query, payload)
-        if request.path.starts_with("/user/"):
-            return user_reply(request.path)
+        if request.path == "/health": return reply(200, "ok\n")
+        if request.path == "/top": return top_reply(request.query)
+        if request.path == "/io": return io_reply(dir_copy, request.query, payload)
+        if request.path.starts_with("/user/"): return user_reply(request.path)
 
         return reply(404, "not found\n")
 
@@ -130,10 +123,9 @@ fn serve_here(port: String, dir: String, threads: Int) Int:
 
     return 1
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
-    if args.length() < 2 or args.length() > 3:
-        return 2
+    if args.length() < 2 or args.length() > 3: return 2
 
     var threads = 1
     if args.length() == 3:

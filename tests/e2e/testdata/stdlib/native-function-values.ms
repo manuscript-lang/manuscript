@@ -1,13 +1,15 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import parse from "@std/data/html.ms"
-import sha256, sha512 from "@std/crypto.ms"
-import uuid_v4 from "@std/data/uuid.ms"
-import secure_int, shuffle, choice, float from "@std/random.ms"
-import map_from_entries from "@std/collections/collections.ms"
-import stdout, stderr from "@std/io/io.ms"
-import monotonic, now from "@std/time.ms"
-import max from "@std/math/math.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    parse from "@std/data/html.ms",
+    sha256, sha512 from "@std/crypto.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+    secure_int, shuffle, choice, float from "@std/random.ms",
+    map_from_entries from "@std/collections/collections.ms",
+    stdout, stderr from "@std/io/io.ms",
+    monotonic, now from "@std/time.ms",
+    max from "@std/math/math.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 test "stdlib natives bound to a name behave like the call":
     let digest = sha256

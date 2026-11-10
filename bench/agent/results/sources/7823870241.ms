@@ -1,6 +1,8 @@
-import stdout, stdin from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import wrapping_multiply, bit_xor, bit_and, shift_right_unsigned from "@std/math.ms"
+import (
+    stdout, stdin from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    wrapping_multiply, bit_xor, bit_and, shift_right_unsigned from "@std/math.ms",
+)
 
 type Commit:
     id: String
@@ -46,7 +48,7 @@ fn hash_hex(text: String) String:
 
     var out = ""
     for i in 0..16:
-        out = out + bit_and(shift_right_unsigned(h, 60 - 4 * i), 15).to_string_radix(16)
+        out += bit_and(shift_right_unsigned(h, 60 - 4 * i), 15).to_string_radix(16)
     return out
 
 fn short(id: String) String:
@@ -68,22 +70,18 @@ fn commit_hash(tree: Map[String, String], parents: List[String], message: String
     return hash_hex(text + "\n" + message + "\n")
 
 fn is_hex_prefix(text: String) Bool:
-    if text.scalar_length() < 4:
-        return false
+    if text.scalar_length() < 4: return false
 
     for i in 0..text.scalar_length():
-        if not "0123456789abcdef".contains(text.get(i)):
-            return false
+        if not "0123456789abcdef".contains(text.get(i)): return false
     return true
 
 fn valid_name(name: String) Bool:
-    if name.scalar_length() == 0:
-        return false
+    if name.scalar_length() == 0: return false
 
     for i in 0..name.scalar_length():
         let c = name.scalar_at(i)
-        if c == 45 and i > 0:
-            continue
+        if c == 45 and i > 0: continue
 
         let ok = (
             (c >= 48 and c <= 57)
@@ -93,8 +91,7 @@ fn valid_name(name: String) Bool:
             or c == 95
             or c == 47
         )
-        if not ok:
-            return false
+        if not ok: return false
 
     return true
 
@@ -107,8 +104,7 @@ fn split_words(text: String) List[String]:
 
 fn lines_of(content: String) List[String]:
     var out = List[String]()
-    if content == "":
-        return out
+    if content == "": return out
 
     let parts = content.split("\n")
     for i in 0..parts.length() - 1:
@@ -128,8 +124,7 @@ fn span(xs: List[String], start: Int, end: Int) List[String]:
     return out
 
 fn section(title: String, items: List[String]) Unit:
-    if items.length() == 0:
-        return
+    if items.length() == 0: return
 
     say(title)
     for item in items:
@@ -207,12 +202,9 @@ fn resolve_chunk(
     theirs: List[String],
     branch: String
 ) Outcome:
-    if ours == base:
-        return Outcome(lines: theirs, clean: true)
-    if theirs == base:
-        return Outcome(lines: ours, clean: true)
-    if ours == theirs:
-        return Outcome(lines: ours, clean: true)
+    if ours == base: return Outcome(lines: theirs, clean: true)
+    if theirs == base: return Outcome(lines: ours, clean: true)
+    if ours == theirs: return Outcome(lines: ours, clean: true)
 
     var out = List[String]()
     out.append("<<<<<<< HEAD")
@@ -286,20 +278,17 @@ fn new_repo() Repo:
 
 impl Repo:
     fn head_id() String:
-        if self.detached:
-            return self.head_at.clone()
+        if self.detached: return self.head_at.clone()
 
         return self.branches.get_or(self.head_branch, "")
 
     fn label() String:
-        if self.detached:
-            return "detached"
+        if self.detached: return "detached"
 
         return self.head_branch.clone()
 
     fn tree_of(id: String) Map[String, String]:
-        if id == "":
-            return Map[String, String]()
+        if id == "": return Map[String, String]()
 
         return self.commits.get(id).get().tree.clone()
 
@@ -339,17 +328,14 @@ impl Repo:
         return best
 
     fn same_tree(a: Map[String, String], b: Map[String, String]) Bool:
-        if a.length() != b.length():
-            return false
+        if a.length() != b.length(): return false
 
         for name in a.keys():
-            if not b.contains(name) or b[name] != a[name]:
-                return false
+            if not b.contains(name) or b[name] != a[name]: return false
         return true
 
     fn dirty() Bool:
-        if not self.same_tree(self.index, self.head_tree()):
-            return true
+        if not self.same_tree(self.index, self.head_tree()): return true
 
         for name in self.index.keys():
             if not self.files.contains(name) or self.files[name] != self.index[name]:
@@ -360,8 +346,7 @@ impl Repo:
         var sorted = names.clone()
         sorted.sort()
         for name in sorted:
-            if not self.index.contains(name) and self.files.contains(name):
-                return name
+            if not self.index.contains(name) and self.files.contains(name): return name
         return ""
 
     var fn move_head(id: String) Unit:
@@ -491,8 +476,7 @@ impl Repo:
             err("no such file: " + old)
             return
 
-        if old == new:
-            return
+        if old == new: return
 
         self.files[new.clone()] = self.files[old].clone()
         self.files.remove(old.clone())
@@ -560,8 +544,7 @@ impl Repo:
         var staged = List[String]()
 
         for name in names:
-            if self.conflicts.contains(name):
-                continue
+            if self.conflicts.contains(name): continue
 
             if self.index.contains(name) and not head.contains(name):
                 staged.append("new file: " + name)
@@ -576,8 +559,7 @@ impl Repo:
         var unstaged = List[String]()
 
         for name in index_names:
-            if self.conflicts.contains(name):
-                continue
+            if self.conflicts.contains(name): continue
 
             if not self.files.contains(name):
                 unstaged.append("deleted: " + name)
@@ -679,8 +661,7 @@ impl Repo:
         var shown = 0
 
         for c in commits:
-            if limit >= 0 and shown >= limit:
-                break
+            if limit >= 0 and shown >= limit: break
 
             shown += 1
 
@@ -706,18 +687,15 @@ impl Repo:
 
         if args.length() == 1:
             let id = self.resolve(args[0].clone())
-            if id == "":
-                return
+            if id == "": return
 
             left = self.tree_of(id)
         else if args.length() == 2:
             let first = self.resolve(args[0].clone())
-            if first == "":
-                return
+            if first == "": return
 
             let second = self.resolve(args[1].clone())
-            if second == "":
-                return
+            if second == "": return
 
             left = self.tree_of(first)
             right = self.tree_of(second)
@@ -735,8 +713,7 @@ impl Repo:
             let in_right = right.contains(name)
             let left_text = left.get_or(name, "")
             let right_text = right.get_or(name, "")
-            if in_left == in_right and left_text == right_text:
-                continue
+            if in_left == in_right and left_text == right_text: continue
 
             changed = true
             say("diff " + name)
@@ -836,8 +813,7 @@ impl Repo:
             return
 
         let id = self.resolve(spec)
-        if id == "":
-            return
+        if id == "": return
 
         self.tags[name.clone()] = id
 
@@ -847,8 +823,7 @@ impl Repo:
             return
 
         let id = self.resolve(args[0].clone())
-        if id == "":
-            return
+        if id == "": return
 
         let c = self.commits.get(id).get()
         say("commit " + id)
@@ -932,8 +907,7 @@ impl Repo:
             return
 
         let id = self.resolve(target.clone())
-        if id == "":
-            return
+        if id == "": return
 
         let tree = self.tree_of(id)
 
@@ -961,8 +935,7 @@ impl Repo:
 
         if args.length() == 2:
             id = self.resolve(args[1].clone())
-            if id == "":
-                return
+            if id == "": return
         else if id == "":
             err("no commits yet")
             return

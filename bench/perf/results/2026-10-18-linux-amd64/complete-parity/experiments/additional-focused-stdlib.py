@@ -27,7 +27,7 @@ import bench_binary from "./binarybench.ms"
 import bench_list from "./lists.ms"
 import bench_numbers from "./numbers.ms"
 import bench_html from "./htmlbench.ms"
-export fn main() Int:
+fn main() Unit:
     let name = arguments().get(0, "")
     if name.starts_with("string."): bench_string()
     if name.starts_with("map."): bench_map_set()
@@ -41,5 +41,4 @@ export fn main() Int:
     if name.starts_with("encoding."): bench_binary()
     if name.starts_with("crypto."): bench_binary()
     if name.starts_with("html."): bench_html()
-    return 0
 ''')

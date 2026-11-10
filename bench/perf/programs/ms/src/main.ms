@@ -1,7 +1,9 @@
-import stdout, stdin, ReadStream from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import Instant, monotonic from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    stdout, stdin, ReadStream from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    Instant, monotonic from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 interface Counter:
     var fn bump(by: Int) Int
@@ -20,8 +22,7 @@ enum Shape:
     Tri(b: Int)
 
 fn got_line(var input: ReadStream[String]) Bool:
-    if let line = input.next():
-        return line.is_some()
+    if let line = input.next(): return line.is_some()
 
     return false
 
@@ -38,8 +39,7 @@ fn ident[T](x: T) T:
     return x
 
 fn checked(n: Int) Result[Int, Error]:
-    if n < 0:
-        return error(Error("negative"))
+    if n < 0: return error(Error("negative"))
 
     return ok(n + 1)
 
@@ -212,7 +212,7 @@ fn bench_for_list() Int:
     report("for_list", 100000000, t)
     return fs
 
-export fn main() Int:
+fn main() Unit:
     let built = bench_string()
     bench_read_line()
 
@@ -225,4 +225,3 @@ export fn main() Int:
     let ln = bench_length()
     let fs = bench_for_list()
     say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
-    return 0

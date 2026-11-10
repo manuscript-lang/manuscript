@@ -16,3 +16,10 @@ A synthetic split after an inline `---` marker must not admit same-line block
 collections. Use the recorded physical-line boundary and existing structural
 classification, not colon/dash text searches; preserve inline flow/scalar nodes
 and anchor-only marker lines followed by a block collection on the next line.
+
+Before gathering any physical continuation of a flow collection or quoted scalar,
+reject column-zero `---` or `...` followed by ASCII space, tab or line end. These
+are document boundaries even inside an open quote; stripping comments or folding
+first can silently turn them into content. Keep indented markers and prefixes
+such as `---word` as content; [boundary tests](../../tests/e2e/testdata/stdlib/yaml-document-boundaries.ms)
+cover these distinctions and physical error rows ([YAML markers](https://yaml.org/spec/1.2.2/#912-document-markers)).

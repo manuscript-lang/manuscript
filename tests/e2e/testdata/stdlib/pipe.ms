@@ -1,7 +1,9 @@
-import expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms"
-import Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms"
-import Promise, PromiseOptions, promise from "@std/concurrency/promise.ms"
-import sleep, milliseconds from "@std/time.ms"
+import (
+    expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms",
+    Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms",
+    Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
+    sleep, milliseconds from "@std/time.ms",
+)
 
 fn drain(var input: ReadStream[Int]) List[Int]!:
     var seen: List[Int] = []
@@ -168,8 +170,6 @@ fn endless(var out: WriteStream[Int]) Unit!:
     while true:
         try out.write(i)
         i += 1
-
-    return ok(unit)
 
 fn sum_mod(var input: ReadStream[Int]) Int!:
     var n = 0

@@ -10,8 +10,8 @@ export fn compute(iterations: Int) Int:
     var result = 0
 
     while index < iterations:
-        result = result + index % 7
-        index = index + 1
+        result += index % 7
+        index += 1
 
     return result
 

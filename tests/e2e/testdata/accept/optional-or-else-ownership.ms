@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import panic from "@std/core.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    panic from "@std/core.ms",
+)
 
 fn text(value: Int) String?: "dynamic optional payload {value}"
 

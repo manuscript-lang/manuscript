@@ -14,7 +14,6 @@ fn failure(cause: DomainFailure) Result[Unit, DomainFailure]:
 
 export fn first_propagated(cause: DomainFailure) Result[Unit, Error]:
     try failure(cause)
-    return ok(unit)
 
 fn generic[T: Error](cause: T) Error:
     return cause

@@ -1,9 +1,11 @@
-import expect_equal from "@std/test/test.ms"
-import ReadStream from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
-import Iterator from "@std/core.ms"
-import memory, closed_reader from "./support/streams.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    ReadStream from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    Iterator from "@std/core.ms",
+    memory, closed_reader from "./support/streams.ms",
+)
 
 fn gather(input: ReadStream[Bytes], max_bytes: Int? = none) List[String]!:
     return collect(lines(input, max_bytes), none)
@@ -49,10 +51,8 @@ test "break and continue work in a stream loop":
 
     for line in lines(memory("1\nskip\n3\n4\n")):
         let text = line
-        if text == "skip":
-            continue
-        if text == "4":
-            break
+        if text == "skip": continue
+        if text == "4": break
 
         seen.append(text.clone())
 
@@ -63,8 +63,7 @@ type Countdown:
 
 impl Iterator[Int] for Countdown:
     var fn next() Int?:
-        if self.left == 0:
-            return none
+        if self.left == 0: return none
 
         self.left -= 1
         return (self.left + 1)

@@ -7,12 +7,14 @@
 // A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS below.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/resource-matrix.ms [-- name-filter]
-import tool_ms from "./lib.ms"
-import temporary, write_file from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import arguments, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import JsonValue, parse from "@std/data/json.ms"
+import (
+    tool_ms from "./lib.ms",
+    temporary, write_file from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+    JsonValue, parse from "@std/data/json.ms",
+)
 
 let HEADER = """
 import Closeable, print from "@std/core.ms"
@@ -23,7 +25,6 @@ type Marker:
 impl Closeable for Marker:
     var fn close() Unit!:
         print("closed-\{self.id\}")
-        return ok(unit)
 
 fn saw(m: Marker) Unit:
     print("saw-\{m.id\}")
@@ -38,9 +39,8 @@ fn mk(id: Int) Marker:
 fn run() Unit:
 """
 let FOOTER = """
-export fn main() Int:
+fn main() Unit:
     run()
-    return 0
 """
 
 // One standard operation: the receiver it runs on, its method, its arguments (`@V@` is the resource
@@ -194,8 +194,7 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
     return false
 
 fn field(entry: JsonValue, key: String) String:
-    if let value = entry.get(key):
-        return value.as_string().get("")
+    if let value = entry.get(key): return value.as_string().get("")
 
     return ""
 
@@ -298,7 +297,7 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 
     return counts
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let ms = tool_ms(root)
     let scratch = temporary("ms-matrix-").get()

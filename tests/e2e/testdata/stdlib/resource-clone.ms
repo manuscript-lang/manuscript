@@ -1,5 +1,7 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms",
+)
 
 // `clone` copies a resource: each copy owns its own descriptor and closes on its own. A `Connection` has no clone: its
 // `input` and `output` streams are the two owners (see net.ms).

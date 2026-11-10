@@ -1,0 +1,69 @@
+diff --git a/stdlib/data/csv.ms b/stdlib/data/csv.ms
+index 4250ba316..df91de7db 100644
+--- a/stdlib/data/csv.ms
++++ b/stdlib/data/csv.ms
+@@ -257,2 +257,2 @@ impl Reader:
+-// `tail` holds the unfinished last record; `scanned` is how much of it has been searched, and `quoted`
+-// whether the scan ended inside a quoted cell.
++// `pending` holds the already-scanned fragments of the unfinished record; `quoted` says whether
++// that scan ended inside a quoted cell. Fragments are joined only at a record boundary or EOF.
+@@ -262,2 +262,2 @@ type CsvRows:
+-    tail: Bytes
+-    scanned: Int
++    pending: List[Bytes]
++    pending_size: Int
+@@ -272 +272 @@ impl CsvRows:
+-        var pos = self.scanned
++        var pos = 0
+@@ -273,0 +274 @@ impl CsvRows:
++        var previous = self.pending_size
+@@ -292 +293,3 @@ impl CsvRows:
+-                if line - cut > self.longest: self.longest = line - cut
++                let size = previous + line - cut
++                if size > self.longest: self.longest = size
++                previous = 0
+@@ -314,4 +317,21 @@ impl Transform[Bytes, List[String]] for CsvRows:
+-        let data = self.tail.concat(value)
+-        let cut = self.boundary(data)
+-        self.scanned = data.length() - cut
+-        self.tail = try data.slice(cut, data.length())
++        let cut = self.boundary(value)
++        let rest = value.length() - cut
++        let size = if cut == 0: self.pending_size + rest else: rest
++
++        if cut == 0:
++            if not value.is_empty(): self.pending.append(value)
++            self.pending_size = size
++            try self.check_size(self.longest)
++            return self.check_size(size)
++
++        var data = value
++        var end = cut
++
++        if self.pending_size > 0:
++            self.pending.append(data)
++            data = join(self.pending)
++            end += self.pending_size
++
++        self.pending = []
++        self.pending_size = rest
++        if rest > 0: self.pending.append(try data.slice(end, data.length()))
+@@ -319,2 +339 @@ impl Transform[Bytes, List[String]] for CsvRows:
+-        try self.check_size(self.tail.length())
+-        if cut == 0: return ok(unit)
++        try self.check_size(size)
+@@ -322 +341 @@ impl Transform[Bytes, List[String]] for CsvRows:
+-        let decoded = data.decode_utf8_range(0, cut)
++        let decoded = data.decode_utf8_range(0, end)
+@@ -329,3 +348,3 @@ impl Transform[Bytes, List[String]] for CsvRows:
+-        let data = self.tail.clone()
+-        self.tail = join([])
+-        self.scanned = 0
++        let data = join(self.pending)
++        self.pending = []
++        self.pending_size = 0
+@@ -368,2 +387,2 @@ export fn csv_rows(
+-            tail: join([]),
+-            scanned: 0,
++            pending: [],
++            pending_size: 0,

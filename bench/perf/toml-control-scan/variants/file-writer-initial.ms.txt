@@ -9,7 +9,7 @@ fn encoded(text: String) String:
     fields.add("value", TomlValue.StringValue(text))
     return stringify(TomlValue.TableValue(fields)).get()
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let path = args.get(0)
     let text = filesystem().read_file(path).get().decode_utf8().get()

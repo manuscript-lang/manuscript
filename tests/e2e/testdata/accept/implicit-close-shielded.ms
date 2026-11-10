@@ -1,14 +1,14 @@
-import Closeable, panic from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import (
+    Closeable, panic from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    promise, PromiseOptions from "@std/concurrency/promise.ms",
     expect_equal,
     expect_error,
     expect_fault,
     expect_ok,
-    expect_true
-) from "@std/test/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+    expect_true from "@std/test/test.ms",
+    nanoseconds, sleep from "@std/time.ms",
+)
 
 // The scope-end close of a binding runs on every exit and is shielded like any other close: cancellation and a
 // pending fault do not interrupt it, and a fault inside it follows the cleanup-failure table.
@@ -27,7 +27,6 @@ impl Closeable for Holder:
         let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
         if self.breaks:
             panic("close fault")
-        return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
     return read_file("{dir}/{id}").wait().is_ok()
@@ -61,7 +60,6 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
 
 fn faulting_holder(dir: String, id: Int) Unit!:
     hold_and_fault(dir, id)
-    return ok(unit)
 
 test "cancellation closes the binding":
     let temporary = temporary("manuscript-shield-") | try expect_ok
