@@ -502,9 +502,12 @@ impl Checker {
         }
         let mut seen: HashSet<Name> = HashSet::new();
         let mut ops: Vec<Operation> = Vec::new();
+        // Interface arguments and `Self`, applied to operation signatures and bounds alike.
+        let mut interface_substitution = Subst::default();
         if let Some(def) = &contract.def {
             let mut s = substitution(&contract);
             s.extend(self_binding(self.syms, &contract, &receiver));
+            interface_substitution = s.clone();
             for op in def.operations.borrow().iter() {
                 let mut op = op.clone();
                 op.ty = sub(&op.ty, &s);
@@ -588,7 +591,9 @@ impl Checker {
                     && declared.iter().zip(&own).all(|(d, o)| {
                         let (db, ob) = (d.bounds(), o.bounds());
                         db.len() == ob.len()
-                            && db.iter().zip(&ob).all(|(x, y)| same(&sub(x, &renamed), y))
+                            && db.iter().zip(&ob).all(|(x, y)| {
+                                same(&sub(&sub(x, &interface_substitution), &renamed), y)
+                            })
                     });
                 if !bounds_match {
                     self.type_error(
