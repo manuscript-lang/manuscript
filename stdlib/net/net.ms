@@ -342,7 +342,7 @@ impl Network:
 
     // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     // Invalid or negative options return EINVAL. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) HttpClient!:
+    fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
         return msstd_net_network_http_client(self.native, options)
 
     // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
@@ -399,7 +399,11 @@ impl Network:
 
     // Returns a derived network limited to the given host names and CIDR ranges.
     // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
-    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!:
+    fn restrict(
+        hosts: List[String],
+        cidrs: List[String] = [],
+        allow_listen: Bool = false
+    ) Network!:
         return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
 
     // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
@@ -463,7 +467,7 @@ fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 // ms: effect std.net.connect
-export fn http_client(options: HttpClientOptions) HttpClient!:
+export fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
     return host_network().http_client(options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
@@ -521,8 +525,8 @@ export fn resolve_dns(
 // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
 export fn restrict(
     hosts: List[String],
-    cidrs: List[String],
-    allow_listen: Bool
+    cidrs: List[String] = [],
+    allow_listen: Bool = false
 ) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 

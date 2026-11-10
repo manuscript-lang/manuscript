@@ -163,7 +163,7 @@ impl HttpClient:
     fn request(
         method: HttpMethod,
         url: String,
-        headers: HttpHeaders,
+        headers: HttpHeaders = headers(),
         body: Writable = "",
         max_response_bytes: Int?,
         timeout: Duration?
@@ -179,8 +179,8 @@ impl HttpClient:
         url: String,
         headers: HttpHeaders,
         body: Bytes,
-        max_response_bytes: Int?,
-        timeout: Duration?
+        max_response_bytes: Int? = none,
+        timeout: Duration? = none
     ) RawResponse!:
         return msstd_http_client_request_bytes(
             self.native, method.text(), url, headers, body, max_response_bytes, timeout
@@ -193,8 +193,8 @@ impl HttpClient:
         url: String,
         headers: HttpHeaders,
         body: ReadStream[Bytes],
-        max_response_bytes: Int?,
-        timeout: Duration?
+        max_response_bytes: Int? = none,
+        timeout: Duration? = none
     ) StreamingResponse!:
         let data = try read_all(body, none)
         return self.request(method, url, headers, data, max_response_bytes, timeout)
@@ -249,9 +249,9 @@ export interface HttpExchange:
     // Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
     // `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
     var fn upgrade(
-        allowed_origins: List[String],
-        subprotocols: List[String],
-        max_message_bytes: Int?
+        allowed_origins: List[String] = [],
+        subprotocols: List[String] = [],
+        max_message_bytes: Int? = none
     ) NativeWebSocket!
     // Writes one chunk of the response body and flushes it.
     // `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
@@ -278,8 +278,8 @@ export type HttpRequest:
 export type HttpResponse:
     // The HTTP status code, which must be 200 through 599; other values are answered with a 500 error.
     status: Int
-    // The response headers to send; `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
-    headers: HttpHeaders
+    // The response headers to send, empty by default; `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
+    headers: HttpHeaders = headers()
     // The response body bytes, which must not exceed `max_response_bytes`; the server sets the content length.
     body: Bytes
 
@@ -395,7 +395,7 @@ fn response(raw: RawResponse) StreamingResponse:
 
 // Reads the rest of the request body into one value.
 // A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
-export fn read_body(var exchange: HttpExchange, limit: Int?) Bytes!:
+export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
     let first = try exchange.read()
     if let head = first: return read_rest(var exchange, head, limit)
 
@@ -448,7 +448,7 @@ export fn reply(var exchange: HttpExchange, response: HttpResponse) Unit!:
 
 // Builds a response with a UTF-8 text body and no headers.
 export fn text(status: Int, body: String) HttpResponse:
-    return HttpResponse(status: status, headers: headers(), body: body.to_bytes())
+    return HttpResponse(status: status, body: body.to_bytes())
 
 // Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
 // A value `stringify` cannot encode returns EIO with its diagnostic.
@@ -485,8 +485,8 @@ fn serve_buffered(
 
 // Switches the exchange's connection to a WebSocket; the rules of `HttpExchange.upgrade` apply.
 export fn upgrade(
-    var exchange: HttpExchange, allowed_origins: List[String],
-    subprotocols: List[String], max_message_bytes: Int?
+    var exchange: HttpExchange, allowed_origins: List[String] = [],
+    subprotocols: List[String] = [], max_message_bytes: Int? = none
 ) WebSocket!:
     let raw = try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
     return ok(web_socket_from(raw))
