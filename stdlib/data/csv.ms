@@ -350,6 +350,8 @@ impl Transform[Bytes, List[String]] for CsvRows:
         self.pending_size = 0
         if data.is_empty(): return check_options(self.options)
 
+        try self.check_size(data.length())
+
         let decoded = data.decode_utf8()
         if decoded.is_none(): return invalid_text()
 
