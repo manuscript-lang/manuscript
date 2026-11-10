@@ -784,17 +784,16 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             twos += 1
 
         var non_residue = two.clone()
-        var tries = 0
 
-        while (
-            non_residue.pow_mod(half, modulus).get(bigint_zero()).compare(
-                minus_one
-            ) != 0
-        ):
-            non_residue += one
-            tries += 1
-            if tries > 1000:
+        while true:
+            let criterion = try non_residue.pow_mod(half, modulus)
+            if criterion.compare(minus_one) == 0: break
+
+            // A prime gives only +1 or -1 here; any other value proves compositeness.
+            if criterion.compare(one) != 0:
                 return error(Error("big integer: invalid input", kind: "EINVAL"))
+
+            non_residue += one
 
         var m = twos
         var c = non_residue.pow_mod(odd_part, modulus).get(bigint_zero())
