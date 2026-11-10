@@ -291,9 +291,7 @@ fn single_partial_root(module: &Module) -> bool {
         root = Some(imp.pos.offset);
     }
     for decl in &module.decls {
-        let pos = match &decl.kind {
-            _ => decl.pos,
-        };
+        let pos = decl.pos;
         if root.is_some_and(|r| r != pos.offset) {
             return false;
         }
