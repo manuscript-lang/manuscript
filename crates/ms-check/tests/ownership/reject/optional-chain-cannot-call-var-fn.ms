@@ -11,7 +11,7 @@ fn bump_if_present(c: Counter?) Int?:
 
 fn bump_let() Int?:
     c: Counter? = Counter(1)
-    return c?.bump() // error: declared with let
+    return c?.bump() // error: is an immutable binding
 
 fn bump_view(m: Map[String, Counter]) Int?:
     return m.get("a")?.bump() // error: on a value that is not a variable

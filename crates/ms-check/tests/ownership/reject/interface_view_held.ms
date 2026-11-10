@@ -20,7 +20,7 @@ fn store_local(cause: Cause) List[Reportable]:
 
 fn change_held(var cause: Cause) Reportable:
     e: Reportable = cause
-    cause.code = 2  // error: cannot change `cause.code` while `e` borrows it (binding of a view of it, at 22:9)
+    cause.code = 2  // error: cannot change `cause.code` while `e` borrows it (binding of a view of it, at 22:5)
     return e
 
 fn store_call(var xs: List[Reportable], cause: Cause) Unit:

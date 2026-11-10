@@ -19,7 +19,7 @@ fn relay(result: Row!Bad, n: Int) Row!Bad:
 
 fn demo(var r: Row) Int:
     k: Row? = r
-    r.name = "changed"  // error: cannot change `r.name` while `k` borrows it (binding of a borrowed value, at 21:9); finish using `k` before this, or give `k` its own value by ending its initializer with `.clone()`
+    r.name = "changed"  // error: cannot change `r.name` while `k` borrows it (binding of a borrowed value, at 21:5); finish using `k` before this, or give `k` its own value by ending its initializer with `.clone()`
     return k.get().name.length()
 
 interface Reportable:

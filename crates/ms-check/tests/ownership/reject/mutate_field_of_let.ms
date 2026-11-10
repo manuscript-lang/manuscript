@@ -3,5 +3,5 @@ type P:
 
 fn f() Int:
     p := P(x: 1)
-    p.x = 2  // error: declared with let
+    p.x = 2  // error: is an immutable binding
     return p.x
