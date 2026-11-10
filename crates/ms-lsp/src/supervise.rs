@@ -6,7 +6,6 @@
 
 use crate::analysis::Document;
 use crate::json::{Json, obj};
-use crate::text;
 use crate::transport::{FrameError, read_frame};
 use std::collections::{BTreeMap, VecDeque};
 use std::io::{BufReader, Read, Write};
@@ -171,62 +170,25 @@ impl<W: Write> Supervisor<'_, W> {
     }
 
     fn track(&mut self, method: &str, params: Option<&Json>) {
-        let Some(document) = params.and_then(|p| p.get("textDocument")) else {
+        let Ok(params) = crate::server::Params::decode(params.unwrap_or(&Json::Null)) else {
             return;
         };
-        let Some(uri) = document.get("uri").and_then(|u| u.as_str()) else {
-            return;
-        };
-        let version = document
-            .get("version")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+        let uri = &params.document.uri;
         match method {
             "textDocument/didClose" => {
                 self.docs.remove(uri);
             }
             "textDocument/didOpen" => {
-                let text = document.get("text").and_then(|t| t.as_str()).unwrap_or("");
-                self.docs.insert(
-                    uri.to_string(),
-                    Document {
-                        uri: uri.to_string(),
-                        text: text.to_string(),
-                        version,
-                    },
-                );
+                self.docs.insert(uri.clone(), params.document);
             }
             _ => {
-                let Some(current) = self.docs.get_mut(uri) else {
+                let Some(current) = self.docs.get(uri) else {
                     return;
                 };
-                if version <= current.version {
+                let Some(next) = params.changed_document(current) else {
                     return;
-                }
-                let changes = params
-                    .and_then(|p| p.get("contentChanges"))
-                    .and_then(|c| c.as_array())
-                    .unwrap_or(&[]);
-                let mut next = current.text.clone();
-                for change in changes {
-                    let replacement = change.get("text").and_then(|t| t.as_str()).unwrap_or("");
-                    let Some(range) = change.get("range").and_then(text::Range::from_json) else {
-                        next = replacement.to_string();
-                        continue;
-                    };
-                    let (Ok(start), Ok(end)) = (
-                        text::edit_offset(&next, range.start),
-                        text::edit_offset(&next, range.end),
-                    ) else {
-                        return;
-                    };
-                    if end < start {
-                        return;
-                    }
-                    next = format!("{}{}{}", &next[..start], replacement, &next[end..]);
-                }
-                current.text = next;
-                current.version = version;
+                };
+                self.docs.insert(uri.clone(), next);
             }
         }
     }
@@ -333,5 +295,112 @@ impl<W: Write> Supervisor<'_, W> {
             }
             _ => Ok(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn snapshot() -> Supervisor<'static, Vec<u8>> {
+        let (events, _) = channel();
+        let mut supervisor = Supervisor {
+            output: Vec::new(),
+            spawn: Box::new(|| Command::new("unused")),
+            events,
+            worker: None,
+            generation: 0,
+            inflight: BTreeMap::new(),
+            initialize: None,
+            initialized: false,
+            replay_pending: false,
+            docs: BTreeMap::new(),
+            restarts: VecDeque::new(),
+            exiting: false,
+        };
+        supervisor.track(
+            "textDocument/didOpen",
+            Some(&obj([(
+                "textDocument",
+                obj([
+                    ("uri", "file:///snapshot.ms".into()),
+                    ("text", "a😀b\r\nlast\n".into()),
+                    ("version", 1i64.into()),
+                ]),
+            )])),
+        );
+        supervisor
+    }
+
+    fn change(supervisor: &mut Supervisor<'_, Vec<u8>>, version: i64, changes: &str) {
+        let params = obj([
+            (
+                "textDocument",
+                obj([
+                    ("uri", "file:///snapshot.ms".into()),
+                    ("version", version.into()),
+                ]),
+            ),
+            (
+                "contentChanges",
+                crate::json::parse(changes.as_bytes()).unwrap(),
+            ),
+        ]);
+        supervisor.track("textDocument/didChange", Some(&params));
+    }
+
+    #[test]
+    fn recovery_snapshots_reject_malformed_and_partial_edit_transactions() {
+        for changes in [
+            r#"[{"range":"invalid","text":"corrupted"}]"#,
+            r#"[{"text":42}]"#,
+            r#"[{"text":"discarded"},{"range":false,"text":"corrupted"}]"#,
+            r#"[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}},"text":"z"},{"range":{"start":{"line":0,"character":2},"end":{"line":0,"character":3}},"text":"split surrogate"}]"#,
+            r#"[{"range":{"start":{"line":0,"character":3},"end":{"line":0,"character":1}},"text":"reversed"}]"#,
+            r#"[]"#,
+            r#"{}"#,
+        ] {
+            let mut supervisor = snapshot();
+            let original = supervisor.docs.clone();
+            change(&mut supervisor, 2, changes);
+            assert_eq!(supervisor.docs, original, "{changes}");
+            // A rejected notification must not consume the next accepted version.
+            change(&mut supervisor, 2, r#"[{"text":"accepted"}]"#);
+            assert_eq!(supervisor.docs["file:///snapshot.ms"].text, "accepted");
+            assert_eq!(supervisor.docs["file:///snapshot.ms"].version, 2);
+        }
+    }
+
+    #[test]
+    fn recovery_snapshots_apply_the_workers_utf16_and_replacement_rules() {
+        let mut supervisor = snapshot();
+        change(
+            &mut supervisor,
+            2,
+            r#"[{"range":{"start":{"line":0,"character":1},"end":{"line":0,"character":3}},"text":"é"},{"range":{"start":{"line":0,"character":2},"end":{"line":0,"character":3}},"text":"β"}]"#,
+        );
+        assert_eq!(supervisor.docs["file:///snapshot.ms"].text, "aéβ\r\nlast\n");
+        change(&mut supervisor, 2, r#"[{"text":"stale"}]"#);
+        assert_eq!(supervisor.docs["file:///snapshot.ms"].text, "aéβ\r\nlast\n");
+        change(
+            &mut supervisor,
+            3,
+            r#"[{"range":null,"text":"new"},{"range":{"start":{"line":0,"character":999},"end":{"line":0,"character":1000}},"text":"!"}]"#,
+        );
+        assert_eq!(supervisor.docs["file:///snapshot.ms"].text, "new!");
+        // Keep the worker's defaults for missing coordinates and negative clamping.
+        change(
+            &mut supervisor,
+            4,
+            r#"[{"range":{"start":{},"end":{"line":0,"character":1}},"text":"d"}]"#,
+        );
+        assert_eq!(supervisor.docs["file:///snapshot.ms"].text, "dew!");
+        change(
+            &mut supervisor,
+            5,
+            r#"[{"range":{"start":{"line":0,"character":-1},"end":{"line":0,"character":-1}},"text":"?"}]"#,
+        );
+        assert_eq!(supervisor.docs["file:///snapshot.ms"].text, "dew!?");
+        assert_eq!(supervisor.docs["file:///snapshot.ms"].version, 5);
     }
 }
