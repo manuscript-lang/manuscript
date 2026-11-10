@@ -1356,7 +1356,21 @@ unsafe fn add_copy<const CHECK: bool>(m: &mut MapVal, kd: &TypeDesc, p: *const u
             alloc::alloc(kd.size as usize)
         };
         slot_copy(kd, p, k);
-        insert(m, kd, None, k, core::ptr::null_mut());
+        let mut ins = || insert(m, kd, None, k, core::ptr::null_mut());
+        // The copy is unowned until `insert` stores it, and hash or equality callbacks can exit.
+        if !needs_no_drop(kd) && fault::rollback_needed() {
+            fault::with_cleanup(
+                &mut || {
+                    slot_drop(kd, k);
+                    if kd.size as usize > 64 {
+                        alloc::free(k);
+                    }
+                },
+                ins,
+            );
+        } else {
+            ins();
+        }
         if kd.size as usize > 64 {
             alloc::free(k);
         }

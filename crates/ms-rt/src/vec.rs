@@ -1009,7 +1009,7 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
                 (*resp).len += 1;
             }
         };
-        if sort_needs_rollback() {
+        if fault::rollback_needed() {
             fault::with_cleanup(
                 &mut || {
                     drop_list(resp, d);
@@ -1053,20 +1053,9 @@ pub unsafe extern "C-unwind" fn msrt_list_keys(v: *const VecVal, out: *mut VecVa
 /// Comparator thunk: `env` is the closure, `a` and `b` point at element slots.
 pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *const u8) -> i64;
 
-fn sort_needs_rollback() -> bool {
-    // SAFETY: the current task's header stays live for this call.
-    unsafe {
-        (*fault::msrt_isolate_hdr())
-            .guarded
-            .load(core::sync::atomic::Ordering::Relaxed)
-            != 0
-            || fault::has_cleanups()
-    }
-}
-
 /// A copied sort result is not published to its caller until sorting returns.
 unsafe fn finish_sorted(out: *mut VecVal, d: &TypeDesc, sort: impl FnOnce()) {
-    if sort_needs_rollback() {
+    if fault::rollback_needed() {
         // SAFETY: `out` owns the initialized copy; an interrupted in-place sort restores it
         // before this cleanup drops it. The caller acquires ownership only on normal return.
         fault::with_cleanup(&mut || unsafe { drop_list(out, d) }, sort);
@@ -1184,7 +1173,7 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         }
         let size = d.size as usize;
         let bytes = v.len * size.max(1);
-        let rollback = sort_needs_rollback();
+        let rollback = fault::rollback_needed();
         // A comparator can fault or cancel while a merge holds moved slots in scratch.
         // Both guarded callers and explicit cleanups need a valid owned list on that exit.
         // Keep an immutable byte snapshot for those observers;

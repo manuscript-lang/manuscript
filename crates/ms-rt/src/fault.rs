@@ -1537,6 +1537,19 @@ pub extern "C" fn msrt_unwind_drops() -> u8 {
     u8::from(unsafe { *UNWIND_DROPS.ptr() })
 }
 
+/// True when a callback may leave through a guard or a registered cleanup, so an operation that
+/// owns unpublished state around callbacks must register it for release.
+pub(crate) fn rollback_needed() -> bool {
+    // SAFETY: the current task's header stays live for this call.
+    unsafe {
+        (*msrt_isolate_hdr())
+            .guarded
+            .load(core::sync::atomic::Ordering::Relaxed)
+            != 0
+            || has_cleanups()
+    }
+}
+
 /// Runs `cleanup` if cancellation or a fault leaves `body` by a jump (which skips Rust
 /// destructors); discards it when `body` returns. Use it around a park that holds a borrow, a
 /// busy flag or another guard that later tasks need.
