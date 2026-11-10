@@ -28,7 +28,7 @@ fn generate(shape: String, n: Int) String:
 		out.append("    return t % 256\n")
 	else if shape == "many_locals":
 		out.append("export fn main() Int:\n    a0 := 0\n")
-		for i in 1..n: out.append("    let a{i} = a{i - 1} + 1\n")
+		for i in 1..n: out.append("    a{i} := a{i - 1} + 1\n")
 		out.append("    return a{n - 1} % 256\n")
 	else if shape == "long_interpolation":
 		out.append("export fn main() Int:\n    x := 1\n    s := \"")
