@@ -1117,7 +1117,7 @@ fn skip(var context: Context) Unit:
 
         context.index += 1
 
-// A document start or end marker at column zero ends a plain scalar that would otherwise continue.
+// A document start or end marker at column zero cannot be node content.
 fn document_marker(text: String) Bool:
     let first = text.scalar_at(0, default: 0)
     if first != 45 and first != 46: return false
@@ -1125,8 +1125,10 @@ fn document_marker(text: String) Bool:
     return (
         text == "---"
         or text.starts_with("--- ")
+        or text.starts_with("---\t")
         or text == "..."
         or text.starts_with("... ")
+        or text.starts_with("...\t")
     )
 
 fn sequence(text: String) Bool:
@@ -1201,6 +1203,10 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
         and (state.quote != 0 or state.depth != 0)
         and context.index < context.lines.length()
     ):
+        if document_marker(context.lines.get(context.index)): return error(
+            invalid(context, "unexpected document marker in flow node")
+        )
+
         let next = "\n".concat(context.lines.get(context.index))
         let scan = scan_structure_part(next, "#", var state)
 
