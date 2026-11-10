@@ -1,4 +1,4 @@
-// conform: tags=maps,assignment,tier-core
+// conform: tags=maps,mutation,tier-core
 // conform: phase=run
 // conform: origin=compound assignment on a Map with a name or field key borrows the key for the read
 
