@@ -122,15 +122,29 @@ pub fn to_string(ts: Ts) -> String {
 
 /// `Timestamp.shift(duration)`.
 pub fn shift(ts: Ts, duration: i64) -> Result<Ts, u8> {
-    let total = ts.seconds as i128 * NANOS_PER_SECOND as i128 + ts.nanos as i128 + duration as i128;
-    let seconds = total.div_euclid(NANOS_PER_SECOND as i128);
-    if seconds < MIN_SECONDS as i128 || seconds > MAX_SECONDS as i128 {
-        return Err(STATUS_OUT_OF_RANGE);
-    }
-    Ok(Ts {
-        seconds: seconds as i64,
-        nanos: total.rem_euclid(NANOS_PER_SECOND as i128) as i64,
-    })
+    let (carry, nanos) = if let Some(nanos) = ts.nanos.checked_add(duration) {
+        (
+            nanos.div_euclid(NANOS_PER_SECOND),
+            nanos.rem_euclid(NANOS_PER_SECOND),
+        )
+    } else {
+        // Raw Timestamp fields need not be normalized. Split both operands when
+        // their sum overflows: the remainder sum has magnitude less than 2e9,
+        // and the whole-second sum has magnitude less than 2e10.
+        let nanos = ts.nanos % NANOS_PER_SECOND + duration % NANOS_PER_SECOND;
+        (
+            ts.nanos / NANOS_PER_SECOND
+                + duration / NANOS_PER_SECOND
+                + nanos.div_euclid(NANOS_PER_SECOND),
+            nanos.rem_euclid(NANOS_PER_SECOND),
+        )
+    };
+    let seconds = ts
+        .seconds
+        .checked_add(carry)
+        .filter(|&seconds| in_range(seconds))
+        .ok_or(STATUS_OUT_OF_RANGE)?;
+    Ok(Ts { seconds, nanos })
 }
 
 /// `Timestamp.difference(other)`: nanoseconds, or out of range when they do not fit.
@@ -514,6 +528,88 @@ mod tests {
             Err(STATUS_OUT_OF_RANGE)
         );
         assert_eq!(compare(a, shift(a, 1).unwrap()), -1);
+    }
+
+    #[test]
+    fn shifts_match_wide_arithmetic_for_raw_fields() {
+        let check = |seconds, nanos, duration| {
+            let t = Ts { seconds, nanos };
+            let total =
+                seconds as i128 * NANOS_PER_SECOND as i128 + nanos as i128 + duration as i128;
+            let seconds = total.div_euclid(NANOS_PER_SECOND as i128);
+            let expected = if (MIN_SECONDS as i128..=MAX_SECONDS as i128).contains(&seconds) {
+                Ok(Ts {
+                    seconds: seconds as i64,
+                    nanos: total.rem_euclid(NANOS_PER_SECOND as i128) as i64,
+                })
+            } else {
+                Err(STATUS_OUT_OF_RANGE)
+            };
+            assert_eq!(shift(t, duration), expected, "{t:?}, duration={duration}");
+        };
+        let fields = [
+            i64::MIN,
+            i64::MIN + 1,
+            -NANOS_PER_SECOND - 1,
+            -NANOS_PER_SECOND,
+            -1,
+            0,
+            1,
+            NANOS_PER_SECOND - 1,
+            NANOS_PER_SECOND,
+            NANOS_PER_SECOND + 1,
+            i64::MAX - 1,
+            i64::MAX,
+        ];
+        for seconds in [
+            i64::MIN,
+            MIN_SECONDS - 1,
+            MIN_SECONDS,
+            MIN_SECONDS + 1,
+            -1,
+            0,
+            1,
+            MAX_SECONDS - 1,
+            MAX_SECONDS,
+            MAX_SECONDS + 1,
+            i64::MAX,
+        ] {
+            for nanos in fields {
+                for duration in fields {
+                    check(seconds, nanos, duration);
+                }
+            }
+        }
+        // Overflow can land exactly on the remainder carry/borrow boundary.
+        for duration in [145_224_192, 145_224_193, 145_224_194] {
+            check(0, i64::MAX, duration);
+        }
+        for duration in [-145_224_191, -145_224_192, -145_224_193] {
+            check(0, i64::MIN, duration);
+        }
+        check(0, 9_223_372_036_000_000_000, NANOS_PER_SECOND);
+        check(0, -9_223_372_036_000_000_000, -NANOS_PER_SECOND);
+        // Mix full-width raw fields with calendar-range seconds so normalization
+        // and the overflow fallback are exercised by successful results too.
+        let mut state = 0x7331_2244_2112_u64;
+        let mut next = || {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            state as i64
+        };
+        for _ in 0..20_000 {
+            let raw_seconds = next();
+            let nanos = next();
+            let duration = next();
+            check(raw_seconds, nanos, duration);
+            check(
+                MIN_SECONDS
+                    + (raw_seconds.unsigned_abs() % (MAX_SECONDS - MIN_SECONDS + 1) as u64) as i64,
+                nanos,
+                duration,
+            );
+        }
     }
 
     #[test]
