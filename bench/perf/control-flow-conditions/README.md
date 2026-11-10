@@ -54,3 +54,27 @@ python3 bench/perf/control-flow-conditions/run.py /path/to/base/ms-check-dev /pa
 python3 bench/perf/control-flow-conditions/run.py /path/to/base/ms-check-dev /path/to/base/ms-check-dev --pairs 40 --output same-binary.json
 python3 bench/perf/control-flow-conditions/run.py /path/to/base/ms-check-dev /path/to/fixed/ms-check-dev --pairs 60 --output paired-confirmation.json
 ```
+
+## Integration with the other correctness fixes
+
+Main advanced to `1220188933fd2f3dc0fcae9ed7364b5fd1391cdf`, including the
+optional literal-context and match diagnostic fixes. Independent merge review
+confirmed both are preserved; the production diff still consists only of our two
+statement joins. Rebuilt that main and candidate
+`65f915137c250eb13099aa10c476a03e9ace49b5` with the same command and repeated
+the controls after compilation and other local test workloads completed.
+
+| Case | Latest base, 60 pairs | Latest same binary, 40 pairs |
+| --- | ---: | ---: |
+| Hello example | 1.0062 | 1.0031 |
+| Ordinary, 1 function | 0.9993 | 0.9898 |
+| Affected, 1 function | 0.9984 | 1.0028 |
+| Ordinary, 64 functions | 1.0041 | 0.9971 |
+| Affected, 64 functions | 0.9952 | 1.0136 |
+
+All latest paired medians lie between -0.48% and +0.63%; the previous ordinary-64
+3.7% loss again does not repeat. Same-binary median variation extends from -1.02%
+to +1.36%. These are still whole-process observations, not proof of zero cost.
+[Latest paired samples](latest-paired.json) and
+[latest same-binary samples](latest-same-binary.json) include all raw timings,
+exact source and binary/output hashes. No earlier runs were removed.
