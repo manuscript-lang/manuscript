@@ -21,7 +21,10 @@ const WIDTH: usize = 88;
 /// Formats `source`. Invalid syntax never produces output.
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     parse(file, source)?;
-    let normalized = source.replace("\r\n", "\n");
+    let mut normalized = source.replace("\r\n", "\n");
+    if normalized.contains('\t') {
+        normalized = expand_indent_tabs(file, &normalized)?;
+    }
     let lexed = lex(file, &normalized)?;
     let mut spans: Vec<(usize, usize, bool)> = lexed
         .tokens
@@ -34,7 +37,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     spans.extend(lexed.block_comments.iter().map(|&(lo, hi)| (lo, hi, true)));
     spans.sort_unstable();
     if spans.is_empty() {
-        return format_lines(file, source);
+        return format_lines(file, &normalized);
     }
     // The line-based passes cannot see inside a multi-line text literal, so a
     // one-line placeholder stands in for each and the literal text returns
@@ -100,13 +103,33 @@ fn shift_lines(text: &str, before: usize, after: usize) -> String {
         } else if after >= before {
             out.push_str(&" ".repeat(after - before));
             out.push_str(line);
-        } else if indent_of(line) >= before - after {
-            out.push_str(&line[before - after..]);
+        } else if let Some(rest) = strip_columns(line, before - after) {
+            out.push_str(rest);
         } else {
             return text.to_string();
         }
     }
     out
+}
+
+/// Removes `columns` of leading whitespace, a tab counting four; `None` when the
+/// line lacks them or a tab would be split.
+fn strip_columns(line: &str, columns: usize) -> Option<&str> {
+    let mut taken = 0;
+    for (at, c) in line.char_indices() {
+        if taken == columns {
+            return Some(&line[at..]);
+        }
+        taken += match c {
+            ' ' => 1,
+            '\t' => 4,
+            _ => return None,
+        };
+        if taken > columns {
+            return None;
+        }
+    }
+    (taken == columns).then_some("")
 }
 
 fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
@@ -311,6 +334,35 @@ fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
     }
     out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
     Some(out)
+}
+
+/// Replaces each tab in a code line's leading whitespace with four spaces,
+/// leaving lines inside multi-line text and block comments untouched.
+fn expand_indent_tabs(file: &Arc<str>, text: &str) -> PResult<String> {
+    let lexed = lex(file, text)?;
+    let mut protected: Vec<(usize, usize)> = lexed
+        .tokens
+        .iter()
+        .filter(|t| t.kind == Tok::String && text[t.lo as usize..t.hi as usize].contains('\n'))
+        .map(|t| (t.lo as usize, t.hi as usize))
+        .collect();
+    protected.extend(lexed.block_comments.iter().copied());
+    let mut out = String::with_capacity(text.len() + 16);
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        let inside = protected.iter().any(|&(lo, hi)| lo < at && at < hi);
+        let body = line.trim_start_matches([' ', '\t']);
+        if inside || !line.starts_with('\t') {
+            out.push_str(line);
+        } else {
+            for c in line[..line.len() - body.len()].chars() {
+                out.push_str(if c == '\t' { "    " } else { " " });
+            }
+            out.push_str(body);
+        }
+        at += line.len();
+    }
+    Ok(out)
 }
 
 fn indent_of(line: &str) -> usize {
