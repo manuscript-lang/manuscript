@@ -1,6 +1,8 @@
-import expect_equal, expect_fault, expect_true from "@std/test/test.ms"
-import Promise, owned_task, promise, wait_all from "@std/concurrency/promise.ms"
-import microseconds, sleep from "@std/time.ms"
+import (
+    expect_equal, expect_fault, expect_true from "@std/test/test.ms",
+    Promise, owned_task, promise, wait_all from "@std/concurrency/promise.ms",
+    microseconds, sleep from "@std/time.ms",
+)
 
 fn depth(n: Int) Int:
     if n == 0:

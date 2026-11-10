@@ -1,6 +1,8 @@
-import compile from "@std/text/template.ms"
-import parse from "@std/data/json.ms"
-import arguments from "@std/os/env.ms"
+import (
+    compile from "@std/text/template.ms",
+    parse from "@std/data/json.ms",
+    arguments from "@std/os/env.ms",
+)
 
 // Arguments: left JSON number, right JSON number, comparison, repetitions.
 // Choose a comparison that is true; an incorrect result exits nonzero.

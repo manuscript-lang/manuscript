@@ -1,6 +1,8 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+)
 
 /*
 MIME building blocks: media types, header blocks, and multipart bodies.

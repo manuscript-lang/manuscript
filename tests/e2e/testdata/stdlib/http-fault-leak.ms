@@ -1,12 +1,14 @@
-import send, recv from "./support/conn.ms"
-import expect_ok from "@std/test/test.ms"
-import HttpExchange from "@std/net/http.ms"
-import connect, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
-import memory_usage from "@std/os/system.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
-import fetch from "@std/net/fetch.ms"
-import sleep from "@std/time.ms"
+import (
+    send, recv from "./support/conn.ms",
+    expect_ok from "@std/test/test.ms",
+    HttpExchange from "@std/net/http.ms",
+    connect, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+    memory_usage from "@std/os/system.ms",
+    PromiseOptions from "@std/concurrency/promise.ms",
+    fetch from "@std/net/fetch.ms",
+    sleep from "@std/time.ms",
+)
 
 fn faulting(var exchange: HttpExchange) Unit!:
     let big = "x".repeat(1000000).get("")

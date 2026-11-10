@@ -1,5 +1,7 @@
-import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse_dotenv, parse_ini from "@std/data/config.ms"
+import (
+    expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
+    parse_dotenv, parse_ini from "@std/data/config.ms",
+)
 
 test "dotenv reads names, quotes, comments and export":
     let text = "# settings\nPORT=8080\nexport HOST = example.com # primary\nNAME='my # app'\nTITLE=\"two\nlines\" # note\nEMPTY=\nTICK=`a b`\n"

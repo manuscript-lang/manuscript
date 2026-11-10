@@ -1,7 +1,9 @@
-import stdout from "@std/io/io.ms"
-import Queue from "@std/collections/queue.ms"
-import total from "@math"
-import compute from "@math"
+import (
+    stdout from "@std/io/io.ms",
+    Queue from "@std/collections/queue.ms",
+    total from "@math",
+    compute from "@math",
+)
 
 type Package:
     title: String

@@ -5,8 +5,10 @@
 // `strs`, symbols in `symn`. Environments are frames (`fr_*`) holding linked bindings (`b_*`);
 // the global frame is frame -1 with values in `gval` indexed by symbol id.
 
-import read_all from "@std/io/streams.ms"
-import stdin, stdout, WriteStream from "@std/io/io.ms"
+import (
+    read_all from "@std/io/streams.ms",
+    stdin, stdout, WriteStream from "@std/io/io.ms",
+)
 
 // Primitive ids, in the order they are registered in `setup`.
 let P_ADD = 0

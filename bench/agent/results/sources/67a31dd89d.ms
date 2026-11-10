@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // A parsed input line. `ok` is false when the line is invalid.
 type Record:

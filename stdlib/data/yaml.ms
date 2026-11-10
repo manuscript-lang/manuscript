@@ -1,8 +1,10 @@
 // Configuration-oriented YAML 1.2 parser implemented in Manuscript.
-import Bytes from "@std/bytes.ms"
-import parse_int from "@std/math/math.ms"
-import from_scalars, StringBuilder from "@std/string.ms"
-import quote_text from "@std/data/quote.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    parse_int from "@std/math/math.ms",
+    from_scalars, StringBuilder from "@std/string.ms",
+    quote_text from "@std/data/quote.ms",
+)
 
 // A YAML value represented as null, boolean, number text, string, array, or object.
 export enum YamlValue:

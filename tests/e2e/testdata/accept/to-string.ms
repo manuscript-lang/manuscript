@@ -1,7 +1,9 @@
-import fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import Decimal from "@std/math/decimal.ms"
-import Queue from "@std/collections/queue.ms"
+import (
+    fail from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    Decimal from "@std/math/decimal.ms",
+    Queue from "@std/collections/queue.ms",
+)
 
 type Person:
     name: String

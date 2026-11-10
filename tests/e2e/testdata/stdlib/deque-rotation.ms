@@ -1,5 +1,7 @@
-import Deque from "@std/collections/deque.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Deque from "@std/collections/deque.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "rotation preserves order across ring positions and signed boundaries":
     for size in [0, 1, 2, 3, 4, 7, 8, 9, 17]:

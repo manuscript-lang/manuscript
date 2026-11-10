@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 fn emit(text: String) Int:
     stdout().write("{text}\n").get()

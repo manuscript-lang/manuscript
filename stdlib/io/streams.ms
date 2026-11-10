@@ -1,5 +1,7 @@
-import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import (ReadStream, WriteStream, Source) from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder, join from "@std/bytes.ms",
+    ReadStream, WriteStream, Source from "@std/io/io.ms",
+)
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A step pulls its input only
 // inside its own `next`, so a slow consumer slows every step and the source, and closing a step closes its input.

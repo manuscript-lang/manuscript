@@ -1,9 +1,11 @@
-import parse from "@std/data/json.ms"
-import base64_encode from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse from "@std/data/json.ms",
+    base64_encode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 export fn main() Int:
     let args = arguments()

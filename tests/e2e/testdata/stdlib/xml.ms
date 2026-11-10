@@ -1,6 +1,8 @@
-import from_scalars from "@std/string.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
-import parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms"
+import (
+    from_scalars from "@std/string.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+    parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms",
+)
 
 test "parse reads elements attributes and text":
     let doc = parse(

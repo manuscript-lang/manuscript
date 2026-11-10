@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+)
 
 fn is_leap(y: Int) Bool:
     return ((y % 4) == 0 and (y % 100) != 0) or (y % 400) == 0

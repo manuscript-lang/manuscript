@@ -1,10 +1,12 @@
 // Compares formatter binaries, retaining all output-checked paired samples (bench/perf/formatter-flow).
 // Usage: ms run bench/tools/formatter_flow_compare.ms -- BEFORE AFTER --out FILE.csv [--samples 10] [--cpu N]
 // Harness output is `count,rounds,shape,elapsed_ns,checksum,source_bytes,output_bytes,rss`.
-import absolute, fail, invalid, median, options, write_text from "./lib.ms"
-import all_ints, rounds_for, run_pinned from "./study.ms"
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    absolute, fail, invalid, median, options, write_text from "./lib.ms",
+    all_ints, rounds_for, run_pinned from "./study.ms",
+    arguments from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 type Case:
     count: Int

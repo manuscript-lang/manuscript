@@ -1,6 +1,8 @@
-import stdin from "@std/io/io.ms"
-import stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 fn codes(s: String) List[Int]:
     let b = s.as_bytes()

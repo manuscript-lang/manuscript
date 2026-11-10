@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    range from "@std/collections.ms",
+)
 
 // One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from B.
 type Op:

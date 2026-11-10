@@ -3,11 +3,11 @@ import (
     expect_false,
     expect_not_equal,
     expect_ok,
-    fail
-) from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    fail from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 type Key:
     id: Int

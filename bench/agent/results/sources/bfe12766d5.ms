@@ -1,6 +1,8 @@
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
-import read_all from "@std/io.ms"
+import (
+    stdin from "@std/io.ms",
+    stdout from "@std/io.ms",
+    read_all from "@std/io.ms",
+)
 
 // One ledger account. Records are copied on assignment, so changes are written back with `add`.
 type Account:

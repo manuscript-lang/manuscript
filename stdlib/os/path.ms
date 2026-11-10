@@ -11,9 +11,11 @@ let config = join(["/etc", "app", "main.toml"])
 let name = basename(config)
 ```
 */
-import msstd_path_matches_glob from "@std/internal/path.ms"
-import Os, os from "@std/os/system.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
+import (
+    msstd_path_matches_glob from "@std/internal/path.ms",
+    Os, os from "@std/os/system.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+)
 
 // Parsed path components using the familiar root, directory, base, extension, and name fields.
 export type PathParts:

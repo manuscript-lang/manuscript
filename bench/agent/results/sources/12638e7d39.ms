@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 type Parser:
     src: List[Int]

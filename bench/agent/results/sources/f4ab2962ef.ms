@@ -1,6 +1,8 @@
 // ms: allow_effect std.console.read
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 type Op:
     kind: Int  // 0 unchanged, 1 deletion, 2 insertion

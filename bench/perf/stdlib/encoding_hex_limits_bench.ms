@@ -3,12 +3,12 @@ import (
     hex_encode,
     base64_encode,
     ascii_decode,
-    utf16_decode
-) from "@std/data/encoding.ms"
-import decode_first, decode_last, Utf8Scalar, Utf8Error from "@std/data/utf8.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
-import measure, keep from "@std/test/bench.ms"
+    utf16_decode from "@std/data/encoding.ms",
+    decode_first, decode_last, Utf8Scalar, Utf8Error from "@std/data/utf8.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+    measure, keep from "@std/test/bench.ms",
+)
 
 fn zeros(count: Int) Bytes:
     var out = BytesBuilder()

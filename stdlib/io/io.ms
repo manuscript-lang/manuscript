@@ -1,8 +1,8 @@
-import Closeable from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
-import adopt from "@std/concurrency/promise.ms"
-import Duration from "@std/time.ms"
 import (
+    Closeable from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    adopt from "@std/concurrency/promise.ms",
+    Duration from "@std/time.ms",
     msrt_promise_take,
     msrt_promise_wait,
     msrt_promise_drop,
@@ -27,9 +27,9 @@ import (
     msrt_io_write_bytes_stdout,
     msrt_io_write_bytes_stderr,
     msrt_io_flush,
-    msrt_promise_finished
-) from "@std/internal/promises.ms"
-import (msstd_io_redirect_null) from "@std/internal/io.ms"
+    msrt_promise_finished from "@std/internal/promises.ms",
+    msstd_io_redirect_null from "@std/internal/io.ms",
+)
 
 // ---- Streams ------------------------------------------------------------------------------------------------------
 

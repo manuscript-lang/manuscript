@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // Token kinds: 0 number, 1 '+', 2 '-', 3 '*', 4 '/', 5 '(', 6 ')', -1 end
 type Calc:

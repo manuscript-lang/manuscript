@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+)
 
 // ---------- types ----------
 

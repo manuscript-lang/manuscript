@@ -1,6 +1,8 @@
-import read_line, stdin, stdout from "@std/io.ms"
-import range from "@std/collections.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    read_line, stdin, stdout from "@std/io.ms",
+    range from "@std/collections.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 // Returns the value of a 1 to 6 digit decimal, or -1 when the text is not one.
 fn parse_num(text: String) Int:

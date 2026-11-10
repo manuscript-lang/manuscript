@@ -1,7 +1,9 @@
-import from_list, from_bytes, fold, lines, map from "@std/io/streams.ms"
-import keep, measure from "@std/test/bench.ms"
-import Bytes from "@std/bytes.ms"
-import Source, ReadStream from "@std/io/io.ms"
+import (
+    from_list, from_bytes, fold, lines, map from "@std/io/streams.ms",
+    keep, measure from "@std/test/bench.ms",
+    Bytes from "@std/bytes.ms",
+    Source, ReadStream from "@std/io/io.ms",
+)
 
 type MemorySource:
     data: Bytes

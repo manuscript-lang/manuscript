@@ -1,6 +1,8 @@
-import read_lines from "@std/streams.ms"
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdin from "@std/io.ms",
+    stdout from "@std/io.ms",
+)
 
 // Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash with source text.
 let HARD = "\u{E000}"

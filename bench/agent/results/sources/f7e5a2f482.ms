@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 // Token: kind is "n" (number, value in val), an operator or parenthesis
 // ("+", "-", "*", "/", "(", ")"), or "?" for an unknown character.

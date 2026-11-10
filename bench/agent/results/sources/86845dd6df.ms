@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // Returns line `index`, or "" when the input ended early (a final empty line may lack its terminator).
 fn line_at(lines: List[String], index: Int) String:

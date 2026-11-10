@@ -18,11 +18,11 @@ import (
     now_ns,
     options,
     platform,
-    write_text
-) from "./lib.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+    write_text from "./lib.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn execute(binary: String, cpu: String) Result[Unit, Error]:
     if cpu == "":

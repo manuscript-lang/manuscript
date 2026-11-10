@@ -1,8 +1,10 @@
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
-import read_all from "@std/io.ms"
-import range from "@std/collections.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    stdin from "@std/io.ms",
+    stdout from "@std/io.ms",
+    read_all from "@std/io.ms",
+    range from "@std/collections.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 // Byte values of the grid characters. Validation works on bytes so that
 // columns are counted in characters: every byte before the first invalid

@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // One lexical token: `kind` is "num", "op" (`+ - * /`), "lp", "rp", or "bad".
 type Tok:

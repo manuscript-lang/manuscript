@@ -30,10 +30,12 @@ export fn main() Int:
     return Command(name: "tool", children: [greeting]).execute(arguments())
 ```
 */
-import Align, Table from "@std/cli/table.ms"
-import Data from "@std/core.ms"
-import stderr, stdout from "@std/io/io.ms"
-import parse, stringify from "@std/data/json.ms"
+import (
+    Align, Table from "@std/cli/table.ms",
+    Data from "@std/core.ms",
+    stderr, stdout from "@std/io/io.ms",
+    parse, stringify from "@std/data/json.ms",
+)
 
 fn cli_unknown_flag(name: String) Error:
     return Error("cli: unknown flag {name}", kind: "EINVAL")

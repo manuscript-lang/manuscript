@@ -1,7 +1,7 @@
-import Data, panic from "@std/core.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import Promise, adopt from "@std/concurrency/promise.ms"
 import (
+    Data, panic from "@std/core.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    Promise, adopt from "@std/concurrency/promise.ms",
     msstd_time_duration_add,
     msstd_time_duration_subtract,
     msstd_time_duration_multiply,
@@ -28,9 +28,9 @@ import (
     msstd_time_from_calendar,
     msstd_time_timestamp,
     msstd_time_clock_now,
-    msstd_time_wall_clock_now
-) from "@std/internal/time.ms"
-import msrt_promise_sleep from "@std/internal/promises.ms"
+    msstd_time_wall_clock_now from "@std/internal/time.ms",
+    msrt_promise_sleep from "@std/internal/promises.ms",
+)
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:

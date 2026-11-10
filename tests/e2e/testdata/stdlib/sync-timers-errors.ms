@@ -1,6 +1,8 @@
-import expect_equal, expect_true, expect_false from "@std/test/test.ms"
-import wrap_error, join_errors from "@std/core.ms"
-import sleep, deadline_after, ticker, monotonic, nanoseconds from "@std/time.ms"
+import (
+    expect_equal, expect_true, expect_false from "@std/test/test.ms",
+    wrap_error, join_errors from "@std/core.ms",
+    sleep, deadline_after, ticker, monotonic, nanoseconds from "@std/time.ms",
+)
 
 test "wrap_error adds context and keeps the kind":
     let gone = Error("gone", kind: "ENOENT", details: {"path": "a.txt"})

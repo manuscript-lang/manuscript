@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 test "try inside a loop over a list of promises":
     let a = promise(fn: ok(1))

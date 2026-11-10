@@ -1,7 +1,9 @@
 // Generator for c05-calculator. Deterministic; run: ms run bench/agent/gen.ms -- c05
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+)
 
 // A token: `n` with a value, or `o` with the operator character.
 type Tok:

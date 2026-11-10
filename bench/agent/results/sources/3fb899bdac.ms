@@ -1,6 +1,8 @@
-import read_lines from "@std/streams.ms"
-import stdin, stdout from "@std/io.ms"
-import values from "@std/bytes.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdin, stdout from "@std/io.ms",
+    values from "@std/bytes.ms",
+)
 
 let BAD = "error: bad command"
 let INF = 1000000000

@@ -1,5 +1,7 @@
-import expect_equal, expect_fault, expect_some from "@std/test/test.ms"
-import TextCursor, cursor from "@std/text.ms"
+import (
+    expect_equal, expect_fault, expect_some from "@std/test/test.ms",
+    TextCursor, cursor from "@std/text.ms",
+)
 
 fn read_all(text: String) List[String]:
     var at = cursor(text)

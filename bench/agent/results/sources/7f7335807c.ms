@@ -1,5 +1,7 @@
-import collect, lines from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    collect, lines from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 // A valid record: category text and amount in cents, as little-endian decimal digits.
 type Rec:

@@ -922,14 +922,14 @@ impl MapUpdate[T, U] for Map[T, U]:
     // Example: `counts.update(word, 0, fn n: n + 1)` counts occurrences.
     var fn update(key: T, initial: U, change: fn(U) U) Unit: ...
 
-import panic from "@std/core.ms"
-import StringBuilder from "@std/string.ms"
 import (
+    panic from "@std/core.ms",
+    StringBuilder from "@std/string.ms",
     msrt_list_distinct,
     msrt_list_filled,
     msrt_list_flatten,
-    msrt_list_range_by
-) from "@std/internal/collections.ms"
+    msrt_list_range_by from "@std/internal/collections.ms",
+)
 
 interface MapRetain[T: Hashable & Clonable, U]:
     var fn retain(keep: fn(T, U) Bool) Unit

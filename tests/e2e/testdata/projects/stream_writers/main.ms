@@ -1,8 +1,10 @@
-import Bytes from "@std/bytes.ms"
-import Sink, WriteStream, stdout from "@std/io/io.ms"
-import json_writer from "@std/data/json.ms"
-import csv_writer, CsvOptions from "@std/data/csv.ms"
-import compile, render_to, to_data from "@std/text/template.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    Sink, WriteStream, stdout from "@std/io/io.ms",
+    json_writer from "@std/data/json.ms",
+    csv_writer, CsvOptions from "@std/data/csv.ms",
+    compile, render_to, to_data from "@std/text/template.ms",
+)
 
 type Point:
     x: Int

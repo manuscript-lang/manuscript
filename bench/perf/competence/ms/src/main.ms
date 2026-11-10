@@ -1,7 +1,9 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
-import parse_int from "@std/math/math.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+    parse_int from "@std/math/math.ms",
+)
 
 interface Shape:
     fn area() Int

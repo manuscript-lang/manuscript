@@ -1,7 +1,9 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
-import extension, normalize, parse from "@std/os/path.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+    extension, normalize, parse from "@std/os/path.ms",
+)
 
 export fn main() Int:
     let args = arguments()

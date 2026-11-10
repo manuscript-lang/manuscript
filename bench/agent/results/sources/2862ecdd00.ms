@@ -1,8 +1,10 @@
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
-import floor, pow, sqrt from "@std/math/math.ms"
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    floor, pow, sqrt from "@std/math/math.ms",
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // ---------- constants ----------
 

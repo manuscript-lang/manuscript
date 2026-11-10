@@ -6,16 +6,18 @@
 // Run from the repository root. Pass rate counts every trial. Cost, tokens, turns and time average over PASSING
 // trials only, so a cheap wrong answer never improves a ranking. Tokens are input (cache reads included) plus
 // output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
-import JsonValue, parse from "@std/data/json.ms"
-import access, glob, GlobOptions, stat from "@std/os/fs.ms"
-import stdout, stderr from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import parse_timestamp, now from "@std/time.ms"
-import round from "@std/math/math.ms"
-import root from "./core/model.ms"
-import dumps, dumps_data from "./lib/pyjson.ms"
-import fixed, mean_scaled, pct0 from "./lib/pyfmt.ms"
-import must_read, nonblank_lines, read_text, write_text from "./lib/text.ms"
+import (
+    JsonValue, parse from "@std/data/json.ms",
+    access, glob, GlobOptions, stat from "@std/os/fs.ms",
+    stdout, stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    parse_timestamp, now from "@std/time.ms",
+    round from "@std/math/math.ms",
+    root from "./core/model.ms",
+    dumps, dumps_data from "./lib/pyjson.ms",
+    fixed, mean_scaled, pct0 from "./lib/pyfmt.ms",
+    must_read, nonblank_lines, read_text, write_text from "./lib/text.ms",
+)
 
 let MIN_RUNS = 3
 let CATEGORIES = ["base", "docs", "reads", "build", "writes", "model output"]

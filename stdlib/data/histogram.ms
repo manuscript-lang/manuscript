@@ -1,6 +1,8 @@
-import panic from "@std/core.ms"
-import ceil, leading_zeros, shift_left, shift_right from "@std/math/math.ms"
-import Duration, monotonic from "@std/time.ms"
+import (
+    panic from "@std/core.ms",
+    ceil, leading_zeros, shift_left, shift_right from "@std/math/math.ms",
+    Duration, monotonic from "@std/time.ms",
+)
 
 // Buckets below this value are exact; above it each power of two is split into 32 steps (about 3% error).
 let EXACT = 64

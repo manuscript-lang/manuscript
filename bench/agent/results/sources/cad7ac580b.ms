@@ -1,6 +1,8 @@
-import stdin, stdout, read_line from "@std/io.ms"
-import from_scalars from "@std/string.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout, read_line from "@std/io.ms",
+    from_scalars from "@std/string.ms",
+    range from "@std/collections.ms",
+)
 
 fn is_blank(line: String) Bool:
     for ch in line.chars():

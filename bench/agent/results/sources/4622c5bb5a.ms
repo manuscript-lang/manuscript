@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+)
 
 // ---------------------------------------------------------------- constants
 

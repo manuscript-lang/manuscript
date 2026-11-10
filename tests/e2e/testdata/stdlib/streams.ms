@@ -1,7 +1,9 @@
-import from_bytes, from_list, map, collect, read_all, copy from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
-import OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+import (
+    from_bytes, from_list, map, collect, read_all, copy from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+)
 
 fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()

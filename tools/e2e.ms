@@ -6,14 +6,16 @@
 // expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release, which the deep-nesting
 // fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
 // Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
-import env, exe, host, note, run_program from "./lib.ms"
-import DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import (arguments, change_directory, working_directory) from "@std/os/env.ms"
-import (system_info) from "@std/os/system.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
-import Instant, monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
+import (
+    env, exe, host, note, run_program from "./lib.ms",
+    DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    system_info from "@std/os/system.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
+    Instant, monotonic from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The exit status and combined output of one `ms` invocation.
 type Ran:

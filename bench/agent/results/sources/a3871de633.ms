@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import max, min from "@std/math.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    max, min from "@std/math.ms",
+    read_lines from "@std/streams.ms",
+)
 
 type Script:
     kinds: List[Int]

@@ -7,12 +7,14 @@
 // A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS below.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/resource-matrix.ms [-- name-filter]
-import tool_ms from "./lib.ms"
-import temporary, write_file from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import arguments, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import JsonValue, parse from "@std/data/json.ms"
+import (
+    tool_ms from "./lib.ms",
+    temporary, write_file from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+    JsonValue, parse from "@std/data/json.ms",
+)
 
 let HEADER = """
 import Closeable, print from "@std/core.ms"

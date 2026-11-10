@@ -1,6 +1,8 @@
-import stdout, stdin from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import wrapping_multiply, bit_xor, bit_and, shift_right_unsigned from "@std/math.ms"
+import (
+    stdout, stdin from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    wrapping_multiply, bit_xor, bit_and, shift_right_unsigned from "@std/math.ms",
+)
 
 type Commit:
     id: String

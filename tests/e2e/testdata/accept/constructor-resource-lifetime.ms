@@ -1,8 +1,10 @@
-import Closeable, panic from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import promise from "@std/concurrency/promise.ms"
-import milliseconds, sleep from "@std/time.ms"
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+import (
+    Closeable, panic from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    promise from "@std/concurrency/promise.ms",
+    milliseconds, sleep from "@std/time.ms",
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+)
 
 type Token:
     log: String

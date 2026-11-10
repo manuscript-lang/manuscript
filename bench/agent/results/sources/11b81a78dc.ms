@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import wrapping_multiply, bit_xor, bit_and, shift_right from "@std/math/math.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    wrapping_multiply, bit_xor, bit_and, shift_right from "@std/math/math.ms",
+)
 
 type Commit:
     tree: Map[String, String]

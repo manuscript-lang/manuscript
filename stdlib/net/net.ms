@@ -1,34 +1,26 @@
-import Closeable, Writable from "@std/core.ms"
-import (ReadStream, WriteStream, Source, Sink, pipe, Pipe) from "@std/io/io.ms"
-import Bytes from "@std/bytes.ms"
-import ClientResponse from "@std/net/http.ms"
-import Duration from "@std/time.ms"
-import HttpClient from "@std/net/http.ms"
-import HttpClientOptions from "@std/net/http.ms"
-import HttpExchange from "@std/net/http.ms"
-import HttpHeaders, headers from "@std/net/http.ms"
-import Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms"
-import TlsInfo, TlsOptions from "@std/net/tls.ms"
 import (
+    Closeable, Writable from "@std/core.ms",
+    ReadStream, WriteStream, Source, Sink, pipe, Pipe from "@std/io/io.ms",
+    Bytes from "@std/bytes.ms",
+    ClientResponse from "@std/net/http.ms",
+    Duration from "@std/time.ms",
+    HttpClient from "@std/net/http.ms",
+    HttpClientOptions from "@std/net/http.ms",
+    HttpExchange from "@std/net/http.ms",
+    HttpHeaders, headers from "@std/net/http.ms",
+    Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
+    TlsInfo, TlsOptions from "@std/net/tls.ms",
     WebSocket,
     WebSocketOptions,
     WebSocketWire,
-    web_socket_from
-) from "@std/net/websocket.ms"
-import HttpMethod from "@std/net/http.ms"
-import HttpServer from "@std/net/http.ms"
-import NativeServing, NativeWorker from "@std/net/http.ms"
-import HttpServerOptions from "@std/net/http.ms"
-import Timestamp from "@std/time.ms"
-import (
-    Promise,
-    promise,
-    owned_task,
-    deferred,
-    complete
-) from "@std/concurrency/promise.ms"
-import sleep from "@std/time.ms"
-import (
+    web_socket_from from "@std/net/websocket.ms",
+    HttpMethod from "@std/net/http.ms",
+    HttpServer from "@std/net/http.ms",
+    NativeServing, NativeWorker from "@std/net/http.ms",
+    HttpServerOptions from "@std/net/http.ms",
+    Timestamp from "@std/time.ms",
+    Promise, promise, owned_task, deferred, complete from "@std/concurrency/promise.ms",
+    sleep from "@std/time.ms",
     msstd_net_network,
     msstd_net_network_bind_datagram,
     msstd_net_network_close,
@@ -63,9 +55,7 @@ import (
     msstd_net_listener_accept,
     msstd_net_listener_share,
     msstd_net_listener_address,
-    msstd_net_listener_close
-) from "@std/internal/net.ms"
-import (
+    msstd_net_listener_close from "@std/internal/net.ms",
     msstd_http_serving_new,
     msstd_http_serving_share,
     msstd_http_serving_address,
@@ -75,8 +65,8 @@ import (
     msstd_http_worker_close,
     msrt_runtime_limit,
     msstd_http_serving_release,
-    msrt_runtime_set_threads
-) from "@std/internal/http.ms"
+    msrt_runtime_set_threads from "@std/internal/http.ms",
+)
 
 // The runtime handle behind a `Connection`.
 export extern type NativeConnection

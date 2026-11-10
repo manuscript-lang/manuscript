@@ -1,6 +1,8 @@
-import read_all from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    read_all from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 // ---------------------------------------------------------------------------
 // Value representation: every Scheme value is an Int id into the heap tables.

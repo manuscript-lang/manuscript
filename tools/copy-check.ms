@@ -6,12 +6,14 @@
 // Arguments name the files to sweep instead.
 // MS names the ms that builds the programs (default target/release/ms).
 // Usage: ms run tools/copy-check.ms [-- files]
-import tool_ms from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import RunOptions, run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import seconds from "@std/time.ms"
-import stdout from "@std/io/io.ms"
+import (
+    tool_ms from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    RunOptions, run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    seconds from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The probe lines the compiler printed on standard error, without their prefix.
 fn copies(text: String) List[String]:

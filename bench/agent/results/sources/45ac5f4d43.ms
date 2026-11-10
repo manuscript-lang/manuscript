@@ -1,5 +1,7 @@
-import stdin, stdout, read_line from "@std/io.ms"
-import from_scalars from "@std/string.ms"
+import (
+    stdin, stdout, read_line from "@std/io.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn is_blank(line: String) Bool:
     for c in line.scalar_values():

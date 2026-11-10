@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
-import from_scalars from "@std/string.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+    from_scalars from "@std/string.ms",
+)
 
 // Copies scalars cs[a..b) into a fresh list.
 fn sub(cs: List[Int], a: Int, b: Int) List[Int]:

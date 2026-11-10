@@ -3,10 +3,12 @@
 // `read`, after a file read), then reports the process's resident set and page tables.
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report
 // (it reads /proc/self/status); the tasks themselves are portable.
-import owned_task, Promise from "@std/concurrency/promise.ms"
-import monotonic, seconds, sleep from "@std/time.ms"
-import read_file from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+import (
+    owned_task, Promise from "@std/concurrency/promise.ms",
+    monotonic, seconds, sleep from "@std/time.ms",
+    read_file from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn status(label: String) Unit:
     let text = read_file("/proc/self/status", none).wait().get().decode_utf8().get()

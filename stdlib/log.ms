@@ -1,17 +1,11 @@
-import Closeable, Data from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
 import (
-    FileHandle,
-    OpenMode,
-    OpenOptions,
-    open,
-    remove,
-    rename,
-    stat
-) from "@std/os/fs.ms"
-import stdout, stdout_bytes from "@std/io/io.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/time.ms"
+    Closeable, Data from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    FileHandle, OpenMode, OpenOptions, open, remove, rename, stat from "@std/os/fs.ms",
+    stdout, stdout_bytes from "@std/io/io.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    now from "@std/time.ms",
+)
 
 fn log_closed() Error:
     return Error("logging: resource is closed", kind: "EBADF")

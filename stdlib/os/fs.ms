@@ -15,15 +15,15 @@ try write_file("notes.txt", "hello").wait()
 let data = try read_file("notes.txt").wait()
 ```
 */
-import BigInt from "@std/math/math.ms"
-import Bytes from "@std/bytes.ms"
-import Duration, milliseconds, monotonic, now, sleep from "@std/time.ms"
-import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
-import Promise, adopt, owned_task from "@std/concurrency/promise.ms"
-import msrt_promise_finished from "@std/internal/promises.ms"
-import Timestamp from "@std/time.ms"
-import Closeable, Writable from "@std/core.ms"
 import (
+    BigInt from "@std/math/math.ms",
+    Bytes from "@std/bytes.ms",
+    Duration, milliseconds, monotonic, now, sleep from "@std/time.ms",
+    ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
+    Promise, adopt, owned_task from "@std/concurrency/promise.ms",
+    msrt_promise_finished from "@std/internal/promises.ms",
+    Timestamp from "@std/time.ms",
+    Closeable, Writable from "@std/core.ms",
     msstd_fs_filesystem,
     msstd_fs_canonicalize,
     msstd_fs_create_directory,
@@ -79,8 +79,8 @@ import (
     msstd_fs_watch_next,
     msstd_fs_watch_close,
     msstd_fs_temporary_path,
-    msstd_fs_temporary_close
-) from "@std/internal/fs.ms"
+    msstd_fs_temporary_close from "@std/internal/fs.ms",
+)
 
 // The name and kind flags for one child returned by a directory listing.
 export type DirectoryEntry:

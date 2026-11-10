@@ -3,10 +3,12 @@
 // values, so this is the budget for that change. Copies of `str` literals are static and free in that model (cap 0); the rest are
 // the budget. Set RAW=1 for the unoptimized lowering. Loop membership is not reported.
 // Usage: ms run bench/tools/copy_report.ms -- <project ms.toml|file.ms>...   (MS picks the compiler)
-import capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms"
-import temporary from "@std/os/fs.ms"
-import arguments, set_environment from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms",
+    temporary from "@std/os/fs.ms",
+    arguments, set_environment from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed by `%N`.
 fn block_params(line: String, defs: Map[String, String]) Map[String, String]:

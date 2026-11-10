@@ -1,5 +1,5 @@
-import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 import (
+    expect_equal, expect_true, expect_false from "@std/test/test.ms",
     reverse_bits,
     reverse_bytes,
     shift_left,
@@ -17,8 +17,8 @@ import (
     max_float,
     BigInt,
     from_int,
-    parse
-) from "@std/math/math.ms"
+    parse from "@std/math/math.ms",
+)
 
 test "bit and byte reversal map every position in a 64-bit pattern":
     try expect_equal(reverse_bits(0), 0)

@@ -1,6 +1,8 @@
-import panic from "@std/core.ms"
-import sqrt, frexp, ldexp from "@std/math/math.ms"
-import BigRat, rat_of_float, rat_of_int from "@std/math/big.ms"
+import (
+    panic from "@std/core.ms",
+    sqrt, frexp, ldexp from "@std/math/math.ms",
+    BigRat, rat_of_float, rat_of_int from "@std/math/big.ms",
+)
 
 /*
 Summary statistics over a `List[Float]`, in binary64 arithmetic.

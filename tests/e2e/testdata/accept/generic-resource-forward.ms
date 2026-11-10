@@ -1,7 +1,9 @@
-import Closeable, Iterator from "@std/core.ms"
-import Source from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable, Iterator from "@std/core.ms",
+    Source from "@std/io/io.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Token:
     log: String

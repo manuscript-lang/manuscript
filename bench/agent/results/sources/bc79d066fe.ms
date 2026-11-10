@@ -3,9 +3,11 @@
 // A pattern is parsed into a program for a small backtracking VM. Fragments use
 // relative jumps, so fragments can be concatenated and wrapped freely.
 
-import stdin from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    stdin from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 let OP_CHR = 0
 let OP_CLS = 1

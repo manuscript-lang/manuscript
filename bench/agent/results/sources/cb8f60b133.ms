@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import SortedMap from "@std/sorted.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    SortedMap from "@std/sorted.ms",
+)
 
 type Record:
     category: String

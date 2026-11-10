@@ -1,7 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import panic from "@std/core.ms"
-import min from "@std/math/math.ms"
-import msstd_utf8_is_valid from "@std/internal/utf8.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    panic from "@std/core.ms",
+    min from "@std/math/math.ms",
+    msstd_utf8_is_valid from "@std/internal/utf8.ms",
+)
 
 /*
 Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.

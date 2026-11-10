@@ -1,11 +1,11 @@
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     CommandOutput,
     Commands,
     RunOptions,
     SpawnOptions,
-    Subprocess
-) from "@std/os/process.ms"
+    Subprocess from "@std/os/process.ms",
+)
 
 export type Quiet:
     code: Int

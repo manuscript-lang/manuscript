@@ -1,5 +1,7 @@
-import parse, YamlValue from "@std/data/yaml.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    parse, YamlValue from "@std/data/yaml.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn text(source: String, expected: String) Unit!:
     try expect_equal((try parse(source)), YamlValue.StringValue(expected))

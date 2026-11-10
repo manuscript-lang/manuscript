@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import floor, pow, sqrt from "@std/math.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    floor, pow, sqrt from "@std/math.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // A cell value. kind is "empty", "num", "text", "bool" or "err"; text holds
 // the text itself or the error code.

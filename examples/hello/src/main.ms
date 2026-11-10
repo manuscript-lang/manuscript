@@ -1,5 +1,7 @@
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    arguments from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 export fn main() Int:
     let message = "Arguments: {arguments().length()}\n"

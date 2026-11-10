@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/math.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/math.ms",
+)
 
 let MASK32 = 4294967295
 let MOD32 = 4294967296

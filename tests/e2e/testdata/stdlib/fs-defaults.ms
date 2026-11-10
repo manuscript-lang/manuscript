@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
     copy,
     CopyOptions,
     create_directory,
@@ -8,9 +8,9 @@ import (
     remove,
     stat,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn expect_limit(outcome: Unit!) Unit!:
     let cause = try expect_error(outcome)

@@ -1,6 +1,8 @@
-import compile from "@std/text/template.ms"
-import parse, JsonValue from "@std/data/json.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    compile from "@std/text/template.ms",
+    parse, JsonValue from "@std/data/json.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn check(expression: String, data: String, expected: String) Unit!:
     let template = try compile(

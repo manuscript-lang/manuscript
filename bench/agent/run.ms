@@ -1,26 +1,26 @@
 // Agent-effectiveness benchmark runner. See README.md.
 // Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
-import Command, Flag, FlagKind, command from "@std/cli/command.ms"
 import (
+    Command, Flag, FlagKind, command from "@std/cli/command.ms",
     append_file,
     copy,
     CopyOptions,
     remove,
     stat,
     temporary_directory,
-    create_directory
-) from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import uuid_v4 from "@std/data/uuid.ms"
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import now from "@std/time.ms"
-import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
-import Grade, grade, make_workspace, read_log from "./core/workspace.ms"
-import Harness, AgentRun, Usage, run_agent from "./harnesses/harness.ms"
-import find, names from "./harnesses/all.ms"
-import dumps_data from "./lib/pyjson.ms"
-import bash, read_text from "./lib/text.ms"
+    create_directory from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    now from "@std/time.ms",
+    Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms",
+    Grade, grade, make_workspace, read_log from "./core/workspace.ms",
+    Harness, AgentRun, Usage, run_agent from "./harnesses/harness.ms",
+    find, names from "./harnesses/all.ms",
+    dumps_data from "./lib/pyjson.ms",
+    bash, read_text from "./lib/text.ms",
+)
 
 // One line of `results/runs.jsonl`.
 type RunRecord:

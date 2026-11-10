@@ -1,7 +1,7 @@
 // Fetch-style HTTP client implemented in Manuscript over `@std/net/http.ms` and `@std/data/json.ms`.
-import Bytes from "@std/bytes.ms"
-import Closeable, Data from "@std/core.ms"
 import (
+    Bytes from "@std/bytes.ms",
+    Closeable, Data from "@std/core.ms",
     HttpClient,
     HttpClientOptions,
     NativeHttpClient,
@@ -10,17 +10,15 @@ import (
     HttpResponseMetadata,
     StreamingResponse,
     RawResponse,
-    headers
-) from "@std/net/http.ms"
-import parse, stringify, JsonOptions from "@std/data/json.ms"
-import Network, http_client from "@std/net/net.ms"
-import TlsOptions from "@std/net/tls.ms"
-import Duration, Instant, seconds, monotonic from "@std/time.ms"
-import (
+    headers from "@std/net/http.ms",
+    parse, stringify, JsonOptions from "@std/data/json.ms",
+    Network, http_client from "@std/net/net.ms",
+    TlsOptions from "@std/net/tls.ms",
+    Duration, Instant, seconds, monotonic from "@std/time.ms",
     msstd_http_client_request_bytes,
-    msstd_http_client_share
-) from "@std/internal/http.ms"
-import Promise, owned_task from "@std/concurrency/promise.ms"
+    msstd_http_client_share from "@std/internal/http.ms",
+    Promise, owned_task from "@std/concurrency/promise.ms",
+)
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
 export enum FetchBody:

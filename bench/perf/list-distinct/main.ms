@@ -1,5 +1,7 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn ints(size: Int, unique: Int, repeats: Int) Int:
     var data = List[Int](reserve: size)

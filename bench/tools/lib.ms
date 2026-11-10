@@ -1,16 +1,18 @@
 // Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
-import RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms"
-import (environment, set_environment, working_directory) from "@std/os/env.ms"
-import (os, system_info, Os) from "@std/os/system.ms"
-import monotonic from "@std/time.ms"
-import access, create_directory, read_file, remove, write_file from "@std/os/fs.ms"
-import is_absolute, join from "@std/os/path.ms"
-import stderr, stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
-import JsonValue, StringifyOptions, stringify from "@std/data/json.ms"
-import hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto.ms"
+import (
+    RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
+    environment, set_environment, working_directory from "@std/os/env.ms",
+    os, system_info, Os from "@std/os/system.ms",
+    monotonic from "@std/time.ms",
+    access, create_directory, read_file, remove, write_file from "@std/os/fs.ms",
+    is_absolute, join from "@std/os/path.ms",
+    stderr, stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+    JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
+    hex_encode from "@std/data/encoding.ms",
+    sha256 from "@std/crypto.ms",
+)
 
 // Prints `message` and a newline to standard error.
 export fn note(message: String) Unit:

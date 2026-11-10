@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import from_scalars from "@std/string.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn is_upper(c: Int) Bool: c >= 65 and c <= 90
 

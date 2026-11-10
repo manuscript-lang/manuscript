@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
-import parse, JsonOptions from "@std/data/json.ms"
-import hex_decode from "@std/data/encoding.ms"
+import (
+    expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+    parse, JsonOptions from "@std/data/json.ms",
+    hex_decode from "@std/data/encoding.ms",
+)
 
 // Library failures are plain Error values: callers branch on `kind`, not on a domain type.
 

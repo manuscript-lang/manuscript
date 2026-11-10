@@ -1,5 +1,7 @@
-import parse, JsonValue, JsonOptions from "@std/data/json.ms"
-import expect_contains, expect_equal, expect_error from "@std/test/test.ms"
+import (
+    parse, JsonValue, JsonOptions from "@std/data/json.ms",
+    expect_contains, expect_equal, expect_error from "@std/test/test.ms",
+)
 
 fn expect_syntax_error[T](actual: T!) Unit!:
     let cause = try expect_error(actual)

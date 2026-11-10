@@ -1,5 +1,7 @@
-import Iterator from "@std/core.ms"
-import Iterable from "@std/collections/iterable.ms"
+import (
+    Iterator from "@std/core.ms",
+    Iterable from "@std/collections/iterable.ms",
+)
 
 /*
 A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.

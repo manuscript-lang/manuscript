@@ -1,8 +1,10 @@
 // Reports build prerequisites without downloading or changing the checkout (`make doctor`).
 // Usage: ms run tools/doctor.ms
-import env, host, works, capture from "./lib.ms"
-import read_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
+import (
+    env, host, works, capture from "./lib.ms",
+    read_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
     if ok: stdout().write("OK      {ok_text}\n").get()

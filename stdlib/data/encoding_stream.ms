@@ -1,6 +1,8 @@
-import Bytes, join from "@std/bytes.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
-import base64_encode, base64_decode, hex_encode, hex_decode from "@std/data/encoding.ms"
+import (
+    Bytes, join from "@std/bytes.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+    base64_encode, base64_decode, hex_encode, hex_decode from "@std/data/encoding.ms",
+)
 
 // Stream steps for `@std/data/encoding.ms`, in their own module because the streams depend on `@std/bytes.ms`,
 // which `encoding.ms` must not import.

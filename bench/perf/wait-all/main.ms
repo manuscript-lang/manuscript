@@ -1,7 +1,9 @@
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import sleep, milliseconds from "@std/time.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    sleep, milliseconds from "@std/time.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn work(i: Int, jitter: Bool) Int!:
     if jitter:

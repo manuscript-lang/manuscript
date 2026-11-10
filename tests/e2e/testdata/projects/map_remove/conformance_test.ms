@@ -1,7 +1,9 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import Key from "./key.ms"
-import id_map, id_direct, id_bound, id_generic, id_empty, id_set from "./by_id.ms"
-import label_map, label_direct, label_bound, label_generic from "./by_label.ms"
+import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
+    Key from "./key.ms",
+    id_map, id_direct, id_bound, id_generic, id_empty, id_set from "./by_id.ms",
+    label_map, label_direct, label_bound, label_generic from "./by_label.ms",
+)
 
 test "Map removal keeps direct bound generic and defining-module key scopes":
     var first = id_map()

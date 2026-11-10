@@ -58,7 +58,7 @@ pub(super) fn lint(
     let import_tokens = OnceCell::new();
     for import in &module.imports {
         if unused(import) {
-            let siblings = module.imports.iter().filter(|i| i.pos == import.pos);
+            let siblings = module.imports.iter().filter(|i| i.clause == import.clause);
             let whole = siblings.clone().all(unused);
             let mut found = finding(
                 "MSL102",
@@ -66,7 +66,17 @@ pub(super) fn lint(
                 &file,
                 import.name_pos,
             );
-            found.fix = if whole {
+            let grouped = whole && import.in_group(&module.source);
+            let statement_unused = module
+                .imports
+                .iter()
+                .filter(|i| i.pos == import.pos)
+                .all(unused);
+            found.fix = if grouped {
+                import
+                    .group_removal(&module.source, statement_unused)
+                    .and_then(|(start, end)| fix_of(&module.source, start, end))
+            } else if whole {
                 import_tokens
                     .get_or_init(|| {
                         lexer::lex(&file, &module.source)

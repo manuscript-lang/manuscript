@@ -1,13 +1,13 @@
-import panic from "@std/core.ms"
 import (
+    panic from "@std/core.ms",
     bit_and,
     bit_or,
     bit_xor,
     bit_not,
     shift_left,
     count_ones,
-    trailing_zeros
-) from "@std/math/math.ms"
+    trailing_zeros from "@std/math/math.ms",
+)
 
 /*
 A set of small non-negative integers stored one bit each: 8 bytes per 64 candidates, with O(1) add, remove and contains.

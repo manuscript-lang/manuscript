@@ -1,14 +1,9 @@
 import (
-    bit_and,
-    bit_or,
-    bit_xor,
-    bit_not,
-    shift_left,
-    shift_right
-) from "@std/math/math.ms"
-import from_scalars from "@std/string.ms"
-import read_all from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+    bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/math/math.ms",
+    from_scalars from "@std/string.ms",
+    read_all from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 let TWO32 = 4294967296
 let TWO31 = 2147483648

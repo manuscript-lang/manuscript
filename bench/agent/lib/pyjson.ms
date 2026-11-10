@@ -1,8 +1,10 @@
 // JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "` separators, or one
 // item per line with `indent` spaces), so regenerated challenge files and result lines stay byte-identical.
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import Data from "@std/core.ms"
-import from_scalars from "@std/string.ms"
+import (
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    Data from "@std/core.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn hex4(code: Int) String:
     let digits = "0123456789abcdef"

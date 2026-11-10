@@ -1,7 +1,9 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, remove, temporary, temporary_root from "@std/os/fs.ms"
-import secure_int from "@std/random.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, remove, temporary, temporary_root from "@std/os/fs.ms",
+    secure_int from "@std/random.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Marker:
     id: Int

@@ -1,7 +1,9 @@
-import expect_equal, expect_false, fail from "@std/test/test.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import sse_events, SseEvent, SseLimits from "@std/net/sse.ms"
+import (
+    expect_equal, expect_false, fail from "@std/test/test.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    sse_events, SseEvent, SseLimits from "@std/net/sse.ms",
+)
 
 // Hands out the chunks in order, then fails with `failure` if set, else ends.
 type Chunks:

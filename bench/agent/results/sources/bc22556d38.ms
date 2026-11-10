@@ -1,7 +1,9 @@
 // ms: allow_effect std.console.write
 // ms: allow_effect std.console.read
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 type Acct:
     limit: Int

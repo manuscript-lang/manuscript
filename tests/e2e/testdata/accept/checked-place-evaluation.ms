@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
+import (
+    panic from "@std/core.ms",
+    expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
+)
 
 type Cell:
     value: Int

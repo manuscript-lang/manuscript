@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import bit_xor, bit_and, shift_right, wrapping_multiply from "@std/math.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    bit_xor, bit_and, shift_right, wrapping_multiply from "@std/math.ms",
+)
 
 let ALNUM = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 let HEXCH = "0123456789abcdef"

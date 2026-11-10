@@ -1,5 +1,7 @@
-import read_all from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    read_all from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 fn out(s: String) Unit:
     stdout().write(s).get()

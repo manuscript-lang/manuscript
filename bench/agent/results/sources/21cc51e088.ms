@@ -1,6 +1,8 @@
-import Bytes from "@std/bytes.ms"
-import stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // ---------------------------------------------------------------- types
 

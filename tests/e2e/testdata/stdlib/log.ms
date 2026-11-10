@@ -3,9 +3,7 @@ import (
     expect_error,
     expect_false,
     expect_ok,
-    expect_true
-) from "@std/test/test.ms"
-import (
+    expect_true from "@std/test/test.ms",
     Logger,
     Transport,
     LogLevel,
@@ -14,20 +12,18 @@ import (
     handle_transport,
     stdout_transport,
     file_transport,
-    rotating_file_transport
-) from "@std/log.ms"
-import promise from "@std/concurrency/promise.ms"
-import JsonValue from "@std/data/json.ms"
-import (
+    rotating_file_transport from "@std/log.ms",
+    promise from "@std/concurrency/promise.ms",
+    JsonValue from "@std/data/json.ms",
     OpenMode,
     OpenOptions,
     append_file,
     open,
     read_file,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 type Items:
     items: List[Int?]

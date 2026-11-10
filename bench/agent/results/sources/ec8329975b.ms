@@ -1,6 +1,8 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
-import from_scalars from "@std/string.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+    from_scalars from "@std/string.ms",
+)
 
 // A parsed record: the category text and the amount as little-endian cent digits.
 type Record:

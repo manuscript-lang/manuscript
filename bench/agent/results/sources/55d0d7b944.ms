@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // ---------------------------------------------------------------------------
 // Backtracking regex engine: parser -> node arena -> bytecode -> backtracking VM.

@@ -1,7 +1,9 @@
-import OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms"
-import ReadStream from "@std/io/io.ms"
-import Bytes from "@std/bytes.ms"
-import expect_true, expect_ok from "@std/test/test.ms"
+import (
+    OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
+    ReadStream from "@std/io/io.ms",
+    Bytes from "@std/bytes.ms",
+    expect_true, expect_ok from "@std/test/test.ms",
+)
 
 // `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
 fn view_of(path: String) ReadStream[Bytes]!:

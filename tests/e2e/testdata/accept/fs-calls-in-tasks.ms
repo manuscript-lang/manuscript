@@ -7,10 +7,10 @@ import (
     remove,
     rename,
     temporary_directory,
-    write_file
-) from "@std/os/fs.ms"
-import promise from "@std/concurrency/promise.ms"
-import expect_equal from "@std/test/test.ms"
+    write_file from "@std/os/fs.ms",
+    promise from "@std/concurrency/promise.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 // With several tasks alive, file-system calls run on the blocking pool; the results must match
 // the single-task behaviour.

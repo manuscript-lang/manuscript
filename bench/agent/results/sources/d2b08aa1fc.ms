@@ -1,7 +1,9 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import floor, pow, sqrt, truncate from "@std/math/math.ms"
-import rat_of_float from "@std/math/big.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    floor, pow, sqrt, truncate from "@std/math/math.ms",
+    rat_of_float from "@std/math/big.ms",
+)
 
 // ---------------------------------------------------------------- constants
 

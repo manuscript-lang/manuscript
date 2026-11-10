@@ -1,6 +1,8 @@
-import stdout from "@std/io/io.ms"
-import stdin from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdout from "@std/io/io.ms",
+    stdin from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 type Var:
     value: String

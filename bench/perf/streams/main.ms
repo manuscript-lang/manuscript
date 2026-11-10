@@ -1,5 +1,5 @@
-import stdout, Source from "@std/io/io.ms"
 import (
+    stdout, Source from "@std/io/io.ms",
     from_list,
     from_bytes,
     map,
@@ -7,10 +7,10 @@ import (
     collect,
     filter,
     take,
-    fold
-) from "@std/io/streams.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import monotonic, Instant from "@std/time.ms"
+    fold from "@std/io/streams.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    monotonic, Instant from "@std/time.ms",
+)
 
 // ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
 

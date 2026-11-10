@@ -1,7 +1,9 @@
 // Generator for c25-log-analyzer. Deterministic; run: ms run bench/agent/gen.ms -- c25
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+)
 
 let LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"]
 let METHODS = ["DELETE", "GET", "POST", "PUT"]

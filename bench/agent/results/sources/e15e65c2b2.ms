@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // ---------------------------------------------------------------
 // Data types

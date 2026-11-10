@@ -1,5 +1,7 @@
-import max from "@std/math/math.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    max from "@std/math/math.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 // Horizontal placement of a cell within its column's measured display width.
 // Example: `Table(columns: [Align.Left, Align.Right])`.

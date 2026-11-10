@@ -1,13 +1,13 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
-import from_int from "@std/math/math.ms"
-import compile from "@std/string.ms"
 import (
+    expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+    from_int from "@std/math/math.ms",
+    compile from "@std/string.ms",
     filled,
     range_by,
     RangeOptions,
-    map_from_entries
-) from "@std/collections/collections.ms"
-import Bytes from "@std/bytes.ms"
+    map_from_entries from "@std/collections/collections.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn positive(value: Int) Bool:
     return value > 0

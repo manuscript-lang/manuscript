@@ -1,8 +1,10 @@
-import StringBuilder from "@std/string.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import parse_int from "@std/math/math.ms"
-import base64_decode, latin1_decode from "@std/data/encoding.ms"
-import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
+import (
+    StringBuilder from "@std/string.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    parse_int from "@std/math/math.ms",
+    base64_decode, latin1_decode from "@std/data/encoding.ms",
+    Headers, HeaderField, parse_headers from "@std/net/mime.ms",
+)
 
 /*
 Internet mail messages (RFC 5322): addresses, address lists, and message parsing.

@@ -16,11 +16,11 @@ import (
     options,
     platform,
     stdlib_bench,
-    write_text
-) from "./lib.ms"
-import Stats, case_labels, read_cases from "./stdlib_results.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    Stats, case_labels, read_cases from "./stdlib_results.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+)
 
 // One document as `{case: operations}` and `{case: median ns/op}`.
 export type Sample:

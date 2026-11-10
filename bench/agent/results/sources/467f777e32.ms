@@ -1,7 +1,9 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
-import max from "@std/math/math.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    max from "@std/math/math.ms",
+)
 
 let INF = 1000000000
 let BAD = "error: bad command"

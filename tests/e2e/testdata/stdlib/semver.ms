@@ -1,5 +1,7 @@
-import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
-import parse, Version from "@std/data/semver.ms"
+import (
+    expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
+    parse, Version from "@std/data/semver.ms",
+)
 
 fn failure(result: Version!) Error!:
     match result:

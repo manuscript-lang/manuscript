@@ -1,14 +1,14 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import constant_time_equal from "@std/crypto.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    constant_time_equal from "@std/crypto.ms",
     bit_and,
     bit_not,
     bit_or,
     bit_xor,
     shift_left,
     shift_right,
-    shift_right_unsigned
-) from "@std/math/math.ms"
+    shift_right_unsigned from "@std/math/math.ms",
+)
 
 fn rotl32(value: Int, count: Int) Int:
     return bit_and(

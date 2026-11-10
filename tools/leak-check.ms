@@ -5,13 +5,15 @@
 // the files to sweep instead; a file with test blocks is run with `ms test`.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/leak-check.ms [-- files]
-import env, tool_ms, use_stats_runtime from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import RunOptions, run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import system_info from "@std/os/system.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
-import seconds from "@std/time.ms"
+import (
+    env, tool_ms, use_stats_runtime from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    RunOptions, run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    system_info from "@std/os/system.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
+    seconds from "@std/time.ms",
+)
 
 // The live block counts the runtime printed on standard error; a program that starts child
 // processes prints one per process, and their sum is what leaked. Empty when none was printed.

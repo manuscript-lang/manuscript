@@ -1,6 +1,8 @@
-import stdout from "@std/io.ms"
-import stdin from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdout from "@std/io.ms",
+    stdin from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // ---------------------------------------------------------------- types
 

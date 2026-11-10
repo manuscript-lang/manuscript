@@ -1,5 +1,7 @@
-import expect_contains, expect_equal from "@std/test/test.ms"
-import compile from "@std/string.ms"
+import (
+    expect_contains, expect_equal from "@std/test/test.ms",
+    compile from "@std/string.ms",
+)
 
 test "regex hexadecimal escapes reject signed numbers":
     for pattern in ["\\x+1", "\\x\{+41\}", "[\\x+1]", "[\\x\{+41\}]"]:

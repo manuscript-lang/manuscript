@@ -1,5 +1,7 @@
-import read_lines from "@std/streams.ms"
-import stdout, stdin from "@std/io.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdout, stdin from "@std/io.ms",
+)
 
 let PRIORITIES = ["low", "medium", "high", "critical"]
 let ISSUE_FIELDS = [

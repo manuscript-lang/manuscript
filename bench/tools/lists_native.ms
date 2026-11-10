@@ -20,10 +20,10 @@ import (
     options,
     peak_run,
     read_text,
-    write_text
-) from "./lib.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+)
 
 type Workload:
     name: String

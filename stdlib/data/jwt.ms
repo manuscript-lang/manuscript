@@ -1,6 +1,6 @@
-import Data from "@std/core.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
+    Data from "@std/core.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
     HashAlgorithm,
     constant_time_equal,
     ecdsa_sign,
@@ -8,11 +8,11 @@ import (
     rsa_sign,
     rsa_verify,
     sign,
-    verify
-) from "@std/crypto.ms"
-import base64_encode, base64_decode from "@std/data/encoding.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/time.ms"
+    verify from "@std/crypto.ms",
+    base64_encode, base64_decode from "@std/data/encoding.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    now from "@std/time.ms",
+)
 
 fn jwt_invalid_key() Error:
     return Error("jwt: invalid key", kind: "EINVAL")

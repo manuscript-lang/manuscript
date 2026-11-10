@@ -1,8 +1,10 @@
-import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
-import Item, Box, Holder, Choice from "./domain.ms"
-import Read, invoke, relay, as_view from "./contracts.ms"
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_false, expect_ok from "@std/test/test.ms",
+    Item, Box, Holder, Choice from "./domain.ms",
+    Read, invoke, relay, as_view from "./contracts.ms",
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 impl Read[Int] for Item:
     fn get() Int:

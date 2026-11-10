@@ -1,8 +1,8 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import base64_encode from "@std/data/encoding.ms"
-import now from "@std/time.ms"
-import panic from "@std/core.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    base64_encode from "@std/data/encoding.ms",
+    now from "@std/time.ms",
+    panic from "@std/core.ms",
     bit_and,
     bit_xor,
     shift_left,
@@ -12,16 +12,14 @@ import (
     cos,
     log,
     max_int,
-    sqrt
-) from "@std/math/math.ms"
-import (
+    sqrt from "@std/math/math.ms",
     msstd_random_os_bytes,
     draw_int,
     draw_float,
     draw_shuffle,
     draw_choice,
-    invalid_input
-) from "@std/internal/random.ms"
+    invalid_input from "@std/internal/random.ms",
+)
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
 // ms: effect std.random.read

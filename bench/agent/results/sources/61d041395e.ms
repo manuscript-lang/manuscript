@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    range from "@std/collections.ms",
+)
 
 fn say(text: String) Result[Unit, Error]:
     return stdout().write("{text}\n")
