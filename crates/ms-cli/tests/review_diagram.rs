@@ -56,6 +56,37 @@ fn review_and_diagram_reject_truncated_context_at_eof() {
 }
 
 #[test]
+fn review_and_diagram_reject_invalid_ranges_without_panicking() {
+    let dir = scratch("invalid-diff-ranges");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("review_diff_truncation/main.ms"),
+    )
+    .unwrap();
+    for range in ["-9223372036854775808", "9223372036854775807", "0", "1,-1"] {
+        std::fs::write(
+            dir.join("change.patch"),
+            format!("--- a/main.ms\n+++ b/main.ms\n@@ -1 +{range} @@\n-old\n+new\n"),
+        )
+        .unwrap();
+        for command in ["review", "diagram"] {
+            let mut args = vec![command, "main.ms", "--diff", "change.patch", "--json"];
+            if command == "diagram" {
+                args.extend(["--view", "calls"]);
+            }
+            let output = ms(&dir, &args);
+            assert_eq!(output.status.code(), Some(2), "{output:?}");
+            assert!(output.stdout.is_empty());
+            assert!(
+                String::from_utf8_lossy(&output.stderr).contains("malformed hunk range"),
+                "{output:?}"
+            );
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn diagram_ambiguous_entity_remedies_are_usable() {
     let dir = scratch("selectors");
     std::fs::write(

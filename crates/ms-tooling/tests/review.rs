@@ -79,6 +79,54 @@ fn malformed_hunks_are_reported_with_lines() {
 }
 
 #[test]
+fn hunk_ranges_reject_signed_impossible_and_overflowing_coordinates() {
+    for range in [
+        "-1",
+        "+1",
+        "1,-1",
+        "1,+1",
+        "0",
+        "0,1",
+        "-9223372036854775808",
+        "9223372036854775807",
+        "9223372036854775807,0",
+        "9223372036854775806,2",
+    ] {
+        for (old, new) in [(range, "1"), ("1", range)] {
+            let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -{old} +{new} @@\n-old\n+new\n");
+            let error = parse_diff(&patch).expect_err(&patch);
+            assert!(
+                error.starts_with("diff line 3: malformed hunk range"),
+                "{error}"
+            );
+        }
+    }
+}
+
+#[test]
+fn hunk_ranges_keep_zero_length_and_safe_extreme_boundaries() {
+    for (old, new, body, head, base, touched) in [
+        ("0,0", "1", "+new\n", "new\n", "", vec![1]),
+        ("1", "0,0", "-old\n", "", "old\n", vec![1]),
+        ("1,0", "2", "+new\n", "same\nnew\n", "same\n", vec![2]),
+    ] {
+        let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -{old} +{new} @@\n{body}");
+        let files = parse_diff(&patch).unwrap();
+        assert_eq!(files[0].touched_lines(), touched);
+        assert_eq!(reverse_apply(head, &files[0].hunks).unwrap(), base);
+    }
+    for (old, new, body) in [
+        ("9223372036854775806", "9223372036854775806", "-old\n+new\n"),
+        ("9223372036854775806,0", "9223372036854775806,0", ""),
+    ] {
+        let patch = format!("--- a/x.ms\n+++ b/x.ms\n@@ -{old} +{new} @@\n{body}");
+        let files = parse_diff(&patch).unwrap();
+        let _ = files[0].touched_lines();
+        let _ = reverse_apply("new\n", &files[0].hunks);
+    }
+}
+
+#[test]
 fn diff_eof_terminators_are_not_context_lines() {
     for newline in ["\n", "\r\n"] {
         for ending in ["", "\n"] {
