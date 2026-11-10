@@ -971,7 +971,7 @@ fn nums_of(sh: SSheet, args: List[SNode]) SNums:
     return SNums(err: svempty(), failed: false, vals: vals)
 
 fn agg_sum(sh: SSheet, args: List[SNode]) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     r := nums_of(sh, args)
     if r.failed: return r.err
@@ -982,11 +982,11 @@ fn agg_sum(sh: SSheet, args: List[SNode]) SVal:
     return finite_or_num(s)
 
 fn agg_average(sh: SSheet, args: List[SNode]) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     r := nums_of(sh, args)
     if r.failed: return r.err
-    if r.vals.length() == 0: return sverr("#DIV/0!")
+    if r.vals.is_empty(): return sverr("#DIV/0!")
 
     var s = 0.0
     for x in r.vals:
@@ -994,11 +994,11 @@ fn agg_average(sh: SSheet, args: List[SNode]) SVal:
     return finite_or_num(s / r.vals.length().to_float())
 
 fn agg_minmax(sh: SSheet, args: List[SNode], want_max: Bool) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     r := nums_of(sh, args)
     if r.failed: return r.err
-    if r.vals.length() == 0: return svnum(0.0)
+    if r.vals.is_empty(): return svnum(0.0)
 
     var m = r.vals[0]
 
@@ -1011,11 +1011,11 @@ fn agg_minmax(sh: SSheet, args: List[SNode], want_max: Bool) SVal:
     return svnum(m)
 
 fn agg_product(sh: SSheet, args: List[SNode]) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     r := nums_of(sh, args)
     if r.failed: return r.err
-    if r.vals.length() == 0: return svnum(0.0)
+    if r.vals.is_empty(): return svnum(0.0)
 
     var p = 1.0
     for x in r.vals:
@@ -1023,7 +1023,7 @@ fn agg_product(sh: SSheet, args: List[SNode]) SVal:
     return finite_or_num(p)
 
 fn agg_median(sh: SSheet, args: List[SNode]) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     r := nums_of(sh, args)
     if r.failed: return r.err
@@ -1042,7 +1042,7 @@ fn agg_median(sh: SSheet, args: List[SNode]) SVal:
     return finite_or_num((xs[h - 1] + xs[h]) / 2.0)
 
 fn agg_count(sh: SSheet, args: List[SNode], nonempty: Bool) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     items := items_of(sh, args)
     var cnt = 0
@@ -1088,7 +1088,7 @@ fn fn_choose(sh: SSheet, args: List[SNode]) SVal:
     return ev(sh, args[idx].clone())
 
 fn fn_andor(sh: SSheet, args: List[SNode], is_and: Bool) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     items := items_of(sh, args)
     var result = is_and
@@ -1123,9 +1123,7 @@ fn fn_not(sh: SSheet, args: List[SNode]) SVal:
 fn round_half(y: Float) Float:
     a := y.abs()
     f := floor(a)
-    var r = f
-    if a - f >= 0.5:
-        r = f + 1.0
+    r := if a - f >= 0.5: f + 1.0 else: f
     if y < 0.0: return -r
 
     return r
@@ -1236,9 +1234,7 @@ fn fn_leftright(sh: SSheet, args: List[SNode], left: Bool) SVal:
 
     s := strform(sv)
     len := s.scalar_length()
-    var kk = len
-    if k < len.to_float():
-        kk = k.truncate_to_int().get(0)
+    kk := if k < len.to_float(): k.truncate_to_int().get(0) else: len
     if left: return svtext(s.slice_scalars(0, kk).get(""))
 
     return svtext(s.slice_scalars(len - kk, len).get(""))
@@ -1266,13 +1262,11 @@ fn fn_mid(sh: SSheet, args: List[SNode]) SVal:
 
     sidx := si.truncate_to_int().get(0)
     remain := len - sidx
-    var cnt = remain
-    if ln < remain.to_float():
-        cnt = ln.truncate_to_int().get(0)
+    cnt := if ln < remain.to_float(): ln.truncate_to_int().get(0) else: remain
     return svtext(s.slice_scalars(sidx, sidx + cnt).get(""))
 
 fn fn_concat(sh: SSheet, args: List[SNode]) SVal:
-    if args.length() == 0: return sverr("#VALUE!")
+    if args.is_empty(): return sverr("#VALUE!")
 
     items := items_of(sh, args)
     var out = ""
@@ -1677,12 +1671,9 @@ fn cell_key(s: String) Int:
     if n < 2 or n > 4: return -1
     if not is_alpha(cs[0]): return -1
 
-    var i = 1
 
-    while i < n:
+    for i in 1..n:
         if not is_digit(cs[i]): return -1
-
-        i += 1
 
     if cs[1] == "0": return -1
 
@@ -1713,14 +1704,12 @@ fn rest_after(line: String, skip: Int) String:
     cs := line.chars()
     n := cs.length()
     var i = 0
-    var k = 0
 
-    while k < skip:
+    for k in 0..skip:
         while i < n and is_space(cs[i]):
             i += 1
         while i < n and not is_space(cs[i]):
             i += 1
-        k += 1
 
     return sub(cs, i, n).trim()
 
@@ -2144,7 +2133,7 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
         else:
             ks = dependents_of(sh, k)
 
-        if ks.length() == 0:
+        if ks.is_empty():
             print("(none)")
         else:
             var names = List[String]()

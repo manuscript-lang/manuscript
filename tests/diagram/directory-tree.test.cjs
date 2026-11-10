@@ -31,7 +31,7 @@ for (const [i, name] of names.entries()) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `export fn value_${i}() Int:\n    return ${i}\n`);
 }
-fs.appendFileSync(path.join(fixture, 'alpha/a.ms'), '\ntest "ordinary test":\n    let _n = 1\n\nbench "ordinary bench":\n    let _n = 1\n');
+fs.appendFileSync(path.join(fixture, 'alpha/a.ms'), '\ntest "ordinary test":\n    _n := 1\n\nbench "ordinary bench":\n    _n := 1\n');
 fs.writeFileSync(path.join(fixture, 'main.ms'), names.map((name, i) =>
   `import value_${i} from ${JSON.stringify('./' + name)}`
 ).join('\n') + '\n\nexport fn main() Int:\n    return 0\n');

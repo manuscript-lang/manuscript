@@ -313,15 +313,13 @@ fn resolve(r: Repo, spec: String) Resolved:
 
     if id == "": return Resolved(id: "", error: "unknown revision '" + spec + "'")
 
-    var k = 0
 
-    while k < steps:
+    for k in 0..steps:
         ps := parents_of(r, id)
         if ps.is_empty():
             return Resolved(id: "", error: "unknown revision '" + spec + "'")
 
         id = ps[0].clone()
-        k += 1
 
     return Resolved(id: id, error: "")
 
@@ -794,7 +792,7 @@ fn cmd_show(r: Repo, args: List[String]) Unit:
         print("  " + name + " " + short(hex16(fnv(tree.get_or(name, "")))))
 
 fn cmd_branch(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0:
+    if args.is_empty():
         if not r.attached:
             print("* (HEAD detached at " + short(head_commit(r)) + ")")
 
@@ -850,7 +848,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
     print("error: usage: branch [NAME | -d NAME]")
 
 fn cmd_tag(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0:
+    if args.is_empty():
         for name in r.tags.keys().sorted():
             print(name)
         return
@@ -869,9 +867,7 @@ fn cmd_tag(var r: Repo, args: List[String]) Unit:
         print("error: tag '" + name + "' already exists")
         return
 
-    var spec = "HEAD"
-    if args.length() == 2:
-        spec = args[1].clone()
+    spec := if args.length() == 2: args[1].clone() else: "HEAD"
 
     if spec == "HEAD" and head_commit(r) == "":
         print("error: no commits yet")
@@ -1161,7 +1157,7 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
 export fn main() Int:
     text := read_all(stdin()).get().decode_utf8().get()
     var lines = text.split("\n")
-    if lines.length() > 0 and text != "":
+    if not lines.is_empty() and text != "":
         _last := lines.pop()
 
     n := lines.length()
@@ -1213,7 +1209,7 @@ export fn main() Int:
                 msg = norm.slice_scalars(k, norm.length()).get().trim()
             cmd_commit(var r, msg)
         else if cmd == "log":
-            if args.length() == 0:
+            if args.is_empty():
                 cmd_log(r, -1)
             else if args.length() == 2 and args[0] == "-n" and all_digits(args[1]):
                 var limit = 1000000000
