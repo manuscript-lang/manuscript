@@ -67,11 +67,11 @@ fn prelude_import_fix(
         .iter()
         .filter(|other| other.clause.offset == item.clause.offset)
         .count();
-    if count == 1 && item.in_group(source) {
+    if count == 1 && item.in_group(source, &tokens) {
         let only = module.imports.iter().all(|other| {
             other.pos.offset != item.pos.offset || other.clause.offset == item.clause.offset
         });
-        let (start, end) = item.group_removal(source, only)?;
+        let (start, end) = item.group_removal(source, &tokens, only)?;
         let at = |offset: usize| {
             let before = &source[..offset];
             let line = before.matches('\n').count() as u32 + 1;

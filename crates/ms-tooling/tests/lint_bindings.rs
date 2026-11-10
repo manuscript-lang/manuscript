@@ -128,3 +128,70 @@ fn explicit_generic_calls_with_base_cases_or_other_targets_are_clean() {
         0
     );
 }
+
+/// Applies every MSL102 fix of `source` on its own and returns each reparsed
+/// import's name list.
+fn unused_import_fixes(source: &str) -> Vec<Vec<String>> {
+    let syms = ms_syntax::Names::global();
+    let file: Arc<str> = Arc::from("lint.ms");
+    let module = ms_syntax::parser::parse(&file, source).unwrap();
+    let program = ms_check::check(
+        syms,
+        vec![ms_check::load_module(syms, &module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+    let mut results = Vec::new();
+    for finding in lint_program(syms, &program)
+        .iter()
+        .filter(|f| f.code == "MSL102")
+    {
+        let fix = finding.fix.as_ref().unwrap();
+        let mut fixed = source.to_string();
+        fixed.replace_range(
+            fix.pos.offset as usize..fix.end.offset as usize,
+            &fix.replacement,
+        );
+        let module = ms_syntax::parser::parse(&file, &fixed).expect(&fixed);
+        results.push(
+            module
+                .imports
+                .iter()
+                .map(|i| syms.str(i.name).to_string())
+                .collect(),
+        );
+    }
+    results
+}
+
+#[test]
+fn unused_import_fix_ignores_parens_and_from_in_import_comments() {
+    for newline in ["\n", "\r\n"] {
+        let grouped = include_str!("lint_bindings/import-comment-paren.ms").replace('\n', newline);
+        assert_eq!(unused_import_fixes(&grouped), [["floor"]]);
+
+        let single = include_str!("lint_bindings/import-comment-from.ms").replace('\n', newline);
+        let fixed = unused_import_fixes(&single);
+        assert_eq!(fixed.len(), 2);
+        assert!(fixed.iter().all(|names| names.is_empty()), "{fixed:?}");
+    }
+}
+
+#[test]
+fn grouped_import_removal_ends_at_the_lexed_path_for_escaped_quotes() {
+    let file: Arc<str> = Arc::from("lint.ms");
+    for newline in ["\n", "\r\n"] {
+        let source = include_str!("lint_bindings/escaped-quote-path.ms").replace('\n', newline);
+        let module = ms_syntax::parser::parse(&file, &source).unwrap();
+        let tokens = ms_syntax::lexer::lex(&file, &source).unwrap().tokens;
+        let import = &module.imports[0];
+        assert!(import.in_group(&source, &tokens));
+        let (start, end) = import.group_removal(&source, &tokens, false).unwrap();
+        let mut edited = source.clone();
+        edited.replace_range(start..end, "");
+        let module = ms_syntax::parser::parse(&file, &edited).expect(&edited);
+        assert_eq!(module.imports.len(), 1, "{edited}");
+        assert_eq!(&*module.imports[0].path, "@std/math/math.ms");
+    }
+}

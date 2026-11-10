@@ -66,25 +66,25 @@ pub(super) fn lint(
                 &file,
                 import.name_pos,
             );
-            let grouped = whole && import.in_group(&module.source);
+            let tokens = import_tokens
+                .get_or_init(|| {
+                    lexer::lex(&file, &module.source)
+                        .ok()
+                        .map(|lexed| lexed.tokens)
+                })
+                .as_deref();
+            let grouped = whole && tokens.is_some_and(|t| import.in_group(&module.source, t));
             let statement_unused = module
                 .imports
                 .iter()
                 .filter(|i| i.pos == import.pos)
                 .all(unused);
             found.fix = if grouped {
-                import
-                    .group_removal(&module.source, statement_unused)
+                tokens
+                    .and_then(|t| import.group_removal(&module.source, t, statement_unused))
                     .and_then(|(start, end)| fix_of(&module.source, start, end))
             } else if whole {
-                import_tokens
-                    .get_or_init(|| {
-                        lexer::lex(&file, &module.source)
-                            .ok()
-                            .map(|lexed| lexed.tokens)
-                    })
-                    .as_deref()
-                    .and_then(|tokens| statement_removal(&module.source, import, tokens))
+                tokens.and_then(|t| statement_removal(&module.source, import, t))
             } else {
                 name_removal(syms, &module.source, import)
             };
