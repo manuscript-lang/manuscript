@@ -61,8 +61,7 @@ fn edit_script(a: List[String], b: List[String]) Script:
     return Script(kinds: kinds, texts: texts)
 
 fn range_text(start: Int, length: Int) String:
-    if length == 1:
-        return "{start}"
+    if length == 1: return "{start}"
 
     return "{start},{length}"
 
@@ -89,8 +88,7 @@ export fn main() Int:
     for p in 0..total:
         if kinds[p] != 0:
             changes.append(p)
-    if changes.length() == 0:
-        return 0
+    if changes.length() == 0: return 0
 
     var out = List[String]()
     out.append("--- {name_a}")

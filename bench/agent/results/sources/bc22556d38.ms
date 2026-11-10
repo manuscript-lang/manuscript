@@ -43,14 +43,12 @@ fn valid_amount(s: String) Bool:
     return is_digits(s) and value_of(s) > 0
 
 fn is_frozen(led: Ledger, id: String) Bool:
-    if let a = led.accts.get(id):
-        return a.frozen
+    if let a = led.accts.get(id): return a.frozen
 
     return false
 
 fn bal(led: Ledger, id: String) Int:
-    if let a = led.accts.get(id):
-        return a.balance
+    if let a = led.accts.get(id): return a.balance
 
     return 0
 
@@ -75,14 +73,13 @@ fn take(var led: Ledger, id: String, amount: Int) Int:
 
         if a.balance >= 0 and new_bal < 0:
             fee = 5
-            new_bal = new_bal - 5
+            new_bal -= 5
 
         if new_bal >= 0 - a.limit:
             a.balance = new_bal
             done = true
 
-    if not done:
-        return -1
+    if not done: return -1
 
     led.fees += fee
     return fee

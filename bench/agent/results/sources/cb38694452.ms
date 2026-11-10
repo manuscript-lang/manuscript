@@ -53,7 +53,7 @@ fn hex16(h: Int) String:
     var k = 60
 
     while k >= 0:
-        out = out + HEX.get(bit_and(shift_right_unsigned(h, k), 15))
+        out += HEX.get(bit_and(shift_right_unsigned(h, k), 15))
         k -= 4
 
     return out
@@ -62,32 +62,25 @@ fn short(id: String) String:
     return id.slice(0, 7).get()
 
 fn all_digits(s: String) Bool:
-    if s.is_empty():
-        return false
+    if s.is_empty(): return false
 
     for k in 0..s.length():
-        if not DIGITS.contains(s.get(k)):
-            return false
+        if not DIGITS.contains(s.get(k)): return false
     return true
 
 fn is_hex_prefix(s: String) Bool:
-    if s.length() < 4:
-        return false
+    if s.length() < 4: return false
 
     for k in 0..s.length():
-        if not HEX.contains(s.get(k)):
-            return false
+        if not HEX.contains(s.get(k)): return false
     return true
 
 fn valid_name(s: String) Bool:
-    if s.is_empty():
-        return false
-    if not NAME_FIRST.contains(s.get(0)):
-        return false
+    if s.is_empty(): return false
+    if not NAME_FIRST.contains(s.get(0)): return false
 
     for k in 1..s.length():
-        if not NAME_REST.contains(s.get(k)):
-            return false
+        if not NAME_REST.contains(s.get(k)): return false
     return true
 
 fn words(line: String) List[String]:
@@ -104,8 +97,7 @@ fn tail(xs: List[String]) List[String]:
     return out
 
 fn split_lines(content: String) List[String]:
-    if content == "":
-        return List[String]()
+    if content == "": return List[String]()
 
     var parts = content.split("\n")
     let _last = parts.pop()
@@ -132,12 +124,10 @@ fn append_all(var out: List[String], xs: List[String]) Unit:
         out.append(x.clone())
 
 fn list_eq(a: List[String], b: List[String]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for k in 0..a.length():
-        if a[k] != b[k]:
-            return false
+        if a[k] != b[k]: return false
     return true
 
 // ---------- trees ----------
@@ -145,20 +135,17 @@ fn list_eq(a: List[String], b: List[String]) Bool:
 // Whether `key` has the same presence and content in both maps.
 fn entry_eq(a: Map[String, String], b: Map[String, String], key: String) Bool:
     if let av = a.get(key):
-        if let bv = b.get(key):
-            return av == bv
+        if let bv = b.get(key): return av == bv
 
         return false
 
     return not b.contains(key)
 
 fn same_tree(a: Map[String, String], b: Map[String, String]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for k in a.keys():
-        if not entry_eq(a, b, k):
-            return false
+        if not entry_eq(a, b, k): return false
     return true
 
 fn sorted_union(
@@ -200,14 +187,12 @@ fn new_repo() Repo:
     return r
 
 fn head_commit(r: Repo) String:
-    if r.attached:
-        return r.branches.get_or(r.head_name.clone(), "")
+    if r.attached: return r.branches.get_or(r.head_name.clone(), "")
 
     return r.head_name.clone()
 
 fn head_label(r: Repo) String:
-    if r.attached:
-        return r.head_name.clone()
+    if r.attached: return r.head_name.clone()
 
     return "detached".to_string()
 
@@ -218,16 +203,13 @@ fn move_head(var r: Repo, id: String) Unit:
         r.head_name = id.clone()
 
 fn parents_of(r: Repo, c: String) List[String]:
-    if let ps = r.commit_parents.get(c):
-        return ps.clone()
+    if let ps = r.commit_parents.get(c): return ps.clone()
 
     return List[String]()
 
 fn tree_of(r: Repo, id: String) Map[String, String]:
-    if id == "":
-        return Map[String, String]()
-    if let t = r.commit_tree.get(id):
-        return t.clone()
+    if id == "": return Map[String, String]()
+    if let t = r.commit_tree.get(id): return t.clone()
 
     return Map[String, String]()
 
@@ -239,8 +221,7 @@ fn num_of(r: Repo, id: String) Int:
 
 fn ancestors(r: Repo, start: String) Set[String]:
     var seen = Set[String]()
-    if start == "":
-        return seen
+    if start == "": return seen
 
     var stack = [start]
 
@@ -330,8 +311,7 @@ fn resolve(r: Repo, spec: String) Resolved:
 
         id = found
 
-    if id == "":
-        return Resolved(id: "", error: "unknown revision '" + spec + "'")
+    if id == "": return Resolved(id: "", error: "unknown revision '" + spec + "'")
 
     var k = 0
 
@@ -620,8 +600,7 @@ fn cmd_status(r: Repo) Unit:
     var staged = List[String]()
 
     for name in sorted_union(head, r.index, Map[String, String]()):
-        if r.conflicts.contains(name):
-            continue
+        if r.conflicts.contains(name): continue
 
         if r.index.contains(name) and not head.contains(name):
             staged.append("new file: " + name)
@@ -633,8 +612,7 @@ fn cmd_status(r: Repo) Unit:
     var unstaged = List[String]()
 
     for name in r.index.keys().sorted():
-        if r.conflicts.contains(name):
-            continue
+        if r.conflicts.contains(name): continue
 
         if not r.work.contains(name):
             unstaged.append("deleted: " + name)
@@ -730,8 +708,7 @@ fn cmd_log(r: Repo, limit: Int) Unit:
     var shown = 0
 
     for n in nums:
-        if limit >= 0 and shown >= limit:
-            break
+        if limit >= 0 and shown >= limit: break
 
         if let c = by_num.get(n):
             let ps = parents_of(r, c)
@@ -776,8 +753,7 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
     var any = false
 
     for name in sorted_union(left, right, Map[String, String]()):
-        if entry_eq(left, right, name):
-            continue
+        if entry_eq(left, right, name): continue
 
         any = true
         print("diff " + name)
@@ -1197,8 +1173,7 @@ export fn main() Int:
         i += 1
 
         let t = raw.trim()
-        if t == "" or t.starts_with("#"):
-            continue
+        if t == "" or t.starts_with("#"): continue
 
         print("> " + raw.trim_end())
 

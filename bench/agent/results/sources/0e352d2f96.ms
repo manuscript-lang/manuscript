@@ -92,8 +92,7 @@ export fn main() Int:
     while head < queue.length():
         let cur = queue[head]
         head += 1
-        if cur == e:
-            break
+        if cur == e: break
 
         let r = cur / width
         let c = cur % width
@@ -111,12 +110,10 @@ export fn main() Int:
             else:
                 nc = c + 1
 
-            if nr < 0 or nr >= n or nc < 0 or nc >= width:
-                continue
+            if nr < 0 or nr >= n or nc < 0 or nc >= width: continue
 
             let nb = nr * width + nc
-            if walls[nb] or dist[nb] >= 0:
-                continue
+            if walls[nb] or dist[nb] >= 0: continue
 
             dist[nb] = dist[cur] + 1
             queue.append(nb)

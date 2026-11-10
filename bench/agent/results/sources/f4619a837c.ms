@@ -33,8 +33,7 @@ fn solve(data: Bytes) String:
             row += 1
             col = 0
         else:
-            if not is_cell(b):
-                return "error: bad character at {row + 1},{col + 1}"
+            if not is_cell(b): return "error: bad character at {row + 1},{col + 1}"
 
             col += 1
 
@@ -56,8 +55,7 @@ fn solve(data: Bytes) String:
 
     let width = lengths.get(0)
     for n in range(0, lengths.length()):
-        if lengths.get(n) != width:
-            return "error: ragged grid"
+        if lengths.get(n) != width: return "error: ragged grid"
 
     var starts = 0
     var goals = 0
@@ -75,14 +73,10 @@ fn solve(data: Bytes) String:
             goals += 1
             goal = k
 
-    if starts == 0:
-        return "error: no start"
-    if starts > 1:
-        return "error: multiple starts"
-    if goals == 0:
-        return "error: no end"
-    if goals > 1:
-        return "error: multiple ends"
+    if starts == 0: return "error: no start"
+    if starts > 1: return "error: multiple starts"
+    if goals == 0: return "error: no end"
+    if goals > 1: return "error: multiple ends"
 
     let rows = lengths.length()
     var dist: List[Int] = []
@@ -98,8 +92,7 @@ fn solve(data: Bytes) String:
     while head < queue.length():
         let cur = queue.get(head)
         head += 1
-        if cur == goal:
-            return "{dist.get(cur)}"
+        if cur == goal: return "{dist.get(cur)}"
 
         let r = cur / width
         let c = cur % width

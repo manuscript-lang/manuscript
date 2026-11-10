@@ -78,8 +78,7 @@ export fn main() Int:
     for k in range(0, total):
         if kinds[k] != 0:
             changes.append(k)
-    if changes.length() == 0:
-        return 0
+    if changes.length() == 0: return 0
 
     // Number of A and B lines consumed before each script position.
     var a_before = List[Int]()

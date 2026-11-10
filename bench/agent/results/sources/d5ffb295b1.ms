@@ -9,8 +9,7 @@ type Edit:
     text: String
 
 fn line_at(lines: List[String], k: Int) String:
-    if k < lines.length():
-        return lines[k].clone()
+    if k < lines.length(): return lines[k].clone()
 
     return ""
 
@@ -56,8 +55,7 @@ fn edit_script(a: List[String], b: List[String]) List[Edit]:
     return out
 
 fn span(start: Int, length: Int) String:
-    if length == 1:
-        return "{start}"
+    if length == 1: return "{start}"
 
     return "{start},{length}"
 
@@ -84,8 +82,7 @@ export fn main() Int:
     for e in 0..total:
         if edits[e].kind != 0:
             changes.append(e)
-    if changes.length() == 0:
-        return 0
+    if changes.length() == 0: return 0
 
     // a_before[e] and b_before[e] count the lines of A and B consumed before edit e
     var a_before = List[Int]()

@@ -10,8 +10,7 @@ type Rec:
 
 // Digit k (little-endian) of a digit list, or 0 past its end.
 fn digit_at(d: List[Int], k: Int) Int:
-    if k < d.length():
-        return d[k]
+    if k < d.length(): return d[k]
 
     return 0
 
@@ -41,9 +40,9 @@ fn format_cents(d: List[Int]) String:
     var k = top
 
     while k >= 0:
-        s = s + "{digit_at(d, k)}"
+        s += "{digit_at(d, k)}"
         if k == 2:
-            s = s + "."
+            s += "."
         k -= 1
 
     return s
@@ -51,19 +50,16 @@ fn format_cents(d: List[Int]) String:
 // True when every scalar is an ASCII digit and there is at least one.
 fn all_digits(s: String) Bool:
     let codes = s.scalar_values()
-    if codes.length() == 0:
-        return false
+    if codes.length() == 0: return false
 
     for c in codes:
-        if c < 48 or c > 57:
-            return false
+        if c < 48 or c > 57: return false
     return true
 
 // Amount grammar: digits, optionally "." followed by one or two digits.
 fn is_amount(s: String) Bool:
     let parts = s.split(".")
-    if parts.length() == 1:
-        return all_digits(parts[0])
+    if parts.length() == 1: return all_digits(parts[0])
 
     if parts.length() == 2:
         let frac = parts[1]
@@ -80,7 +76,7 @@ fn cents_of(amt: String) List[Int]:
     if parts.length() == 2:
         text = text + (parts[1] + "00").slice_scalars(0, 2).get()
     else:
-        text = text + "00"
+        text += "00"
 
     let codes = text.scalar_values()
     var out = List[Int]()
@@ -93,8 +89,7 @@ fn cents_of(amt: String) List[Int]:
     return out
 
 fn make_rec(cat: String, amt: String) Rec?:
-    if cat.length() == 0 or not is_amount(amt):
-        return none
+    if cat.length() == 0 or not is_amount(amt): return none
 
     return Rec(cat: cat.clone(), cents: cents_of(amt))
 
@@ -102,18 +97,15 @@ fn make_rec(cat: String, amt: String) Rec?:
 fn parse_line(line: String) Rec?:
     if line.starts_with("\""):
         let parts = line.drop(1).split("\"", 2)
-        if parts.length() != 2:
-            return none
+        if parts.length() != 2: return none
 
         let tail = parts[1]
-        if not tail.starts_with(","):
-            return none
+        if not tail.starts_with(","): return none
 
         return make_rec(parts[0], tail.drop(1))
 
     let parts = line.split(",")
-    if parts.length() != 2:
-        return none
+    if parts.length() != 2: return none
 
     return make_rec(parts[0], parts[1])
 
@@ -123,8 +115,7 @@ export fn main() Int:
     var skipped = 0
 
     for line in all:
-        if line.trim() == "":
-            continue
+        if line.trim() == "": continue
 
         if let r = parse_line(line):
             recs.append(r)
@@ -140,8 +131,7 @@ export fn main() Int:
         var j = i
 
         while j < recs.length():
-            if recs[j].cat != recs[i].cat:
-                break
+            if recs[j].cat != recs[i].cat: break
 
             sum = add_digits(sum, recs[j].cents)
             j += 1

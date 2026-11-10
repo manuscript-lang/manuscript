@@ -14,14 +14,12 @@ fn read_lines(count: Int) List[String]:
     return lines
 
 fn present(length: Int) Int:
-    if length > 0:
-        return 1
+    if length > 0: return 1
 
     return 0
 
 fn span(start: Int, length: Int) String:
-    if length == 1:
-        return "{start}"
+    if length == 1: return "{start}"
 
     return "{start},{length}"
 
@@ -113,8 +111,7 @@ export fn main() Int:
         starts.append(max(first - context, 0))
         ends.append(min(last + context, count - 1))
 
-    if starts.is_empty():
-        return 0
+    if starts.is_empty(): return 0
 
     var out = List[String]()
     out.append("--- {name_a}")

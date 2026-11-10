@@ -96,8 +96,7 @@ fn is_id_char(c: String) Bool:
 
 fn ident_len(cs: List[String]) Int:
     let n = cs.length()
-    if n == 0 or not is_id_start(cs[0]):
-        return 0
+    if n == 0 or not is_id_start(cs[0]): return 0
 
     var i = 1
     while i < n and is_id_char(cs[i]):
@@ -113,8 +112,7 @@ fn reg_of(s: String) Int:
     var i = 0
 
     for n in names:
-        if n == s:
-            return i
+        if n == s: return i
 
         i += 1
 
@@ -126,8 +124,7 @@ fn dval(c: String) Int:
 
     for ch in alph.chars():
         if ch == c:
-            if i >= 16:
-                return i - 6
+            if i >= 16: return i - 6
 
             return i
 
@@ -140,7 +137,7 @@ fn join_range(cs: List[String], a: Int, b: Int) String:
     var i = a
 
     while i < b:
-        out = out + cs[i]
+        out += cs[i]
         i += 1
 
     return out
@@ -171,12 +168,12 @@ fn strip_comment(s: String) String:
 
         if c == "\"" or c == "'":
             let e = lit_end(cs, i)
-            out = out + join_range(cs, i, e)
+            out += join_range(cs, i, e)
             i = e
         else if c == ";":
             break
         else:
-            out = out + c
+            out += c
             i += 1
 
     return out
@@ -195,7 +192,7 @@ fn split_args(s: String) List[String]:
 
         if c == "\"" or c == "'":
             let e = lit_end(cs, i)
-            cur = cur + join_range(cs, i, e)
+            cur += join_range(cs, i, e)
             i = e
         else:
             if c == "[":
@@ -207,7 +204,7 @@ fn split_args(s: String) List[String]:
                 out.append(cur.trim())
                 cur = ""
             else:
-                cur = cur + c
+                cur += c
 
             i += 1
 
@@ -235,7 +232,7 @@ fn split_terms(s: String) List[Term]:
 
         if c == "\"" or c == "'":
             let e = lit_end(cs, i)
-            cur = cur + join_range(cs, i, e)
+            cur += join_range(cs, i, e)
             i = e
         else if c == "+" or c == "-":
             out.append(Term(sign: sign, text: cur))
@@ -248,7 +245,7 @@ fn split_terms(s: String) List[Term]:
 
             i += 1
         else:
-            cur = cur + c
+            cur += c
             i += 1
 
     out.append(Term(sign: sign, text: cur))
@@ -303,18 +300,12 @@ fn collect_equs(lines: List[Pl]) Map[String, EquDef]:
     return m
 
 fn escape_val(c: String) Int:
-    if c == "n":
-        return 10
-    if c == "t":
-        return 9
-    if c == "0":
-        return 0
-    if c == "\\":
-        return 92
-    if c == "'":
-        return 39
-    if c == "\"":
-        return 34
+    if c == "n": return 10
+    if c == "t": return 9
+    if c == "0": return 0
+    if c == "\\": return 92
+    if c == "'": return 39
+    if c == "\"": return 34
 
     return -1
 
@@ -331,12 +322,10 @@ fn str_lit(s: String) SL:
         let c = cs[i]
 
         if c == "\\":
-            if i + 1 >= n - 1:
-                return SL(err: "invalid string", vals: vals)
+            if i + 1 >= n - 1: return SL(err: "invalid string", vals: vals)
 
             let e = escape_val(cs[i + 1])
-            if e < 0:
-                return SL(err: "invalid string", vals: vals)
+            if e < 0: return SL(err: "invalid string", vals: vals)
 
             vals.append(e)
             i += 2
@@ -357,14 +346,12 @@ fn str_lit(s: String) SL:
 // Value of a non-negative decimal integer, capped; -1 if not all digits.
 fn decimal_value(s: String) Int:
     let cs = s.chars()
-    if cs.length() == 0:
-        return -1
+    if cs.length() == 0: return -1
 
     var acc = 0
 
     for c in cs:
-        if not digits().contains(c):
-            return -1
+        if not digits().contains(c): return -1
 
         acc = acc * 10 + dval(c)
         if acc > 1000000000000:
@@ -380,8 +367,7 @@ fn eval_term(
 ) Val:
     let cs = x.trim().chars()
     let n = cs.length()
-    if n == 0:
-        return Val(v: 0, err: "INVALID")
+    if n == 0: return Val(v: 0, err: "INVALID")
 
     let c0 = cs[0]
 
@@ -396,46 +382,40 @@ fn eval_term(
             base = 2
             start = 2
 
-        if start >= n:
-            return Val(v: 0, err: "INVALID")
+        if start >= n: return Val(v: 0, err: "INVALID")
 
         var acc = 0
         var k = start
 
         while k < n:
             let d = dval(cs[k])
-            if d < 0 or d >= base:
-                return Val(v: 0, err: "INVALID")
+            if d < 0 or d >= base: return Val(v: 0, err: "INVALID")
 
             acc = acc * base + d
             if acc > 4294967295:
                 acc = 4294967296
             k += 1
 
-        if acc > 4294967295:
-            return Val(v: 0, err: "immediate out of range")
+        if acc > 4294967295: return Val(v: 0, err: "immediate out of range")
 
         return Val(v: acc, err: "")
 
     if c0 == "'":
         if n == 3 and cs[2] == "'" and cs[1] != "\\" and cs[1] != "'":
             let bs = cs[1].as_bytes()
-            if bs.length() == 1:
-                return Val(v: bs.get(0).to_int(), err: "")
+            if bs.length() == 1: return Val(v: bs.get(0).to_int(), err: "")
 
             return Val(v: 0, err: "INVALID")
 
         if n == 4 and cs[1] == "\\" and cs[3] == "'":
             let e = escape_val(cs[2])
-            if e >= 0:
-                return Val(v: e, err: "")
+            if e >= 0: return Val(v: e, err: "")
 
         return Val(v: 0, err: "INVALID")
 
     if is_id_start(c0) and ident_len(cs) == n:
         let name = join_range(cs, 0, n)
-        if let v = labels.get(name):
-            return Val(v: v, err: "")
+        if let v = labels.get(name): return Val(v: v, err: "")
 
         if let d = equs.get(name):
             if stack.contains("|{name}|"):
@@ -458,10 +438,8 @@ fn eval_expr(
 
     for tm in split_terms(t):
         let r = eval_term(tm.text, labels, equs, stack)
-        if r.err == "INVALID":
-            return Val(v: 0, err: "invalid expression '{t}'")
-        if r.err != "":
-            return r
+        if r.err == "INVALID": return Val(v: 0, err: "invalid expression '{t}'")
+        if r.err != "": return r
 
         acc = w32(acc + tm.sign * r.v)
 
@@ -473,44 +451,34 @@ fn bracket_inner(o: String) String:
 
 // Structural check of an operand (pass 1); returns an error message or "".
 fn check_operand(o: String) String:
-    if o == "":
-        return "invalid operand ''"
-    if reg_of(o) >= 0:
-        return ""
-    if o.get(0) != "[":
-        return ""
+    if o == "": return "invalid operand ''"
+    if reg_of(o) >= 0: return ""
+    if o.get(0) != "[": return ""
 
     let bad = "invalid operand '{o}'"
     let cs = o.chars()
-    if cs.length() < 2 or cs[cs.length() - 1] != "]":
-        return bad
+    if cs.length() < 2 or cs[cs.length() - 1] != "]": return bad
 
     let inner = bracket_inner(o)
-    if inner.trim() == "":
-        return bad
+    if inner.trim() == "": return bad
 
     var nregs = 0
 
     for tm in split_terms(inner):
         let x = tm.text.trim()
-        if x == "":
-            return bad
+        if x == "": return bad
 
         if reg_of(x) >= 0:
-            if tm.sign < 0:
-                return bad
+            if tm.sign < 0: return bad
 
             nregs += 1
-            if nregs > 1:
-                return bad
+            if nregs > 1: return bad
 
     return ""
 
 fn opclass(o: String) Int:
-    if reg_of(o) >= 0:
-        return 1
-    if o.get(0) == "[":
-        return 3
+    if reg_of(o) >= 0: return 1
+    if o.get(0) == "[": return 3
 
     return 2
 
@@ -526,8 +494,7 @@ fn eval_mem(o: String, labels: Map[String, Int], equs: Map[String, EquDef]) MemV
             base = r
         else:
             let v = eval_expr(x, labels, equs, "")
-            if v.err != "":
-                return MemV(base: -1, c: 0, err: v.err)
+            if v.err != "": return MemV(base: -1, c: 0, err: v.err)
 
             c = w32(c + tm.sign * v.v)
 
@@ -535,8 +502,7 @@ fn eval_mem(o: String, labels: Map[String, Int], equs: Map[String, EquDef]) MemV
 
 fn evalop(o: String, labels: Map[String, Int], equs: Map[String, EquDef]) Opv:
     let r = reg_of(o)
-    if r >= 0:
-        return Opv(kind: 1, v: r, base: -1, err: "")
+    if r >= 0: return Opv(kind: 1, v: r, base: -1, err: "")
 
     if o.get(0) == "[":
         let m = eval_mem(o, labels, equs)
@@ -555,23 +521,18 @@ fn opcode_of(s: String) Int:
     var i = 0
 
     for n in names:
-        if n == s:
-            return i
+        if n == s: return i
 
         i += 1
 
-    if s == "jz":
-        return 21
-    if s == "jnz":
-        return 22
+    if s == "jz": return 21
+    if s == "jnz": return 22
 
     return -1
 
 fn arity(op: Int) Int:
-    if op == 28 or op == 32 or op == 33:
-        return 0
-    if op <= 12 or op == 17:
-        return 2
+    if op == 28 or op == 32 or op == 33: return 0
+    if op <= 12 or op == 17: return 2
 
     return 1
 
@@ -584,16 +545,12 @@ fn valid_classes(op: Int, cls: List[Int]) Bool:
         c1 = cls[1]
     if op == 0:
         return (c0 == 1 and c1 >= 1 and c1 <= 3) or (c0 == 3 and (c1 == 1 or c1 == 2))
-    if op >= 1 and op <= 12:
-        return c0 == 1 and c1 >= 1 and c1 <= 3
+    if op >= 1 and op <= 12: return c0 == 1 and c1 >= 1 and c1 <= 3
     if op == 13 or op == 14 or op == 15 or op == 16 or op == 19 or op == 29:
         return c0 == 1
-    if op == 17:
-        return c0 == 1 and c1 == 3
-    if op == 18 or op == 30 or op == 31:
-        return c0 >= 1 and c0 <= 3
-    if op >= 20 and op <= 27:
-        return c0 == 2
+    if op == 17: return c0 == 1 and c1 == 3
+    if op == 18 or op == 30 or op == 31: return c0 >= 1 and c0 <= 3
+    if op >= 20 and op <= 27: return c0 == 2
 
     return true
 
@@ -614,16 +571,13 @@ fn pass1(
 
     for pl in lines:
         let num = pl.num
-        if pl.lerr != "":
-            return perr(pl.lerr.clone(), num)
+        if pl.lerr != "": return perr(pl.lerr.clone(), num)
 
         for lab in pl.labels:
-            if let _p = labels.get(lab):
-                return perr("duplicate symbol '{lab}'", num)
+            if let _p = labels.get(lab): return perr("duplicate symbol '{lab}'", num)
 
             if let d = equs.get(lab):
-                if d.line < num:
-                    return perr("duplicate symbol '{lab}'", num)
+                if d.line < num: return perr("duplicate symbol '{lab}'", num)
 
             var val = daddr
             if sec == 0:
@@ -632,8 +586,7 @@ fn pass1(
             if sec == 0 and lab == "main":
                 entry = ninstr
 
-        if pl.rest == "":
-            continue
+        if pl.rest == "": continue
 
         let wr = split_word(pl.rest)
         let word = wr.w
@@ -641,8 +594,7 @@ fn pass1(
 
         if word.get(0) == ".":
             if word == ".text" or word == ".data":
-                if argtext != "":
-                    return perr("invalid operand '{argtext}'", num)
+                if argtext != "": return perr("invalid operand '{argtext}'", num)
 
                 if word == ".text":
                     sec = 0
@@ -660,24 +612,20 @@ fn pass1(
                     return perr("wrong number of operands for '.equ'", num)
 
                 let name = a[0]
-                if not is_ident(name):
-                    return perr("invalid operand '{name}'", num)
-                if reg_of(name) >= 0:
-                    return perr("reserved name '{name}'", num)
+                if not is_ident(name): return perr("invalid operand '{name}'", num)
+                if reg_of(name) >= 0: return perr("reserved name '{name}'", num)
                 if let _q = labels.get(name):
                     return perr("duplicate symbol '{name}'", num)
 
                 if let d = equs.get(name):
-                    if d.line < num:
-                        return perr("duplicate symbol '{name}'", num)
+                    if d.line < num: return perr("duplicate symbol '{name}'", num)
             else if (
                 word == ".word"
                 or word == ".ascii"
                 or word == ".asciz"
                 or word == ".space"
             ):
-                if sec == 0:
-                    return perr("data directive in text section", num)
+                if sec == 0: return perr("data directive in text section", num)
 
                 if word == ".word":
                     if argtext == "":
@@ -685,8 +633,7 @@ fn pass1(
 
                     let a = split_args(argtext)
                     let cnt = a.length()
-                    if daddr + cnt > 4096:
-                        return perr("data section too large", num)
+                    if daddr + cnt > 4096: return perr("data section too large", num)
 
                     daddr += cnt
                     stmts.append(
@@ -704,12 +651,9 @@ fn pass1(
                         return perr("wrong number of operands for '.space'", num)
 
                     let nv = eval_expr(a[0], labels, equs, "")
-                    if nv.err != "":
-                        return perr(nv.err, num)
-                    if nv.v < 0:
-                        return perr("invalid operand '{a[0]}'", num)
-                    if daddr + nv.v > 4096:
-                        return perr("data section too large", num)
+                    if nv.err != "": return perr(nv.err, num)
+                    if nv.v < 0: return perr("invalid operand '{a[0]}'", num)
+                    if daddr + nv.v > 4096: return perr("data section too large", num)
 
                     daddr += nv.v
                     stmts.append(
@@ -720,14 +664,12 @@ fn pass1(
                     )
                 else:
                     let sl = str_lit(argtext)
-                    if sl.err != "":
-                        return perr(sl.err, num)
+                    if sl.err != "": return perr(sl.err, num)
 
                     var cnt = sl.vals.length()
                     if word == ".asciz":
                         cnt += 1
-                    if daddr + cnt > 4096:
-                        return perr("data section too large", num)
+                    if daddr + cnt > 4096: return perr("data section too large", num)
 
                     daddr += cnt
 
@@ -742,12 +684,10 @@ fn pass1(
             else:
                 return perr("unknown directive '{word}'", num)
         else:
-            if sec == 1:
-                return perr("instruction in data section", num)
+            if sec == 1: return perr("instruction in data section", num)
 
             let op = opcode_of(word)
-            if op < 0:
-                return perr("unknown mnemonic '{word}'", num)
+            if op < 0: return perr("unknown mnemonic '{word}'", num)
 
             var args = List[String]()
             if argtext != "":
@@ -757,8 +697,7 @@ fn pass1(
 
             for a in args:
                 let e = check_operand(a)
-                if e != "":
-                    return perr(e, num)
+                if e != "": return perr(e, num)
 
                 cls.append(opclass(a))
 
@@ -798,8 +737,7 @@ fn pass2(
 
             if st.args.length() >= 1:
                 let o = evalop(st.args[0], labels, equs)
-                if o.err != "":
-                    return P2(err: o.err, line: st.line)
+                if o.err != "": return P2(err: o.err, line: st.line)
 
                 ak = o.kind
                 av = o.v
@@ -807,8 +745,7 @@ fn pass2(
 
             if st.args.length() >= 2:
                 let o = evalop(st.args[1], labels, equs)
-                if o.err != "":
-                    return P2(err: o.err, line: st.line)
+                if o.err != "": return P2(err: o.err, line: st.line)
 
                 bk = o.kind
                 bv = o.v
@@ -826,8 +763,7 @@ fn pass2(
         else if st.kind == 1:
             for a in st.args:
                 let e = eval_expr(a, labels, equs, "")
-                if e.err != "":
-                    return P2(err: e.err, line: st.line)
+                if e.err != "": return P2(err: e.err, line: st.line)
 
                 data.append(e.v)
         else if st.kind == 2:
@@ -841,8 +777,7 @@ fn pass2(
 
             if st.args.length() == 2:
                 let f = eval_expr(st.args[1], labels, equs, "")
-                if f.err != "":
-                    return P2(err: f.err, line: st.line)
+                if f.err != "": return P2(err: f.err, line: st.line)
 
                 fill = f.v
 
@@ -863,14 +798,12 @@ fn input_value(tok: String) Val:
         neg = true
         i = 1
 
-    if i >= cs.length():
-        return Val(v: 0, err: "skip")
+    if i >= cs.length(): return Val(v: 0, err: "skip")
 
     var acc = 0
 
     while i < cs.length():
-        if not digits().contains(cs[i]):
-            return Val(v: 0, err: "skip")
+        if not digits().contains(cs[i]): return Val(v: 0, err: "skip")
 
         acc = (acc * 10 + dval(cs[i])) % 4294967296
         i += 1
@@ -889,15 +822,14 @@ fn tokens(s: String) List[String]:
                 out.append(cur)
                 cur = ""
         else:
-            cur = cur + c
+            cur += c
 
     if cur != "":
         out.append(cur)
     return out
 
 fn ea(base: Int, c: Int, regs: List[Int]) Int:
-    if base < 0:
-        return c
+    if base < 0: return c
 
     return w32(regs[base] + c)
 
@@ -906,7 +838,7 @@ fn pow2(c: Int) Int:
     var i = 0
 
     while i < c:
-        p = p * 2
+        p *= 2
         i += 1
 
     return p
@@ -1028,7 +960,7 @@ fn run(
             else:
                 var cnt = sv % 32
                 if cnt < 0:
-                    cnt = cnt + 32
+                    cnt += 32
 
                 let p = pow2(cnt)
                 let u = (d % 4294967296 + 4294967296) % 4294967296
@@ -1040,7 +972,7 @@ fn run(
                 else:
                     var q = d / p
                     if d < 0 and q * p != d:
-                        q = q - 1
+                        q -= 1
                     r = q
 
             regs[ins.av] = w32(r)
@@ -1162,15 +1094,15 @@ fn run(
 
     var result = outs.join("")
     if outs.length() > 0 and not last_nl:
-        result = result + "\n"
+        result += "\n"
 
     if halted:
-        result = result + "-- halted after {steps} steps\n"
+        result += "-- halted after {steps} steps\n"
     else:
         var where = "-"
         if pc >= 0 and pc < n:
             where = "{code[pc].line}"
-        result = result + "-- trap: {trap} (pc={pc} line={where}) after {steps} steps\n"
+        result += "-- trap: {trap} (pc={pc} line={where}) after {steps} steps\n"
 
     result = (
         result
@@ -1183,7 +1115,7 @@ fn run(
         zb = 1
     if l:
         lb = 1
-    result = result + "flags: Z={zb} L={lb}\n"
+    result += "flags: Z={zb} L={lb}\n"
     return result
 
 export fn main() Int:

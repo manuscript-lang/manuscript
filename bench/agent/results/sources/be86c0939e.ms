@@ -86,20 +86,16 @@ fn short(id: String) String:
     return id.slice(0, 7).get()
 
 fn body(tree: Map[String, String], name: String) String:
-    if tree.contains(name):
-        return tree.get(name).get()
+    if tree.contains(name): return tree.get(name).get()
 
     return ""
 
 fn same_tree(a: Map[String, String], b: Map[String, String]) Bool:
-    if a.keys().length() != b.keys().length():
-        return false
+    if a.keys().length() != b.keys().length(): return false
 
     for n in a.keys():
-        if not b.contains(n):
-            return false
-        if a.get(n).get() != b.get(n).get():
-            return false
+        if not b.contains(n): return false
+        if a.get(n).get() != b.get(n).get(): return false
 
     return true
 
@@ -125,38 +121,31 @@ fn message_after(line: String) String:
     return t.slice(k, t.length()).get().trim()
 
 fn valid_name(name: String) Bool:
-    if name == "":
-        return false
+    if name == "": return false
 
     let cs = name.chars()
 
     for k in 0..cs.length():
-        if k == 0 and not NAME_START.contains(cs[k]):
-            return false
-        if not NAME_REST.contains(cs[k]):
-            return false
+        if k == 0 and not NAME_START.contains(cs[k]): return false
+        if not NAME_REST.contains(cs[k]): return false
 
     return true
 
 fn is_nat(s: String) Bool:
-    if let v = s.parse_int():
-        return v >= 0
+    if let v = s.parse_int(): return v >= 0
 
     return false
 
 fn is_hex_prefix(s: String) Bool:
-    if s.length() < 4:
-        return false
+    if s.length() < 4: return false
 
     for c in s.chars():
-        if not HEX.contains(c):
-            return false
+        if not HEX.contains(c): return false
     return true
 
 fn lines_of(content: String) List[String]:
     var out = List[String]()
-    if content == "":
-        return out
+    if content == "": return out
 
     var parts = content.split("\n")
     parts.remove(-1)
@@ -314,20 +303,17 @@ fn three_way(
 
 impl Repo:
     fn label() String:
-        if self.head_name == "":
-            return "detached"
+        if self.head_name == "": return "detached"
 
         return self.head_name.clone()
 
     fn current() String:
-        if self.head_name != "":
-            return self.branches.get(self.head_name).get()
+        if self.head_name != "": return self.branches.get(self.head_name).get()
 
         return self.detached_id.clone()
 
     fn tree_of(id: String) Map[String, String]:
-        if id == "":
-            return Map[String, String]()
+        if id == "": return Map[String, String]()
 
         return self.commits.get(id).get().tree.clone()
 
@@ -337,49 +323,41 @@ impl Repo:
     fn resolve_base(name: String, spec: String) Resolution:
         if name == "HEAD":
             let c = self.current()
-            if c == "":
-                return fail("unknown revision '{spec}'")
+            if c == "": return fail("unknown revision '{spec}'")
 
             return found(c)
 
         if self.branches.contains(name):
             let c = self.branches.get(name).get()
-            if c != "":
-                return found(c)
+            if c != "": return found(c)
 
-        if self.tags.contains(name):
-            return found(self.tags.get(name).get())
+        if self.tags.contains(name): return found(self.tags.get(name).get())
 
         if is_hex_prefix(name):
             var hits = List[String]()
             for id in self.commits.keys():
                 if id.starts_with(name):
                     hits.append(id)
-            if hits.length() == 1:
-                return found(hits[0].clone())
-            if hits.length() > 1:
-                return fail("ambiguous revision '{spec}'")
+            if hits.length() == 1: return found(hits[0].clone())
+            if hits.length() > 1: return fail("ambiguous revision '{spec}'")
 
         return fail("unknown revision '{spec}'")
 
     fn resolve(spec: String) Resolution:
         let pieces = spec.split("~")
-        if pieces.length() == 1:
-            return self.resolve_base(spec, spec)
+        if pieces.length() == 1: return self.resolve_base(spec, spec)
         if pieces.length() != 2 or not is_nat(pieces[1]):
             return fail("unknown revision '{spec}'")
 
         let steps = pieces[1].parse_int().get()
         let start = self.resolve_base(pieces[0], spec)
-        if start.error != "":
-            return start
+        if start.error != "": return start
 
         var id = start.id.clone()
 
         for step in 0..steps:
             let parents = self.commits.get(id).get().parents
-            if parents.length() == 0:
-                return fail("unknown revision '{spec}'")
+            if parents.length() == 0: return fail("unknown revision '{spec}'")
 
             id = parents[0].clone()
 
@@ -393,8 +371,7 @@ impl Repo:
         while stack.length() > 0:
             let id = stack[stack.length() - 1].clone()
             stack.remove(-1)
-            if seen.contains(id):
-                continue
+            if seen.contains(id): continue
 
             for p in self.commits.get(id).get().parents:
                 stack.append(p.clone())
@@ -409,8 +386,7 @@ impl Repo:
 
         while k >= 0:
             let id = self.order[k]
-            if anc_a.contains(id) and anc_b.contains(id):
-                return id.clone()
+            if anc_a.contains(id) and anc_b.contains(id): return id.clone()
 
             k -= 1
 
@@ -449,20 +425,16 @@ impl Repo:
             say("[{where} {short(id)}] {message}")
 
     fn is_dirty() Bool:
-        if not same_tree(self.index, self.head_tree()):
-            return true
+        if not same_tree(self.index, self.head_tree()): return true
 
         for n in self.index.keys():
-            if not self.wt.contains(n):
-                return true
-            if self.wt.get(n).get() != self.index.get(n).get():
-                return true
+            if not self.wt.contains(n): return true
+            if self.wt.get(n).get() != self.index.get(n).get(): return true
 
         return false
 
     fn dirty_error() String:
-        if self.is_dirty():
-            return "local changes would be overwritten"
+        if self.is_dirty(): return "local changes would be overwritten"
 
         return ""
 
@@ -476,8 +448,7 @@ impl Repo:
 
     fn switch_error(target: Map[String, String]) String:
         let d = self.dirty_error()
-        if d != "":
-            return d
+        if d != "": return d
 
         return self.untracked_error(target.keys())
 
@@ -515,34 +486,27 @@ impl Repo:
         self.conflicts.remove(name)
 
     fn branch_error(name: String) String:
-        if not valid_name(name):
-            return "invalid branch name '{name}'"
-        if self.branches.contains(name):
-            return "branch '{name}' already exists"
-        if self.current() == "":
-            return "no commits yet"
+        if not valid_name(name): return "invalid branch name '{name}'"
+        if self.branches.contains(name): return "branch '{name}' already exists"
+        if self.current() == "": return "no commits yet"
 
         return ""
 
     // ---- commands ----
 
     var fn cmd_rm(names: List[String]) String:
-        if names.length() == 0:
-            return "usage: rm FILE..."
+        if names.length() == 0: return "usage: rm FILE..."
 
         for n in names:
-            if not self.wt.contains(n):
-                return "no such file: {n}"
+            if not self.wt.contains(n): return "no such file: {n}"
 
             self.wt.remove(n)
 
         return ""
 
     var fn cmd_mv(args: List[String]) String:
-        if args.length() != 2:
-            return "usage: mv OLD NEW"
-        if not self.wt.contains(args[0]):
-            return "no such file: {args[0]}"
+        if args.length() != 2: return "usage: mv OLD NEW"
+        if not self.wt.contains(args[0]): return "no such file: {args[0]}"
 
         let content = self.wt.get(args[0]).get()
         self.wt.remove(args[0].clone())
@@ -550,10 +514,8 @@ impl Repo:
         return ""
 
     fn cmd_cat(args: List[String]) String:
-        if args.length() != 1:
-            return "usage: cat FILE"
-        if not self.wt.contains(args[0]):
-            return "no such file: {args[0]}"
+        if args.length() != 1: return "usage: cat FILE"
+        if not self.wt.contains(args[0]): return "no such file: {args[0]}"
 
         say_raw(self.wt.get(args[0]).get())
         return ""
@@ -568,8 +530,7 @@ impl Repo:
         return ""
 
     var fn cmd_add(paths: List[String]) String:
-        if paths.length() == 0:
-            return "usage: add PATH..."
+        if paths.length() == 0: return "usage: add PATH..."
 
         for p in paths:
             if p == ".":
@@ -588,8 +549,7 @@ impl Repo:
                     or self.index.contains(p)
                     or self.conflicts.contains(p)
                 )
-                if not known:
-                    return "pathspec '{p}' did not match any files"
+                if not known: return "pathspec '{p}' did not match any files"
 
                 self.stage(p)
 
@@ -617,8 +577,7 @@ impl Repo:
         var staged = List[String]()
 
         for n in names:
-            if self.conflicts.contains(n):
-                continue
+            if self.conflicts.contains(n): continue
 
             let in_head = head.contains(n)
             let in_index = self.index.contains(n)
@@ -635,8 +594,7 @@ impl Repo:
         index_names.sort()
 
         for n in index_names:
-            if self.conflicts.contains(n):
-                continue
+            if self.conflicts.contains(n): continue
 
             if not self.wt.contains(n):
                 unstaged.append("deleted: {n}")
@@ -687,8 +645,7 @@ impl Repo:
         return ""
 
     var fn cmd_commit(message: String) String:
-        if message == "":
-            return "empty commit message"
+        if message == "": return "empty commit message"
 
         if self.conflicts.length() > 0:
             var names = self.conflicts.values()
@@ -713,8 +670,7 @@ impl Repo:
             self.banner(false, id, message)
             return ""
 
-        if same_tree(self.index, self.head_tree()):
-            return "nothing to commit"
+        if same_tree(self.index, self.head_tree()): return "nothing to commit"
 
         var parents = List[String]()
         if cur != "":
@@ -737,16 +693,14 @@ impl Repo:
             return "usage: log [-n N]"
 
         let cur = self.current()
-        if cur == "":
-            return "no commits yet"
+        if cur == "": return "no commits yet"
 
         let reach = self.ancestors(cur)
         var shown = 0
         var k = self.order.length() - 1
 
         while k >= 0:
-            if limit >= 0 and shown >= limit:
-                break
+            if limit >= 0 and shown >= limit: break
 
             let id = self.order[k]
 
@@ -767,8 +721,7 @@ impl Repo:
         return ""
 
     fn cmd_diff(args: List[String]) String:
-        if args.length() > 2:
-            return "usage: diff [REF [REF]]"
+        if args.length() > 2: return "usage: diff [REF [REF]]"
 
         var left = Map[String, String]()
         var right = Map[String, String]()
@@ -778,19 +731,16 @@ impl Repo:
             right = self.wt.clone()
         else if args.length() == 1:
             let r = self.resolve(args[0])
-            if r.error != "":
-                return r.error.clone()
+            if r.error != "": return r.error.clone()
 
             left = self.tree_of(r.id)
             right = self.wt.clone()
         else:
             let r1 = self.resolve(args[0])
-            if r1.error != "":
-                return r1.error.clone()
+            if r1.error != "": return r1.error.clone()
 
             let r2 = self.resolve(args[1])
-            if r2.error != "":
-                return r2.error.clone()
+            if r2.error != "": return r2.error.clone()
 
             left = self.tree_of(r1.id)
             right = self.tree_of(r2.id)
@@ -811,8 +761,7 @@ impl Repo:
             let rp = right.contains(n)
             let lc = body(left, n)
             let rc = body(right, n)
-            if lp == rp and lc == rc:
-                continue
+            if lp == rp and lc == rc: continue
 
             any = true
             say("diff {n}")
@@ -847,16 +796,14 @@ impl Repo:
 
         if args.length() == 1:
             let err = self.branch_error(args[0])
-            if err != "":
-                return err
+            if err != "": return err
 
             self.branches[args[0].clone()] = self.current()
             return ""
 
         if args.length() == 2 and args[0] == "-d":
             let name = args[1].clone()
-            if not self.branches.contains(name):
-                return "branch '{name}' not found"
+            if not self.branches.contains(name): return "branch '{name}' not found"
             if name == self.head_name:
                 return "cannot delete the current branch '{name}'"
 
@@ -879,33 +826,27 @@ impl Repo:
                 say(n)
             return ""
 
-        if args.length() > 2:
-            return "usage: tag [NAME [REF]]"
+        if args.length() > 2: return "usage: tag [NAME [REF]]"
 
         let name = args[0].clone()
-        if not valid_name(name):
-            return "invalid tag name '{name}'"
-        if self.tags.contains(name):
-            return "tag '{name}' already exists"
+        if not valid_name(name): return "invalid tag name '{name}'"
+        if self.tags.contains(name): return "tag '{name}' already exists"
 
         let ref_text = if args.length() == 2: args[1].clone() else: "HEAD"
         if (args.length() == 1 or args[1] == "HEAD") and self.current() == "":
             return "no commits yet"
 
         let r = self.resolve(ref_text)
-        if r.error != "":
-            return r.error.clone()
+        if r.error != "": return r.error.clone()
 
         self.tags[name] = r.id.clone()
         return ""
 
     fn cmd_show(args: List[String]) String:
-        if args.length() != 1:
-            return "usage: show REF"
+        if args.length() != 1: return "usage: show REF"
 
         let r = self.resolve(args[0])
-        if r.error != "":
-            return r.error.clone()
+        if r.error != "": return r.error.clone()
 
         let c = self.commits.get(r.id).get()
         say("commit {c.id}")
@@ -925,13 +866,11 @@ impl Repo:
         if args.length() == 2 and args[0] == "-b":
             let name = args[1].clone()
             let err = self.branch_error(name)
-            if err != "":
-                return err
+            if err != "": return err
 
             let target = self.head_tree()
             let d = self.switch_error(target)
-            if d != "":
-                return d
+            if d != "": return d
 
             self.switch_to(target)
             self.branches[name.clone()] = self.current()
@@ -939,10 +878,8 @@ impl Repo:
             say("Switched to a new branch '{name}'")
             return ""
 
-        if args.length() != 1:
-            return "usage: checkout REF | checkout -b NAME"
-        if self.merging:
-            return "merge in progress"
+        if args.length() != 1: return "usage: checkout REF | checkout -b NAME"
+        if self.merging: return "merge in progress"
 
         let name = args[0].clone()
 
@@ -953,8 +890,7 @@ impl Repo:
 
             let target = self.tree_of(self.branches.get(name).get())
             let d = self.switch_error(target)
-            if d != "":
-                return d
+            if d != "": return d
 
             self.switch_to(target)
             self.head_name = name.clone()
@@ -962,13 +898,11 @@ impl Repo:
             return ""
 
         let r = self.resolve(name)
-        if r.error != "":
-            return r.error.clone()
+        if r.error != "": return r.error.clone()
 
         let target = self.tree_of(r.id)
         let d = self.switch_error(target)
-        if d != "":
-            return d
+        if d != "": return d
 
         self.switch_to(target)
         self.head_name = ""
@@ -986,12 +920,10 @@ impl Repo:
 
         if args.length() == 1:
             target = self.current()
-            if target == "":
-                return "no commits yet"
+            if target == "": return "no commits yet"
         else:
             let r = self.resolve(args[1])
-            if r.error != "":
-                return r.error.clone()
+            if r.error != "": return r.error.clone()
 
             target = r.id.clone()
 
@@ -1003,21 +935,17 @@ impl Repo:
 
     var fn cmd_merge(args: List[String]) String:
         if args.length() == 1 and args[0] == "--abort":
-            if not self.merging:
-                return "no merge in progress"
+            if not self.merging: return "no merge in progress"
 
             self.reset_to(self.current())
             say("Merge aborted.")
             return ""
 
-        if args.length() != 1:
-            return "usage: merge BRANCH"
-        if self.merging:
-            return "merge in progress"
+        if args.length() != 1: return "usage: merge BRANCH"
+        if self.merging: return "merge in progress"
 
         let cur = self.current()
-        if cur == "":
-            return "no commits yet"
+        if cur == "": return "no commits yet"
 
         let branch = args[0].clone()
         if not self.branches.contains(branch) or self.branches.get(branch).get() == "":
@@ -1025,8 +953,7 @@ impl Repo:
 
         let other = self.branches.get(branch).get()
         let d = self.dirty_error()
-        if d != "":
-            return d
+        if d != "": return d
 
         if self.ancestors(cur).contains(other):
             say("Already up to date.")
@@ -1035,8 +962,7 @@ impl Repo:
         if self.ancestors(other).contains(cur):
             let target = self.tree_of(other)
             let e = self.untracked_error(target.keys())
-            if e != "":
-                return e
+            if e != "": return e
 
             self.switch_to(target)
             self.move_head(other)
@@ -1105,8 +1031,7 @@ impl Repo:
             touched.append(n)
 
         let e = self.untracked_error(touched)
-        if e != "":
-            return e
+        if e != "": return e
 
         for n in self.index.keys():
             if not result.contains(n):
@@ -1168,8 +1093,7 @@ export fn main() Int:
     while i < lines.length():
         let line = lines[i].trim_end()
         i += 1
-        if line.trim() == "" or line.trim_start().starts_with("#"):
-            continue
+        if line.trim() == "" or line.trim_start().starts_with("#"): continue
 
         say("> {line}")
 

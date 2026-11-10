@@ -51,8 +51,7 @@ fn fmt_val(v: Value) String:
         VNull:
             return "NULL"
         VBool(b):
-            if b:
-                return "true"
+            if b: return "true"
 
             return "false"
         VInt(x):
@@ -65,38 +64,31 @@ fn cmp_val(a: Value, b: Value) Int:
     let kb = vkind(b)
 
     if ka != kb:
-        if ka < kb:
-            return -1
+        if ka < kb: return -1
 
         return 1
 
     if ka == 2:
         let x = as_int(a)
         let y = as_int(b)
-        if x < y:
-            return -1
-        if x > y:
-            return 1
+        if x < y: return -1
+        if x > y: return 1
 
         return 0
 
     if ka == 3:
         let s = as_text(a)
         let t = as_text(b)
-        if s < t:
-            return -1
-        if s > t:
-            return 1
+        if s < t: return -1
+        if s > t: return 1
 
         return 0
 
     if ka == 1:
         let x = as_bool(a)
         let y = as_bool(b)
-        if x == y:
-            return 0
-        if y:
-            return -1
+        if x == y: return 0
+        if y: return -1
 
         return 1
 
@@ -106,12 +98,10 @@ fn same_val(a: Value, b: Value) Bool:
     return cmp_val(a, b) == 0
 
 fn same_row(a: List[Value], b: List[Value]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for i in 0..a.length():
-        if cmp_val(a[i], b[i]) != 0:
-            return false
+        if cmp_val(a[i], b[i]) != 0: return false
     return true
 
 fn cmp_keys(a: List[Value], b: List[Value], descs: List[Bool]) Int:
@@ -119,8 +109,7 @@ fn cmp_keys(a: List[Value], b: List[Value], descs: List[Bool]) Int:
         var c = cmp_val(a[k], b[k])
         if descs[k]:
             c = 0 - c
-        if c != 0:
-            return c
+        if c != 0: return c
 
     return 0
 
@@ -254,14 +243,14 @@ fn lex_all(cs: List[String]) List[Seg]:
             while i < n:
                 if cs[i] == "'":
                     if i + 1 < n and cs[i + 1] == "'":
-                        buf = buf + "'"
+                        buf += "'"
                         i += 2
                     else:
                         closed = true
                         i += 1
                         break
                 else:
-                    buf = buf + cs[i]
+                    buf += cs[i]
                     i += 1
 
             if closed:
@@ -272,7 +261,7 @@ fn lex_all(cs: List[String]) List[Seg]:
             var w = ""
 
             while i < n and (is_alpha(cs[i]) or is_digit(cs[i])):
-                w = w + cs[i]
+                w += cs[i]
                 i += 1
 
             let up = w.upper()
@@ -285,7 +274,7 @@ fn lex_all(cs: List[String]) List[Seg]:
             var d = ""
 
             while i < n and is_digit(cs[i]):
-                d = d + cs[i]
+                d += cs[i]
                 i += 1
 
             if let v = d.parse_int():
@@ -328,8 +317,7 @@ fn is_cmp_op(o: String) Bool:
 impl Parser:
     fn kind_at(off: Int) String:
         let i = self.pos + off
-        if i < self.toks.length():
-            return self.toks[i].kind.clone()
+        if i < self.toks.length(): return self.toks[i].kind.clone()
 
         return "eof"
 
@@ -338,14 +326,12 @@ impl Parser:
 
     fn text_at(off: Int) String:
         let i = self.pos + off
-        if i < self.toks.length():
-            return self.toks[i].text.clone()
+        if i < self.toks.length(): return self.toks[i].text.clone()
 
         return ""
 
     fn int_val() Int:
-        if self.pos < self.toks.length():
-            return self.toks[self.pos].iv
+        if self.pos < self.toks.length(): return self.toks[self.pos].iv
 
         return 0
 
@@ -370,14 +356,12 @@ impl Parser:
         return false
 
     var fn need_kw(w: String) Unit!String:
-        if not self.eat_kw(w):
-            return error("syntax error")
+        if not self.eat_kw(w): return error("syntax error")
 
         return ok(unit)
 
     var fn need_op(o: String) Unit!String:
-        if not self.eat_op(o):
-            return error("syntax error")
+        if not self.eat_op(o): return error("syntax error")
 
         return ok(unit)
 
@@ -424,8 +408,7 @@ impl Parser:
             while true:
                 let a = try self.expr()
                 args.append(a)
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
         try self.need_op(")")
         return ok(Call(name: name.upper(), args: args, distinct: distinct, star: false))
@@ -443,8 +426,7 @@ impl Parser:
             self.pos += 1
             return ok(Lit(v: VText(s: s)))
 
-        if self.eat_kw("NULL"):
-            return ok(Lit(v: VNull))
+        if self.eat_kw("NULL"): return ok(Lit(v: VNull))
 
         if self.eat_op("("):
             let e = try self.expr()
@@ -548,8 +530,7 @@ impl Parser:
             while true:
                 let x = try self.expr()
                 items.append(x)
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
             try self.need_op(")")
             return ok(InList(e: a, items: items, neg: neg))
@@ -600,8 +581,7 @@ impl Parser:
         return ok(TRef(name: name, alias: alias))
 
     var fn select_item() SelItem!String:
-        if self.eat_op("*"):
-            return ok(Star)
+        if self.eat_op("*"): return ok(Star)
 
         if self.kind() == "id" and self.is_op(1, ".") and self.is_op(2, "*"):
             let t = try self.ident()
@@ -626,8 +606,7 @@ impl Parser:
         while true:
             let it = try self.select_item()
             items.append(it)
-            if not self.eat_op(","):
-                break
+            if not self.eat_op(","): break
 
         var from_ = List[TRef]()
 
@@ -674,8 +653,7 @@ impl Parser:
             while true:
                 let g = try self.colref()
                 group.append(g)
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
         var having: Expr? = none
 
@@ -698,8 +676,7 @@ impl Parser:
                     self.eat_kw("ASC")
 
                 order.append(OrdDef(e: e, desc: desc))
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
         var limit: Int? = none
         var offset: Int? = none
@@ -731,12 +708,10 @@ impl Parser:
 
             while true:
                 let cn = try self.ident()
-                if self.kind() != "id":
-                    return error("syntax error")
+                if self.kind() != "id": return error("syntax error")
 
                 let tw = self.text_at(0).upper()
-                if tw != "INT" and tw != "TEXT":
-                    return error("syntax error")
+                if tw != "INT" and tw != "TEXT": return error("syntax error")
 
                 self.pos += 1
 
@@ -754,8 +729,7 @@ impl Parser:
                         break
 
                 cols.append(ColDef(name: cn, typ: tw, pk: pk, nn: nn))
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
             try self.need_op(")")
             return ok(Create(name: name, cols: cols))
@@ -779,8 +753,7 @@ impl Parser:
                 while true:
                     let c = try self.ident()
                     cols.append(c)
-                    if not self.eat_op(","):
-                        break
+                    if not self.eat_op(","): break
 
                 try self.need_op(")")
 
@@ -796,13 +769,11 @@ impl Parser:
                 while true:
                     let v = try self.expr()
                     vals.append(v)
-                    if not self.eat_op(","):
-                        break
+                    if not self.eat_op(","): break
 
                 try self.need_op(")")
                 rows.append(vals)
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
             return ok(Insert(name: name, cols: cols, has_cols: has_cols, rows: rows))
 
@@ -818,8 +789,7 @@ impl Parser:
 
                 let e = try self.expr()
                 sets.append(AssignDef(col: c, e: e))
-                if not self.eat_op(","):
-                    break
+                if not self.eat_op(","): break
 
             var w: Expr? = none
 
@@ -850,8 +820,7 @@ impl Parser:
 fn parse_stmt(toks: List[Tok]) Stmt!String:
     var p = Parser(toks: toks.clone(), pos: 0)
     let st = try p.statement()
-    if p.kind() != "eof":
-        return error("syntax error")
+    if p.kind() != "eof": return error("syntax error")
 
     return ok(st)
 
@@ -871,14 +840,12 @@ type SCol:
 
 fn find_table(tables: List[TableDef], name: String) Int:
     for i in 0..tables.length():
-        if tables[i].name == name:
-            return i
+        if tables[i].name == name: return i
     return -1
 
 fn col_index(t: TableDef, name: String) Int:
     for i in 0..t.cols.length():
-        if t.cols[i] == name:
-            return i
+        if t.cols[i] == name: return i
     return -1
 
 fn table_scope(t: TableDef, alias: String) List[SCol]:
@@ -905,13 +872,11 @@ fn find_col(sc: List[SCol], q: String, name: String) Int!String:
             count += 1
 
     if count == 0:
-        if q == "":
-            return error("no such column: " + name)
+        if q == "": return error("no such column: " + name)
 
         return error("no such column: " + q + "." + name)
 
-    if count > 1:
-        return error("ambiguous column: " + name)
+    if count > 1: return error("ambiguous column: " + name)
 
     return ok(found)
 
@@ -936,28 +901,21 @@ fn is_scalar(name: String) Bool:
     )
 
 fn arity_ok(name: String, n: Int, star: Bool, distinct: Bool) Bool:
-    if star:
-        return name == "COUNT" and not distinct
-    if distinct and n != 1:
-        return false
-    if name == "COUNT" or name == "SUM" or name == "MIN" or name == "MAX":
-        return n == 1
-    if name == "SUBSTR":
-        return n == 3
-    if name == "COALESCE":
-        return n >= 1
+    if star: return name == "COUNT" and not distinct
+    if distinct and n != 1: return false
+    if name == "COUNT" or name == "SUM" or name == "MIN" or name == "MAX": return n == 1
+    if name == "SUBSTR": return n == 3
+    if name == "COALESCE": return n >= 1
 
     return n == 1
 
 fn has_agg(e: Expr) Bool:
     match e:
         Call(name, args, _distinct, _star):
-            if is_agg(name):
-                return true
+            if is_agg(name): return true
 
             for a in args:
-                if has_agg(a):
-                    return true
+                if has_agg(a): return true
             return false
         Neg(x):
             return has_agg(x)
@@ -970,12 +928,10 @@ fn has_agg(e: Expr) Bool:
         Like(x, p, _neg):
             return has_agg(x) or has_agg(p)
         InList(x, items, _neg):
-            if has_agg(x):
-                return true
+            if has_agg(x): return true
 
             for it in items:
-                if has_agg(it):
-                    return true
+                if has_agg(it): return true
             return false
         Between(x, lo, hi, _neg):
             return has_agg(x) or has_agg(lo) or has_agg(hi)
@@ -990,8 +946,7 @@ fn item_has_agg(it: SelItem) Bool:
             return false
 
 fn disp(q: String, name: String) String:
-    if q == "":
-        return name.clone()
+    if q == "": return name.clone()
 
     return q.clone() + "." + name.clone()
 
@@ -1039,8 +994,7 @@ fn check(e: Expr, sc: List[SCol], ck: Ck, inagg: Bool) Unit!String:
                 return error("wrong number of arguments to " + name)
 
             if is_agg(name):
-                if inagg or not ck.aggok:
-                    return error("misuse of aggregate")
+                if inagg or not ck.aggok: return error("misuse of aggregate")
 
                 for a in args:
                     try check(a, sc, ck, true)
@@ -1064,78 +1018,57 @@ fn cond_true(v: Value) Bool!String:
 fn and3(x: Value, y: Value) Value!String:
     let kx = vkind(x)
     let ky = vkind(y)
-    if (kx != 0 and kx != 1) or (ky != 0 and ky != 1):
-        return error("type error")
+    if (kx != 0 and kx != 1) or (ky != 0 and ky != 1): return error("type error")
     if (kx == 1 and not as_bool(x)) or (ky == 1 and not as_bool(y)):
         return ok(VBool(b: false))
-    if kx == 1 and ky == 1:
-        return ok(VBool(b: true))
+    if kx == 1 and ky == 1: return ok(VBool(b: true))
 
     return ok(VNull)
 
 fn or3(x: Value, y: Value) Value!String:
     let kx = vkind(x)
     let ky = vkind(y)
-    if (kx != 0 and kx != 1) or (ky != 0 and ky != 1):
-        return error("type error")
-    if (kx == 1 and as_bool(x)) or (ky == 1 and as_bool(y)):
-        return ok(VBool(b: true))
-    if kx == 1 and ky == 1:
-        return ok(VBool(b: false))
+    if (kx != 0 and kx != 1) or (ky != 0 and ky != 1): return error("type error")
+    if (kx == 1 and as_bool(x)) or (ky == 1 and as_bool(y)): return ok(VBool(b: true))
+    if kx == 1 and ky == 1: return ok(VBool(b: false))
 
     return ok(VNull)
 
 fn not3(x: Value) Value!String:
     let kx = vkind(x)
-    if kx == 0:
-        return ok(VNull)
-    if kx == 1:
-        return ok(VBool(b: not as_bool(x)))
+    if kx == 0: return ok(VNull)
+    if kx == 1: return ok(VBool(b: not as_bool(x)))
 
     return error("type error")
 
 fn compare_op(op: String, a: Value, b: Value) Value!String:
     let ka = vkind(a)
     let kb = vkind(b)
-    if ka == 0 or kb == 0:
-        return ok(VNull)
-    if ka != kb or ka == 1:
-        return error("type error")
+    if ka == 0 or kb == 0: return ok(VNull)
+    if ka != kb or ka == 1: return error("type error")
 
     let c = cmp_val(a, b)
-    if op == "=":
-        return ok(VBool(b: c == 0))
-    if op == "<>":
-        return ok(VBool(b: c != 0))
-    if op == "<":
-        return ok(VBool(b: c < 0))
-    if op == "<=":
-        return ok(VBool(b: c <= 0))
-    if op == ">":
-        return ok(VBool(b: c > 0))
+    if op == "=": return ok(VBool(b: c == 0))
+    if op == "<>": return ok(VBool(b: c != 0))
+    if op == "<": return ok(VBool(b: c < 0))
+    if op == "<=": return ok(VBool(b: c <= 0))
+    if op == ">": return ok(VBool(b: c > 0))
 
     return ok(VBool(b: c >= 0))
 
 fn arith_op(op: String, a: Value, b: Value) Value!String:
     let ka = vkind(a)
     let kb = vkind(b)
-    if ka == 0 or kb == 0:
-        return ok(VNull)
-    if ka != 2 or kb != 2:
-        return error("type error")
+    if ka == 0 or kb == 0: return ok(VNull)
+    if ka != 2 or kb != 2: return error("type error")
 
     let x = as_int(a)
     let y = as_int(b)
-    if op == "+":
-        return ok(VInt(v: x + y))
-    if op == "-":
-        return ok(VInt(v: x - y))
-    if op == "*":
-        return ok(VInt(v: x * y))
-    if y == 0:
-        return error("division by zero")
-    if op == "/":
-        return ok(VInt(v: x / y))
+    if op == "+": return ok(VInt(v: x + y))
+    if op == "-": return ok(VInt(v: x - y))
+    if op == "*": return ok(VInt(v: x * y))
+    if y == 0: return error("division by zero")
+    if op == "/": return ok(VInt(v: x / y))
 
     return ok(VInt(v: x % y))
 
@@ -1143,15 +1076,12 @@ fn binop(op: String, a: Value, b: Value) Value!String:
     if op == "||":
         let ka = vkind(a)
         let kb = vkind(b)
-        if ka == 0 or kb == 0:
-            return ok(VNull)
-        if ka != 3 or kb != 3:
-            return error("type error")
+        if ka == 0 or kb == 0: return ok(VNull)
+        if ka != 3 or kb != 3: return error("type error")
 
         return ok(VText(s: as_text(a) + as_text(b)))
 
-    if is_cmp_op(op):
-        return compare_op(op, a, b)
+    if is_cmp_op(op): return compare_op(op, a, b)
 
     return arith_op(op, a, b)
 
@@ -1189,11 +1119,11 @@ fn ascii_map(s: String, up: Bool) String:
 
     for c in s.chars():
         if up and c >= "a" and c <= "z":
-            out = out + c.upper()
+            out += c.upper()
         else if not up and c >= "A" and c <= "Z":
-            out = out + c.lower()
+            out += c.lower()
         else:
-            out = out + c
+            out += c
 
     return out
 
@@ -1212,33 +1142,27 @@ fn scalar_call(
 
     if name == "COALESCE":
         for v in vals:
-            if vkind(v) != 0:
-                return ok(v.clone())
+            if vkind(v) != 0: return ok(v.clone())
         return ok(VNull)
 
     for v in vals:
-        if vkind(v) == 0:
-            return ok(VNull)
+        if vkind(v) == 0: return ok(VNull)
 
     if name == "UPPER" or name == "LOWER":
-        if vkind(vals[0]) != 3:
-            return error("type error")
+        if vkind(vals[0]) != 3: return error("type error")
 
         return ok(VText(s: ascii_map(as_text(vals[0]), name == "UPPER")))
 
     if name == "LENGTH":
-        if vkind(vals[0]) != 3:
-            return error("type error")
+        if vkind(vals[0]) != 3: return error("type error")
 
         return ok(VInt(v: as_text(vals[0]).byte_length()))
 
     if name == "ABS":
-        if vkind(vals[0]) != 2:
-            return error("type error")
+        if vkind(vals[0]) != 2: return error("type error")
 
         let x = as_int(vals[0])
-        if x < 0:
-            return ok(VInt(v: 0 - x))
+        if x < 0: return ok(VInt(v: 0 - x))
 
         return ok(VInt(v: x))
 
@@ -1250,8 +1174,7 @@ fn scalar_call(
     let n = bs.length()
     let start = as_int(vals[1])
     let len = as_int(vals[2])
-    if len <= 0:
-        return ok(VText(s: ""))
+    if len <= 0: return ok(VText(s: ""))
 
     var from = start
     if from < 1:
@@ -1260,8 +1183,7 @@ fn scalar_call(
     var to = start + len - 1
     if to > n:
         to = n
-    if from > to:
-        return ok(VText(s: ""))
+    if from > to: return ok(VText(s: ""))
 
     return ok(VText(s: bs.decode_utf8_range(from - 1, to).get("")))
 
@@ -1273,8 +1195,7 @@ fn agg_val(
     sc: List[SCol],
     grp: List[List[Value]]
 ) Value!String:
-    if name == "COUNT" and star:
-        return ok(VInt(v: grp.length()))
+    if name == "COUNT" and star: return ok(VInt(v: grp.length()))
 
     var vals = List[Value]()
     let none_grp = List[List[Value]]()
@@ -1297,31 +1218,26 @@ fn agg_val(
 
         vals = u
 
-    if name == "COUNT":
-        return ok(VInt(v: vals.length()))
-    if vals.length() == 0:
-        return ok(VNull)
+    if name == "COUNT": return ok(VInt(v: vals.length()))
+    if vals.length() == 0: return ok(VNull)
 
     if name == "SUM":
         var total = 0
 
         for v in vals:
-            if vkind(v) != 2:
-                return error("type error")
+            if vkind(v) != 2: return error("type error")
 
             total += as_int(v)
 
         return ok(VInt(v: total))
 
     let k0 = vkind(vals[0])
-    if k0 == 1:
-        return error("type error")
+    if k0 == 1: return error("type error")
 
     var best = vals[0].clone()
 
     for v in vals:
-        if vkind(v) != k0:
-            return error("type error")
+        if vkind(v) != k0: return error("type error")
 
         let c = cmp_val(v, best)
         if name == "MIN" and c < 0:
@@ -1337,16 +1253,13 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
             return ok(v.clone())
         Col(q, name):
             let i = try find_col(sc, q, name)
-            if i >= row.length():
-                return ok(VNull)
+            if i >= row.length(): return ok(VNull)
 
             return ok(row[i].clone())
         Neg(x):
             let v = try ev(x, sc, row, grp)
-            if vkind(v) == 0:
-                return ok(VNull)
-            if vkind(v) != 2:
-                return error("type error")
+            if vkind(v) == 0: return ok(VNull)
+            if vkind(v) != 2: return error("type error")
 
             return ok(VInt(v: 0 - as_int(v)))
         Not(x):
@@ -1360,10 +1273,8 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
         Like(x, p, neg):
             let xv = try ev(x, sc, row, grp)
             let pv = try ev(p, sc, row, grp)
-            if vkind(xv) == 0 or vkind(pv) == 0:
-                return ok(VNull)
-            if vkind(xv) != 3 or vkind(pv) != 3:
-                return error("type error")
+            if vkind(xv) == 0 or vkind(pv) == 0: return ok(VNull)
+            if vkind(xv) != 3 or vkind(pv) != 3: return error("type error")
 
             let m = like_match(as_text(xv).to_bytes(), as_text(pv).to_bytes())
             return ok(VBool(b: m != neg))
@@ -1375,21 +1286,18 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
                 let v = try ev(it, sc, row, grp)
                 vals.append(v)
 
-            if vkind(xv) == 0:
-                return ok(VNull)
+            if vkind(xv) == 0: return ok(VNull)
 
             var sawnull = false
 
             for y in vals:
                 let eqv = try compare_op("=", xv, y)
-                if vkind(eqv) == 1 and as_bool(eqv):
-                    return ok(VBool(b: not neg))
+                if vkind(eqv) == 1 and as_bool(eqv): return ok(VBool(b: not neg))
 
                 if vkind(eqv) == 0:
                     sawnull = true
 
-            if sawnull:
-                return ok(VNull)
+            if sawnull: return ok(VNull)
 
             return ok(VBool(b: neg))
         Between(x, lo, hi, neg):
@@ -1405,8 +1313,7 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
         Bin(op, l, r):
             if op == "AND":
                 let a = try ev(l, sc, row, grp)
-                if vkind(a) == 1 and not as_bool(a):
-                    return ok(VBool(b: false))
+                if vkind(a) == 1 and not as_bool(a): return ok(VBool(b: false))
 
                 let b = try ev(r, sc, row, grp)
                 let res = try and3(a, b)
@@ -1414,8 +1321,7 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
 
             if op == "OR":
                 let a = try ev(l, sc, row, grp)
-                if vkind(a) == 1 and as_bool(a):
-                    return ok(VBool(b: true))
+                if vkind(a) == 1 and as_bool(a): return ok(VBool(b: true))
 
                 let b = try ev(r, sc, row, grp)
                 let res = try or3(a, b)
@@ -1434,8 +1340,7 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
             return ok(res)
 
 fn rep_row(u: List[List[Value]], w: Int) List[Value]:
-    if u.length() > 0:
-        return u[0].clone()
+    if u.length() > 0: return u[0].clone()
 
     return nulls(w)
 
@@ -1448,8 +1353,7 @@ fn cond_of(e: Expr, sc: List[SCol], r: List[Value]) Bool!String:
 // ---------------------------------------------------------------- SELECT
 
 fn expr_name(e: Expr, alias: String?) String:
-    if let a = alias:
-        return a.clone()
+    if let a = alias: return a.clone()
 
     match e:
         Col(_q, name):
@@ -1460,8 +1364,7 @@ fn expr_name(e: Expr, alias: String?) String:
 fn lit_int(e: Expr) Int?:
     match e:
         Lit(v):
-            if vkind(v) == 2:
-                return as_int(v)
+            if vkind(v) == 2: return as_int(v)
 
             return none
         _:
@@ -1470,16 +1373,14 @@ fn lit_int(e: Expr) Int?:
 fn bare_name(e: Expr) String?:
     match e:
         Col(q, name):
-            if q == "":
-                return name.clone()
+            if q == "": return name.clone()
 
             return none
         _:
             return none
 
 fn opt_present(e: Expr?) Bool:
-    if let _x = e:
-        return true
+    if let _x = e: return true
 
     return false
 
@@ -1494,8 +1395,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
 
     for r in refs:
         let ti = find_table(tables, r.name)
-        if ti < 0:
-            return error("no such table: " + r.name)
+        if ti < 0: return error("no such table: " + r.name)
 
         tix.append(ti)
 
@@ -1527,8 +1427,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
                 for c in sc:
                     if c.alias == t:
                         found = true
-                if not found:
-                    return error("no such table: " + t)
+                if not found: return error("no such table: " + t)
             _:
                 continue
 
@@ -1598,8 +1497,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
         var ov = 0
 
         if let n = lit_int(o.e):
-            if n < 1 or n > names.length():
-                return error("bad ORDER BY position")
+            if n < 1 or n > names.length(): return error("bad ORDER BY position")
 
             k = 1
             ov = n - 1
@@ -1696,8 +1594,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
         if let h = s.having:
             let hv = try ev(h, sc, rp, u)
             let hb = try cond_true(hv)
-            if not hb:
-                continue
+            if not hb: continue
 
         var row = List[Value]()
 
@@ -1726,8 +1623,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
             for k in sel:
                 if same_row(outs[k], outs[i]):
                     dup = true
-            if dup:
-                continue
+            if dup: continue
 
         sel.append(i)
 
@@ -1787,8 +1683,7 @@ type SortRow:
 
 fn check_val(t: TableDef, i: Int, v: Value) Unit!String:
     if vkind(v) == 0:
-        if t.notnull[i]:
-            return error("NOT NULL constraint failed: " + t.cols[i])
+        if t.notnull[i]: return error("NOT NULL constraint failed: " + t.cols[i])
 
         return ok(unit)
 
@@ -1800,8 +1695,7 @@ fn check_val(t: TableDef, i: Int, v: Value) Unit!String:
     return ok(unit)
 
 fn pk_check(t: TableDef, rows: List[List[Value]]) Unit!String:
-    if t.pk < 0:
-        return ok(unit)
+    if t.pk < 0: return ok(unit)
 
     for i in 0..rows.length():
         for j in 0..i:
@@ -1810,8 +1704,7 @@ fn pk_check(t: TableDef, rows: List[List[Value]]) Unit!String:
     return ok(unit)
 
 fn do_create(var tables: List[TableDef], name: String, cols: List[ColDef]) List[String]!String:
-    if find_table(tables, name) >= 0:
-        return error("table " + name + " already exists")
+    if find_table(tables, name) >= 0: return error("table " + name + " already exists")
 
     for i in 0..cols.length():
         for j in 0..i:
@@ -1826,8 +1719,7 @@ fn do_create(var tables: List[TableDef], name: String, cols: List[ColDef]) List[
             npk += 1
             pkidx = i
 
-    if npk > 1:
-        return error("multiple primary keys")
+    if npk > 1: return error("multiple primary keys")
 
     var names = List[String]()
     var types = List[String]()
@@ -1851,8 +1743,7 @@ fn do_create(var tables: List[TableDef], name: String, cols: List[ColDef]) List[
 
 fn do_drop(var tables: List[TableDef], name: String) List[String]!String:
     let ti = find_table(tables, name)
-    if ti < 0:
-        return error("no such table: " + name)
+    if ti < 0: return error("no such table: " + name)
 
     tables.remove(ti)
 
@@ -1865,8 +1756,7 @@ fn do_insert(
     rows: List[List[Expr]]
 ) List[String]!String:
     let ti = find_table(tables, name)
-    if ti < 0:
-        return error("no such table: " + name)
+    if ti < 0: return error("no such table: " + name)
 
     let t = TableDef(
         name: tables[ti].name.clone(), cols: tables[ti].cols.clone(),
@@ -1878,10 +1768,8 @@ fn do_insert(
     if has_cols:
         for c in cols:
             let i = col_index(t, c)
-            if i < 0:
-                return error("no such column: " + c)
-            if pos.contains(i):
-                return error("duplicate column: " + c)
+            if i < 0: return error("no such column: " + c)
+            if pos.contains(i): return error("duplicate column: " + c)
 
             pos.append(i)
     else:
@@ -1893,8 +1781,7 @@ fn do_insert(
     var newrows = List[List[Value]]()
 
     for r in rows:
-        if r.length() != pos.length():
-            return error("wrong number of values")
+        if r.length() != pos.length(): return error("wrong number of values")
 
         for e in r:
             try check(e, empty_sc, ck0, false)
@@ -1933,8 +1820,7 @@ fn do_update(
     var tables: List[TableDef], name: String, sets: List[AssignDef], where_e: Expr?
 ) List[String]!String:
     let ti = find_table(tables, name)
-    if ti < 0:
-        return error("no such table: " + name)
+    if ti < 0: return error("no such table: " + name)
 
     var t = tables[ti].clone()
     let sc = table_scope(t, name)
@@ -1942,8 +1828,7 @@ fn do_update(
 
     for a in sets:
         let i = col_index(t, a.col)
-        if i < 0:
-            return error("no such column: " + a.col)
+        if i < 0: return error("no such column: " + a.col)
 
         sidx.append(i)
 
@@ -1990,8 +1875,7 @@ fn do_update(
 
 fn do_delete(var tables: List[TableDef], name: String, where_e: Expr?) List[String]!String:
     let ti = find_table(tables, name)
-    if ti < 0:
-        return error("no such table: " + name)
+    if ti < 0: return error("no such table: " + name)
 
     var t = tables[ti].clone()
     let sc = table_scope(t, name)

@@ -101,8 +101,7 @@ fn parse_line(line: String) Record?:
         k += 1
 
     if let cents = amount_cents(amt):
-        if let name = from_scalars(cat):
-            return Record(category: name, cents: cents)
+        if let name = from_scalars(cat): return Record(category: name, cents: cents)
     return none
 
 // Adds two little-endian digit lists.
@@ -173,7 +172,6 @@ fn run() Int!:
     return ok(0)
 
 export fn main() Int:
-    if let code = run():
-        return code
+    if let code = run(): return code
 
     return 1

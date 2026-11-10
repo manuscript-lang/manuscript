@@ -128,8 +128,7 @@ fn solve(line: String) String:
 
     if cmd == "lcs" or cmd == "edit":
         if n != 3 or toks[1].length() == 0 or toks[2].length() == 0: return BAD
-        if cmd == "lcs":
-            return "{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
+        if cmd == "lcs": return "{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
 
         return "{edit_dist(toks[1].as_bytes(), toks[2].as_bytes())}"
 

@@ -9,15 +9,13 @@ type Rec:
 
 fn all_digits(s: String) Bool:
     for i in 0..s.length():
-        if not "0123456789".contains(s.get(i)):
-            return false
+        if not "0123456789".contains(s.get(i)): return false
     return true
 
 // Accepts digits, optionally followed by '.' and one or two digits.
 fn valid_amount(s: String) Bool:
     let parts = s.split(".")
-    if parts.length() == 1:
-        return parts[0].length() > 0 and all_digits(parts[0])
+    if parts.length() == 1: return parts[0].length() > 0 and all_digits(parts[0])
 
     if parts.length() == 2:
         let ip = parts[0]
@@ -42,22 +40,19 @@ fn parse_line(line: String) Rec?:
             cat = rest.slice(0, close).get()
 
             let after = rest.slice(close + 1, rest.length()).get()
-            if not after.starts_with(","):
-                return none
+            if not after.starts_with(","): return none
 
             amt = after.slice(1, after.length()).get()
         else:
             return none
     else:
         let parts = line.split(",")
-        if parts.length() != 2:
-            return none
+        if parts.length() != 2: return none
 
         cat = parts[0].clone()
         amt = parts[1].clone()
 
-    if cat.length() == 0 or not valid_amount(amt):
-        return none
+    if cat.length() == 0 or not valid_amount(amt): return none
 
     return Rec(cat: cat, amt: amt)
 
@@ -72,12 +67,10 @@ fn strip_zeros(s: String) String:
 fn to_cents(amt: String) String:
     let parts = amt.split(".")
     let ip = parts[0]
-    if parts.length() == 1:
-        return strip_zeros("{ip}00")
+    if parts.length() == 1: return strip_zeros("{ip}00")
 
     let fp = parts[1]
-    if fp.length() == 1:
-        return strip_zeros("{ip}{fp}0")
+    if fp.length() == 1: return strip_zeros("{ip}{fp}0")
 
     return strip_zeros("{ip}{fp}")
 
@@ -111,8 +104,7 @@ export fn main() Int:
     var skipped = 0
 
     for row in rows:
-        if row.trim().length() == 0:
-            continue
+        if row.trim().length() == 0: continue
 
         if let r = parse_line(row):
             let c = to_cents(r.amt)

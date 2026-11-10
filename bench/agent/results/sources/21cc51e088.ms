@@ -117,16 +117,13 @@ fn code_of(c: String) Int:
     return c.scalar_at(0, -1)
 
 fn is_alpha(k: Int) Bool:
-    if k >= 65 and k <= 90:
-        return true
-    if k >= 97 and k <= 122:
-        return true
+    if k >= 65 and k <= 90: return true
+    if k >= 97 and k <= 122: return true
 
     return k == 95
 
 fn is_alnum(k: Int) Bool:
-    if is_alpha(k):
-        return true
+    if is_alpha(k): return true
 
     return k >= 48 and k <= 57
 
@@ -156,7 +153,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
             var word = ""
 
             while i < n and is_alnum(code_of(cs[i])):
-                word = word + cs[i]
+                word += cs[i]
                 i += 1
 
             let up = word.upper()
@@ -170,8 +167,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
 
             while i < n and code_of(cs[i]) >= 48 and code_of(cs[i]) <= 57:
                 let d = code_of(cs[i]) - 48
-                if v > (9223372036854775807 - d) / 10:
-                    return error("syntax error")
+                if v > (9223372036854775807 - d) / 10: return error("syntax error")
 
                 v = v * 10 + d
                 i += 1
@@ -185,18 +181,17 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
             while i < n:
                 if cs[i] == "'":
                     if i + 1 < n and cs[i + 1] == "'":
-                        s = s + "'"
+                        s += "'"
                         i += 2
                     else:
                         closed = true
                         i += 1
                         break
                 else:
-                    s = s + cs[i]
+                    s += cs[i]
                     i += 1
 
-            if not closed:
-                return error("syntax error")
+            if not closed: return error("syntax error")
 
             toks.append(Tok(kind: 4, text: s, num: 0))
         else:
@@ -261,8 +256,7 @@ fn kind_at(p: Parser) Int:
 
 fn kind_off(p: Parser, off: Int) Int:
     let j = p.pos + off
-    if j >= p.toks.length():
-        return 0
+    if j >= p.toks.length(): return 0
 
     return p.toks[j].kind
 
@@ -272,8 +266,7 @@ fn kw_at(p: Parser, w: String) Bool:
 
 fn kw_off(p: Parser, off: Int, w: String) Bool:
     let j = p.pos + off
-    if j >= p.toks.length():
-        return false
+    if j >= p.toks.length(): return false
 
     let t = p.toks[j]
     return t.kind == 2 and t.text == w
@@ -284,8 +277,7 @@ fn op_at(p: Parser, s: String) Bool:
 
 fn op_off(p: Parser, off: Int, s: String) Bool:
     let j = p.pos + off
-    if j >= p.toks.length():
-        return false
+    if j >= p.toks.length(): return false
 
     let t = p.toks[j]
     return t.kind == 5 and t.text == s
@@ -300,22 +292,19 @@ fn take_text(var p: Parser) String:
     return s
 
 fn expect_kw(var p: Parser, w: String) Result[Unit, String]:
-    if not kw_at(p, w):
-        return error("syntax error")
+    if not kw_at(p, w): return error("syntax error")
 
     adv(var p)
     return ok(unit)
 
 fn expect_op(var p: Parser, s: String) Result[Unit, String]:
-    if not op_at(p, s):
-        return error("syntax error")
+    if not op_at(p, s): return error("syntax error")
 
     adv(var p)
     return ok(unit)
 
 fn ident(var p: Parser) Result[String, String]:
-    if kind_at(p) != 1:
-        return error("syntax error")
+    if kind_at(p) != 1: return error("syntax error")
 
     return ok(take_text(var p))
 
@@ -428,8 +417,7 @@ fn parse_cmp(var p: Parser) Result[Expr, String]:
         let hi = try parse_add(var p)
         return ok(Between(a, lo, hi, neg))
 
-    if neg:
-        return error("syntax error")
+    if neg: return error("syntax error")
 
     return ok(a)
 
@@ -697,8 +685,7 @@ fn parse_select(var p: Parser) Result[Query, String]:
 
     if kw_at(p, "LIMIT"):
         adv(var p)
-        if kind_at(p) != 3:
-            return error("syntax error")
+        if kind_at(p) != 3: return error("syntax error")
 
         has_limit = true
         limit_n = p.toks[p.pos].num
@@ -706,8 +693,7 @@ fn parse_select(var p: Parser) Result[Query, String]:
 
         if kw_at(p, "OFFSET"):
             adv(var p)
-            if kind_at(p) != 3:
-                return error("syntax error")
+            if kind_at(p) != 3: return error("syntax error")
 
             offset_n = p.toks[p.pos].num
             adv(var p)
@@ -879,8 +865,7 @@ fn parse_delete(var p: Parser) Result[Stmt, String]:
     return ok(SDelete(name: name, has_where: has_where, where_e: where_e))
 
 fn finish_stmt(p: Parser, st: Stmt) Result[Stmt, String]:
-    if kind_at(p) != 0:
-        return error("syntax error")
+    if kind_at(p) != 0: return error("syntax error")
 
     return ok(st.clone())
 
@@ -948,40 +933,32 @@ fn tri(v: Value) Int:
         VText(_s):
             return -1
         VBool(b):
-            if b:
-                return 1
+            if b: return 1
 
             return 0
 
 fn from_tri(t: Int) Value:
-    if t == 2:
-        return VNull
+    if t == 2: return VNull
 
     return VBool(t == 1)
 
 fn same(a: Value, b: Value) Bool:
     let ka = kind(a)
     let kb = kind(b)
-    if ka != kb:
-        return false
-    if ka == 0:
-        return true
-    if ka == 1:
-        return ival(a) == ival(b)
-    if ka == 2:
-        return sval(a) == sval(b)
+    if ka != kb: return false
+    if ka == 0: return true
+    if ka == 1: return ival(a) == ival(b)
+    if ka == 2: return sval(a) == sval(b)
 
     return tri(a) == tri(b)
 
 fn same_row(a: List[Value], b: List[Value]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     var i = 0
 
     while i < a.length():
-        if not same(a[i], b[i]):
-            return false
+        if not same(a[i], b[i]): return false
 
         i += 1
 
@@ -996,26 +973,21 @@ fn vstr(v: Value) String:
         VText(s):
             return s.clone()
         VBool(b):
-            if b:
-                return "true"
+            if b: return "true"
 
             return "false"
 
 fn type_ok(ty: Int, v: Value) Bool:
-    if ty == 1:
-        return kind(v) == 1
+    if ty == 1: return kind(v) == 1
 
     return kind(v) == 2
 
 // Ordering used by ORDER BY: NULL < BOOL < INT < TEXT.
 fn rank(v: Value) Int:
     let k = kind(v)
-    if k == 3:
-        return 1
-    if k == 1:
-        return 2
-    if k == 2:
-        return 3
+    if k == 3: return 1
+    if k == 1: return 2
+    if k == 2: return 3
 
     return 0
 
@@ -1024,33 +996,27 @@ fn cmp_sort(a: Value, b: Value) Int:
     let rb = rank(b)
 
     if ra != rb:
-        if ra < rb:
-            return -1
+        if ra < rb: return -1
 
         return 1
 
     if ra == 2:
         let x = ival(a)
         let y = ival(b)
-        if x < y:
-            return -1
-        if x > y:
-            return 1
+        if x < y: return -1
+        if x > y: return 1
 
         return 0
 
     if ra == 3:
         let x = sval(a)
         let y = sval(b)
-        if x < y:
-            return -1
-        if x > y:
-            return 1
+        if x < y: return -1
+        if x > y: return 1
 
         return 0
 
-    if ra == 1:
-        return tri(a) - tri(b)
+    if ra == 1: return tri(a) - tri(b)
 
     return 0
 
@@ -1061,8 +1027,7 @@ fn cmp_out(x: OutRow, y: OutRow, desc: List[Bool]) Int:
         let c = cmp_sort(x.keys[i], y.keys[i])
 
         if c != 0:
-            if desc[i]:
-                return 0 - c
+            if desc[i]: return 0 - c
 
             return c
 
@@ -1073,10 +1038,8 @@ fn cmp_out(x: OutRow, y: OutRow, desc: List[Bool]) Int:
 fn compare_op(op: String, a: Value, b: Value) Result[Value, String]:
     let ka = kind(a)
     let kb = kind(b)
-    if ka == 0 or kb == 0:
-        return ok(VNull)
-    if ka != kb or ka == 3:
-        return error("type error")
+    if ka == 0 or kb == 0: return ok(VNull)
+    if ka != kb or ka == 3: return error("type error")
 
     var c = 0
 
@@ -1097,55 +1060,40 @@ fn compare_op(op: String, a: Value, b: Value) Result[Value, String]:
         else if x > y:
             c = 1
 
-    if op == "=":
-        return ok(VBool(c == 0))
-    if op == "<>":
-        return ok(VBool(c != 0))
-    if op == "<":
-        return ok(VBool(c < 0))
-    if op == "<=":
-        return ok(VBool(c <= 0))
-    if op == ">":
-        return ok(VBool(c > 0))
+    if op == "=": return ok(VBool(c == 0))
+    if op == "<>": return ok(VBool(c != 0))
+    if op == "<": return ok(VBool(c < 0))
+    if op == "<=": return ok(VBool(c <= 0))
+    if op == ">": return ok(VBool(c > 0))
 
     return ok(VBool(c >= 0))
 
 fn arith(op: String, a: Value, b: Value) Result[Value, String]:
     let ka = kind(a)
     let kb = kind(b)
-    if ka == 0 or kb == 0:
-        return ok(VNull)
-    if ka != 1 or kb != 1:
-        return error("type error")
+    if ka == 0 or kb == 0: return ok(VNull)
+    if ka != 1 or kb != 1: return error("type error")
 
     let x = ival(a)
     let y = ival(b)
-    if op == "+":
-        return ok(VInt(x + y))
-    if op == "-":
-        return ok(VInt(x - y))
-    if op == "*":
-        return ok(VInt(x * y))
-    if y == 0:
-        return error("division by zero")
-    if op == "/":
-        return ok(VInt(x / y))
+    if op == "+": return ok(VInt(x + y))
+    if op == "-": return ok(VInt(x - y))
+    if op == "*": return ok(VInt(x * y))
+    if y == 0: return error("division by zero")
+    if op == "/": return ok(VInt(x / y))
 
     return ok(VInt(x % y))
 
 fn concat_op(a: Value, b: Value) Result[Value, String]:
     let ka = kind(a)
     let kb = kind(b)
-    if ka == 0 or kb == 0:
-        return ok(VNull)
-    if ka != 2 or kb != 2:
-        return error("type error")
+    if ka == 0 or kb == 0: return ok(VNull)
+    if ka != 2 or kb != 2: return error("type error")
 
     return ok(VText(sval(a) + sval(b)))
 
 fn like_rec(s: Bytes, si: Int, p: Bytes, pi: Int) Bool:
-    if pi == p.length():
-        return si == s.length()
+    if pi == p.length(): return si == s.length()
 
     let pc = p.get(pi).to_int()
 
@@ -1153,17 +1101,14 @@ fn like_rec(s: Bytes, si: Int, p: Bytes, pi: Int) Bool:
         var k = si
 
         while k <= s.length():
-            if like_rec(s, k, p, pi + 1):
-                return true
+            if like_rec(s, k, p, pi + 1): return true
 
             k += 1
 
         return false
 
-    if si >= s.length():
-        return false
-    if pc == 95 or pc == s.get(si).to_int():
-        return like_rec(s, si + 1, p, pi + 1)
+    if si >= s.length(): return false
+    if pc == 95 or pc == s.get(si).to_int(): return like_rec(s, si + 1, p, pi + 1)
 
     return false
 
@@ -1176,28 +1121,21 @@ fn logic(
 ) Result[Value, String]:
     let lv = try ev(row, grp, l)
     let lt = tri(lv)
-    if isand and lt == 0:
-        return ok(VBool(false))
-    if not isand and lt == 1:
-        return ok(VBool(true))
+    if isand and lt == 0: return ok(VBool(false))
+    if not isand and lt == 1: return ok(VBool(true))
 
     let rv = try ev(row, grp, r)
     let rt = tri(rv)
-    if lt == -1 or rt == -1:
-        return error("type error")
+    if lt == -1 or rt == -1: return error("type error")
 
     if isand:
-        if lt == 1:
-            return ok(from_tri(rt))
-        if rt == 0:
-            return ok(VBool(false))
+        if lt == 1: return ok(from_tri(rt))
+        if rt == 0: return ok(VBool(false))
 
         return ok(VNull)
 
-    if lt == 0:
-        return ok(from_tri(rt))
-    if rt == 1:
-        return ok(VBool(true))
+    if lt == 0: return ok(from_tri(rt))
+    if rt == 1: return ok(VBool(true))
 
     return ok(VNull)
 
@@ -1213,15 +1151,13 @@ fn substr_fn(vals: List[Value]) Result[Value, String]:
     let kln = kind(ln)
     if (ks != 0 and ks != 2) or (kst != 0 and kst != 1) or (kln != 0 and kln != 1):
         return error("type error")
-    if ks == 0 or kst == 0 or kln == 0:
-        return ok(VNull)
+    if ks == 0 or kst == 0 or kln == 0: return ok(VNull)
 
     let bs = sval(s).as_bytes()
     let n = bs.length()
     let start = ival(st)
     let len = ival(ln)
-    if len <= 0:
-        return ok(VText(""))
+    if len <= 0: return ok(VText(""))
 
     var first = start
     if first < 1:
@@ -1232,12 +1168,10 @@ fn substr_fn(vals: List[Value]) Result[Value, String]:
     let avail = n - first + 1
     if take > avail:
         take = avail
-    if take <= 0:
-        return ok(VText(""))
+    if take <= 0: return ok(VText(""))
 
     let piece = bs.slice(first - 1, first - 1 + take).get()
-    if let t = piece.decode_utf8():
-        return ok(VText(t.clone()))
+    if let t = piece.decode_utf8(): return ok(VText(t.clone()))
 
     return ok(VText(""))
 
@@ -1249,47 +1183,38 @@ fn ascii_case(s: String, up: Bool) String:
         let k = code_of(c)
 
         if up and k >= 97 and k <= 122:
-            out = out + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".get(k - 97)
+            out += "ABCDEFGHIJKLMNOPQRSTUVWXYZ".get(k - 97)
         else if not up and k >= 65 and k <= 90:
-            out = out + "abcdefghijklmnopqrstuvwxyz".get(k - 65)
+            out += "abcdefghijklmnopqrstuvwxyz".get(k - 65)
         else:
-            out = out + c
+            out += c
 
     return out
 
 fn scalar_fn(name: String, vals: List[Value]) Result[Value, String]:
     if name == "COALESCE":
         for v in vals:
-            if kind(v) != 0:
-                return ok(v.clone())
+            if kind(v) != 0: return ok(v.clone())
         return ok(VNull)
 
-    if name == "SUBSTR":
-        return substr_fn(vals)
+    if name == "SUBSTR": return substr_fn(vals)
 
     let v = vals[0]
     let k = kind(v)
 
     if name == "ABS":
-        if k == 0:
-            return ok(VNull)
-        if k != 1:
-            return error("type error")
+        if k == 0: return ok(VNull)
+        if k != 1: return error("type error")
 
         let x = ival(v)
-        if x < 0:
-            return ok(VInt(0 - x))
+        if x < 0: return ok(VInt(0 - x))
 
         return ok(VInt(x))
 
-    if k == 0:
-        return ok(VNull)
-    if k != 2:
-        return error("type error")
-    if name == "UPPER":
-        return ok(VText(ascii_case(sval(v), true)))
-    if name == "LOWER":
-        return ok(VText(ascii_case(sval(v), false)))
+    if k == 0: return ok(VNull)
+    if k != 2: return error("type error")
+    if name == "UPPER": return ok(VText(ascii_case(sval(v), true)))
+    if name == "LOWER": return ok(VText(ascii_case(sval(v), false)))
 
     return ok(VInt(sval(v).byte_length()))
 
@@ -1300,8 +1225,7 @@ fn agg_eval(
     args: List[Expr],
     grp: List[List[Value]]
 ) Result[Value, String]:
-    if name == "COUNT" and star:
-        return ok(VInt(grp.length()))
+    if name == "COUNT" and star: return ok(VInt(grp.length()))
 
     let empty: List[List[Value]] = []
     var vals: List[Value] = []
@@ -1322,37 +1246,31 @@ fn agg_eval(
         if not dup:
             use.append(v.clone())
 
-    if name == "COUNT":
-        return ok(VInt(use.length()))
+    if name == "COUNT": return ok(VInt(use.length()))
 
     if name == "SUM":
         var total = 0
         var seen = false
 
         for v in use:
-            if kind(v) != 1:
-                return error("type error")
+            if kind(v) != 1: return error("type error")
 
             total += ival(v)
             seen = true
 
-        if not seen:
-            return ok(VNull)
+        if not seen: return ok(VNull)
 
         return ok(VInt(total))
 
-    if use.length() == 0:
-        return ok(VNull)
+    if use.length() == 0: return ok(VNull)
 
     let k0 = kind(use[0])
-    if k0 != 1 and k0 != 2:
-        return error("type error")
+    if k0 != 1 and k0 != 2: return error("type error")
 
     var best = use[0].clone()
 
     for v in use:
-        if kind(v) != k0:
-            return error("type error")
+        if kind(v) != k0: return error("type error")
 
         let c = cmp_sort(v, best)
         if name == "MIN" and c < 0:
@@ -1377,29 +1295,22 @@ fn ev(row: List[Value], grp: List[List[Value]], e: Expr) Result[Value, String]:
 
             if op == "NOT":
                 let t = tri(v)
-                if t == -1:
-                    return error("type error")
-                if t == 2:
-                    return ok(VNull)
+                if t == -1: return error("type error")
+                if t == 2: return ok(VNull)
 
                 return ok(VBool(t == 0))
 
-            if kind(v) == 0:
-                return ok(VNull)
-            if kind(v) != 1:
-                return error("type error")
+            if kind(v) == 0: return ok(VNull)
+            if kind(v) != 1: return error("type error")
 
             return ok(VInt(0 - ival(v)))
         Bin(op, l, r):
-            if op == "AND":
-                return logic(true, row, grp, l, r)
-            if op == "OR":
-                return logic(false, row, grp, l, r)
+            if op == "AND": return logic(true, row, grp, l, r)
+            if op == "OR": return logic(false, row, grp, l, r)
 
             let a = try ev(row, grp, l)
             let b = try ev(row, grp, r)
-            if op == "||":
-                return concat_op(a, b)
+            if op == "||": return concat_op(a, b)
             if op == "+" or op == "-" or op == "*" or op == "/" or op == "%":
                 return arith(op, a, b)
 
@@ -1414,8 +1325,7 @@ fn ev(row: List[Value], grp: List[List[Value]], e: Expr) Result[Value, String]:
             let kb = kind(b)
             if (ka != 0 and ka != 2) or (kb != 0 and kb != 2):
                 return error("type error")
-            if ka == 0 or kb == 0:
-                return ok(VNull)
+            if ka == 0 or kb == 0: return ok(VNull)
 
             let m = like_rec(sval(a).as_bytes(), 0, sval(b).as_bytes(), 0)
             return ok(VBool(m != neg))
@@ -1429,20 +1339,16 @@ fn ev(row: List[Value], grp: List[List[Value]], e: Expr) Result[Value, String]:
                 let kv = kind(v)
 
                 if kind(xv) != 0 and kv != 0:
-                    if kv != kind(xv) or kv == 3:
-                        return error("type error")
+                    if kv != kind(xv) or kv == 3: return error("type error")
 
                     if same(xv, v):
                         found = true
                 else if kv == 0:
                     sawnull = true
 
-            if kind(xv) == 0:
-                return ok(VNull)
-            if found:
-                return ok(VBool(not neg))
-            if sawnull:
-                return ok(VNull)
+            if kind(xv) == 0: return ok(VNull)
+            if found: return ok(VBool(not neg))
+            if sawnull: return ok(VNull)
 
             return ok(VBool(neg))
         Between(x, lo, hi, neg):
@@ -1470,8 +1376,7 @@ fn ev(row: List[Value], grp: List[List[Value]], e: Expr) Result[Value, String]:
                 res = 1 - res
             return ok(from_tri(res))
         Call(name, args, distinct, star):
-            if is_agg(name):
-                return agg_eval(name, distinct, star, args, grp)
+            if is_agg(name): return agg_eval(name, distinct, star, args, grp)
 
             var vals: List[Value] = []
 
@@ -1498,29 +1403,24 @@ fn has_agg(e: Expr) Bool:
         Like(x, pat, _neg):
             return has_agg(x) or has_agg(pat)
         InList(x, items, _neg):
-            if has_agg(x):
-                return true
+            if has_agg(x): return true
 
             for it in items:
-                if has_agg(it):
-                    return true
+                if has_agg(it): return true
             return false
         Between(x, lo, hi, _neg):
             return has_agg(x) or has_agg(lo) or has_agg(hi)
         Call(name, args, _d, _s):
-            if is_agg(name):
-                return true
+            if is_agg(name): return true
 
             for a in args:
-                if has_agg(a):
-                    return true
+                if has_agg(a): return true
             return false
 
 // ---------------------------------------------------------------- binding (name resolution)
 
 fn qual_name(t: String, n: String) String:
-    if t == "":
-        return n.clone()
+    if t == "": return n.clone()
 
     return t + "." + n
 
@@ -1528,8 +1428,7 @@ fn col_find_names(cols: List[String], n: String) Int:
     var i = 0
 
     while i < cols.length():
-        if cols[i] == n:
-            return i
+        if cols[i] == n: return i
 
         i += 1
 
@@ -1539,8 +1438,7 @@ fn col_find_defs(cols: List[ColDef], n: String) Int:
     var i = 0
 
     while i < cols.length():
-        if cols[i].name == n:
-            return i
+        if cols[i].name == n: return i
 
         i += 1
 
@@ -1557,8 +1455,7 @@ fn resolve(srcs: List[Src], t: String, n: String) Result[Int, String]:
         for s in srcs:
             if s.alias == t:
                 let j = col_find_names(s.cols, n)
-                if j >= 0:
-                    return ok(s.off + j)
+                if j >= 0: return ok(s.off + j)
 
                 return error("no such column: {qual_name(t, n)}")
 
@@ -1574,10 +1471,8 @@ fn resolve(srcs: List[Src], t: String, n: String) Result[Int, String]:
             found = s.off + j
             count += 1
 
-    if count == 0:
-        return error("no such column: {n}")
-    if count > 1:
-        return error("ambiguous column: {n}")
+    if count == 0: return error("no such column: {n}")
+    if count > 1: return error("ambiguous column: {n}")
 
     return ok(found)
 
@@ -1605,8 +1500,7 @@ fn bind_call(
     star: Bool
 ) Result[Expr, String]:
     if is_agg(name):
-        if not allow or inagg:
-            return error("misuse of aggregate")
+        if not allow or inagg: return error("misuse of aggregate")
 
         if star:
             if name == "COUNT" and not distinct:
@@ -1614,8 +1508,7 @@ fn bind_call(
 
             return error("wrong number of arguments to {name}")
 
-        if args.length() != 1:
-            return error("wrong number of arguments to {name}")
+        if args.length() != 1: return error("wrong number of arguments to {name}")
 
         let b = try bind(srcs, gidx, aggq, false, true, args[0])
         var bl: List[Expr] = []
@@ -1633,8 +1526,7 @@ fn bind_call(
     else:
         return error("no such function: {name}")
 
-    if star:
-        return error("wrong number of arguments to {name}")
+    if star: return error("wrong number of arguments to {name}")
     if need >= 0 and args.length() != need:
         return error("wrong number of arguments to {name}")
     if need < 0 and args.length() < 1:
@@ -1706,8 +1598,7 @@ fn table_index(db: List[Table], name: String) Int:
     var i = 0
 
     while i < db.length():
-        if db[i].name == name:
-            return i
+        if db[i].name == name: return i
 
         i += 1
 
@@ -1717,15 +1608,13 @@ fn make_src(db: List[Table], ti: Int, alias: String, off: Int) Src:
     return Src(alias: alias, cols: col_names(db[ti].cols), off: off, tidx: ti)
 
 fn alias_of(tr: TRef) String:
-    if tr.alias != "":
-        return tr.alias.clone()
+    if tr.alias != "": return tr.alias.clone()
 
     return tr.name.clone()
 
 fn has_alias(srcs: List[Src], a: String) Bool:
     for s in srcs:
-        if s.alias == a:
-            return true
+        if s.alias == a: return true
     return false
 
 fn prefix_srcs(srcs: List[Src], k: Int) List[Src]:
@@ -1741,8 +1630,7 @@ fn prefix_srcs(srcs: List[Src], k: Int) List[Src]:
 fn bare_name(e: Expr) String:
     match e:
         ColRef(t, n):
-            if t == "":
-                return n.clone()
+            if t == "": return n.clone()
 
             return ""
         _:
@@ -1759,16 +1647,14 @@ fn index_of_name(names: List[String], n: String) Int:
     var i = 0
 
     while i < names.length():
-        if names[i] == n:
-            return i
+        if names[i] == n: return i
 
         i += 1
 
     return -1
 
 fn rep_of(u: List[List[Value]]) List[Value]:
-    if u.length() > 0:
-        return u[0].clone()
+    if u.length() > 0: return u[0].clone()
 
     let empty: List[Value] = []
     return empty
@@ -1790,20 +1676,17 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
 
     if q.has_from:
         from_ti = table_index(db, q.from_t.name)
-        if from_ti < 0:
-            return error("no such table: {q.from_t.name}")
+        if from_ti < 0: return error("no such table: {q.from_t.name}")
 
         srcs.append(make_src(db, from_ti, alias_of(q.from_t), off))
         off += db[from_ti].cols.length()
 
         for j in q.joins:
             let tj = table_index(db, j.tref.name)
-            if tj < 0:
-                return error("no such table: {j.tref.name}")
+            if tj < 0: return error("no such table: {j.tref.name}")
 
             let aj = alias_of(j.tref)
-            if has_alias(srcs, aj):
-                return error("duplicate alias: {aj}")
+            if has_alias(srcs, aj): return error("duplicate alias: {aj}")
 
             srcs.append(make_src(db, tj, aj, off))
             join_tis.append(tj)
@@ -1854,8 +1737,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
                     found = si
                 si += 1
 
-            if found < 0:
-                return error("no such table: {it.tbl}")
+            if found < 0: return error("no such table: {it.tbl}")
 
             let s = srcs[found]
             var j = 0
@@ -1908,8 +1790,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
         ord_desc.append(o.desc)
 
         if o.lit:
-            if o.n < 1 or o.n > nout:
-                return error("bad ORDER BY position")
+            if o.n < 1 or o.n > nout: return error("bad ORDER BY position")
 
             ord_pos.append(o.n - 1)
             ord_e.append(Lit(VNull))
@@ -1945,8 +1826,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
                 let comb = concat_rows(r, ir)
                 let cv = try ev(comb, no_rows, bons[jn])
                 let ct = tri(cv)
-                if ct == -1:
-                    return error("type error")
+                if ct == -1: return error("type error")
 
                 if ct == 1:
                     matched = true
@@ -1972,8 +1852,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
         for r in rows:
             let wv = try ev(r, no_rows, bwhere)
             let wt = tri(wv)
-            if wt == -1:
-                return error("type error")
+            if wt == -1: return error("type error")
 
             if wt == 1:
                 kept.append(r.clone())
@@ -2025,8 +1904,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
         for u in units:
             let hv = try ev(rep_of(u), u, bhav)
             let ht = tri(hv)
-            if ht == -1:
-                return error("type error")
+            if ht == -1: return error("type error")
 
             if ht == 1:
                 kept_u.append(u.clone())
@@ -2099,7 +1977,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
         out = out + cells.join("|") + "\n"
         i += 1
 
-    out = out + "({last - first} rows)\n"
+    out += "({last - first} rows)\n"
     return ok(out)
 
 // ---------------------------------------------------------------- DDL / DML
@@ -2115,8 +1993,7 @@ fn check_coldefs(cols: List[ColDef]) Result[Unit, String]:
 
         if cols[i].pk:
             npk += 1
-            if npk > 1:
-                return error("multiple primary keys")
+            if npk > 1: return error("multiple primary keys")
 
         i += 1
 
@@ -2126,8 +2003,7 @@ fn pk_index(cols: List[ColDef]) Int:
     var i = 0
 
     while i < cols.length():
-        if cols[i].pk:
-            return i
+        if cols[i].pk: return i
 
         i += 1
 
@@ -2178,10 +2054,8 @@ fn insert_rows(
     if has_cols:
         for cn in cols:
             let j = col_find_defs(tbl.cols, cn)
-            if j < 0:
-                return error("no such column: {cn}")
-            if pos.contains(j):
-                return error("duplicate column: {cn}")
+            if j < 0: return error("no such column: {cn}")
+            if pos.contains(j): return error("duplicate column: {cn}")
 
             pos.append(j)
     else:
@@ -2202,8 +2076,7 @@ fn insert_rows(
     let base = all.length()
 
     for r in rows:
-        if r.length() != pos.length():
-            return error("wrong number of values")
+        if r.length() != pos.length(): return error("wrong number of values")
 
         var vals: List[Value] = []
         var j = 0
@@ -2245,8 +2118,7 @@ fn update_rows(
 
     for s in sets:
         let j = col_find_defs(tbl.cols, s.name)
-        if j < 0:
-            return error("no such column: {s.name}")
+        if j < 0: return error("no such column: {s.name}")
 
         setpos.append(j)
 
@@ -2269,8 +2141,7 @@ fn update_rows(
         if has_where:
             let wv = try ev(row, no_rows, bwhere)
             let wt = tri(wv)
-            if wt == -1:
-                return error("type error")
+            if wt == -1: return error("type error")
 
             hit = wt == 1
 
@@ -2313,8 +2184,7 @@ fn delete_rows(tbl: Table, has_where: Bool, wh: Expr) Result[Changed, String]:
         if has_where:
             let wv = try ev(row, no_rows, bwhere)
             let wt = tri(wv)
-            if wt == -1:
-                return error("type error")
+            if wt == -1: return error("type error")
 
             del = wt == 1
 
@@ -2328,39 +2198,34 @@ fn delete_rows(tbl: Table, has_where: Bool, wh: Expr) Result[Changed, String]:
 fn run_stmt(var db: List[Table], st: Stmt) Result[String, String]:
     match st:
         SCreate(name, cols):
-            if table_index(db, name) >= 0:
-                return error("table {name} already exists")
+            if table_index(db, name) >= 0: return error("table {name} already exists")
 
             try check_coldefs(cols)
             db.append(Table(name: name.clone(), cols: cols.clone(), rows: []))
             return ok("ok\n")
         SDrop(name):
             let ti = table_index(db, name)
-            if ti < 0:
-                return error("no such table: {name}")
+            if ti < 0: return error("no such table: {name}")
 
             db.remove(ti)
             return ok("ok\n")
         SInsert(name, has_cols, cols, rows):
             let ti = table_index(db, name)
-            if ti < 0:
-                return error("no such table: {name}")
+            if ti < 0: return error("no such table: {name}")
 
             let ch = try insert_rows(db[ti].clone(), has_cols, cols, rows)
             db[ti].rows = ch.rows
             return ok("inserted {ch.count}\n")
         SUpdate(name, sets, has_where, where_e):
             let ti = table_index(db, name)
-            if ti < 0:
-                return error("no such table: {name}")
+            if ti < 0: return error("no such table: {name}")
 
             let ch = try update_rows(db[ti].clone(), sets, has_where, where_e)
             db[ti].rows = ch.rows
             return ok("updated {ch.count}\n")
         SDelete(name, has_where, where_e):
             let ti = table_index(db, name)
-            if ti < 0:
-                return error("no such table: {name}")
+            if ti < 0: return error("no such table: {name}")
 
             let ch = try delete_rows(db[ti].clone(), has_where, where_e)
             db[ti].rows = ch.rows
@@ -2370,8 +2235,7 @@ fn run_stmt(var db: List[Table], st: Stmt) Result[String, String]:
 
 fn run_piece_r(var db: List[Table], cs: List[String]) Result[String, String]:
     let toks = try lex(cs)
-    if toks.length() == 1:
-        return ok("")
+    if toks.length() == 1: return ok("")
 
     var p = Parser(toks: toks, pos: 0)
     let st = try parse_statement(var p)
@@ -2379,8 +2243,7 @@ fn run_piece_r(var db: List[Table], cs: List[String]) Result[String, String]:
 
 fn run_piece(var db: List[Table], cs: List[String]) String:
     let r = run_piece_r(var db, cs)
-    if r.is_error():
-        return "error: {r.err()}\n"
+    if r.is_error(): return "error: {r.err()}\n"
 
     return r.get().clone()
 
@@ -2394,6 +2257,6 @@ export fn main() Int:
     var db: List[Table] = []
     var out = ""
     for piece in split_statements(cs):
-        out = out + run_piece(var db, piece)
+        out += run_piece(var db, piece)
     stdout().write(out).get()
     return 0

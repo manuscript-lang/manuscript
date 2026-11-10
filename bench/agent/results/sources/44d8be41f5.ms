@@ -14,8 +14,7 @@ export fn main() Int:
     // Trailing empty lines are not part of the grid.
     while n > 0 and rows[n - 1].length() == 0:
         n -= 1
-    if n == 0:
-        return say("error: no start")
+    if n == 0: return say("error: no start")
 
     var grid = List[List[String]]()
     for r in 0..n:
@@ -29,8 +28,7 @@ export fn main() Int:
 
     let width = grid[0].length()
     for r in 0..n:
-        if grid[r].length() != width:
-            return say("error: ragged grid")
+        if grid[r].length() != width: return say("error: ragged grid")
 
     var starts = 0
     var ends = 0
@@ -48,14 +46,10 @@ export fn main() Int:
                 ends += 1
                 e = r * width + c
 
-    if starts == 0:
-        return say("error: no start")
-    if starts > 1:
-        return say("error: multiple starts")
-    if ends == 0:
-        return say("error: no end")
-    if ends > 1:
-        return say("error: multiple ends")
+    if starts == 0: return say("error: no start")
+    if starts > 1: return say("error: multiple starts")
+    if ends == 0: return say("error: no end")
+    if ends > 1: return say("error: multiple ends")
 
     // Breadth-first search over the flattened grid; -1 means not yet reached.
     var dist = List[Int]()
@@ -80,17 +74,14 @@ export fn main() Int:
         for k in 0..4:
             let nr = r + dr[k]
             let nc = c + dc[k]
-            if nr < 0 or nr >= n or nc < 0 or nc >= width:
-                continue
+            if nr < 0 or nr >= n or nc < 0 or nc >= width: continue
 
             let next = nr * width + nc
-            if grid[nr][nc] == "#" or dist[next] != -1:
-                continue
+            if grid[nr][nc] == "#" or dist[next] != -1: continue
 
             dist[next] = dist[cur] + 1
             queue.append(next)
 
-    if dist[e] < 0:
-        return say("no path")
+    if dist[e] < 0: return say("no path")
 
     return say("{dist[e]}")

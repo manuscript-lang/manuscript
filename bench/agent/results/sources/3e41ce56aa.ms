@@ -112,8 +112,7 @@ export fn main() Int:
     for k in 0..steps.length():
         if steps[k].kind != SAME:
             changes.append(k)
-    if changes.length() == 0:
-        return 0
+    if changes.length() == 0: return 0
 
     var out = StringBuilder()
     out.append("--- {head[0]}\n")

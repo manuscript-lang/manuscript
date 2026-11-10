@@ -36,10 +36,10 @@ impl Parser:
 
             if self.at() == 43:
                 self.pos += 1
-                v = v + self.term()
+                v += self.term()
             else if self.at() == 45:
                 self.pos += 1
-                v = v - self.term()
+                v -= self.term()
             else:
                 break
 
@@ -53,7 +53,7 @@ impl Parser:
 
             if self.at() == 42:
                 self.pos += 1
-                v = v * self.unary()
+                v *= self.unary()
             else if self.at() == 47:
                 self.pos += 1
 
@@ -125,8 +125,7 @@ export fn main() Int:
             src.append(ch.scalar_at(0, default: -1))
 
         var p = Parser(src: src, pos: 0, syntax: false, divz: false)
-        if p.blank():
-            continue
+        if p.blank(): continue
 
         let v = p.expr()
         p.skip_ws()

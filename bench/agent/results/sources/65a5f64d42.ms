@@ -14,8 +14,7 @@ export fn main() Int:
     // Trailing empty lines are not part of the grid.
     while rows > 0 and lines[rows - 1] == "":
         rows -= 1
-    if rows == 0:
-        return emit("error: no start")
+    if rows == 0: return emit("error: no start")
 
     var grid = List[List[String]]()
     for r in 0..rows:
@@ -30,8 +29,7 @@ export fn main() Int:
 
     let width = grid[0].length()
     for r in 0..rows:
-        if grid[r].length() != width:
-            return emit("error: ragged grid")
+        if grid[r].length() != width: return emit("error: ragged grid")
 
     var starts = 0
     var ends = 0
@@ -47,14 +45,10 @@ export fn main() Int:
                 ends += 1
                 end = r * width + c
 
-    if starts == 0:
-        return emit("error: no start")
-    if starts > 1:
-        return emit("error: multiple starts")
-    if ends == 0:
-        return emit("error: no end")
-    if ends > 1:
-        return emit("error: multiple ends")
+    if starts == 0: return emit("error: no start")
+    if starts > 1: return emit("error: multiple starts")
+    if ends == 0: return emit("error: no end")
+    if ends > 1: return emit("error: multiple ends")
 
     // Breadth-first search over the grid; `dist` is -1 for unvisited cells.
     let total = rows * width
@@ -71,8 +65,7 @@ export fn main() Int:
     while head < queue.length():
         let cur = queue[head]
         head += 1
-        if cur == end:
-            break
+        if cur == end: break
 
         let r = cur / width
         let c = cur % width
@@ -90,17 +83,14 @@ export fn main() Int:
             else:
                 nc += 1
 
-            if nr < 0 or nr >= rows or nc < 0 or nc >= width:
-                continue
+            if nr < 0 or nr >= rows or nc < 0 or nc >= width: continue
 
             let next = nr * width + nc
-            if grid[nr][nc] == "#" or dist[next] >= 0:
-                continue
+            if grid[nr][nc] == "#" or dist[next] >= 0: continue
 
             dist[next] = dist[cur] + 1
             queue.append(next)
 
-    if dist[end] < 0:
-        return emit("no path")
+    if dist[end] < 0: return emit("no path")
 
     return emit("{dist[end]}")

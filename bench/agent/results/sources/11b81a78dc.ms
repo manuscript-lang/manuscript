@@ -83,8 +83,7 @@ fn enc(xs: List[String]) String:
 
 fn dec(content: String) List[String]:
     var out = List[String]()
-    if content == "":
-        return out
+    if content == "": return out
 
     let parts = content.split("\n")
     for k in 0..parts.length() - 1:
@@ -93,40 +92,33 @@ fn dec(content: String) List[String]:
 
 fn sub(xs: List[String], a: Int, b: Int) List[String]:
     var out = List[String]()
-    if a >= b:
-        return out
+    if a >= b: return out
 
     for k in a..b:
         out.append(xs[k].clone())
     return out
 
 fn max_int(a: Int, b: Int) Int:
-    if a >= b:
-        return a
+    if a >= b: return a
 
     return b
 
 fn is_digits(s: String) Bool:
-    if s == "":
-        return false
+    if s == "": return false
 
     for c in s.split(""):
-        if not "0123456789".contains(c):
-            return false
+        if not "0123456789".contains(c): return false
     return true
 
 fn is_hex_prefix(s: String) Bool:
-    if s.length() < 4:
-        return false
+    if s.length() < 4: return false
 
     for c in s.split(""):
-        if not "0123456789abcdef".contains(c):
-            return false
+        if not "0123456789abcdef".contains(c): return false
     return true
 
 fn name_ok(s: String) Bool:
-    if s == "":
-        return false
+    if s == "": return false
 
     let first_set = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/"
     let rest_set = first_set + "-"
@@ -134,8 +126,7 @@ fn name_ok(s: String) Bool:
 
     for k in 0..cs.length():
         if k == 0:
-            if not first_set.contains(cs[k]):
-                return false
+            if not first_set.contains(cs[k]): return false
         else:
             if not rest_set.contains(cs[k]):
                 return false
@@ -165,14 +156,11 @@ fn union_names(
     return out
 
 fn maps_equal(a: Map[String, String], b: Map[String, String]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for k in a.keys():
-        if not b.contains(k):
-            return false
-        if a.get(k).get("") != b.get(k).get(""):
-            return false
+        if not b.contains(k): return false
+        if a.get(k).get("") != b.get(k).get(""): return false
 
     return true
 
@@ -195,8 +183,7 @@ fn make_commit(
     var r: Repo, tree: Map[String, String], parents: List[String], message: String
 ) String:
     let id = commit_id(tree, parents, message)
-    if r.commits.contains(id):
-        return id
+    if r.commits.contains(id): return id
 
     let seq = r.order.length() + 1
     r.commits[id.clone()] = Commit(
@@ -206,8 +193,7 @@ fn make_commit(
     return id
 
 fn commit_tree(r: Repo, id: String) Map[String, String]:
-    if id == "":
-        return Map[String, String]()
+    if id == "": return Map[String, String]()
 
     return r.commits[id].tree.clone()
 
@@ -223,14 +209,12 @@ fn new_repo() Repo:
     )
 
 fn head_id(r: Repo) String:
-    if r.attached:
-        return r.branches.get(r.head_branch).get("")
+    if r.attached: return r.branches.get(r.head_branch).get("")
 
     return r.head_commit.clone()
 
 fn label_of(r: Repo) String:
-    if r.attached:
-        return r.head_branch.clone()
+    if r.attached: return r.head_branch.clone()
 
     return "detached"
 
@@ -250,8 +234,7 @@ fn ancestors(r: Repo, start: String) Set[String]:
 
     while stack.length() > 0:
         let c = stack.pop().get("")
-        if seen.contains(c):
-            continue
+        if seen.contains(c): continue
 
         seen.add(c.clone())
         for p in r.commits[c].parents:
@@ -267,8 +250,7 @@ fn merge_base(r: Repo, a: String, b: String) String:
 
     while i >= 0:
         let c = r.order[i].clone()
-        if anc_a.contains(c) and anc_b.contains(c):
-            return c
+        if anc_a.contains(c) and anc_b.contains(c): return c
 
         i -= 1
 
@@ -285,13 +267,11 @@ fn resolve(r: Repo, rev: String) Resolved:
     var steps = 0
 
     if parts.length() > 1:
-        if parts.length() != 2 or not is_digits(parts[1]):
-            return unknown_rev(rev)
+        if parts.length() != 2 or not is_digits(parts[1]): return unknown_rev(rev)
 
         base = parts[0].clone()
         steps = parts[1].parse_int().get(-1)
-        if steps < 0:
-            return unknown_rev(rev)
+        if steps < 0: return unknown_rev(rev)
 
     var id = ""
     let bc = r.branches.get(base).get("")
@@ -310,18 +290,15 @@ fn resolve(r: Repo, rev: String) Resolved:
                 matches += 1
                 id = cid.clone()
 
-        if matches > 1:
-            return Resolved(id: "", err: "ambiguous revision '{rev}'")
+        if matches > 1: return Resolved(id: "", err: "ambiguous revision '{rev}'")
 
-    if id == "":
-        return unknown_rev(rev)
+    if id == "": return unknown_rev(rev)
 
     var k = 0
 
     while k < steps:
         let ps = r.commits[id].parents
-        if ps.length() == 0:
-            return unknown_rev(rev)
+        if ps.length() == 0: return unknown_rev(rev)
 
         id = ps[0].clone()
         k += 1
@@ -423,12 +400,9 @@ fn resolve_chunk(
     let be = enc(bc)
     let oe = enc(oc)
     let te = enc(tc)
-    if oe == be:
-        return Merged(text: te, clean: true)
-    if te == be:
-        return Merged(text: oe, clean: true)
-    if oe == te:
-        return Merged(text: oe, clean: true)
+    if oe == be: return Merged(text: te, clean: true)
+    if te == be: return Merged(text: oe, clean: true)
+    if oe == te: return Merged(text: oe, clean: true)
 
     return Merged(
         text: "<<<<<<< HEAD\n" + oe + "=======\n" + te + ">>>>>>> " + bname + "\n",
@@ -496,22 +470,18 @@ fn merge3(
 
 fn is_dirty(r: Repo) Bool:
     let ht = commit_tree(r, head_id(r))
-    if not maps_equal(r.index, ht):
-        return true
+    if not maps_equal(r.index, ht): return true
 
     for n in r.index.keys():
-        if not r.working.contains(n):
-            return true
-        if r.working.get(n).get("") != r.index.get(n).get(""):
-            return true
+        if not r.working.contains(n): return true
+        if r.working.get(n).get("") != r.index.get(n).get(""): return true
 
     return false
 
 // first name (names sorted) that is untracked in the working tree
 fn first_untracked(r: Repo, names: List[String]) String:
     for n in names:
-        if (not r.index.contains(n)) and r.working.contains(n):
-            return n.clone()
+        if (not r.index.contains(n)) and r.working.contains(n): return n.clone()
     return ""
 
 // replace the index and working files with target (checkout / fast-forward)
@@ -591,8 +561,7 @@ fn cmd_mv(var r: Repo, args: List[String]) Unit:
         err_out("no such file: {old}")
         return
 
-    if old == nw:
-        return
+    if old == nw: return
 
     let content = r.working.get(old).get("")
     r.working.remove(old)
@@ -650,8 +619,7 @@ fn cmd_add(var r: Repo, args: List[String]) Unit:
             return
 
 fn print_section(title: String, items: List[String]) Unit:
-    if items.length() == 0:
-        return
+    if items.length() == 0: return
 
     emit(title)
     for it in items:
@@ -670,8 +638,7 @@ fn cmd_status(r: Repo) Unit:
     var staged = List[String]()
 
     for n in union_names(headt, r.index, Map[String, String]()):
-        if r.conflicts.contains(n):
-            continue
+        if r.conflicts.contains(n): continue
 
         let inh = headt.contains(n)
         let ini = r.index.contains(n)
@@ -686,8 +653,7 @@ fn cmd_status(r: Repo) Unit:
     var unstaged = List[String]()
 
     for n in sorted_keys(r.index):
-        if r.conflicts.contains(n):
-            continue
+        if r.conflicts.contains(n): continue
 
         if not r.working.contains(n):
             unstaged.append("deleted: {n}")
@@ -788,8 +754,7 @@ fn cmd_log(r: Repo, args: List[String]) Unit:
     var i = r.order.length() - 1
 
     while i >= 0:
-        if limit >= 0 and printed >= limit:
-            break
+        if limit >= 0 and printed >= limit: break
 
         let c = r.order[i].clone()
 
@@ -868,8 +833,7 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
         let rp = right.contains(n)
         let lc = left.get(n).get("")
         let rc = right.get(n).get("")
-        if lp == rp and lc == rc:
-            continue
+        if lp == rp and lc == rc: continue
 
         any = true
         emit("diff {n}")
@@ -1001,8 +965,7 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
             return
 
         let tt = commit_tree(r, r.branches.get(target).get(""))
-        if not check_switch(r, tt):
-            return
+        if not check_switch(r, tt): return
 
         apply_tree(var r, tt)
         r.attached = true
@@ -1017,8 +980,7 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
         return
 
     let tt = commit_tree(r, res.id)
-    if not check_switch(r, tt):
-        return
+    if not check_switch(r, tt): return
 
     apply_tree(var r, tt)
     r.attached = false
@@ -1217,8 +1179,7 @@ export fn main() Int:
         i += 1
 
         let t = line.trim()
-        if t == "" or t.starts_with("#"):
-            continue
+        if t == "" or t.starts_with("#"): continue
 
         emit("> " + line.trim_end())
 

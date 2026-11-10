@@ -94,12 +94,10 @@ export fn main() Int:
                 nc = c - 1
             if step == 3:
                 nc = c + 1
-            if nr < 0 or nr >= grid.length() or nc < 0 or nc >= width:
-                continue
+            if nr < 0 or nr >= grid.length() or nc < 0 or nc >= width: continue
 
             let next = nr * width + nc
-            if grid[nr][nc] == "#" or dist[next] >= 0:
-                continue
+            if grid[nr][nc] == "#" or dist[next] >= 0: continue
 
             dist[next] = dist[cur] + 1
             queue.append(next)

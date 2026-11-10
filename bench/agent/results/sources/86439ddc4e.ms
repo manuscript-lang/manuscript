@@ -27,22 +27,18 @@ fn is_caesar_key(key: String) Bool:
         start = 1
 
     let count = values.length() - start
-    if count < 1 or count > 7:
-        return false
+    if count < 1 or count > 7: return false
 
     for i in start..values.length():
-        if not is_digit(values[i]):
-            return false
+        if not is_digit(values[i]): return false
     return true
 
 fn is_vigenere_key(key: String) Bool:
     let values = key.scalar_values()
-    if values.length() == 0:
-        return false
+    if values.length() == 0: return false
 
     for c in values:
-        if not is_letter(c):
-            return false
+        if not is_letter(c): return false
     return true
 
 fn caesar(text: List[Int], amount: Int) List[Int]:
@@ -71,46 +67,39 @@ fn join_from(parts: List[String], start: Int) String:
 
     for i in start..parts.length():
         if i > start:
-            out = out + " "
-        out = out + parts[i]
+            out += " "
+        out += parts[i]
 
     return out
 
 fn convert(line: String) String:
     let parts = line.split(" ")
-    if parts.length() < 4:
-        return "error: bad command"
+    if parts.length() < 4: return "error: bad command"
 
     let cipher = parts[0]
     let mode = parts[1]
     let key = parts[2]
     let rest = join_from(parts, 3)
-    if rest.is_empty():
-        return "error: bad command"
-    if cipher != "caesar" and cipher != "vigenere":
-        return "error: bad cipher"
-    if mode != "enc" and mode != "dec":
-        return "error: bad mode"
+    if rest.is_empty(): return "error: bad command"
+    if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
+    if mode != "enc" and mode != "dec": return "error: bad mode"
 
     let decrypt = mode == "dec"
     let text = rest.scalar_values()
 
     if cipher == "caesar":
-        if not is_caesar_key(key):
-            return "error: bad key"
+        if not is_caesar_key(key): return "error: bad key"
 
         let amount = key.parse_int().get(0)
         return from_scalars(caesar(text, if decrypt: -amount else: amount)).get("")
 
-    if not is_vigenere_key(key):
-        return "error: bad key"
+    if not is_vigenere_key(key): return "error: bad key"
 
     return from_scalars(vigenere(text, key.scalar_values(), decrypt)).get("")
 
 fn is_blank(line: String) Bool:
     for c in line.scalar_values():
-        if c != 32:
-            return false
+        if c != 32: return false
     return true
 
 export fn main() Int:

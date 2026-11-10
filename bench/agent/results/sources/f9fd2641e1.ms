@@ -10,18 +10,15 @@ fn bad() Int:
     return -1
 
 fn parse_num(text: String) Int:
-    if text.is_empty() or text.byte_length() > 6:
-        return bad()
+    if text.is_empty() or text.byte_length() > 6: return bad()
 
     for ch in text.scalar_values():
-        if ch < 48 or ch > 57:
-            return bad()
+        if ch < 48 or ch > 57: return bad()
     return text.parse_int().get(bad())
 
 fn is_blank(line: String) Bool:
     for ch in line.scalar_values():
-        if ch != 32:
-            return false
+        if ch != 32: return false
     return true
 
 fn lcs(a: List[Int], b: List[Int]) Int:
@@ -93,8 +90,7 @@ fn coins(amount: Int, denominations: List[Int]) String:
             if c <= a and best[a - c] + 1 < best[a]:
                 best[a] = best[a - c] + 1
 
-    if best[amount] >= unreachable:
-        return "impossible"
+    if best[amount] >= unreachable: return "impossible"
 
     return "{best[amount]}"
 
@@ -103,38 +99,31 @@ fn run(line: String) String:
     let name = tokens[0]
 
     if name == "lcs" or name == "edit":
-        if tokens.length() != 3:
-            return "error: bad command"
+        if tokens.length() != 3: return "error: bad command"
 
         let a = tokens[1]
         let b = tokens[2]
-        if a.is_empty() or b.is_empty():
-            return "error: bad command"
-        if name == "lcs":
-            return "{lcs(a.scalar_values(), b.scalar_values())}"
+        if a.is_empty() or b.is_empty(): return "error: bad command"
+        if name == "lcs": return "{lcs(a.scalar_values(), b.scalar_values())}"
 
         return "{edit(a.scalar_values(), b.scalar_values())}"
 
     if name == "knap":
-        if tokens.length() < 2:
-            return "error: bad command"
+        if tokens.length() < 2: return "error: bad command"
 
         let cap = parse_num(tokens[1])
-        if cap < 0:
-            return "error: bad command"
+        if cap < 0: return "error: bad command"
 
         var weights: List[Int] = []
         var values: List[Int] = []
 
         for i in range(2, tokens.length()):
             let item = tokens[i].split(":")
-            if item.length() != 2:
-                return "error: bad command"
+            if item.length() != 2: return "error: bad command"
 
             let w = parse_num(item[0])
             let v = parse_num(item[1])
-            if w < 1 or v < 0:
-                return "error: bad command"
+            if w < 1 or v < 0: return "error: bad command"
 
             weights.append(w)
             values.append(v)
@@ -142,19 +131,16 @@ fn run(line: String) String:
         return "{knap(cap, weights, values)}"
 
     if name == "coins":
-        if tokens.length() < 3:
-            return "error: bad command"
+        if tokens.length() < 3: return "error: bad command"
 
         let amount = parse_num(tokens[1])
-        if amount < 0:
-            return "error: bad command"
+        if amount < 0: return "error: bad command"
 
         var denominations: List[Int] = []
 
         for i in range(2, tokens.length()):
             let c = parse_num(tokens[i])
-            if c < 1:
-                return "error: bad command"
+            if c < 1: return "error: bad command"
 
             denominations.append(c)
 
