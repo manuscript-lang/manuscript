@@ -77,3 +77,26 @@ has no equivalent large pending fan-in case and was on another machine, so its
 absolute times are not compared. These are wall-clock measurements, not instruction
 counts or a full-suite refresh. The benchmark is a profiling guide, not a CI timing
 gate. Unit tests check correctness without a fragile elapsed-time threshold.
+
+## 2026-11-10: waiting in creation order (#3492)
+
+`sched::remove_pending` scanned the pending queue from the newest end, so waiting on
+promises in creation order was quadratic. It now checks the oldest entry first.
+Release `ms` built from main (`d1ea6ce`) and from the change; the benchmark built with
+each, whole-process wall time including startup, alternating before/after runs,
+medians (n = 15 per case, 9 for 40000 at `MS_THREADS=1`/4):
+
+| Case (`count mode order`) | Threads | Before | After |
+| --- | ---: | ---: | ---: |
+| 40000 immediate ordered | 1 | 685.9 ms | 20.1 ms |
+| 40000 immediate ordered | 4 | 214.3 ms | 223.2 ms |
+| 1000 immediate ordered | 1 | 3.05 ms | 2.64 ms |
+| 40000 immediate wait_all | 1 | 38.7 ms | 43.7 ms |
+| 1000 jitter ordered / wait_all | 1 | 9.82 / 10.24 ms | 9.59 / 9.85 ms |
+
+The three slower-looking cells are inside run-to-run noise: reruns with 31 to 61 pairs
+gave 40000 wait_all at 1 thread 1.027x (IQR 14 ms on 41 ms), 1-promise ordered 1.009x
+(1 thread) and 0.96x (4 threads), and 1000 jitter ordered at 4 threads 1.003x. With
+four threads the ordered case is dominated by cross-thread scheduling, not this scan.
+The change adds one id comparison for a promise that is not at the front. Machine:
+shared Linux x86-64 VM; wall-clock, not instruction counts.

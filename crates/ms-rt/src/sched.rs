@@ -327,7 +327,8 @@ pub(crate) fn submit(start: Start) {
 
 /// Removes the promise `id` if it has not started; answers whether it did. A promise is only
 /// ever queued on its creator's thread, and only its creator asks, so only that queue is looked
-/// at; the newest entries are tried first, since a waiter usually wants the one it just made.
+/// at. A waiter usually wants either the one it just made (newest) or, waiting in creation order,
+/// the oldest; both ends are tried before the scan from the newest end.
 pub(crate) fn remove_pending(id: i64) -> Option<usize> {
     let me = current();
     if me == NONE || SLOTS[me].pending.load(Ordering::SeqCst) == 0 {
@@ -335,8 +336,12 @@ pub(crate) fn remove_pending(id: i64) -> Option<usize> {
     }
     let slot = &SLOTS[me];
     let mut mail = lock(&slot.mail);
-    let at = mail.pending.iter().rposition(|s| s.id == id)?;
-    let start = mail.pending.remove(at).expect("position is in range");
+    let start = if mail.pending.front().is_some_and(|s| s.id == id) {
+        mail.pending.pop_front().expect("front exists")
+    } else {
+        let at = mail.pending.iter().rposition(|s| s.id == id)?;
+        mail.pending.remove(at).expect("position is in range")
+    };
     publish(slot, &mail);
     Some(start.closure)
 }

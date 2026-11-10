@@ -185,3 +185,21 @@ test "a promise that ends holding an unfinished promise cancels it instead of ha
 		inner := promise(fn: nap(100000))
 		outer := promise(fn: ignore_inner(inner))
 		try expect_equal(outer.wait() | try expect_ok, 1)
+
+test "waiting in creation, reverse and interleaved order returns every promise's own value":
+	var made: List[Promise[Int]] = []
+	for i in 0..64:
+		made.append(promise(fn: ok(i * 3)))
+
+	// Oldest first, then newest first, then from the middle outward.
+	for i in 0..16:
+		made[i].wait() | try expect_ok | try expect_equal(i * 3)
+
+	var j = 63
+
+	while j >= 48:
+		made[j].wait() | try expect_ok | try expect_equal(j * 3)
+		j -= 1
+
+	for i in 16..48:
+		made[i].wait() | try expect_ok | try expect_equal(i * 3)
