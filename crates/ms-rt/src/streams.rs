@@ -36,7 +36,8 @@ struct Entry {
     out_start: usize,
     /// The read promise waiting on the poller, if any.
     reading: Option<i64>,
-    /// The message of the failure that ended the last operation.
+    /// The message of a read failure or terminal write failure. Write failures stay until close:
+    /// the unwritten bytes were discarded, so a later empty flush cannot establish success.
     error: Vec<u8>,
     /// Flush promises waiting for the buffer to drain.
     flushes: Vec<i64>,
@@ -369,7 +370,8 @@ fn fd_of(stream: i64) -> i32 {
     slot(&mut streams(), stream).map_or(-1, |e| e.fd)
 }
 
-/// Appends `data` to the buffer; 0 taken, 1 the stream is closed or not writable. Never waits.
+/// Queues `data`; 0 admitted, 1 closed or not writable. Inspect `msrt_streams_error` for a
+/// terminal write failure, including one already observed by an automatic drain. Never waits.
 ///
 /// # Safety
 /// `data` is a live `Bytes` value.
@@ -390,6 +392,9 @@ pub unsafe extern "C-unwind" fn msrt_streams_write(stream: i64, data: *const Vec
     };
     if e.flags & WRITES == 0 {
         return 1;
+    }
+    if !e.error.is_empty() {
+        return 0;
     }
     e.out.extend_from_slice(bytes);
     if e.out.len() - e.out_start >= AUTO_DRAIN {
@@ -445,10 +450,7 @@ pub extern "C-unwind" fn msrt_streams_flush(stream: i64) -> i64 {
     let (drained, fd) = {
         let mut table = streams();
         match slot(&mut table, stream) {
-            Some(e) => {
-                e.error.clear();
-                (drain(e), plat::write_key(e.fd))
-            }
+            Some(e) => (drain(e), plat::write_key(e.fd)),
             None => (true, -1),
         }
     };
@@ -465,7 +467,7 @@ pub extern "C-unwind" fn msrt_streams_buffered(stream: i64) -> i64 {
     slot(&mut streams(), stream).map_or(0, |e| (e.out.len() - e.out_start) as i64)
 }
 
-/// The message of the failure that ended the last operation, or an empty string.
+/// The last read failure or the terminal write failure, or an empty string.
 ///
 /// # Safety
 /// `out` is writable memory for a string.
@@ -495,4 +497,59 @@ pub extern "C-unwind" fn msrt_streams_close(stream: i64) {
     e.fd = -1;
     e.out = Vec::new();
     e.out_start = 0;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write(stream: i64, data: &[u8]) {
+        let bytes = VecVal {
+            ptr: data.as_ptr().cast_mut(),
+            len: data.len(),
+            cap: 0,
+        };
+        // SAFETY: `bytes` borrows the readable input for the duration of the call.
+        assert_eq!(unsafe { msrt_streams_write(stream, &bytes) }, 0);
+    }
+
+    fn flush(stream: i64) {
+        let promise = msrt_streams_flush(stream);
+        assert_eq!(promise::msrt_promise_wait(promise, -1), promise::OK);
+        promise::msrt_promise_drop(promise);
+    }
+
+    #[test]
+    fn automatic_write_failures_survive_flush_and_stop_buffering() {
+        let _guard = crate::testutil::lock();
+        // No platform has a stream at this invalid, unowned descriptor.
+        let stream = msrt_streams_open(i64::from(i32::MAX), WRITES);
+        write(stream, &vec![0; AUTO_DRAIN]);
+        let error = slot(&mut streams(), stream).unwrap().error.clone();
+        assert!(error.starts_with(b"write: os error "));
+        assert_eq!(msrt_streams_buffered(stream), 0);
+
+        for _ in 0..2 {
+            flush(stream);
+            assert_eq!(slot(&mut streams(), stream).unwrap().error, error);
+            write(stream, b"not queued after failure");
+            assert_eq!(msrt_streams_buffered(stream), 0);
+        }
+        msrt_streams_close(stream);
+    }
+
+    #[test]
+    fn retried_write_failures_survive_later_flushes() {
+        let _guard = crate::testutil::lock();
+        let stream = msrt_streams_open(i64::from(i32::MAX), WRITES);
+        write(stream, b"buffered until the readiness callback");
+        let promise = promise::io_new();
+        assert!(write_retry(promise, stream as usize, task::WAIT_WRITE));
+        promise::msrt_promise_drop(promise);
+        let error = slot(&mut streams(), stream).unwrap().error.clone();
+        assert!(error.starts_with(b"write: os error "));
+        flush(stream);
+        assert_eq!(slot(&mut streams(), stream).unwrap().error, error);
+        msrt_streams_close(stream);
+    }
 }
