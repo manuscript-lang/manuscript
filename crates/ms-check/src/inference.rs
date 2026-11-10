@@ -289,10 +289,11 @@ impl Checker {
             }
             return;
         }
-        let substituted = sub(&pattern, s);
         if self.unify_argument(&pattern, &actual_ty, vars, s) {
             return;
         }
+        // Failed attempts leave bindings unchanged; only the fallback paths need this type.
+        let substituted = sub(&pattern, s);
         // A `T?` argument after a plain value widens the variable to the optional.
         if vars.contains(&pattern.id)
             && actual_ty.is(Builtin::Optional)
