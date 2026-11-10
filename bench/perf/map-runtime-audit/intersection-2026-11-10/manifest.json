@@ -73,5 +73,56 @@
     ]
   ],
   "map_confirmation_pairs": 24,
-  "candidate_build_note": "The later creator-insertion unit test and source fixture were added after the candidate binary build. Production code remained exactly the same five-line branch. The retained patch includes final tests."
+  "candidate_build_note": "The later creator-insertion unit test and source fixture were added after the candidate binary build. Production code remained exactly the same five-line branch. The retained patch includes final tests.",
+  "build_metadata": {
+    "/workspace/map-iteration-evidence/baseline/intersection.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/baseline/intersection-strings.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/baseline/maps-control.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/candidate/intersection.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/candidate/intersection-strings.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/candidate/maps-control.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    }
+  },
+  "first_pr_head": "10d69c6db2ddddb8ec33b5ea6572ee397dff424a",
+  "pr": "https://github.com/manuscript-lang/manuscript/pull/3505",
+  "rustc_verbose": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cargo_version": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "toolchain_paths": {
+    "RUSTUP_HOME": "/workspace/map-rust/rustup",
+    "CARGO_HOME": "/workspace/map-rust/cargo",
+    "XDG_CACHE_HOME": "/workspace/map-rust/cache",
+    "TMPDIR": "/workspace/map-rust/tmp"
+  },
+  "instruction_counts": "not collected; perf and valgrind absent from PATH",
+  "latest_fetched_main_before_pr": "975bbaa03547596ed6d5938277549b6efac1d1b0",
+  "overlap_check": "map.rs, tree.rs and ms-rt-hot unchanged between measured baseline and latest main before PR"
 }

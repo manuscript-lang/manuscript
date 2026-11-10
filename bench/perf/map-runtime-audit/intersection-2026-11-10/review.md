@@ -27,3 +27,11 @@ blocked by missing nextest (official download HTTP 403); initial conformance/e2e
 runs could not launch the unbuilt debug CLI; the book check lacked Hugo. The
 review did not approve publishing an issue, merging, or bypassing any blocker.
 Later check results are recorded in the README and raw logs.
+
+The final performance-only review recommended retaining the patch: the
+long-string overwrite result varied across the initial, longer, reversed-order
+and isolated runs (0.9463, 1.0333, 0.9939, 1.0272), and changed direction by
+half and label order within the last run. That does not establish a stable
+material slowdown requiring rejection. A small true effect remains possible;
+the review neither attributes the cause nor approves merge before required
+validation succeeds.

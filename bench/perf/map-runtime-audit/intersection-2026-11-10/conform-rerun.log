@@ -1,0 +1,56 @@
+cargo xtask runtime
+    Finished `release` profile [optimized] target(s) in 0.06s
+    Finished `release` profile [optimized] target(s) in 0.06s
+    Finished `release` profile [optimized] target(s) in 0.03s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+cargo build --release --locked -p ms-cli
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Finished `release` profile [optimized + debuginfo] target(s) in 13.50s
+/workspace/manuscript/target/release/ms run tools/conform.ms
+    Finished `release` profile [optimized] target(s) in 0.07s
+    Finished `release` profile [optimized] target(s) in 0.08s
+    Finished `release` profile [optimized] target(s) in 0.03s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+3900 fixtures, 0 problems
+running 2347 of 3900 fixtures with /workspace/manuscript/target/debug/ms
+2347 fixtures: 2347 pass, 0 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (100.0%)
+  check   1579/1579  100.0%  252 s fixture time
+  run      553/553   100.0%  156 s fixture time
+  test     215/215   100.0%  79 s fixture time
+slowest fixtures:
+     3.56 s  test  e2e/accept/log-file-transport
+     3.45 s  test  e2e/stdlib/sse-http
+     2.99 s  run   e2e/stdlib/http-client-disconnect
+     2.79 s  run   e2e/stdlib/http-close-in-flight-frees-accept-loop
+     2.74 s  test  e2e/accept/many-tasks
+     2.74 s  run   e2e/stdlib/http-request-deadline
+     2.71 s  test  e2e/stdlib/property
+     2.54 s  run   e2e/stdlib/http-parked-pipeline
+     2.54 s  run   e2e/stdlib/http-close-drains
+     2.40 s  test  e2e/stdlib/http-upload
+     2.26 s  test  repo/scripts-conformance
+     2.16 s  run   e2e/stdlib/http-fault-handler-frees-exchange-view
+     2.01 s  test  snippets/e2e-tests/testclitestsharedrestserver-1
+     1.99 s  run   e2e/stdlib/net-close-releases-socket
+     1.95 s  run   repo/scripts-conformance-run
+running 1529 of 3900 fixtures with /workspace/manuscript/target/debug/ms
+1529 fixtures: 1529 pass, 0 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (100.0%)
+  parse   1529/1529  100.0%  19 s fixture time
+slowest fixtures:
+     0.03 s  parse fuzz/syntax/seed-0053
+     0.03 s  parse fuzz/syntax/seed-0077
+     0.03 s  parse fuzz/syntax/seed-0079
+     0.03 s  parse snippets/checker/testdiagnosticsstatecauseandfix-7-fmt
+     0.03 s  parse fuzz/syntax/seed-0081
+     0.03 s  parse fuzz/syntax/seed-0085
+     0.03 s  parse fuzz/syntax/seed-0059
+     0.03 s  parse fuzz/syntax/seed-0082
+     0.03 s  parse snippets/checker/testdiagnosticsstatecauseandfix-42-fmt
+     0.02 s  parse fuzz/syntax/seed-0090
+     0.02 s  parse e2e/accept/call-depth-fmt
+     0.02 s  parse fuzz/syntax/seed-0075
+     0.02 s  parse repo/scripts-conformance-fmt
+     0.02 s  parse e2e/accept/optional-arguments-fmt
+     0.02 s  parse fuzz/syntax/seed-0052

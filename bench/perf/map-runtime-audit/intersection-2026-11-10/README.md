@@ -81,6 +81,13 @@ retained. The Map executable sections are not byte-identical between builds,
 so code identity is not used to dismiss these observations. No universal
 performance-parity or regression-free claim is made.
 
+The final independent review retained the candidate: the long-string overwrite
+ratios across initial/longer/reversed/isolated runs were
+0.9463/1.0333/0.9939/1.0272. In the isolated run, the first/second-half medians
+were 1.0369/0.9874 and candidate-first/baseline-first medians 1.0407/0.9793.
+These shifts do not establish a stable material slowdown. Neither machine
+variation nor binary layout is established as the cause of the uncertainty.
+
 The previous inventory reference remains non-comparable because it contains
 removed syntax. It was not rewritten or counted as passing application evidence.
 Instruction counts and page faults were not collected: perf and valgrind are
@@ -97,7 +104,12 @@ The full runtime suite passed (214 unit tests and 12 integration tests), as did
 docs, licenses and packaged-distribution checks. `make verify-full` stopped at
 missing nextest. Its official download returned HTTP 403; installation was
 stopped without retry or alternate route. Initial conformance/e2e invocations
-failed because the debug CLI normally built by the unit stage was absent;
-that prerequisite must be built before rerunning those checks. Book validation
-stopped at missing Hugo. Leak checks, exact-head CI and platform validation
-remain incomplete. See [independent review](review.md). No merge is claimed.
+failed because the debug CLI normally built by the unit stage was absent.
+After building it normally, conformance passed 2347 run/check/test cases and
+1529 parse cases, and e2e passed all 506 Release fixtures. Initial failure logs
+and successful rerun logs are both retained. Book validation
+stopped at missing Hugo. The [leak sweep](leak-check.log) passed 373 programs
+with zero leaks. Exact-head CI and platform validation remain incomplete.
+See [independent review](review.md) and [draft PR #3505](https://github.com/manuscript-lang/manuscript/pull/3505).
+This is the local validation snapshot; the PR carries the current hosted-CI
+and merge status.
