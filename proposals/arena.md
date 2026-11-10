@@ -4,7 +4,7 @@
 
 - Problem: the one-owner model has no way to express cross-linked data (graphs, parent pointers, doubly linked lists, ASTs with back references); users reach for `Map[Int, T]`, which is slow, or cannot write the program.
 - Change: `@std/collections/arena.ms`, an `Arena[T]` that owns values in one flat list and hands out copyable `Id[T]` handles. Pure `.ms`, no runtime primitive, no new syntax.
-- Decision requested: ship the stdlib module as prototyped, and do not build a region/bump allocator in the runtime (see Alternatives).
+- Decision requested: ship the stdlib module as prototyped, and whether to pursue a region allocator for bulk free (Open questions).
 
 ## Status
 
@@ -51,11 +51,22 @@ old := a.remove(first)                           // moves it out; old handles go
 | churn 2M add/remove, window 1000 | `Map[Int, Rec]` 93 to 114 ms | 37 to 53 ms | 2.0x to 2.8x faster |
 | binary tree depth 16, build and check, x20 | recursive `enum Tree` 29 to 32 ms | 80 to 91 ms | 2.7x slower |
 
-The second row is the honest limit: the existing size-class allocator already makes a boxed node about 11 ns to allocate, check and free (`crates/ms-rt/src/alloc.rs`), so an arena does not speed up trees that the language can already express. The arena earns its place for shapes the owner model cannot express (links in both directions) and against `Map`, not as a faster `malloc`. The cost in the tree row is the checked `get` (bounds, generation, occupancy, optional-of-optional); an unchecked `at` is possible but would fault instead of returning `none`, which this proposal does not recommend.
+The tree row is the honest limit of the handle design: build plus checked reads cost more than a boxed node. The cost is the checked `get` (bounds, generation, occupancy, optional-of-optional) and growing three lists; an unchecked `at` would fault instead of returning `none`, which this proposal does not recommend.
+
+### Freeing at once
+
+Second use of an arena: release a whole structure in one step. Measured with `bench/perf/arena/drop.ms` (20 trees of depth 16, 2.6M nodes, drop of the held list at its last use, four runs):
+
+| | Build (held alive) | Drop |
+| --- | --- | --- |
+| recursive `enum Tree` | 15 to 27 ms | 19 to 29 ms (7 to 11 ns/node, walks every node) |
+| `Arena[ANode]` | 104 to 132 ms | 1.2 to 5.5 ms (flat list of scalars, no per-node walk) |
+
+Bulk free is real: 4x to 15x faster drop. But drop is about half of a boxed tree's lifecycle and the arena build is slower, so the whole lifecycle is still slower with this design (build, check and drop together: boxed 31 to 43 ms, arena about 48 ms plus checked reads). Build can improve (a `reserve` capacity, one fewer list); not yet tried.
 
 ## Runtime primitive
 
-None. `List[T?]`, `List[Int]` and the existing allocator suffice. A bump allocator was considered as the primitive and rejected on the numbers above: boxed allocation plus free is already about 11 ns per node, so a region has little headroom left to win, and a region would need lifetimes or borrow rules that the model deliberately lacks (nothing allocated in it may escape its scope, and owned strings and lists inside would still malloc).
+None for the handle arena. A region allocator is the primitive that would give bump allocation and bulk free to ordinary boxed values, and the drop numbers above show it has headroom (drop is about half the boxed lifecycle). It is not proposed here: it needs a rule that nothing allocated in a region escapes it (a lifetime the model deliberately lacks), and owned strings and lists inside would still need individual frees unless they too allocate from the region. Decision requested in Open questions.
 
 ## Components touched
 
@@ -68,7 +79,7 @@ None. `List[T?]`, `List[Int]` and the existing allocator suffice. A bump allocat
 ## Alternatives considered
 
 - Do nothing: keep `Map[Int, T]` for links. Works, 2x to 3x slower on churn, no stale-handle protection.
-- Region allocator primitive (`msrt_region_*`): rejected above on the numbers and on escape rules.
+- Region allocator primitive (`msrt_region_*`): not built; escape rules are the blocker, the speed headroom is real (see Freeing at once).
 - Plain `Int` ids over a `List[T]`: fastest, no generation, so a reused slot silently aliases a removed value. Callers can still do this with `List` today.
 - Built-in `Arena[T]` type in the checker (the plan in `crates/DESIGN.md`): unnecessary; the stdlib type needs no checker support. If it is later built in, `Id[T]` can keep this layout.
 
@@ -76,4 +87,5 @@ None. `List[T?]`, `List[Int]` and the existing allocator suffice. A bump allocat
 
 - In-place access without moves: a checker rule letting `if var v = a.get(id)` borrow a `List[T?]` slot would remove the `update` callback. Separate language change, needs Chinmay's ok.
 - Whether `Id[T]` should hash and compare (`Hashable`, `Equal`) for use as map keys: an enum of one Int should derive both; not verified.
+- Region for bulk free: a scoped region whose allocations cannot escape (checker rule), giving bump allocation and one-step free to ordinary values. Language change; needs Chinmay's ok and its own proposal.
 - Unchecked fast read for hot loops, if checked `get` proves too slow in real programs.
