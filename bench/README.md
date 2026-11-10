@@ -8,7 +8,7 @@ Each directory has its own run script and committed results naming the revision 
 | [`agent/`](agent/README.md) | How well agents write programs in different languages. Never shares results with `perf/`. Checked by `make agent-bench-check` (`bench/agent/core_test.ms`). |
 | [`compile-time/`](compile-time/) | Generated-project compile-time measurements for the incremental-builds proposal (`gen.py`, `report.md`). |
 | [`language/`](language/) | Small language-level benchmark programs (calls, lists, numeric, life). |
-| [`lists/`](lists/) | List storage investigation: programs, pair/memory scripts, results. |
+| [`lists/`](lists/) | List storage benchmark programs. |
 | [`lowering/`](lowering/) | Lowering benchmark programs. |
 
-`language/`, `lists/` and `lowering/` `.ms` files are the origins of the fixtures in `tests/conformance/fixtures/bench/`; keep the paths stable. The `*.go.txt` files are Go-era harnesses kept as evidence only; the Go implementation is removed.
+`language/`, `lists/` and `lowering/` `.ms` files are the origins of the fixtures in `tests/conformance/fixtures/bench/`; keep the paths stable.

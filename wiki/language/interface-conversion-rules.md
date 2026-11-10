@@ -1,6 +1,21 @@
-[Wiki](../index.md) › [Language](index.md)
+[Wiki](../index.md) › [language](index.md)
 
-# Interface conversions of borrowed values are views
+# Interface conversion rules
+
+Implicit interface conversion, no construction syntax, borrowed values becoming views. Each section is one lesson.
+
+## Implementing types convert to their interface implicitly
+
+Decision (Chinmay, reversing the explicit-view rule): a type with a declared `impl I for T` passes wherever `I` is expected. The conversion follows the position: a read-only argument borrows the operand, a stored position moves it at its last use; the interface value owns a copy when the operand is borrowed.
+
+## Interfaces convert implicitly; construction is removed
+
+Status: in flight (PR #1135, not yet on main as of this note). Decision: a value converts to an interface at a typed binding or argument (`let v: Shape = x`), and `Shape(value: x)` / `Shape(x)` fail with "cannot be constructed"; about 260 stdlib and fixture uses were migrated. Re-check the checker before relying on either spelling.
+
+
+Apply when: touching interface views, generic matching, or conversion diagnostics.
+
+## Interface conversions of borrowed values are views
 
 Decision (Chinmay, 2026-11-01, "tagging makes sense, let's do it, save on clones"): converting a borrowed value to an interface (`return cause` as `Reportable`, `let e: Reportable = cause`, a widened borrow-returning call, `try` of one) builds a view, never a copy. The vtable word's low two bits say what the interface value owns (0 box and payload, 1 box only, 2 nothing); a function returning one is a *borrow-returning view function* (`ResultBorrow.view`, `Func.ret_view`) whose result the caller owns and drops while holding the arguments. Stage 2 of [proposals/views.md](../../proposals/views.md), PR #2211.
 
