@@ -64,7 +64,7 @@ export opaque type Cancel:
 export fn cancel_switch() Cancel:
 	return Cancel(id: msrt_cancel_new())
 
-// A copyable handle to a `Cancel`, passed in `PromiseOptions`. It reads as not cancelled once its `Cancel` is gone.
+// A copyable handle to a `Cancel`, passed in `PromiseOptions`. Once its `Cancel` fires it reads as cancelled for good, even after the `Cancel` is closed or dropped; a `Cancel` that never fired reads as not cancelled once it is gone.
 export opaque type Signal:
 	// The slot of the `Cancel` it belongs to; a freed slot never matches.
 	id: Int

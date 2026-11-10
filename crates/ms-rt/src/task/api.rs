@@ -366,6 +366,16 @@ pub(super) unsafe fn set_deadline(cur: *mut Task, timeout_ns: i64) {
     // SAFETY: `cur` is the running task; slots hold live records or null.
     unsafe {
         (*cur).deadline = NO_DEADLINE;
+        let mut timeout_ns = timeout_ns;
+        if (*cur).read_limit != NO_DEADLINE {
+            // A bounded read: no park outlasts the limit, so the caller sees a timeout.
+            let left = ((*cur).read_limit - clock_ns()).max(0);
+            timeout_ns = if timeout_ns < 0 {
+                left
+            } else {
+                timeout_ns.min(left)
+            };
+        }
         if timeout_ns < 0 {
             return;
         }
@@ -400,6 +410,21 @@ pub extern "C-unwind" fn msrt_task_forget_fd(fd: i32) {
 pub unsafe extern "C-unwind" fn msrt_task_sleep(ns: i64) -> u32 {
     // SAFETY: forwards to the park path.
     unsafe { msrt_task_wait_fd(-1, 0, ns.max(0)) }
+}
+
+/// Bounds every park of the running task until the next call: from now, no wait lasts past
+/// `timeout_ns` nanoseconds in all, and one that reaches it reports a timeout. A negative value
+/// removes the bound.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_task_read_limit(timeout_ns: i64) {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe {
+        (*ensure_init()).read_limit = if timeout_ns < 0 {
+            NO_DEADLINE
+        } else {
+            clock_ns().saturating_add(timeout_ns)
+        };
+    }
 }
 
 /// Handle of the running task.

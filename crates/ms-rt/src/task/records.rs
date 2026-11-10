@@ -54,6 +54,7 @@ pub(super) unsafe fn new_task(ctx: Ctx) -> *mut Task {
             wait_events: 0,
             wait_result: 0,
             deadline: NO_DEADLINE,
+            read_limit: NO_DEADLINE,
             wait_token: 0,
             fatal: false,
             owned: null_mut(),

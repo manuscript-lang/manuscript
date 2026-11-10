@@ -211,6 +211,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         carried: Vec::new(),
         declared: Vec::new(),
         consumed: HashSet::new(),
+        consumed_at: HashMap::new(),
+        move_note: None,
         callees: HashSet::new(),
         escaped: cx.escaped.clone(),
         positions: HashMap::new(),
@@ -259,6 +261,13 @@ pub fn analyze(cx: &Context) -> Outcome {
             (ParamMode::Borrow, true) => ParamMode::Move,
             (mode, _) => mode,
         },
+        consumed_at: cx
+            .c
+            .parameters
+            .iter()
+            .take(declared.params.len())
+            .map(|b| w.consumed_at.get(&b.uid).copied())
+            .collect(),
         params: declared
             .params
             .iter()
@@ -324,6 +333,10 @@ struct Walker<'a> {
     declared: Vec<usize>,
     /// Parameters and the receiver that were moved from.
     consumed: HashSet<usize>,
+    /// Where each of those was first moved from.
+    consumed_at: HashMap<usize, Pos>,
+    /// The callee consumption behind the argument being walked, named in a move diagnostic.
+    move_note: Option<super::modes::Consumed>,
     /// Callee expressions of direct calls, which call a named function without making a value.
     callees: HashSet<NodeId>,
     escaped: HashSet<NodeId>,

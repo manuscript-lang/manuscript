@@ -27,7 +27,7 @@ fn count_errors(input: ReadStream[Bytes]) Int!:
     return ok(errors)
 ```
 
-- `next()` returns `T?!`: `none` marks the end and an error is a failed read. A closed stream is at its end.
+- `next()` returns `T?!`: `none` marks the end and an error is a failed read. A closed stream is at its end. `next(timeout: d)` bounds one read: it fails with `ETIMEDOUT` once the read has waited `d` in all (a stalled socket, an empty pipe), so a loop can give up on a silent server. The source may be left mid-item, so close the stream after a timeout.
 - A loop over a variable advances it in place and leaves it usable after `break`; a loop over an expression holds the pipeline for the loop and closes it afterwards.
 - Cancellation and time limits are not stream API. Run the loop in a promise with `PromiseOptions(timeout: ...)` to limit a whole pipeline; a cancel or timeout lands at the next wait inside `next` and the loop leaves with an error. See [Promises](promises.md).
 - A stream is not an `Iterator`. `Iterator` is for sequences that never wait, such as `List` and `Map`.

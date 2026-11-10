@@ -80,10 +80,19 @@ pub extern "C-unwind" fn msrt_cancel_fire(id: i64) {
     }
 }
 
-/// Whether the switch has fired. A freed switch reads as not fired.
+/// Whether the switch has fired. A switch freed after it fired still reads as fired; one freed
+/// unfired reads as not fired.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancel_fired(id: i64) -> u8 {
-    u8::from(slot(&mut table(), id).is_some_and(|s| s.fired))
+    u8::from(fired_slot(&mut table(), id).is_some_and(|s| s.fired))
+}
+
+/// The slot of `id` while it is live, or after it was freed fired: such a slot is never reused, so a
+/// signal still reads the firing once its switch is gone.
+fn fired_slot(t: &mut Table, id: i64) -> Option<&mut Slot> {
+    let i = usize::try_from((id & 0xffff_ffff) - 1).ok()?;
+    let s = t.slots.get_mut(i)?;
+    (s.generation == (id >> 32) as u32 && (s.live || s.fired)).then_some(s)
 }
 
 /// Frees the switch. Its promises stop listening and keep running; a signal left over reads as not fired.
@@ -93,8 +102,11 @@ pub extern "C-unwind" fn msrt_cancel_free(id: i64) {
     let Some(s) = slot(&mut t, id) else { return };
     s.live = false;
     s.members.clear();
-    let i = (id & 0xffff_ffff) as usize - 1;
-    t.free.push(i);
+    // A fired slot stays out of the free list: its signals keep reading the firing.
+    if !s.fired {
+        let i = (id & 0xffff_ffff) as usize - 1;
+        t.free.push(i);
+    }
 }
 
 /// Registers `promise` with the switch `id`. Answers true when the switch has already fired, so the
@@ -236,10 +248,14 @@ mod tests {
         assert_eq!(msrt_cancel_fired(id), 1);
         assert!(register(id, 8));
         msrt_cancel_free(id);
-        assert_eq!(msrt_cancel_fired(id), 0);
+        assert_eq!(msrt_cancel_fired(id), 1);
         let again = msrt_cancel_new();
         assert_ne!(again, id);
-        assert_eq!(msrt_cancel_fired(id), 0);
+        assert_eq!(msrt_cancel_fired(id), 1);
+        assert_eq!(msrt_cancel_fired(again), 0);
+        let unfired = msrt_cancel_new();
+        msrt_cancel_free(unfired);
+        assert_eq!(msrt_cancel_fired(unfired), 0);
         msrt_cancel_free(again);
     }
 }

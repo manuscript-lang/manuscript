@@ -177,6 +177,9 @@ struct Task {
     wait_events: u32,
     wait_result: u32,
     deadline: i64,
+    /// When every park of this task ends in a timeout, whatever limit the park asked for
+    /// (`msrt_task_read_limit`), or `NO_DEADLINE`.
+    read_limit: i64,
     /// The token this task is parked on, or 0.
     wait_token: u64,
     /// Ends the process when the task faults.
