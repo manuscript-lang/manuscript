@@ -1,17 +1,13 @@
 // The agent loop: stream a turn, run requested tools, feed results back, repeat until the model stops.
 import (
+	Ui, NullUi from "./ui.ms",
+	Signal from "@std/concurrency/promise.ms",
 	JsonValue from "@std/data/json.ms",
 	str, obj, arr, flag, str_or, render from "./jsonx.ms",
 	ProviderConfig, ToolCall, Turn, stream_turn from "./provider.ms",
 	definitions, execute from "./tools.ms",
-	Session, append from "./session.ms",
+	Session, append, append_compaction, entries, branch from "./session.ms",
 )
-
-// Callbacks the UI supplies; the loop never prints on its own.
-export type Events:
-	on_text: fn(String) Unit
-	on_tool: fn(String, String) Unit
-	on_result: fn(String, Bool, String) Unit
 
 export type Agent:
 	config: ProviderConfig
@@ -19,6 +15,8 @@ export type Agent:
 	tools: List[String]
 	history: List[JsonValue]
 	session: Session?
+	// Id of the newest entry on the active branch; "" before the first message.
+	leaf: String
 	input_tokens: Int
 	output_tokens: Int
 	max_turns: Int = 50
@@ -54,12 +52,20 @@ export fn summarize(call: ToolCall) String:
 impl Agent:
 	var fn record(msg: JsonValue) Unit!:
 		if saved := self.session:
-			try append(saved, msg)
+			self.leaf = try append(saved, self.leaf, msg)
 		self.history.append(msg)
 
 	// Sends a user prompt and runs turns until the model finishes without requesting tools.
-	var fn prompt(text: String, events: Events) String!:
-		try self.record(message("user", arr([text_block(text)])))
+	// Raising `stop` ends the turn at the next event; tool calls already requested get an "Aborted" result.
+	var fn prompt(
+		text: String,
+		images: List[JsonValue],
+		var ui: Ui,
+		stop: Signal
+	) String!:
+		var blocks = images.clone()
+		blocks.append(text_block(text))
+		try self.record(message("user", arr(blocks)))
 
 		var final_text = ""
 		var turns = 0
@@ -68,8 +74,8 @@ impl Agent:
 			turns += 1
 
 			turn := try stream_turn(
-				self.config, self.system, self.history, definitions(self.tools),
-				events.on_text
+				self.config, self.system, self.history, definitions(self.tools), var ui,
+				stop.clone()
 			)
 			self.input_tokens += turn.input_tokens
 			self.output_tokens += turn.output_tokens
@@ -80,12 +86,70 @@ impl Agent:
 			var results = List[JsonValue]()
 
 			for call in turn.tool_calls:
-				events.on_tool(call.name, summarize(call))
+				if stop.cancelled():
+					results.append(result_block(call.id, "Aborted by user", true))
+					continue
 
-				result := execute(call.name, call.input)
-				events.on_result(call.name, result.is_error, result.text)
+				ui.tool(call.name, summarize(call))
+
+				result := execute(call.name, call.input, stop.clone())
+				ui.result(call.name, result.is_error, result.text)
 				results.append(result_block(call.id, result.text, result.is_error))
 
 			try self.record(message("user", arr(results)))
+			if stop.cancelled(): return error(Error("aborted", kind: "ECANCELED"))
 
 		return error(Error("Stopped after {self.max_turns} turns"))
+
+	// Replaces the history with a model-written summary and records a compaction entry.
+	var fn compact(focus: String, stop: Signal) String!:
+		if self.history.is_empty(): return error(Error("Nothing to compact"))
+
+		var ask = "Summarize the conversation so far so work can continue from the summary alone. Keep: the goal, decisions made, files read or changed, commands run and their outcomes, and open problems."
+		if not focus.is_empty(): ask = "{ask} Focus on: {focus}"
+
+		var transcript = self.history.clone()
+		transcript.append(message("user", arr([text_block(ask)])))
+
+		var quiet: Ui = NullUi(unused: true)
+		turn := try stream_turn(
+			self.config, "You write precise summaries of coding sessions.", transcript,
+			List[JsonValue](), var quiet, stop
+		)
+		summary := turn.text.trim()
+		if summary.is_empty(): return error(
+			Error("The model returned an empty summary")
+		)
+
+		if saved := self.session:
+			self.leaf = try append_compaction(saved, self.leaf, summary)
+		self.history = branch([], "")
+		self.history.append(
+			message(
+				"user",
+				arr(
+					[
+						text_block(
+							"The conversation so far was compacted. Summary of what happened:\n\n{summary}"
+						)
+					]
+				)
+			)
+		)
+		return ok(summary)
+
+	// Moves the active branch to entry `id`; the next prompt becomes a sibling of what followed it.
+	var fn fork(id: String) Unit!:
+		saved := self.session
+		if saved.is_none(): return error(
+			Error("Sessions are off (--no-session); nothing to fork")
+		)
+
+		all := try entries(saved.get(none).path)
+		if not all.any(fn e: e.id == id): return error(
+			Error("No entry {id}; use /tree to list entries")
+		)
+
+		self.history = branch(all, id)
+		self.leaf = id.clone()
+		return ok(unit)

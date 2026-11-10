@@ -48,9 +48,15 @@ fn anthropic_stream(text: String, result: String) String:
 	call := tool_json(text)
 	if not result.is_empty() or call.is_empty():
 		reply := if result.is_empty(): "echo: {text}" else: "tool said: {result}"
-		out = "{out}{sse("content_block_start", "\{\"type\":\"content_block_start\",\"index\":0,\"content_block\":\{\"type\":\"text\",\"text\":\"\"\}\}")}"
+		thinking := text.starts_with("think:")
+		index := if thinking: 1 else: 0
+		if thinking:
+			out = "{out}{sse("content_block_start", "\{\"type\":\"content_block_start\",\"index\":0,\"content_block\":\{\"type\":\"thinking\",\"thinking\":\"\"\}\}")}"
+			out = "{out}{sse("content_block_delta", "\{\"type\":\"content_block_delta\",\"index\":0,\"delta\":\{\"type\":\"thinking_delta\",\"thinking\":\"hmm, let me think. \"\}\}")}"
+			out = "{out}{sse("content_block_delta", "\{\"type\":\"content_block_delta\",\"index\":0,\"delta\":\{\"type\":\"signature_delta\",\"signature\":\"sig\"\}\}")}"
+		out = "{out}{sse("content_block_start", "\{\"type\":\"content_block_start\",\"index\":{index},\"content_block\":\{\"type\":\"text\",\"text\":\"\"\}\}")}"
 		for word in reply.split(" "):
-			out = "{out}{sse("content_block_delta", "\{\"type\":\"content_block_delta\",\"index\":0,\"delta\":\{\"type\":\"text_delta\",\"text\":{json_text("{word} ")}\}\}")}"
+			out = "{out}{sse("content_block_delta", "\{\"type\":\"content_block_delta\",\"index\":{index},\"delta\":\{\"type\":\"text_delta\",\"text\":{json_text("{word} ")}\}\}")}"
 		out = "{out}{sse("message_delta", "\{\"type\":\"message_delta\",\"delta\":\{\"stop_reason\":\"end_turn\"\},\"usage\":\{\"output_tokens\":7\}\}")}"
 		return "{out}{sse("message_stop", "\{\"type\":\"message_stop\"\}")}"
 	out = "{out}{sse("content_block_start", "\{\"type\":\"content_block_start\",\"index\":0,\"content_block\":\{\"type\":\"tool_use\",\"id\":\"toolu_1\",\"name\":\"{call[0]}\",\"input\":\{\}\}\}")}"

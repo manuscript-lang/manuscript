@@ -1,5 +1,7 @@
 // LLM providers: Anthropic Messages and OpenAI-compatible chat completions, both streamed over SSE.
 import (
+	Ui from "./ui.ms",
+	Signal from "@std/concurrency/promise.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	Bytes from "@std/bytes.ms",
 	http_client from "@std/net/net.ms",
@@ -17,6 +19,8 @@ export type ProviderConfig:
 	api_key: String
 	model: String
 	max_tokens: Int = 8192
+	// Extended thinking budget in tokens; 0 turns it off.
+	thinking: Int = 0
 
 export type ToolCall:
 	id: String
@@ -40,6 +44,7 @@ type Block:
 	name: String
 	text: String
 	json: String
+	signature: String
 
 // Streaming accumulator shared by both wire formats.
 type Acc:
@@ -47,13 +52,15 @@ type Acc:
 	stop_reason: String
 	input_tokens: Int
 	output_tokens: Int
+	// Thinking text received since the caller last took it.
+	pending_thinking: String
 
 impl Acc:
 	var fn ensure(index: Int, _kind: String) Unit:
 		while self.blocks.length() <= index:
 			self.blocks.append(
 				Block(
-					kind: "text", id: "", name: "", text: "", json: ""
+					kind: "text", id: "", name: "", text: "", json: "", signature: ""
 				)
 			)
 
@@ -88,6 +95,13 @@ impl Acc:
 					self.blocks[index].text = "{self.blocks[index].text}{piece}"
 					return piece
 
+				if dkind == "thinking_delta":
+					piece := str_or(delta, "thinking", "")
+					self.blocks[index].text = "{self.blocks[index].text}{piece}"
+					self.pending_thinking = "{self.pending_thinking}{piece}"
+
+				if dkind == "signature_delta":
+					self.blocks[index].signature = "{self.blocks[index].signature}{str_or(delta, "signature", "")}"
 				if dkind == "input_json_delta":
 					self.blocks[index].json = "{self.blocks[index].json}{str_or(delta, "partial_json", "")}"
 
@@ -165,6 +179,13 @@ fn finish(acc: Acc) Turn!:
 			content.append(obj(b))
 			text = "{text}{block.text}"
 
+		if block.kind == "thinking":
+			var b = Map[String, JsonValue]()
+			b.add("type", str("thinking"))
+			b.add("thinking", str(block.text))
+			b.add("signature", str(block.signature))
+			content.append(obj(b))
+
 		if block.kind == "tool_use":
 			raw := if block.json.trim().is_empty(): "\{\}" else: block.json.clone()
 			input := try parse(raw)
@@ -196,7 +217,14 @@ fn anthropic_request(
 ) String!:
 	var body = Map[String, JsonValue]()
 	body.add("model", str(cfg.model))
-	body.add("max_tokens", num(cfg.max_tokens))
+	body.add("max_tokens", num(cfg.max_tokens + cfg.thinking))
+
+	if cfg.thinking > 0:
+		var think = Map[String, JsonValue]()
+		think.add("type", str("enabled"))
+		think.add("budget_tokens", num(cfg.thinking))
+		body.add("thinking", obj(think))
+
 	body.add("stream", flag(true))
 	body.add("system", str(system))
 	body.add("messages", arr(history.clone()))
@@ -216,10 +244,22 @@ fn openai_messages(system: String, history: List[JsonValue]) List[JsonValue]:
 		blocks := message.get("content").get(JsonValue.Null).as_list().get([])
 		var text = ""
 		var calls = List[JsonValue]()
+		var images = List[JsonValue]()
 
 		for block in blocks:
 			kind := str_or(block, "type", "")
 			if kind == "text": text = "{text}{str_or(block, "text", "")}"
+
+			if kind == "image":
+				source := block.get("source").get(JsonValue.Null)
+				url := "data:{str_or(source, "media_type", "image/png")};base64,{str_or(source, "data", "")}"
+				var link = Map[String, JsonValue]()
+				link.add("url", str(url))
+
+				var part = Map[String, JsonValue]()
+				part.add("type", str("image_url"))
+				part.add("image_url", obj(link))
+				images.append(obj(part))
 
 			if kind == "tool_use":
 				var fn_map = Map[String, JsonValue]()
@@ -248,10 +288,21 @@ fn openai_messages(system: String, history: List[JsonValue]) List[JsonValue]:
 				m.add("content", str(str_or(block, "content", "")))
 				out.append(obj(m))
 
-		if role == "assistant" or not text.is_empty():
+		if role == "assistant" or not text.is_empty() or not images.is_empty():
 			var m = Map[String, JsonValue]()
 			m.add("role", str(role))
-			m.add("content", str(text))
+
+			if images.is_empty():
+				m.add("content", str(text))
+			else:
+				var lead = Map[String, JsonValue]()
+				lead.add("type", str("text"))
+				lead.add("text", str(text))
+
+				var parts = [obj(lead)]
+				parts.extend(images)
+				m.add("content", arr(parts))
+
 			if not calls.is_empty(): m.add("tool_calls", arr(calls))
 			out.append(obj(m))
 
@@ -266,6 +317,12 @@ fn openai_request(
 	var body = Map[String, JsonValue]()
 	body.add("model", str(cfg.model))
 	body.add("stream", flag(true))
+	if cfg.thinking > 0: body.add(
+		"reasoning_effort",
+		str(
+			if cfg.thinking >= 16000: "high" else: if cfg.thinking >= 4000: "medium" else: "low"
+		)
+	)
 	body.add("messages", arr(openai_messages(system, history)))
 
 	if not tools.is_empty():
@@ -294,7 +351,8 @@ export fn stream_turn(
 	system: String,
 	history: List[JsonValue],
 	tools: List[JsonValue],
-	on_text: fn(String) Unit
+	var ui: Ui,
+	stop: Signal
 ) Turn!:
 	is_anthropic := cfg.api == "anthropic"
 	body := try (
@@ -322,23 +380,29 @@ export fn stream_turn(
 		return error(Error("API error {meta.status}: {detail}"))
 
 	var acc = Acc(
-		blocks: List[Block](), stop_reason: "", input_tokens: 0, output_tokens: 0
+		blocks: List[Block](), stop_reason: "", input_tokens: 0, output_tokens: 0,
+		pending_thinking: ""
 	)
 	var events = sse_events(payload)
 
 	for ev in events:
+		if stop.cancelled(): return error(Error("aborted", kind: "ECANCELED"))
 		if ev.data == "[DONE]": break
 
 		data := try parse(ev.data)
 
 		if not is_anthropic:
 			shown := acc.openai(data)
-			if not shown.is_empty(): on_text(shown)
+			if not shown.is_empty(): ui.text(shown)
 			continue
 
 		if ev.event == "error": return error(Error("API stream error: {ev.data}"))
 
 		shown := acc.anthropic(ev.event, data)
-		if not shown.is_empty(): on_text(shown)
+		if not shown.is_empty(): ui.text(shown)
+
+		if not acc.pending_thinking.is_empty():
+			ui.thinking(acc.pending_thinking)
+			acc.pending_thinking = ""
 
 	return finish(acc)

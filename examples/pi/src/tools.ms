@@ -1,5 +1,6 @@
 // Built-in coding tools: read, write, edit, bash, ls, grep, find.
 import (
+	PromiseOptions, Signal from "@std/concurrency/promise.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	read_file, write_file, create_directory, list from "@std/os/fs.ms",
 	dirname, join, is_absolute from "@std/os/path.ms",
@@ -302,7 +303,7 @@ fn tool_edit(args: JsonValue) String!:
 	try write_file(full, updated, replace: true).wait()
 	return ok("Successfully replaced text in {path}.")
 
-fn tool_bash(args: JsonValue) String!:
+fn tool_bash(args: JsonValue, stop: Signal) String!:
 	command := str_or(args, "command", "")
 	if command.is_empty(): return error(Error("Missing required argument: command"))
 
@@ -311,7 +312,9 @@ fn tool_bash(args: JsonValue) String!:
 		cwd: working_directory().to_optional(),
 		timeout: if limit > 0: seconds(limit) else: none, max_output_bytes: 16777216
 	)
-	out := try run("bash", ["-c", command], options).wait()
+	out := try run("bash", ["-c", command], options).with(
+		PromiseOptions(cancel: stop)
+	).wait()
 	stdout := out.stdout.decode_utf8().get("[binary output]")
 	stderr := out.stderr.decode_utf8().get("[binary output]")
 	text := truncate_tail("{stdout}{stderr}")
@@ -365,11 +368,11 @@ fn tool_grep(args: JsonValue) String!:
 
 	return ok(truncate_head(text))
 
-fn dispatch(name: String, args: JsonValue) String!:
+fn dispatch(name: String, args: JsonValue, stop: Signal) String!:
 	if name == "read": return tool_read(args)
 	if name == "write": return tool_write(args)
 	if name == "edit": return tool_edit(args)
-	if name == "bash": return tool_bash(args)
+	if name == "bash": return tool_bash(args, stop)
 	if name == "ls": return tool_ls(args)
 	if name == "find": return tool_find(args)
 	if name == "grep": return tool_grep(args)
@@ -377,8 +380,8 @@ fn dispatch(name: String, args: JsonValue) String!:
 	return error(Error("Unknown tool: {name}"))
 
 // Runs one tool call. Failures become error results the model can read.
-export fn execute(name: String, args: JsonValue) ToolResult:
-	r := dispatch(name, args)
+export fn execute(name: String, args: JsonValue, stop: Signal) ToolResult:
+	r := dispatch(name, args, stop)
 	if r.is_error(): return fail(r.err().message)
 
 	return ok_text(r.get(none))

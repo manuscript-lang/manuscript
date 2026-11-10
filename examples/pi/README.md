@@ -14,16 +14,18 @@ Offline testing: `ms run examples/pi/mock -- 127.0.0.1:8099` starts a scripted A
 
 | File | Role |
 | --- | --- |
-| `src/main.ms` | CLI (`@std/cli/command`), modes, `@file` expansion |
-| `src/agent.ms` | Turn loop: stream, run tools, feed results back |
-| `src/provider.ms` | Anthropic Messages and OpenAI chat-completions streaming over SSE |
-| `src/tools.ms` | read, write, edit, bash, grep, find, ls with output truncation |
-| `src/session.ms` | JSONL sessions under `~/.pi/agent/sessions/`, continue/resume |
+| `src/main.ms` | CLI (`@std/cli/command`), modes (text, json, rpc), slash commands, `@file` and image expansion |
+| `src/agent.ms` | Turn loop, abort, `/compact`, `/fork` |
+| `src/provider.ms` | Anthropic Messages and OpenAI chat-completions streaming over SSE, thinking, images |
+| `src/tools.ms` | read, write, edit, bash, grep, find, ls with output truncation; bash is cancellable |
+| `src/session.ms` | JSONL session tree (id and parent per entry), compaction entries, continue/resume |
 | `src/prompt.ms` | System prompt, AGENTS.md / CLAUDE.md context files |
-| `src/tui.ms` | Raw-mode line editor, streamed output, slash commands |
+| `src/ui.ms`, `src/frontends.ms` | The `Ui` interface and its terminal, plain and JSON-lines implementations |
+| `src/markdown.ms` | Streaming markdown to ANSI |
+| `src/tui.ms` | Raw-mode line editor (history, Tab completion, Alt-Enter newline), Esc/Ctrl-C abort |
 
 ## Parity with pi
 
-Done: print mode (`-p`), piped stdin, interactive mode with line editing and history, streaming text, tool calls (read, write, edit, bash, grep, find, ls), session save/continue (`-c`, `--session`, `--no-session`), project context files, `--provider anthropic|openai`, `--model`, `--base-url`, `--api-key`, `--tools`, `--no-tools`, `--system-prompt`, `--append-system-prompt`, slash commands `/help /exit /session /tools /usage`.
+Done: print, json and rpc modes; piped stdin; interactive mode with line editing, history, markdown output and streamed text; extended thinking (`--thinking`, `/thinking`); image input (`@image.png`); tools read, write, edit, bash, grep, find, ls; Esc or Ctrl-C aborts a running turn (including a running bash command); sessions as a tree (`/tree`, `/fork`), `/compact` with compaction entries, `-c`, `--session`, `--no-session`, `/new`; project context files; `--provider anthropic|openai`, `--model`, `--base-url`, `--api-key`, `--tools`, `--no-tools`, `--system-prompt`, `--append-system-prompt`; slash commands `/help /exit /session /tools /usage /model /thinking /compact /tree /fork /new`.
 
-Missing versus pi: differential full-screen TUI with markdown rendering, image input, extended thinking, OAuth login and model registry (other providers), `/compact` and branching sessions, Esc to abort a running turn, extensions/skills/prompt templates, RPC and JSON modes.
+Differences from pi: output is append-only scrollback with a line editor, not a differentially redrawn component tree; no paste or Shift-Enter handling; no OAuth login or model registry (two providers); no extensions, skills or prompt templates; rpc has no `abort` command while a prompt runs; images in rpc prompts are not accepted.
