@@ -85,6 +85,10 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
 fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
 	return key.length() == 32 and nonce.length() == 12
 
+// Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439 counters are 32 bits).
+fn fits_counter(counter: Int, length: Int) Bool:
+	return (length + 63) / 64 <= 4294967296 - counter
+
 fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 	var out = BytesBuilder()
 	var state = initial_state(key, counter, nonce)
@@ -112,10 +116,12 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 /*
 Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same call does both.
 `key` is 32 bytes, `nonce` 12 bytes and `counter` the initial 32-bit block counter (normally 1 after the Poly1305 key block).
-A wrong key or nonce length returns EINVAL. Never reuse a key and nonce pair.
+A wrong key or nonce length, or data that needs more blocks than the 32-bit counter has left, returns EINVAL. Never reuse a key and nonce pair.
 */
 export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
 	if not check_key_nonce(key, nonce) or counter < 0 or counter > 4294967295:
+		return error(Error("crypto: invalid input", kind: "EINVAL"))
+	if not fits_counter(counter, data.length()):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	return ok(xor_stream(key, counter, nonce, data))
@@ -303,7 +309,7 @@ export fn chacha20poly1305_seal(
 	plaintext: Bytes,
 	associated_data: Bytes
 ) Bytes!:
-	if not check_key_nonce(key, nonce):
+	if not check_key_nonce(key, nonce) or not fits_counter(1, plaintext.length()):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	ciphertext := xor_stream(key, 1, nonce, plaintext)
@@ -321,7 +327,11 @@ export fn chacha20poly1305_open(
 	sealed: Bytes,
 	associated_data: Bytes
 ) Bytes!:
-	if not check_key_nonce(key, nonce) or sealed.length() < 16:
+	if (
+		not check_key_nonce(key, nonce)
+		or sealed.length() < 16
+		or not fits_counter(1, sealed.length() - 16)
+	):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	split := sealed.length() - 16

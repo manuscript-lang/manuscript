@@ -561,6 +561,19 @@ fn ownership_node(
 ) -> Node {
     let mut node = head_node(f);
     *count += 1;
+    if f.kind == "interface" {
+        // An operation fixes only how it takes `self`; its other modes are the implementer's.
+        for op in &f.slots {
+            let mode = if op.var {
+                "var (exclusive borrow)"
+            } else {
+                "borrow"
+            };
+            node.children
+                .push(Node::new(format!("{}{}  self {mode}", op.name, op.ty)));
+        }
+        return node;
+    }
     for s in &f.slots {
         let mode = if s.var {
             "var (exclusive borrow)"
@@ -580,6 +593,14 @@ fn ownership_node(
             r.ty,
             f.result_ownership.label()
         )));
+    }
+    // After the parameters and result: pages index those positionally.
+    match f.receiver {
+        "" => {}
+        "var" => node
+            .children
+            .push(Node::new("self  var (exclusive borrow)")),
+        mode => node.children.push(Node::new(format!("self  {mode}"))),
     }
     if f.scopes > 0 {
         node.children
@@ -843,6 +864,15 @@ fn ownership_flow(facts: &Facts, entity: &str, depth: i64) -> String {
                 "    {fid}[\"{}(){closes}\"]:::fn",
                 f.name.replace('"', "'")
             );
+            if !f.receiver.is_empty() {
+                let tid = flow_type_node(&mut out, &mut declared, "self");
+                let _ = writeln!(out, "    {tid} -->|\"self {}\"| {fid}", f.receiver);
+                styles.push(match f.receiver {
+                    "var" => "stroke:#d33,stroke-width:3px",
+                    "move" => "stroke:#2a2,stroke-width:3px",
+                    _ => "stroke:#37b",
+                });
+            }
             for s in &f.slots {
                 let mode = s.passing_mode();
                 let style = match mode {
@@ -1010,13 +1040,17 @@ fn signature_lines<'a>(
     lines: &mut usize,
     out: &mut String,
 ) {
-    let params: Vec<String> = f
-        .slots
-        .iter()
-        .map(|s| {
+    let receiver = match f.receiver {
+        "" => None,
+        "borrow" => Some("self".to_string()),
+        mode => Some(format!("{mode} self")),
+    };
+    let params: Vec<String> = receiver
+        .into_iter()
+        .chain(f.slots.iter().map(|s| {
             let var = if s.var { "var " } else { "" };
             format!("{var}{}: {}", s.name, s.ty)
-        })
+        }))
         .collect();
     let result = f.result.as_ref().map_or("", |r| r.ty.as_str());
     let closes = if f.scopes > 0 {

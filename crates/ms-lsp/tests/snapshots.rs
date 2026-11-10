@@ -659,7 +659,7 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
         ("concurrency/promise.ms", 2),
         ("core.ms", 2),
         ("data/encoding.ms", 1),
-        ("io/io.ms", 6),
+        ("io/io.ms", 7),
         ("cli/terminal.ms", 7),
         ("internal/random.ms", 1),
         ("main.ms", 1),

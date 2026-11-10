@@ -49,8 +49,16 @@ pub(super) fn analyze_with(
         ..EditorOptions::default()
     };
     let graph = load_editor_file(syms, filename, LoadOptions::default(), &editor);
-    let entry = entry && !graph.library && pathops::base(filename) == "ms.toml";
-    check_graph(syms, graph, CheckRequest { entry })
+    let executable = entry && !graph.library;
+    let manifest = executable && pathops::base(filename) == "ms.toml";
+    check_graph(
+        syms,
+        graph,
+        CheckRequest {
+            entry: manifest,
+            entry_if_declared: executable && !manifest,
+        },
+    )
 }
 
 /// The checked program, or the failure that stopped it.

@@ -71,6 +71,33 @@ impl Tok {
         }
     }
 
+    /// True for a keyword that is an ordinary name where a member or field name is expected
+    /// (after `.`, or as a field, parameter or argument label). Keywords that open a block
+    /// (`else`, `fn`, `try`), operators and values stay reserved everywhere.
+    pub fn is_contextual(self) -> bool {
+        matches!(
+            self,
+            Tok::Break
+                | Tok::Continue
+                | Tok::Enum
+                | Tok::Export
+                | Tok::Extern
+                | Tok::Fixture
+                | Tok::For
+                | Tok::If
+                | Tok::Impl
+                | Tok::Import
+                | Tok::In
+                | Tok::Interface
+                | Tok::Match
+                | Tok::Ref
+                | Tok::Return
+                | Tok::Test
+                | Tok::Type
+                | Tok::While
+        )
+    }
+
     /// True for the layout tokens that have no source text.
     pub fn is_layout(self) -> bool {
         matches!(self, Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Eof)

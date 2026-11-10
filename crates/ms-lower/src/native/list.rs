@@ -86,7 +86,7 @@ impl<'a> FnLower<'a> {
         if let (
             TyKind::Alt(a),
             "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
-            | "to_optional",
+            | "to_optional" | "error",
         ) = (self.b.m.types.kind(rty).clone(), name.as_str())
         {
             return self.result_method(result, &name, recv, a, args.to_vec());

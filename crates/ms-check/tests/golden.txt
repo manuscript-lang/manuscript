@@ -2598,7 +2598,7 @@ fn call() Unit: f(4)
     return value.get()
 type	2	18	45	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if value := x', get(default), is_some() before get(), or matchfn wrong(value: Result[Int, String]) Bool:
     return value.is_some()
-resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optionalenum Optional[T]:
+resolution	2	18	60	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, error, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optionalenum Optional[T]:
     T
     none
 fn wrong(value: Int?) Int:

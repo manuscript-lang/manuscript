@@ -2,6 +2,7 @@
 //! crate links once instead of once per file.
 
 mod analysis;
+mod atomic_write;
 mod blocking_reads;
 mod borrows;
 mod bound_aliases;

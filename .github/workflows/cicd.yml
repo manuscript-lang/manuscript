@@ -6,7 +6,7 @@ name: CI/CD
 #                 is no merge queue, which built every stacked ref with the full matrix and restarted on
 #                 every outside merge.
 #   merge queue   the same as a pull request, in case a queue is configured again.
-#   main          every 30 minutes (cron at :07 and :37), when main has a commit that no earlier scheduled or manual run
+#   main          every 30 minutes (cron at :07 and :37), when main has a commit that no earlier scheduled run
 #                 checked: all six platforms, each split into `tests` and `conformance` (twelve jobs, see
 #                 .github/actions/rust-checks); linux-arm64 also builds the book for Pages and the tests
 #                 jobs save the sccache caches. A failure is fixed or reverted.
@@ -59,8 +59,9 @@ defaults:
     shell: bash
 
 jobs:
-  # A scheduled run does nothing when the last scheduled or manual run of main already checked this commit
-  # (whatever its result: a red main waits for a fix). Every other trigger always runs.
+  # A scheduled run does nothing when the last scheduled run of main already checked this commit
+  # (whatever its result: a red main waits for a fix). Manual runs may cover only one OS, so they
+  # never replace the scheduled six-platform run. Every other trigger always runs.
   due:
     name: Main changed
     runs-on: ubuntu-latest
@@ -77,15 +78,15 @@ jobs:
         run: |
           run=true
           if [ "$EVENT" = schedule ]; then
-            seen=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow cicd.yml --branch main --limit 40 \
+            seen=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow cicd.yml --branch main --event schedule --limit 40 \
               --json databaseId,headSha,event,status,conclusion \
-              --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID and (.event == \"schedule\" or .event == \"workflow_dispatch\") and .conclusion != \"cancelled\" and .conclusion != \"skipped\")][0].headSha")
+              --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID and .event == \"schedule\" and .conclusion != \"cancelled\" and .conclusion != \"skipped\")][0].headSha")
             if [ "$seen" = "$GITHUB_SHA" ]; then run=false; fi
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
 
   # One job per platform leg and part. Pull requests run the Linux legs; a manual run's `os` input picks
-  # one platform; a push runs all six. The matrix is picked in an expression because a job `if`
+  # one platform; a scheduled run covers all six. The matrix is picked in an expression because a job `if`
   # cannot read it, and a separate job to pick it would cost one more job per run.
   # `lint`: also format and clippy. `cranelift`: the part (`a` or `b`) that also runs the corpus and
   # fixtures with `MS_BACKEND=cranelift`, the backend Debug builds use; the gates run in the other part.
@@ -173,8 +174,8 @@ jobs:
   pages:
     name: Publish Pages docs
     needs: [due, rust]
-    # Deploys whenever the book built, even if another platform failed.
-    if: ${{ !cancelled() && needs.due.outputs.run == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    # Only all-platform and Linux runs build the book; deploy it even if another platform failed.
+    if: ${{ !cancelled() && needs.due.outputs.run == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.os == 'all' || inputs.os == 'linux'))) && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     runs-on: ubuntu-24.04
     permissions:
       pages: write

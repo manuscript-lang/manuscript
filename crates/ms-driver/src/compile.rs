@@ -32,6 +32,9 @@ impl Checked {
 pub struct CheckRequest {
     /// Require the entry to export `main() Int` (executables, not tests).
     pub entry: bool,
+    /// Validate `main` only when the entry declares one (single-file `ms check`, where a
+    /// file without `main` may be a library).
+    pub entry_if_declared: bool,
 }
 
 /// Check the graph and, for executables, validate the entry point.
@@ -111,8 +114,8 @@ pub fn check_graph_in(
         }
     }
     if checked.success()
-        && request.entry
-        && let Some(issue) = check_entry(syms, &program, &graph.entry)
+        && (request.entry || request.entry_if_declared)
+        && let Some(issue) = check_entry(syms, &program, &graph.entry, !request.entry)
     {
         checked.diagnostics.push(issue);
     }
@@ -122,12 +125,20 @@ pub fn check_graph_in(
 
 /// Entry validation: a nongeneric, parameterless `main` returning `Unit`, `Unit!`, or `Int`;
 /// `export` is optional.
-fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option<Diagnostic> {
+fn check_entry(
+    syms: ms_syntax::Names,
+    program: &Program,
+    entry: &str,
+    only_if_declared: bool,
+) -> Option<Diagnostic> {
     let file: Arc<str> = Arc::from(entry);
     let main = program
         .symbols
         .get(&n(entry))
         .and_then(|names| names.borrow().get(&n("main")).cloned());
+    if only_if_declared && main.is_none() {
+        return None;
+    }
     let mut position = Pos::new(0, 1, 1);
     let mut detail =
         "no main function is declared, so add 'fn main() Unit:' with an indented body".to_string();

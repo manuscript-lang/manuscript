@@ -42,7 +42,7 @@ impl Visitor for Scan<'_> {
             self.findings.push(finding(
                 "MSL117",
                 format!(
-                    "`{{{digits}}}` interpolates the number {digits}, not a literal brace; write `\\{{{digits}\\}}` for braces (a regex quantifier), or use `r\"\"\"` raw text"
+                    "`{{{digits}}}` interpolates the number {digits}, not a literal brace; write `\\{{{digits}\\}}` for braces (a regex quantifier), or use `r\"...\"` raw text"
                 ),
                 self.file,
                 inner.pos,
