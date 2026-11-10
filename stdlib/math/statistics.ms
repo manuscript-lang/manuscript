@@ -11,6 +11,9 @@ A violated precondition (a percentile outside 0 to 100, mismatched list lengths,
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
+// The smallest mean square deviation, as a fraction of the squared mean, for which plain centering keeps the correlation: 2^-75 times the squared count. A rounded mean shifts every deviation by one error d, which changes the correlation only at second order (the true deviations sum to zero), by about (n*d)^2 / (n*sx*sy), so with d near n*2^-53 of the mean the error stays near 2^-106 / 2^-75 = 2^-31 at the floor; random and adversarial samples near it stay under 1e-10.
+CORRELATION_FLOOR := 2.6469779601696886e-23
+
 // Equal-width counts over a range of values, from `bin_counts`. (`@std/data/histogram.ms` has the recording `Histogram`.)
 export type BinCounts:
 	// The least value counted, which is the lower edge of the first bin.
@@ -450,6 +453,25 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 
 	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
+		// The scaled values stay below 1, so a sum clearing the floor cannot have overflowed or underflowed; NaN and infinity fail the comparison.
+		count := xs.length().to_float()
+		limit := CORRELATION_FLOOR * count * count * count
+		if s.xx > s.mean_x * s.mean_x * limit and s.yy > s.mean_y * s.mean_y * limit:
+			return s.xy / (sqrt(s.xx) * sqrt(s.yy))
+
+		// A constant list has exactly zero deviations around its rounded mean; any other finite list has some.
+		if (
+			(s.xx == 0.0 or s.yy == 0.0)
+			and s.mean_x.is_finite()
+			and s.mean_y.is_finite()
+		):
+			return none
+
+		if x_exponent := unit_exponent(xs):
+			if y_exponent := unit_exponent(ys):
+				return finite_correlation(xs, ys, x_exponent, y_exponent)
+
+		// Nonfinite input follows Float rules around the plain means.
 		if s.xx == 0.0 or s.yy == 0.0: return none
 
 		return s.xy / (sqrt(s.xx) * sqrt(s.yy))
@@ -537,6 +559,32 @@ fn centered(values: List[Float], exponent: Int) Centered:
 	for value in values:
 		deviations.append((ldexp(value, -exponent) - origin) - center)
 	return Centered(origin: origin, center: center, deviations: deviations)
+
+// The correlation from the same offset-centered compensated sums as `finite_regression`.
+fn finite_correlation(
+	xs: List[Float],
+	ys: List[Float],
+	x_exponent: Int,
+	y_exponent: Int
+) Float?:
+	x := centered(xs, x_exponent)
+	y := centered(ys, y_exponent)
+	x_unit := unit_exponent(x.deviations).get(0)
+	y_unit := unit_exponent(y.deviations).get(0)
+	var xx = DeviationSum()
+	var xy = DeviationSum()
+	var yy = DeviationSum()
+
+	for i in 0..xs.length():
+		a := ldexp(x.deviations[i], -x_unit)
+		b := ldexp(y.deviations[i], -y_unit)
+		xx.add(a * a)
+		xy.add(a * b)
+		yy.add(b * b)
+
+	if xx.value() == 0.0 or yy.value() == 0.0: return none
+
+	return xy.value() / (sqrt(xx.value()) * sqrt(yy.value()))
 
 /*
 Each list is scaled by its own power of two and measured from its first value, so squares and products stay in range and a large common

@@ -508,3 +508,41 @@ test "correlation of large and tiny perfectly correlated values":
 		1e-12
 	)
 	try expect_none(correlation([1e100, 1e100], [1e100, 2e100]))
+
+test "correlation keeps the variation under a large common offset":
+	try expect_close(
+		try expect_some(correlation([1e16, 1e16 + 2.0], [1e16 + 2.0, 1e16])), -1.0,
+		1e-12
+	)
+	try expect_close(
+		try expect_some(correlation([1e16, 1e16 + 2.0], [0.0, 1.0])), 1.0, 1e-12
+	)
+	try expect_close(try expect_some(correlation([0.0, 1.0], [1.0, 0.0])), -1.0, 1e-12)
+	try expect_close(
+		try expect_some(
+			correlation([1e16, 1e16 + 2.0, 1e16 + 4.0], [3.0, 5.0, 7.0])
+		),
+		1.0,
+		1e-12
+	)
+	try expect_none(correlation([1e16, 1e16, 1e16], [1.0, 2.0, 3.0]))
+
+test "correlation is the same under translation, from small to huge offsets and many points":
+	var xs: List[Float] = []
+	var ys: List[Float] = []
+
+	for i in 0..500:
+		x := (i % 17).to_float() * 0.37 + (i % 5).to_float() * 0.11
+		xs.append(x)
+		ys.append(x * 0.5 + (i % 7).to_float() * 0.9)
+
+	base := try expect_some(correlation(xs, ys))
+
+	for offset in [1.0, 1e3, 1e6, 1e9, 1e12]:
+		shifted := xs.map(fn x: x + offset)
+		try expect_close(try expect_some(correlation(shifted, ys)), base, 1e-6)
+
+	var times: List[Float] = []
+	for i in 0..2000:
+		times.append(1e9 + i.to_float())
+	try expect_close(try expect_some(correlation(times, times)), 1.0, 1e-12)

@@ -153,3 +153,23 @@ The #2966 performance hold stays with its owner until these numbers are accepted
 | reg tiny | 1000 | 57033 | 55618 | 0.98 | 15/20 | 0.002967909912982149 |
 | corr large | 1000 | 20510 | 18971 | 0.92 | 13/20 | 0.00387769346693372 |
 | reg large | 1000 | 60046 | 56426 | 0.94 | 14/20 | 6.973351136891396e+200 |
+
+
+## 2026-11-10 (second attempt): a cheaper exactness guard for correlation (#3467, #3482)
+
+The first attempt (#3468, reverted) sent short epoch-second series through the compensated fallback. The guard is now
+`xx > mean_x^2 * 2^-75 * n^3` for each list (the mean square deviation clears `2^-75 * n^2` of the squared mean), checked
+inline after the plain sums with no extra calls. Accuracy argument, in `CORRELATION_FLOOR`'s comment: a rounded mean shifts every
+deviation by one error d, which changes the correlation only at second order, by about `(n*d)^2 / (n*sx*sy)`, so the error is near
+`2^-106 / 2^-75 = 2^-31` at the floor. Checked against exact rational arithmetic: 4000 random samples (worst error 2.9e-11 when
+accepted, up to 0.5 when rejected) and 4652 adversarial samples within a decade above the floor (worst 5.7e-11); 409 inputs through the
+real function (offsets 0 to 1e15, 2 to 200 points, plus nonfinite, constant, tiny, huge, empty and single-value cases): the largest error
+fell from 7.7e-2 to 3.9e-13, no input got worse, and every edge case returned the same value as before.
+
+Paired build and runs as above (24 alternating pairs per backend, same `main.ms`; before is main `ae87aceda`, after is the working tree; debug `ms` builds):
+
+- LLVM: correlation on every ordinary, constant, narrow, tiny/large and timestamp control stays within 0.85 to 1.12x (median 1.00); regression, whose code is unchanged, ranges 0.81 to 1.15x (median 1.00). `corr ts-same n=10`: 231 -> 238 (1.03x).
+- Cranelift: correlation controls 0.96 to 1.25x (median 1.08), but regression, whose code path is unchanged, shows 0.96 to 1.26x (median 1.07) in the same run, so most of that offset is not this change. An A/A-style control (main plus one unused function, same compiler) gave a median ratio of 1.01 on Cranelift (max 1.31) and 1.07 on LLVM (max 1.5): run-to-run noise on this shared host is several percent.
+- `offset-1e16` (correlation, n=10 / 1000): 245 -> 766 (3.12x) / 17192 -> 68445 (3.98x) on LLVM: slower by design, and now correct.
+
+Not claimed: instruction counts, other machines, an explanation of the residual Cranelift offset.
