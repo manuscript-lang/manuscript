@@ -63,12 +63,15 @@ fn cookie_value(raw: &str, allow_quote: bool) -> Option<(String, bool)> {
         .then(|| (inner.to_string(), quoted))
 }
 
-fn parse_month(s: &str) -> Option<i64> {
+fn parse_month(s: &[u8]) -> Option<i64> {
     const M: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     M.iter()
-        .position(|m| m.eq_ignore_ascii_case(s))
+        .position(|m| {
+            s.get(..3)
+                .is_some_and(|p| m.as_bytes().eq_ignore_ascii_case(p))
+        })
         .map(|i| i as i64 + 1)
 }
 
@@ -81,47 +84,71 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
-/// `time.Parse` with RFC1123 (`Mon, 02 Jan 2006 15:04:05 MST`) or the dashed
-/// variant; zone abbreviations count as UTC offsets of zero.
+/// A bounded leading decimal field, with its non-digit suffix left for the caller.
+fn date_number(token: &[u8], min: usize, max: usize) -> Option<(i64, &[u8])> {
+    let n = token.iter().take_while(|b| b.is_ascii_digit()).count();
+    if !(min..=max).contains(&n) {
+        return None;
+    }
+    let value = token[..n]
+        .iter()
+        .fold(0, |v, b| v * 10 + i64::from(b - b'0'));
+    Some((value, &token[n..]))
+}
+
+fn date_time(token: &[u8]) -> Option<(i64, i64, i64)> {
+    let (h, rest) = date_number(token, 1, 2)?;
+    let (m, rest) = date_number(rest.strip_prefix(b":")?, 1, 2)?;
+    let (s, _) = date_number(rest.strip_prefix(b":")?, 1, 2)?;
+    Some((h, m, s))
+}
+
+/// RFC 6265 section 5.1.1: cookie dates use tokens, not the response Date grammar.
+/// This includes legacy two-digit years and asctime, and always denotes UTC.
 fn parse_expires(text: &str) -> Option<i64> {
-    let (_, rest) = text.split_once(", ")?;
-    let mut parts = rest.split(' ');
-    let date = parts.next()?;
-    if !date.contains('-') {
-        return parse_spaced(text);
+    let (mut time, mut day, mut month, mut year) = (None, None, None, None);
+    for token in text
+        .as_bytes()
+        .split(|b| matches!(b, b'\t' | 0x20..=0x2f | 0x3b..=0x40 | 0x5b..=0x60 | 0x7b..=0x7e))
+    {
+        if time.is_none()
+            && let Some(value) = date_time(token)
+        {
+            time = Some(value);
+        } else if day.is_none()
+            && let Some((value, _)) = date_number(token, 1, 2)
+        {
+            day = Some(value);
+        } else if month.is_none()
+            && let Some(value) = parse_month(token)
+        {
+            month = Some(value);
+        } else if year.is_none()
+            && let Some((value, _)) = date_number(token, 2, 4)
+        {
+            year = Some(value);
+        }
     }
-    let (time, zone) = (parts.next()?, parts.next()?);
-    if parts.next().is_some() || zone.is_empty() || !zone.bytes().all(|b| b.is_ascii_alphabetic()) {
-        return None;
-    }
-    let mut p = date.split('-');
-    to_unix(p.next()?, p.next()?, p.next()?, time)
-}
-
-fn parse_spaced(text: &str) -> Option<i64> {
-    let (_, rest) = text.split_once(", ")?;
-    let mut p = rest.split(' ');
-    let (d, m, y, time, zone) = (p.next()?, p.next()?, p.next()?, p.next()?, p.next()?);
-    if p.next().is_some() || zone.is_empty() || !zone.bytes().all(|b| b.is_ascii_alphabetic()) {
-        return None;
-    }
-    to_unix(d, m, y, time)
-}
-
-fn to_unix(d: &str, m: &str, y: &str, time: &str) -> Option<i64> {
-    let day: i64 = d.parse().ok().filter(|d| (1..=31).contains(d))?;
-    let month = parse_month(m)?;
-    let year: i64 = y.parse().ok()?;
-    if y.len() != 4 {
-        return None;
-    }
-    let mut t = time.split(':');
-    let (h, mi, s): (i64, i64, i64) = (
-        t.next()?.parse().ok()?,
-        t.next()?.parse().ok()?,
-        t.next()?.parse().ok()?,
-    );
-    if t.next().is_some() || h > 23 || mi > 59 || s > 59 {
+    let (day, month, mut year) = (day?, month?, year?);
+    let (h, mi, s) = time?;
+    year += match year {
+        0..=69 => 2000,
+        70..=99 => 1900,
+        _ => 0,
+    };
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days = match month {
+        2 => {
+            if leap {
+                29
+            } else {
+                28
+            }
+        }
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if year < 1601 || !(1..=days).contains(&day) || h > 23 || mi > 59 || s > 59 {
         return None;
     }
     Some(days_from_civil(year, month, day) * 86_400 + h * 3600 + mi * 60 + s)
@@ -151,6 +178,12 @@ fn parse_set_cookie(line: &str) -> Option<SetCookie> {
             continue;
         }
         let (attr, val) = part.split_once('=').unwrap_or((part, ""));
+        if attr.eq_ignore_ascii_case("expires") {
+            if let Some(expires) = parse_expires(val) {
+                c.expires = Some(expires);
+            }
+            continue;
+        }
         let Some((val, _)) = cookie_value(val, false) else {
             continue;
         };
@@ -165,7 +198,6 @@ fn parse_set_cookie(line: &str) -> Option<SetCookie> {
                     c.max_age = if secs <= 0 { -1 } else { secs };
                 }
             }
-            "expires" => c.expires = parse_expires(&val),
             _ => {}
         }
     }
@@ -475,6 +507,88 @@ mod tests {
         );
         assert_eq!(j.cookies("http", "x.github.io", "/"), vec!["h=2"]);
         assert!(j.cookies("http", "y.github.io", "/").is_empty());
+    }
+
+    #[test]
+    fn expires_accepts_cookie_date_formats_and_validates_calendar_dates() {
+        for text in [
+            "Thu, 01 Jan 1970 00:00:01 GMT",
+            "Thursday, 01-Jan-70 00:00:01 GMT",
+            "Thu Jan  1 00:00:01 1970",
+            "01/jAn/1970 0:0:1",
+            "Thu,\t01\tJan\t1970\t00:00:01\tGMT",
+            "Thu, 01st January 1970year 00:00:01GMT",
+        ] {
+            assert_eq!(parse_expires(text), Some(1), "{text}");
+        }
+        for (year, expected) in [("69", 2069), ("70", 1970), ("99", 1999), ("00", 2000)] {
+            assert_eq!(
+                parse_expires(&format!("01 Jan {year} 00:00:00")),
+                Some(days_from_civil(expected, 1, 1) * 86_400)
+            );
+        }
+        assert!(parse_expires("29 Feb 2000 23:59:59").is_some());
+        assert!(parse_expires("01 Jan 1601 00:00:00").is_some());
+        assert!(parse_expires("31 Dec 9999 23:59:59").is_some());
+        for text in [
+            "Thu, 29 Feb 1900 00:00:00 GMT",
+            "Thu, 31 Apr 2100 00:00:00 GMT",
+            "Thu, 01 Jan 1600 00:00:00 GMT",
+            "Thu, 00 Jan 2100 00:00:00 GMT",
+            "Thu, 32 Jan 2100 00:00:00 GMT",
+            "Thu, 01 Jan 2100 24:00:00 GMT",
+            "Thu, 01 Jan 2100 00:60:00 GMT",
+            "Thu, 01 Jan 2100 00:00:60 GMT",
+            "Thu, 01 Jan 2100 000:00:00 GMT",
+            "Thu, 01 Jan 21000 00:00:00 GMT",
+            "Thu, 01 Jan 2100 GMT",
+            "Thu, Jan 2100 00:00:00 GMT",
+        ] {
+            assert_eq!(parse_expires(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn legacy_expires_deletes_existing_cookies_and_keeps_max_age_precedence() {
+        for expires in [
+            "Thursday, 01-Jan-70 00:00:01 GMT",
+            "Thu Jan  1 00:00:01 1970",
+            "Thu,\t01\tJan\t1970\t00:00:01\tGMT",
+        ] {
+            let mut j = Jar::new();
+            set(&mut j, ("http", "h.test", "/"), &["a=original"]);
+            set(
+                &mut j,
+                ("http", "h.test", "/"),
+                &[&format!("a=deleted; Expires={expires}")],
+            );
+            assert!(j.cookies("http", "h.test", "/").is_empty(), "{expires}");
+            set(
+                &mut j,
+                ("http", "h.test", "/"),
+                &[&format!("a=live; Expires={expires}; Max-Age=3600")],
+            );
+            assert_eq!(j.cookies("http", "h.test", "/"), vec!["a=live"]);
+        }
+    }
+
+    #[test]
+    fn invalid_expires_is_ignored_without_losing_an_earlier_valid_attribute() {
+        let mut j = Jar::new();
+        set(
+            &mut j,
+            ("http", "h.test", "/"),
+            &[
+                "a=session; Expires=Thu, 29 Feb 1900 00:00:00 GMT",
+                "b=gone; Expires=01 Jan 1970 00:00:01; Expires=invalid",
+                "c=gone; Expires=invalid; Expires=01 Jan 1970 00:00:01",
+                "d=live; Expires=01 Jan 1970 00:00:01; Expires=01 Jan 2100 00:00:01",
+            ],
+        );
+        assert_eq!(
+            j.cookies("http", "h.test", "/"),
+            vec!["a=session", "d=live"]
+        );
     }
 
     #[test]

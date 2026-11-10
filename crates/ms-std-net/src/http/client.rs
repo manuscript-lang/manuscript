@@ -2809,6 +2809,40 @@ mod tests {
     }
 
     #[test]
+    fn legacy_cookie_expiry_is_honored_on_the_next_request() {
+        let (address, _) = serve(|s, _| {
+            while let Some(request) = read_request(s) {
+                let cookie = if request.starts_with("GET /set") {
+                    Some("a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100")
+                } else if request.starts_with("GET /delete-rfc850") {
+                    Some("a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT")
+                } else if request.starts_with("GET /delete-asctime") {
+                    Some("a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970")
+                } else {
+                    None
+                };
+                let cookie = cookie.map_or(String::new(), |c| format!("Set-Cookie: {c}\r\n"));
+                let reply = format!(
+                    "HTTP/1.1 200 OK\r\n{cookie}Content-Length: {}\r\n\r\n{request}",
+                    request.len()
+                );
+                s.write_all(reply.as_bytes()).unwrap();
+            }
+        });
+        let (_net, c) = client(ClientOptions {
+            cookies: true,
+            ..ClientOptions::default()
+        });
+        for path in ["/delete-rfc850", "/delete-asctime"] {
+            text(&c.send(request("GET", &address, "/set")).unwrap());
+            let before = text(&c.send(request("GET", &address, path)).unwrap());
+            assert!(before.contains("Cookie: a=live\r\n"), "{before}");
+            let after = text(&c.send(request("GET", &address, "/echo")).unwrap());
+            assert!(!after.contains("Cookie:"), "{after}");
+        }
+    }
+
+    #[test]
     fn keeps_cookies_when_enabled() {
         let (address, _) = serve(|s, _| {
             while let Some(request) = read_request(s) {
