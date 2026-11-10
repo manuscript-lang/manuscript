@@ -48,6 +48,68 @@ fn inline(text: String) String:
 
 	return "{out}{esc}[0m"
 
+keywords := [
+	"fn", "let", "const", "var", "if", "else", "for", "while", "return", "import",
+	"export", "type", "class", "def", "function", "async", "await", "match", "enum",
+	"impl", "struct", "pub", "use", "from", "in", "and", "or", "not", "true", "false",
+	"none", "null", "break", "continue", "try"
+]
+
+fn is_word_char(c: String) Bool:
+	return (
+		c == "_"
+		or (c >= "a" and c <= "z")
+		or (c >= "A" and c <= "Z")
+		or (c >= "0" and c <= "9")
+	)
+
+// Colors comments, strings, numbers and keywords in one line of code.
+export fn highlight(line: String) String:
+	chars := line.chars()
+	var out = ""
+	var i = 0
+
+	while i < chars.length():
+		c := chars[i]
+		next := chars.get(i + 1, "")
+
+		if (c == "/" and next == "/") or c == "#":
+			out = "{out}{esc}[90m{chars.drop(i).join("")}{esc}[0m"
+			break
+
+		if c == "\"" or c == "'" or c == "`":
+			var j = i + 1
+
+			while j < chars.length() and chars[j] != c:
+				if chars[j] == "\\": j += 1
+				j += 1
+
+			stop := if j < chars.length(): j + 1 else: chars.length()
+			out = "{out}{esc}[32m{chars.slice(i, stop).get([]).join("")}{esc}[0m"
+			i = stop
+			continue
+
+		if c >= "0" and c <= "9":
+			var j = i
+			while j < chars.length() and (is_word_char(chars[j]) or chars[j] == "."): j += 1
+			out = "{out}{esc}[33m{chars.slice(i, j).get([]).join("")}{esc}[0m"
+			i = j
+			continue
+
+		if is_word_char(c):
+			var j = i
+			while j < chars.length() and is_word_char(chars[j]): j += 1
+
+			word := chars.slice(i, j).get([]).join("")
+			out = "{out}{if keywords.contains(word): "{esc}[35m{word}{esc}[0m" else: word}"
+			i = j
+			continue
+
+		out = "{out}{c}"
+		i += 1
+
+	return out
+
 export type Renderer:
 	// The unfinished last line.
 	pending: String
@@ -55,7 +117,7 @@ export type Renderer:
 
 fn line_out(self_fence: Bool, line: String) String:
 	trimmed := line.trim_start()
-	if self_fence: return "{esc}[2m│ {line}{esc}[0m"
+	if self_fence: return "{esc}[2m│{esc}[0m {highlight(line)}"
 	if trimmed.starts_with("### "): return "{esc}[1m{esc}[36m{inline(trimmed.drop(4))}{esc}[0m"
 	if trimmed.starts_with("## "): return "{esc}[1m{esc}[34m{inline(trimmed.drop(3))}{esc}[0m"
 	if trimmed.starts_with("# "): return "{esc}[1m{esc}[4m{inline(trimmed.drop(2))}{esc}[0m"

@@ -3,9 +3,11 @@ import (
 	JsonValue from "@std/data/json.ms",
 	Ui from "./ui.ms",
 	Renderer, new_renderer from "./markdown.ms",
-	write_out, write_err, dim, red, Screen, new_screen, read_line from "./tui.ms",
+	write_out, write_err, dim, red, Screen, new_screen, read_line, visible_length, wrap_lines from "./tui.ms",
 	str, num, flag, obj, render, str_or, int_or from "./jsonx.ms",
 )
+
+esc := "\u{1b}"
 
 // Retained-mode terminal front end: the transcript is kept as lines and each change is drawn as a diff.
 export type TerminalUi:
@@ -13,9 +15,37 @@ export type TerminalUi:
 	// Streaming assistant text and reasoning not yet committed to the transcript.
 	text_buffer: String
 	thinking_buffer: String
+	// The tool call in flight, and the spinner frame.
+	tool_title: String
+	spinner: Int
 
 export fn terminal_ui() TerminalUi:
-	return TerminalUi(screen: new_screen(), text_buffer: "", thinking_buffer: "")
+	return TerminalUi(
+		screen: new_screen(), text_buffer: "", thinking_buffer: "", tool_title: "",
+		spinner: 0
+	)
+
+frames := ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+// Draws `lines` inside a box as wide as `width`, with `title` in the top edge.
+fn boxed(title: String, lines: List[String], width: Int, color: String) String:
+	inner := if width > 6: width - 4 else: 20
+	var rows = List[String]()
+	head := "┌─ {title} "
+	fill := if inner + 3 > visible_length(head): "─".repeat(
+		inner + 3 - visible_length(head)
+	).get("") else: ""
+	rows.append("{color}{head}{fill}┐{esc}[0m")
+
+	for line in lines:
+		for piece in wrap_lines(line, inner):
+			pad := if inner > visible_length(piece): " ".repeat(
+				inner - visible_length(piece)
+			).get("") else: ""
+			rows.append("{color}│{esc}[0m {piece}{pad} {color}│{esc}[0m")
+
+	rows.append("{color}└{"─".repeat(inner + 2).get("")}┘{esc}[0m")
+	return rows.join("\n")
 
 fn markdown(text: String) String:
 	var r = new_renderer()
@@ -31,7 +61,16 @@ impl TerminalUi:
 		)
 		if not self.text_buffer.is_empty(): shown = "{shown}{if shown.is_empty(): "" else: "\n"}{markdown(self.text_buffer)}"
 		self.screen.set_live(shown)
-		self.screen.draw([dim("working… Esc to abort")], 0, 0)
+		self.spinner += 1
+		self.screen.draw(
+			[
+				dim(
+					"{frames[self.spinner % frames.length()]} working… Esc to abort"
+				)
+			],
+			0,
+			0
+		)
 
 	// Moves the finished streaming component into the transcript.
 	var fn flush() Unit:
@@ -56,15 +95,44 @@ impl Ui for TerminalUi:
 
 	var fn tool(name: String, summary: String) Unit:
 		self.flush()
-		self.screen.commit(dim("▸ {name} {summary}"))
-		self.screen.draw([dim("working… Esc to abort")], 0, 0)
+		self.tool_title = "{name} {summary}"
+		self.spinner += 1
+		self.screen.set_live(
+			boxed(
+				self.tool_title, ["running…"], self.screen.width, "{esc}[34m"
+			)
+		)
+		self.screen.draw(
+			[
+				dim(
+					"{frames[self.spinner % frames.length()]} working… Esc to abort"
+				)
+			],
+			0,
+			0
+		)
 
 	var fn result(name: String, failed: Bool, output: String) Unit:
-		lines := output.split("\n")
-		shown := lines.take(if failed: 8 else: 3).join("\n")
-		more := if lines.length() > 8 or (not failed and lines.length() > 3): "\n…" else: ""
-		self.screen.commit(if failed: red("{shown}{more}") else: dim("{shown}{more}"))
-		self.screen.draw([dim("working… Esc to abort")], 0, 0)
+		lines := output.trim_end().split("\n")
+		shown := lines.take(10)
+		more := if lines.length() > 10: ["… {lines.length() - 10} more lines"] else: []
+		color := if failed: "{esc}[31m" else: "{esc}[32m"
+		self.screen.set_live("")
+		self.screen.commit(
+			boxed(
+				self.tool_title, shown.concat(more), self.screen.width, color
+			)
+		)
+		self.spinner += 1
+		self.screen.draw(
+			[
+				dim(
+					"{frames[self.spinner % frames.length()]} working… Esc to abort"
+				)
+			],
+			0,
+			0
+		)
 
 	var fn event(kind: String, payload: JsonValue) Unit:
 		if kind == "resync": self.screen.reset()

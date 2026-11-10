@@ -38,7 +38,7 @@ export fn is_interactive() Bool:
 	return caps.input_is_terminal and caps.output_is_terminal
 
 // Characters on screen in `text`: escape sequences take no room.
-fn visible_length(text: String) Int:
+export fn visible_length(text: String) Int:
 	var n = 0
 	var in_escape = false
 
@@ -56,7 +56,7 @@ fn visible_length(text: String) Int:
 	return n
 
 // Splits `text` on newlines and wraps each line at `width` visible characters.
-fn wrap_lines(text: String, width: Int) List[String]:
+export fn wrap_lines(text: String, width: Int) List[String]:
 	var out = List[String]()
 
 	for line in text.split("\n"):
