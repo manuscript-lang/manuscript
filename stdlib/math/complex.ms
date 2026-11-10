@@ -94,8 +94,8 @@ fn smith_divide(numerator: Complex, other: Complex) Complex:
 
 // The sum of two values and its exact rounding error, as (sum, error).
 fn two_sum(left: Float, right: Float) List[Float]:
-    let sum = left + right
-    let virtual = sum - left
+    sum := left + right
+    virtual := sum - left
     return [sum, (left - (sum - virtual)) + (right - virtual)]
 
 /*
@@ -108,15 +108,15 @@ fn log_magnitude(re: Float, im: Float, modulus: Float) Float:
         return log(hypot(ldexp(re, 600), ldexp(im, 600))) - 600.0 * 0.6931471805599453
     if not (modulus >= 0.5 and modulus <= 2.0): return log(modulus)
 
-    let first = re.abs().max(im.abs())
-    let second = re.abs().min(im.abs())
-    let first_square = first * first
-    let second_square = second * second
-    let first_error = fma(first, first, -first_square)
-    let second_error = fma(second, second, -second_square)
-    let shifted = two_sum(first_square, -1.0)
-    let total = two_sum(shifted[0], second_square)
-    let correction = shifted[1] + total[1] + first_error + second_error
+    first := re.abs().max(im.abs())
+    second := re.abs().min(im.abs())
+    first_square := first * first
+    second_square := second * second
+    first_error := fma(first, first, -first_square)
+    second_error := fma(second, second, -second_square)
+    shifted := two_sum(first_square, -1.0)
+    total := two_sum(shifted[0], second_square)
+    correction := shifted[1] + total[1] + first_error + second_error
     return log1p(total[0] + correction) / 2.0
 
 impl Complex:

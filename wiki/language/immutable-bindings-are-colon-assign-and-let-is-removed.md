@@ -8,4 +8,4 @@ Why: one keyword fewer and about one token fewer per binding. Statement-start `[
 
 Apply when: changing binding grammar, the formatter's token-based wrapping (it looks for `=` or `:=` after the pattern), partial-parse recovery roots (`constant_start` in `partial.rs`), or export-name hints in `ms-driver`.
 Evidence: [bindings](../../documentation/core-language/basics/bindings.md), [grammar](../../documentation/core-language/basics/grammar.md), [destructuring](../../documentation/core-language/types/destructuring.md).
-Verify: `let x = 1` fails with the "'let' was removed" diagnostic; `if let v = o:` fails likewise; `[a, b] := [1, 2]` parses; a column-zero `name: Int,` stays a multiline-parameter continuation, not a constant.
+Verify: `x := 1` fails with the "'let' was removed" diagnostic; `if v := o:` fails likewise; `[a, b] := [1, 2]` parses; a column-zero `name: Int,` stays a multiline-parameter continuation, not a constant.

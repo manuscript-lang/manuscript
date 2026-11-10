@@ -329,7 +329,7 @@ test "elements with many attributes keep their order and reject duplicates at an
     for i in 0..40:
         text += " a{i}=\"{i}\""
 
-    let doc = parse(text + "/>").get()
+    doc := parse(text + "/>").get()
     try expect_equal(doc.attribute("a0").get(""), "0")
     try expect_equal(doc.attribute("a39").get(""), "39")
     try expect_equal(doc.attribute("a15").get(""), "15")
