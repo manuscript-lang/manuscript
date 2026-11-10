@@ -263,6 +263,16 @@ fn uses_in(name: Symbol, stmts: &[Stmt]) -> Uses {
     uses
 }
 
+fn expr_reads(name: Symbol, e: &Expr) -> usize {
+    let mut uses = Uses {
+        name,
+        reads: 0,
+        writes: 0,
+    };
+    visit::walk_expr(&mut uses, e);
+    uses.reads
+}
+
 fn plain_number(e: &Expr, source: &str) -> bool {
     matches!(e.kind, ExprKind::Number(_))
         && source
@@ -510,15 +520,7 @@ impl Scan<'_> {
             });
         let rest = &body[at + 2..];
         let later = uses_in(*name, rest);
-        let in_cond = {
-            let mut u = Uses {
-                name: *name,
-                reads: 0,
-                writes: 0,
-            };
-            visit::walk_expr(&mut u, cond);
-            u.reads
-        };
+        let in_cond = expr_reads(*name, cond) + expr_reads(*name, replacement);
         if target != name || !simple || !scalar || later.writes > 0 || in_cond > 0 {
             return;
         }
@@ -696,7 +698,10 @@ impl Scan<'_> {
         else {
             return;
         };
-        if !plain_number(start, self.source()) || uses_in(*name, &body[bind_at + 1..at]).reads > 0 {
+        if !plain_number(start, self.source()) || {
+            let between = uses_in(*name, &body[bind_at + 1..at]);
+            between.reads + between.writes > 0
+        } {
             return;
         }
         let Some((last, inner)) = loop_body.split_last() else {
