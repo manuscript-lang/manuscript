@@ -208,14 +208,15 @@ impl Source[T] for Taker[T]:
         if self.left <= 0:
             return ok(none)
 
+        let item = try self.input.next()
         self.left -= 1
-        return self.input.next()
+        return ok(item)
 
     var fn close() Unit!:
         return self.input.close()
 
 // A stream of at most the first `count` items of `input`, then the end: later items are never read, so `take` can
-// end an endless stream. A `count` of 0 or less is an empty stream. Closing it closes `input`.
+// end an endless stream. A failed read does not count as an item. A `count` of 0 or less is an empty stream. Closing it closes `input`.
 export fn take[T](input: ReadStream[T], count: Int) ReadStream[T]:
     return ReadStream[T](Taker[T](input, count))
 
