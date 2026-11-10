@@ -111,7 +111,11 @@ impl BitSet:
 	// Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3 symmetric difference.
 	fn combine(other: BitSet, mode: Int) BitSet:
 		var out: List[Int] = []
-		count := self.words.length().max(other.words.length())
+
+		// Words past the shorter operand are zero in an intersection; past this set's end, zero in a difference.
+		var count = self.words.length().max(other.words.length())
+		if mode == 1: count = self.words.length().min(other.words.length())
+		if mode == 2: count = self.words.length()
 
 		for word in 0..count:
 			left := if word < self.words.length(): self.words[word] else: 0
