@@ -253,9 +253,100 @@ impl Reader:
             else:
                 return error(Error("XML: invalid data", kind: "EBADMSG"))
 
+    // Skips a quoted literal; its contents never delimit markup.
+    var fn quoted() Unit!:
+        let quote = self.peek()
+        if quote != "\"" and quote != "'": return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        self.at += 1
+
+        let _text = try self.take_until(quote)
+        return ok(unit)
+
+    // Requires at least one whitespace scalar.
+    var fn require_space() Unit!:
+        let before = self.at
+        self.skip_space()
+        if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+        return ok(unit)
+
+    // XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and parameter
+    // references, with quoted spans skipped so `]` and `>` inside them are plain text.
+    var fn internal_subset() Unit!:
+        while true:
+            self.skip_space()
+
+            if self.looking_at("]"):
+                self.at += 1
+                return ok(unit)
+
+            if self.looking_at("<!--"):
+                let _comment = try self.comment()
+            else if self.looking_at("<?"):
+                try self.instruction()
+            else if self.looking_at("<!"):
+                self.at += 2
+
+                while not self.looking_at(">"):
+                    if self.done(): return error(
+                        Error(
+                            "XML: invalid data", kind: "EBADMSG"
+                        )
+                    )
+
+                    if self.peek() == "\"" or self.peek() == "'":
+                        try self.quoted()
+                    else:
+                        self.at += 1
+
+                self.at += 1
+            else if self.looking_at("%"):
+                let _reference = try self.take_until(";")
+            else:
+                return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+        return ok(unit)
+
+    // XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
+    var fn doctype() Unit!:
+        try self.expect("<!DOCTYPE")
+        try self.require_space()
+
+        let _name = try self.name()
+        self.skip_space()
+
+        if self.looking_at("SYSTEM"):
+            self.at += 6
+            try self.require_space()
+            try self.quoted()
+            self.skip_space()
+        else if self.looking_at("PUBLIC"):
+            self.at += 6
+            try self.require_space()
+            try self.quoted()
+            try self.require_space()
+            try self.quoted()
+            self.skip_space()
+
+        if self.looking_at("["):
+            self.at += 1
+            try self.internal_subset()
+            self.skip_space()
+
+        try self.expect(">")
+        return ok(unit)
+
     // Only the prolog may have a declaration, before any whitespace or other markup.
-    var fn skip_misc(declaration_allowed: Bool = false) Unit!:
+    // The prolog may also hold one DOCTYPE; it is skipped, never expanded.
+    var fn skip_misc(
+        declaration_allowed: Bool = false,
+        doctype_allowed: Bool = false
+    ) Unit!:
         let start = self.at
+        var doctype_open = doctype_allowed
 
         while true:
             self.skip_space()
@@ -272,15 +363,9 @@ impl Reader:
                     try self.instruction()
             else if self.looking_at("<!--"):
                 let _comment = try self.comment()
-            else if self.looking_at("<!DOCTYPE"):
-                var depth = 0
-
-                while not self.done():
-                    let c = self.peek()
-                    self.at += 1
-                    if c == "[": depth += 1
-                    if c == "]": depth -= 1
-                    if c == ">" and depth <= 0: break
+            else if doctype_open and self.looking_at("<!DOCTYPE"):
+                try self.doctype()
+                doctype_open = false
             else:
                 break
 
@@ -535,7 +620,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     ) else: text.clone()
     var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
-    try reader.skip_misc(declaration_allowed: true)
+    try reader.skip_misc(declaration_allowed: true, doctype_allowed: true)
 
     let root = try reader.element(1)
     try reader.skip_misc()
