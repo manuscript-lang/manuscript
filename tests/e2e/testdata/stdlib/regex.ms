@@ -175,3 +175,19 @@ test "regex compile errors preserve columns after anchors and numbered lines":
         try expect_equal(
             invalid.err().message, "regular expression: invalid data: " + item[1]
         )
+
+test "regex compile errors point to duplicate flags and group names":
+    for item in [
+        ["(?ii)", "duplicate flag at column 4"],
+        ["(?i-i)", "duplicate flag at column 5"],
+        ["(?-i-m)", "flag negation operator repeated at column 5"],
+        ["(?P<word>a)(?P<word>b)", "duplicate capture group name at column 16"],
+        ["(?P<名字>a)\n  (?P<名字>b)", "duplicate capture group name at column 7"],
+        ["a\n(?ii)", "duplicate flag at column 4"],
+        ["a\n(?-i-m)", "flag negation operator repeated at column 5"]
+    ]:
+        let invalid = compile(item[0])
+        try expect_equal(invalid.err().kind, "EBADMSG")
+        try expect_equal(
+            invalid.err().message, "regular expression: invalid data: " + item[1]
+        )
