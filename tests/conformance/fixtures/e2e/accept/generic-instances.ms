@@ -10,9 +10,7 @@ fn ident[T](x: T) T:
     return x
 
 fn pick[T](first: Bool, left: T, right: T) T:
-    var chosen = left
-    if not first:
-        chosen = right
+    let chosen = if not first: right else: left
     return chosen
 
 fn keep[T](value: T) T:

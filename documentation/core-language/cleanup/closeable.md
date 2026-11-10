@@ -62,11 +62,9 @@ impl Closeable for Gate:
         if self.fails:
             self.fails = false
             return error(Error("gate stuck"))
-        return ok(unit)
 
 fn use_gate(fails: Bool) Unit!:
     let _gate = Gate(fails)
-    return ok(unit)
 ```
 
 This example reports the release failure once; a later close succeeds without repeating the release attempt.

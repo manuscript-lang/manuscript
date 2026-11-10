@@ -1,6 +1,6 @@
-import expect_equal from "@std/test/test.ms"
-import HashAlgorithm, sha256, sha384, sha512 from "@std/crypto.ms"
 import (
+    expect_equal from "@std/test/test.ms",
+    HashAlgorithm, sha256, sha384, sha512 from "@std/crypto.ms",
     CompressionFormat,
     CompressOptions,
     compress,
@@ -9,9 +9,9 @@ import (
     pack,
     unpack,
     ArchiveEntry,
-    ArchiveOptions
-) from "@std/io/archive.ms"
-import Bytes from "@std/bytes.ms"
+    ArchiveOptions from "@std/io/archive.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:
     return algorithm.digest(data)

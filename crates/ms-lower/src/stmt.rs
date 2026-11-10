@@ -1161,7 +1161,7 @@ impl<'a> FnLower<'a> {
         let ms_check::api::hir::Resolution::Function(sym) = &view.target else {
             return Ok(None);
         };
-        if self.syms.str(sym.native) != "collections/range" || view.arguments.len() != 2 {
+        if !sym.native.is(self.syms, "collections/range") || view.arguments.len() != 2 {
             return Ok(None);
         }
         let a = self.expr(view.arguments[0].expr)?;

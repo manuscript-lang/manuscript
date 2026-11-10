@@ -1,5 +1,7 @@
-import expect_equal, expect_true, expect_false from "@std/test/test.ms"
-import Deque from "@std/collections/deque.ms"
+import (
+    expect_equal, expect_true, expect_false, expect_fault from "@std/test/test.ms",
+    Deque from "@std/collections/deque.ms",
+)
 
 type Person:
     name: String
@@ -67,6 +69,18 @@ test "repeated copies the list":
     try expect_equal([1, 2].repeated(0), List[Int]())
     try expect_equal(["x"].repeated(2), ["x", "x"])
 
+test "extend appends copies and leaves the argument":
+    var xs = [1]
+    let more = [2, 3]
+    xs.extend(more)
+    xs.extend(List[Int]())
+    try expect_equal(xs, [1, 2, 3])
+    try expect_equal(more, [2, 3])
+
+    var names = ["a"]
+    names.extend(["b"])
+    try expect_equal(names, ["a", "b"])
+
 test "retain on Map and Set":
     var counts = {"a": 0, "b": 2, "c": 0, "d": 5}
     counts.retain(fn key, n: n != 0)
@@ -86,3 +100,21 @@ test "Deque rotate turns the ring":
     try expect_equal(ring.to_list(), [1, 2, 3, 4])
     ring.rotate(6)
     try expect_equal(ring.to_list(), [3, 4, 1, 2])
+
+fn repeat_negative_empty() Unit:
+    let _result = List[Int]().repeated(-1)
+
+test "repeated empty lists return without traversing the count":
+    for count in [0, 1, 1000000, 9223372036854775807]:
+        try expect_equal(List[Int]().repeated(count), List[Int]())
+        try expect_equal(List[String]().repeated(count), List[String]())
+
+    let fault = try expect_fault(repeat_negative_empty)
+    try expect_equal(fault, "List.repeated: count -1 must not be negative")
+
+test "repeated nested lists remain independent copies":
+    let values = [[1, 2]]
+    var repeated = values.repeated(2)
+    repeated[0].append(3)
+    try expect_equal(values, [[1, 2]])
+    try expect_equal(repeated, [[1, 2, 3], [1, 2]])

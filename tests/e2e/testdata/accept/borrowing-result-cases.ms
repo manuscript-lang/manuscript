@@ -50,4 +50,4 @@ test "try relays a borrowed error and takes an owned ok payload":
 
 test "a borrowing result is passed to a reader as an ordinary Result":
     let bad: String!String = error(heap("bad", 5))
-    describe(bad) | try expect_equal("Result.error({heap("bad", 5)})")
+    describe(bad) | try expect_equal("error({heap("bad", 5)})")

@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn sum_lines(text: String) Int:
     let lines = text.lines()
@@ -17,15 +19,14 @@ fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
         checksum += sum_lines(text)
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
-    if checksum != expected * iterations:
-        return 1
+    if checksum != expected * iterations: return 1
 
     let _written = stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
-export fn main() Int:
+fn main() Int:
     let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
     if measure("empty", "", 0, 100000) != 0: return 1
     if measure("tiny", "a\nb\n", 36, 100000) != 0: return 1

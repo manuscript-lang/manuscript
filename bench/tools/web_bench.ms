@@ -15,17 +15,17 @@ import (
     platform,
     read_text,
     usage,
-    write_text
-) from "./lib.ms"
-import Ran, invalid from "./lib.ms"
-import SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms"
-import arguments from "@std/os/env.ms"
-import copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import milliseconds, sleep from "@std/time.ms"
+    write_text from "./lib.ms",
+    Ran, invalid from "./lib.ms",
+    SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms",
+    arguments from "@std/os/env.ms",
+    copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    milliseconds, sleep from "@std/time.ms",
+)
 
 fn say(text: String) Unit:
-    stdout().write(text + "\n").get()
+    print(text)
 
 fn tail(text: String) String:
     return text.trim()
@@ -241,7 +241,6 @@ fn run_all(here: String, seconds: Int) Unit!:
         port += 1
 
     tmp.close().get(unit)
-    return ok(unit)
 
 fn cell(p: Plan, argv: List[String]) String:
     return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
@@ -329,9 +328,8 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 
     server.close().get(unit)
     tmp.close().get(unit)
-    return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if (
         args.length() < 1

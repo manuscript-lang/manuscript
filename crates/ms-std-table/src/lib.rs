@@ -1,5 +1,6 @@
 //! `String.display_width` (`@std/string.ms`). Unicode widths come from `unicode-width`, with ambiguous
 //! characters narrow; the table layout itself is Manuscript.
+//! ms: domain unicode
 
 use ms_rt::ffi::{Fail, native};
 use unicode_width::UnicodeWidthStr;

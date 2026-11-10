@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import SortedMap from "@std/sorted.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    SortedMap from "@std/sorted.ms",
+)
 
 type Record:
     category: String
@@ -16,20 +18,15 @@ fn valid_amount(s: String) Bool:
     var i = 0
     while i < n and is_digit(s.get(i)):
         i += 1
-    if i == 0:
-        return false
-    if i == n:
-        return true
-    if s.get(i) != ".":
-        return false
+    if i == 0: return false
+    if i == n: return true
+    if s.get(i) != ".": return false
 
     let frac = n - i - 1
-    if frac < 1 or frac > 2:
-        return false
+    if frac < 1 or frac > 2: return false
 
     for j in i + 1..n:
-        if not is_digit(s.get(j)):
-            return false
+        if not is_digit(s.get(j)): return false
     return true
 
 // Splits one line into category and amount; none when the line is invalid.
@@ -44,8 +41,7 @@ fn parse_line(line: String) Record?:
             category = rest_after_quote.take(close)
 
             let tail = rest_after_quote.drop(close + 1)
-            if not tail.starts_with(","):
-                return none
+            if not tail.starts_with(","): return none
 
             amount = tail.drop(1)
         else:
@@ -57,8 +53,7 @@ fn parse_line(line: String) Record?:
         else:
             return none
 
-    if category.is_empty() or not valid_amount(amount):
-        return none
+    if category.is_empty() or not valid_amount(amount): return none
 
     return Record(category: category, amount: amount)
 
@@ -111,8 +106,7 @@ export fn main() Int:
 
     if let lines = read_lines(stdin()):
         for line in lines:
-            if line.trim().is_empty():
-                continue
+            if line.trim().is_empty(): continue
 
             if let rec = parse_line(line):
                 let cents = to_cents(rec.amount)

@@ -1,7 +1,7 @@
 // Fetch-style HTTP client implemented in Manuscript over `@std/net/http.ms` and `@std/data/json.ms`.
-import Bytes from "@std/bytes.ms"
-import Closeable, Data from "@std/core.ms"
 import (
+    Bytes from "@std/bytes.ms",
+    Closeable, Data from "@std/core.ms",
     HttpClient,
     HttpClientOptions,
     NativeHttpClient,
@@ -10,17 +10,15 @@ import (
     HttpResponseMetadata,
     StreamingResponse,
     RawResponse,
-    headers
-) from "@std/net/http.ms"
-import parse, stringify, JsonOptions from "@std/data/json.ms"
-import Network, http_client from "@std/net/net.ms"
-import TlsOptions from "@std/net/tls.ms"
-import Duration, Instant, seconds, monotonic from "@std/time.ms"
-import (
+    headers from "@std/net/http.ms",
+    parse, stringify, JsonOptions from "@std/data/json.ms",
+    Network, http_client from "@std/net/net.ms",
+    TlsOptions from "@std/net/tls.ms",
+    Duration, Instant, seconds, monotonic from "@std/time.ms",
     msstd_http_client_request_bytes,
-    msstd_http_client_share
-) from "@std/internal/http.ms"
-import Promise, owned_task from "@std/concurrency/promise.ms"
+    msstd_http_client_share from "@std/internal/http.ms",
+    Promise, owned_task from "@std/concurrency/promise.ms",
+)
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
 export enum FetchBody:
@@ -88,8 +86,7 @@ impl FetchResponse:
 
     // Decodes the body as UTF-8.
     fn text() String!:
-        if let text = self.body.decode_utf8():
-            return ok(text)
+        if let text = self.body.decode_utf8(): return ok(text)
 
         return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
@@ -129,7 +126,7 @@ impl Fetcher:
     // Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
     fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
         let sent = outgoing(options)
-        return self.client.request_bytes(
+        return self.client.request(
             options.method.clone(), url, sent.headers, sent.body,
             options.max_response_bytes, options.timeout
         )
@@ -165,14 +162,12 @@ type Outgoing:
     body: Bytes
 
 fn limit_exceeded(limit: Int?, total: Int) Bool:
-    if let max = limit:
-        return total > max
+    if let max = limit: return total > max
 
     return false
 
 fn expired(timeout: Duration?, started: Instant) Bool:
-    if let limit = timeout:
-        return monotonic().difference(started).compare(limit) >= 0
+    if let limit = timeout: return monotonic().difference(started).compare(limit) >= 0
 
     return false
 
@@ -249,7 +244,7 @@ fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchRespo
     let started = monotonic()
     let outbound = outgoing(options.clone())
     let body = try msstd_http_client_request_bytes(
-        native, options.method.clone(), url, outbound.headers, outbound.body,
+        native, options.method.text(), url, outbound.headers, outbound.body,
         options.max_response_bytes, options.timeout
     )
     return drain(body, options, started)

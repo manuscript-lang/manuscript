@@ -1,6 +1,6 @@
-import Closeable from "@std/core.ms"
-import Duration from "@std/time.ms"
 import (
+    Closeable from "@std/core.ms",
+    Duration from "@std/time.ms",
     msrt_promise_new,
     msrt_promise_put,
     msrt_promise_take,
@@ -18,8 +18,8 @@ import (
     msrt_cancel_free,
     msrt_promise_wait_any,
     msrt_promise_fault_report,
-    msrt_promise_drop
-) from "@std/internal/promises.ms"
+    msrt_promise_drop from "@std/internal/promises.ms",
+)
 
 // Promises: operations whose results are taken once with `wait()`.
 //
@@ -82,7 +82,6 @@ impl Closeable for Cancel:
     // Frees the switch. Promises made with its signals keep running; they just cannot be cancelled by it any more.
     var fn close() Unit!:
         msrt_cancel_free(self.id)
-        return ok(unit)
 
 impl Signal:
     // Whether the switch has fired, for work that loops without waiting.
@@ -93,8 +92,7 @@ impl Signal:
 fn nanos(limit: Duration?) Int:
     if let own = limit:
         let total = own.to_nanoseconds()
-        if total < 0:
-            return 0
+        if total < 0: return 0
 
         return total
 
@@ -102,12 +100,9 @@ fn nanos(limit: Duration?) Int:
 
 // The error a `wait` that did not produce a result reports, from the runtime outcome code of the promise `id`.
 fn outcome(id: Int, code: Int) Error:
-    if code == 2:
-        return Error("promise: timed out", kind: "ETIMEDOUT")
-    if code == 3:
-        return Error("promise: cancelled", kind: "ECANCELED")
-    if code == 4:
-        return Error("promise: the result was already taken", kind: "EBADF")
+    if code == 2: return Error("promise: timed out", kind: "ETIMEDOUT")
+    if code == 3: return Error("promise: cancelled", kind: "ECANCELED")
+    if code == 4: return Error("promise: the result was already taken", kind: "EBADF")
 
     let report = msrt_promise_fault_report(id)
     return Error(
@@ -131,15 +126,13 @@ export fn set_options[T](
 
 // The result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
-    if let value = msrt_promise_take[V](id):
-        return ok(value)
+    if let value = msrt_promise_take[V](id): return ok(value)
 
     return error(outcome(id, 4))
 
 // The error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
-    if let cause = msrt_promise_take[Error](id):
-        return cause
+    if let cause = msrt_promise_take[Error](id): return cause
 
     return outcome(id, 4)
 
@@ -147,8 +140,7 @@ fn taken_error(id: Int) Error:
 // outcome's. One function for every failure keeps the error construction out of `wait`, whose frame stays on the stack
 // while a task parks.
 fn failure(id: Int, code: Int) Error:
-    if code == 1:
-        return taken_error(id)
+    if code == 1: return taken_error(id)
 
     return outcome(id, code)
 
@@ -158,8 +150,7 @@ impl Promise[T]:
     // `timeout` option has passed, which also cancelled the work.
     fn wait() T!:
         let code = msrt_promise_wait(self.id, -1)
-        if code == 0:
-            return taken_result[T](self.id)
+        if code == 0: return taken_result[T](self.id)
 
         return error(failure(self.id, code))
 
@@ -183,7 +174,6 @@ impl Closeable for Promise[T]:
     // Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped.
     var fn close() Unit!:
         msrt_promise_drop(self.id)
-        return ok(unit)
 
 // Stores how `entry` ended in the promise `id`.
 export fn complete[U](id: Int, result: U!) Unit:
@@ -282,13 +272,9 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 // `wait` does; an empty list is an error.
 export fn wait_first[T](promises: List[Promise[T]]) T!:
     var pending = promises
-    if pending.is_empty():
-        return error(Error("promise: nothing to wait for"))
+    if pending.is_empty(): return error(Error("promise: nothing to wait for"))
 
-    var ids: List[Int] = []
-    for p in pending:
-        ids.append(p.id)
-
+    var ids = pending.map(fn p: p.id)
     let which = msrt_promise_wait_any(ids, -1)
     return pending[which].wait()
 

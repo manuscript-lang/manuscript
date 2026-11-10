@@ -14,8 +14,7 @@ import (
 ) from "@std/net/http.ms"
 import stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
-import monotonic_time from "@std/os/system.ms"
-import Duration, nanoseconds, sleep from "@std/time.ms"
+import Duration, monotonic, nanoseconds, sleep from "@std/time.ms"
 
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
@@ -58,9 +57,9 @@ fn run(label: String, grace_ms: Int) Bool:
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
         var server = acquired
-        let start = monotonic_time()
+        let start = monotonic()
         let slow = fetch(server.address(), "/slow")
-        let elapsed_ms = (monotonic_time() - start) / 1000000
+        let elapsed_ms = monotonic().difference(start).to_milliseconds()
         let fast = fetch(server.address(), "/fast")
         let _slow = stdout().write(
             "{label} slow: {slow.starts_with("HTTP/1.1 504")} prompt: {elapsed_ms < 2000}\n"

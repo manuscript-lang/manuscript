@@ -65,6 +65,5 @@ fn main_run() Int:
 
     return sum
 
-export fn main() Int:
+fn main() Unit:
     let _w = stdout().write("{main_run()}\n")
-    return 0

@@ -299,6 +299,7 @@ pub fn compile_source(
                 continue;
             }
             graph.diagnostics.push(Diagnostic {
+                cause: Default::default(),
                 opener_line: 0,
                 file: file.clone(),
                 pos: item.pos,

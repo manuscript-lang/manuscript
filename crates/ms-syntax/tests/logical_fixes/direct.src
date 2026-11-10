@@ -1,0 +1,2 @@
+fn compare(left: Bool, right: Bool) Bool:
+    return EXPRESSION

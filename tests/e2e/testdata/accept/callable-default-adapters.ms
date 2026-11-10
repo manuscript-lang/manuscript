@@ -1,5 +1,7 @@
-import floor from "@std/math/math.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    floor from "@std/math/math.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn original(value: Int = 7) Int: value + 1
 
@@ -82,8 +84,7 @@ test "inherited defaults remain available on immutable bound callables":
 
 test "inferred callable returns use required arguments consistently":
     let factory = fn(flag: Bool):
-        if flag:
-            return original
+        if flag: return original
 
         return replacement
 

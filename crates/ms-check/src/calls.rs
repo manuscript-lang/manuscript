@@ -9,6 +9,7 @@ use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
+use ms_syntax::Cause;
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
@@ -93,12 +94,28 @@ fn slots(args: &[Arg]) -> Option<Vec<crate::syntax::ArgSlot>> {
     )
 }
 
+/// The parser names the parameters of a function type `_0`, `_1`, ...; they are not source labels.
+fn synthetic_parameter(name: &str) -> bool {
+    name.strip_prefix('_')
+        .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()))
+}
+
 fn unknown_argument_hint(
     syms: ms_syntax::Names,
     name: &str,
     callee: &str,
     params: &[Param],
 ) -> String {
+    if !params.is_empty() && params.iter().all(|p| synthetic_parameter(syms.str(p.name))) {
+        let types: Vec<String> = params
+            .iter()
+            .map(|p| p.ty.display(syms).to_string())
+            .collect();
+        return format!(
+            "; function values take positional arguments ({}), so pass them without labels",
+            types.join(", ")
+        );
+    }
     let hint = did_you_mean(name, &names_of(syms, params));
     if !hint.is_empty() {
         return hint;
@@ -117,14 +134,26 @@ fn unknown_argument_hint(
     )
 }
 
-fn missing_argument_hint(syms: ms_syntax::Names, param: &Param, callee: &str) -> String {
+fn missing_argument_hint(
+    syms: ms_syntax::Names,
+    param: &Param,
+    position: usize,
+    callee: &str,
+) -> String {
     let in_callee = if callee.is_empty() {
         String::new()
     } else {
         format!(" in call to {callee}")
     };
+    if synthetic_parameter(syms.str(param.name)) {
+        return format!(
+            "{position}: {}{in_callee}; pass it positionally, without a label",
+            param.ty.display(syms)
+        );
+    }
     format!(
-        ": {}{in_callee}; add '{}: <{}>'",
+        "{}: {}{in_callee}; add '{}: <{}>'",
+        syms.str(param.name),
         param.ty.display(syms),
         syms.str(param.name),
         param.ty.display(syms)
@@ -331,6 +360,7 @@ impl Checker {
                 );
                 self.type_error_with_fix(
                     e.pos,
+                    Cause::Other,
                     format!(
                         "nullary cases omit call parentheses; write {0} instead of {0}()",
                         self.syms.str(cs.name)
@@ -383,7 +413,7 @@ impl Checker {
         }
         if let Some(s) = symbol {
             i.symbol = Some(s.clone());
-            i.native = (!self.syms.str(s.native).is_empty()).then_some(s.native);
+            i.native = s.native;
             let mut sig = s.ty(self.syms);
             let vars = s.variables();
             if !vars.is_empty() {
@@ -415,7 +445,7 @@ impl Checker {
                 );
                 if self.p.diagnostics[before..]
                     .first()
-                    .is_some_and(|d| d.message.starts_with("cannot infer type argument"))
+                    .is_some_and(|d| d.cause == Cause::CannotInferTypeArgument)
                 {
                     undetermined = Some(before);
                 }
@@ -473,7 +503,7 @@ impl Checker {
         if let Some(at) = undetermined
             && self.p.diagnostics[at + 1..]
                 .iter()
-                .any(|d| !d.message.starts_with("cannot infer callback parameter"))
+                .any(|d| d.cause != Cause::CannotInferCallback)
         {
             // An argument reported its own error (an empty literal with no type): the type
             // argument it left undetermined is that error's consequence, so the argument's
@@ -520,7 +550,7 @@ impl Checker {
         } else {
             result.clone()
         });
-        if result.is_never(self.syms) {
+        if result.is_never() {
             i.no_return = true;
         }
         i
@@ -615,7 +645,7 @@ impl Checker {
                 let at = arg.pos;
                 let explained = self.p.diagnostics[checkpoint..]
                     .iter()
-                    .any(|d| d.pos == at && d.message.starts_with("expected "));
+                    .any(|d| d.pos == at && d.cause == Cause::Mismatch);
                 if explained
                     && let Some(i) = self.p.diagnostics[..checkpoint]
                         .iter()
@@ -640,7 +670,7 @@ impl Checker {
             no_return = no_return || v.no_return;
             seen.insert(arg.name);
         }
-        for param in params {
+        for (index, param) in params.iter().enumerate() {
             // An invalid parameter type means an earlier diagnostic already explained this call.
             if param.ty.is_invalid() {
                 continue;
@@ -653,9 +683,8 @@ impl Checker {
                 self.type_error(
                     pos,
                     format!(
-                        "missing argument {}{}",
-                        self.syms.str(param.name),
-                        missing_argument_hint(self.syms, param, &call_name)
+                        "missing argument {}",
+                        missing_argument_hint(self.syms, param, index + 1, &call_name)
                     ),
                 );
             }
@@ -717,8 +746,9 @@ impl Checker {
             subst.insert(v.id, a);
         }
         if !missing.is_empty() && !self.label_mismatch {
-            self.type_error(
+            self.type_error_with_cause(
                 pos,
+                Cause::CannotInferTypeArgument,
                 missing_type_argument_hint(self.syms, name, &missing, vars, &args),
             );
         }
@@ -826,7 +856,7 @@ impl Checker {
                                 self.syms.str(v.name)
                             )
                         };
-                        self.type_error(pos, message);
+                        self.type_error_with_cause(pos, Cause::CannotInfer, message);
                     }
                     self.unresolved_constructors.insert(pos);
                     invalid()
@@ -880,10 +910,10 @@ impl Checker {
             None => self.infer(e, literal.or(expected)),
         };
         let actual = info.ty.clone();
-        if compatible(self.syms, &actual, expected_optional) {
+        if compatible(&actual, expected_optional) {
             return self.check_expression(e, info, expected);
         }
-        let payload_ok = compatible(self.syms, &actual, &payload)
+        let payload_ok = compatible(&actual, &payload)
             || actual
                 .as_ref()
                 .is_some_and(|a| self.interface_assignable(a, &payload));

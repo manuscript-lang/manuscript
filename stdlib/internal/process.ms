@@ -1,5 +1,5 @@
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     CommandOutput,
     CpuUsage,
     NativeSignals,
@@ -7,9 +7,9 @@ import (
     ProcessInfo,
     ResourceUsage,
     Stdio,
-    Subprocess
-) from "@std/os/process.ms"
-import Duration from "@std/time.ms"
+    Subprocess from "@std/os/process.ms",
+    Duration from "@std/time.ms",
+)
 
 export extern fn msstd_process_command_run(
     program: String,

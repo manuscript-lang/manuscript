@@ -29,8 +29,7 @@ fn through_view(b: Bumper, by: Int) Int:
     return b.bump(by)
 
 fn guarded(c: Counter, by: Int) Int:
-    if by < 0:
-        return 0
+    if by < 0: return 0
 
     return c.bump(by)
 
@@ -62,8 +61,7 @@ interface Parse:
 
 impl Parse for Parser:
     fn parse(n: Int) Int!Error:
-        if n < 0:
-            return error(Error("negative"))
+        if n < 0: return error(Error("negative"))
 
         return ok(self.base + n)
 

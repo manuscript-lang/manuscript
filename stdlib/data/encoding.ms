@@ -1,13 +1,13 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import from_scalars, StringBuilder from "@std/string.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    from_scalars, StringBuilder from "@std/string.ms",
     msstd_encoding_ascii85_encode,
     msstd_encoding_ascii85_decode,
     msstd_encoding_base64_encode_unpadded,
     msstd_encoding_base64_decode_unpadded,
     msstd_encoding_base32_encode,
-    msstd_encoding_base32_decode
-) from "@std/internal/encoding.ms"
+    msstd_encoding_base32_decode from "@std/internal/encoding.ms",
+)
 
 fn encoding_invalid_data() Error:
     return Error("encoding: invalid data", kind: "EBADMSG")
@@ -24,20 +24,6 @@ Negative `max_bytes` returns EINVAL; decoded output above it returns EOVERFLOW b
 */
 export fn ascii85_decode(text: String, max_bytes: Int?) Bytes!:
     return msstd_encoding_ascii85_decode(text, max_bytes)
-
-// Encodes standard Base64 without `=`; `url_safe` selects the URL-safe alphabet.
-// Example: `base64_encode_unpadded("f".to_bytes())` returns `"Zg"`.
-export fn base64_encode_unpadded(data: Bytes, url_safe: Bool = false) String:
-    return msstd_encoding_base64_encode_unpadded(data, url_safe)
-
-// Decodes unpadded standard Base64; `url_safe` selects the URL-safe alphabet.
-// Rejects `=`, whitespace and nonzero unused bits. Negative `max_bytes` returns EINVAL; output exceeding it returns EOVERFLOW.
-export fn base64_decode_unpadded(
-    text: String,
-    url_safe: Bool = false,
-    max_bytes: Int?
-) Bytes!:
-    return msstd_encoding_base64_decode_unpadded(text, url_safe, max_bytes)
 
 // Alphabet and padding for `base32_encode` and `base32_decode`.
 export type Base32Options:
@@ -65,8 +51,20 @@ export fn base32_decode(
         text, options.hex_alphabet, options.padded, max_bytes
     )
 
-// Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
-export fn base64_decode(text: String, url_safe: Bool = false, max_bytes: Int?) Bytes!:
+/*
+Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
+`padded: false` expects text without `=` and rejects it, whitespace and nonzero unused bits.
+*/
+export fn base64_decode(
+    text: String,
+    url_safe: Bool = false,
+    max_bytes: Int?,
+    padded: Bool = true
+) Bytes!:
+    if not padded: return msstd_encoding_base64_decode_unpadded(
+        text, url_safe, max_bytes
+    )
+
     let limit = budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
@@ -155,8 +153,11 @@ fn budget(max_bytes: Int?) Int:
 
     return 9223372036854775807
 
-// Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
-export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
+// Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text and `padded: false` to omit `=`.
+// Example: `base64_encode("f".to_bytes(), padded: false)` returns `"Zg"`.
+export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true) String:
+    if not padded: return msstd_encoding_base64_encode_unpadded(data, url_safe)
+
     var out = StringBuilder()
     var batch = BytesBuilder()
     let table = base64_table(url_safe)

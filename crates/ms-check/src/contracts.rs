@@ -213,7 +213,7 @@ fn contract_operation(
             &s,
         ),
         decl: op.decl.clone(),
-        native: n("contract"),
+        native: Native::Contract,
     }))
 }
 
@@ -294,27 +294,20 @@ impl DataBlocker {
 
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
-fn builtin_comparable(syms: ms_syntax::Names, t: &Ty) -> bool {
-    matches!(
-        syms.str(t.id),
-        "Int"
-            | "Int8"
-            | "Int16"
-            | "Int32"
-            | "Int64"
-            | "UInt8"
-            | "UInt16"
-            | "UInt32"
-            | "UInt64"
-            | "Float"
-            | "Float32"
-            | "Float64"
-            | "String"
-            | "@std/Decimal"
-            | "@std/BigInt"
-    ) || ["Duration", "Instant", "Timestamp"]
-        .iter()
-        .any(|name| t.is_time(syms, name))
+fn builtin_comparable(t: &Ty) -> bool {
+    t.builtin.is_some_and(|b| {
+        b.is_int()
+            || b.is_float()
+            || matches!(
+                b,
+                Builtin::String
+                    | Builtin::Decimal
+                    | Builtin::BigInt
+                    | Builtin::Duration
+                    | Builtin::Instant
+                    | Builtin::Timestamp
+            )
+    })
 }
 
 fn operation_names(syms: ms_syntax::Names, ops: &[Operation]) -> Vec<String> {
@@ -397,15 +390,12 @@ impl Checker {
             && nominal
                 .as_ref()
                 .is_some_and(|s| s.module == self.current_file());
-        let foreign_native = nominal
-            .as_ref()
-            .is_some_and(|s| !self.syms.str(s.native).is_empty())
+        let foreign_native = nominal.as_ref().is_some_and(|s| s.native != Native::Source)
             && !self.standard_declarations
             && !own_extern
             && !self.m().is_standard(self.syms);
         // A bundled module may add source-written methods to a built-in scalar or String.
-        let scalar_extension =
-            self.m().is_standard(self.syms) && builtin_comparable(self.syms, &receiver);
+        let scalar_extension = self.m().is_standard(self.syms) && builtin_comparable(&receiver);
         if !scalar_extension
             && (nominal.is_none()
                 || foreign_native
@@ -529,7 +519,7 @@ impl Checker {
                 .is_some_and(|s| {
                     // A bundled module's methods on a native standard type apply wherever it is used.
                     let extends_native =
-                        this.m().is_standard(this.syms) && !this.syms.str(s.native).is_empty();
+                        this.m().is_standard(this.syms) && s.native != Native::Source;
                     s.module != this.current_file() && !extends_native
                 })
         };
@@ -699,7 +689,7 @@ impl Checker {
                     decl: d.clone(),
                     index: Some(index),
                 }),
-                native: n(""),
+                native: Native::Source,
             };
             for v in &own {
                 self.scope.types.borrow_mut().remove(&v.name);
@@ -731,7 +721,7 @@ impl Checker {
                 ty: contract.clone(),
                 variables: vars.clone(),
                 decl: None,
-                native: n(""),
+                native: Native::Source,
             }));
         }
         for op in &ops {
@@ -775,7 +765,7 @@ impl Checker {
                     ty: op.ty.clone(),
                     variables: vars.clone(),
                     decl: Some(FuncRef::of_decl(decl)),
-                    native: n(""),
+                    native: Native::Source,
                 };
                 self.add_method(Rc::new(m));
             } else {
@@ -869,7 +859,7 @@ impl Checker {
                 return true;
             }
         }
-        contract.is(Builtin::Comparable) && builtin_comparable(self.syms, receiver)
+        contract.is(Builtin::Comparable) && builtin_comparable(receiver)
     }
 
     /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
@@ -1017,7 +1007,7 @@ impl Checker {
                     blocked(DataReason::Unbounded, path)
                 };
             }
-            Kind::Primitive if t.is_never(self.syms) => return blocked(DataReason::Never, path),
+            Kind::Primitive if t.is_never() => return blocked(DataReason::Never, path),
             Kind::Primitive => return None,
             Kind::Function => return blocked(DataReason::Function, path),
             Kind::Contract => return blocked(DataReason::Interface, path),
@@ -1029,11 +1019,7 @@ impl Checker {
                 .first()
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
-        if t.is(Builtin::Map)
-            && t.args
-                .first()
-                .is_some_and(|k| self.syms.str(k.id) == "String")
-        {
+        if t.is(Builtin::Map) && t.args.first().is_some_and(|k| k.is(Builtin::String)) {
             // A `Map[String, T]` is a JSON object.
             return t
                 .args
@@ -1208,14 +1194,14 @@ impl Checker {
         match t.kind {
             Kind::Function | Kind::Contract => return false,
             Kind::Primitive => {
-                return float_bits(self.syms, t).is_none() || property != Property::Hashable;
+                return float_bits(t).is_none() || property != Property::Hashable;
             }
             _ => {}
         }
         if t.is(Builtin::Decimal)
             || t.is(Builtin::Bytes)
-            || t.is_time(self.syms, "Duration")
-            || t.is_time(self.syms, "Instant")
+            || t.is(Builtin::Duration)
+            || t.is(Builtin::Instant)
         {
             return true;
         }
@@ -1225,7 +1211,7 @@ impl Checker {
             }
             return t.args.iter().all(|a| self.property_in(a, property, state));
         }
-        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is_time(self.syms, "Timestamp") {
+        if t.is(Builtin::BigInt) || t.is(Builtin::Regex) || t.is(Builtin::Timestamp) {
             return property == Property::Equal && !t.is(Builtin::Regex);
         }
         if t.kind == Kind::Native {
@@ -1340,7 +1326,7 @@ impl Checker {
                     ty: operation.ty,
                     variables: Vec::new(),
                     decl: stdlib::standard_method_declaration(&contract, name),
-                    native: name,
+                    native: Native::Builtin(name),
                 })];
             }
         }
@@ -1571,7 +1557,7 @@ impl Checker {
         {
             return blocker.message(self.syms, t);
         }
-        if bound.is(Builtin::Hashable) && float_bits(self.syms, t).is_some() {
+        if bound.is(Builtin::Hashable) && float_bits(t).is_some() {
             return format!(
                 "{t_t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal",
                 t_t = t.display(self.syms)
@@ -1603,7 +1589,7 @@ impl Checker {
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)
             && let Some(symbol) = t.symbol()
-            && (self.syms.str(symbol.native).is_empty() || self.standard_declarations)
+            && (symbol.native == Native::Source || self.standard_declarations)
         {
             return format!(
                 "{prefix}add 'impl {bound_t} for {t_t}:' or {alternative}",
@@ -1640,12 +1626,12 @@ pub(crate) fn native_method(
             ty,
             variables,
             decl,
-            native,
+            native: Native::Builtin(native),
         };
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
-            || (t.kind == Kind::Primitive && syms.str(t.id) == "String")
+            || t.kind == Kind::Primitive
             || t.is(Builtin::List)
             || t.is(Builtin::Map)
             || t.is(Builtin::Set)
@@ -1701,9 +1687,7 @@ fn native_method_of(
     let binding = session.is_receiver_native(&key);
     let bindings = substitution(&receiver);
     let opaque_alternative = receiver.kind == Kind::Alternative
-        && receiver
-            .symbol()
-            .is_some_and(|s| !syms.str(s.native).is_empty());
+        && receiver.symbol().is_some_and(|s| s.native.is_bodiless());
     if receiver.kind == Kind::Native || !Rc::ptr_eq(&receiver, t) || binding || opaque_alternative {
         let def = receiver.def.as_ref()?;
         let operations = def.operations.borrow();

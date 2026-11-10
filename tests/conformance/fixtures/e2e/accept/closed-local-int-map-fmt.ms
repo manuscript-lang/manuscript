@@ -34,7 +34,7 @@ test "closed maps preserve lookup replacement and absence":
     values.contains(7) | try expect_true
     values.get(7).get() | try expect_equal(20)
     values.get(-1).get() | try expect_equal(30)
-    values.get(0).get(99) | try expect_equal(99)
+    values.get_or(0, 99) | try expect_equal(99)
 
 test "closed map arguments retain written evaluation order":
     var visits: List[Int] = []
@@ -55,9 +55,7 @@ test "escaped map results keep insertion order":
     values.add(1, 10)
     values.add(2, 21)
 
-    var seen: List[Int] = []
-    for entry in values:
-        seen.append(entry.key)
+    var seen = values.map(fn entry: entry.key)
     seen | try expect_equal([2, 1])
     values.get(2).get() | try expect_equal(21)
 

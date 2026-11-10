@@ -184,14 +184,11 @@ and standalone run/test/debug/profile artifacts.
 parse	1	3	2	indentation must be a multiple of four spaces, found 2; use 0 or 4import arguments from "@std/os/process.ms"
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit!:
     let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(message).is_error():
-        return 1
-
-    return 0
+    try stdout().write(message)
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
-resolution	5	32	132	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
+resolution	5	32	127	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
 
 test "arithmetic":
     if not (2 + 3 == 5):
@@ -398,7 +395,7 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`interface Read[V]:
+type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is neededinterface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -413,7 +410,7 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; take a clone with `self.right.clone()`interface Read[V]:
+type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.right.clone()` only if a second owner is neededinterface Read[V]:
     fn get() V
 type Box[T]:
     value: T
@@ -625,7 +622,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; take a clone with `self.detail.clone()`type Impostor:
+type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.detail.clone()` only if a second owner is neededtype Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -829,7 +826,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 fn forward[T](item: T) T: item
 resolution	3	8	121	module does not export commands; did you mean 'Commands'?
-resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -840,19 +837,16 @@ export fn main() Int:
 resolution	1	8	7	unknown standard module @std/faults.ms
 resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/time.ms"
 import stdout from "@std/io/io.ms"
-export fn main() Int:
+fn main() Unit:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
-    return 0
-type	4	20	122	unknown argument data; parameters of write: value
-type	4	14	116	missing argument value: String in call to write; add 'value: <String>'
-type	4	5	107	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
+type	4	20	116	unknown argument data; parameters of write: value
+type	4	14	110	missing argument value: String in call to write; add 'value: <String>'
+type	4	5	101	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io/io.ms"
 
-export fn main() Int:
-    if stdout().write(data: %q).is_error():
-        return 1
-    return 0
-parse	4	29	86	expected an expression, found '%'; write a value, name, call, or literal hereenum A:
+fn main() Unit!:
+    return stdout().write(data: %q)
+parse	4	33	85	expected an expression, found '%'; write a value, name, call, or literal hereenum A:
     X
 enum B:
     X
@@ -989,7 +983,7 @@ fn call() Int:
 fn call() Int:
     let copy: fn(Int) Int = f
     return copy()
-type	5	12	99	missing argument _0: Int in call to copy; add '_0: <Int>'fn f(value: Int = 1) Int:
+type	5	12	99	missing argument 1: Int in call to copy; pass it positionally, without a labelfn f(value: Int = 1) Int:
     return value
 fn g(value: Int) Int:
     return value
@@ -1001,13 +995,13 @@ fn call() Int:
     return value
 fn apply(callback: fn(Int) Int) Int:
     return callback()
-type	4	12	91	missing argument _0: Int in call to callback; add '_0: <Int>'fn f(value: Int = 1) Int:
+type	4	12	91	missing argument 1: Int in call to callback; pass it positionally, without a labelfn f(value: Int = 1) Int:
     return value
 fn make() fn(Int) Int:
     return f
 fn call() Int:
     return make()()
-type	6	12	105	missing argument _0: Int; add '_0: <Int>'fn f(value: Int = 1) Int:
+type	6	12	105	missing argument 1: Int; pass it positionally, without a labelfn f(value: Int = 1) Int:
     return value
 fn forward[T](value: T) T:
     return value
@@ -1507,7 +1501,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; take a clone with `self.item.clone()`type E:
+type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.item.clone()` only if a second owner is neededtype E:
     text: String
 impl Error for E:
     fn message() String: this.text
@@ -2137,12 +2131,12 @@ fn first() Read: identity(Box(1))resolution	7	18	123	unknown binding identity; 
     return identity(callback)resolution	3	12	74	unknown binding identity; declare it with 'let identity = ...' before use, define 'fn identity(...) T:', or import it from a modulefn first() Unit:
     let callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
     callback()resolution	2	33	49	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
-type	3	5	98	missing argument _0: Int in call to callback; add '_0: <Int>'fn required(value: Int) Int: value
+type	3	5	98	missing argument 1: Int in call to callback; pass it positionally, without a labelfn required(value: Int) Int: value
 fn first() Unit:
     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
     callback = required
     callback()resolution	3	33	84	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
-type	5	5	157	missing argument _0: Int in call to callback; add '_0: <Int>'fn first() Unit:
+type	5	5	157	missing argument 1: Int in call to callback; pass it positionally, without a labelfn first() Unit:
     let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	52	68	unknown binding fail; add: import fail from "@std/test/test.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)type	2	61	97	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest
@@ -2337,7 +2331,7 @@ fn probe() Int:
     let values = [fn() Int: 1]
     return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; distinct requires fn() Int to be Equal; fn() Int does not satisfy Equal; use a type that implements itfn wrong() List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...export interface Read[T]:
     fn get() T
 export type Box[T]:
     value: T
@@ -2433,7 +2427,7 @@ fn probe() Int:
     let text = lookup[String]("one", "two")
     return number
 type	3	5	77	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
-type	3	16	88	`key` is moved here but used again at 4:23; a value has one owner, so pass `key.clone()` to keep the original, or move it only at its last usevar i = 0
+type	3	16	88	`key` is moved here but used again at 4:23; a value has one owner, so move it only at its last use, or pass `key.clone()` if the original is still neededvar i = 0
     let captured = match 0:
         n:
             i = start
@@ -2827,11 +2821,10 @@ type Box[T]:
 impl I[T] for Box[T]:
     fn f(x: I[List[T]]) Int:
         return 1
-export fn main() Int:
+fn main() Unit:
     let b = Box[Int](v: 1)
     let i = I[Int](value: b)
-    return 0
-type	11	13	196	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
+type	11	13	190	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
 type	2	8	23	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycleenum Expr:
     Num(value: Int)
     Add(left: Expr, right: Expr)
@@ -3081,7 +3074,7 @@ fn value() Int:
     return
 parse	1	7	6	unexpected source character 'é'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCIIfn value() Unit:
 	return
-parse	2	1	17	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)fn value() Unit:
+fn value() Unit:
         return
 parse	2	9	25	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn value() Int:
     return 03
@@ -3361,7 +3354,7 @@ type	14	9	171	local binding d is never read; remove it, use it, or name it with 
     return 1
 parse	1	11	10	the 'fn' block header on line 1 does not end with ':'; add ':' at the end of that line so the indented lines below become its bodyfn f() Int:
 	return 1
-parse	2	1	12	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)fn f() Int:
+fn f() Int:
   return 1
 parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4fn f() Int:
     return (1
@@ -3405,7 +3398,7 @@ fn g() Int: return 1
     for i, x in [1]:
         return i
     return 0
-parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)fn f() Int:
+parse	2	10	21	for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'fn f() Int:
     let n = [1].map(fn(x) => x + 1)
     return 0
 parse	2	27	38	expected a name, found '='fn f() Int:
@@ -3503,7 +3496,8 @@ test "bad":
 parse	2	20	31	expected ']', found ','; close the bracket, separating items with commasfn f() Unit:
     for [key, value] in entries:
         return
-parse	2	9	21	expected a name, found '['fn f() String:
+resolution	2	25	37	unknown binding entries; declare it with 'let entries = ...' before use, define 'fn entries(...) T:', or import it from a module
+type	2	9	21	positional binding requires a list; use [a, b] patterns only with List valuesfn f() String:
     return "\{1 # comment\}"
 fn f() Unit:
     consume(transform: fn() Unit:
@@ -3535,7 +3529,7 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; take a clone with `self.value.clone()`type Read:
+type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is neededtype Read:
     fn get() Int
 parse	2	5	15	a type declares only record fields; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
     value: Int
@@ -3776,7 +3770,7 @@ impl Box:
 parse	1	7	6	every fn declares its result type after the parameter list, e.g. fn f() Unit:interface Read:
     fn read()
 parse	2	14	29	every fn declares its result type after the parameter list, e.g. fn f() Unit:fn f() Result[Unit, String]: ...
-    type	1	1	0	reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)
+    
 fn broken(
 parse	3	1	12	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the filefn choose(value: Int) Int:
     return value
@@ -4328,14 +4322,14 @@ resolution	4	12	81	unknown binding tagged_detail; declare it with 'let tagged_de
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/net/url.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
 
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/net/url.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn f() Bool:
     return active or allowed and remaining > 0
 resolution	2	12	24	unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module
@@ -4647,8 +4641,7 @@ impl T:
     fn f(self) Int:
         return 1
 
-export fn main() Int:
-    return 0
+fn main() Unit!:
 parse	5	10	37	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodylet LIMIT = 10
 fn size() Int:
     return LIMIT
@@ -4852,10 +4845,9 @@ fn render(
         inp|
     return unit
 parse	4	13	80	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import stdout from "@std/io/io.ms"
-export fn main() Int:
+fn main() Unit:
     stdout().wr|
-    return 0
-parse	3	17	73	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'interface Reader:
+parse	3	17	67	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'interface Reader:
     fn read() String
 fn answer[T: Reader](reader: T) String:
     return reader.|
@@ -5014,7 +5006,7 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; take a clone with `self.label.clone()`fn answer() Int:
+type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.label.clone()` only if a second owner is neededfn answer() Int:
     let number = 42
     return number
 fn later() Int:
@@ -5668,7 +5660,7 @@ type commonState struct {
 // TabStyle is used to select how tab completions are displayed.
 type TabStyle int
 
-parse	1	1	0	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)	needRefresh       bool
+parse	1	5	1	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it	needRefresh       bool
 }
 
 // WaitForInput joins prompt readers. The caller must first interrupt its owned
@@ -5678,7 +5670,7 @@ func (s *commonState) WaitForInput() { s.inputReaders.Wait() }
 // TabStyle is used to select how tab completions are displayed.
 type TabStyle int
 
-parse	1	1	0	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)type Data:
+parse	1	5	1	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with ittype Data:
     count: Int = 3
 impl Data:
     fn read() Int: ...
@@ -5831,7 +5823,6 @@ import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Result[Unit, Error]:
     try stdout().write(data: "{text}\n")
-    return ok(unit)
 
 fn exercise() Result[Int, Error]:
     let args = arguments()
@@ -5856,9 +5847,9 @@ test "unselected":
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 type	6	24	186	unknown argument data; parameters of write: value
 type	6	18	180	missing argument value: String in call to write; add 'value: <String>'
-resolution	10	16	274	unknown binding arguments; add: import arguments from "@std/os/env.ms"
-type	21	50	566	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
-type	28	5	679	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
+resolution	9	16	254	unknown binding arguments; add: import arguments from "@std/os/env.ms"
+type	20	50	546	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
+type	27	5	659	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
     return 1
 let X = f()
 type	3	9	33	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn f() Int:
@@ -5883,17 +5874,15 @@ let A = 2
 resolution	2	1	10	duplicate or intrinsic name A; this name is already declared, imported, or built in, so rename one of themexport let main = 0
 fn crash(%s) %s:
     return %s
-export fn main() Int:
+fn main() Unit:
     let values = %s
     let result = values.%s(%s)
-    return 0
 parse	1	10	9	expected a name, found '%'import TextError from "@std/errors.ms"
 fn crash() TextError:
     return TextError((1 / 0).to_string())
-export fn main() Int:
+fn main() Unit:
     let value: Int? = none
     let result = value.ok_or_else(crash)
-    return 0
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	12	50	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	3	12	72	unknown binding TextError; declare it with 'let TextError = ...' before use, define 'fn TextError(...) T:', or import it from a moduleimport Closeable from "@std/cleanup.ms"
@@ -5967,12 +5956,11 @@ resolution	4	6	82	unknown type Closeable; add: import Closeable from "@std/core.
     return sum
 parse	1	9	8	expected '(', found '%'; a call or parameter list starts with '('import stderr from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     let stream = stderr()
-    let chunk = "parse	5	18	101	unterminated text literal".to_bytes()
+    let chunk = "parse	5	18	95	unterminated text literal".to_bytes()
     while true:
         let _written = stream.write_bytes(data: chunk)
-    return 0
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn add(a: Int, b: Int) Int:
     let sum = a + b
     return sum
@@ -5985,11 +5973,10 @@ export fn main() Int:
 fn never() Int:
     return 1
 
-export fn main() Int:
+fn main() Unit:
     let _written = stdout().write(data: "TARGET_RAN\n")
-    return 0
-type	7	35	122	unknown argument data; parameters of write: value
-type	7	29	116	missing argument value: String in call to write; add 'value: <String>'test "continues after decimal overflow":
+type	7	35	116	unknown argument data; parameters of write: value
+type	7	29	110	missing argument value: String in call to write; add 'value: <String>'test "continues after decimal overflow":
     let finite = 1d / 3d
 resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/math/decimal.ms"interface Shape:
     fn area() Int
@@ -6397,15 +6384,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
+resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
+resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...import panic from "@std/faults.ms"
+resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...import panic from "@std/faults.ms"
 
 fn run() Int:
     let boom = fn(value: Int) Int: panic(message: "closure failed")
@@ -6624,10 +6611,9 @@ test "check must not execute tests":
 resolution	4	12	84	unknown binding panic; add: import panic from "@std/core.ms"fn number() Int: return 1
 type Node:
     next: Node?
-export fn main() Int:
+fn main() Unit:
     let node = Node(node)
-    return 0
-resolution	4	21	69	unknown binding node; declare it with 'let node = ...' before use, define 'fn node(...) T:', or import it from a moduletype Node:
+resolution	4	21	63	unknown binding node; declare it with 'let node = ...' before use, define 'fn node(...) T:', or import it from a moduletype Node:
     next: Node?
 export fn main() Int:
     let node = Node(none)

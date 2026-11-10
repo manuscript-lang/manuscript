@@ -12,6 +12,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`datastructures/`](datastructures) | core List, Map, Set, String, Bytes, PriorityQueue and SortedMap operations against Go and Rust, ns per operation | `MS=./target/release/ms ms run bench/tools/datastructures.ms -- 5` | [`results.md`](datastructures/results.md) |
 | [`codecs/`](codecs) | paired typed JSON Base64 and syntax-error loops with exact output validation | see the [protocol](codecs/README.md) | [2026-10-29](codecs/results-2026-10-29.md) |
 | [`csv/`](csv) | `@std/csv` parse against the Rust `csv` crate on 5000 generated rows | `MS=./target/release/ms ms run bench/tools/cargo_vs_ms.ms -- csv` | [`csv/README.md`](csv/README.md) |
+| [`csv-streams/`](csv-streams) | fragmented CSV record scaling, whole-chunk and malformed-input controls | see the [protocol](csv-streams/README.md) | [2026-11-10](csv-streams/README.md) |
 | [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `ms run bench/tools/json_bench.ms` | [`json/results.md`](json/results.md) |
 | [`streams/`](streams) | stream pipelines (`map`, `lines`, `collect`) against the loops they replace, ns per item | see the [page](streams/README.md) | [`streams/README.md`](streams/README.md) |
 | [`iface/`](iface) | ns per interface call: local, returned and passed values against a direct loop | see the [page](iface/README.md) | [`iface/README.md`](iface/README.md) |

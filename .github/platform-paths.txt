@@ -1,8 +1,0 @@
-^crates/ms-(rt|rt-abi|rt-hot|native|clif|lower|mir|build|driver|cli)/
-^crates/ms-std-
-^crates/xtask/
-^stdlib/
-^tests/(conformance|e2e|ownership-counts|scaling)/
-^(Cargo\.(toml|lock)|rust-toolchain.*|Makefile)$
-^\.github/(workflows|actions|platform-paths\.txt)
-^crates/ms-lsp/

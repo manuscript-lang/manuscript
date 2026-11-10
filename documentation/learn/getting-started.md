@@ -41,29 +41,24 @@ Open `src/main.ms`:
 <!-- manuscript-example: {"mode":"run","args":["first","second"],"stdout":"Arguments: 2\n"} -->
 ```manuscript {filename="src/main.ms"}
 import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
 
-export fn main() Int:
-    let message = "Arguments: {arguments().length()}\n"
-    if stdout().write(message).is_error():
-        return 1
-    return 0
+fn main() Unit:
+    print("Arguments: {arguments().length()}")
 ```
 
 - `import … from "…"` selects the APIs the file uses.
-- `main` starts the program; its returned integer is the exit status.
-- `let` names a value and infers its type; `{...}` interpolates into strings.
-- `write` takes text and returns a `Result`; `is_error()` tests for failure.
+- `main` starts the program. It returns `Unit`, `Unit!` (an error prints `error: <message>` and exits 1), `Int?!` (also an exit status), or `Int`; `export` is optional.
+- `print` writes a line and needs no import; `{...}` interpolates into strings.
 - Four spaces open a block; statements need no terminator.
 
-For simple output, use `print("Hello, Manuscript!")` without an import. See [print a line](../cookbook/command-line.md#print-a-line) for output and error handling.
+`print` never fails. See [print a line](../cookbook/command-line.md#print-a-line) for output and error handling.
 
 ## 3. Make it yours
 
-Replace the `let message` line with:
+Replace the `print` line with:
 
 ```manuscript
-    let message = "Hello! You passed {arguments().length()} arguments.\n"
+    print("Hello! You passed {arguments().length()} arguments.")
 ```
 
 Save the file and run the same command again:

@@ -130,3 +130,43 @@ fn a_long_index_assignment_wraps_only_its_value() {
     assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
     assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
 }
+
+#[test]
+fn compaction_joins_guards_and_shortens_self_assignments() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/compact.src");
+    let expected = include_str!("format_edits/compact.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}
+
+#[test]
+fn leading_tabs_are_one_indent_level_and_format_to_spaces() {
+    let file: Arc<str> = Arc::from("tabs.ms");
+    let tabbed = "fn f(n: Int) Int:\n\tvar t = 0\n\tfor i in 0..n:\n\t\tif i > 1:\n\t\t\tt += i\n\treturn t\n\nfn text() String:\n\treturn \"\"\"\n\t\ta\tb\n\t\t\"\"\"\n";
+    let formatted = ms_syntax::format(&file, tabbed).unwrap();
+    // Code indentation becomes spaces; text content is kept byte for byte.
+    assert!(formatted.starts_with("fn f(n: Int) Int:\n    var t = 0\n    for i in 0..n:\n        if i > 1:\n            t += i\n"));
+    assert!(
+        formatted.contains("\n\t\ta\tb\n\t\t\"\"\"\n"),
+        "{formatted:?}"
+    );
+    assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
+}
+
+#[test]
+fn tabs_after_spaces_and_inside_code_are_rejected() {
+    let file: Arc<str> = Arc::from("tabs.ms");
+    let after_spaces = ms_syntax::parser::parse(&file, "fn f() Int:\n  \treturn 1\n").unwrap_err();
+    assert!(
+        after_spaces.message.contains("cannot follow spaces"),
+        "{after_spaces:?}"
+    );
+    let inside = ms_syntax::parser::parse(&file, "fn f() Int:\n\treturn\t1\n").unwrap_err();
+    assert!(
+        inside
+            .message
+            .contains("tabs are allowed only in indentation"),
+        "{inside:?}"
+    );
+}

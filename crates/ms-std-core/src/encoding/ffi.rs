@@ -1,5 +1,6 @@
 //! C ABI shims for `@std/data/encoding.ms`; JSON also calls the padded Base64 natives. Symbols are `msstd_encoding_<function>`;
 //! fallible functions return a status byte and write the ok value through `out` only on success.
+//! ms: domain encoding
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, Has, native};

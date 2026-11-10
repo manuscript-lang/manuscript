@@ -4,7 +4,7 @@ type Pair[A, B]:
 fn double[T: Clonable](_value: T) Pair[T, T]:
     return Pair[T, T](0)
 
-export fn main() Int:
+fn main() Unit:
     let v0 = 1
     let v1 = double(v0)
     let v2 = double(v1)
@@ -25,4 +25,3 @@ export fn main() Int:
     let v17 = double(v16)
     let v18 = double(v17)
     let _bad: Int = v18
-    return 0

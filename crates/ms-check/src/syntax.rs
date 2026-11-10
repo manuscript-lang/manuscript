@@ -237,8 +237,9 @@ pub struct Info {
     pub case: Option<Name>,
     /// Resolved method.
     pub method: Option<MethodRef>,
-    /// Native identity ("index", "view", "to_string", ...).
-    pub native: Option<Name>,
+    /// What the expression binds to: a builtin identity ("index", "view", "to_string", ...), an
+    /// extern, or a contract operation.
+    pub native: Native,
     /// The expression cannot complete normally.
     pub no_return: bool,
     /// The expression contains a `break`.
@@ -276,9 +277,9 @@ impl Info {
         self.ty.clone().unwrap_or_else(invalid)
     }
 
-    /// Native identity text.
+    /// The builtin identity's text, or "" when the expression binds to no builtin.
     pub fn native_str(&self, syms: ms_syntax::Names) -> &str {
-        self.native.map(|n| syms.str(n)).unwrap_or("")
+        self.native.builtin().map(|n| syms.str(n)).unwrap_or("")
     }
 }
 
@@ -437,6 +438,42 @@ impl ModuleData {
         self.facts.borrow_mut()
     }
 
+    /// Whether `f` is a function, method or interface operation declared in this module.
+    pub fn declares(&self, f: &Func) -> bool {
+        self.decls.iter().any(|d| {
+            d.func().is_some_and(|g| std::ptr::eq(g, f))
+                || d.methods().iter().any(|m| std::ptr::eq(&m.func, f))
+        })
+    }
+
+    /// What the parameter default `e`, written in this module, is, from its checked resolution:
+    /// a local named `none` or `caller_site` is an ordinary expression.
+    pub fn default_form(&self, syms: ms_syntax::Names, e: &ms_syntax::ast::Expr) -> DefaultForm {
+        let facts = self.facts();
+        let resolved = |e: &ms_syntax::ast::Expr| facts.info(e.id).filter(|i| i.binding.is_none());
+        match &e.kind {
+            ms_syntax::ast::ExprKind::Name(_)
+                if resolved(e).is_some_and(|i| {
+                    i.constructor
+                        .as_ref()
+                        .is_some_and(|c| c.is(Builtin::Optional))
+                        && i.case.is_some_and(|c| syms.str(c) == "none")
+                }) =>
+            {
+                DefaultForm::None
+            }
+            ms_syntax::ast::ExprKind::Call { callee, args }
+                if args.is_empty()
+                    && resolved(callee)
+                        .and_then(|i| i.symbol.as_ref())
+                        .is_some_and(|s| s.is_caller_site(syms)) =>
+            {
+                DefaultForm::CallerSite
+            }
+            _ => DefaultForm::Expr,
+        }
+    }
+
     /// Whether a name is in an `@std/` module.
     pub fn is_standard(&self, syms: ms_syntax::Names) -> bool {
         syms.str(self.file).starts_with("@std/")
@@ -445,6 +482,17 @@ impl ModuleData {
 
 /// Shared module.
 pub type ModRef = Rc<ModuleData>;
+
+/// What a parameter default is, decided from its checked resolution.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DefaultForm {
+    /// `none`: the absent `Optional`.
+    None,
+    /// `caller_site()` of `@std/test/test.ms`: the position of the call that omitted it.
+    CallerSite,
+    /// Any other expression, evaluated at the call.
+    Expr,
+}
 
 /// Span containment helper.
 pub fn in_span(offset: u32, s: &Span) -> bool {

@@ -1,8 +1,10 @@
 // Generator for c09-ciphers. Deterministic; run: ms run bench/agent/gen.ms -- c09
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import from_scalars from "@std/string.ms"
-import split_max, strip_spaces from "../../lib/text.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    from_scalars from "@std/string.ms",
+    split_max, strip_spaces from "../../lib/text.ms",
+)
 
 let DIGITS = "0123456789"
 let LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -78,12 +80,12 @@ export fn gen_c09() Unit:
             k = "{rnd.randint(-100, 100)}"
         else:
             let n = rnd.randint(1, 8)
-            for _m in 0..n: k = k + rnd.choice(["a", "b", "c", "X", "Y", "Z"])
+            for _m in 0..n: k += rnd.choice(["a", "b", "c", "X", "Y", "Z"])
 
         let mode = rnd.choice(["enc", "dec"])
         let n = rnd.randint(1, 80)
         var text = ""
-        for _m in 0..n: text = text + rnd.choice(alpha)
+        for _m in 0..n: text += rnd.choice(alpha)
 
         var trimmed = strip_spaces(text)
         if trimmed.is_empty(): trimmed = "x"

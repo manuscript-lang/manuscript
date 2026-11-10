@@ -1,5 +1,7 @@
-import StringBuilder, from_scalars from "@std/string.ms"
-import parse_int_radix from "@std/text.ms"
+import (
+    StringBuilder, from_scalars from "@std/string.ms",
+    parse_int from "@std/math/math.ms",
+)
 
 /*
 XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
@@ -130,7 +132,6 @@ impl Reader:
         )
 
         self.at += literal.chars().length()
-        return ok(unit)
 
     // Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
     var fn take_until(stop: String) String!:
@@ -173,26 +174,192 @@ impl Reader:
 
         return ok(out.build())
 
-    // Skips the XML declaration, comments, processing instructions and DOCTYPE before and after the root.
-    var fn skip_misc() Unit!:
+    // The reserved target `xml` belongs to a declaration, never a processing instruction.
+    var fn instruction() Unit!:
+        try self.expect("<?")
+
+        let target = try self.name()
+        if target.length() == 3 and target.lower() == "xml": return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+        if not self.looking_at("?>") and not is_space(self.peek()): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        let _data = try self.take_until("?>")
+
+    // Declaration values are literals, not entity-decoded XML attribute values.
+    var fn declaration_attribute() XmlAttribute!:
+        let name = try self.name()
+        self.skip_space()
+        try self.expect("=")
+        self.skip_space()
+
+        let quote = self.peek()
+        if quote != "\"" and quote != "'": return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        self.at += 1
+        return ok(XmlAttribute(name, try self.take_until(quote)))
+
+    // XMLDecl: mandatory version, optional encoding, optional standalone, in that order.
+    var fn declaration() Unit!:
+        try self.expect("<?xml")
+        if not is_space(self.peek()): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        self.skip_space()
+
+        let version = try self.declaration_attribute()
+        if version.name != "version" or not is_version(version.value): return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        var encoding_seen = false
+        var standalone_seen = false
+
+        while true:
+            let before = self.at
+            self.skip_space()
+
+            if self.looking_at("?>"):
+                self.at += 2
+                return ok(unit)
+
+            if self.at == before: return error(
+                Error("XML: invalid data", kind: "EBADMSG")
+            )
+
+            let attribute = try self.declaration_attribute()
+
+            if (
+                attribute.name == "encoding"
+                and not encoding_seen
+                and not standalone_seen
+            ):
+                if not is_encoding_name(attribute.value): return error(
+                    Error("XML: invalid data", kind: "EBADMSG")
+                )
+
+                encoding_seen = true
+            else if attribute.name == "standalone" and not standalone_seen:
+                if attribute.value != "yes" and attribute.value != "no": return error(
+                    Error("XML: invalid data", kind: "EBADMSG")
+                )
+
+                standalone_seen = true
+            else:
+                return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    // Skips a quoted literal; its contents never delimit markup.
+    var fn quoted() Unit!:
+        let quote = self.peek()
+        if quote != "\"" and quote != "'": return error(
+            Error("XML: invalid data", kind: "EBADMSG")
+        )
+
+        self.at += 1
+
+        let _text = try self.take_until(quote)
+
+    // Requires at least one whitespace scalar.
+    var fn require_space() Unit!:
+        let before = self.at
+        self.skip_space()
+        if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    // XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and parameter
+    // references, with quoted spans skipped so `]` and `>` inside them are plain text.
+    var fn internal_subset() Unit!:
+        while true:
+            self.skip_space()
+
+            if self.looking_at("]"):
+                self.at += 1
+                return ok(unit)
+
+            if self.looking_at("<!--"):
+                let _comment = try self.comment()
+            else if self.looking_at("<?"):
+                try self.instruction()
+            else if self.looking_at("<!"):
+                self.at += 2
+
+                while not self.looking_at(">"):
+                    if self.done(): return error(
+                        Error(
+                            "XML: invalid data", kind: "EBADMSG"
+                        )
+                    )
+
+                    if self.peek() == "\"" or self.peek() == "'":
+                        try self.quoted()
+                    else:
+                        self.at += 1
+
+                self.at += 1
+            else if self.looking_at("%"):
+                let _reference = try self.take_until(";")
+            else:
+                return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    // XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
+    var fn doctype() Unit!:
+        try self.expect("<!DOCTYPE")
+        try self.require_space()
+
+        let _name = try self.name()
+        self.skip_space()
+
+        if self.looking_at("SYSTEM"):
+            self.at += 6
+            try self.require_space()
+            try self.quoted()
+            self.skip_space()
+        else if self.looking_at("PUBLIC"):
+            self.at += 6
+            try self.require_space()
+            try self.quoted()
+            try self.require_space()
+            try self.quoted()
+            self.skip_space()
+
+        if self.looking_at("["):
+            self.at += 1
+            try self.internal_subset()
+            self.skip_space()
+
+        try self.expect(">")
+
+    // Only the prolog may have a declaration, before any whitespace or other markup.
+    // The prolog may also hold one DOCTYPE; it is skipped, never expanded.
+    var fn skip_misc(
+        declaration_allowed: Bool = false,
+        doctype_allowed: Bool = false
+    ) Unit!:
+        let start = self.at
+        var doctype_open = doctype_allowed
+
         while true:
             self.skip_space()
 
             if self.looking_at("<?"):
-                self.at += 2
-
-                let _pi = try self.take_until("?>")
+                if (
+                    declaration_allowed
+                    and self.at == start
+                    and self.looking_at("<?xml")
+                    and is_space(self.peek(5))
+                ):
+                    try self.declaration()
+                else:
+                    try self.instruction()
             else if self.looking_at("<!--"):
                 let _comment = try self.comment()
-            else if self.looking_at("<!DOCTYPE"):
-                var depth = 0
-
-                while not self.done():
-                    let c = self.peek()
-                    self.at += 1
-                    if c == "[": depth += 1
-                    if c == "]": depth -= 1
-                    if c == ">" and depth <= 0: break
+            else if doctype_open and self.looking_at("<!DOCTYPE"):
+                try self.doctype()
+                doctype_open = false
             else:
                 break
 
@@ -277,9 +444,7 @@ impl Reader:
                 self.at += 9
                 children.append(XmlText(try self.take_until("]]>")))
             else if self.looking_at("<?"):
-                self.at += 2
-
-                let _pi = try self.take_until("?>")
+                try self.instruction()
             else if self.looking_at("<"):
                 children.append(try self.element(depth + 1))
             else:
@@ -298,6 +463,31 @@ impl Reader:
 
 fn is_space(c: String) Bool:
     return c == " " or c == "\t" or c == "\n" or c == "\r"
+
+// XML 1.0 processes other 1.x versions using the same grammar (section 2.8).
+fn is_version(text: String) Bool:
+    if not text.starts_with("1.") or text.length() <= 2: return false
+
+    for code in text.drop(2).scalar_values():
+        if code < 0x30 or code > 0x39: return false
+    return true
+
+fn is_encoding_name(text: String) Bool:
+    var first = true
+
+    for code in text.scalar_values():
+        let letter = (code >= 0x41 and code <= 0x5a) or (code >= 0x61 and code <= 0x7a)
+        let extra = (
+            (code >= 0x30 and code <= 0x39)
+            or code == 0x2e
+            or code == 0x5f
+            or code == 0x2d
+        )
+        if not letter and (first or not extra): return false
+
+        first = false
+
+    return not first
 
 // XML 1.0 (Fifth Edition), productions [4] NameStartChar and [4a] NameChar.
 fn is_name_char(c: String, first: Bool) Bool:
@@ -353,7 +543,7 @@ fn decode(text: String) String!:
         index += 1
 
         let end = tail.index_of(";")
-        if not end.is_some(): return error(Error("XML: invalid data", kind: "EBADMSG"))
+        if end.is_none(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
         let entity = tail.take(end.get(0))
 
@@ -377,7 +567,10 @@ fn decode(text: String) String!:
 fn digits(text: String, radix: Int) Int?:
     if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
 
-    return parse_int_radix(text, radix)
+    let value = parse_int(text, radix)
+    if value.is_error(): return none
+
+    return value.get(0)
 
 // Whether a code point is in XML 1.0's Char production, which excludes NUL, most controls, and U+FFFE and U+FFFF.
 fn is_xml_char(code: Int) Bool:
@@ -390,7 +583,7 @@ fn is_xml_char(code: Int) Bool:
     )
 
 fn scalar(value: Int?) String!:
-    if not value.is_some() or not is_xml_char(value.get(0)): return error(
+    if value.is_none() or not is_xml_char(value.get(0)): return error(
         Error("XML: invalid data", kind: "EBADMSG")
     )
 
@@ -403,6 +596,8 @@ fn scalar(value: Int?) String!:
 Parses a document with a single root element and returns that element.
 `max_depth` bounds element nesting (default 1000); deeper input is `EOVERFLOW`.
 A document with several roots, text outside the root, or any syntax error is `EBADMSG`.
+An XML declaration is allowed only at the start, after an optional BOM. Its encoding
+name is checked for valid syntax; the String input has already been decoded.
 */
 export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     if max_depth <= 0: return error(Error("XML: invalid input", kind: "EINVAL"))
@@ -419,7 +614,7 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
     ) else: text.clone()
     var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
-    try reader.skip_misc()
+    try reader.skip_misc(declaration_allowed: true, doctype_allowed: true)
 
     let root = try reader.element(1)
     try reader.skip_misc()
@@ -463,8 +658,12 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Unit
                 return
 
             var has_text = false
-            for child in children:
-                if child.tag().is_empty() and child.text() != "": has_text = true
+
+            if not indent.is_empty():
+                for child in children:
+                    if child.tag().is_empty() and child.text() != "":
+                        has_text = true
+                        break
 
             if has_text or indent.is_empty():
                 out.append(">")

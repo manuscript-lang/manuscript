@@ -14,6 +14,7 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Diagnostics are `<cause>; <fix>`, and tools key on the cause](diagnostics-are-cause-fix-and-tools-key-on-the-cause.md): agents act on a diagnostic only when it names the cause, the location, and a concrete fix (nearest name, import line, valid options).
 - [Editor recovery must preserve delimiter continuations](editor-recovery-must-preserve-delimiter-continuations.md): strict parsing accepts multiline parameters, but declaration recovery that splits their column-zero closing delimiters into separate chunks…
 - [Tools read structured causes, not message or line text](tools-read-structured-causes-not-message-or-line-text.md): diagnostics carry an opener line, spawn sites a flag, build settings one `BuildOptions` value.
+- [Suppress only pending recovery responses](suppress-only-pending-recovery-responses.md): forward ordinary client replies with the private replay ID before and after recovery.
 - [Recovered navigation needs local header ranges](recovered-navigation-needs-local-header-ranges.md): a malformed neighbor must not move declaration names to their keyword positions.
 - [Keep CLI and HTTP documentation with their packages](keep-cli-and-http-documentation-with-their-packages.md): the user explicitly removed the "Application hosts" section.
 - [Polish the documentation design without expanding its prose](polish-the-documentation-design-without-expanding-its-prose.md): the user selected Tailwind CSS and Vercel as documentation design references and asked not to add filler.
@@ -33,3 +34,4 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
 - [Tooling change checklist](tooling-change-checklist.md): formatter, LSP, CLI, diagnostics, and debugging rules to check before editing tooling.
 - [Stdout errors include the final flush](stdout-errors-include-final-flush.md): small buffered writes and large direct writes fail at different points; neither failure may silently become a successful command.
+- [CLI durations truncate each component exactly](cli-durations-truncate-each-component-exactly.md): float rounding and summing fractions before truncation can admit budgets below the command's minimum.

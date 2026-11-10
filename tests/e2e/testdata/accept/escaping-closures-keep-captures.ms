@@ -24,10 +24,7 @@ fn mk(f: fn() Int) Box:
     return Box(f: f)
 
 fn c1(text: String) Int:
-    var out: List[Box] = []
-    for p in text.split(","):
-        out.append(mk(fn() Int: return p.length()))
-
+    var out = text.split(",").map(fn p: mk(fn() Int: return p.length()))
     var t = 0
     for b in out:
         t += b.f()

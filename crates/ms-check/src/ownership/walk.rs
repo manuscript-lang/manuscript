@@ -420,24 +420,11 @@ fn clone_blocker(t: &Ty) -> Option<&'static str> {
     })
 }
 
-fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
-    (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{CLONE}()")))
-}
-
 fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
     DiagnosticFix {
         pos,
         end: pos,
         replacement: text.to_string(),
-    }
-}
-
-/// `pos` moved forward by `n` bytes on its line.
-fn forward(pos: Pos, n: usize) -> Pos {
-    Pos {
-        offset: pos.offset + n as u32,
-        line: pos.line,
-        column: pos.column + n as u32,
     }
 }
 
@@ -610,6 +597,15 @@ impl Walker<'_> {
             && d != Demand::Move
             && self.class_of(e) != Class::Copy
             && self.arm_origins(arms).is_some();
+        // Arms that do not all yield references produce an owned value, so a place among them
+        // is moved or must be cloned, even when the match itself is only read. An optional chain
+        // keeps its own rule for the part it reaches.
+        let arm_demand =
+            if !borrowed && !returning && d == Demand::Read && !arms.iter().any(|a| a.chain) {
+                Demand::Move
+            } else {
+                d
+            };
         let borrowed_before = self.borrowed_return;
         let view_before = self.view_return;
         let entry = self.active.clone();
@@ -640,7 +636,7 @@ impl Walker<'_> {
                 if returning {
                     self.returned(v);
                 } else {
-                    self.expr(v, d);
+                    self.expr(v, arm_demand);
                 }
                 self.release_pending();
             }
@@ -995,7 +991,7 @@ mod type_query_tests {
             id: n(&format!("{module}/Promise")),
             kind: SymKind::Type,
             module: n(module),
-            native: n(""),
+            native: Native::Source,
             export: true,
             ty: RefCell::new(None),
             variables: RefCell::new(vec![]),

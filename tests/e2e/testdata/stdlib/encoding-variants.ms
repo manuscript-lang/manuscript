@@ -1,12 +1,12 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
-    base64_encode_unpadded,
-    base64_decode_unpadded,
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    base64_encode,
+    base64_decode,
     base32_encode,
     base32_decode,
-    Base32Options
-) from "@std/data/encoding.ms"
-import expect_equal from "@std/test/test.ms"
+    Base32Options from "@std/data/encoding.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "unpadded Base64 covers both alphabets and every tail":
     let texts = ["", "f", "fo", "foo", "foob", "fooba", "foobar"]
@@ -15,20 +15,22 @@ test "unpadded Base64 covers both alphabets and every tail":
     for index in 0..texts.length():
         for url_safe in [false, true]:
             try expect_equal(
-                base64_encode_unpadded(
-                    texts[index].to_bytes(), url_safe
+                base64_encode(
+                    texts[index].to_bytes(), url_safe, padded: false
                 ),
                 encoded[index]
             )
             try expect_equal(
-                try base64_decode_unpadded(encoded[index], url_safe),
+                try base64_decode(
+                    encoded[index], url_safe, padded: false
+                ),
                 texts[index].to_bytes()
             )
 
     let bytes = Bytes([251, 255])
-    try expect_equal(base64_encode_unpadded(bytes), "+/8")
-    try expect_equal(base64_encode_unpadded(bytes, true), "-_8")
-    try expect_equal(try base64_decode_unpadded("-_8", true), bytes)
+    try expect_equal(base64_encode(bytes, padded: false), "+/8")
+    try expect_equal(base64_encode(bytes, true, padded: false), "-_8")
+    try expect_equal(try base64_decode("-_8", true, padded: false), bytes)
 
 test "unpadded Base64 rejects padding alphabet mixing whitespace and unused bits":
     let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
@@ -36,9 +38,9 @@ test "unpadded Base64 rejects padding alphabet mixing whitespace and unused bits
         "A", "AAAAA", "Zg=", "Zg==", "=Zg", "Zh", "Zm9", "Z g", "Zg\n", "Zg\r", "Zg\t",
         "é", "!!!!"
     ]:
-        try expect_equal(base64_decode_unpadded(text), invalid)
-    try expect_equal(base64_decode_unpadded("-_8"), invalid)
-    try expect_equal(base64_decode_unpadded("+/8", true), invalid)
+        try expect_equal(base64_decode(text, padded: false), invalid)
+    try expect_equal(base64_decode("-_8", padded: false), invalid)
+    try expect_equal(base64_decode("+/8", true, padded: false), invalid)
 
 test "Base32 matches RFC 4648 padded and unpadded vectors":
     let texts = ["", "f", "fo", "foo", "foob", "fooba", "foobar"]
@@ -116,21 +118,25 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
     let invalid: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
     let limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(try base32_decode("", max_bytes: 0), empty)
-    try expect_equal(try base64_decode_unpadded("", max_bytes: 0), empty)
+    try expect_equal(try base64_decode("", max_bytes: 0, padded: false), empty)
     try expect_equal(try base32_decode("MY======", max_bytes: 1), "f".to_bytes())
     try expect_equal(
         try base32_decode("MY", Base32Options(padded: false), max_bytes: 1),
         "f".to_bytes()
     )
     try expect_equal(base32_decode("MY======", max_bytes: 0), limited)
-    try expect_equal(base64_decode_unpadded("Zg", max_bytes: 0), limited)
-    try expect_equal(try base64_decode_unpadded("Zg", max_bytes: 1), "f".to_bytes())
+    try expect_equal(base64_decode("Zg", max_bytes: 0, padded: false), limited)
+    try expect_equal(
+        try base64_decode("Zg", max_bytes: 1, padded: false), "f".to_bytes()
+    )
     try expect_equal(try base32_decode("MY======", max_bytes: none), "f".to_bytes())
-    try expect_equal(try base64_decode_unpadded("Zg", max_bytes: none), "f".to_bytes())
+    try expect_equal(
+        try base64_decode("Zg", max_bytes: none, padded: false), "f".to_bytes()
+    )
 
     for text in ["", "?", "MY======"]:
         try expect_equal(base32_decode(text, max_bytes: -1), invalid)
-        try expect_equal(base64_decode_unpadded(text, max_bytes: -1), invalid)
+        try expect_equal(base64_decode(text, max_bytes: -1, padded: false), invalid)
 
 test "encoding variants honor Bytes views and cross block boundaries":
     var out = BytesBuilder()
@@ -159,15 +165,17 @@ test "encoding variants honor Bytes views and cross block boundaries":
                 )
         for url in [false, true]:
             try expect_equal(
-                try base64_decode_unpadded(
-                    base64_encode_unpadded(bytes, url), url, length
+                try base64_decode(
+                    base64_encode(bytes, url, padded: false), url, length, padded: false
                 ),
                 bytes
             )
 
     let view = try all.slice(17, 219)
     try expect_equal(try base32_decode(base32_encode(view)), view)
-    try expect_equal(try base64_decode_unpadded(base64_encode_unpadded(view)), view)
+    try expect_equal(
+        try base64_decode(base64_encode(view, padded: false), padded: false), view
+    )
 
 test "encoding variant function values retain defaults":
     let encode = base32_encode
@@ -175,10 +183,11 @@ test "encoding variant function values retain defaults":
     try expect_equal(encode("f".to_bytes()), "MY======")
     try expect_equal(try decode("MY======"), "f".to_bytes())
 
-    let raw_encode = base64_encode_unpadded
-    let raw_decode = base64_decode_unpadded
-    try expect_equal(raw_encode("f".to_bytes()), "Zg")
-    try expect_equal(try raw_decode("Zg"), "f".to_bytes())
+    let raw_encode = base64_encode
+    let raw_decode = base64_decode
+    try expect_equal(raw_encode("f".to_bytes()), "Zg==")
+    try expect_equal(try raw_decode("Zg=="), "f".to_bytes())
+    try expect_equal(raw_encode("f".to_bytes(), padded: false), "Zg")
 
 test "Base32 rejects interior padding before output budgets":
     let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
@@ -237,7 +246,7 @@ test "Base32 rejects interior padding before output budgets":
             invalid
         )
 
-    try expect_equal(base64_decode_unpadded("A=AA", max_bytes: 0), limited)
+    try expect_equal(base64_decode("A=AA", max_bytes: 0, padded: false), limited)
 
 test "unpadded Base64 preserves byte budget precedence for invalid padding":
     let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
@@ -247,12 +256,16 @@ test "unpadded Base64 preserves byte budget precedence for invalid padding":
     for url in [false, true]:
         for text in ["AA==", "AAA=", "===="]:
             for budget in 0..3:
-                try expect_equal(base64_decode_unpadded(text, url, budget), limited)
-            try expect_equal(base64_decode_unpadded(text, url, 3), invalid)
-            try expect_equal(base64_decode_unpadded(text, url, -1), negative)
+                try expect_equal(
+                    base64_decode(text, url, budget, padded: false), limited
+                )
+            try expect_equal(base64_decode(text, url, 3, padded: false), invalid)
+            try expect_equal(base64_decode(text, url, -1, padded: false), negative)
 
-        try expect_equal(base64_decode_unpadded("A", url, 0), invalid)
-        try expect_equal(base64_decode_unpadded("!!!!", url, 0), limited)
-        try expect_equal(base64_decode_unpadded("!!!!", url, 3), invalid)
+        try expect_equal(base64_decode("A", url, 0, padded: false), invalid)
+        try expect_equal(base64_decode("!!!!", url, 0, padded: false), limited)
+        try expect_equal(base64_decode("!!!!", url, 3, padded: false), invalid)
 
-    try expect_equal(try base64_decode_unpadded("Zg", max_bytes: 1), "f".to_bytes())
+    try expect_equal(
+        try base64_decode("Zg", max_bytes: 1, padded: false), "f".to_bytes()
+    )

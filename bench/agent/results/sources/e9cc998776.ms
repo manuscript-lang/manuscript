@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+)
 
 // Token codes: 0 '+', 1 '-', 2 '*', 3 '/', 4 '(', 5 ')', 6 number, -1 invalid.
 type Ps:
@@ -10,8 +12,7 @@ type Ps:
     bad: Bool
 
 fn cur(p: Ps) Int:
-    if p.pos < p.codes.length():
-        return p.codes[p.pos]
+    if p.pos < p.codes.length(): return p.codes[p.pos]
 
     return -2
 
@@ -55,12 +56,12 @@ fn term(var p: Ps) Int:
         let r = unary(var p)
 
         if op == 2:
-            v = v * r
+            v *= r
         else if r == 0:
             p.div0 = true
             v = 0
         else:
-            v = v / r
+            v /= r
 
     return v
 
@@ -74,27 +75,20 @@ fn expr(var p: Ps) Int:
         let r = term(var p)
 
         if op == 0:
-            v = v + r
+            v += r
         else:
-            v = v - r
+            v -= r
 
     return v
 
 fn op_code(ch: String) Int:
-    if ch == "+":
-        return 0
-    if ch == "-":
-        return 1
-    if ch == "*":
-        return 2
-    if ch == "/":
-        return 3
-    if ch == "(":
-        return 4
-    if ch == ")":
-        return 5
-    if ch == " " or ch == "\t":
-        return -3
+    if ch == "+": return 0
+    if ch == "-": return 1
+    if ch == "*": return 2
+    if ch == "/": return 3
+    if ch == "(": return 4
+    if ch == ")": return 5
+    if ch == " " or ch == "\t": return -3
 
     return -1
 
@@ -127,10 +121,8 @@ fn eval_line(line: String) String:
 
     var p = Ps(codes: codes, vals: vals, pos: 0, div0: false, bad: false)
     let v = expr(var p)
-    if p.bad or p.pos != p.codes.length():
-        return "error: syntax"
-    if p.div0:
-        return "error: division by zero"
+    if p.bad or p.pos != p.codes.length(): return "error: syntax"
+    if p.div0: return "error: division by zero"
 
     return "{v}"
 

@@ -33,7 +33,7 @@ fn key(var calls: Int) String:
     calls += 1
     return "key-{calls}"
 
-export fn main() Int:
+fn main() Unit:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
@@ -84,4 +84,3 @@ export fn main() Int:
     let label = final_count.label
     let labeled = label()
     let _ = stdout().write("{labeled} {counts}\n")
-    return 0

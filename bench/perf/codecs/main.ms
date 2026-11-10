@@ -1,12 +1,13 @@
-import parse from "@std/data/json.ms"
-import base64_encode from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse from "@std/data/json.ms",
+    base64_encode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let length = args[0].parse_int().get()
     let count = args[1].parse_int().get()
@@ -42,5 +43,5 @@ export fn main() Int:
             checksum += value.length()
 
     let elapsed = monotonic().difference(start).to_nanoseconds()
-    stdout().write("{length} {count} {rounds} {checksum} {elapsed}\n").get()
+    print("{length} {count} {rounds} {checksum} {elapsed}")
     return 0

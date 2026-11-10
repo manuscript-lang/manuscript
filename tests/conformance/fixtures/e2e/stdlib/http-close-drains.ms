@@ -7,8 +7,7 @@ import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import Bytes from "@std/bytes.ms"
 import stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
-import monotonic_time from "@std/os/system.ms"
-import Duration, nanoseconds, sleep from "@std/time.ms"
+import Duration, monotonic, nanoseconds, sleep from "@std/time.ms"
 
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
@@ -30,11 +29,11 @@ export fn main() Int:
 
             // Let the handler start.
             let _ = sleep(nanoseconds(50000000)).wait()
-            let start = monotonic_time()
+            let start = monotonic()
             server.close().get(none)
             server.wait().get(none)
 
-            let close_ms = (monotonic_time() - start) / 1000000
+            let close_ms = monotonic().difference(start).to_milliseconds()
             var text = ""
 
             while true:

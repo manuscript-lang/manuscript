@@ -18,6 +18,7 @@
 //!
 //! Everything stateful stays in `ms-rt` and links as an opaque archive. `ms-rt` itself calls these
 //! functions too, so the archive and the bitcode come from one source. See `crates/DESIGN.md`.
+//! ms: domain map
 #![no_std]
 #![allow(clippy::missing_safety_doc)]
 // Raw views of the runtime's memory, as in `ms-rt`.
@@ -54,7 +55,7 @@ pub unsafe fn equal(a: *const StrVal, b: *const StrVal) -> bool {
 
 /// C view: `msrt_string_eq(a: *const StrVal, b: *const StrVal) -> u8`
 #[unsafe(no_mangle)]
-// ms: leaf pure
+// ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_eq(a: usize, b: usize) -> u8 {
     // SAFETY: caller passes live strings.
     unsafe { equal(a as *const StrVal, b as *const StrVal) as u8 }
@@ -185,7 +186,7 @@ pub unsafe extern "C-unwind" fn msrt_string_byte_length(s: usize) -> i64 {
 
 /// C view: `msrt_string_is_empty(s: *const StrVal) -> u8`
 #[unsafe(no_mangle)]
-// ms: leaf pure
+// ms: leaf pure domain=string
 pub unsafe extern "C-unwind" fn msrt_string_is_empty(s: usize) -> u8 {
     // SAFETY: caller passes a live string.
     unsafe { (*(s as *const StrVal)).is_empty() as u8 }

@@ -1,14 +1,14 @@
-import send, recv from "./support/conn.ms"
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
 import (
+    send, recv from "./support/conn.ms",
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
     headers,
     HttpRequest,
     HttpResponse,
     buffered,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import connect, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
+    HttpServerOptions from "@std/net/http.ms",
+    connect, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
@@ -44,7 +44,7 @@ test "serve timeout closes idle connections":
 
     let first = recv(var reused, 2.seconds()) | try expect_ok
     let answered = first.get(Bytes([]))
-    if answered.length() == 0: return error(Error("no response"))
+    if answered.is_empty(): return error(Error("no response"))
 
     let after = recv(var reused, 3.seconds()) | try expect_ok
     if let _data = after: return error(Error("idle keep-alive connection stayed open"))

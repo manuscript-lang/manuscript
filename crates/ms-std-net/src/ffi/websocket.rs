@@ -1,4 +1,5 @@
 //! Natives for `@std/net/websocket.ms`, `Network.web_socket` and `HttpExchange.upgrade`.
+//! ms: domain WebSocket
 
 use super::tls::tls_options;
 use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
@@ -63,6 +64,7 @@ fn handshake_headers(h: &Headers) -> Option<Vec<(String, Vec<u8>)>> {
 native! {
 
     /// `Network.web_socket(address, headers, subprotocols, options)`.
+    // ms: domain=network
     fn msstd_net_network_web_socket(
         net: ObjRef<NetH>,
         address: &str,
@@ -101,6 +103,7 @@ native! {
     }
 
     /// `HttpExchange.upgrade(origins, subprotocols, max_message_bytes)`.
+    // ms: domain=HTTP
     fn msstd_http_exchange_upgrade(
         x: ObjRef<ExchH>,
         origins: Vec<&str>,

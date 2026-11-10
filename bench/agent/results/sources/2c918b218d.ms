@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // Token kinds: 0 number, 1 '+', 2 '-', 3 '*', 4 '/', 5 '(', 6 ')', -1 end
 type Calc:
@@ -11,8 +13,7 @@ type Calc:
 
 impl Calc:
     fn kind() Int:
-        if self.pos < self.kinds.length():
-            return self.kinds[self.pos]
+        if self.pos < self.kinds.length(): return self.kinds[self.pos]
 
         return -1
 
@@ -26,9 +27,9 @@ impl Calc:
             let r = self.term()
 
             if k == 1:
-                v = v + r
+                v += r
             else:
-                v = v - r
+                v -= r
 
         return v
 
@@ -42,12 +43,12 @@ impl Calc:
             let r = self.unary()
 
             if k == 3:
-                v = v * r
+                v *= r
             else if r == 0:
                 self.divz = true
                 v = 0
             else:
-                v = v / r
+                v /= r
 
         return v
 
@@ -129,8 +130,7 @@ fn tokenize(line: String) Calc?:
         kinds.append(0)
         vals.append(cur)
 
-    if bad:
-        return none
+    if bad: return none
 
     return Calc(kinds: kinds, vals: vals, pos: 0, bad: false, divz: false)
 
@@ -141,8 +141,7 @@ export fn main() Int:
         let item = rows.next().get()
 
         if let line = item:
-            if line.trim_chars(" \t") == "":
-                continue
+            if line.trim_chars(" \t") == "": continue
 
             if let c = tokenize(line):
                 var calc = c

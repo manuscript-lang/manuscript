@@ -4,6 +4,7 @@
 
 Cancellation, cleanup, resources, networking, promises, test helpers.
 
+- [Image codecs are pure Manuscript and allocate only after validating the header](image-codecs-are-pure-manuscript-and-allocate-after-validating.md): `@std/image` PNG/JPEG/BMP/PPM with fuzzing; limits optional, sizes checked before allocation; pitfalls found.
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 
 - [Linux programs link glibc unless `--static` is asked](linux-programs-link-glibc-unless-static-is-asked.md): static musl's resolver misses mixed-case `/etc/hosts` names, so musl is opt-in; glibc programs link 2.28 stubs and run on any later glibc.
@@ -24,9 +25,11 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Faults and test failures reach the CLI as a record](faults-and-test-failures-reach-the-cli-as-a-record.md): the runtime writes a structured record to `MS_FAULT_RECORD`; the CLI never parses fault text.
 - [Fault assertions need their own cleanup boundary](fault-assertions-need-their-own-cleanup-boundary.md): Unix `expect_fault` children inherit the caller's cleanup stack and guard targets.
 - [File fixtures own a separate lifetime from each test](file-fixtures-own-a-separate-lifetime-from-each-test.md): the user chose an ordinary local `make_fixture()` convention and a concrete return type implementing TestHooks; tests use the implicit fixtu…
-- [Host API names do not establish units or write guarantees](host-api-names-do-not-establish-units-or-write-guarantees.md): `ProcessControl.monotonic_time` returns nanoseconds since runtime initialization and shares the process uptime origin; host uptime and Clock…
+- [Host API names do not establish units or write guarantees](host-api-names-do-not-establish-units-or-write-guarantees.md): host uptime and Clock…
 - [Transfer coding validation also covers close-delimited responses](transfer-coding-validation-also-covers-close-delimited-responses.md): reject unsupported response codings before choosing chunked or connection-close framing, so encoded bytes cannot silently reach the caller.
 - [HTTP field folding must not erase map entries](http-field-folding-must-not-erase-map-entries.md): source Map keys use exact equality, while HTTP field names fold ASCII case.
+- [HTTP Content-Type inference does not require a known length](http-content-type-inference-does-not-require-a-known-length.md): streaming response bytes are available for inference even when their total length is unknown.
+- [Cookie expiry uses cookie-date tokens](cookie-expiry-uses-cookie-date-tokens.md): legacy Expires dates must expire cookies, with calendar validation and Max-Age precedence retained.
 - [Native constructor arguments need not be readable fields](native-constructor-arguments-need-not-be-readable-fields.md): `Bytes(values: List[Int])` has a dedicated constructor rule; declaring `values` as a field did not make native Bytes expose that field.
 - [Native transformations need output implementation evidence](native-transformations-need-output-implementation-evidence.md): a generic native receiver's type name does not carry lexical Equal/Hashable selection.
 - [Networking completeness includes interruption and shutdown](networking-completeness-includes-interruption-and-shutdown.md): the networking request explicitly required finishing networking rather than deferring gaps, with HTTP/3 excluded for that task.

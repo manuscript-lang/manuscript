@@ -44,7 +44,7 @@ fn total(counters: List[Counter], scale: Int = 1) Int:
 test "pop moves the element out of the list":
     var counters = [counter(1), counter(2), counter(3)]
     var seen: List[Int] = []
-    while counters.length() > 0:
+    while not counters.is_empty():
         if let c = counters.pop(): seen.append(c.read())
     seen | try expect_equal([3, 2, 1])
     counters.length() | try expect_equal(0)

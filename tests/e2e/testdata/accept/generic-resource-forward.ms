@@ -1,7 +1,9 @@
-import Closeable, Iterator from "@std/core.ms"
-import Source from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable, Iterator from "@std/core.ms",
+    Source from "@std/io/io.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Token:
     log: String
@@ -10,7 +12,6 @@ type Token:
 impl Closeable for Token:
     var fn close() Unit!:
         try append_file(self.log, "close {self.id}\n").wait()
-        return ok(unit)
 
 type Tokens:
     log: String
@@ -19,8 +20,7 @@ type Tokens:
 impl Source[Token] for Tokens:
     var fn next() Token?!:
         self.at += 1
-        if self.at <= 2:
-            return ok(Token(self.log.clone(), self.at))
+        if self.at <= 2: return ok(Token(self.log.clone(), self.at))
 
         return ok(none)
 
@@ -33,10 +33,8 @@ type Forward[T]:
 impl Iterator[T!] for Forward[T]:
     var fn next() T!?:
         let result = self.source.next()
-        if result.is_error():
-            return error(result.err())
-        if let item = result.get():
-            return ok(item)
+        if result.is_error(): return error(result.err())
+        if let item = result.get(): return ok(item)
 
         return none
 
@@ -46,11 +44,8 @@ fn first_body(log: String) Unit!:
         try append_file(log, "body {token.id}\n").wait()
         break
 
-    return ok(unit)
-
 fn events(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 

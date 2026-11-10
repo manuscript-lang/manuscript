@@ -241,9 +241,7 @@ fn call_modes_declared(
         },
         Resolution::Method(_) if value_call => function_value_modes(m, call, args.len(), label),
         Resolution::Function(s) | Resolution::Constant(s) => {
-            let source = syms
-                .str(s.native)
-                .is_empty()
+            let source = (s.native == Native::Source)
                 .then_some(())
                 .and(s.decl.as_ref());
             match source {
@@ -253,12 +251,18 @@ fn call_modes_declared(
                 }
                 None => {
                     // A native runs the function arguments it is given before it returns,
-                    // unless it is one of the externs that keep them. A user extern's shim may
-                    // keep its functions with ms_fn_retain.
-                    let user_extern = syms.str(s.native).starts_with("extern:")
-                        && !syms.str(s.module).starts_with("@std/");
-                    let runs_now =
-                        !user_extern && !crate::stdlib::keeps_callbacks(syms.str(s.native));
+                    // unless it is a runtime function that declares it keeps them. A user extern's
+                    // shim may keep its functions with ms_fn_retain.
+                    let runtime = match s.native {
+                        Native::Extern { symbol, bundled } => bundled.then(|| syms.str(symbol)),
+                        _ => None,
+                    };
+                    let runs_now = match s.native {
+                        Native::Extern { bundled, .. } => {
+                            bundled && !runtime.is_some_and(crate::stdlib::keeps_callbacks)
+                        }
+                        _ => true,
+                    };
                     let params = s.ty(syms).params.clone();
                     CallModes {
                         arguments: (0..args.len())
@@ -266,8 +270,9 @@ fn call_modes_declared(
                                 let p = label(i).and_then(|l| params.iter().find(|p| p.name == l));
                                 match p {
                                     Some(p)
-                                        if syms.str(p.name) == "value"
-                                            && crate::stdlib::owns_value(syms.str(s.native)) =>
+                                        if runtime.is_some_and(|r| {
+                                            crate::stdlib::takes_argument(r, syms.str(p.name))
+                                        }) =>
                                     {
                                         ParamMode::Move
                                     }
@@ -333,15 +338,10 @@ fn function_value_modes(
 
 /// Where the result of `call` comes from: a source callable's inferred borrow result, or nothing for
 /// a native, an interface operation, a constructor or a function value, whose results own.
-pub fn result_borrow(
-    syms: ms_syntax::Names,
-    m: &ModuleHir,
-    call: &Expr,
-    summaries: &Summaries,
-) -> ResultBorrow {
+pub fn result_borrow(m: &ModuleHir, call: &Expr, summaries: &Summaries) -> ResultBorrow {
     match m.resolution(call) {
         Resolution::Function(s) | Resolution::Constant(s) => {
-            if !syms.str(s.native).is_empty() {
+            if s.native != Native::Source {
                 return ResultBorrow::default();
             }
             let Some(d) = s.decl.as_ref() else {
@@ -354,7 +354,7 @@ pub fn result_borrow(
                 .unwrap_or_else(|| Summary::declared(&func).result)
         }
         Resolution::Method(method) => {
-            if !syms.str(method.native).is_empty() {
+            if method.native != Native::Source {
                 return ResultBorrow::default();
             }
             let Some(func) = &method.decl else {
@@ -401,13 +401,13 @@ fn method_modes(
     count: usize,
     label: impl Fn(usize) -> Option<Name>,
 ) -> CallModes {
-    if syms.str(method.native).is_empty() {
+    if method.native == Native::Source {
         let Some(func) = &method.decl else {
             return native_unknown(count);
         };
         return from_summary(summaries, method.module, func, count, label, Some(()));
     }
-    if syms.str(method.native) == "contract" {
+    if method.native == Native::Contract {
         // Dynamic dispatch uses the interface's declared modes.
         return match &method.decl {
             Some(func) => {

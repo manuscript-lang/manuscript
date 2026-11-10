@@ -1,8 +1,10 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
-import nanoseconds, sleep from "@std/time.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    promise, PromiseOptions from "@std/concurrency/promise.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+    nanoseconds, sleep from "@std/time.ms",
+)
 
 type Counter:
     value: Int
@@ -11,12 +13,10 @@ type Counter:
 impl Closeable for Counter:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.value},").wait()
-        return ok(unit)
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 

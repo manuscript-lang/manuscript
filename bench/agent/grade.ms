@@ -3,12 +3,14 @@
 // Usage: ms run /tests/grade.ms -- <cases.json> <build-cmd> <run-cmd> <timeout-s> [source-suffix]
 // Writes /logs/verifier/reward.txt (1 if every case passes, else 0) and detail.json. export_harbor.ms copies this file
 // and the modules it imports next to each other under /tests, keeping their relative layout.
-import create_directory, write_file from "@std/os/fs.ms"
-import parse, stringify from "@std/data/json.ms"
-import arguments from "@std/os/env.ms"
-import Case from "./core/model.ms"
-import count_workspace from "./core/codetokens.ms"
-import bash, env, must_read, nonblank_lines, norm, read_text from "./lib/text.ms"
+import (
+    create_directory, write_file from "@std/os/fs.ms",
+    parse, stringify from "@std/data/json.ms",
+    arguments from "@std/os/env.ms",
+    Case from "./core/model.ms",
+    count_workspace from "./core/codetokens.ms",
+    bash, env, must_read, nonblank_lines, norm, read_text from "./lib/text.ms",
+)
 
 type LogRow:
     phase: String
@@ -25,7 +27,7 @@ type Detail:
     checks: Int
     error: String?
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let cases = parse[List[Case]](must_read(args[0])).get([])
     let build = args[1].clone()
@@ -73,4 +75,3 @@ export fn main() Int:
 
     let reward = if detail.built and detail.passed == detail.total: "1" else: "0"
     write_file("{out_dir}/reward.txt", reward, replace: true).wait().get()
-    return 0

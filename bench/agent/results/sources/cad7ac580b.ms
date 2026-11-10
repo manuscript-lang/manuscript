@@ -1,11 +1,12 @@
-import stdin, stdout, read_line from "@std/io.ms"
-import from_scalars from "@std/string.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout, read_line from "@std/io.ms",
+    from_scalars from "@std/string.ms",
+    range from "@std/collections.ms",
+)
 
 fn is_blank(line: String) Bool:
     for ch in line.chars():
-        if ch != " ":
-            return false
+        if ch != " ": return false
     return true
 
 fn is_ascii_digit(value: Int) Bool:
@@ -16,8 +17,7 @@ fn is_ascii_letter(value: Int) Bool:
 
 // Base code point of the alphabet that a letter belongs to.
 fn letter_base(value: Int) Int:
-    if value >= 97:
-        return 97
+    if value >= 97: return 97
 
     return 65
 
@@ -28,22 +28,18 @@ fn valid_caesar_key(key: String) Bool:
         start = 1
 
     let digits = values.length() - start
-    if digits == 0 or digits > 7:
-        return false
+    if digits == 0 or digits > 7: return false
 
     for index in range(start, values.length()):
-        if not is_ascii_digit(values.get(index)):
-            return false
+        if not is_ascii_digit(values.get(index)): return false
     return true
 
 fn valid_vigenere_key(key: String) Bool:
     let values = key.scalar_values()
-    if values.length() == 0:
-        return false
+    if values.length() == 0: return false
 
     for value in values:
-        if not is_ascii_letter(value):
-            return false
+        if not is_ascii_letter(value): return false
     return true
 
 // Caesar shift for encryption, normalized to 0..25.
@@ -85,8 +81,7 @@ fn vigenere(text: String, key: String, decrypt: Bool) String:
 
 fn run_command(line: String) String:
     let parts = line.split(" ")
-    if parts.length() < 4:
-        return "error: bad command"
+    if parts.length() < 4: return "error: bad command"
 
     let cipher = parts.get(0)
     let mode = parts.get(1)
@@ -98,26 +93,21 @@ fn run_command(line: String) String:
             text = "{text} "
         text = "{text}{parts.get(index)}"
 
-    if text == "":
-        return "error: bad command"
-    if cipher != "caesar" and cipher != "vigenere":
-        return "error: bad cipher"
-    if mode != "enc" and mode != "dec":
-        return "error: bad mode"
+    if text == "": return "error: bad command"
+    if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
+    if mode != "enc" and mode != "dec": return "error: bad mode"
 
     let decrypt = mode == "dec"
 
     if cipher == "caesar":
-        if not valid_caesar_key(key):
-            return "error: bad key"
+        if not valid_caesar_key(key): return "error: bad key"
 
         var shift = caesar_shift(key)
         if decrypt:
             shift = (26 - shift) % 26
         return caesar(text, shift)
 
-    if not valid_vigenere_key(key):
-        return "error: bad key"
+    if not valid_vigenere_key(key): return "error: bad key"
 
     return vigenere(text, key, decrypt)
 

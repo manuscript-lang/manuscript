@@ -1,4 +1,5 @@
 //! Natives for `@std/net/tls.ms` and the TLS entry points of `@std/net/net.ms`.
+//! ms: domain network
 
 use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::bound::Bound;
@@ -138,6 +139,7 @@ native! {
     }
 
     /// `parse_certificates(pem, max)`: the certificates as a `List[CertificateInfo]`.
+    // ms: domain=TLS
     fn msstd_tls_parse_certificates(
         pem: &str,
         has_max: Has,
@@ -161,6 +163,7 @@ native! {
     }
 
     /// `verify_certificates(chain, roots, server_name, now)`.
+    // ms: domain=TLS
     fn msstd_tls_verify_certificates(
         chain: &str,
         roots: &str,

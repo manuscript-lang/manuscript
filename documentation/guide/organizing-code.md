@@ -43,12 +43,11 @@ fn largest[T: Clonable](items: List[T], score: fn(T) Int) T?:
             best = item.clone()
     return best
 
-export fn main() Int:
+fn main() Unit:
     let items: List[Priced] = [Book("Manuscript", 120), Subscription(6)]
     print("Cart: {total(items)} cents")
     let top = largest([3, 9, 4], fn n: n)
     print("Largest: {top.get(0)}")
-    return 0
 ```
 
 ```text

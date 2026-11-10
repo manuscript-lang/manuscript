@@ -1,5 +1,7 @@
-import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import (ReadStream, WriteStream, Source) from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder, join from "@std/bytes.ms",
+    ReadStream, WriteStream, Source from "@std/io/io.ms",
+)
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A step pulls its input only
 // inside its own `next`, so a slow consumer slows every step and the source, and closing a step closes its input.
@@ -22,12 +24,10 @@ impl Lines:
         if let limit = self.max_bytes:
             if size > limit:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
-        return ok(unit)
 
     // Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line. The range is decoded in place, with no `Bytes` copy of the line first.
     fn decode(start: Int, stop: Int) String!:
-        if let text = self.data.decode_utf8_range(start, stop):
-            return ok(text)
+        if let text = self.data.decode_utf8_range(start, stop): return ok(text)
 
         return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
@@ -140,13 +140,9 @@ impl Source[Bytes] for BytesSource:
     var fn next() Bytes?!:
         if self.chunk < 1:
             return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
-        if self.at >= self.data.length():
-            return ok(none)
+        if self.at >= self.data.length(): return ok(none)
 
-        var stop = self.at + self.chunk
-        if stop > self.data.length():
-            stop = self.data.length()
-
+        let stop = (self.at + self.chunk).min(self.data.length())
         let piece = try self.data.slice(self.at, stop)
         self.at = stop
         return ok(piece)
@@ -165,8 +161,7 @@ type Mapped[T, U]:
 impl Source[U] for Mapped[T, U]:
     var fn next() U?!:
         let item = try self.input.next()
-        if let value = item:
-            return ok(self.f(value))
+        if let value = item: return ok(self.f(value))
 
         return ok(none)
 
@@ -187,8 +182,7 @@ impl Source[T] for Filtered[T]:
             let item = try self.input.next()
 
             if let value = item:
-                if self.keep(value):
-                    return ok(value)
+                if self.keep(value): return ok(value)
             else:
                 return ok(none)
 
@@ -208,17 +202,17 @@ type Taker[T]:
 
 impl Source[T] for Taker[T]:
     var fn next() T?!:
-        if self.left <= 0:
-            return ok(none)
+        if self.left <= 0: return ok(none)
 
+        let item = try self.input.next()
         self.left -= 1
-        return self.input.next()
+        return ok(item)
 
     var fn close() Unit!:
         return self.input.close()
 
 // A stream of at most the first `count` items of `input`, then the end: later items are never read, so `take` can
-// end an endless stream. A `count` of 0 or less is an empty stream. Closing it closes `input`.
+// end an endless stream. A failed read does not count as an item. A `count` of 0 or less is an empty stream. Closing it closes `input`.
 export fn take[T](input: ReadStream[T], count: Int) ReadStream[T]:
     return ReadStream[T](Taker[T](input, count))
 

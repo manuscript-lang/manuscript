@@ -7,7 +7,7 @@ fn push_one(var values: List[Int]) Unit:
     values.append(1)
 
 fn bump(var count: Int, by: Int) Unit:
-    count = count + by
+    count += by
 
 type Hooks:
     change: fn(var List[Int]) Unit
@@ -35,7 +35,7 @@ test "a lambda declares a var parameter":
 test "a var parameter of a scalar type changes the caller's variable":
     var count = 1
     let add = fn(var n: Int, by: Int):
-        n = n + by
+        n += by
     add(var count, 2)
     bump(var count, 3)
     count | try expect_equal(6)
@@ -71,7 +71,6 @@ test "a var parameter is passed on through another function value":
 test "a var parameter of a one-owner value is not copied":
     var words = ["a"]
     let extend = fn(var xs: List[String], more: List[String]):
-        for w in more:
-            xs.append(w.clone())
+        xs.extend(more)
     extend(var words, ["b", "c"])
     words | try expect_equal(["a", "b", "c"])

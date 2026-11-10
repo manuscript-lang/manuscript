@@ -23,6 +23,7 @@ impl Checker {
         );
         let name = &item.name;
         self.p.diagnostics.push(Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: self.syms.str(module.file).into(),
             pos: item.name_pos,
@@ -64,8 +65,29 @@ fn prelude_import_fix(
     let count = module
         .imports
         .iter()
-        .filter(|other| other.pos.offset == item.pos.offset)
+        .filter(|other| other.clause.offset == item.clause.offset)
         .count();
+    if count == 1 && item.in_group(source) {
+        let only = module.imports.iter().all(|other| {
+            other.pos.offset != item.pos.offset || other.clause.offset == item.clause.offset
+        });
+        let (start, end) = item.group_removal(source, only)?;
+        let at = |offset: usize| {
+            let before = &source[..offset];
+            let line = before.matches('\n').count() as u32 + 1;
+            let column = (offset - before.rfind('\n').map_or(0, |i| i + 1)) as u32 + 1;
+            ms_syntax::Pos {
+                offset: offset as u32,
+                line,
+                column,
+            }
+        };
+        return Some(DiagnosticFix {
+            pos: at(start),
+            end: at(end),
+            replacement: String::new(),
+        });
+    }
     let name = tokens[at];
     let text =
         |from: u32, to: u32| -> &str { source.get(from as usize..to as usize).unwrap_or("") };

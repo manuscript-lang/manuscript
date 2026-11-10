@@ -8,8 +8,7 @@ import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import Bytes from "@std/bytes.ms"
 import stdout, ReadStream from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
-import monotonic_time from "@std/os/system.ms"
-import Duration, nanoseconds, sleep from "@std/time.ms"
+import Duration, monotonic, nanoseconds, sleep from "@std/time.ms"
 
 fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
@@ -50,9 +49,9 @@ fn exchange(address: String) String:
 export fn main() Int:
     if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
-        let start = monotonic_time()
+        let start = monotonic()
         let text = exchange(server.address())
-        let elapsed_ms = (monotonic_time() - start) / 1000000
+        let elapsed_ms = monotonic().difference(start).to_milliseconds()
         let _count = stdout().write(
             "responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
         )

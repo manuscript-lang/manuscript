@@ -340,7 +340,7 @@ impl File {
             if d.len() < need || u32le(d, crc_at) != self.crc32 || sum != self.crc32 {
                 return Err(Bad);
             }
-        } else if self.crc32 != 0 && sum != self.crc32 {
+        } else if sum != self.crc32 {
             return Err(Bad);
         }
         Ok(out)

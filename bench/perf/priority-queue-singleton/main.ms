@@ -1,11 +1,12 @@
-import Deque from "@std/collections/deque.ms"
-import Queue, PriorityQueue from "@std/collections/queue.ms"
-import stdout from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import keep from "@std/test/bench.ms"
+import (
+    Deque from "@std/collections/deque.ms",
+    Queue, PriorityQueue from "@std/collections/queue.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    keep from "@std/test/bench.ms",
+)
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let operation = args[0]
     let size = args[1].parse_int().get()
@@ -54,5 +55,4 @@ export fn main() Int:
         keep(checksum).get()
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
-    stdout().write("{elapsed} {checksum}\n").get()
-    return 0
+    print("{elapsed} {checksum}")

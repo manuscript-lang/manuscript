@@ -50,7 +50,7 @@ PASS test.ms::addition
 1 tests, 0 failed
 ```
 
-`expect_equal` works with numbers, text, collections, and `Equal` types; `assert_equal` is the TDD spelling. Change `3` to `4` to see `FAIL test.ms::addition: expected 4, got 3` and a nonzero exit. A tests file needs no `main`.
+`expect_equal` works with numbers, text, collections, and `Equal` types. Change `3` to `4` to see `FAIL test.ms::addition: expected 4, got 3` and a nonzero exit. A tests file needs no `main`.
 
 ## Run tests in a project
 

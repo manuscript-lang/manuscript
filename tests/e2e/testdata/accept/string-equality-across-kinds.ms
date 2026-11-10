@@ -6,7 +6,7 @@ fn same(a: String, b: String) Bool:
 fn built(parts: List[String]) String:
     var s = ""
     for p in parts:
-        s = s + p
+        s += p
     return s
 
 test "equal text is equal whether stored inline, static, owned, or borrowed":

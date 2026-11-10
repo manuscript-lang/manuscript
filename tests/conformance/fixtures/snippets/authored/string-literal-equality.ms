@@ -19,8 +19,7 @@ fn score(s: String) Int:
         n += 32
     return n
 
-export fn main() Int:
+fn main() Unit:
     let all = ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
     for s in all:
         let _i = stdout().write("{score(s)} ")
-    return 0

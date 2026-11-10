@@ -8,11 +8,13 @@
 // A new construct that moves, drops or closes a value belongs in constructs() below.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/close-matrix.ms [-- name-filter]
-import tool_ms from "./lib.ms"
-import temporary, write_file from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import arguments, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    tool_ms from "./lib.ms",
+    temporary, write_file from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 let HEADER = """
 import Closeable, print from "@std/core.ms"
@@ -28,8 +30,6 @@ impl Closeable for Marker:
         if self.open:
             self.open = false
             print("closed-\{self.id\}")
-
-        return ok(unit)
 
 type Holder:
     m: Marker
@@ -339,7 +339,7 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 
     return counts
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let ms = tool_ms(root)
     let scratch = temporary("ms-close-matrix-").get()
@@ -373,9 +373,9 @@ export fn main() Int:
 
                 if why.contains(": parse:"):
                     failures += 1
-                    stdout().write("generated: {name} does not parse: {why}\n").get()
+                    print("generated: {name} does not parse: {why}")
                 else if show or filter != "":
-                    stdout().write("rejected {name}: {why.split("\n")[0]}\n").get()
+                    print("rejected {name}: {why.split("\n")[0]}")
 
                 continue
 
@@ -391,7 +391,7 @@ export fn main() Int:
 
                 if ran.is_error():
                     failures += 1
-                    stdout().write("run: {name} ({build}) could not run {ms}\n").get()
+                    print("run: {name} ({build}) could not run {ms}")
                     continue
 
                 let child = ran.get()
@@ -439,7 +439,7 @@ export fn main() Int:
     )
 
     if checked == 0:
-        stdout().write("no combination ran\n").get()
+        print("no combination ran")
         return 1
 
     if failures > 0: return 1

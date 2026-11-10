@@ -1,14 +1,14 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import constant_time_equal from "@std/crypto.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    constant_time_equal from "@std/crypto.ms",
     bit_and,
     bit_not,
     bit_or,
     bit_xor,
     shift_left,
     shift_right,
-    shift_right_unsigned
-) from "@std/math/math.ms"
+    shift_right_unsigned from "@std/math/math.ms",
+)
 
 fn rotl32(value: Int, count: Int) Int:
     return bit_and(
@@ -25,10 +25,10 @@ fn le32(data: Bytes, at: Int) Int:
     return value
 
 fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
-    var va = state.get(a)
-    var vb = state.get(b)
-    var vc = state.get(c)
-    var vd = state.get(d)
+    var va = state[a]
+    var vb = state[b]
+    var vc = state[c]
+    var vd = state[d]
     va = bit_and(va + vb, 4294967295)
     vd = rotl32(bit_xor(vd, va), 16)
     vc = bit_and(vc + vd, 4294967295)
@@ -67,7 +67,7 @@ fn keystream(initial: List[Int]) List[Int]:
         quarter(var state, 3, 4, 9, 14)
 
     for index in 0..16:
-        state.set(index, bit_and(state.get(index) + initial.get(index), 4294967295))
+        state.set(index, bit_and(state[index] + initial[index], 4294967295))
     return state
 
 fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
@@ -126,8 +126,7 @@ fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
 // Computes the Poly1305 one-time authenticator (RFC 8439) of `data` with a 32-byte one-time key, returning 16 bytes.
 // Authenticate with a key used for one message only; use `chacha20poly1305_seal` unless implementing a protocol.
 export fn poly1305(key: Bytes, data: Bytes) Bytes!:
-    if key.length() != 32:
-        return error(Error("crypto: invalid input", kind: "EINVAL"))
+    if key.length() != 32: return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     let mask = 67108863
     let r0 = bit_and(le32(key, 0), 67108863)
@@ -330,6 +329,6 @@ export fn chacha20poly1305_open(
     let tag = sealed.slice(split, sealed.length()).get(Bytes([]))
     let expected = try tag_for(key, nonce, associated_data, ciphertext)
     if not constant_time_equal(expected, tag):
-        return error(Error("crypto: authentication failed", kind: "EACCES"))
+        return error(Error("crypto: authentication failed", kind: "EAUTH"))
 
     return ok(xor_stream(key, 1, nonce, ciphertext))

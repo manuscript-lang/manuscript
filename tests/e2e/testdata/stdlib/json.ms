@@ -4,22 +4,20 @@ import (
     expect_error,
     expect_false,
     expect_not_equal,
-    fail
-) from "@std/test/test.ms"
-import (
+    fail from "@std/test/test.ms",
     parse,
     stringify,
     JsonValue,
     JsonOptions,
     StringifyOptions,
-    JsonEncode
-) from "@std/data/json.ms"
-import timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms"
-import Url from "@std/net/url.ms"
-import Bytes from "@std/bytes.ms"
-import Decimal from "@std/math/decimal.ms"
-import Data from "@std/core.ms"
-import BigInt from "@std/math/math.ms"
+    JsonEncode from "@std/data/json.ms",
+    timestamp, nanoseconds, Timestamp, Duration, Instant from "@std/time.ms",
+    Url from "@std/net/url.ms",
+    Bytes from "@std/bytes.ms",
+    Decimal from "@std/math/decimal.ms",
+    Data from "@std/core.ms",
+    BigInt from "@std/math/math.ms",
+)
 
 test "JSON exact numbers Unicode and nested roundtrip":
     let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
@@ -33,13 +31,11 @@ fn expect_syntax_error[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
     try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data: line ")
-    return ok(unit)
 
 fn expect_invalid_data[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
     try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data")
-    return ok(unit)
 
 test "JSON decode errors name the failing path":
     let wrong = parse[Profile]("\{\"name\":1\}")
@@ -352,7 +348,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
     let profile: Profile = try parse[Profile](text)
     try expect_equal(profile.name, "Ada")
     try expect_equal(profile.age, 18)
-    try expect_false(not profile.nickname.is_none())
+    try expect_false(profile.nickname.is_some())
     try expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)
 
     let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]\}"
@@ -405,11 +401,7 @@ test "JSON parse decodes alternatives and generic records":
 
     let wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
     try expect_false(
-        (
-            wrapper.first != 1
-            or not wrapper.second.is_none()
-            or wrapper.extra != 7
-        )
+        (wrapper.first != 1 or wrapper.second.is_some() or wrapper.extra != 7)
     )
 
     let nested: Wrapper[Wrapper[String]] = try parse[Wrapper[Wrapper[String]]](

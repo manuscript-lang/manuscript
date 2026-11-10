@@ -3,11 +3,10 @@
 // conform: origin=agent token study: List[Int].join
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     var out = stdout()
     out.write(
         [3, -1, 20].join(",") + "|" + List[Int]().join("x") + "|" + [7].join(
             "--"
         ) + "\n"
     ).get()
-    return 0

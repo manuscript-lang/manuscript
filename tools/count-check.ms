@@ -7,11 +7,13 @@
 // A change may not raise a count without a stated reason; update the header in the same change.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/count-check.ms [-- files]
-import tool_ms, use_stats_runtime from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    tool_ms, use_stats_runtime from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The text after `prefix` on every line that starts with it.
 fn after(text: String, prefix: String) List[String]:
@@ -22,14 +24,14 @@ fn after(text: String, prefix: String) List[String]:
         )
     return found
 
-export fn main() Int:
+fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 
     let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
             files.append("tests/ownership-counts/{f.path}")
 
@@ -81,15 +83,15 @@ export fn main() Int:
             let counts = after(err, "ms-rt counts: ")
             let live = after(err, "ms-rt live blocks at exit: ")
 
-            if live.length() == 0 or live[0] != "0":
+            if live.is_empty() or live[0] != "0":
                 failures += 1
 
                 var shown = "an unreported number of"
-                if live.length() > 0: shown = live[0].clone()
-                stdout().write("leak: {f} ({build}) left {shown} live blocks\n").get()
+                if not live.is_empty(): shown = live[0].clone()
+                print("leak: {f} ({build}) left {shown} live blocks")
 
             var have = List[String]()
-            if counts.length() > 0: have = counts[0].split(" ")
+            if not counts.is_empty(): have = counts[0].split(" ")
 
             for header in after(source, "// expect-{build}: "):
                 for pair in header.split(" "):
@@ -109,18 +111,18 @@ export fn main() Int:
                             .get()
                         )
 
-            if expected_out.length() > 0:
+            if not expected_out.is_empty():
                 checked += 1
 
                 if out.trim_end() != expected_out.join("\n"):
                     failures += 1
-                    stdout().write("stdout: {f} ({build}) differs:\n{out}\n").get()
+                    print("stdout: {f} ({build}) differs:\n{out}")
 
     change_directory(root).get()
-    stdout().write("checked {checked} expectations, {failures} failing\n").get()
+    print("checked {checked} expectations, {failures} failing")
 
     if checked == 0:
-        stdout().write("no expectations ran\n").get()
+        print("no expectations ran")
         return 1
 
     if failures > 0: return 1

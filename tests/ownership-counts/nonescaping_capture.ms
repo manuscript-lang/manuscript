@@ -4,7 +4,7 @@
 fn apply(xs: List[Int], f: fn(Int) Int) Int:
     var t = 0
     for x in xs:
-        t = t + f(x)
+        t += f(x)
     return t
 
 export fn main() Int:

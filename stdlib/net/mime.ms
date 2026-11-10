@@ -1,6 +1,8 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+)
 
 /*
 MIME building blocks: media types, header blocks, and multipart bodies.
@@ -115,7 +117,7 @@ export fn parse_media_type(text: String) MediaType!:
         if piece.is_empty(): continue
 
         let at = piece.index_of("=")
-        if not at.is_some(): return error(
+        if at.is_none(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
@@ -126,7 +128,7 @@ export fn parse_media_type(text: String) MediaType!:
         )
 
         let value = unquote(raw)
-        if not value.is_some(): return error(
+        if value.is_none(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
@@ -224,7 +226,7 @@ export fn parse_headers(text: String) Headers!:
             continue
 
         let at = line.index_of(":")
-        if not at.is_some() or at.get(0) == 0: return error(
+        if at.is_none() or at.get(0) == 0: return error(
             Error("MIME: invalid header", kind: "EBADMSG")
         )
 
@@ -291,8 +293,8 @@ fn make_part(section: Bytes) Part!:
         )
 
         if media.is_ok():
-            part.name = media.get().params.get("name").get("")
-            part.filename = media.get().params.get("filename").get("")
+            part.name = media.get().params.get_or("name", "")
+            part.filename = media.get().params.get_or("filename", "")
 
     return ok(part)
 
@@ -319,12 +321,15 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 
     return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
-// Cuts a byte stream at its delimiter lines and builds each part with `make_part`, buffering one part at a time.
+// Cuts a byte stream at delimiter lines, buffering one part at a time. Confirmed bytes go
+// into `pending`; only a delimiter-overlap suffix stays in `buffer` between chunks.
 // `in_part` is false until the first delimiter has passed; `done` after the closing delimiter.
 type MultipartParts:
     delimiter: Bytes
     max_part_bytes: Int?
     buffer: Bytes
+    pending: BytesBuilder
+    pending_size: Int
     in_part: Bool
     done: Bool
 
@@ -337,6 +342,7 @@ impl Transform[Bytes, Part] for MultipartParts:
         while true:
             if (
                 self.in_part
+                and self.pending_size == 0
                 and self.buffer.length() >= 2
                 and self.buffer.starts_with("--".to_bytes())
             ):
@@ -359,27 +365,51 @@ impl Transform[Bytes, Part] for MultipartParts:
                     break
 
                 if let limit = self.max_part_bytes:
-                    if self.buffer.length() - self.delimiter.length() > limit:
+                    if (
+                        self.pending_size + self.buffer.length() - self.delimiter.length() > limit
+                    ):
                         return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
+
+                // Only the trailing delimiter-length minus one bytes can match a future chunk.
+                let stop = self.buffer.length() - self.delimiter.length() + 1
+
+                if stop > 0:
+                    self.pending.append_bytes(self.buffer.view(0, stop))
+                    self.pending_size += stop
+                    self.buffer = try self.buffer.slice(stop, self.buffer.length())
+
                 break
 
             let end = at.get()
 
             if self.in_part:
                 if let limit = self.max_part_bytes:
-                    if end > limit: return error(
+                    if self.pending_size + end > limit: return error(
                         Error(
                             "MIME: limit exceeded", kind: "EOVERFLOW"
                         )
                     )
-                out.append(try make_part(try self.buffer.slice(0, end)))
+
+                if self.pending_size == 0:
+                    out.append(try make_part(self.buffer.view(0, end)))
+                else:
+                    self.pending.append_bytes(self.buffer.view(0, end))
+
+                    let section = self.pending.drain()
+                    let part = make_part(section)
+
+                    if part.is_error():
+                        // A caller may read again after a failed step; preserve its held bytes.
+                        self.pending.append_bytes(section.view(0, self.pending_size))
+                        return error(part.err())
+
+                    self.pending_size = 0
+                    out.append(part.get())
 
             self.buffer = try self.buffer.slice(
                 end + self.delimiter.length(), self.buffer.length()
             )
             self.in_part = true
-
-        return ok(unit)
 
     var fn finish(var out: List[Part]) Unit!:
         if self.done: return ok(unit)
@@ -401,7 +431,8 @@ export fn multipart_parts(
         body,
         MultipartParts(
             delimiter: "\r\n--{boundary}".to_bytes(), max_part_bytes: max_part_bytes,
-            buffer: "\r\n".to_bytes(), in_part: false, done: false
+            buffer: "\r\n".to_bytes(), pending: BytesBuilder(), pending_size: 0,
+            in_part: false, done: false
         )
     )
 

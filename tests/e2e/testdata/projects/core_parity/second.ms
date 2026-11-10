@@ -1,12 +1,12 @@
-import Key, Cause from "./domain.ms"
 import (
+    Key, Cause from "./domain.ms",
     transform_set,
     locate_map,
     locate_set,
     convert,
     remap_keys,
-    remap_values
-) from "./helpers.ms"
+    remap_values from "./helpers.ms",
+)
 
 impl Equal for Key:
     fn equals(other: Key) Bool:
@@ -60,4 +60,4 @@ export fn second_value_transform() Int:
     input.add(Key(5, "original"), 2)
 
     let mapped = remap_values(input, fn key, value: value + 1)
-    return mapped.get(Key(5, "different")).get(0)
+    return mapped.get_or(Key(5, "different"), 0)

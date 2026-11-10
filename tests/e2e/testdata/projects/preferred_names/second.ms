@@ -1,5 +1,7 @@
-import Key from "./domain.ms"
-import add_generic, remove_generic from "./helpers.ms"
+import (
+    Key from "./domain.ms",
+    add_generic, remove_generic from "./helpers.ms",
+)
 
 impl Equal for Key:
     fn equals(other: Key) Bool:

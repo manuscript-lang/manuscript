@@ -1,10 +1,8 @@
-import Bytes from "@std/bytes.ms"
 import (
-    constant_time_less_or_equal,
-    constant_time_select,
-    xor_bytes
-) from "@std/crypto.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
+    Bytes from "@std/bytes.ms",
+    constant_time_less_or_equal, constant_time_select, xor_bytes from "@std/crypto.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+)
 
 test "constant time select picks by choice":
     try expect_equal(constant_time_select(1, 7, 9), 7)

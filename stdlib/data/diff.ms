@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    panic from "@std/core.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 /*
 Compare text by edit distance, similarity, closest candidate, or a unified line diff.
@@ -10,8 +12,7 @@ Strings are compared by Unicode scalar, lines by exact equality.
 // Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
 // Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
 export fn edit_distance(left: String, right: String) Int:
-    if left == right:
-        return 0
+    if left == right: return 0
 
     let a = left.chars()
     let b = right.chars()
@@ -23,9 +24,7 @@ export fn edit_distance(left: String, right: String) Int:
         var current: List[Int] = [i]
 
         for j in 1..b.length() + 1:
-            var cost = 1
-            if a[i - 1] == b[j - 1]:
-                cost = 0
+            let cost = if a[i - 1] == b[j - 1]: 0 else: 1
             current.append(
                 (previous[j] + 1).min(
                     (current[j - 1] + 1).min(previous[j - 1] + cost)
@@ -38,9 +37,7 @@ export fn edit_distance(left: String, right: String) Int:
 
 // Returns the length of the longest common subsequence of two lists of text.
 fn common_length(a: List[String], b: List[String]) Int:
-    var previous: List[Int] = []
-    for unused1 in 0..b.length() + 1:
-        previous.append(0)
+    var previous = [0].repeated(b.length() + 1)
 
     for i in 1..a.length() + 1:
         var current: List[Int] = [0]
@@ -61,14 +58,12 @@ Two empty strings give 1.0. Use `close_matches` to rank a list of candidates by 
 Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 */
 export fn similarity_ratio(left: String, right: String) Float:
-    if left == right:
-        return 1.0
+    if left == right: return 1.0
 
     let a = left.chars()
     let b = right.chars()
     let total = a.length() + b.length()
-    if total == 0:
-        return 1.0
+    if total == 0: return 1.0
 
     return 2.0 * common_length(a, b).to_float() / total.to_float()
 
@@ -111,10 +106,8 @@ export fn close_matches(
     return ranked.take(limit).map(fn s: s.text.clone())
 
 fn compare_scores(left: Float, right: Float) Int:
-    if left > right:
-        return -1
-    if left < right:
-        return 1
+    if left > right: return -1
+    if left < right: return 1
 
     return 0
 
@@ -129,14 +122,7 @@ type Step:
 
 // Walks the longest common subsequence table to list the steps that turn `old` into `new`, deletions before insertions within a change.
 fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
-    var table: List[List[Int]] = []
-
-    for unused2 in 0..old.length() + 1:
-        var row: List[Int] = []
-        for unused3 in 0..new.length() + 1:
-            row.append(0)
-        table.append(row)
-
+    var table = (0..old.length() + 1).map(fn _row: [0].repeated(new.length() + 1))
     var i = old.length() - 1
 
     while i >= 0:
@@ -210,8 +196,7 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
         old_middle.append(old[i].clone())
     for i in head..new.length() - tail:
         new_middle.append(new[i].clone())
-    for step in middle_steps(old_middle, new_middle, head):
-        steps.append(step)
+    steps.extend(middle_steps(old_middle, new_middle, head))
 
     for i in 0..tail:
         let at = old.length() - tail + i
@@ -221,10 +206,8 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
     return steps
 
 fn hunk_range(start: Int, length: Int) String:
-    if length == 1:
-        return "{start + 1}"
-    if length == 0:
-        return "{start},0"
+    if length == 1: return "{start + 1}"
+    if length == 0: return "{start},0"
 
     return "{start + 1},{length}"
 
@@ -254,10 +237,8 @@ export fn unified_diff(
         panic("unified_diff: context must not be negative")
 
     let steps = line_steps(old, new)
-    var keep: List[Bool] = []
+    var keep = [false].repeated(steps.length())
     var any_change = false
-    for unused4 in 0..steps.length():
-        keep.append(false)
 
     for i in 0..steps.length():
         if steps[i].kind != 0:
@@ -265,11 +246,15 @@ export fn unified_diff(
 
             let from = (i - context).max(0)
             let to = i + context.min(steps.length() - 1 - i)
-            for j in from..to + 1:
-                keep.set(j, true)
 
-    if not any_change:
-        return ""
+            // Windows move right: the first marked position joins the prior window.
+            var j = to
+
+            while j >= from and not keep[j]:
+                keep.set(j, true)
+                j -= 1
+
+    if not any_change: return ""
 
     var out = StringBuilder()
     out.append("--- {old_name}\n+++ {new_name}\n")

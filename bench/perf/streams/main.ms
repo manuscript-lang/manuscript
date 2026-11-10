@@ -1,5 +1,5 @@
-import stdout, Source from "@std/io/io.ms"
 import (
+    stdout, Source from "@std/io/io.ms",
     from_list,
     from_bytes,
     map,
@@ -7,10 +7,10 @@ import (
     collect,
     filter,
     take,
-    fold
-) from "@std/io/streams.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import monotonic, Instant from "@std/time.ms"
+    fold from "@std/io/streams.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    monotonic, Instant from "@std/time.ms",
+)
 
 // ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
 
@@ -28,8 +28,7 @@ type ListSource:
 
 impl Source[Int] for ListSource:
     var fn next() Int?!:
-        if self.at >= self.items.length():
-            return ok(none)
+        if self.at >= self.items.length(): return ok(none)
 
         let v = self.items[self.at]
         self.at += 1
@@ -46,8 +45,7 @@ type MapSource:
 impl Source[Int] for MapSource:
     var fn next() Int?!:
         let step = try self.up.next()
-        if let v = step:
-            return ok(self.f(v))
+        if let v = step: return ok(self.f(v))
 
         return ok(none)
 
@@ -108,8 +106,7 @@ fn plain_take(xs: List[Int], count: Int) Int:
     var seen = 0
 
     for x in xs:
-        if seen >= count:
-            break
+        if seen >= count: break
 
         total += x
         seen += 1
@@ -148,7 +145,7 @@ fn stdlib_lines(data: Bytes) Int!:
         count += line.length()
     return ok(count)
 
-export fn main() Int:
+fn main() Unit:
     let n = 5000000
     var xs = List[Int]()
     for i in 0..n:
@@ -205,4 +202,3 @@ export fn main() Int:
     let f = data.clone()
     t = monotonic()
     report("stream-lines", rows, t, stdlib_lines(f).get(-1))
-    return 0

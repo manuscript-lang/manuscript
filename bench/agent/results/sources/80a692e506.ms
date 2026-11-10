@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 type Entry:
     ts: String

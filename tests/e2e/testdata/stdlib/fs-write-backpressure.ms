@@ -1,7 +1,9 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn write_one(path: String, data: Bytes) fn() Unit!:
     return fn: write_file(path.clone(), data, replace: true).wait()

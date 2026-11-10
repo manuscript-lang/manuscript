@@ -7,11 +7,10 @@ fn long() Int:
         let _ = sleep(nanoseconds(100000000)).wait()
     return 0
 
-export fn main() Int:
+fn main() Unit:
     let w = promise(fn: ok(long()))
-    stdout().write("joining\n").get()
+    print("joining")
 
     let _flushed = stdout().flush()
     let outcome = w.wait()
-    stdout().write("joined {outcome.is_ok()}\n").get()
-    return 0
+    print("joined {outcome.is_ok()}")

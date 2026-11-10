@@ -21,7 +21,6 @@ fn stream_events(var exchange: HttpExchange) Unit!:
     exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
     exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
     exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
-    return ok(unit)
 
 test "HTTP response bodies decode as SSE and close with the reader":
     let server = try serve("127.0.0.1:0", stream_events, HttpServerOptions())

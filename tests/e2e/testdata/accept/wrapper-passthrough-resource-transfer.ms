@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Marker:
     id: Int
@@ -12,8 +14,6 @@ impl Closeable for Marker:
         if not self.closed:
             self.closed = true
             try append_file(self.log, "{self.id},").wait()
-
-        return ok(unit)
 
 fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log))
 
@@ -49,7 +49,6 @@ fn recover_resource_error(log: String) Unit!:
     let recovered = original.or_else(fn cause: ok(cause.id))
     try expect_equal(original.is_error(), true)
     try expect_equal(recovered.get(), 5)
-    return ok(unit)
 
 fn bound_resource_error(log: String) Unit!:
     let original: Int!Marker = error(Marker(6, log))
@@ -59,7 +58,6 @@ fn bound_resource_error(log: String) Unit!:
     try expect_equal(original.is_error(), true)
     try expect_equal(first.get(), 6)
     try expect_equal(second.get(), 7)
-    return ok(unit)
 
 test "or_else only borrows a resource error while preserving copyable successes":
     let tmp = temporary("wrapper-error-borrow-") | try expect_ok
@@ -82,21 +80,17 @@ fn result_callback(fail: Bool) (fn(Error) Marker!Error)!:
 
 fn held_result_temporary(id: Int, log: String, fail: Bool) Unit!:
     let _kept = result(id, log).or_else(try result_callback(fail))
-    return ok(unit)
 
 fn held_result_local(id: Int, log: String, fail: Bool) Unit!:
     let original = result(id, log)
     let _kept = original.or_else(try result_callback(fail))
-    return ok(unit)
 
 fn held_optional_temporary(id: Int, log: String, fail: Bool) Unit!:
     let _kept = optional(id, log).or_else(try optional_callback(fail))
-    return ok(unit)
 
 fn held_optional_local(id: Int, log: String, fail: Bool) Unit!:
     let original = optional(id, log)
     let _kept = original.or_else(try optional_callback(fail))
-    return ok(unit)
 
 test "owned native receivers stay closeable until later try arguments succeed":
     let tmp = temporary("wrapper-held-receiver-") | try expect_ok
@@ -123,7 +117,6 @@ fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Unit!:
     let recovered = original.or_else(try borrowed_error_callback(fail))
     try expect_equal(original.is_error(), true)
     try expect_equal(recovered.get(), id)
-    return ok(unit)
 
 test "later try does not take ownership of a genuinely borrowed native receiver":
     let tmp = temporary("wrapper-borrowed-receiver-") | try expect_ok

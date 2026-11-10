@@ -4,6 +4,7 @@
 //! only on success. For `STATUS_FAILED` the diagnostic text is available from
 //! the `err` out string of the failing call. `FileInfo` is flattened into
 //! [`InfoOut`]; optional limits are a present flag plus an `i64`.
+//! ms: domain filesystem
 // `libc::statfs` field widths differ per target, so the portable casts look redundant on Linux.
 #![allow(clippy::unnecessary_cast)]
 #![recursion_limit = "256"]

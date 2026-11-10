@@ -1,4 +1,5 @@
 //! Natives for `@std/net/net.ms`.
+//! ms: domain network
 
 use super::{ConnH, DgramH, IpH, ListenerH, NetH, opt, report};
 use crate::bound::Bound;
@@ -56,14 +57,14 @@ native! {
     }
 
     /// `@std/data/json.ms` reading an `IpAddress` from its string form; the error text is dropped.
-    // ms: leaf
+    // ms: leaf domain=JSON
     fn msstd_json_dec_ip(text: &str, out: Out<Object<IpH>>) -> Result<(), StatusCode> {
         out.write(Object(IpH(crate::ip::parse_ip(text).map_err(|_| StatusCode(1))?)));
         Ok(())
     }
 
     /// `@std/data/json.ms` reading a `Cidr` from its string form; the error text is dropped.
-    // ms: leaf
+    // ms: leaf domain=JSON
     fn msstd_json_dec_cidr(text: &str, out: Out<Object<Cidr>>) -> Result<(), StatusCode> {
         out.write(Object(Cidr::parse(text).map_err(|_| StatusCode(1))?));
         Ok(())

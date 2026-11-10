@@ -1,11 +1,13 @@
-import Promise from "@std/concurrency/promise.ms"
-import base64_encode from "@std/data/encoding.ms"
-import CsvOptions from "@std/data/csv.ms"
-import Bytes from "@std/bytes.ms"
-import CommandOutput, RunOptions, run from "@std/os/process.ms"
-import Duration from "@std/time.ms"
-import Writable from "@std/core.ms"
-import write_file from "@std/os/fs.ms"
+import (
+    Promise from "@std/concurrency/promise.ms",
+    base64_encode from "@std/data/encoding.ms",
+    CsvOptions from "@std/data/csv.ms",
+    Bytes from "@std/bytes.ms",
+    CommandOutput, RunOptions, run from "@std/os/process.ms",
+    Duration from "@std/time.ms",
+    Writable from "@std/core.ms",
+    write_file from "@std/os/fs.ms",
+)
 
 fn direct_explicit(data: Bytes) String: base64_encode(data, false)
 

@@ -1,6 +1,8 @@
-import expect_equal from "@std/test/test.ms"
-import Data from "@std/core.ms"
-import JsonEncode, JsonValue, stringify from "@std/data/json.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Data from "@std/core.ms",
+    JsonEncode, JsonValue, stringify from "@std/data/json.ms",
+)
 
 type Plain:
     name: String

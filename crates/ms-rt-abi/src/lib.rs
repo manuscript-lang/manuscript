@@ -807,7 +807,7 @@ MS_STATIC_ASSERT(sizeof(ms_bytes) == {vec_size}, "ms_bytes is three words");
 /* The top two bits of `tagged` are 1 for a string whose bytes are inside the value. */
 static inline int ms_str_is_inline(const ms_str *s) {{ return (s->tagged >> 62) == {inline_tag}; }}
 static inline size_t ms_str_len(const ms_str *s) {{
-    return ms_str_is_inline(s) ? (s->tagged >> {inline_shift}) & {inline_max} : s->tagged & (((size_t)1 << 62) - 1);
+    return ms_str_is_inline(s) ? (s->tagged >> {inline_shift}) & {inline_max} : s->tagged & (size_t)0x{str_len_mask:x};
 }}
 /* The bytes: UTF-8, not NUL-terminated. */
 static inline const uint8_t *ms_str_data(const ms_str *s) {{
@@ -910,6 +910,7 @@ void msrt_string_from_bytes(const uint8_t *ptr, size_t len, ms_str *out);
             str_len = offset_of!(StrVal, tagged),
             vec_size = size_of::<VecVal>(),
             inline_max = STR_INLINE_MAX,
+            str_len_mask = STR_LEN_MASK,
             inline_tag = STR_INLINE >> 62,
             inline_shift = STR_INLINE_LEN_SHIFT,
             unit = VALUE_UNIT,

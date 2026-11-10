@@ -45,6 +45,7 @@ pub fn prelude_function_import(path: &str, name: &str) -> Import {
     Import {
         id: ms_syntax::NodeId(0),
         pos: ms_syntax::Pos::default(),
+        clause: ms_syntax::Pos::default(),
         name_pos: ms_syntax::Pos::default(),
         name: n(name),
         path: path.into(),
@@ -103,6 +104,9 @@ pub(crate) struct World {
     receiver_natives: HashSet<String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
+    /// The bundled module of each declared function or method, by the address of its syntax;
+    /// built on first use once the library is loaded.
+    func_modules: Option<HashMap<usize, ModRef>>,
 }
 
 /// The compiler session: the standard-library world and the binding counter. A checker, the
@@ -134,26 +138,16 @@ impl Session {
     }
 }
 
-/// Externs that store their function arguments instead of running them before they return.
-const KEPT_CALLBACKS: &[&str] = &[
-    "extern:msrt_promise_start",
-    "extern:msrt_promise_start_here",
-    "extern:msrt_promise_defer",
-    "extern:msstd_http_serving_new",
-    "extern:msrt_fn_new",
-];
-
-/// Externs that take ownership of the generic value argument (it moves into the runtime).
-const OWNING_VALUES: &[&str] = &["extern:msrt_pipe_write", "extern:msrt_promise_put"];
-
-/// Whether a native function (`extern:name`) moves its `value` argument into the runtime.
-pub fn owns_value(native: &str) -> bool {
-    OWNING_VALUES.contains(&native)
+/// Whether the runtime function `symbol` takes ownership of its argument `param` (it moves into
+/// the runtime), as its `// ms: takes:<param>` declares.
+pub fn takes_argument(symbol: &str, param: &str) -> bool {
+    RUNTIME_TAKES.contains(&(symbol, param))
 }
 
-/// Whether a native function (`module/name`, or `extern:name`) keeps the function values it is given.
-pub fn keeps_callbacks(native: &str) -> bool {
-    KEPT_CALLBACKS.contains(&native)
+/// Whether the runtime function `symbol` keeps the function values it is given instead of running
+/// them before it returns, as its `// ms: keeps:<param>` declares.
+pub fn keeps_callbacks(symbol: &str) -> bool {
+    RUNTIME_KEEPS.contains(&symbol)
 }
 
 /// Native types that declare fields, so they cannot be written `extern type`. A record in a native
@@ -205,7 +199,7 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
         )),
         kind: SymKind::Type,
         module: module.file,
-        native: n(""),
+        native: Native::Source,
         export: d.decl().export,
         ty: RefCell::new(None),
         variables: RefCell::new(Vec::new()),
@@ -222,6 +216,7 @@ pub(crate) fn source_type_symbol(syms: ms_syntax::Names, module: &ModRef, d: &De
         )),
         kind,
     );
+    t.builtin = Builtin::source(syms.str(module.file), syms.str(name));
     t.def = Some(def);
     *s.ty.borrow_mut() = Some(Rc::new(t));
     s
@@ -583,6 +578,7 @@ fn split_mixed(
         own_imports.push(Import {
             id: NodeId(ids - 1),
             pos: d.pos,
+            clause: d.pos,
             name_pos: d.pos,
             name,
             path: parsed.file.as_ref().into(),
@@ -674,7 +670,7 @@ impl Loader<'_> {
             id,
             kind: SymKind::Type,
             module: module.file,
-            native: name,
+            native: Native::Builtin(name),
             export: d.decl().export,
             ty: RefCell::new(None),
             variables: RefCell::new(Vec::new()),
@@ -695,7 +691,10 @@ impl Loader<'_> {
     }
 
     fn register(&mut self, syms: ms_syntax::Names, module: &ModRef) -> Result<(), String> {
-        self.c.session.world(|w| w.sources.push(module.clone()));
+        self.c.session.world(|w| {
+            w.sources.push(module.clone());
+            w.func_modules = None;
+        });
         let source_implementation = module.decls.iter().any(has_implementation);
         if source_implementation {
             for d in &module.decls {
@@ -742,11 +741,11 @@ impl Loader<'_> {
                 _ => (None, SymKind::Type),
             };
             let mut id = n(&format!("@std/{name_t}", name_t = syms.str(name)));
-            let mut native = name;
+            let mut native = Native::Builtin(name);
             if sym_kind == SymKind::Fn {
                 // Identities are module/name.
                 let ident = format!("{}/{}", module_stem(syms.str(module.file)), syms.str(name));
-                native = n(&ident);
+                native = Native::Builtin(n(&ident));
                 id = n(&format!("@std/{ident}"));
             }
             let s = Rc::new(Sym {
@@ -828,7 +827,7 @@ impl Loader<'_> {
                 id: n(primitive_id(name)),
                 kind: SymKind::Type,
                 module: n(""),
-                native: n(""),
+                native: Native::Source,
                 export: true,
                 ty: RefCell::new(Some(primitive(primitive_id(name)))),
                 variables: RefCell::new(Vec::new()),
@@ -1006,7 +1005,7 @@ impl Loader<'_> {
                         module_stem(syms.str(contract_module.unwrap_or(module.file))),
                         syms.str(name)
                     );
-                    method.native = n(&native);
+                    method.native = Native::Builtin(n(&native));
                     self.c.p.methods[index] = Rc::new(method);
                 }
             }
@@ -1237,7 +1236,35 @@ impl Session {
         self.world(|w| w.operation_variables.get(key).cloned().unwrap_or_default())
     }
 
-    /// Whether a bundled module is a source module (it has bodies).
+    /// The bundled module that declares the function or method `f`.
+    pub fn func_module(self: &Rc<Self>, f: &ms_syntax::ast::Func) -> Option<ModRef> {
+        self.world(|w| {
+            if w.func_modules.is_none() {
+                let mut map = HashMap::new();
+                for m in &w.sources {
+                    for d in &m.decls {
+                        if let Some(f) = d.func() {
+                            map.insert(f as *const _ as usize, m.clone());
+                        }
+                        for method in d.methods() {
+                            map.insert(&method.func as *const _ as usize, m.clone());
+                        }
+                    }
+                }
+                w.func_modules = Some(map);
+            }
+            w.func_modules
+                .as_ref()?
+                .get(&(f as *const _ as usize))
+                .cloned()
+        })
+    }
+
+    /// The bundled module checked from `file`, if the standard library has one.
+    pub fn bundled_module(self: &Rc<Self>, file: Name) -> Option<ModRef> {
+        self.world(|w| w.sources.iter().find(|m| m.file == file).cloned())
+    }
+
     pub fn is_source_module(self: &Rc<Self>, module: &ModRef) -> bool {
         self.world(|w| {
             w.source_modules
@@ -1553,6 +1580,7 @@ impl Session {
                 Some(1) if session.is_source_module(module) => return,
                 Some(1) => {
                     diagnostics.push(Diagnostic {
+                        cause: Default::default(),
                         opener_line: 0,
                         file: Arc::from(syms.str(module.file)),
                         pos: ms_syntax::Pos::new(0, 1, 1),
@@ -1651,7 +1679,11 @@ impl Session {
             .unwrap_or_else(|e| panic!("standard declarations: {e}"));
         for module in modules {
             self.register_source(&module);
-            self.world(|w| w.sources.push(module));
+            self.world(|w| {
+                w.sources.push(module);
+                // A module loaded later declares functions the index has not seen.
+                w.func_modules = None;
+            });
         }
         self.world(|w| {
             w.sources

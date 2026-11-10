@@ -19,6 +19,5 @@ fn search(a: List[Int], want: Int) Int:
 
     return -1
 
-export fn main() Int:
+fn main() Unit:
     let _ = stdout().write("{search([1, 3, 5], 9)}\n")
-    return 0

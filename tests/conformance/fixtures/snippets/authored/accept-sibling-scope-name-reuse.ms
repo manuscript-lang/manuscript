@@ -2,9 +2,7 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    var total = 0
-    for i in [1, 2]:
-        total += i
+    var total = [1, 2].sum()
     for i in [3, 4]:
         total += i
 

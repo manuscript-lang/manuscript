@@ -29,7 +29,7 @@ fn label(status: Status) String:
         Cancelled(reason):
             return "cancelled: {reason}"
 
-export fn main() Int:
+fn main() Unit:
     var orders = [
         Order(1, "Sam", 1250),
         Order(2, "Ada", 4000, status: Status.Shipped("ZX81")),
@@ -41,12 +41,11 @@ export fn main() Int:
     var customers = Set[String]()
     for order in orders:
         customers.add(order.customer.clone())
-        let total = spent.get(order.customer).get(0) + order.cents
+        let total = spent.get_or(order.customer, 0) + order.cents
         spent.add(order.customer.clone(), total)
         print("#{order.id} {order.customer}: {label(order.status)}")
     print("{customers.length()} customers")
-    print("Sam spent {spent.get("Sam").get(0)} cents")
-    return 0
+    print("Sam spent {spent.get_or("Sam", 0)} cents")
 ```
 
 ```text

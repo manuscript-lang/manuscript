@@ -1,7 +1,9 @@
-import blake2b, blake2s from "@std/crypto/blake2.ms"
-import Bytes from "@std/bytes.ms"
-import hex_encode from "@std/data/encoding.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    blake2b, blake2s from "@std/crypto/blake2.ms",
+    Bytes from "@std/bytes.ms",
+    hex_encode from "@std/data/encoding.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "BLAKE2b matches reference digests":
     try expect_equal(

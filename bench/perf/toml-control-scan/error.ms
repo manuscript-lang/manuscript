@@ -1,18 +1,20 @@
-import parse from "@std/data/toml.ms"
-import arguments from "@std/os/env.ms"
-import read_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse from "@std/data/toml.ms",
+    arguments from "@std/os/env.ms",
+    read_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn diagnostic(text: String) String:
     match parse(text):
         ok(_): return "accepted"
         error(cause): return cause.message
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
-    let text = read_file(args.get(0)).wait().get().decode_utf8().get()
-    let count = args.get(1).parse_int().get()
+    let text = read_file(args[0]).wait().get().decode_utf8().get()
+    let count = args[1].parse_int().get()
     let expected = diagnostic(text)
 
     if count == 0:
@@ -29,5 +31,5 @@ export fn main() Int:
         checksum += output.byte_length()
 
     let elapsed = monotonic().difference(start).to_nanoseconds()
-    stdout().write("{elapsed}\t{checksum}\t{expected.byte_length()}\n").get()
+    print("{elapsed}\t{checksum}\t{expected.byte_length()}")
     return 0

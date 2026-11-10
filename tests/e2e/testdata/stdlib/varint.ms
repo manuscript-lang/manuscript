@@ -1,5 +1,7 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+)
 
 fn unsigned(value: UInt64) Bytes:
     var out = BytesBuilder()
@@ -19,7 +21,6 @@ fn expect_varint_error(data: Bytes, at: Int, expected: Error) Unit!:
     let signed_result = data.varint(at)
     try expect_true(signed_result.is_error())
     try expect_equal(signed_result.err(), expected)
-    return ok(unit)
 
 test "unsigned varints have base-128 wire encodings":
     try expect_equal(unsigned(0), Bytes([0]))

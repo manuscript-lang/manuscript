@@ -23,6 +23,20 @@ const MAX_FILES: usize = 2000;
 /// Names declared by top-level exports, without checking the source. Ordinary
 /// headers need no body parsing; grouped constants share the lexer's delimiters.
 pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
+    exported_declarations(syms, source)
+        .into_iter()
+        .map(|export| export.name)
+        .collect()
+}
+
+/// A project export's name and whether it can resolve a type annotation.
+pub struct Export {
+    pub name: String,
+    pub is_type: bool,
+}
+
+/// Export headers with their declaration kind, including recovered neighbors.
+pub fn exported_declarations(syms: ms_syntax::Names, source: &str) -> Vec<Export> {
     let mut names = Vec::new();
     let mut groups = None;
     let mut headers = None;
@@ -54,7 +68,10 @@ pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
                 return parsed_exported_names(syms, source);
             };
             if let Some(group) = groups.get(&((line + 1) as u32)) {
-                names.extend(group.iter().cloned());
+                names.extend(group.iter().map(|name| Export {
+                    name: name.clone(),
+                    is_type: false,
+                }));
             }
             continue;
         }
@@ -70,10 +87,38 @@ pub fn exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
             .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
             .collect();
         if !name.is_empty() {
-            names.push(name);
+            names.push(Export {
+                name,
+                is_type: matches!(keyword, "type" | "enum" | "interface"),
+            });
         }
     }
     names
+}
+
+/// Whether the file at `path` names `name` in one of its `import` declarations.
+fn imports_name(path: &str, name: &str) -> bool {
+    let Ok(source) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    let file = Arc::from("<import-hints>");
+    let Ok(lexed) = lexer::lex(&file, &source) else {
+        return false;
+    };
+    let mut in_import = false;
+    for token in &lexed.tokens {
+        match token.kind {
+            Tok::Import => in_import = true,
+            Tok::Newline | Tok::Eof => in_import = false,
+            Tok::Name
+                if in_import && source.get(token.lo as usize..token.hi as usize) == Some(name) =>
+            {
+                return true;
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 /// The lines where a real `export` token starts in column one.
@@ -131,7 +176,7 @@ fn grouped_exports(source: &str) -> Option<BTreeMap<u32, Vec<String>>> {
     Some(groups)
 }
 
-fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
+fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<Export> {
     let file = Arc::from("<import-hints>");
     let (module, _) = ms_syntax::parse_partial(&file, source);
     module
@@ -139,12 +184,16 @@ fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<String> {
         .into_iter()
         .filter(|decl| decl.export)
         .filter_map(|decl| match decl.kind {
-            DeclKind::Fn(function) => Some(syms.str(function.name).to_string()),
-            DeclKind::Const(constant) => Some(syms.str(constant.name).to_string()),
-            DeclKind::Record(record) => Some(syms.str(record.name).to_string()),
-            DeclKind::Alternative(alternative) => Some(syms.str(alternative.name).to_string()),
-            DeclKind::Interface(interface) => Some(syms.str(interface.name).to_string()),
+            DeclKind::Fn(function) => Some((function.name, false)),
+            DeclKind::Const(constant) => Some((constant.name, false)),
+            DeclKind::Record(record) => Some((record.name, true)),
+            DeclKind::Alternative(alternative) => Some((alternative.name, true)),
+            DeclKind::Interface(interface) => Some((interface.name, true)),
             DeclKind::Impl(_) | DeclKind::Test(_) => None,
+        })
+        .map(|(name, is_type)| Export {
+            name: syms.str(name).to_string(),
+            is_type,
         })
         .collect()
 }
@@ -259,13 +308,16 @@ pub fn suggest_project_imports(
     let mut files = Vec::new();
     walk(Path::new(source_root), &mut files);
     // export name -> files exporting it
-    let mut exports: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut exports: BTreeMap<String, Vec<(String, bool)>> = BTreeMap::new();
     for file in files {
         let Ok(data) = std::fs::read(&file) else {
             continue;
         };
-        for name in exported_names(syms, &String::from_utf8_lossy(&data)) {
-            exports.entry(name).or_default().push(file.clone());
+        for export in exported_declarations(syms, &String::from_utf8_lossy(&data)) {
+            exports
+                .entry(export.name)
+                .or_default()
+                .push((file.clone(), export.is_type));
         }
     }
     for d in diagnostics.iter_mut().filter(|d| wanted(d)) {
@@ -282,11 +334,17 @@ pub fn suggest_project_imports(
         } else {
             pathops::join(&[source_root, &d.file])
         };
+        // A name the file already imports failed to resolve at that import; a second
+        // import of the same name would not fix it.
+        if imports_name(&here, &name) {
+            continue;
+        }
         let dir = pathops::dir(&here);
+        let types_only = d.message.starts_with("unknown type ");
         let paths: Vec<String> = candidates
             .iter()
-            .filter(|c| **c != here)
-            .filter_map(|c| import_path(&dir, c))
+            .filter(|(file, is_type)| *file != here && (!types_only || *is_type))
+            .filter_map(|(file, _)| import_path(&dir, file))
             .collect();
         let head = d.message.split(';').next().unwrap_or("").to_string();
         match paths.as_slice() {
@@ -319,6 +377,7 @@ mod tests {
 
     fn unknown(file: &str) -> Diagnostic {
         Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: file.into(),
             pos: Pos::new(12, 1, 13),

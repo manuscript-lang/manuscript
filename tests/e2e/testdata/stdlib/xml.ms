@@ -1,6 +1,8 @@
-import from_scalars from "@std/string.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
-import parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms"
+import (
+    from_scalars from "@std/string.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+    parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms",
+)
 
 test "parse reads elements attributes and text":
     let doc = parse(
@@ -13,7 +15,7 @@ test "parse reads elements attributes and text":
     try expect_equal(item.attribute("id").get(""), "7")
     try expect_equal(item.text(), "Hi <there> AB")
     try expect_equal(doc.find_all("empty").length(), 1)
-    try expect_true(not doc.find("missing").is_some())
+    try expect_true(doc.find("missing").is_none())
 
 test "CDATA and comments":
     let doc = parse("<a>x<![CDATA[<raw & text>]]><!--c-->y</a>").get()
@@ -32,6 +34,26 @@ test "indent puts elements on lines":
     try expect_equal(
         stringify(doc, "  "), "<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n"
     )
+
+test "stringify preserves compact and mixed content formatting":
+    for source in [
+        "<a/>", "<a>text<b/></a>", "<a><b/>text</a>", "<a> <b/> </a>",
+        "<a><!--comment-->text<b/></a>", "<a><b/>text<!--comment--></a>",
+        "<é:root attr=\"&amp;&quot;&#9;&#10;&#13;\">]]&gt;<日/></é:root>"
+    ]:
+        let doc = try parse(source)
+        try expect_equal(stringify(doc), source)
+        try expect_equal(stringify(doc, "  "), "{source}\n")
+
+test "stringify leaves comments and descendant text on indented lines":
+    let doc = try parse("<a><!--comment--><b>text</b><c/></a>")
+    try expect_equal(
+        stringify(doc, "  "), "<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n"
+    )
+
+    let empty = XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
+    try expect_equal(stringify(empty), "<a></a>")
+    try expect_equal(stringify(empty, "  "), "<a>\n</a>\n")
 
 test "malformed documents are errors":
     for bad in [
@@ -54,6 +76,68 @@ test "depth limit":
     try expect_true(parse("<a><b><c/></b></a>", max_depth: 2).is_error())
     try expect_true(parse("<a/>", max_depth: 0).is_error())
     try expect_equal(parse("<a><b/></a>", max_depth: 2).get().tag(), "a")
+
+test "processing instructions require a name and whitespace before data":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for instruction in [
+        "<??>", "<? ?>", "<?1bad?>", "<?@?>", "<?p!data?>", "<?p/data?>", "<?p=data?>",
+        "<?p\u{a0}data?>", "<?p", "<?p data"
+    ]:
+        try expect_equal(parse("{instruction}<a/>"), malformed)
+        try expect_equal(parse("<a>{instruction}</a>"), malformed)
+        try expect_equal(parse("<a/>{instruction}"), malformed)
+
+    for instruction in [
+        "<?p?>", "<?p ?>", "<?p\tdata?>", "<?p\r\ndata?>",
+        "<?xml-stylesheet href='style.xsl'?>", "<?xmlfoo?>", "<?XML:task?>",
+        "<?é:task data &literal; <markup> ? more?>"
+    ]:
+        try expect_equal(stringify(try parse("{instruction}<a/>{instruction}")), "<a/>")
+        try expect_equal((try parse("<a>x{instruction}y</a>")).text(), "xy")
+
+test "XML declarations occur only at the document start":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+    let declaration = "<?xml version='1.0'?>"
+
+    for target in ["xml", "XML", "Xml", "xMl", "xmL", "XMl", "xML", "XmL"]:
+        try expect_equal(parse("<a><?{target} version='1.0'?></a>"), malformed)
+        try expect_equal(parse("<a/><?{target} version='1.0'?>"), malformed)
+        if target != "xml":
+            try expect_equal(parse("<?{target} version='1.0'?><a/>"), malformed)
+
+    for prefix in [" ", "\n", "<!--c-->", "<?p?>", declaration.clone()]:
+        try expect_equal(parse("{prefix}{declaration}<a/>"), malformed)
+    try expect_equal((try parse("{declaration}<a/>")).tag(), "a")
+    try expect_equal((try parse("\u{feff}{declaration}<a/>")).tag(), "a")
+
+test "XML declarations validate ordered literal pseudo attributes":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+    for declaration in [
+        "<?xml?>", "<?xml ?>", "<?xml encoding='UTF-8'?>", "<?xml version=1.0?>",
+        "<?xml version='1.0?>", "<?xml version='2.0'?>", "<?xml version='1.'?>",
+        "<?xml version='1.a'?>", "<?xml version='1.0.0'?>", "<?xml version=' 1.0'?>",
+        "<?xml version='1.&#48;'?>", "<?xml version='1.0'encoding='UTF-8'?>",
+        "<?xml version='1.0' version='1.0'?>", "<?xml version='1.0' other='x'?>",
+        "<?xml version='1.0' encoding=''?>", "<?xml version='1.0' encoding='8UTF'?>",
+        "<?xml version='1.0' encoding='UTF 8'?>", "<?xml version='1.0' encoding='é'?>",
+        "<?xml version='1.0' encoding='UTF:8'?>",
+        "<?xml version='1.0' encoding='UTF-8' encoding='UTF-8'?>",
+        "<?xml version='1.0' standalone='true'?>",
+        "<?xml version='1.0' standalone='YES'?>",
+        "<?xml version='1.0' standalone='yes' standalone='no'?>",
+        "<?xml version='1.0' standalone='yes' encoding='UTF-8'?>"
+    ]:
+        try expect_equal(parse("{declaration}<a/>"), malformed)
+    for declaration in [
+        "<?xml version='1.0'?>", "<?xml version = \"1.0\" ?>",
+        "<?xml\tversion\n=\r'1.0'\nencoding = 'UTF-8'\tstandalone='yes' ?>",
+        "<?xml version='1.0' standalone='no'?>",
+        "<?xml version='1.0' encoding='UTF-8'?>",
+        "<?xml version='1.0' encoding='x-custom_1.2' standalone='no'?>",
+        "<?xml version='1.1'?>", "<?xml version='1.17'?>"
+    ]:
+        try expect_equal((try parse("{declaration}<a/>")).tag(), "a")
 
 test "entity decoding is linear in the text":
     let node = parse("<a>&amp;&lt;&#65;&#x42;tail</a>").get()
@@ -199,3 +283,20 @@ test "carriage returns survive a stringify and parse round trip":
     let back = parse(text).get()
     try expect_equal(back.text(), "t\r\nu")
     try expect_equal(back.attribute("k").get(""), "p\rq\nr\ts")
+
+test "DOCTYPE skipping honors quoted spans and prolog placement":
+    for accepted in [
+        "<!DOCTYPE a SYSTEM \"a>b\"><a/>", "<!DOCTYPE a SYSTEM 'a>b'><a/>",
+        "<!DOCTYPE a PUBLIC \"-//x]//y\" \"u>v\"><a/>",
+        "<!DOCTYPE a [<!ENTITY x \"]>\">]><a/>",
+        "<!DOCTYPE a [<!-- ]> --><!ELEMENT a EMPTY>]><a/>",
+        "<!DOCTYPE a [<?p ]> ?><!ELEMENT a EMPTY>]><a/>", "<!DOCTYPE a [%e;]><a/>",
+        "<?xml version=\"1.0\"?><!--c--><!DOCTYPE a><!--d--><a/>"
+    ]:
+        try expect_true(parse(accepted).is_ok())
+    for rejected in [
+        "<a/><!DOCTYPE a>", "<!DOCTYPE a><!DOCTYPE a><a/>", "<!DOCTYPEa><a/>",
+        "<!DOCTYPE><a/>", "<!DOCTYPE a SYSTEM><a/>",
+        "<!DOCTYPE a [<!ENTITY x \"]>]><a/>", "<!DOCTYPE a [<!ELEMENT a EMPTY><a/>"
+    ]:
+        try expect_true(parse(rejected).is_error())

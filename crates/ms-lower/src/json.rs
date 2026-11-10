@@ -267,19 +267,21 @@ impl FnLower<'_> {
     /// Writes a nested value: scalars inline, anything else through its encoder.
     fn jencode_nested(&mut self, t: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
         if matches!(
-            self.syms.str(t.id),
-            "Int"
-                | "Float"
-                | "Bool"
-                | "String"
-                | "Int8"
-                | "Int16"
-                | "Int32"
-                | "UInt8"
-                | "UInt16"
-                | "UInt32"
-                | "UInt64"
-                | "Float32"
+            t.builtin,
+            Some(
+                Builtin::Int
+                    | Builtin::Float
+                    | Builtin::Bool
+                    | Builtin::String
+                    | Builtin::Int8
+                    | Builtin::Int16
+                    | Builtin::Int32
+                    | Builtin::UInt8
+                    | Builtin::UInt16
+                    | Builtin::UInt32
+                    | Builtin::UInt64
+                    | Builtin::Float32
+            )
         ) {
             let mt = self.jmty(t)?;
             return self.jencode(t, mt, doc, value);
@@ -316,8 +318,8 @@ impl FnLower<'_> {
         if t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue") {
             return self.jdecode_tree(t, mt, doc, id, strict);
         }
-        match self.syms.str(t.id) {
-            "Int" => {
+        match t.builtin {
+            Some(Builtin::Int) => {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::INT);
@@ -330,8 +332,15 @@ impl FnLower<'_> {
                 self.jfinish(v);
                 return Ok(());
             }
-            "Int8" | "Int16" | "Int32" | "UInt8" | "UInt16" | "UInt32" => {
-                let (lo, hi) = sized_int_range(self.syms.str(t.id));
+            Some(
+                Builtin::Int8
+                | Builtin::Int16
+                | Builtin::Int32
+                | Builtin::UInt8
+                | Builtin::UInt16
+                | Builtin::UInt32,
+            ) => {
+                let (lo, hi) = sized_int_range(t);
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::INT);
@@ -346,7 +355,7 @@ impl FnLower<'_> {
                 self.jfinish(v);
                 return Ok(());
             }
-            "UInt64" => {
+            Some(Builtin::UInt64) => {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::UINT64);
@@ -359,7 +368,7 @@ impl FnLower<'_> {
                 self.jfinish(v);
                 return Ok(());
             }
-            "Float32" => {
+            Some(Builtin::Float32) => {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::FLOAT);
@@ -373,7 +382,7 @@ impl FnLower<'_> {
                 self.jfinish(v);
                 return Ok(());
             }
-            "Float" => {
+            Some(Builtin::Float) => {
                 self.jexpect_kind(doc, id, KIND_NUMBER)?;
                 let text = self.jtext(doc, id)?;
                 let slot = self.jslot(MTy::FLOAT);
@@ -386,7 +395,7 @@ impl FnLower<'_> {
                 self.jfinish(v);
                 return Ok(());
             }
-            "Bool" => {
+            Some(Builtin::Bool) => {
                 self.jexpect_kind(doc, id, KIND_BOOL)?;
                 let raw = self.jcall_masked("msstd_json_bool", &[doc, id], 0xff)?;
                 let zero = self.b.iconst(0);
@@ -394,7 +403,7 @@ impl FnLower<'_> {
                 self.jfinish(v);
                 return Ok(());
             }
-            "String" => {
+            Some(Builtin::String) => {
                 self.jexpect_kind(doc, id, KIND_STRING)?;
                 let v = self.jtext(doc, id)?;
                 self.jfinish(v);
@@ -423,43 +432,49 @@ impl FnLower<'_> {
             return Ok(());
         }
         // Standard value types read from their JSON text.
-        let parsed = if t.is_time(self.syms, "Duration") {
-            Some((KIND_NUMBER, "msstd_json_dec_int", false))
-        } else if t.is_time(self.syms, "Timestamp") {
-            Some((KIND_STRING, "msstd_time_parse_timestamp", false))
+        let parsed = if t.is(Builtin::Duration) {
+            Some((KIND_NUMBER, "msstd_json_dec_int", TextArgs::Plain))
+        } else if t.is(Builtin::Timestamp) {
+            Some((KIND_STRING, "msstd_time_parse_timestamp", TextArgs::Plain))
         } else if t.is(Builtin::Bytes) {
-            Some((KIND_STRING, "msstd_encoding_base64_decode", true))
+            Some((
+                KIND_STRING,
+                "msstd_encoding_base64_decode",
+                TextArgs::Base64,
+            ))
         } else if t.is_source_type(self.syms, "@std/net/url.ms", "Url") {
-            Some((KIND_STRING, "msstd_url_parse", false))
+            Some((KIND_STRING, "msstd_url_parse", TextArgs::Plain))
         } else if t.is_source_type(self.syms, "@std/net/ip.ms", "IpAddress") {
-            Some((KIND_STRING, "msstd_json_dec_ip", false))
+            Some((KIND_STRING, "msstd_json_dec_ip", TextArgs::Plain))
         } else if t.is_source_type(self.syms, "@std/net/ip.ms", "Cidr") {
-            Some((KIND_STRING, "msstd_json_dec_cidr", false))
+            Some((KIND_STRING, "msstd_json_dec_cidr", TextArgs::Plain))
         } else if t.is(Builtin::Decimal) {
-            Some((KIND_NUMBER, "msstd_decimal_parse", false))
+            Some((KIND_NUMBER, "msstd_decimal_parse", TextArgs::Plain))
         } else if t.is(Builtin::BigInt) {
-            Some((KIND_NUMBER, "msstd_bigint_parse", false))
+            Some((KIND_NUMBER, "msstd_bigint_parse", TextArgs::DecimalDigits))
         } else {
             None
         };
-        if let Some((kind, sym, base64)) = parsed {
+        if let Some((kind, sym, extra)) = parsed {
             self.jexpect_kind(doc, id, kind)?;
             let text = self.jtext(doc, id)?;
             let slot = self.jslot(mt);
-            let st = if base64 {
-                // Standard alphabet, no output budget.
-                let plain = self.b.bconst(false);
-                let none = self.b.bconst(false);
-                let zero = self.b.iconst(0);
-                self.status_code(sym, &[text, plain, none, zero, slot])?
-            } else if sym == "msstd_bigint_parse" {
-                // Decimal digits, at most 10000 of them.
-                let radix = self.b.iconst(10);
-                let has_max = self.b.bconst(true);
-                let max = self.b.iconst(10_000);
-                self.status_code(sym, &[text, radix, has_max, max, slot])?
-            } else {
-                self.status_code(sym, &[text, slot])?
+            let st = match extra {
+                TextArgs::Base64 => {
+                    // Standard alphabet, no output budget.
+                    let plain = self.b.bconst(false);
+                    let none = self.b.bconst(false);
+                    let zero = self.b.iconst(0);
+                    self.status_code(sym, &[text, plain, none, zero, slot])?
+                }
+                TextArgs::DecimalDigits => {
+                    // Decimal digits, at most 10000 of them.
+                    let radix = self.b.iconst(10);
+                    let has_max = self.b.bconst(true);
+                    let max = self.b.iconst(10_000);
+                    self.status_code(sym, &[text, radix, has_max, max, slot])?
+                }
+                TextArgs::Plain => self.status_code(sym, &[text, slot])?,
             };
             self.drop_value(text);
             let zero = self.b.iconst(0);
@@ -491,8 +506,10 @@ impl FnLower<'_> {
         }
         if t.is(Builtin::Map) {
             let key = &t.args[0];
-            let readable = matches!(self.syms.str(key.id), "String" | "Int" | "Bool")
-                || key.is_time(self.syms, "Duration")
+            let readable = matches!(
+                key.builtin,
+                Some(Builtin::String | Builtin::Int | Builtin::Bool)
+            ) || key.is(Builtin::Duration)
                 || jkey_alt(key);
             if !readable {
                 // Other key types are never readable.
@@ -570,7 +587,7 @@ impl FnLower<'_> {
         self.b.def_var(acc, empty);
         let zero = self.b.iconst(0);
         // The parser rejects repeated names, so only a key read from them can collide.
-        let names_are_keys = self.syms.str(key.id) == "String";
+        let names_are_keys = key.is(Builtin::String);
         self.counted_loop(zero, n, &mut |s, iv| {
             let name = s.call_runtime("msstd_json_key", &[doc, id, iv], MTy::STR)?;
             let k = s.jdecode_key(key, key_mt, name, acc)?;
@@ -629,10 +646,10 @@ impl FnLower<'_> {
         name: Value,
         acc: Var,
     ) -> Result<Value, Error> {
-        if self.syms.str(key.id) == "String" {
+        if key.is(Builtin::String) {
             return Ok(name);
         }
-        if self.syms.str(key.id) == "Int" || key.is_time(self.syms, "Duration") {
+        if key.is(Builtin::Int) || key.is(Builtin::Duration) {
             let slot = self.jslot(MTy::INT);
             let st = self.status_code("msstd_json_dec_int", &[name, slot])?;
             self.drop_value(name);
@@ -640,12 +657,12 @@ impl FnLower<'_> {
             let ok = self.b.icmp(Cc::Eq, st, z);
             self.jrequire(ok, &[], &[acc]);
             let nanos = self.take_slot(slot, MTy::INT);
-            if key.is_time(self.syms, "Duration") {
+            if key.is(Builtin::Duration) {
                 return self.duration_of(nanos);
             }
             return Ok(nanos);
         }
-        if self.syms.str(key.id) == "Bool" {
+        if key.is(Builtin::Bool) {
             let (t, f) = (self.b.str_lit("true"), self.b.str_lit("false"));
             let is_t = self.call_runtime("msrt_string_eq", &[name, t], MTy::BOOL)?;
             let is_f = self.call_runtime("msrt_string_eq", &[name, f], MTy::BOOL)?;
@@ -790,7 +807,7 @@ impl FnLower<'_> {
         mt: MTy,
         earlier: &[(ct::Name, Value)],
     ) -> Result<Option<Value>, Error> {
-        if self.syms.str(ty.id) == "Unit" {
+        if ty.is(Builtin::Unit) {
             // `Unit` has no JSON form: encoding omits the member and decoding restores it.
             return Ok(Some(self.b.unit()));
         }
@@ -986,38 +1003,45 @@ impl FnLower<'_> {
         if t.is_source_type(self.syms, "@std/data/json.ms", "JsonValue") {
             return self.jencode_tree(t, mt, w, value);
         }
-        match self.syms.str(t.id) {
-            "Int" => {
+        match t.builtin {
+            Some(Builtin::Int) => {
                 self.jw("msstd_json_w_int", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            "Float" => {
+            Some(Builtin::Float) => {
                 self.jw("msstd_json_w_float", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            "Int8" | "Int16" | "Int32" | "UInt8" | "UInt16" | "UInt32" => {
+            Some(
+                Builtin::Int8
+                | Builtin::Int16
+                | Builtin::Int32
+                | Builtin::UInt8
+                | Builtin::UInt16
+                | Builtin::UInt32,
+            ) => {
                 let wide = self.b.conv(value, MTy::INT);
                 self.jw("msstd_json_w_int", &[w, wide])?;
                 return Ok(self.jwritten());
             }
-            "UInt64" => {
+            Some(Builtin::UInt64) => {
                 self.jw("msstd_json_w_uint", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            "Float32" => {
+            Some(Builtin::Float32) => {
                 let wide = self.b.conv(value, MTy::FLOAT);
                 self.jw("msstd_json_w_float32", &[w, wide])?;
                 return Ok(self.jwritten());
             }
-            "Bool" => {
+            Some(Builtin::Bool) => {
                 self.jw("msstd_json_w_bool", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            "String" => {
+            Some(Builtin::String) => {
                 self.jw("msstd_json_w_string", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            "Unit" | "Never" => return self.jno_form(w),
+            Some(Builtin::Unit | Builtin::Never) => return self.jno_form(w),
             _ => {}
         }
         if t.is(Builtin::Optional) {
@@ -1050,7 +1074,7 @@ impl FnLower<'_> {
         if t.is(Builtin::Map) {
             return self.jencode_map(&t.args[0], &t.args[1], w, value);
         }
-        if t.is_time(self.syms, "Duration") {
+        if t.is(Builtin::Duration) {
             let nanos = self.duration_nanos(value)?;
             self.jw("msstd_json_w_int", &[w, nanos])?;
             return Ok(self.jwritten());
@@ -1064,7 +1088,7 @@ impl FnLower<'_> {
             self.drop_value(tree);
             return Ok(written);
         }
-        if t.is_time(self.syms, "Timestamp") || t.is(Builtin::Decimal) {
+        if t.is(Builtin::Timestamp) || t.is(Builtin::Decimal) {
             let text = self.format_value(Val {
                 v: value,
                 own: false,
@@ -1254,12 +1278,12 @@ impl FnLower<'_> {
 
     /// Writes the member name of the map key `k` of type `key`.
     fn jencode_map_key(&mut self, key: &ct::Ty, w: Value, k: Value) -> Result<(), Error> {
-        if self.syms.str(key.id) == "String" {
+        if key.is(Builtin::String) {
             return self.jw("msstd_json_w_key", &[w, k]);
         }
         if !jplain_alt(key) {
             // A duration key is its count of nanoseconds.
-            let k = if key.is_time(self.syms, "Duration") {
+            let k = if key.is(Builtin::Duration) {
                 self.duration_nanos(k)?
             } else {
                 k
@@ -1311,9 +1335,11 @@ impl FnLower<'_> {
         w: Value,
         value: Value,
     ) -> Result<Value, Error> {
-        let keyable = matches!(self.syms.str(key.id), "String" | "Int" | "Bool" | "Float")
-            || key.is_time(self.syms, "Duration")
-            || key.is_time(self.syms, "Timestamp")
+        let keyable = matches!(
+            key.builtin,
+            Some(Builtin::String | Builtin::Int | Builtin::Bool | Builtin::Float)
+        ) || key.is(Builtin::Duration)
+            || key.is(Builtin::Timestamp)
             || key.is(Builtin::Decimal)
             || jplain_alt(key);
         if !keyable {
@@ -1510,7 +1536,7 @@ impl FnLower<'_> {
                 Ok(Some(v.v))
             },
             &mut |s| {
-                let e = s.status_failure(rty, code, "msstd_json_status")?;
+                let e = s.status_failure(rty, code, sym)?;
                 Ok(Some(e))
             },
         )
@@ -1885,13 +1911,18 @@ fn jplain_alt(t: &ct::Ty) -> bool {
 }
 
 /// The inclusive range of a sized integer type other than `UInt64`.
-fn sized_int_range(name: &str) -> (i64, i64) {
-    match name {
-        "Int8" => (i8::MIN.into(), i8::MAX.into()),
-        "Int16" => (i16::MIN.into(), i16::MAX.into()),
-        "Int32" => (i32::MIN.into(), i32::MAX.into()),
-        "UInt8" => (0, u8::MAX.into()),
-        "UInt16" => (0, u16::MAX.into()),
-        _ => (0, u32::MAX.into()),
-    }
+fn sized_int_range(t: &ct::Ty) -> (i64, i64) {
+    let (lo, hi) = ct::int_range(t).unwrap_or((0, u32::MAX.into()));
+    (lo as i64, hi as i64)
+}
+
+/// What a runtime parser of a standard value's JSON text takes after the text.
+#[derive(Clone, Copy)]
+enum TextArgs {
+    /// Nothing more.
+    Plain,
+    /// The Base64 alphabet choice and an output budget.
+    Base64,
+    /// A radix of 10 and a digit budget.
+    DecimalDigits,
 }

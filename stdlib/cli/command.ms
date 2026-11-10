@@ -19,7 +19,7 @@ type Greeting:
 fn greet(options: Greeting) Int!:
     return ok(0)
 
-export fn main() Int:
+fn main() Int:
     let greeting = command[Greeting](
         name: "greet",
         about: "Print a greeting",
@@ -30,10 +30,12 @@ export fn main() Int:
     return Command(name: "tool", children: [greeting]).execute(arguments())
 ```
 */
-import Align, Table from "@std/cli/table.ms"
-import Data from "@std/core.ms"
-import stderr, stdout from "@std/io/io.ms"
-import parse, stringify from "@std/data/json.ms"
+import (
+    Align, Table from "@std/cli/table.ms",
+    Data from "@std/core.ms",
+    stderr, stdout from "@std/io/io.ms",
+    parse, stringify from "@std/data/json.ms",
+)
 
 fn cli_unknown_flag(name: String) Error:
     return Error("cli: unknown flag {name}", kind: "EINVAL")
@@ -132,7 +134,7 @@ impl Matches:
 
     // Returns every value of a List flag or rest argument, in order; empty when absent.
     fn list(name: String) List[String]:
-        return self.values.get(name).get([]).clone()
+        return self.values.get_or(name, []).clone()
 
     // Returns the text, or none for an optional argument or flag that was not supplied.
     fn string_or_none(name: String) String?:
@@ -293,10 +295,9 @@ export fn command[T: Data](
 
 // Builds `T` from the JSON literals of the supplied values.
 fn decode[T: Data](matches: Matches) T!:
-    var members: List[String] = []
-    for entry in matches.fields.entries():
-        members.append(stringify(entry.key.clone()).get() + ":" + entry.value)
-
+    var members = matches.fields.entries().map(
+        fn entry: (stringify(entry.key.clone()).get() + ":" + entry.value)
+    )
     let parsed = parse[T]("\{" + members.join(",") + "\}")
     return parsed.map_error(
         fn cause: cli_invalid_schema(
@@ -321,7 +322,7 @@ fn collect_fields(
     var fields = Map[String, String]()
 
     for flag in flags:
-        let items = values.get(flag.name).get([])
+        let items = values.get_or(flag.name, [])
 
         if is_list(flag.kind):
             fields[field_name(flag.name)] = stringify(items.clone()).get()
@@ -329,7 +330,7 @@ fn collect_fields(
             fields[field_name(flag.name)] = literal(flag.kind, items[0].clone())
 
     for arg in args:
-        let items = values.get(arg.name).get([])
+        let items = values.get_or(arg.name, [])
 
         if arg.rest:
             fields[field_name(arg.name)] = stringify(items.clone()).get()
@@ -395,7 +396,6 @@ fn claim(var seen: List[String], key: String, label: String) Unit!:
     if seen.contains(key): return error(cli_invalid_schema("duplicate {label}"))
 
     seen.append(key)
-    return ok(unit)
 
 // Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
 fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
@@ -467,7 +467,6 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
     let below = inherited.concat(persistent_flags(node.flags))
     for child in node.children:
         try check_schema(child, below, path.concat([child.name.clone()]))
-    return ok(unit)
 
 // Finds a flag by long name or one-letter alias.
 fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
@@ -485,7 +484,7 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
         return error(cli_invalid_value(flag.name.clone(), value, expected_text(flag)))
 
     if is_list(flag.kind):
-        var items = values.get(flag.name).get([])
+        var items = values.get_or(flag.name, [])
         items.append(value)
         values[flag.name.clone()] = items
         return ok(unit)
@@ -647,12 +646,10 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Unit!:
 
     if flag.required: return error(cli_missing_required("--{flag.name}"))
 
-    return ok(unit)
-
 // Renders usage, commands, arguments and flags for one node.
 fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
     var out = ""
-    if not node.about.is_empty(): out += node.about + "\n\n"
+    if not node.about.is_empty(): out += "{node.about}\n\n"
 
     var usage = "  " + path.join(" ")
     if not node.children.is_empty(): usage += " <command>"
@@ -662,21 +659,21 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
         let label = arg.name + (if arg.rest: "..." else: "")
         usage += if arg.required: " <{label}>" else: " [{label}]"
 
-    out += "Usage:\n" + usage + "\n"
+    out += "Usage:\n{usage}\n"
 
     if not node.children.is_empty():
         var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
         for child in node.children: help_row(
             var commands, [child.name.clone(), child.about.clone()]
         )
-        out += "\nCommands:\n" + commands.render() + "\n"
+        out += "\nCommands:\n{commands.render()}\n"
 
     if not node.args.is_empty():
         var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
         for arg in node.args: help_row(
             var arguments, [arg.name.clone(), arg.help.clone()]
         )
-        out += "\nArguments:\n" + arguments.render() + "\n"
+        out += "\nArguments:\n{arguments.render()}\n"
 
     out += flag_section("Flags", node.flags.concat([help_flag()]))
     out += flag_section("Global Flags", inherited)
@@ -702,11 +699,9 @@ fn flag_section(title: String, flags: List[Flag]) String:
         if flag.required: help += " (required)"
         help_row(var table, [label, help])
 
-    return "\n{title}:\n" + table.render() + "\n"
+    return "\n{title}:\n{table.render()}\n"
 
 // Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row with other controls is omitted.
 fn help_row(var table: Table, row: List[String]) Unit:
-    var cells: List[String] = []
-    for cell in row:
-        cells.append(cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
+    var cells = row.map(fn cell: cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
     if table.add(cells).is_error(): return

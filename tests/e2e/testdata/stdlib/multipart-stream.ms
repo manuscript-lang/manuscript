@@ -1,13 +1,14 @@
-import expect_equal, fail from "@std/test/test.ms"
 import (
+    expect_equal, fail from "@std/test/test.ms",
     multipart_parts,
     parse_multipart,
     encode_multipart,
     form_part,
-    Part
-) from "@std/net/mime.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
+    Part from "@std/net/mime.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    from_list from "@std/io/streams.ms",
+)
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -177,3 +178,56 @@ test "parts and parse_multipart agree on corrupted and truncated bodies":
         for size in [1, 3, 64]:
             let verdict = agree(cases[index].clone(), size)
             if verdict != "": return fail("case {index}, chunk {size}: {verdict}")
+
+fn empty_chunks(data: Bytes, size: Int) List[Bytes]:
+    var chunks: List[Bytes] = []
+    var at = 0
+
+    while at < data.length():
+        chunks.append("".to_bytes())
+
+        let stop = (at + size).min(data.length())
+        chunks.append(data.slice(at, stop).get())
+        at = stop
+
+    return chunks
+
+test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
+    var payload = BytesBuilder()
+
+    for unused in 0..2048:
+        payload.append_bytes("--Xy-prefix\r\n--Xy\r\n".to_bytes())
+        payload.append(255)
+
+    let data = payload.build()
+    let body = encode_multipart(
+        [
+            form_part("binary", data.clone()), form_part("end", "tail".to_bytes())
+        ],
+        "XyZ"
+    )
+
+    for size in [1, 2, 5, 7, 64, 1024]:
+        var parts = multipart_parts(from_list(empty_chunks(body, size)), "XyZ", none)
+
+        if let first = try parts.next():
+            try expect_equal(first.name, "binary")
+            try expect_equal(first.data, data)
+        else:
+            return fail("missing binary part at chunk size {size}")
+
+        if let second = try parts.next():
+            try expect_equal(second.data, "tail".to_bytes())
+        else:
+            return fail("missing trailing part at chunk size {size}")
+
+        try expect_equal((try parts.next()).is_none(), true)
+
+test "retrying an invalid fragmented multipart section retains the error":
+    let body = "--XyZ\r\nnot-a-header\r\n\r\nvalue-value-value\r\n--XyZ".to_bytes()
+    var chunks = empty_chunks(body, 3)
+    chunks.append("".to_bytes())
+
+    var parts = multipart_parts(from_list(chunks), "XyZ", none)
+    try expect_equal(parts.next().err().kind, "EBADMSG")
+    try expect_equal(parts.next().err().kind, "EBADMSG")

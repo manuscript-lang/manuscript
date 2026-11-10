@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 let SKU_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 let ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789-"

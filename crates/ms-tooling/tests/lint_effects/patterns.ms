@@ -9,5 +9,5 @@ fn r(path: String) Bytes!:
 fn w(path: String) Unit!:
     return write_file(path, "x").wait()
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

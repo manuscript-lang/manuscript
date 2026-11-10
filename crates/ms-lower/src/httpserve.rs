@@ -32,48 +32,6 @@ pub(crate) const HTTP_KINDS: [&str; 6] = [
 ];
 
 impl FnLower<'_> {
-    /// The token text of an `HttpMethod` value.
-    pub(crate) fn method_text(&mut self, method: Val) -> Result<Val, Error> {
-        let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(method.v)).clone() else {
-            return Err(Error::new("an HTTP method is not an alternative"));
-        };
-        let v = self.borrow(method);
-        let tag = self.b.alt_tag(v);
-        let r = self.method_token(a, v, tag, 0)?;
-        Ok(r)
-    }
-
-    fn method_token(
-        &mut self,
-        a: AltId,
-        method: ms_mir::ir::Value,
-        tag: ms_mir::ir::Value,
-        from: usize,
-    ) -> Result<Val, Error> {
-        if from >= METHOD_TOKENS.len() {
-            let custom = (METHOD_TOKENS.len()) as u32;
-            let text = self.b.alt_get(a, custom, 0, method);
-            return Ok(Val {
-                v: text,
-                own: false,
-            });
-        }
-        let k = self.b.iconst(from as i64);
-        let hit = self.b.icmp(Cc::Eq, tag, k);
-        self.two_ways(
-            hit,
-            MTy::STR,
-            &mut |s| {
-                let t = s.b.str_lit(METHOD_TOKENS[from]);
-                Ok(Some(s.owned(Val { v: t, own: false })))
-            },
-            &mut |s| {
-                let r = s.method_token(a, method, tag, from + 1)?;
-                Ok(Some(s.owned_boundary(r)))
-            },
-        )
-    }
-
     /// The `HttpMethod` named by the token `text` (an owned alternative).
     pub(crate) fn method_from_text(
         &mut self,

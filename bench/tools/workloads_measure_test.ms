@@ -1,6 +1,8 @@
-import invalid, repeats from "./lib.ms"
-import measure, versions from "./workloads_measure.ms"
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+import (
+    invalid, repeats from "./lib.ms",
+    measure, versions from "./workloads_measure.ms",
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+)
 
 // A producer for `version` that prints "correct" unless `mode` says otherwise for `bad`. Calls are counted per version.
 type Producer:
@@ -11,7 +13,7 @@ type Producer:
 
 impl Producer:
     var fn run(version: String) String!:
-        let count = self.counts.get(version).get(0)
+        let count = self.counts.get_or(version, 0)
         self.counts.add(version.clone(), count + 1)
         self.order.append(version.clone())
 

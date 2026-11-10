@@ -1,8 +1,10 @@
 // JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "` separators, or one
 // item per line with `indent` spaces), so regenerated challenge files and result lines stay byte-identical.
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import Data from "@std/core.ms"
-import from_scalars from "@std/string.ms"
+import (
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    Data from "@std/core.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn hex4(code: Int) String:
     let digits = "0123456789abcdef"
@@ -13,26 +15,26 @@ fn quote(text: String) String:
 
     for code in text.scalar_values():
         if code == 34:
-            out = out + "\\\""
+            out += "\\\""
         else if code == 92:
-            out = out + "\\\\"
+            out += "\\\\"
         else if code == 10:
-            out = out + "\\n"
+            out += "\\n"
         else if code == 13:
-            out = out + "\\r"
+            out += "\\r"
         else if code == 9:
-            out = out + "\\t"
+            out += "\\t"
         else if code == 8:
-            out = out + "\\b"
+            out += "\\b"
         else if code == 12:
-            out = out + "\\f"
+            out += "\\f"
         else if code < 32 or (code > 126 and code < 65536):
-            out = out + hex4(code)
+            out += hex4(code)
         else if code >= 65536:
             let v = code - 65536
             out = out + hex4(55296 + v / 1024) + hex4(56320 + v % 1024)
         else:
-            out = out + from_scalars([code]).get("")
+            out += from_scalars([code]).get("")
 
     return out + "\""
 

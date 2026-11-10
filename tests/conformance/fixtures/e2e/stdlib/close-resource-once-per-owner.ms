@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,records,interfaces,tier-io
 // conform: phase=run
 // conform: origin=value-semantics-audit
-import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 // Each resource closes exactly once, whichever owner holds it when its scope ends.
@@ -10,14 +9,13 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed {self.name}\n").get()
-        return ok(unit)
+        print("closed {self.name}")
 
 type Pair:
     door: Door
 
 fn say(s: String) Unit:
-    stdout().write("{s}\n").get()
+    print("{s}")
 
 fn doors() Map[String, Door]:
     var m: Map[String, Door] = {}
@@ -36,7 +34,7 @@ fn collect() List[Door]!Error:
     say("read {(try second).name}")
     return ok(found)
 
-export fn main() Int:
+fn main() Unit:
     let count = doors().length()
     say("--result")
 
@@ -53,4 +51,3 @@ export fn main() Int:
     var pairs: Map[String, Pair] = {}
     pairs.add("p", Pair(Door("pair")))
     say("end {count} {opened} {found.length()} {many.length()} {pairs.length()}")
-    return 0

@@ -3,6 +3,7 @@
 //! `HtmlNode` is a sum type with recursive lists, so a parse returns an owned tree handle and
 //! `@std/data/html.ms` walks it with node ids: `kind`, `data`, `namespace`, child and attribute
 //! accessors. Ids are only valid for the tree that issued them; `-1` is no node.
+//! ms: domain HTML
 
 use crate::{Limits, NodeType, Tree};
 use alloc::string::String;

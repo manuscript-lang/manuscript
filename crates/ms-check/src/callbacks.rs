@@ -5,6 +5,7 @@ use crate::inference::{callback_context, inference_known_opt, inference_type_kno
 use crate::syntax::*;
 use crate::types::Param;
 use crate::types::*;
+use ms_syntax::Cause;
 use ms_syntax::ast::*;
 use std::collections::{HashMap, HashSet};
 
@@ -55,8 +56,9 @@ impl Checker {
             {
                 c.params[index].ty.clone()
             } else {
-                self.type_error(
+                self.type_error_with_cause(
                     param.pos,
+                    Cause::CannotInferCallback,
                     format!(
                         "cannot infer callback parameter {}; provide a type or a known function context",
                         self.syms.str(param.name)
@@ -133,7 +135,7 @@ impl Checker {
                 }
             }
             Some(r) => {
-                if fall && self.syms.str(r.id) != "Unit" && !r.is_invalid() {
+                if fall && !r.is(Builtin::Unit) && !r.is_invalid() {
                     self.type_error(
                         e.pos,
                         "reachable fallthrough in anonymous function; end every path with a 'return'",

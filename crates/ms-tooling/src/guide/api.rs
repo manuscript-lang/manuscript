@@ -199,7 +199,7 @@ fn primitive_symbol(name: &str) -> SymRef {
         id: nm,
         kind: SymKind::Type,
         module: n(""),
-        native: n(""),
+        native: ms_check::api::types::Native::Source,
         export: true,
         ty: std::cell::RefCell::new(Some(ms_check::api::types::primitive(name))),
         variables: std::cell::RefCell::new(Vec::new()),

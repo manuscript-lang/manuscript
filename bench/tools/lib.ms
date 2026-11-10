@@ -1,15 +1,18 @@
 // Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
-import RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms"
-import (environment, set_environment, working_directory) from "@std/os/env.ms"
-import (os, monotonic_time, system_info, Os) from "@std/os/system.ms"
-import access, create_directory, read_file, remove, write_file from "@std/os/fs.ms"
-import is_absolute, join from "@std/os/path.ms"
-import stderr, stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
-import JsonValue, StringifyOptions, stringify from "@std/data/json.ms"
-import hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto.ms"
+import (
+    RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
+    environment, set_environment, working_directory from "@std/os/env.ms",
+    os, system_info, Os from "@std/os/system.ms",
+    monotonic from "@std/time.ms",
+    access, create_directory, read_file, remove, write_file from "@std/os/fs.ms",
+    is_absolute, join from "@std/os/path.ms",
+    stderr, stdin from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+    JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
+    hex_encode from "@std/data/encoding.ms",
+    sha256 from "@std/crypto.ms",
+)
 
 // Prints `message` and a newline to standard error.
 export fn note(message: String) Unit:
@@ -37,7 +40,7 @@ export fn env(name: String, fallback: String) String:
 
 // Nanoseconds since an arbitrary fixed origin on the monotonic clock.
 export fn now_ns() Int:
-    return monotonic_time()
+    return monotonic().tick
 
 // Output of a finished program; `ok` is false when it could not start.
 export type Ran:
@@ -169,7 +172,6 @@ export fn build_ms(dir: String, out: String) Unit!:
     let _stale = remove("{dir}/ms.lock")
     let ran = run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
     let _ = try must("ms build {dir}", ran)
-    return ok(unit)
 
 // Builds the Go module in `dir` as a static binary.
 export fn build_go(dir: String, out: String) Unit!:
@@ -185,7 +187,6 @@ export fn build_go(dir: String, out: String) Unit!:
         ]
     )
     let _ = try must("go build {dir}", ran)
-    return ok(unit)
 
 // Compiles one Rust source at the usual release settings plus `flags`.
 export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
@@ -194,7 +195,6 @@ export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
     args = args.concat(["-o", out.clone(), source.clone()])
 
     let _ = try must("rustc {source}", capture(env("RUSTC", "rustc"), args))
-    return ok(unit)
 
 // Runs `exe` with `input` on standard input and returns its standard output.
 export fn sample(exe: String, arguments: List[String], input: String = "") String!:
@@ -203,7 +203,7 @@ export fn sample(exe: String, arguments: List[String], input: String = "") Strin
 // Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
 export fn finish(result: String!) Int:
     if let text = result:
-        stdout().write(text + "\n").get()
+        print(text)
         return 0
 
     return fail(result.err().message.clone())

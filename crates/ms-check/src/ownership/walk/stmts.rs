@@ -464,7 +464,7 @@ impl Walker<'_> {
     pub(super) fn bind_getter(&mut self, s: &Stmt, b: &BindingRef, role: Role, value: &Expr) {
         let pos = s.pos;
         let text = self.expr_text(value);
-        let ret_borrow = result_borrow(self.syms, self.cx.m, value, self.cx.summaries);
+        let ret_borrow = result_borrow(self.cx.m, value, self.cx.summaries);
         let operands = self.borrow_operands(value, &ret_borrow).unwrap_or_default();
         let target = match (&ret_borrow.path, operands.as_slice()) {
             (Some((None, fields)), [recv]) if ret_borrow.receiver => Some((*recv, fields.clone())),
@@ -631,7 +631,7 @@ impl Walker<'_> {
         // A call closes a resource entry the mutator discards; a method value does not, so the
         // entry would leak. Source-defined methods with the same names keep their own semantics.
         if let Some((m, _)) = self.method_value_parts(e)
-            && !self.syms.str(m.native).is_empty()
+            && m.native != Native::Source
             && crate::effects::collection_mutation(self.syms, &m)
             && m.name()
                 .is_some_and(|n| crate::effects::discards_entries(self.syms.str(n)))

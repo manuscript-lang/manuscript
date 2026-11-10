@@ -1,21 +1,21 @@
-import read_lines from "@std/streams.ms"
-import stdin, stdout from "@std/io.ms"
-import values from "@std/bytes.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdin, stdout from "@std/io.ms",
+    values from "@std/bytes.ms",
+)
 
 let BAD = "error: bad command"
 let INF = 1000000000
 
 // Returns the value of a 1-6 digit decimal token, or -1 when malformed.
 fn num(t: String) Int:
-    if t.length() < 1 or t.length() > 6:
-        return -1
+    if t.length() < 1 or t.length() > 6: return -1
 
     var n = 0
 
     for b in values(t.to_bytes()):
         let d = b.to_int()
-        if d < 48 or d > 57:
-            return -1
+        if d < 48 or d > 57: return -1
 
         n = n * 10 + (d - 48)
 
@@ -23,8 +23,7 @@ fn num(t: String) Int:
 
 fn blank(line: String) Bool:
     for b in values(line.to_bytes()):
-        if b.to_int() != 32:
-            return false
+        if b.to_int() != 32: return false
     return true
 
 fn lcs(a: List[UInt8], b: List[UInt8]) Int:
@@ -116,50 +115,42 @@ fn coins(amount: Int, cs: List[Int]) Int:
                     best = best.min(dp[x - c] + 1)
         dp.append(best)
 
-    if dp[amount] >= INF:
-        return -1
+    if dp[amount] >= INF: return -1
 
     return dp[amount]
 
 fn run(line: String) String:
     let t = line.split(" ")
     let n = t.length()
-    if n == 0:
-        return BAD
+    if n == 0: return BAD
 
     let cmd = t[0]
 
     if cmd == "lcs" or cmd == "edit":
-        if n != 3 or t[1].length() == 0 or t[2].length() == 0:
-            return BAD
+        if n != 3 or t[1].length() == 0 or t[2].length() == 0: return BAD
 
         let a = values(t[1].to_bytes())
         let b = values(t[2].to_bytes())
-        if cmd == "lcs":
-            return "{lcs(a, b)}"
+        if cmd == "lcs": return "{lcs(a, b)}"
 
         return "{edit(a, b)}"
 
     if cmd == "knap":
-        if n < 2:
-            return BAD
+        if n < 2: return BAD
 
         let cap = num(t[1])
-        if cap < 0:
-            return BAD
+        if cap < 0: return BAD
 
         var ws = List[Int]()
         var vs = List[Int]()
 
         for k in 2..n:
             let p = t[k].split(":")
-            if p.length() != 2:
-                return BAD
+            if p.length() != 2: return BAD
 
             let w = num(p[0])
             let v = num(p[1])
-            if w < 1 or v < 0:
-                return BAD
+            if w < 1 or v < 0: return BAD
 
             ws.append(w)
             vs.append(v)
@@ -167,25 +158,21 @@ fn run(line: String) String:
         return "{knap(cap, ws, vs)}"
 
     if cmd == "coins":
-        if n < 3:
-            return BAD
+        if n < 3: return BAD
 
         let amount = num(t[1])
-        if amount < 0:
-            return BAD
+        if amount < 0: return BAD
 
         var cs = List[Int]()
 
         for k in 2..n:
             let c = num(t[k])
-            if c < 1:
-                return BAD
+            if c < 1: return BAD
 
             cs.append(c)
 
         let r = coins(amount, cs)
-        if r < 0:
-            return "impossible"
+        if r < 0: return "impossible"
 
         return "{r}"
 
@@ -195,8 +182,7 @@ export fn main() Int:
     let lines = read_lines(stdin()).get()
 
     for line in lines:
-        if blank(line):
-            continue
+        if blank(line): continue
 
         stdout().write("{run(line)}\n").get()
 

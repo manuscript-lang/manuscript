@@ -20,7 +20,7 @@ fn nominal(
         id: n(id),
         kind: SymKind::Type,
         module: n("bench.ms"),
-        native: n(""),
+        native: crate::types::Native::Source,
         export: true,
         ty: RefCell::new(None),
         variables: RefCell::new(vec![]),
@@ -446,7 +446,7 @@ fn trait_fact(receiver: &Ty, contract: Option<Ty>, clone_decl: bool) -> MethodRe
         ty: Rc::new(signature),
         variables: vec![],
         decl,
-        native: n(""),
+        native: crate::types::Native::Source,
     })
 }
 

@@ -1,6 +1,8 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import Source, Sink, ReadStream, WriteStream from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    Source, Sink, ReadStream, WriteStream from "@std/io/io.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 // A stream closes its source or sink once, whether the stream is closed by hand or dropped.
 type Counted:
@@ -12,7 +14,6 @@ impl Source[Int] for Counted:
 
     var fn close() Unit!:
         let _ = append_file(self.log, "r").wait()
-        return ok(unit)
 
 impl Sink[Int] for Counted:
     var fn write(value: Int) Unit!:
@@ -23,11 +24,9 @@ impl Sink[Int] for Counted:
 
     var fn close() Unit!:
         let _ = append_file(self.log, "w").wait()
-        return ok(unit)
 
 fn closes(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
