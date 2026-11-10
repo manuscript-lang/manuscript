@@ -211,6 +211,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `out.extend(xs)`",
     },
+    Rule {
+        code: "MSL126",
+        family: "Binding returned on the next line",
+        severity: Severity::Warning,
+        repair: "write `return <expression>`",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.

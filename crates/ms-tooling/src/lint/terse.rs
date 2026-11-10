@@ -140,6 +140,7 @@ impl Visitor for Scan<'_> {
     fn block(&mut self, body: &[Stmt]) {
         for at in 0..body.len() {
             self.default_then_reassign(body, at);
+            self.temp_return(body, at);
             self.counter_while(body, at);
             self.accumulate_loop(body, at);
             self.index_loop(&body[at]);
@@ -420,6 +421,49 @@ impl Scan<'_> {
         self.report(
             "MSL121",
             "Write the default and the override as one `let x = if c: b else: a`".to_string(),
+            first.pos,
+            from,
+            to,
+            text,
+        );
+    }
+
+    /// `let x = e` directly followed by `return x` is `return e`.
+    fn temp_return(&mut self, body: &[Stmt], at: usize) {
+        let (Some(first), Some(second)) = (body.get(at), body.get(at + 1)) else {
+            return;
+        };
+        let StmtKind::Bind {
+            pattern:
+                Pattern {
+                    kind: PatternKind::Name(name),
+                    ..
+                },
+            ty: None,
+            value,
+            group: None,
+            ..
+        } = &first.kind
+        else {
+            return;
+        };
+        let StmtKind::Return(Some(ret)) = &second.kind else {
+            return;
+        };
+        if !matches!(&ret.kind, ExprKind::Name(n) if n == name) {
+            return;
+        }
+        let (from, to) = (first.pos.offset as usize, ret.end.offset as usize);
+        let (Some(whole), Some(text)) = (self.span(from, to), self.expr_text(value)) else {
+            return;
+        };
+        if whole.contains("//") || text.contains('\n') {
+            return;
+        }
+        let text = format!("return {text}");
+        self.report(
+            "MSL126",
+            "Return the value directly instead of binding it first".to_string(),
             first.pos,
             from,
             to,

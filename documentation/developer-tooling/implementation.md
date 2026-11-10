@@ -282,6 +282,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL123 | warning | `for i in 0..xs.length():` where the body only reads `xs[i]`. Write `for item in xs:` |
 | MSL124 | warning | A fresh list or total filled by a loop whose body is one `append` or `+=`. Write `map`, `filter` or `sum` |
 | MSL125 | warning | `for x in xs: out.append(x)` (or `x.clone()`). Write `out.extend(xs)` |
+| MSL126 | warning | `let x = e` directly followed by `return x`. Write `return e` |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 
