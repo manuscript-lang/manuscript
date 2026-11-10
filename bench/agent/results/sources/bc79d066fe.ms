@@ -326,9 +326,7 @@ fn parse_escape(var p: Parser) List[Instr]:
 
         return literal(p, v)
 
-    var ci_flag = 0
-    if p.ci:
-        ci_flag = 1
+    ci_flag := if p.ci: 1 else: 0
     if e >= 49 and e <= 57: return one(Instr(op: OP_BREF, a: e - 48, c: ci_flag))
 
     if e == 107:
@@ -414,9 +412,7 @@ fn parse_group(var p: Parser) List[Instr]:
         if p.err != "": return List[Instr]()
         if not expect_close(var p): return List[Instr]()
 
-        var neg = 0
-        if k == 33:
-            neg = 1
+        neg := if k == 33: 1 else: 0
 
         var frag = List[Instr]()
         frag.append(Instr(op: OP_LOOK, a: neg, b: body.length() + 2))
@@ -781,9 +777,7 @@ fn run(
         var fail = false
 
         if op == OP_CHR:
-            var ok = false
-            if pos < n:
-                ok = subj[pos] == ins.a or subj[pos] == ins.b
+            ok := if pos < n: subj[pos] == ins.a or subj[pos] == ins.b else: false
 
             if ok:
                 pos += 1
@@ -791,9 +785,7 @@ fn run(
             else:
                 fail = true
         else if op == OP_CLS:
-            var ok = false
-            if pos < n:
-                ok = sets[ins.a][subj[pos]]
+            ok := if pos < n: sets[ins.a][subj[pos]] else: false
 
             if ok:
                 pos += 1
@@ -938,7 +930,7 @@ fn run(
             var resumed = false
 
             while not resumed:
-                if stk.length() == 0: return -1
+                if stk.is_empty(): return -1
 
                 vb := stk.pop().get(0)
                 va := stk.pop().get(0)
@@ -989,7 +981,7 @@ fn all_matches(p: Parser, subj: List[Int]) List[List[Int]]:
 
     while from <= n:
         c := search(p, subj, from, false)
-        if c.length() == 0: break
+        if c.is_empty(): break
 
         e := c[1]
 
@@ -1185,9 +1177,7 @@ fn handle(line: List[Int]) List[String]:
         or eq_str(name, "find-all")
         or eq_str(name, "split")
     )
-    var want = 3
-    if is_replace:
-        want = 4
+    want := if is_replace: 4 else: 3
 
     if not known or fields.length() != want:
         out.append("error: bad command")
@@ -1219,14 +1209,14 @@ fn handle(line: List[Int]) List[String]:
     if eq_str(name, "test"):
         c := search(p, subj, 0, false)
 
-        if c.length() > 0:
+        if not c.is_empty():
             out.append("true")
         else:
             out.append("false")
     else if eq_str(name, "match") or eq_str(name, "full"):
         c := search(p, subj, 0, eq_str(name, "full"))
 
-        if c.length() == 0:
+        if c.is_empty():
             out.append("no match")
         else:
             for l in group_lines(p, subj, c):
@@ -1281,7 +1271,7 @@ export fn main() Int:
     all := to_ints(data)
 
     for line in split_bytes(all, 10):
-        if line.length() == 0: continue
+        if line.is_empty(): continue
 
         for s in handle(line):
             print(s)

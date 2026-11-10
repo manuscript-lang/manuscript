@@ -2,7 +2,6 @@ import (
 	StringBuilder from "@std/string.ms",
 	Bytes, join from "@std/bytes.ms",
 	ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms",
-	Promise from "@std/concurrency/promise.ms",
 )
 
 // Delimiter and line ending used when parsing or writing CSV, and the row and cell bounds for `parse`.
@@ -231,9 +230,7 @@ impl Reader:
 
 			stop := self.next_delimiter(at)
 			newline := self.next_line(at)
-			var end = stop
-			if newline < stop: end = newline
-
+			end := if newline < stop: newline else: stop
 			quote := self.next_quote(at)
 			if quote < end: return error(
 				invalid_at(

@@ -140,7 +140,7 @@ fn is_ident(s: String) Bool:
 
 fn all_digits(s: String) Bool:
     cs := s.chars()
-    if cs.length() == 0: return false
+    if cs.is_empty(): return false
 
     for c in cs:
         if not DIGITS.contains(c): return false
@@ -472,9 +472,7 @@ fn eval(text: String, syms: Map[String, Sym], stack: String) Ev:
             if not syms.contains(term.name):
                 return Ev(err: "undefined symbol '" + term.name + "'", val: 0)
 
-            s := syms.get(
-                term.name
-            ).get(Sym(is_text: false, is_equ: false, value: 0, expr: ""))
+            s := syms.get_or(term.name, Sym(is_text: false, is_equ: false, value: 0, expr: ""))
 
             if s.is_equ:
                 key := "|" + term.name + "|"
@@ -588,7 +586,7 @@ fn parse_input(tok: String) Int?:
     var i = 0
     var neg = false
 
-    if cs.length() > 0 and cs[0] == "-":
+    if not cs.is_empty() and cs[0] == "-":
         neg = true
         i = 1
 
@@ -697,9 +695,7 @@ impl Asm:
             if ev.val < 0: return "invalid operand '" + nt + "'"
             if self.dc + ev.val > MEMSIZE: return "data section too large"
 
-            var fill = "0"
-            if ops.length() == 2:
-                fill = ops[1].clone()
+            fill := if ops.length() == 2: ops[1].clone() else: "0"
             self.stmts.append(
                 Stmt(
                     line: num, kind: 3, mnem: "", ops: List[String](), addr: self.dc,
@@ -923,9 +919,7 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
     var entry = 0
 
     if asm.syms.contains("main"):
-        m := asm.syms.get(
-            "main"
-        ).get(Sym(is_text: false, is_equ: false, value: 0, expr: ""))
+        m := asm.syms.get_or("main", Sym(is_text: false, is_equ: false, value: 0, expr: ""))
         if m.is_text and not m.is_equ:
             entry = m.value
 
@@ -948,15 +942,11 @@ impl Vm:
         self.done = true
         self.trapped = true
 
-        var ln = "-"
-        if self.pc >= 0 and self.pc < self.lines.length():
-            ln = self.lines[self.pc].to_string()
+        ln := if self.pc >= 0 and self.pc < self.lines.length(): self.lines[self.pc].to_string() else: "-"
         self.trapmsg = msg + " (pc=" + self.pc.to_string() + " line=" + ln + ")"
 
     fn ea(r: Int, v: Int) Int:
-        var base = 0
-        if r >= 0:
-            base = self.regs[r]
+        base := if r >= 0: self.regs[r] else: 0
         return wrap32(base + v)
 
     var fn mem_get(a: Int) Int:

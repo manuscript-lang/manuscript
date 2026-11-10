@@ -160,7 +160,7 @@ fn maps_equal(a: Map[String, String], b: Map[String, String]) Bool:
 
     for k in a.keys():
         if not b.contains(k): return false
-        if a.get(k).get("") != b.get(k).get(""): return false
+        if a.get_or(k, "") != b.get_or(k, ""): return false
 
     return true
 
@@ -169,7 +169,7 @@ fn maps_equal(a: Map[String, String], b: Map[String, String]) Bool:
 fn tree_hash(tree: Map[String, String]) String:
     var text = ""
     for n in sorted_keys(tree):
-        text += n + " " + hex16(hash_text(tree.get(n).get(""))) + "\n"
+        text += n + " " + hex16(hash_text(tree.get_or(n, ""))) + "\n"
     return hex16(hash_text(text))
 
 fn commit_id(tree: Map[String, String], parents: List[String], message: String) String:
@@ -209,7 +209,7 @@ fn new_repo() Repo:
     )
 
 fn head_id(r: Repo) String:
-    if r.attached: return r.branches.get(r.head_branch).get("")
+    if r.attached: return r.branches.get_or(r.head_branch, "")
 
     return r.head_commit.clone()
 
@@ -232,7 +232,7 @@ fn ancestors(r: Repo, start: String) Set[String]:
     if start != "":
         stack.append(start.clone())
 
-    while stack.length() > 0:
+    while not stack.is_empty():
         c := stack.pop().get("")
         if seen.contains(c): continue
 
@@ -274,14 +274,14 @@ fn resolve(r: Repo, rev: String) Resolved:
         if steps < 0: return unknown_rev(rev)
 
     var id = ""
-    bc := r.branches.get(base).get("")
+    bc := r.branches.get_or(base, "")
 
     if base == "HEAD":
         id = head_id(r)
     else if bc != "":
         id = bc.clone()
     else if r.tags.contains(base):
-        id = r.tags.get(base).get("")
+        id = r.tags.get_or(base, "")
     else if is_hex_prefix(base):
         var matches = 0
 
@@ -294,14 +294,12 @@ fn resolve(r: Repo, rev: String) Resolved:
 
     if id == "": return unknown_rev(rev)
 
-    var k = 0
 
-    while k < steps:
+    for k in 0..steps:
         ps := r.commits[id].parents
-        if ps.length() == 0: return unknown_rev(rev)
+        if ps.is_empty(): return unknown_rev(rev)
 
         id = ps[0].clone()
-        k += 1
 
     return Resolved(id: id, err: "")
 
@@ -474,7 +472,7 @@ fn is_dirty(r: Repo) Bool:
 
     for n in r.index.keys():
         if not r.working.contains(n): return true
-        if r.working.get(n).get("") != r.index.get(n).get(""): return true
+        if r.working.get_or(n, "") != r.index.get_or(n, ""): return true
 
     return false
 
@@ -490,7 +488,7 @@ fn apply_tree(var r: Repo, target: Map[String, String]) Unit:
         if r.working.contains(n):
             r.working.remove(n)
     for n in target.keys():
-        r.working[n.clone()] = target.get(n).get("")
+        r.working[n.clone()] = target.get_or(n, "")
     r.index = target.clone()
 
 // reset --hard semantics: moves HEAD to target and rewrites index and working files
@@ -506,7 +504,7 @@ fn hard_reset(var r: Repo, target: String) Unit:
 
     tt := commit_tree(r, target)
     for n in tt.keys():
-        r.working[n.clone()] = tt.get(n).get("")
+        r.working[n.clone()] = tt.get_or(n, "")
     r.index = tt
     r.conflicts = Set[String]()
     r.merging = false
@@ -538,7 +536,7 @@ fn create_branch(var r: Repo, name: String) Bool:
 // ---------- commands: working tree ----------
 
 fn cmd_rm(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0:
+    if args.is_empty():
         err_out("usage: rm FILE...")
         return
 
@@ -563,7 +561,7 @@ fn cmd_mv(var r: Repo, args: List[String]) Unit:
 
     if old == nw: return
 
-    content := r.working.get(old).get("")
+    content := r.working.get_or(old, "")
     r.working.remove(old)
     r.working[nw] = content
 
@@ -578,13 +576,13 @@ fn cmd_cat(r: Repo, args: List[String]) Unit:
         err_out("no such file: {f}")
         return
 
-    for l in dec(r.working.get(f).get("")):
+    for l in dec(r.working.get_or(f, "")):
         emit(l)
 
 fn cmd_ls(r: Repo) Unit:
     names := sorted_keys(r.working)
 
-    if names.length() == 0:
+    if names.is_empty():
         emit("(empty)")
         return
 
@@ -592,14 +590,14 @@ fn cmd_ls(r: Repo) Unit:
         emit(n)
 
 fn cmd_add(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0:
+    if args.is_empty():
         err_out("usage: add PATH...")
         return
 
     for p in args:
         if p == ".":
             for n in sorted_keys(r.working):
-                r.index[n.clone()] = r.working.get(n).get("")
+                r.index[n.clone()] = r.working.get_or(n, "")
                 unmark(var r, n)
 
             for n in sorted_keys(r.index):
@@ -607,7 +605,7 @@ fn cmd_add(var r: Repo, args: List[String]) Unit:
                     r.index.remove(n.clone())
                     unmark(var r, n)
         else if r.working.contains(p):
-            r.index[p.clone()] = r.working.get(p).get("")
+            r.index[p.clone()] = r.working.get_or(p, "")
             unmark(var r, p)
         else if r.index.contains(p):
             r.index.remove(p.clone())
@@ -619,7 +617,7 @@ fn cmd_add(var r: Repo, args: List[String]) Unit:
             return
 
 fn print_section(title: String, items: List[String]) Unit:
-    if items.length() == 0: return
+    if items.is_empty(): return
 
     emit(title)
     for it in items:
@@ -647,7 +645,7 @@ fn cmd_status(r: Repo) Unit:
             staged.append("new file: {n}")
         else if inh and not ini:
             staged.append("deleted: {n}")
-        else if headt.get(n).get("") != r.index.get(n).get(""):
+        else if headt.get_or(n, "") != r.index.get_or(n, ""):
             staged.append("modified: {n}")
 
     var unstaged = List[String]()
@@ -657,7 +655,7 @@ fn cmd_status(r: Repo) Unit:
 
         if not r.working.contains(n):
             unstaged.append("deleted: {n}")
-        else if r.working.get(n).get("") != r.index.get(n).get(""):
+        else if r.working.get_or(n, "") != r.index.get_or(n, ""):
             unstaged.append("modified: {n}")
 
     var conf = List[String]()
@@ -672,10 +670,10 @@ fn cmd_status(r: Repo) Unit:
             untracked.append(n.clone())
 
     if (
-        staged.length() == 0
-        and unstaged.length() == 0
-        and conf.length() == 0
-        and untracked.length() == 0
+        staged.is_empty()
+        and unstaged.is_empty()
+        and conf.is_empty()
+        and untracked.is_empty()
     ):
         emit("nothing to commit, working tree clean")
         return
@@ -692,7 +690,7 @@ fn cmd_commit(var r: Repo, msg: String) Unit:
         err_out("empty commit message")
         return
 
-    if r.conflicts.length() > 0:
+    if not r.conflicts.is_empty():
         var names = r.conflicts.values()
         names.sort()
         err_out("unresolved conflicts: " + names.join(" "))
@@ -735,7 +733,7 @@ fn cmd_commit(var r: Repo, msg: String) Unit:
 fn cmd_log(r: Repo, args: List[String]) Unit:
     var limit = -1
 
-    if args.length() != 0:
+    if not args.is_empty():
         if args.length() == 2 and args[0] == "-n" and is_digits(args[1]):
             limit = args[1].parse_int().get(-1)
 
@@ -788,7 +786,7 @@ fn cmd_show(r: Repo, args: List[String]) Unit:
     emit("message: {cm.message}")
     emit("files:")
     for n in sorted_keys(cm.tree):
-        emit("  {n} {short(hex16(hash_text(cm.tree.get(n).get(""))))}")
+        emit("  {n} {short(hex16(hash_text(cm.tree.get_or(n, ""))))}")
 
 fn cmd_diff(r: Repo, args: List[String]) Unit:
     if args.length() > 2:
@@ -798,7 +796,7 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
     var left = Map[String, String]()
     var right = Map[String, String]()
 
-    if args.length() == 0:
+    if args.is_empty():
         left = r.index.clone()
         right = r.working.clone()
     else if args.length() == 1:
@@ -831,8 +829,8 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
     for n in union_names(left, right, Map[String, String]()):
         lp := left.contains(n)
         rp := right.contains(n)
-        lc := left.get(n).get("")
-        rc := right.get(n).get("")
+        lc := left.get_or(n, "")
+        rc := right.get_or(n, "")
         if lp == rp and lc == rc: continue
 
         any = true
@@ -848,7 +846,7 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
         emit("(no differences)")
 
 fn cmd_branch(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0:
+    if args.is_empty():
         if not r.attached:
             emit("* (HEAD detached at {short(r.head_commit)})")
 
@@ -875,7 +873,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
             err_out("cannot delete the current branch '{name}'")
             return
 
-        c := r.branches.get(name).get("")
+        c := r.branches.get_or(name, "")
         h := head_id(r)
 
         if c == "" or h == "" or not ancestors(r, h).contains(c):
@@ -889,7 +887,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
     err_out("usage: branch [NAME | -d NAME]")
 
 fn cmd_tag(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0:
+    if args.is_empty():
         for n in sorted_keys(r.tags):
             emit(n)
         return
@@ -908,9 +906,7 @@ fn cmd_tag(var r: Repo, args: List[String]) Unit:
         err_out("tag '{name}' already exists")
         return
 
-    var rev = "HEAD"
-    if args.length() == 2:
-        rev = args[1].clone()
+    rev := if args.length() == 2: args[1].clone() else: "HEAD"
 
     if rev == "HEAD" and head_id(r) == "":
         err_out("no commits yet")
@@ -964,7 +960,7 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
             emit("Already on '{target}'")
             return
 
-        tt := commit_tree(r, r.branches.get(target).get(""))
+        tt := commit_tree(r, r.branches.get_or(target, ""))
         if not check_switch(r, tt): return
 
         apply_tree(var r, tt)
@@ -990,7 +986,7 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
     emit("HEAD is now at {short(res.id)} {cm.message}")
 
 fn cmd_reset(var r: Repo, args: List[String]) Unit:
-    if args.length() == 0 or args.length() > 2 or args[0] != "--hard":
+    if args.is_empty() or args.length() > 2 or args[0] != "--hard":
         err_out("usage: reset --hard [REF]")
         return
 
@@ -1040,11 +1036,11 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         err_out("no commits yet")
         return
 
-    if not r.branches.contains(bname) or r.branches.get(bname).get("") == "":
+    if not r.branches.contains(bname) or r.branches.get_or(bname, "") == "":
         err_out("unknown branch '{bname}'")
         return
 
-    other := r.branches.get(bname).get("")
+    other := r.branches.get_or(bname, "")
 
     if is_dirty(r):
         err_out("local changes would be overwritten")
@@ -1080,9 +1076,9 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         bp := bt.contains(n)
         op := ot.contains(n)
         tp := tt.contains(n)
-        bc := bt.get(n).get("")
-        oc := ot.get(n).get("")
-        tc := tt.get(n).get("")
+        bc := bt.get_or(n, "")
+        oc := ot.get_or(n, "")
+        tc := tt.get_or(n, "")
 
         if op == tp and oc == tc:
             if op:
@@ -1120,7 +1116,7 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
 
     for n in result.keys():
         if not work.contains(n):
-            work[n.clone()] = result.get(n).get("")
+            work[n.clone()] = result.get_or(n, "")
 
     touched := union_names(result, work, Map[String, String]())
     bad := first_untracked(r, touched)
@@ -1133,10 +1129,10 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         if not result.contains(n) and r.working.contains(n):
             r.working.remove(n)
     for n in work.keys():
-        r.working[n.clone()] = work.get(n).get("")
+        r.working[n.clone()] = work.get_or(n, "")
     r.index = result.clone()
 
-    if conflicted.length() == 0:
+    if conflicted.is_empty():
         var parents = List[String]()
         parents.append(cur.clone())
         parents.append(other.clone())
@@ -1157,7 +1153,7 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
     r.conflicts = conflicted
 
     for n in cn:
-        kind := kinds.get(n).get("")
+        kind := kinds.get_or(n, "")
 
         if kind == "modify/delete":
             emit("CONFLICT (modify/delete): {n}")
@@ -1208,7 +1204,7 @@ export fn main() Int:
             if cmd == "write":
                 r.working[f] = content
             else:
-                old := r.working.get(f).get("")
+                old := r.working.get_or(f, "")
                 r.working[f] = old + content
         else if cmd == "rm":
             cmd_rm(var r, args)

@@ -10,7 +10,7 @@ CANCELLED := 2
 
 // True when every scalar is an uppercase letter, digit or '-'.
 fn is_sku(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     return s.scalar_values().all(
         fn c: ((c >= 65 and c <= 90) or (c >= 48 and c <= 57) or c == 45)
@@ -18,7 +18,7 @@ fn is_sku(s: String) Bool:
 
 // True when every scalar is a lowercase letter, digit or '-'.
 fn is_order_id(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     return s.scalar_values().all(
         fn c: ((c >= 97 and c <= 122) or (c >= 48 and c <= 57) or c == 45)

@@ -20,7 +20,6 @@ import (
 	SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms",
 	arguments from "@std/os/env.ms",
 	copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms",
-	stdout from "@std/io/io.ms",
 	milliseconds, sleep from "@std/time.ms",
 )
 

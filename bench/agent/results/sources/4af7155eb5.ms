@@ -65,7 +65,7 @@ fn parse_caesar(key: List[Int]) Int?:
     var i = 0
     var neg = false
 
-    if key.length() > 0 and key[0] == 45:
+    if not key.is_empty() and key[0] == 45:
         neg = true
         i = 1
 
@@ -87,7 +87,7 @@ fn parse_caesar(key: List[Int]) Int?:
 
 // Vigenere key: one or more ASCII letters, as alphabet indexes.
 fn vig_key(key: List[Int]) List[Int]?:
-    if key.length() == 0: return none
+    if key.is_empty(): return none
 
     var out = List[Int]()
 
@@ -119,9 +119,7 @@ fn process(cs: List[Int]) String:
 
     if cipher == "caesar":
         if k := parse_caesar(keyv):
-            var amt = k
-            if not enc:
-                amt = -k
+            amt := if not enc: -k else: k
 
             var res = List[Int]()
             for c in text:

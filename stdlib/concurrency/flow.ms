@@ -1,6 +1,5 @@
 import (
 	panic from "@std/core.ms",
-	Deque from "@std/collections/deque.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
 	Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
 	float from "@std/random.ms",

@@ -140,9 +140,9 @@ fn answer(line: String) String:
     t := line.split(" ")
     n := t.length()
     bad := "error: bad command"
-    if t[0] == "lcs" and n == 3 and t[1].length() > 0 and t[2].length() > 0:
+    if t[0] == "lcs" and n == 3 and not t[1].is_empty() and not t[2].is_empty():
         return "{lcs(codes(t[1]), codes(t[2]))}"
-    if t[0] == "edit" and n == 3 and t[1].length() > 0 and t[2].length() > 0:
+    if t[0] == "edit" and n == 3 and not t[1].is_empty() and not t[2].is_empty():
         return "{edit(codes(t[1]), codes(t[2]))}"
 
     if t[0] == "knap" and n >= 2 and is_num(t[1]):
@@ -182,6 +182,6 @@ export fn main() Int:
 
         out.append(answer(line))
 
-    if out.length() > 0:
+    if not out.is_empty():
         stdout().write(out.join("\n") + "\n").get()
     return 0

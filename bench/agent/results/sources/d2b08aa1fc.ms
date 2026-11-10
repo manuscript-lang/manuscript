@@ -195,13 +195,9 @@ fn parse_number_text(t: String) Float?:
     if e2 == "":
         e2 = "0"
 
-    var sign = ""
-    if neg:
-        sign = "-"
+    sign := if neg: "-" else: ""
 
-    var sgn = "+"
-    if eneg:
-        sgn = "-"
+    sgn := if eneg: "-" else: "+"
     return "{sign}{a}.{b}e{sgn}{e2}".parse_float()
 
 // Value of constant text (already trimmed, non-empty, not starting with "=").
@@ -1084,7 +1080,7 @@ fn gather_nums(s: Sheet, args: List[Node], var out: List[Float]) Value:
 
 // which: 0 SUM, 1 AVERAGE, 2 MIN, 3 MAX, 4 PRODUCT, 5 MEDIAN
 fn agg(s: Sheet, args: List[Node], which: Int) Value:
-    if args.length() == 0: return Value.Errv("#VALUE!")
+    if args.is_empty(): return Value.Errv("#VALUE!")
 
     var xs = List[Float]()
     g := gather_nums(s, args, var xs)
@@ -1136,7 +1132,7 @@ fn agg(s: Sheet, args: List[Node], which: Int) Value:
 
 // COUNT (nonempty_mode false) and COUNTA (true).
 fn count_fn(s: Sheet, args: List[Node], nonempty_mode: Bool) Value:
-    if args.length() == 0: return Value.Errv("#VALUE!")
+    if args.is_empty(): return Value.Errv("#VALUE!")
 
     var c = 0
 
@@ -1201,7 +1197,7 @@ fn f_choose(s: Sheet, args: List[Node]) Value:
     return eval(s, args[idx])
 
 fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
-    if args.length() == 0: return Value.Errv("#VALUE!")
+    if args.is_empty(): return Value.Errv("#VALUE!")
 
     var any_part = false
     var all_true = true
@@ -1243,9 +1239,7 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
 fn round_half_away(y: Float) Float:
     a := y.abs()
     t := truncate(a)
-    var r = t
-    if a - t >= 0.5:
-        r = t + 1.0
+    r := if a - t >= 0.5: t + 1.0 else: t
     if y < 0.0: return -r
 
     return r
@@ -1529,7 +1523,7 @@ fn call_fn(s: Sheet, n: Node) Value:
         return Value.Txt(txt_val(tv).drop(to_int(st) - 1).take(to_int(ln)))
 
     if name == "CONCAT":
-        if args.length() == 0: return Value.Errv("#VALUE!")
+        if args.is_empty(): return Value.Errv("#VALUE!")
 
         var buf = ""
 
@@ -1901,7 +1895,7 @@ fn dependents_of(sh: Sheet, k: Int) List[Int]:
     return out
 
 fn names_line(ks: List[Int]) String:
-    if ks.length() == 0: return "(none)"
+    if ks.is_empty(): return "(none)"
 
     var out = ""
 
@@ -2123,14 +2117,12 @@ fn words(line: String) List[String]:
 fn rest_after(line: String, count: Int) String:
     cs := line.chars()
     var i = 0
-    var w = 0
 
-    while w < count:
+    for w in 0..count:
         while i < cs.length() and is_ws(ch(cs, i)):
             i += 1
         while i < cs.length() and not is_ws(ch(cs, i)):
             i += 1
-        w += 1
 
     return slice_chars(cs, i, cs.length()).trim()
 

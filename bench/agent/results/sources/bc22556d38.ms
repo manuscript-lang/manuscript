@@ -22,12 +22,12 @@ fn tokens(line: String) List[String]:
     var out = List[String]()
     for piece in line.split("\t"):
         for t in piece.split(" "):
-            if t.length() > 0: out.append(t.clone())
+            if not t.is_empty(): out.append(t.clone())
     return out
 
 // Non-empty string of ASCII digits.
 fn is_digits(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     for c in s.scalar_values():
         if c < 48 or c > 57: return false
@@ -221,12 +221,11 @@ fn run() Unit!:
 
     for line in stdin() | lines:
         toks := tokens(line)
-        if toks.length() == 0: continue
+        if toks.is_empty(): continue
 
         text := handle(var led, toks)
         stdout().write("{text}\n").get()
 
-    return ok(unit)
 
 export fn main() Int:
     run().get()

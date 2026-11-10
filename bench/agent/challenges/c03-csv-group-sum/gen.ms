@@ -72,7 +72,7 @@ fn solve(s: String) String:
 	var out = ""
 
 	for k in order.sorted():
-		v := totals.get(k).get(0)
+		v := totals.get_or(k, 0)
 		out += "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
 
 	if bad > 0: out += "skipped: {bad}\n"

@@ -61,9 +61,7 @@ fn main() Int:
 			if kind == "offset": start = n / 2
 			if pos >= 0 and pos < n: data = data.with_value(pos, 255)
 
-			var expected = n
-			if pos >= 0 and pos < n and start <= pos: expected = pos
-
+			expected := if pos >= 0 and pos < n and start <= pos: pos else: n
 			var work = n
 			if expected < n: work = expected + 1 - start
 			if start < 0: work = expected + 1
