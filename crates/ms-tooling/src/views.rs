@@ -561,13 +561,6 @@ fn ownership_node(
 ) -> Node {
     let mut node = head_node(f);
     *count += 1;
-    match f.receiver {
-        "" => {}
-        "var" => node
-            .children
-            .push(Node::new("self  var (exclusive borrow)")),
-        mode => node.children.push(Node::new(format!("self  {mode}"))),
-    }
     if f.kind == "interface" {
         // An operation fixes only how it takes `self`; its other modes are the implementer's.
         for op in &f.slots {
@@ -600,6 +593,14 @@ fn ownership_node(
             r.ty,
             f.result_ownership.label()
         )));
+    }
+    // After the parameters and result: pages index those positionally.
+    match f.receiver {
+        "" => {}
+        "var" => node
+            .children
+            .push(Node::new("self  var (exclusive borrow)")),
+        mode => node.children.push(Node::new(format!("self  {mode}"))),
     }
     if f.scopes > 0 {
         node.children
