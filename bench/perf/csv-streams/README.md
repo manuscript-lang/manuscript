@@ -44,9 +44,10 @@ from unchanged to 6% faster. Small valid, final-tail and malformed controls rang
 from 10% faster to 5% slower; these small differences are within this shared host's
 observed variation. No cross-platform or instruction-count claim is made.
 
-[summary.csv](results-2026-11-10/summary.csv) contains every case, including all
-controls. Ten raw CSV files retain all 2,340 producer rows. Each process exited
-zero, and an external check required all 39 case identities, samples 0 through 5
+[summary.csv](results-2026-11-10/summary.csv) contains aggregate results for every
+case, including all controls. The measurement run produced 2,340 timing rows;
+individual timing records are omitted from this tree. Each process exited zero,
+and an external check required all 39 case identities, samples 0 through 5
 exactly once, positive timers and exact expected checksums. Input sizes and case
 identity were checked as well as the producer's native byte comparisons.
 [manifest.json](results-2026-11-10/manifest.json) records executable, compiler,
@@ -68,6 +69,7 @@ taskset -c 0 /tmp/csv-after > /tmp/csv-after-0.csv
 ```
 
 Repeat five before/after pairs, reversing their process order on odd pairs.
+Keep generated raw timing output outside git, as in the `/tmp` paths above.
 Check each process status and all 234 output rows. CSV columns are case name,
 chunk bytes, input bytes, operations, sample index, elapsed nanoseconds and
 checksum. Discard sample zero for each case; divide nanoseconds by operations
