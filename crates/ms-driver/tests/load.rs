@@ -59,18 +59,28 @@ fn embedded_and_imported_inputs_keep_first_seen_order_without_duplicates() {
         "assets/dep.ms",
         include_str!("fixtures/input_order/assets/dep.ms"),
     );
-    let assets = crate::common::join(dir.path(), "assets");
     let generated = crate::common::join(dir.path(), ".ms-embed/assets.ms");
     // The embedded project root includes the manifest, entry and imported file too.
     // Each must keep the position of its first encounter across all input sources.
-    let expected = [
-        manifest.as_str(),
-        main.as_str(),
-        generated.as_str(),
-        dir.path(),
-        assets.as_str(),
-        dep.as_str(),
-    ];
+    let mut expected = vec![manifest.clone(), main.clone(), generated, dir.path().into()];
+    let native = Path::new(dir.path());
+    // Embedded entries keep native PathBuf spellings; imported modules use canonical `/`
+    // paths. Preserve the existing exact-string deduplication contract on every host.
+    for input in [
+        native.join("assets").to_string_lossy().into_owned(),
+        native
+            .join("assets")
+            .join("dep.ms")
+            .to_string_lossy()
+            .into_owned(),
+        native.join("main.ms").to_string_lossy().into_owned(),
+        native.join("ms.toml").to_string_lossy().into_owned(),
+        dep,
+    ] {
+        if !expected.contains(&input) {
+            expected.push(input);
+        }
+    }
     for entry in [&manifest, &main] {
         let graph = load_file(syms, entry, LoadOptions::default());
         assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
