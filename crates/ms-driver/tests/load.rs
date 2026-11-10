@@ -41,6 +41,48 @@ fn imports_are_loaded_before_their_importers() {
 }
 
 #[test]
+fn embedded_and_imported_inputs_keep_first_seen_order_without_duplicates() {
+    let syms = ms_syntax::Names::global();
+    let dir = crate::common::TempDir::new();
+    let manifest = crate::common::write(
+        dir.path(),
+        "ms.toml",
+        include_str!("fixtures/input_order/ms.toml"),
+    );
+    let main = crate::common::write(
+        dir.path(),
+        "main.ms",
+        include_str!("fixtures/input_order/main.ms"),
+    );
+    let dep = crate::common::write(
+        dir.path(),
+        "assets/dep.ms",
+        include_str!("fixtures/input_order/assets/dep.ms"),
+    );
+    let assets = crate::common::join(dir.path(), "assets");
+    let generated = crate::common::join(dir.path(), ".ms-embed/assets.ms");
+    // The embedded project root includes the manifest, entry and imported file too.
+    // Each must keep the position of its first encounter across all input sources.
+    let expected = [
+        manifest.as_str(),
+        main.as_str(),
+        generated.as_str(),
+        dir.path(),
+        assets.as_str(),
+        dep.as_str(),
+    ];
+    for entry in [&manifest, &main] {
+        let graph = load_file(syms, entry, LoadOptions::default());
+        assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
+        assert_eq!(graph.modules.len(), 3);
+        assert_eq!(graph.inputs, expected);
+        let checked = check_graph(syms, graph, CheckRequest { entry: true });
+        assert!(checked.success(), "{:?}", checked.diagnostics);
+        assert_eq!(checked.inputs, expected);
+    }
+}
+
+#[test]
 fn cycles_are_reported_at_the_closing_import() {
     let syms = ms_syntax::Names::global();
     let dir = scratch("cycle");
