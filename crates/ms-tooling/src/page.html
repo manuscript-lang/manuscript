@@ -408,20 +408,24 @@ function types(){
   return graph(list,edges);
 }
 /* sequence: lifelines for functions, messages in execution order */
-function sequence(){
-  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
-  const depth=+$('depth').value+1,all=$('all').checked,ev=[],parts=[];let cap=0;
+function sequenceEvents(e,depth,all){
+  const ev=[],parts=[];let cap=0;
   const part=k=>{if(!parts.includes(k)&&parts.length<14)parts.push(k)};
   const walk=(k,nodes,d,path)=>{for(const n of nodes){if(cap>160)return;
     const ref=n.reference&&E[n.reference];
     if(n.kind==='call'&&ref){cap++;part(n.reference);if(!parts.includes(n.reference))continue;ev.push({t:'msg',from:k,to:n.reference,label:n.label.replace(/^call\s+/,'')});
       if(d>0&&!path.includes(n.reference))walk(n.reference,ref.flow,d-1,path.concat(n.reference));
-      if(ev[ev.length-1].t!=='msg')ev.push({t:'ret',from:n.reference,to:k})}
+      ev.push({t:'ret',from:n.reference,to:k})}
     else if(n.kind==='native'&&all){cap++;part('stdlib');if(parts.includes('stdlib'))ev.push({t:'msg',from:k,to:'stdlib',label:n.label.replace(/^call\s+/,'')})}
     else if(n.kind==='spawn'){cap++;ev.push({t:'note',at:k,label:'spawn'});walk(k,n.children||[],d,path);continue}
     else if(['try','scope','branch','match'].includes(n.kind)){cap++;ev.push({t:'note',at:k,label:(n.kind==='try'?'try ⚠ ':'')+n.label.slice(0,30)})}
     if(n.children&&n.children.length&&!(n.kind==='call'&&ref))walk(k,n.children,d,path)}};
   part(e.key);walk(e.key,e.flow,depth-1,[e.key]);
+  return {ev,parts};
+}
+function sequence(){
+  const e=S.sel&&E[S.sel];if(!e||!isFn(e))return empty('Pick a function','Choose one in the explorer, or press Ctrl K.');
+  const {ev,parts}=sequenceEvents(e,+$('depth').value+1,$('all').checked);
   const X=170,top=50,row=30,W=140;const px=k=>20+parts.indexOf(k)*X+W/2;const H=top+ev.length*row+40;
   const sv=['<svg data-w="'+(40+parts.length*X)+'" data-h="'+H+'" xmlns="http://www.w3.org/2000/svg"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--fg)"/></marker></defs>'];
   parts.forEach(k=>{const x=px(k),t=E[k]?E[k].name:'stdlib';

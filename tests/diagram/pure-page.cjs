@@ -23,7 +23,8 @@ function purePage(data, source = template) {
     between(source, 'function stage(', 'const fcls='),
     between(source, 'function types(){', '/* sequence:'),
     between(source, 'const empty=', 'function behavior('),
-    'return {D,E,S,hl,sigOf,types};',
+    between(source, 'function sequenceEvents(', 'function sequence(){'),
+    'return {D,E,S,hl,sigOf,types,sequenceEvents};',
   ].join('\n');
   return new Function('R', code)(data);
 }
