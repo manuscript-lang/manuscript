@@ -977,7 +977,8 @@ pub unsafe extern "C-unwind" fn msrt_list_flatten(
     }
 }
 
-/// `distinct`: keeps the first of equal elements.
+/// `distinct`: keeps the first of equal elements. The private result and set are released when an
+/// equality or hash callback exits (fault or cancellation) before the result is published.
 #[unsafe(no_mangle)]
 // ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_distinct(
@@ -989,30 +990,37 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
     unsafe {
         let (src, d) = (&*v, &*d);
         let mut res = EMPTY;
-        if desc::hashable(d) && src.len > 16 {
-            let mut seen = crate::map::empty();
+        let mut seen = crate::map::empty();
+        let (resp, seenp) = (&raw mut res, &raw mut seen);
+        let hashed = desc::hashable(d) && src.len > 16;
+        let body = || {
             for i in 0..src.len {
                 let p = elem(src, d, i);
-                if crate::map::contains_key(&seen, d, None, p) {
+                if hashed {
+                    if crate::map::contains_key(&*seenp, d, None, p) {
+                        continue;
+                    }
+                    crate::map::msrt_set_add_copy(&mut *seenp, d, p);
+                } else if (0..(*resp).len).any(|j| slot_eq(d, elem(&*resp, d, j), p)) {
                     continue;
                 }
-                crate::map::msrt_set_add_copy(&mut seen, d, p);
-                reserve(&mut res, d, 1);
-                slot_copy(d, p, elem(&res, d, res.len));
-                res.len += 1;
+                reserve(&mut *resp, d, 1);
+                slot_copy(d, p, elem(&*resp, d, (*resp).len));
+                (*resp).len += 1;
             }
-            crate::map::drop_map(&mut seen, d, None);
+        };
+        if sort_needs_rollback() {
+            fault::with_cleanup(
+                &mut || {
+                    drop_list(resp, d);
+                    crate::map::drop_map(seenp, d, None);
+                },
+                body,
+            );
         } else {
-            for i in 0..src.len {
-                let p = elem(src, d, i);
-                let dup = (0..res.len).any(|j| slot_eq(d, elem(&res, d, j), p));
-                if !dup {
-                    reserve(&mut res, d, 1);
-                    slot_copy(d, p, elem(&res, d, res.len));
-                    res.len += 1;
-                }
-            }
+            body();
         }
+        crate::map::drop_map(&mut seen, d, None);
         *out = res;
     }
 }
