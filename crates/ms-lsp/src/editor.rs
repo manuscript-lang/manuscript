@@ -10,7 +10,7 @@ use crate::index::{expr_text, hidden_structure};
 use crate::text::{self, EditorKind, EditorToken, Position};
 use crate::uri;
 use ms_check::api::syntax::{ModRef, ScopeState};
-use ms_check::api::types::{Kind, Name, Ty, n};
+use ms_check::api::types::{Kind, Name, Ty};
 use ms_syntax::Phase;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -460,7 +460,7 @@ fn find_marker(
     let module = result.module(syms, document)?;
     let scopes = module.facts().scopes.clone();
     let mut find = Find {
-        syms: ms_syntax::Names::global(),
+        syms,
         scopes: &scopes,
         marker,
         found: None,
@@ -663,10 +663,10 @@ pub fn query_editor(
 pub fn type_expression(syms: ms_syntax::Names, e: &Expr, state: &ScopeState) -> Option<Ty> {
     match &e.kind {
         ExprKind::Name(name) => {
-            if let Some(t) = state.types.get(&n(syms.str(name))) {
+            if let Some(t) = state.types.get(name) {
                 return Some(t.clone());
             }
-            let symbol = state.symbols.get(&n(syms.str(name)))?;
+            let symbol = state.symbols.get(name)?;
             (symbol.kind == ms_check::api::types::SymKind::Type).then(|| symbol.ty(syms))
         }
         ExprKind::Apply { left, types, .. } => {
@@ -686,7 +686,7 @@ fn resolve_editor_type(syms: ms_syntax::Names, t: &TypeRef, state: &ScopeState) 
     let TypeKind::Named { name, args } = &t.kind else {
         return None;
     };
-    let name: Name = n(syms.str(name));
+    let name: Name = *name;
     let base = match state.types.get(&name) {
         Some(t) => t.clone(),
         None => {
@@ -807,7 +807,7 @@ pub fn query_call(syms: ms_syntax::Names, a: &EditorAnalysis) -> Option<(Expr, T
         }
     }
     let mut calls = Calls {
-        syms: ms_syntax::Names::global(),
+        syms,
         marker: &a.marker,
         module: &module,
         found: None,

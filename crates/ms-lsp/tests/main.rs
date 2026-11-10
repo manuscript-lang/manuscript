@@ -16,6 +16,7 @@ mod navigation_identity;
 mod opaque_completion;
 mod recovery_navigation;
 mod reference_order;
+mod retained_names;
 mod search_symbol;
 mod semantic_positions;
 mod signature_help;
