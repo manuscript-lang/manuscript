@@ -4,6 +4,13 @@ use ms_check::{CheckOptions, ImportMap};
 use std::sync::Arc;
 
 fn diagnostics(source: &str) -> Vec<String> {
+    checked_diagnostics(source)
+        .into_iter()
+        .map(|d| d.message)
+        .collect()
+}
+
+fn checked_diagnostics(source: &str) -> Vec<ms_syntax::Diagnostic> {
     let syms = ms_syntax::Names::global();
     let file: Arc<str> = Arc::from("patterns.ms");
     let module = ms_syntax::parser::parse(&file, source).expect("parses");
@@ -14,9 +21,6 @@ fn diagnostics(source: &str) -> Vec<String> {
         CheckOptions::default(),
     )
     .diagnostics
-    .into_iter()
-    .map(|d| d.message)
-    .collect()
 }
 
 #[test]
@@ -75,4 +79,31 @@ fn failed_chain_link_does_not_add_an_inference_error() {
         got[0].contains("unknown or ambiguous member get"),
         "{got:?}"
     );
+}
+
+#[test]
+fn missing_arm_values_explain_the_required_type_at_the_arm() {
+    for (source, line) in [
+        (include_str!("match_patterns/annotated_arm_value.ms"), 3),
+        (include_str!("match_patterns/inferred_arm_value.ms"), 4),
+        (include_str!("match_patterns/returned_arm_value.ms"), 3),
+    ] {
+        let got = checked_diagnostics(source);
+        assert_eq!(got.len(), 1, "{got:?}");
+        assert_eq!(got[0].pos.line, line);
+        assert_eq!(got[0].pos.column, 9);
+        assert_eq!(
+            got[0].message,
+            "match arm requires a final value of type Int; this arm produces Unit; end the arm with a value of the required type"
+        );
+        // Apply the suggested repair to the offending arm, preserving its statements.
+        let repaired = source.replace("_marker := 1", "_marker := 1\n\t\t\t_marker");
+        assert!(diagnostics(&repaired).is_empty(), "{repaired}");
+    }
+}
+
+#[test]
+fn statement_unit_and_exiting_arms_keep_their_existing_rules() {
+    let got = diagnostics(include_str!("match_patterns/arm_value_controls.ms"));
+    assert!(got.is_empty(), "{got:?}");
 }
