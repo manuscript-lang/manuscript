@@ -412,3 +412,138 @@ test "verify rejects missing and nonstring algorithm names":
 		(try failure(verify_token(token, "secret".to_bytes()))) | try expect_equal(
 			Error("jwt: wrong algorithm", kind: "EBADMSG")
 		)
+
+// Sign NumberValue directly so JSON retains every decimal/exponent digit.
+fn dated_token(name: String, number: String) String!:
+	var claims = Map[String, JsonValue]()
+	claims.add(name.clone(), JsonValue.NumberValue(number.clone()))
+	return sign_token(JsonValue.ObjectValue(claims), "secret".to_bytes())
+
+fn expect_date_order(number: String, at: Int, order: Int) Unit!:
+	secret := "secret".to_bytes()
+	exp := try dated_token("exp", number)
+	nbf := try dated_token("nbf", number)
+	check := JwtCheck(at: at)
+
+	if order <= 0:
+		(try failure(verify_token(exp, secret, check))) | try expect_equal(
+			Error("jwt: token expired", kind: "EBADMSG")
+		)
+
+		_ := try verify_token(nbf, secret, check)
+	else:
+		_ := try verify_token(exp, secret, check)
+		(try failure(verify_token(nbf, secret, check))) | try expect_equal(
+			Error("jwt: token not yet valid", kind: "EBADMSG")
+		)
+
+	return ok(unit)
+
+test "numeric dates retain consecutive integer and fractional ordering":
+	try expect_date_order("9007199254740993", 9007199254740992, 1)
+	try expect_date_order("9007199254740992", 9007199254740993, -1)
+	try expect_date_order("-9007199254740993", -9007199254740992, -1)
+	try expect_date_order("-9007199254740992", -9007199254740993, 1)
+	try expect_date_order("1700000000.0000001", 1700000000, 1)
+	try expect_date_order("1699999999.9999999", 1700000000, -1)
+	try expect_date_order("-1700000000.0000001", -1700000000, -1)
+	try expect_date_order("-1699999999.9999999", -1700000000, 1)
+	try expect_date_order("9223372036854775807", 9223372036854775807, 0)
+	try expect_date_order("9223372036854775808", 9223372036854775807, 1)
+	try expect_date_order("-9223372036854775808", -9223372036854775808, 0)
+	try expect_date_order("-9223372036854775809", -9223372036854775808, -1)
+
+test "numeric date exponents and signed zero preserve exact boundaries":
+	for zero in ["0", "-0", "0.000", "-0.000e99999999999999999999"]:
+		try expect_date_order(zero, 0, 0)
+		try expect_date_order(zero, -1, 1)
+		try expect_date_order(zero, 1, -1)
+
+	for one in ["1", "1.00", "10e-1", "0.01E+0002", "1000e-3", "1e-000", "1E+000"]:
+		try expect_date_order(one, 1, 0)
+	for minus_one in ["-1", "-1.00", "-10e-1", "-0.01E+0002", "-1e-000", "-1E+000"]:
+		try expect_date_order(minus_one, -1, 0)
+	try expect_date_order("1e-999999999999999999999", 0, 1)
+	try expect_date_order("1e-999999999999999999999", 1, -1)
+	try expect_date_order("-1e-999999999999999999999", 0, -1)
+	try expect_date_order("-1e-999999999999999999999", -1, 1)
+	try expect_date_order("1e999999999999999999999", 9223372036854775807, 1)
+	try expect_date_order("-1e999999999999999999999", -9223372036854775808, -1)
+	try expect_date_order("1e+" + "0".repeat(1000).get("") + "1", 10, 0)
+	try expect_date_order("1e" + "9".repeat(8000).get(""), 1, 1)
+	try expect_date_order("1e-" + "9".repeat(8000).get(""), 1, -1)
+
+	// The exponent must cancel a long coefficient's scale before comparison.
+	try expect_date_order("1" + "0".repeat(1000).get("") + "e-1000", 1, 0)
+	try expect_date_order("0." + "0".repeat(1000).get("") + "1e1001", 1, 0)
+	try expect_date_order("1." + "0".repeat(1000).get("") + "1", 1, 1)
+
+test "numeric date leeway is exact across Int boundaries":
+	secret := "secret".to_bytes()
+
+	for number in ["9007199254740993", "9007199254740992.0000001"]:
+		exp := try dated_token("exp", number)
+		_ := try verify_token(exp, secret, JwtCheck(at: 9007199254740993, leeway: 1))
+		nbf := try dated_token("nbf", number)
+		_ := try verify_token(nbf, secret, JwtCheck(at: 9007199254740992, leeway: 1))
+
+	exp_limit := try dated_token("exp", "18446744073709551615")
+	(
+		try failure(
+			verify_token(
+				exp_limit,
+				secret,
+				JwtCheck(
+					at: 9223372036854775807, leeway: -9223372036854775808
+				)
+			)
+		)
+	) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+
+	exp_later := try dated_token("exp", "18446744073709551615.0000001")
+	_ := try verify_token(
+		exp_later, secret,
+		JwtCheck(at: 9223372036854775807, leeway: -9223372036854775808)
+	)
+	nbf_limit := try dated_token("nbf", "-18446744073709551616")
+	_ := try verify_token(
+		nbf_limit, secret,
+		JwtCheck(at: -9223372036854775808, leeway: -9223372036854775808)
+	)
+	nbf_later := try dated_token("nbf", "-18446744073709551615.9999999")
+	(
+		try failure(
+			verify_token(
+				nbf_later,
+				secret,
+				JwtCheck(
+					at: -9223372036854775808, leeway: -9223372036854775808
+				)
+			)
+		)
+	) | try expect_equal(Error("jwt: token not yet valid", kind: "EBADMSG"))
+
+	// Positive leeway can also put the boundary outside Int.
+	exp_early := try dated_token("exp", "-18446744073709551615")
+	(
+		try failure(
+			verify_token(
+				exp_early,
+				secret,
+				JwtCheck(
+					at: -9223372036854775808, leeway: 9223372036854775807
+				)
+			)
+		)
+	) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+
+	nbf_late := try dated_token("nbf", "18446744073709551614")
+	_ := try verify_token(
+		nbf_late, secret, JwtCheck(at: 9223372036854775807, leeway: 9223372036854775807)
+	)
+
+test "numeric date validation still follows signature verification":
+	token := try dated_token("nbf", "1e999999999999999999999")
+	(try failure(verify_token(token, "other".to_bytes(), JwtCheck(at: 0)))) | try expect_equal(
+		Error("jwt: bad signature", kind: "EBADMSG")
+	)
