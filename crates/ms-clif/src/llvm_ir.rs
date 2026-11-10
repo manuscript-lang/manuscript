@@ -1078,7 +1078,7 @@ impl<'a> Tr<'a> {
             Opcode::Isub => self
                 .bases
                 .get(&args[0])
-                .zip(b.parse::<i64>().ok().map(|c| -c)),
+                .zip(b.parse::<i64>().ok().map(i64::wrapping_neg)),
             _ => None,
         };
         if let Some(((base, at), c)) = step {
@@ -2283,6 +2283,52 @@ mod tests {
         assert!(text.contains("= inttoptr i64 %a0 to ptr"), "{text}");
         assert!(text.contains("getelementptr i8, ptr %t"), "{text}");
         assert!(!text.contains("inttoptr i64 %t"), "{text}");
+    }
+
+    #[test]
+    fn subtraction_tracks_minimum_integer_offsets_without_overflow() {
+        for offset in [i64::MIN, i64::MIN + 1, -1, 0, 1, i64::MAX] {
+            for exclusive in [false, true] {
+                let mut sig = Signature::new(CallConv::SystemV);
+                sig.params.push(AbiParam::new(types::I64));
+                sig.returns.push(AbiParam::new(types::I64));
+                let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+                let mut cx = FunctionBuilderContext::new();
+                let mut b = FunctionBuilder::new(&mut f, &mut cx);
+                let entry = b.create_block();
+                b.append_block_params_for_function_params(entry);
+                b.switch_to_block(entry);
+                let base = b.block_params(entry)[0];
+                let delta = b.ins().iconst(types::I64, offset);
+                let first = b.ins().isub(base, delta);
+                let back = b.ins().iadd(first, delta);
+                let result = if exclusive {
+                    b.ins()
+                        .load(types::I64, ir::MemFlagsData::trusted(), back, 0)
+                } else {
+                    back
+                };
+                b.ins().return_(&[result]);
+                b.seal_all_blocks();
+                b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+                    default_call_conv: CallConv::SystemV,
+                    pointer_width: target_lexicon::PointerWidth::U64,
+                    page_size_align_log2: 12,
+                });
+                let mut m = LlvmModule::new(vec![Some("offset.ms".into())], ".".into());
+                if exclusive {
+                    m.set_exclusive("offset", vec![0]);
+                }
+                m.add_function("offset", "offset", (0, 1), &f, &TestSymbols, true);
+                let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+                assert!(text.contains(&format!("sub i64 %a0, {offset}")), "{text}");
+                if exclusive {
+                    // Subtracting then adding the same offset returns to the original
+                    // address, including MIN where negating the delta must wrap.
+                    assert!(text.contains("load i64, ptr %x0"), "{text}");
+                }
+            }
+        }
     }
 
     fn scalar_loop_for_cpu_classification(b: &mut FunctionBuilder<'_>, n: Value, zero: Value) {
