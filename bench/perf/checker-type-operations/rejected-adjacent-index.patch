@@ -1,0 +1,13 @@
+diff --git a/crates/ms-check/src/types.rs b/crates/ms-check/src/types.rs
+index 70aa3987c..64e9fa19c 100644
+--- a/crates/ms-check/src/types.rs
++++ b/crates/ms-check/src/types.rs
+@@ -1241,0 +1242,4 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
++        // Reaching this child proves the preceding child was unchanged.
++        if i > 0 && Rc::ptr_eq(a, &t.args[i - 1]) {
++            continue;
++        }
+@@ -1254,0 +1259,3 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
++        if i > 0 && Rc::ptr_eq(&p.ty, &t.params[i - 1].ty) {
++            continue;
++        }

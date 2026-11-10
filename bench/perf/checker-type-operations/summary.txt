@@ -1,0 +1,197 @@
+
+adjacent-micro.json (nanoseconds per operation/process)
+changed-1: base=79.821 candidate=80.088 paired=1.003840 slower=5/9
+changed-16: base=313.859 candidate=302.715 paired=0.974587 slower=2/9
+changed-4: base=128.423 candidate=124.635 paired=0.969301 slower=0/9
+changed-64: base=1012.585 candidate=991.101 paired=0.983421 slower=2/9
+concrete-1: base=13.905 candidate=14.075 paired=1.022979 slower=5/9
+concrete-16: base=67.482 candidate=21.841 paired=0.328841 slower=0/9
+concrete-4: base=24.137 candidate=14.652 paired=0.612358 slower=0/9
+concrete-64: base=234.167 candidate=47.991 paired=0.205963 slower=0/9
+distinct-1: base=14.746 candidate=14.291 paired=0.966750 slower=4/9
+distinct-16: base=64.658 candidate=86.961 paired=1.380589 slower=9/9
+distinct-4: base=24.256 candidate=27.271 paired=1.120163 slower=9/9
+distinct-64: base=236.145 candidate=355.035 paired=1.459358 slower=9/9
+fibonacci-12: base=3135.650 candidate=3208.460 paired=1.030145 slower=7/9
+fibonacci-16: base=22665.100 candidate=23293.730 paired=1.040557 slower=7/9
+fibonacci-4: base=61.790 candidate=62.090 paired=1.000000 slower=4/9
+shared-16: base=585206.000 candidate=113.200 paired=0.000197 slower=0/9
+shared-20: base=9118839.000 candidate=145.200 paired=0.000016 slower=0/9
+shared-24: base=145284912.000 candidate=174.200 paired=0.000001 slower=0/9
+unbound-1: base=69.909 candidate=67.411 paired=0.954664 slower=3/9
+unbound-16: base=667.277 candidate=644.767 paired=0.931972 slower=1/9
+unbound-4: base=163.175 candidate=166.223 paired=0.980937 slower=4/9
+unbound-64: base=2555.711 candidate=2666.486 paired=1.036913 slower=6/9
+unique-128: base=920.785 candidate=913.648 paired=1.022824 slower=5/9
+unique-16: base=89.483 candidate=91.119 paired=1.002594 slower=5/9
+unique-256: base=2040.332 candidate=2047.256 paired=1.003611 slower=5/9
+unique-4: base=23.401 candidate=23.501 paired=1.005171 slower=6/9
+unique-63: base=387.046 candidate=401.280 paired=1.043420 slower=7/9
+unique-64: base=392.057 candidate=405.559 paired=1.034439 slower=8/9
+unique-65: base=399.890 candidate=407.709 paired=1.037837 slower=6/9
+
+adjacent-pointer-micro.json (nanoseconds per operation/process)
+changed-1: base=84.288 candidate=78.943 paired=0.949108 slower=1/9
+changed-16: base=338.656 candidate=308.300 paired=0.921863 slower=1/9
+changed-4: base=134.999 candidate=134.483 paired=0.995586 slower=3/9
+changed-64: base=1021.905 candidate=1060.376 paired=1.009807 slower=5/9
+concrete-1: base=14.180 candidate=11.462 paired=0.813500 slower=1/9
+concrete-16: base=66.581 candidate=20.565 paired=0.321991 slower=0/9
+concrete-4: base=24.236 candidate=14.168 paired=0.551205 slower=0/9
+concrete-64: base=246.300 candidate=50.174 paired=0.197914 slower=0/9
+distinct-1: base=15.069 candidate=12.678 paired=0.844291 slower=2/9
+distinct-16: base=69.851 candidate=67.215 paired=0.951563 slower=2/9
+distinct-4: base=25.916 candidate=22.800 paired=0.882563 slower=0/9
+distinct-64: base=259.383 candidate=235.242 paired=0.909082 slower=2/9
+fibonacci-12: base=3487.480 candidate=3731.410 paired=0.963806 slower=4/9
+fibonacci-16: base=23279.090 candidate=26689.140 paired=1.165160 slower=8/9
+fibonacci-4: base=62.190 candidate=64.800 paired=1.045330 slower=8/9
+shared-16: base=586196.100 candidate=111.200 paired=0.000188 slower=0/9
+shared-20: base=10207263.400 candidate=140.200 paired=0.000014 slower=0/9
+shared-24: base=153283531.000 candidate=188.300 paired=0.000001 slower=0/9
+unbound-1: base=72.397 candidate=67.539 paired=0.970796 slower=3/9
+unbound-16: base=766.247 candidate=678.357 paired=0.925338 slower=0/9
+unbound-4: base=175.041 candidate=165.222 paired=0.946247 slower=3/9
+unbound-64: base=2675.907 candidate=2634.194 paired=0.998585 slower=4/9
+unique-128: base=1017.554 candidate=1140.032 paired=1.141554 slower=7/9
+unique-16: base=98.604 candidate=101.720 paired=1.123390 slower=7/9
+unique-256: base=2055.504 candidate=2519.337 paired=1.252163 slower=8/9
+unique-4: base=23.397 candidate=28.359 paired=1.111758 slower=8/9
+unique-63: base=390.224 candidate=410.693 paired=1.059124 slower=7/9
+unique-64: base=407.920 candidate=429.221 paired=1.137799 slower=8/9
+unique-65: base=413.535 candidate=435.734 paired=1.091191 slower=7/9
+
+baseline-2026-11-10.json (nanoseconds per operation/process)
+ordinary-concrete-1: base=53094725.000
+ordinary-concrete-1000: base=70857118.000
+ordinary-concrete-16: base=54639468.000
+ordinary-concrete-250: base=57951677.000
+ordinary-concrete-500: base=65834650.000
+ordinary-generic-1: base=52212744.000
+ordinary-generic-1000: base=83689715.000
+ordinary-generic-16: base=53763886.000
+ordinary-generic-250: base=59240012.000
+ordinary-generic-500: base=67385412.000
+shared-callback-12: base=53419091.000
+shared-callback-16: base=54444109.000
+shared-callback-20: base=55619378.000
+shared-callback-24: base=59235529.000
+shared-callback-28: base=59293108.000
+shared-callback-4: base=55895071.000
+shared-callback-8: base=54853336.000
+shared-match-12: base=57082760.000
+shared-match-16: base=58399542.000
+shared-match-20: base=55291068.000
+shared-match-24: base=58470432.000
+shared-match-28: base=62692202.000
+shared-match-4: base=57429324.000
+shared-match-8: base=53100135.000
+shared-method-12: base=55441002.000
+shared-method-16: base=57827333.000
+shared-method-20: base=74965165.000
+shared-method-24: base=328640443.000
+shared-method-28: base=4255220192.000
+shared-method-4: base=56093590.000
+shared-method-8: base=56159383.000
+
+shared-only-micro.json (nanoseconds per operation/process)
+changed-1: base=89.134 candidate=86.829 paired=0.971457 slower=3/7
+changed-16: base=318.642 candidate=319.571 paired=0.995479 slower=3/7
+changed-4: base=142.109 candidate=132.567 paired=0.968350 slower=3/7
+changed-64: base=1070.621 candidate=1056.889 paired=0.988059 slower=2/7
+concrete-1: base=13.319 candidate=15.330 paired=1.145750 slower=5/7
+concrete-16: base=70.290 candidate=64.215 paired=0.931052 slower=1/7
+concrete-4: base=25.065 candidate=23.832 paired=0.957101 slower=2/7
+concrete-64: base=276.083 candidate=234.628 paired=0.850946 slower=0/7
+shared-16: base=629258.000 candidate=1530.300 paired=0.002442 slower=0/7
+shared-20: base=9824133.400 candidate=1673.500 paired=0.000177 slower=0/7
+shared-24: base=155885020.600 candidate=1790.700 paired=0.000012 slower=0/7
+unbound-1: base=76.220 candidate=96.111 paired=1.122749 slower=5/7
+unbound-16: base=718.872 candidate=803.456 paired=1.087048 slower=7/7
+unbound-4: base=168.978 candidate=168.030 paired=1.003982 slower=4/7
+unbound-64: base=2877.021 candidate=2741.531 paired=0.995748 slower=3/7
+unique-128: base=969.279 candidate=1530.711 paired=1.470386 slower=7/7
+unique-16: base=85.059 candidate=133.528 paired=1.547094 slower=7/7
+unique-256: base=2202.361 candidate=2931.996 paired=1.361206 slower=7/7
+unique-4: base=23.343 candidate=31.671 paired=1.401555 slower=7/7
+unique-63: base=358.697 candidate=533.231 paired=1.516152 slower=7/7
+unique-64: base=403.351 candidate=567.841 paired=1.407809 slower=7/7
+unique-65: base=405.484 candidate=595.060 paired=1.467529 slower=7/7
+
+shared-only-source.json (nanoseconds per operation/process)
+callback-methods-1: base=59613389.000 candidate=60437042.000 paired=1.035941 slower=8/9
+callback-methods-1000: base=102931282.000 candidate=105688200.000 paired=0.994747 slower=3/9
+callback-methods-16: base=58965506.000 candidate=60233563.000 paired=1.017205 slower=5/9
+callback-methods-250: base=69819253.000 candidate=69531040.000 paired=0.995872 slower=3/9
+callback-methods-500: base=87660604.000 candidate=80289685.000 paired=0.965335 slower=4/9
+ordinary-concrete-1: base=56720121.000 candidate=56573429.000 paired=1.021872 slower=5/9
+ordinary-concrete-1000: base=74535861.000 candidate=77059568.000 paired=1.055631 slower=5/9
+ordinary-concrete-16: base=59376532.000 candidate=62068352.000 paired=1.018917 slower=7/9
+ordinary-concrete-250: base=62667162.000 candidate=68605190.000 paired=1.026380 slower=6/9
+ordinary-concrete-500: base=64822006.000 candidate=63730840.000 paired=1.012284 slower=6/9
+ordinary-generic-1: base=60321176.000 candidate=61471587.000 paired=0.982649 slower=4/9
+ordinary-generic-1000: base=89519582.000 candidate=88413237.000 paired=1.009022 slower=5/9
+ordinary-generic-16: base=58353467.000 candidate=62106950.000 paired=0.998186 slower=4/9
+ordinary-generic-250: base=65569750.000 candidate=67713685.000 paired=1.031848 slower=6/9
+ordinary-generic-500: base=81486932.000 candidate=74262177.000 paired=0.935373 slower=2/9
+rejected-generic-1: base=39174816.000 candidate=37980494.000 paired=0.974330 slower=2/9
+rejected-generic-1000: base=49778411.000 candidate=49679195.000 paired=0.973459 slower=3/9
+rejected-generic-16: base=38609772.000 candidate=38164761.000 paired=1.015635 slower=5/9
+rejected-generic-250: base=40981155.000 candidate=40861765.000 paired=0.981989 slower=4/9
+shared-callback-12: base=58790749.000 candidate=60943729.000 paired=0.996679 slower=4/9
+shared-callback-16: base=57670163.000 candidate=60658499.000 paired=0.996729 slower=4/9
+shared-callback-20: base=59995959.000 candidate=62988886.000 paired=1.034909 slower=5/9
+shared-callback-24: base=64656650.000 candidate=61358136.000 paired=0.951426 slower=1/9
+shared-callback-28: base=60755479.000 candidate=61216541.000 paired=1.007589 slower=5/9
+shared-callback-4: base=63448526.000 candidate=62583408.000 paired=1.019987 slower=5/9
+shared-callback-8: base=60141676.000 candidate=58935626.000 paired=0.955200 slower=3/9
+shared-match-12: base=60970405.000 candidate=64538241.000 paired=1.000029 slower=5/9
+shared-match-16: base=58502042.000 candidate=59298382.000 paired=0.993362 slower=4/9
+shared-match-20: base=59449974.000 candidate=58824871.000 paired=0.980787 slower=3/9
+shared-match-24: base=61005153.000 candidate=63862078.000 paired=0.995927 slower=2/9
+shared-match-28: base=63809393.000 candidate=64252116.000 paired=0.998370 slower=4/9
+shared-match-4: base=58759680.000 candidate=57987059.000 paired=1.002356 slower=5/9
+shared-match-8: base=60508858.000 candidate=59573698.000 paired=0.948940 slower=2/9
+shared-method-12: base=60503457.000 candidate=57214750.000 paired=0.992749 slower=4/9
+shared-method-16: base=60840929.000 candidate=60865667.000 paired=0.995743 slower=4/9
+shared-method-20: base=83999915.000 candidate=62205882.000 paired=0.769422 slower=0/9
+shared-method-24: base=333315835.000 candidate=62886244.000 paired=0.177815 slower=0/9
+shared-method-28: base=4325000153.000 candidate=63243787.000 paired=0.014588 slower=0/9
+shared-method-4: base=59269514.000 candidate=58714363.000 paired=0.982225 slower=2/9
+shared-method-8: base=56498741.000 candidate=61042090.000 paired=1.036026 slower=6/9
+unique-method-128-1: base=101874615.000 candidate=97664682.000 paired=0.982840 slower=2/9
+unique-method-128-16: base=93732960.000 candidate=95756183.000 paired=1.000037 slower=5/9
+unique-method-128-64: base=102741807.000 candidate=99348085.000 paired=0.978953 slower=2/9
+unique-method-16-1: base=60545021.000 candidate=59366296.000 paired=0.972644 slower=2/9
+unique-method-16-16: base=60563342.000 candidate=63369516.000 paired=1.047864 slower=5/9
+unique-method-16-64: base=59035808.000 candidate=60448906.000 paired=1.005299 slower=6/9
+unique-method-4-1: base=62927040.000 candidate=58924811.000 paired=0.907731 slower=3/9
+unique-method-4-16: base=58439871.000 candidate=58262248.000 paired=1.014725 slower=6/9
+unique-method-4-64: base=60385593.000 candidate=59109095.000 paired=0.987931 slower=4/9
+unique-method-64-1: base=65580929.000 candidate=65550021.000 paired=0.999797 slower=4/9
+unique-method-64-16: base=64662144.000 candidate=65336807.000 paired=1.005125 slower=5/9
+unique-method-64-64: base=68006394.000 candidate=66114964.000 paired=0.986970 slower=4/9
+
+unchanged-micro.json (nanoseconds per operation/process)
+changed-1: base=83.000 candidate=84.410 paired=1.022267 slower=5/7
+changed-16: base=333.860 candidate=329.157 paired=0.968353 slower=2/7
+changed-4: base=138.954 candidate=138.599 paired=1.000751 slower=4/7
+changed-64: base=1038.922 candidate=1074.699 paired=1.017898 slower=4/7
+concrete-1: base=13.121 candidate=14.305 paired=0.969636 slower=3/7
+concrete-16: base=71.108 candidate=96.349 paired=1.354970 slower=7/7
+concrete-4: base=24.745 candidate=29.144 paired=1.204915 slower=7/7
+concrete-64: base=278.924 candidate=346.213 paired=1.255489 slower=7/7
+shared-16: base=642452.100 candidate=1449.200 paired=0.002421 slower=0/7
+shared-20: base=9529685.400 candidate=1565.400 paired=0.000163 slower=0/7
+shared-24: base=156317602.200 candidate=1695.500 paired=0.000011 slower=0/7
+unbound-1: base=75.020 candidate=77.326 paired=1.039764 slower=4/7
+unbound-16: base=681.008 candidate=697.869 paired=1.038140 slower=5/7
+unbound-4: base=173.442 candidate=171.977 paired=0.957218 slower=1/7
+unbound-64: base=2619.533 candidate=2702.757 paired=1.032713 slower=7/7
+unique-128: base=1003.866 candidate=7709.477 paired=7.745169 slower=7/7
+unique-16: base=91.926 candidate=102.159 paired=1.073585 slower=6/7
+unique-256: base=2087.804 candidate=15716.598 paired=7.375955 slower=7/7
+unique-4: base=22.881 candidate=28.117 paired=1.228834 slower=6/7
+unique-63: base=384.764 candidate=460.329 paired=1.221608 slower=7/7
+unique-64: base=390.418 candidate=3767.342 paired=9.562710 slower=7/7
+unique-65: base=404.194 candidate=3836.398 paired=9.413267 slower=7/7

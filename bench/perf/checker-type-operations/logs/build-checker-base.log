@@ -1,0 +1,3 @@
+   Compiling ms-syntax v0.0.0 (/workspace/checker-perf-base/crates/ms-syntax)
+   Compiling ms-check v0.0.0 (/workspace/checker-perf-base/crates/ms-check)
+    Finished `release` profile [optimized + debuginfo] target(s) in 13.89s

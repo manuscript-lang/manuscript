@@ -1,0 +1,54 @@
+diff --git a/crates/ms-check/src/types.rs b/crates/ms-check/src/types.rs
+index 70aa3987c..346e7bd4e 100644
+--- a/crates/ms-check/src/types.rs
++++ b/crates/ms-check/src/types.rs
+@@ -1224 +1224,13 @@ pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
+-    sub_walk(t, bindings)
++    sub_walk(
++        t,
++        bindings,
++        &mut SubWalk {
++            remaining: 64,
++            unchanged: None,
++        },
++    )
++}
++
++struct SubWalk {
++    remaining: u8,
++    unchanged: Option<HashSet<*const Type>>,
+@@ -1227 +1239 @@ pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
+-fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
++fn sub_walk(t: &Ty, bindings: &Subst, walk: &mut SubWalk) -> Ty {
+@@ -1237,0 +1250,12 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
++    // Completed unchanged subgraphs can be reused within this substitution.
++    // Changed occurrences must stay independent, especially variable snapshots.
++    let key = Rc::as_ptr(t);
++    if walk.remaining > 0 {
++        walk.remaining -= 1;
++    } else if walk
++        .unchanged
++        .as_ref()
++        .is_some_and(|unchanged| unchanged.contains(&key))
++    {
++        return t.clone();
++    }
+@@ -1242 +1266 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
+-        let r = sub_walk(a, bindings);
++        let r = sub_walk(a, bindings, walk);
+@@ -1249 +1273 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
+-        values.extend(t.args[i + 1..].iter().map(|a| sub_walk(a, bindings)));
++        values.extend(t.args[i + 1..].iter().map(|a| sub_walk(a, bindings, walk)));
+@@ -1255 +1279 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
+-        let r = sub_walk(&p.ty, bindings);
++        let r = sub_walk(&p.ty, bindings, walk);
+@@ -1269 +1293 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
+-            ty: sub_walk(&p.ty, bindings),
++            ty: sub_walk(&p.ty, bindings, walk),
+@@ -1278 +1302 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
+-        let s = sub_walk(r, bindings);
++        let s = sub_walk(r, bindings, walk);
+@@ -1282,0 +1307,3 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
++        if walk.remaining == 0 {
++            walk.unchanged.get_or_insert_with(HashSet::new).insert(key);
++        }

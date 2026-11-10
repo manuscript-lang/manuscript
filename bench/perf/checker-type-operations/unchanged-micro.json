@@ -1,0 +1,5868 @@
+{
+  "cpu": 0,
+  "protocol": "10 internal warmups per process; seven or nine alternating paired rounds; seeded shuffled case order; input setup and correctness checks outside timing",
+  "binaries": {
+    "base": {
+      "path": ".artifacts/checker-type-operations/base/substitution",
+      "sha256": "2e7d03424732522d99335b6872fb9e117709d346a1165f246985f9f5b1c2375a"
+    },
+    "candidate": {
+      "path": ".artifacts/checker-type-operations/unchanged/substitution",
+      "sha256": "e5baf2071182271951dc465841745caa78477eba533192b1707904df5f61d6bd"
+    }
+  },
+  "samples": [
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":20421038}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 20421038
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":82401843}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 82401843
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":36734935}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 36734935
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":34624328}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 34624328
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":10230889}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 10230889
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7673059}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7673059
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":27128344}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 27128344
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":34111016}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 34111016
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8225049}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8225049
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":7771045}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 7771045
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1551200511}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1551200511
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":16855}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 16855
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":71034487}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 71034487
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":69786915}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 69786915
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":102251250}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 102251250
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":101569960}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 101569960
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1437142}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1437142
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1307129}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1307129
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":261714324}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 261714324
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":270275667}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 270275667
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":478019}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 478019
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":628372}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 628372
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":6540752}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 6540752
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":14491}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 14491
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":7110817}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 7110817
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":9634942}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 9634942
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":8475542}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 8475542
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":75691955}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 75691955
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":7630539}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 7630539
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":9321527}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 9321527
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":19756195}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 19756195
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":18111886}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 18111886
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":15757984}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 15757984
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":14047016}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 14047016
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2613356}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2613356
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":3956759}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 3956759
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1789755}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1789755
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":2710360}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 2710360
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":20224719}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 20224719
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":156643861}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 156643861
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":95296854}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 95296854
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":16204}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 16204
+      }
+    },
+    {
+      "round": 0,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":39401455}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 39401455
+      }
+    },
+    {
+      "round": 0,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":310337246}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 310337246
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":73911253}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 73911253
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":7591351}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 7591351
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":13903052}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 13903052
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":13556468}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 13556468
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":107469932}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 107469932
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":103861940}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 103861940
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":9097815}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 9097815
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":7407638}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 7407638
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":72676171}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 72676171
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":7808362}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 7808362
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":32673936}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 32673936
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":25593423}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 25593423
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8609511}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8609511
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8421982}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8421982
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":153325409}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 153325409
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":18507493}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 18507493
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":498129}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 498129
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":520142}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 520142
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":14421}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 14421
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":5957126}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 5957126
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":314331966}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 314331966
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":42615763}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 42615763
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1272217}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1272217
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1312056}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1312056
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":32338227}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 32338227
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":32248985}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 32248985
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2811530}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2811530
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2474491}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2474491
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":68461949}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 68461949
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":66385051}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 66385051
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7732570}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7732570
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":9283611}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 9283611
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":8871329}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 8871329
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":6674651}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 6674651
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":16158258}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 16158258
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":16323783}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 16323783
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1798568}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1798568
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1608566}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1608566
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":261274731}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 261274731
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":256948868}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 256948868
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":15483}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 15483
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":94727913}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 94727913
+      }
+    },
+    {
+      "round": 1,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":16915}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 16915
+      }
+    },
+    {
+      "round": 1,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1572556668}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1572556668
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":69334127}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 69334127
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":71978520}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 71978520
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1564090214}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1564090214
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":17106}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 17106
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2468852}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2468852
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2814995}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2814995
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8300032}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8300032
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":9137934}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 9137934
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":8799193}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 8799193
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":76727965}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 76727965
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":97205170}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 97205170
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":15463}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 15463
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":7704810}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 7704810
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":73678862}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 73678862
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1665781}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1665781
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1443791}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1443791
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":12781879}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 12781879
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":12791474}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 12791474
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":6850011}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 6850011
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":10129045}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 10129045
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7502038}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7502038
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7801552}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7801552
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":27892374}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 27892374
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":34793932}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 34793932
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":6022754}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 6022754
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":15153}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 15153
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":105021133}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 105021133
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":103754472}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 103754472
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":7349135}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 7349135
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":8947308}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 8947308
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":431511}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 431511
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":585029}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 585029
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":2015914}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 2015914
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":2043174}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 2043174
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":33121538}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 33121538
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":32922642}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 32922642
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":262007983}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 262007983
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":271111191}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 271111191
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":21360572}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 21360572
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":153411588}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 153411588
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":41756072}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 41756072
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":307670875}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 307670875
+      }
+    },
+    {
+      "round": 2,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":17344217}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 17344217
+      }
+    },
+    {
+      "round": 2,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":20166099}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 20166099
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7488430}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7488430
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7202046}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7202046
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":111540481}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 111540481
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":103244967}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 103244967
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":73484650}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 73484650
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":66781776}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 66781776
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":12464261}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 12464261
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":14547894}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 14547894
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":17197659}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 17197659
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":19019114}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 19019114
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8985555}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8985555
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8620802}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8620802
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":34621276}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 34621276
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":29400707}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 29400707
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":72362564}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 72362564
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":7157149}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 7157149
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":32843285}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 32843285
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":33916649}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 33916649
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":78283308}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 78283308
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":8111185}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 8111185
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":14501}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 14501
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":6431561}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 6431561
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1969105}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1969105
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1810329}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1810329
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":9573878}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 9573878
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":7751311}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 7751311
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":539571}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 539571
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":439092}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 439092
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":16955}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 16955
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1562807427}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1562807427
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1430472}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1430472
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1557690}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1557690
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":328577324}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 328577324
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":40442243}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 40442243
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":9596435}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 9596435
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":8133961}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 8133961
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":154189544}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 154189544
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":20077312}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 20077312
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":5004143}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 5004143
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":3175520}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 3175520
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":281148569}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 281148569
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":262594731}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 262594731
+      }
+    },
+    {
+      "round": 3,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":15623}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 15623
+      }
+    },
+    {
+      "round": 3,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":95147542}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 95147542
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":39410111}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 39410111
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":298418923}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 298418923
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":258471205}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 258471205
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":265663433}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 265663433
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":23991479}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 23991479
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":155916185}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 155916185
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":27951653}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 27951653
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":33120801}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 33120801
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":8083882}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 8083882
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":80169422}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 80169422
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":23299837}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 23299837
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":12530307}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 12530307
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2418778}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2418778
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2914423}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2914423
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":116446218}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 116446218
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":111894450}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 111894450
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":9304752}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 9304752
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":20191471}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 20191471
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":91561840}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 91561840
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":15714}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 15714
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":29996325}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 29996325
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":34021858}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 34021858
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1957754}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1957754
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":2084862}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 2084862
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":20991367}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 20991367
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":19007065}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 19007065
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":8035288}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 8035288
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":71680343}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 71680343
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":7104388}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 7104388
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":8694167}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 8694167
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":6796852}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 6796852
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":14191}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 14191
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":66235041}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 66235041
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":69262913}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 69262913
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1228522}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1228522
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1827851}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1827851
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8302545}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8302545
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8222388}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8222388
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1538924309}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1538924309
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":17265}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 17265
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":519541}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 519541
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":694420}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 694420
+      }
+    },
+    {
+      "round": 4,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":11267193}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 11267193
+      }
+    },
+    {
+      "round": 4,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7580705}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7580705
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":77534868}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 77534868
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":8676921}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 8676921
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":8944209}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 8944209
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":7695285}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 7695285
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":105751629}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 105751629
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":103892192}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 103892192
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":32915746}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 32915746
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":34978165}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 34978165
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":16482160}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 16482160
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":17218822}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 17218822
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":326130137}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 326130137
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":44520566}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 44520566
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":11638274}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 11638274
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":7158709}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 7158709
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":16845}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 16845
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1653509399}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1653509399
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2814261}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2814261
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2797456}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2797456
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":68575252}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 68575252
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":74189768}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 74189768
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":14485889}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 14485889
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":13895404}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 13895404
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":562334}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 562334
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":457628}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 457628
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":35330218}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 35330218
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":27699693}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 27699693
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1404982}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1404982
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1305735}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1305735
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":15813}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 15813
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":97448460}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 97448460
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":80900438}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 80900438
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":7350716}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 7350716
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":2072622}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 2072622
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1930562}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1930562
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":16734}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 16734
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":6424521}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 6424521
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":269830609}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 269830609
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":261953275}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 261953275
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":150151181}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 150151181
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":19150433}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 19150433
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8166794}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8166794
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8146154}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8146154
+      }
+    },
+    {
+      "round": 5,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7878987}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7878987
+      }
+    },
+    {
+      "round": 5,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7359177}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7359177
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":68100823}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 68100823
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-16\",\"iterations\":100000,\"elapsed_ns\":71395026}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-16",
+        "iterations": 100000,
+        "elapsed_ns": 71395026
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8049490}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8049490
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-1\",\"iterations\":100000,\"elapsed_ns\":8441001}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-1",
+        "iterations": 100000,
+        "elapsed_ns": 8441001
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":104780797}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 104780797
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-64\",\"iterations\":100000,\"elapsed_ns\":109552423}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-64",
+        "iterations": 100000,
+        "elapsed_ns": 109552423
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":7463913}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 7463913
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-64\",\"iterations\":20000,\"elapsed_ns\":75346838}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-64",
+        "iterations": 20000,
+        "elapsed_ns": 75346838
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":17446708}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 17446708
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-128"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-128\",\"iterations\":20000,\"elapsed_ns\":160140346}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-128",
+        "iterations": 20000,
+        "elapsed_ns": 160140346
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7096608}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7096608
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-1\",\"iterations\":100000,\"elapsed_ns\":7820100}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-1",
+        "iterations": 100000,
+        "elapsed_ns": 7820100
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":5883670}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 5883670
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-16\",\"iterations\":10,\"elapsed_ns\":14492}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-16",
+        "iterations": 10,
+        "elapsed_ns": 14492
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":7834112}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 7834112
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-65"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-65\",\"iterations\":20000,\"elapsed_ns\":73744588}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-65",
+        "iterations": 20000,
+        "elapsed_ns": 73744588
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":1563176022}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 1563176022
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-24"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-24\",\"iterations\":10,\"elapsed_ns\":17076}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-24",
+        "iterations": 10,
+        "elapsed_ns": 17076
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1838527}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1838527
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-16\",\"iterations\":20000,\"elapsed_ns\":1806860}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-16",
+        "iterations": 20000,
+        "elapsed_ns": 1806860
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":98933254}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 98933254
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "shared-20"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"shared-20\",\"iterations\":10,\"elapsed_ns\":15654}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "shared-20",
+        "iterations": 10,
+        "elapsed_ns": 15654
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":8580297}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 8580297
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-63"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-63\",\"iterations\":20000,\"elapsed_ns\":9206577}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-63",
+        "iterations": 20000,
+        "elapsed_ns": 9206577
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":58001527}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 58001527
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-256"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-256\",\"iterations\":20000,\"elapsed_ns\":324412252}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-256",
+        "iterations": 20000,
+        "elapsed_ns": 324412252
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":2413170}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 2413170
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-4\",\"iterations\":100000,\"elapsed_ns\":3213597}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-4",
+        "iterations": 100000,
+        "elapsed_ns": 3213597
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1233179}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1233179
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-1\",\"iterations\":100000,\"elapsed_ns\":1462900}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-1",
+        "iterations": 100000,
+        "elapsed_ns": 1462900
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":13142645}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 13142645
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-4\",\"iterations\":100000,\"elapsed_ns\":13859899}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-4",
+        "iterations": 100000,
+        "elapsed_ns": 13859899
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":279493993}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 279493993
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-64\",\"iterations\":100000,\"elapsed_ns\":290973721}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-64",
+        "iterations": 100000,
+        "elapsed_ns": 290973721
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":457239}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 457239
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unique-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unique-4\",\"iterations\":20000,\"elapsed_ns\":498149}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unique-4",
+        "iterations": 20000,
+        "elapsed_ns": 498149
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":16705330}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 16705330
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "unbound-4"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"unbound-4\",\"iterations\":100000,\"elapsed_ns\":16507196}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "unbound-4",
+        "iterations": 100000,
+        "elapsed_ns": 16507196
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":28603334}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 28603334
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-64"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-64\",\"iterations\":100000,\"elapsed_ns\":35911170}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-64",
+        "iterations": 100000,
+        "elapsed_ns": 35911170
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":7670999}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 7670999
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "concrete-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"concrete-16\",\"iterations\":100000,\"elapsed_ns\":10582037}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "concrete-16",
+        "iterations": 100000,
+        "elapsed_ns": 10582037
+      }
+    },
+    {
+      "round": 6,
+      "label": "base",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/base/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":33385994}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 33385994
+      }
+    },
+    {
+      "round": 6,
+      "label": "candidate",
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        ".artifacts/checker-type-operations/unchanged/substitution",
+        "changed-16"
+      ],
+      "exit": 0,
+      "stdout": "{\"case\":\"changed-16\",\"iterations\":100000,\"elapsed_ns\":31587957}\n",
+      "stderr": "",
+      "measurement": {
+        "case": "changed-16",
+        "iterations": 100000,
+        "elapsed_ns": 31587957
+      }
+    }
+  ]
+}

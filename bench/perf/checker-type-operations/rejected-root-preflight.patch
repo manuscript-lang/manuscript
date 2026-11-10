@@ -1,0 +1,12 @@
+diff --git a/crates/ms-check/src/types.rs b/crates/ms-check/src/types.rs
+index 70aa3987c..f19d31046 100644
+--- a/crates/ms-check/src/types.rs
++++ b/crates/ms-check/src/types.rs
+@@ -1223,0 +1224,7 @@ pub fn sub(t: &Ty, bindings: &Subst) -> Ty {
++    // An unchanged shared graph needs no per-path transformation. Variables
++    // still require fresh snapshots, even when no binding replaces them.
++    if !type_any::<true>(t, |t| {
++        t.kind == Kind::Variable || bindings.contains_key(&t.id)
++    }) {
++        return t.clone();
++    }

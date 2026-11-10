@@ -1,0 +1,254 @@
+   Compiling ms-syntax v0.0.0 (/workspace/manuscript/crates/ms-syntax)
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+    Finished `release` profile [optimized + debuginfo] target(s) in 25.05s
+     Running unittests src/lib.rs (target/release/deps/ms_check-bb9f32e4dae432d6)
+
+running 134 tests
+test calls::argument_tests::generic_source_method_value_needs_type_arguments ... ok
+test calls::argument_tests::duplicate_parameter_declaration_does_not_change_call_diagnostics ... ok
+test calls::argument_tests::mixed_calls_keep_inference_defaults_and_callback_context ... ok
+test calls::argument_tests::resolved_slots_match_left_to_right_binding ... ok
+test calls::argument_tests::named_only_constructor_keeps_labels_and_rejects_positional_arguments ... ok
+test calls::argument_tests::recovered_constructor_signature_keeps_original_argument_names ... ok
+test calls::argument_tests::invalid_calls_keep_diagnostic_order ... ok
+test checker::operation_bounds_tests::exported_operations_reject_private_generic_bounds ... ok
+test checker::operation_bounds_tests::operation_bound_visibility_preserves_private_and_public_interfaces ... ok
+test checker::operation_bounds_tests::operations_keep_recursive_and_receiver_dependent_interface_bounds ... ok
+test calls::argument_tests::wide_calls_infer_each_resolved_slot ... ok
+test contracts::method_candidates_tests::ambiguity_preserves_declaration_order ... ok
+test checker::operation_bounds_tests::operations_reject_type_variable_bounds_without_recording_them ... ok
+test contracts::method_candidates_tests::editor_queries_rebuild_candidate_indexes ... ok
+test contracts::method_candidates_tests::generic_argument_conflict_is_reported_once ... ok
+test contracts::method_candidates_tests::generic_receivers_bounds_and_operation_parameters ... ok
+test checker::operation_bounds_tests::operations_reject_non_interface_bounds ... ok
+test contracts::method_candidates_tests::interface_bounds_still_restrict_generic_candidates ... ok
+test contracts::method_candidates_tests::generic_specialization_still_overlaps ... ok
+test contracts::method_candidates_tests::local_extensions_stay_local_and_owner_methods_travel ... ok
+test contracts::method_candidates_tests::merged_inherent_blocks_keep_duplicate_diagnostic ... ok
+test contracts::method_candidates_tests::self_referential_bound_is_not_an_arity_error ... ok
+test contracts::method_candidates_tests::unmet_list_element_bound_names_the_bound ... ok
+test contracts::method_candidates_tests::interface_parameter_inference_failure_is_one_clear_error ... ok
+test contracts::method_candidates_tests::unrelated_methods_have_constant_size_candidate_buckets ... ok
+test diagnostic_cascade_tests::an_argument_error_replaces_the_undetermined_type_argument_error ... ok
+test diagnostic_cascade_tests::an_undetermined_type_argument_alone_is_still_reported ... ok
+test diagnostic_cascade_tests::bound_violation_in_a_signature_points_at_the_written_type ... ok
+test diagnostic_cascade_tests::bound_violation_in_fields_and_results_points_at_the_written_type ... ok
+test diagnostic_cascade_tests::none_without_a_target_names_none ... ok
+test effect_directives::tests::declared_and_allowed_lines ... ok
+test effect_directives::tests::header_needs_a_blank_line ... ok
+test effect_directives::tests::patterns ... ok
+test effect_reach::tests::allow_lines_permit_and_only_tighten ... ok
+test effect_reach::tests::declaration_hides_the_body_from_callers ... ok
+test effect_reach::tests::entry_and_cycles ... ok
+test effect_reach::tests::pure_by_default_and_path_is_reported ... ok
+test contracts::method_candidates_tests::invalid_receivers_do_not_register_methods ... ok
+test generic_defaults_tests::generic_interface_defaults_resolve_receiver_and_operation_parameters ... ok
+test generic_defaults_tests::generic_interface_defaults_still_reject_non_none_values ... ok
+test native::method_type_defaults_tests::bound_method_partial_specialization_records_completed_arguments ... ok
+test native::method_type_defaults_tests::invocation_default_metadata_survives_substitution_and_erases_recursively ... ok
+test contracts::method_parameter_names_tests::method_type_parameters_preserve_shadowable_names ... ok
+test native::method_type_defaults_tests::invocation_defaults_retain_native_origin_without_granting_permissions ... ok
+test generic_defaults_tests::operation_type_parameters_do_not_leak_into_other_defaults ... ok
+test native::method_type_defaults_tests::invocation_defaults_do_not_survive_callable_erasure_or_joins ... ok
+test ownership::classify::tests::concrete_clones_do_not_assume_erased_payloads_are_clonable ... ok
+test ownership::classify::tests::deep_native_collections_visit_every_selected_node ... ok
+test ownership::classify::tests::first_sibling_results_do_not_cross_instances_or_queries ... ok
+test ownership::classify::tests::shared_pair_graph_needs_bounded_classification_work ... ok
+test ownership::facts::tests::binding_flags_accept_the_full_id_range_without_overflow ... ok
+test ownership::facts::tests::binding_flags_preserve_all_combinations_and_exclusive_precedence ... ok
+test ownership::facts::tests::binding_flags_storage_does_not_cover_unrepresented_id_gaps ... ok
+test native::method_type_defaults_tests::method_defaults_fill_only_missing_type_arguments ... ok
+test ownership::walk::type_query_tests::promise_search_bounds_shared_arguments_and_keeps_source_identity ... ok
+test ownership::walk::type_query_tests::promise_search_keeps_argument_only_edges ... ok
+test radix_literal_tests::decimal_and_fractional_spelling_keep_their_kind ... ok
+test native::method_type_defaults_tests::method_type_defaults_reject_unsatisfied_bounds_and_forward_references ... ok
+test radix_literal_tests::hexadecimal_overflow_is_diagnosed ... ok
+test radix_literal_tests::sized_integer_context_accepts_hex_letters ... ok
+test radix_literal_tests::unary_identity_sign_preserves_sized_literal_context ... ok
+test radix_literal_tests::hex_zero_divisors_and_out_of_bounds_indices_are_constant_faults ... ok
+test record_fields_tests::record_fields_bundled_and_source_standard_records_have_indices ... ok
+test record_fields_tests::record_fields_diagnostics_remain_stable ... ok
+test ownership::facts::tests::repeated_checks_keep_storage_bounded_and_live_program_facts_valid ... ok
+test record_fields_tests::record_fields_duplicate_names_keep_the_first_declared_field ... ok
+test record_fields_tests::record_fields_empty_primitive_and_monomorphic_lookups ... ok
+test record_fields_tests::record_fields_lookup_does_not_substitute_unselected_fields ... ok
+test record_fields_tests::record_fields_partial_substitution_takes_fresh_variable_snapshots ... ok
+test record_fields_tests::record_fields_members_keep_generic_types_and_method_fallbacks ... ok
+test record_fields_tests::record_fields_recovered_declarations_keep_source_positions ... ok
+test recursion::tests::all_three_node_graphs_match_original_diagnostics ... ok
+test recursion::tests::ancestor_context_and_failure_order_are_preserved ... ok
+test recursion::tests::branch_exclusive_prefix_into_preserving_cycle ... ok
+test recursion::tests::reused_success_does_not_hide_a_later_changing_specialization ... ok
+test stdlib::tests::a_bodied_inherent_impl_becomes_an_interface_and_a_contract_impl ... ok
+test stdlib::tests::a_default_argument_on_a_source_method_is_rejected ... ok
+test stdlib::tests::a_file_without_bodies_is_not_split ... ok
+test recursion::tests::distinct_diamond_arms_into_mutual_cycle ... ok
+test stdlib::tests::dropping_a_session_releases_its_definitions ... ok
+test stdlib::tests::pure_source_modules_load_on_first_lookup ... ok
+test radix_literal_tests::unary_literal_context_keeps_kind_range_and_named_values ... ok
+test suggestions::tests::habit_names_are_fixed ... ok
+test suggestions::tests::immutable_binding_becomes_var ... ok
+test suggestions::tests::import_hint_inserts_at_file_start ... ok
+test suggestions::tests::nullary_call_parens_are_dropped ... ok
+test suggestions::tests::only_a_single_suggestion_is_a_fix ... ok
+test stdlib::tests::sessions_on_one_thread_are_independent ... ok
+test contracts::method_parameter_names_tests::method_type_parameters_reject_every_fixed_type_name ... ok
+test type_argument_defaults_tests::exported_generic_defaults_cannot_expose_private_types ... ok
+test type_argument_defaults_tests::nontrailing_type_defaults_keep_type_and_function_application_diagnostics ... ok
+test type_argument_defaults_tests::method_type_defaults_preserve_receiver_parameters_and_self ... ok
+test type_argument_defaults_tests::recovered_type_defaults_still_complete_a_fully_defaulted_suffix ... ok
+test type_argument_defaults_tests::required_type_arity_omits_only_a_fully_defaulted_suffix ... ok
+test type_argument_defaults_tests::nontrailing_type_defaults_report_errors_without_panicking ... ok
+test type_argument_defaults_tests::type_default_bounds_see_complete_record_fields_in_either_order ... ok
+test type_argument_defaults_tests::type_defaults_see_later_local_implementations ... ok
+test type_argument_defaults_tests::type_defaults_validate_nested_applications_without_explicit_bounds ... ok
+test type_classification_tests::declaration_facts_keep_qualified_ids_nominal_rules_and_collection_overrides ... ok
+test type_classification_tests::declaration_facts_preserve_resource_priority_and_argument_clonability ... ok
+test type_classification_tests::incomplete_definitions_and_function_arguments_remain_bounded ... ok
+test type_classification_tests::named_native_clone_facts_keep_name_kind_and_result_guards ... ok
+test type_classification_tests::native_collection_walk_keeps_declared_priority_and_argument_selection ... ok
+test type_classification_tests::nested_generic_instances_reach_resource_and_bounds_are_not_cached ... ok
+test type_classification_tests::nominal_depth_cutoff_still_allows_sixty_five_active_frames ... ok
+test type_classification_tests::nominal_types_without_payloads_do_not_need_argument_bindings ... ok
+test type_classification_tests::payloads_after_empty_cases_keep_argument_bounds_fresh ... ok
+test type_classification_tests::readonly_bound_queries_preserve_independent_snapshots_and_release_borrows ... ok
+test type_classification_tests::recursive_and_mutually_recursive_alternatives_stay_move ... ok
+test type_classification_tests::same_names_from_different_modules_keep_resource_cleanup ... ok
+test type_classification_tests::shared_first_children_keep_cutoff_and_late_resource_rules ... ok
+test type_classification_tests::shared_phantom_arguments_do_not_expand_into_display_strings ... ok
+test type_graph_tests::callable_edges_remain_part_of_only_callable_queries ... ok
+test type_graph_tests::inference_resolution_bounds_shared_graphs_and_keeps_late_failures ... ok
+test type_graph_tests::inference_resolution_preserves_all_edges_and_invalid_policy ... ok
+test type_graph_tests::required_types_erase_permissions_in_every_original_child_position ... ok
+test type_graph_tests::required_types_preserve_sharing_and_changed_variable_snapshots ... ok
+test type_graph_tests::searches_keep_late_matches_and_do_not_cache_across_queries ... ok
+test type_graph_tests::shared_negative_search_visits_a_bounded_number_of_nodes ... ok
+test type_graph_tests::structural_equality_keeps_missing_results_and_late_mismatches ... ok
+test type_substitution_tests::concrete_substitution_keeps_nested_types_and_callable_permissions ... ok
+test type_substitution_tests::result_only_substitution_keeps_concrete_arguments_and_parameters ... ok
+test type_substitution_tests::substitution_keeps_prefixes_suffixes_labels_and_result_at_each_changed_slot ... ok
+test type_substitution_tests::unbound_nested_variables_snapshot_bounds_and_defaults_even_without_bindings ... ok
+test tytable_tests::activated_queries_keep_identity_modes_and_function_metadata ... ok
+test tytable_tests::cache_storage_reuse_keeps_large_tiny_and_fresh_queries_independent ... ok
+test tytable_tests::equal_trees_share_an_id_and_argument_order_matters ... ok
+test tytable_tests::identity_still_ignores_nonfunction_callable_edges_and_variable_snapshots ... ok
+test stdlib::tests::every_embedded_module_type_checks ... ok
+test tytable_tests::shared_fibonacci_and_shallow_fanout_keep_ids_and_representatives ... ok
+test tytable_tests::var_parameters_and_results_distinguish_functions ... ok
+test type_argument_defaults_tests::invalid_trailing_type_defaults_report_errors_without_panicking ... ok
+test type_argument_defaults_tests::type_defaults_keep_self_forward_and_other_method_parameters_out_of_scope ... ok
+test tytable_tests::ids_match_rendered_keys_across_many_types ... ok
+
+test result: ok. 134 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.54s
+
+     Running unittests src/bin/ms-check-dev.rs (target/release/deps/ms_check_dev-45ceabe9955bac06)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/main.rs (target/release/deps/it-ce5db42c6dd919e2)
+
+running 91 tests
+test call_chains::a_long_call_chain_checks_in_linear_time ... ok
+test call_chains::a_match_over_many_cases_checks_in_linear_time ... ok
+test callable_identity::callable_replacement_ignores_parameter_names ... ok
+test callable_identity::callable_parameter_and_result_types_remain_invariant ... ok
+test callable_identity::callback_results_ignore_callable_parameter_names ... ok
+test callable_identity::declared_call_labels_remain_checked ... ok
+test callable_identity::generic_arguments_ignore_callable_parameter_names ... ok
+test callback_identity::generic_receiver_patterns_still_detect_overlapping_callbacks ... ok
+test callable_identity::inferred_collections_and_constructors_ignore_callable_parameter_names ... ok
+test callback_identity::implementation_methods_require_invariant_callback_arguments ... ok
+test callback_identity::implementation_receivers_distinguish_callback_mutability ... ok
+test constant_index::a_constant_list_and_map_index_like_locals ... ok
+test diagnostic_wording::a_member_of_a_non_enum_type_name_does_not_list_empty_cases ... ok
+test callback_identity::receiver_callbacks_remain_distinct_inside_parameters_and_results ... ok
+test diagnostic_wording::a_move_repeated_by_a_loop_says_so_instead_of_naming_its_own_position ... ok
+test call_chains::many_assigned_locals_check_in_linear_time ... ok
+test error_values::context_free_string_error_still_needs_a_success_type ... ok
+test diagnostic_wording::ownership_errors_never_carry_a_clone_fix ... ok
+test error_values::named_and_primitive_errors_need_no_interface ... ok
+test error_values::reportless_failures_do_not_widen_or_cross_unrelated_boundaries ... ok
+test follow_on_errors::a_mismatched_operator_in_an_argument_does_not_also_ask_for_type_arguments ... ok
+test follow_on_errors::a_field_read_through_an_optional_or_result_names_the_unwrap ... ok
+test follow_on_errors::a_promise_used_as_its_payload_explains_what_wait_returns ... ok
+test follow_on_errors::an_impl_target_that_is_not_an_interface_does_not_also_report_extra_operations ... ok
+test follow_on_errors::an_unknown_name_in_interpolation_is_the_only_error ... ok
+test follow_on_errors::any_fault_in_an_argument_is_the_only_error ... ok
+test diagnostic_wording::loop_borrow_remedy_clones_the_iterable_not_its_root ... ok
+test generic_recursion::acyclic_tail_does_not_hide_a_changing_cycle ... ok
+test generic_recursion::changing_cycle_keeps_ancestor_sensitive_diagnostics_and_order ... ok
+test generic_recursion::chained_generic_types_are_checked_once_each ... ok
+test generic_recursion::deeply_nested_type_keeps_structural_properties ... ok
+test generic_recursion::pruning_acyclic_types_keeps_the_changing_cycle_diagnostic ... ok
+test call_chains::many_implementations_of_one_interface_check_in_linear_time ... ok
+test follow_on_errors::an_import_from_the_wrong_standard_module_names_the_right_one ... ok
+test generic_recursion::preserving_cycles_and_branching_paths_to_them_remain_valid ... ok
+test generic_recursion::same_spelling_in_other_modules_does_not_change_recursive_identity ... ok
+test generic_recursion::recursive_record_with_list_of_itself_checks ... ok
+test generic_recursion::shared_generic_dag_does_not_expand_every_call_path ... ok
+test generic_recursion::shared_match_types_do_not_expand_every_type_path ... ok
+test golden::matches_oracle_shard_3 ... ok
+test golden::matches_oracle_shard_0 has been running for over 60 seconds
+test golden::matches_oracle_shard_1 has been running for over 60 seconds
+test golden::matches_oracle_shard_2 has been running for over 60 seconds
+test impl_parameter_names::matching_parameter_is_accepted ... ok
+test impl_parameter_names::renamed_parameter_is_rejected ... ok
+test impl_parameter_names::standard_contract_names_are_checked ... ok
+test golden::matches_oracle_shard_0 ... ok
+test import_collision::same_named_std_imports_explain_the_wrapper_module ... ok
+test list_methods::bounded_operations_apply_without_an_import ... ok
+test long_chains::constant_overflow_is_still_found_at_the_end_of_a_chain ... ok
+test list_methods::operations_need_their_element_bound ... ok
+test long_chains::long_literal_sum_checks_quickly ... ok
+test long_chains::many_live_borrows_check_quickly ... ok
+test match_patterns::failed_chain_link_does_not_add_an_inference_error ... ok
+test match_patterns::negative_and_positive_values_stay_distinct ... ok
+test match_patterns::explicit_qualifier_must_be_the_matched_application ... ok
+test match_patterns::negative_zero_repeats_zero ... ok
+test member_names::distinct_names_are_accepted ... ok
+test member_names::interface_operation_named_like_a_field_is_accepted ... ok
+test member_names::method_named_like_a_field_is_rejected ... ok
+test module_exports::direct_imports_keep_exported_declarations_and_nominal_identity ... ok
+test module_exports::imports_do_not_reexport_functions_constants_records_or_interfaces ... ok
+test module_exports::imports_do_not_export_ambient_primitive_or_prelude_names ... ok
+test opaque_cases::hidden_opaque_cases_do_not_make_visible_cases_ambiguous ... ok
+test opaque_cases::qualified_opaque_cases_remain_hidden ... ok
+test optional_result_return::ok_wrapped_into_an_optional_result_is_checked ... ok
+test golden::matches_oracle_shard_1 ... ok
+test ownership::facts_expose_moves_modes_and_drops ... ok
+test golden::matches_oracle_shard_2 ... ok
+test prelude_import_fixes::a_flat_import_loses_one_name_and_keeps_its_spacing ... ok
+test prelude_import_fixes::a_trailing_comma_group_stays_parseable_after_each_fix ... ok
+test promise_fixes::a_bound_promise_waits_where_its_result_is_used ... ok
+test promise_fixes::a_member_of_the_result_waits_first ... ok
+test promise_fixes::a_promise_returned_as_its_result_waits ... ok
+test promise_fixes::a_promise_waited_already_is_unchanged ... ok
+test promise_fixes::try_of_a_promise_waits ... ok
+test subcodes::every_sub_code_is_reached_by_a_real_diagnostic ... ok
+test subcodes::sub_codes_are_unique_and_extend_a_family_code ... ok
+test type_display::a_shared_generic_type_mismatch_stays_small ... ok
+test wrapper_passthrough::a_collection_cannot_hand_over_one_of_its_elements ... ok
+test wrapper_passthrough::bound_collection_reads_copy_the_element_they_hand_out ... ok
+test opaque_cases::imported_opaque_cases_cannot_be_built_without_qualification ... ok
+test wrapper_passthrough::clonable_bound_methods_keep_reusable_semantics ... ok
+test wrapper_passthrough::derived_passthrough_covers_result_get_and_discarding_method_values ... ok
+test wrapper_passthrough::preserved_payload_transfer_and_transform_controls ... ok
+test wrapper_passthrough::preserved_bound_payloads_require_clonable ... ok
+test wrapper_passthrough::reusable_passthrough_requires_clonable_receiver ... ok
+test wrapper_passthrough::preserved_payloads_cannot_be_duplicated ... ok
+test wrapper_passthrough::source_discard_names_do_not_imply_native_collection_effects ... ok
+test wrapper_passthrough::specialized_source_receivers_preserve_borrow_and_overlap_checks ... ok
+test wrapper_passthrough::unique_wrapper_can_transfer_but_source_identity_still_borrows ... ok
+test wrapper_passthrough::unique_receiver_cannot_be_kept_beside_passthrough_result ... ok
+test ownership::accepted_programs_have_no_diagnostics ... ok
+test ownership::rejected_programs_report_exactly_the_marked_lines ... ok
+
+test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 71.80s
+
+   Doc-tests ms_check
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
