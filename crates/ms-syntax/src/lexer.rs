@@ -464,18 +464,28 @@ impl Scanner<'_> {
                     return Ok(());
                 }
             }
+            // A leading tab is one indent level: four columns, so every later
+            // column and `leading` count a tab as four spaces.
             let mut leading = 0usize;
-            while self.offset < n && self.src[self.offset] == b' ' {
-                self.advance();
-                leading += 1;
+            let mut spaced = false;
+            while self.offset < n && matches!(self.src[self.offset], b' ' | b'\t') {
+                if self.src[self.offset] == b'\t' {
+                    if spaced {
+                        return self.fail(
+                            "a tab cannot follow spaces in indentation; indent with tabs, then align with spaces",
+                        );
+                    }
+                    self.advance();
+                    self.column += 3;
+                    leading += 4;
+                } else {
+                    self.advance();
+                    spaced = true;
+                    leading += 1;
+                }
             }
             if self.offset == n {
                 break;
-            }
-            if self.src[self.offset] == b'\t' {
-                return self.fail(
-                    "tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)",
-                );
             }
             if self.at_line_comment() {
                 self.skip_comment()?;
@@ -607,7 +617,7 @@ impl Scanner<'_> {
                 }
                 if b == b'\t' || b == b'\r' {
                     return self.fail(
-                        "tabs and lone carriage returns are not allowed in code; use spaces, and line endings of LF or CRLF",
+                        "tabs are allowed only in indentation, and lone carriage returns not at all; use spaces between tokens, and line endings of LF or CRLF",
                     );
                 }
                 if b == b'r' && self.src[self.offset + 1..].starts_with(b"\"\"\"") {
