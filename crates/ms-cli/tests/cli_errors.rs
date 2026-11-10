@@ -112,6 +112,20 @@ fn path_in_command_position_suggests_run() {
 }
 
 #[test]
+fn duration_validation_truncates_each_component_before_applying_limits() {
+    for (command, flag, value) in [
+        ("test", "--fuzz", "0.5ns0.5ns"),
+        ("bench", "--time", "0.999999999999999999ms"),
+        ("bench", "--time", "0.5ms0.4999999ms0.0000001ms"),
+    ] {
+        let (status, err) = ms(&[command, "missing.ms", flag, value]);
+        assert_eq!(status, 2, "{command} {flag} {value}: {err}");
+        assert!(err.contains(&format!("invalid {flag}")), "{err}");
+        assert!(!err.contains("file not found:"), "{err}");
+    }
+}
+
+#[test]
 fn help_spelling_as_an_option_value_is_validated_as_a_value() {
     for args in [
         ["diagram", "main.ms", "--view", "--help"],

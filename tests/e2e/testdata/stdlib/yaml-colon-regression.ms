@@ -40,8 +40,7 @@ test "YAML flow colon separators retain quoted and empty values":
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected malformed YAML, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
     cause.details["reason"] | try expect_equal("unexpected mapping colon")
     return ok(unit)

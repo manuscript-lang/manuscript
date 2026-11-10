@@ -54,8 +54,7 @@ fn say(s: String) Unit:
     stdout().write("{s}\n").get()
 
 fn check(fail: Bool) Int!Oops:
-    if fail:
-        return error(Oops("no"))
+    if fail: return error(Oops("no"))
 
     return ok(1)
 

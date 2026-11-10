@@ -103,7 +103,7 @@ test "UTF8 supports forward and reverse walks without normalization":
     while position < data.length():
         let decoded = decode_first(data, position) | try expect_ok
         forward.append(decoded.scalar)
-        position = position + decoded.width
+        position += decoded.width
 
     forward | try expect_equal([233, 128578, 101, 769, 0])
 
@@ -112,7 +112,7 @@ test "UTF8 supports forward and reverse walks without normalization":
     while position > 0:
         let decoded = decode_last(data, position) | try expect_ok
         backward.append(decoded.scalar)
-        position = position - decoded.width
+        position -= decoded.width
 
     backward | try expect_equal([0, 769, 101, 128578, 233])
 

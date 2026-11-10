@@ -3,7 +3,6 @@
 import (
     dist_arch, dist_os, host, note, run_program, capture from "./lib.ms",
     create_directory, temporary from "@std/os/fs.ms",
-    stdout from "@std/io/io.ms",
 )
 
 export fn main() Int:
@@ -42,5 +41,5 @@ export fn main() Int:
         return 1
 
     code = run_program(ms, ["test", "{hello}/test.ms"])
-    if code == 0: stdout().write("dist-check ok\n").get()
+    if code == 0: print("dist-check ok")
     return code

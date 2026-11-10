@@ -43,7 +43,7 @@ try server.wait()
 
 Here `handler` is built as in the test. The wait lasts until shutdown or a server error; SIGINT and SIGTERM initiate shutdown.
 
-`serve(address, handler, options)` returns an `HttpServer`. `options.cores` limits the runtime to that many threads; none means every core, and `cores: 1` runs the same code on one thread.
+`serve(address, handler, options)` returns an `HttpServer`; `options` is optional and defaults to `HttpServerOptions()`. An `HttpResponse` likewise needs only `status` and `body`; `headers` defaults to empty. `options.cores` limits the runtime to that many threads; none means every core, and `cores: 1` runs the same code on one thread.
 
 - `address()` is the bound address, so `serve(":0", ...)` picks a free port.
 - `wait(timeout: ...)` pauses until the server has stopped.

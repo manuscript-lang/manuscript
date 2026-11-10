@@ -17,8 +17,7 @@ impl Closeable for Token:
         if not self.closed:
             self.closed = true
             try append_file(self.log, "close {self.id}\n").wait()
-            if self.fail:
-                return error(Error("close failed", kind: "ECLOSE"))
+            if self.fail: return error(Error("close failed", kind: "ECLOSE"))
 
         return ok(unit)
 
@@ -27,8 +26,7 @@ fn token(log: String, id: Int, fail: Bool = false) Token:
     return Token(log.clone(), id, fail: fail)
 
 fn events(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 

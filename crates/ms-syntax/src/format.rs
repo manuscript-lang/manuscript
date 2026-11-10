@@ -14,6 +14,8 @@ use crate::visit::{self, Visitor};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+mod compact;
+
 const WIDTH: usize = 88;
 
 /// Formats `source`. Invalid syntax never produces output.
@@ -112,6 +114,11 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     let mut normalized = source.replace("\r\n", "\n");
     let mut lines: Vec<String> = normalized.split('\n').map(str::to_string).collect();
     let module = parse(file, &normalized)?;
+    if let Some(compacted) = compact::compact(file, &module, &normalized)
+        && parse(file, &compacted).is_ok()
+    {
+        return format_lines(file, &compacted);
+    }
     let breaks = paragraph_breaks(&module, &lines);
     let mut lexed = lex(file, &normalized)?.tokens;
     if let Some(grouped) = group_imports(&normalized, &lexed) {
@@ -839,7 +846,7 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
                 let ExprKind::Lambda(l) = &arg.value.kind else {
                     continue;
                 };
-                let [body] = l.body.as_slice() else { continue };
+                let [body] = l.written_body() else { continue };
                 let StmtKind::Return(Some(value)) = &body.kind else {
                     continue;
                 };
@@ -896,7 +903,7 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
 /// A lambda whose body is a suite of several statements; a one-expression
 /// lambda stays inline when the call fits the line.
 fn block_lambda(e: &Expr) -> bool {
-    matches!(&e.kind, ExprKind::Lambda(l) if l.body.len() > 1)
+    matches!(&e.kind, ExprKind::Lambda(l) if l.written_body().len() > 1)
 }
 
 fn suite_expression(mut e: &Expr) -> bool {
@@ -1783,6 +1790,9 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
     }
     impl Visitor for G<'_> {
         fn stmt(&mut self, s: &Stmt) {
+            if s.is_destructure_head() {
+                return;
+            }
             let Some(value) = statement_value(s) else {
                 return;
             };

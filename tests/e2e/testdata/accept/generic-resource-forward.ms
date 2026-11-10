@@ -21,8 +21,7 @@ type Tokens:
 impl Source[Token] for Tokens:
     var fn next() Token?!:
         self.at += 1
-        if self.at <= 2:
-            return ok(Token(self.log.clone(), self.at))
+        if self.at <= 2: return ok(Token(self.log.clone(), self.at))
 
         return ok(none)
 
@@ -35,10 +34,8 @@ type Forward[T]:
 impl Iterator[T!] for Forward[T]:
     var fn next() T!?:
         let result = self.source.next()
-        if result.is_error():
-            return error(result.err())
-        if let item = result.get():
-            return ok(item)
+        if result.is_error(): return error(result.err())
+        if let item = result.get(): return ok(item)
 
         return none
 
@@ -51,8 +48,7 @@ fn first_body(log: String) Unit!:
     return ok(unit)
 
 fn events(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 

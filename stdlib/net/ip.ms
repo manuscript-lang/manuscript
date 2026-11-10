@@ -56,8 +56,7 @@ impl IpAddress:
 
     // Returns the normalized address family.
     fn family() IpFamily:
-        if msstd_net_ip_address_family(self):
-            return IPv6
+        if msstd_net_ip_address_family(self): return IPv6
 
         return IPv4
 

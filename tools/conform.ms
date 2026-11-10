@@ -40,7 +40,7 @@ export fn main() Int:
     )
     let host_list = "tests/conformance/expect-fail.{host()}.txt"
     if access(host_list, 0).is_ok():
-        text = text + read_file(host_list).wait().get().decode_utf8().get("")
+        text += read_file(host_list).wait().get().decode_utf8().get("")
     write_file(allow, text, replace: true).wait().get()
 
     let conform = "target/debug/ms-conform{exe()}"

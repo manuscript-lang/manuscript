@@ -51,10 +51,8 @@ test "break and continue work in a stream loop":
 
     for line in lines(memory("1\nskip\n3\n4\n")):
         let text = line
-        if text == "skip":
-            continue
-        if text == "4":
-            break
+        if text == "skip": continue
+        if text == "4": break
 
         seen.append(text.clone())
 
@@ -65,8 +63,7 @@ type Countdown:
 
 impl Iterator[Int] for Countdown:
     var fn next() Int?:
-        if self.left == 0:
-            return none
+        if self.left == 0: return none
 
         self.left -= 1
         return (self.left + 1)

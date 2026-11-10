@@ -107,7 +107,7 @@ export fn main() Int:
     for a in arguments(): shapes.append(a.clone())
 
     let compile_only = shapes.length() > 0
-    if shapes.length() == 0: shapes = SHAPES.clone()
+    if shapes.is_empty(): shapes = SHAPES.clone()
 
     let scratch = temporary("ms-scaling-").get()
     var failures = 0
@@ -173,7 +173,7 @@ export fn main() Int:
         let big = run_phases(ms.clone(), program.clone(), 100000, limit)
         checked += 1
 
-        if mid.length() == 0 or big.length() == 0:
+        if mid.is_empty() or big.is_empty():
             failures += 1
             say(
                 "fail: tests/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"

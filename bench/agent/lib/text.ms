@@ -119,7 +119,7 @@ export fn words(text: String) List[String]:
             if current != "": out.append(current.clone())
             current = ""
         else:
-            current = current + ch
+            current += ch
 
     if current != "": out.append(current.clone())
     return out

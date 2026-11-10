@@ -12,8 +12,7 @@ type Item:
 impl Closeable for Item:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
-        if self.fail:
-            return error(Error("close failed"))
+        if self.fail: return error(Error("close failed"))
 
         return ok(unit)
 

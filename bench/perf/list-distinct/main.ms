@@ -102,13 +102,9 @@ export fn main() Int:
     let size = args[1].parse_int().get()
     let unique = args[2].parse_int().get()
     let repeats = args[3].parse_int().get()
-    if args[0] == "int":
-        return ints(size, unique, repeats)
-    if args[0] == "string":
-        return strings(size, unique, repeats)
-    if args[0] == "int_set":
-        return int_set(size, unique, repeats)
-    if args[0] == "string_set":
-        return string_set(size, unique, repeats)
+    if args[0] == "int": return ints(size, unique, repeats)
+    if args[0] == "string": return strings(size, unique, repeats)
+    if args[0] == "int_set": return int_set(size, unique, repeats)
+    if args[0] == "string_set": return string_set(size, unique, repeats)
 
     return sets(args[0], size, unique, repeats)

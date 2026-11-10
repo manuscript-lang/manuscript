@@ -15,16 +15,14 @@ impl Closeable for Door:
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
 fn first_even(log: String) Int:
     let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     for d in doors:
-        if d.id % 2 == 0:
-            return d.id
+        if d.id % 2 == 0: return d.id
     return -1
 
 fn until_two(log: String) Int:
@@ -32,9 +30,8 @@ fn until_two(log: String) Int:
     var n = 0
 
     for d in doors:
-        n = n + d.id
-        if d.id == 2:
-            break
+        n += d.id
+        if d.id == 2: break
 
     return n
 

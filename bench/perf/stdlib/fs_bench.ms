@@ -66,8 +66,7 @@ bench "fs.list_200":
         populate(root)
 
         fn work() Result[Unit, Error]:
-            if let entries = list(root):
-                return keep(entries.length())
+            if let entries = list(root): return keep(entries.length())
 
             return keep(0)
 

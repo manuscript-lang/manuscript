@@ -47,7 +47,7 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
         out
         + "| group | runs | pass | first build ok | tokens (in+out) | turns | wall s | cost $ |\n"
     )
-    out = out + "|---|---:|---:|---:|---:|---:|---:|---:|\n"
+    out += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
 
     for k in runs.map(key).distinct().sorted():
         let rs = runs.filter(fn r: key(r) == k)
@@ -70,7 +70,7 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
             out
             + "| {tokens} | {average(ok, fn r: r.usage.turns.to_float())} | {wall_mean(ok)} "
         )
-        out = out + "| {average(ok, fn r: r.usage.cost_usd)} |\n"
+        out += "| {average(ok, fn r: r.usage.cost_usd)} |\n"
 
     return out
 

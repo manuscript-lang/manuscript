@@ -1,0 +1,22 @@
+fn f(xs: List[Int], n: Int) Int:
+    var total = 0
+    var i = 0
+    while i < n:
+        total = total + xs[i]
+        i = i + 1
+        total = total - i * 2
+        total = total * 2 + 1
+        total = total - 1 - 2
+        total = total + (3)
+        if total > 100:
+            return total
+        if i == 7:
+            break
+        if i == 8:
+            // keep
+            continue
+        if i == 9:
+            return 1
+        else:
+            return 2
+    return total

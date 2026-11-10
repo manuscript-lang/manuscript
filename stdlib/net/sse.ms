@@ -78,14 +78,12 @@ export fn sse_events(
     )
 
 fn positive(limit: Int?) Bool:
-    if let maximum = limit:
-        return maximum > 0
+    if let maximum = limit: return maximum > 0
 
     return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value > maximum
+    if let maximum = limit: return value > maximum
 
     return false
 

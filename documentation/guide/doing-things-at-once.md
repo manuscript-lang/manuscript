@@ -13,7 +13,7 @@ import read_file from "@std/os/fs.ms"
 import wait_all from "@std/concurrency/promise.ms"
 
 fn count_rows(text: String) Int:
-    return text.split("\n").filter(fn line: line.length() > 0).length()
+    return text.split("\n").filter(fn line: not line.is_empty()).length()
 
 fn run(paths: List[String]) Int!:
     let reads = paths.map(fn path: read_file(path))

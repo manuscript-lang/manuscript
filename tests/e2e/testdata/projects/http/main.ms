@@ -21,8 +21,7 @@ export fn main() Int:
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
         let server = acquired
-        if stdout().write("{server.address()}\n").is_error():
-            return 1
+        if stdout().write("{server.address()}\n").is_error(): return 1
 
         let _ignored = server.wait()
         return 0

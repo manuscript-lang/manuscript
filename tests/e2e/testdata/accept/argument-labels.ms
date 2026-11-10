@@ -12,7 +12,7 @@ fn identity[T](value: T) T:
 fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
-        total = total + value
+        total += value
     return total
 
 fn apply(transform: fn(Int) Int) Int:

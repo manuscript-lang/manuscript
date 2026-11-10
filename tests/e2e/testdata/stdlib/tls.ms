@@ -147,8 +147,7 @@ fn answer_ping(var connection: Connection) Int:
     let ping = recv(var connection, 3.seconds())
     let pong = send(var connection, "pong")
     connection.close().get(none)
-    if ping.is_error() or pong.is_error():
-        return 0
+    if ping.is_error() or pong.is_error(): return 0
 
     return 1
 

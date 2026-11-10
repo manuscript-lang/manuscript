@@ -28,8 +28,7 @@ export fn main() Int:
 
             values.append(value)
             texts.append(value.to_string())
-            if texts[i].parse_int().get() != value:
-                return 1
+            if texts[i].parse_int().get() != value: return 1
 
         if operation == "signed":
             let start = monotonic()
@@ -119,8 +118,7 @@ export fn main() Int:
         else if dataset == "unicode":
             text = "١"
 
-        if not text.parse_float().is_none():
-            return 1
+        if not text.parse_float().is_none(): return 1
 
         let start = monotonic()
         for unused in 0..count:
@@ -133,7 +131,6 @@ export fn main() Int:
     else:
         return 2
 
-    if checksum != expected_checksum or last != expected_last:
-        return 1
+    if checksum != expected_checksum or last != expected_last: return 1
 
     return 0

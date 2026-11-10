@@ -57,8 +57,7 @@ bench "archive.zip_pack":
     let list = entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, ArchiveFormat.Zip):
-            return keep(b.length())
+        if let b = pack(list, ArchiveFormat.Zip): return keep(b.length())
 
         return keep(0)
 
@@ -68,8 +67,7 @@ bench "archive.tar_pack":
     let list = entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, ArchiveFormat.Tar):
-            return keep(b.length())
+        if let b = pack(list, ArchiveFormat.Tar): return keep(b.length())
 
         return keep(0)
 
@@ -78,8 +76,7 @@ bench "archive.tar_pack":
 bench "archive.zip_unpack":
     if let packed = pack(entries(2000), ArchiveFormat.Zip):
         fn work() Result[Unit, Error]:
-            if let e = unpack(packed, ArchiveFormat.Zip):
-                return keep(e.length())
+            if let e = unpack(packed, ArchiveFormat.Zip): return keep(e.length())
 
             return keep(0)
 

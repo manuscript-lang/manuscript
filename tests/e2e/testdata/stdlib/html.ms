@@ -184,3 +184,8 @@ test "unescape keeps references without digits literal":
     try expect_equal(unescape("&#x"), "&#x")
     try expect_equal(unescape("&#xg"), "&#xg")
     try expect_equal(unescape("&#x;"), "&#x;")
+
+test "unescape maps the HTML5 nGt and nLt references to two scalars":
+    try expect_equal(unescape("&nGt;"), "\u{226b}\u{20d2}")
+    try expect_equal(unescape("&nLt;"), "\u{226a}\u{20d2}")
+    try expect_equal(unescape("&nGtv;"), "\u{226b}\u{338}")

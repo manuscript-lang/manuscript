@@ -286,7 +286,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
     for index in 0..11:
         block[134 - index] = 48 + left % 8
-        left = left / 8
+        left /= 8
 
     block[156] = flag
 
@@ -303,7 +303,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
     for index in 0..6:
         block[153 - index] = 48 + rest % 8
-        rest = rest / 8
+        rest /= 8
 
     block[154] = 0
     block[155] = 32

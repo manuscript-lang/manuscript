@@ -7,7 +7,7 @@ import (
     monotonic from "@std/time.ms",
     access, create_directory, read_file, remove, write_file from "@std/os/fs.ms",
     is_absolute, join from "@std/os/path.ms",
-    stderr, stdin, stdout from "@std/io/io.ms",
+    stderr, stdin from "@std/io/io.ms",
     read_all from "@std/io/streams.ms",
     JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
     hex_encode from "@std/data/encoding.ms",
@@ -206,7 +206,7 @@ export fn sample(exe: String, arguments: List[String], input: String = "") Strin
 // Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
 export fn finish(result: String!) Int:
     if let text = result:
-        stdout().write(text + "\n").get()
+        print(text)
         return 0
 
     return fail(result.err().message.clone())

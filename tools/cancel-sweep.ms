@@ -148,7 +148,7 @@ export fn main() Int:
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])).get(
             []
         ):

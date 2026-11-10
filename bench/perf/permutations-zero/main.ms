@@ -19,8 +19,7 @@ export fn main() Int:
 
     for unused in 0..repeats:
         let result = permutations(values, size)
-        if result.length() != expected or result[0].length() != size:
-            return 1
+        if result.length() != expected or result[0].length() != size: return 1
 
         checksum += result.length()
 

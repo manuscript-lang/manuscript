@@ -91,8 +91,7 @@ fn decode_ending(data: Bytes, stop: Int) Int:
         let value = decode_at(data, stop - width, stop)
         if value == INCOMPLETE:
             incomplete = true
-        if value >= 0 and scalar_width(value) == width:
-            return value
+        if value >= 0 and scalar_width(value) == width: return value
 
     return if incomplete: INCOMPLETE else: INVALID
 

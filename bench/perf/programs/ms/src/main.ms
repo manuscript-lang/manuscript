@@ -22,8 +22,7 @@ enum Shape:
     Tri(b: Int)
 
 fn got_line(var input: ReadStream[String]) Bool:
-    if let line = input.next():
-        return line.is_some()
+    if let line = input.next(): return line.is_some()
 
     return false
 
@@ -40,8 +39,7 @@ fn ident[T](x: T) T:
     return x
 
 fn checked(n: Int) Result[Int, Error]:
-    if n < 0:
-        return error(Error("negative"))
+    if n < 0: return error(Error("negative"))
 
     return ok(n + 1)
 

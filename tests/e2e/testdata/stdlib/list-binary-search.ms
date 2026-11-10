@@ -7,8 +7,7 @@ import (
 fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:
     for i in 0..values.length():
         let order = values[i].compare(target)
-        if order >= 0:
-            return SearchResult(i, order == 0)
+        if order >= 0: return SearchResult(i, order == 0)
 
     return SearchResult(values.length(), false)
 
@@ -108,8 +107,7 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
 
 fn count(path: String) Int:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.length()
+    if let bytes = read: return bytes.length()
 
     return 0
 

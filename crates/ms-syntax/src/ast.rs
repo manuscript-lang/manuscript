@@ -472,6 +472,19 @@ pub struct Lambda {
     pub body: Vec<Stmt>,
 }
 
+impl Lambda {
+    /// The body as written: without the bindings the parser synthesised for destructured
+    /// parameters.
+    pub fn written_body(&self) -> &[Stmt] {
+        let heads = self
+            .body
+            .iter()
+            .take_while(|s| s.is_destructure_head())
+            .count();
+        &self.body[heads..]
+    }
+}
+
 /// A call argument.
 #[derive(Debug, Clone)]
 pub struct Argument {
@@ -666,6 +679,14 @@ pub struct Stmt {
     pub pos: Pos,
     /// Variant.
     pub kind: StmtKind,
+}
+
+impl Stmt {
+    /// Whether the parser synthesised this binding for a destructuring `for` or lambda
+    /// parameter: it has no `let`, so the statement starts at its own pattern.
+    pub fn is_destructure_head(&self) -> bool {
+        matches!(&self.kind, StmtKind::Bind { pattern, group: None, .. } if pattern.pos == self.pos)
+    }
 }
 
 /// The target of an assignment.

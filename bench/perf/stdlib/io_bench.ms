@@ -11,8 +11,7 @@ type MemorySource:
 
 impl Source[Bytes] for MemorySource:
     var fn next() Bytes?!:
-        if self.offset == self.data.length():
-            return ok(none)
+        if self.offset == self.data.length(): return ok(none)
 
         var end = self.offset + 65536
         if end > self.data.length():
@@ -41,10 +40,8 @@ bench "io.lines":
 
         while true:
             let next = reader.next()
-            if next.is_error():
-                return keep(-1)
-            if next.get().is_none():
-                break
+            if next.is_error(): return keep(-1)
+            if next.get().is_none(): break
 
             count += 1
 

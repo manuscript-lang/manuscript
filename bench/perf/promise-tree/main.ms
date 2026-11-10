@@ -5,15 +5,13 @@ import (
 )
 
 fn fib(n: Int) Int:
-    if n < 2:
-        return n
+    if n < 2: return n
 
     return fib(n - 1) + fib(n - 2)
 
 // promise-per-level fib: spawn one half as a promise, compute other inline
 fn pfib(n: Int, cutoff: Int) Int!:
-    if n < cutoff:
-        return ok(fib(n))
+    if n < cutoff: return ok(fib(n))
 
     let m = n - 1
     let p = promise[Int](fn: pfib(m, cutoff))

@@ -12,8 +12,7 @@ import (
 )
 
 fn flaky(attempt: Int) Int!String:
-    if attempt < 3:
-        return error("try again")
+    if attempt < 3: return error("try again")
 
     return ok(attempt)
 

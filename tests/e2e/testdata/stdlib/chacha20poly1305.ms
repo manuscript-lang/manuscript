@@ -5,7 +5,7 @@ import (
     chacha20poly1305_seal,
     poly1305 from "@std/crypto/chacha20poly1305.ms",
     Bytes from "@std/bytes.ms",
-    expect_equal, expect_true from "@std/test/test.ms",
+    expect_equal, expect_error, expect_true from "@std/test/test.ms",
 )
 
 fn bytes_of(hex: String) Bytes:
@@ -65,3 +65,12 @@ test "tampering and bad lengths are rejected":
         ).is_error()
     )
     try expect_true(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])).is_error())
+
+test "authentication failures use EAUTH":
+    let key = "01234567890123456789012345678901".to_bytes()
+    let nonce = "012345678901".to_bytes()
+    let sealed = try chacha20poly1305_seal(key, nonce, Bytes([]), Bytes([]))
+    let failure = try expect_error(
+        chacha20poly1305_open(key, nonce, sealed, "changed".to_bytes())
+    )
+    try expect_equal(failure.kind.get(""), "EAUTH")

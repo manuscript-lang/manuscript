@@ -21,8 +21,7 @@ bench "encoding.base64_decode":
     let b64 = base64_encode(blob)
 
     fn work() Result[Unit, Error]:
-        if let b = base64_decode(b64):
-            return keep(b.length())
+        if let b = base64_decode(b64): return keep(b.length())
 
         return keep(0)
 

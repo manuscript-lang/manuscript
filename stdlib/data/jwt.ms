@@ -144,8 +144,7 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
     if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let value = parse[T](text.get(""))
-    if let decoded = value:
-        return ok(decoded)
+    if let decoded = value: return ok(decoded)
 
     return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
@@ -262,8 +261,7 @@ fn numeric_date(claim: JsonValue, name: String) Float!:
     return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
-    if let single = claim.as_string():
-        return single == audience
+    if let single = claim.as_string(): return single == audience
     if let many = claim.as_list():
         return many.any(fn item: item.as_string().get("") == audience)
 

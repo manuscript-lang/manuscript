@@ -151,7 +151,7 @@ export fn gen_c25() Unit:
         mk("all-malformed", "x\n\nINFO GET / 200 1\n")
     ]
     var p95 = ""
-    for i in 0..40: p95 = p95 + "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
+    for i in 0..40: p95 += "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
 
     let small = rand_log(var rnd, 40, 0.1)
     let mid = rand_log(var rnd, 600, 0.2)

@@ -250,7 +250,7 @@ fn environment_values(environment: Map[String, String]) List[String]:
 // The work of `run`: a returned closure owns the program, arguments and options.
 fn run_job(
     program: String,
-    arguments: List[String],
+    arguments: List[String] = [],
     options: RunOptions
 ) fn() CommandOutput!:
     return fn: msstd_process_command_run(
@@ -266,7 +266,7 @@ Output beyond `options.max_output_bytes` in total across both streams returns EO
 // ms: effect std.process.run
 export fn run(
     program: String,
-    arguments: List[String],
+    arguments: List[String] = [],
     options: RunOptions = RunOptions()
 ) Promise[CommandOutput]:
     return owned_task[CommandOutput](
@@ -278,7 +278,7 @@ export fn run(
 // ms: effect std.process.run
 export fn spawn(
     program: String,
-    arguments: List[String],
+    arguments: List[String] = [],
     options: SpawnOptions = SpawnOptions()
 ) Subprocess!:
     return msstd_process_command_spawn(

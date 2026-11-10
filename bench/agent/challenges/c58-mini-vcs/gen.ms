@@ -7,8 +7,7 @@ import (
 
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a dummy id finds them.
 fn resolve_hashes(oracle: String, script: String) String:
-    if not script.contains("\{c"):
-        return script.clone()
+    if not script.contains("\{c"): return script.clone()
 
     let marker = compile("\\\{c[0-9]+\\\}").to_optional()
     let probe = marker.get().replace_all(script, "0000000").get("")
@@ -41,8 +40,7 @@ fn strip_nl(text: String) String:
     return chars.slice(start, end).get([]).join("") + "\n"
 
 fn W(name: String, lines: List[String] = []) String:
-    if lines.is_empty():
-        return "write {name}\n.\n"
+    if lines.is_empty(): return "write {name}\n.\n"
 
     return "write {name}\n" + lines.join("\n") + "\n.\n"
 

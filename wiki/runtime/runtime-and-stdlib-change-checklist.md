@@ -35,6 +35,11 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Preserve declared error types/cases/causes and checked binding identities.
 - Filesystem prechecks must keep the same error kind as the equivalent host failure. `Directory::open` used a generic `EIO` for a regular file while `open_directory` promises `EINVAL`; `fs-kinds-and-sources.ms` checks file, missing-path, non-directory ancestor and valid-directory controls through the public API.
 - Rational powers must propagate fallible integer powers: numeric defaults turn a size-limit error into a successful but wrong fraction. `big-rat-power-limits.ms` checks oversized numerator/denominator powers with either exponent sign and retains zero/unit controls (#3334).
+- Modular square-root nonresidue searches cannot use a fixed attempt cutoff:
+  valid primes can have no nonresidue among the first thousand candidates.
+  Continue on Euler result +1, stop on -1, and reject other results as composite
+  witnesses. `bigint-number-theory.ms` certifies a prime whose least nonresidue
+  is 1013 and checks signed squares and composite-search exits (#3391).
 - Interpolation of finite endpoints must not overflow solely in their difference. Use a weighted blend when the finite endpoint span overflows, retaining the existing finite-span formula for tiny/subnormal rounding and existing nonfinite-input behavior; For median, halve finite neighbors only when their sum overflows; always halving loses subnormal precision. `statistics.ms` tests these boundaries (#2955, #2956).
 - A finite-input mean can overflow in its sum although the average is representable. Preserve the ordinary finite-sum path and nonfinite-input behavior; an exact rational overflow fallback keeps cancellation residuals that rescaling or per-term division can lose. `statistics.ms` exercises exact binary64 boundary cases (#2957).
 - Subnormal histogram bin widths can underflow or round enough to move interior values. For finite inputs, use exact rational positions and floor before converting the index; keep ordinary widths and nonfinite behavior unchanged. `statistics.ms` covers signed/shifted integer-grid boundaries (#2967).
@@ -93,5 +98,14 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   Do not concatenate a growing prefix for every doubled quote: it makes a large
   valid field quadratic (#3197). Keep zero/single-escape, Unicode, CRLF and
   malformed-termination controls alongside the many-escape workload.
+- CSV stream EOF must validate options even when its buffered tail is empty. The
+  empty return formerly accepted invalid delimiters and line endings on empty
+  input; `csv-rows.ms` covers no chunks, empty chunks and nonempty controls.
+- CSV streams retain unfinished chunks and join only at completion/EOF (#3362).
+  Update buffered fragments and quote state together before returning a record
+  budget error: callers can continue reading, so stale fragments would corrupt
+  later rows. Recheck nonempty EOF tails before parsing: a previously rejected
+  oversized tail must not become a successful row on a continued read. Keep the
+  continued-read regression alongside exact-limit tests.
 
 - Weighted selection normalizes finite nonnegative weights by their largest entry when the raw total overflows or is subnormal. Reuse the validated normal total and preserve its direct selection loop. Raw sums can overflow, and raw subnormal draw points round equal weights into unequal bins. Keep secure and seeded selection on the same scale, exclude zero weights, and use fixed-seed comparisons across huge/subnormal and ordinary equivalent ratios (`random-weight-ranges.ms`, #3348). Do not multiply by a reciprocal: a minimum-subnormal scale has an infinite reciprocal.

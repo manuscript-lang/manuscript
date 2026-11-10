@@ -5,5 +5,4 @@ fn work() Int!:
 
 export fn main() Int:
     let p = promise(fn: work())
-    let n = p.wait().get(0)
-    return n
+    return p.wait().get(0)

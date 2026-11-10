@@ -15,7 +15,6 @@ import (
     create_directory, remove, temporary from "@std/os/fs.ms",
     arguments, set_environment from "@std/os/env.ms",
     SeededRandom, seeded from "@std/random.ms",
-    stdout from "@std/io/io.ms",
 )
 
 fn q(text: String) String:

@@ -80,6 +80,6 @@ export fn main() Int:
         + totals.map(fn n: "{n}".pad_start(8, " ")).join("")
         + "  {ratio(totals[3], totals[0])}\n"
     )
-    out = out + "ms/rust {ratio(totals[3], totals[1])}\n"
+    out += "ms/rust {ratio(totals[3], totals[1])}\n"
     stdout().write(out).get()
     return 0

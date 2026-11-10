@@ -151,7 +151,6 @@ export fn main() Int:
     total += string_build(n)
     total += string_scan(n)
     total += string_replace(n)
-    if total < 0:
-        return 1
+    if total < 0: return 1
 
     return 0

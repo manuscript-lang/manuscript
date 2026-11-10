@@ -31,8 +31,8 @@ export fn main() Int:
             for i in 0..window:
                 promises.append(promise[Int](fn: work(done + i)))
             for p in promises:
-                total = total + p.wait().get()
-            done = done + window
+                total += p.wait().get()
+            done += window
 
     let t1 = monotonic()
     print("total " + total.to_string())

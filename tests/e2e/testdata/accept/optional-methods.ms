@@ -11,8 +11,7 @@ fn fallback(var counter: Counter) Int:
     return 42
 
 fn value_or[T](value: T?, fallback: T) T:
-    if let inner = value:
-        return inner
+    if let inner = value: return inner
 
     return fallback
 

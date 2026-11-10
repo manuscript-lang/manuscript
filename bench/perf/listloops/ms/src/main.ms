@@ -44,7 +44,7 @@ fn k_conv(a: List[Int], var out: List[Float], n: Int) Unit:
 fn k_dot(a: List[Float32], b: List[Float32], n: Int) Float32:
     var acc: Float32 = 0.0
     for i in 0..n:
-        acc = acc + a[i] * b[i]
+        acc += a[i] * b[i]
     return acc
 
 fn report(name: String, flops: Int, reps: Int, t: Int) Unit:
@@ -104,7 +104,7 @@ export fn main() Int:
 
     var s: Float32 = 0.0
     for _r in 0..reps:
-        s = s + k_dot(f1, f2, n)
+        s += k_dot(f1, f2, n)
     report("dot32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())
     say("check {fo[5]} {d2[5]} {io[5]} {s}\n")
     return 0

@@ -17,8 +17,7 @@ bench "html.parse":
     let html = html_doc(2000)
 
     fn work() Result[Unit, Error]:
-        if parse(html).is_ok():
-            return keep(1)
+        if parse(html).is_ok(): return keep(1)
 
         return keep(0)
 

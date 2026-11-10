@@ -99,7 +99,7 @@ test "increment a visit count":
     var counts = {"visits": 2}
     if var count = counts.get("visits"):
         count += 1
-    try expect_equal(counts.get("visits").get(0), 3)
+    try expect_equal(counts.get_or("visits", 0), 3)
 ```
 
 A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on a payload name and `none` (**MSL108**).

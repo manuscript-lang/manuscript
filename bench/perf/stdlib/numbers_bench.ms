@@ -9,8 +9,7 @@ import (
 )
 
 fn unpacked_length(data: Bytes) Int:
-    if let b = decompress(data, CompressionFormat.Gzip):
-        return b.length()
+    if let b = decompress(data, CompressionFormat.Gzip): return b.length()
 
     return 0
 
@@ -55,8 +54,7 @@ bench "compress.gzip":
     let size = blob.length()
 
     fn work() Result[Unit, Error]:
-        if let b = compress(blob, CompressionFormat.Gzip):
-            return keep(b.length())
+        if let b = compress(blob, CompressionFormat.Gzip): return keep(b.length())
 
         return keep(0)
 

@@ -181,8 +181,7 @@ test "a promise accepts on a listener it owns":
 fn accept_and_read(listener: Listener) Int:
     var conn = listener.accept(2.seconds()).wait().get()
     let r = within(var conn.input, 2.seconds())
-    if r.is_ok() and r.get().is_some():
-        return 1
+    if r.is_ok() and r.get().is_some(): return 1
 
     return 0
 

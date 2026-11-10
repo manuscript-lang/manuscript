@@ -33,8 +33,7 @@ fn churn(root: String, name: String) Int:
     if copied.is_error(): print("copy: {copied.err()}")
 
     let listed = list(dir)
-    if let names = listed:
-        return names.length()
+    if let names = listed: return names.length()
 
     print("list: {listed.err()}")
     return -1

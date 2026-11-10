@@ -125,7 +125,7 @@ fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 fn word(var rnd: Random, n: Int, alpha: List[String]) String:
     var out = ""
-    for _i in 0..n: out = out + rnd.choice(alpha)
+    for _i in 0..n: out += rnd.choice(alpha)
     return out
 
 export fn gen_c14() Unit:

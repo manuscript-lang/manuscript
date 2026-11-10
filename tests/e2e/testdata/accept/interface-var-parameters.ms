@@ -99,8 +99,7 @@ test "a failed step's partial output is dropped and the failure is the next item
             failed = true
             break
 
-        if item.get().is_none():
-            break
+        if item.get().is_none(): break
 
         seen.append(item.get().get(0))
 

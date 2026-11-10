@@ -21,15 +21,13 @@ interface StringAffixCuts:
 impl StringAffixCuts for String:
     // Removes one exact prefix, or returns none when absent; an empty prefix succeeds unchanged.
     fn cut_prefix(prefix: String) String?:
-        if self.starts_with(prefix):
-            return self.drop(prefix.length())
+        if self.starts_with(prefix): return self.drop(prefix.length())
 
         return none
 
     // Removes one exact suffix, or returns none when absent; an empty suffix succeeds unchanged.
     fn cut_suffix(suffix: String) String?:
-        if self.ends_with(suffix):
-            return self.take(self.length() - suffix.length())
+        if self.ends_with(suffix): return self.take(self.length() - suffix.length())
 
         return none
 
@@ -173,8 +171,7 @@ impl StringTextOperations for String:
 
     // Counts non-overlapping occurrences; an empty part counts the scalars plus one.
     fn count(part: String) Int:
-        if part.is_empty():
-            return self.length() + 1
+        if part.is_empty(): return self.length() + 1
 
         return self.split(part).length() - 1
 
@@ -194,8 +191,7 @@ impl StringTextOperations for String:
             while i < cs.length() and set.contains(cs[i]):
                 i += 1
             skipped += i
-            if i < cs.length() or cs.length() < window:
-                break
+            if i < cs.length() or cs.length() < window: break
 
             window *= 2
 
@@ -216,8 +212,7 @@ impl StringTextOperations for String:
             while i > 0 and set.contains(cs[i - 1]):
                 i -= 1
             kept = low + i
-            if i > 0:
-                break
+            if i > 0: break
 
             window *= 2
 
@@ -233,8 +228,7 @@ impl StringTextOperations for String:
 
     // Splits after each separator, keeping it at the end of each piece; an empty separator splits into scalars.
     fn split_after(separator: String) List[String]:
-        if separator.is_empty():
-            return self.chars()
+        if separator.is_empty(): return self.chars()
 
         var out = List[String]()
         let parts = self.split(separator)
@@ -285,10 +279,8 @@ impl StringTextOperations for String:
         while true:
             let cs = self.take(from + window).drop(from).chars()
             for i in 0..cs.length():
-                if predicate(cs[i]):
-                    return from + i
-            if cs.length() < window:
-                return none
+                if predicate(cs[i]): return from + i
+            if cs.length() < window: return none
 
             from += window
             window *= 2
@@ -298,8 +290,7 @@ impl StringTextOperations for String:
     // Replaces many patterns in one pass. At each position the first pair, in map order, whose key matches
     // wins and its replacement is not rescanned; empty keys are ignored.
     fn replace_each(pairs: Map[String, String]) String:
-        if pairs.is_empty():
-            return self.clone()
+        if pairs.is_empty(): return self.clone()
 
         var out = StringBuilder()
         let news = pairs.values()
@@ -405,6 +396,6 @@ impl RegexSpanQueries for Regex:
 
         while at < raw.length():
             out.append(capture_slots(raw, at, count))
-            at = at + count * 2
+            at += count * 2
 
         return ok(out)

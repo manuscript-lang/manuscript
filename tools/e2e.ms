@@ -235,7 +235,7 @@ export fn main() Int:
     var projects = List[String]()
     let given = arguments()
 
-    if given.length() > 0:
+    if not given.is_empty():
         for f in given: fixtures.append(f.clone())
     else:
         for f in ms_files("tests/e2e/testdata/accept").concat(
@@ -350,7 +350,7 @@ fn print_slowest(times: List[String]) Unit:
     var shown = List[String]()
     for entry in slowest:
         if shown.length() < 15: shown.append("  {entry}")
-    stdout().write("slowest fixtures (ms):\n{shown.join("\n")}\n").get()
+    print("slowest fixtures (ms):\n{shown.join("\n")}")
 
 fn millis_of(entry: String) Int:
     return entry.split(" ")[0].parse_int().get(0)

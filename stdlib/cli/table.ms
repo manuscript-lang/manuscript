@@ -85,8 +85,7 @@ impl Table:
             var last = row.length() - 1
             while last >= 0 and row[last].is_empty():
                 last -= 1
-            if last < 0:
-                continue
+            if last < 0: continue
 
             out.append(lead)
 

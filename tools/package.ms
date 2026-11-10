@@ -26,7 +26,7 @@ export fn main() Int:
     if args.length() == 2:
         target_os = args[0].clone()
         target_arch = args[1].clone()
-    else if args.length() != 0:
+    else if not args.is_empty():
         note("Usage: ms run tools/package.ms [-- OS ARCH]")
         return 2
 

@@ -103,7 +103,7 @@ fn decode85(
     let data = sample(length, zero)
     var text = ascii85_encode(data)
     if bad == 1: text = "v" + text
-    if bad == 2: text = text + "v"
+    if bad == 2: text += "v"
 
     var limit: Int? = none
     if bounded: limit = if under: length - 1 else: length

@@ -94,7 +94,7 @@ pub(super) fn lint(
 }
 
 /// The position of byte `offset` in `source`.
-fn pos_at(source: &str, offset: usize) -> Pos {
+pub(super) fn pos_at(source: &str, offset: usize) -> Pos {
     let before = &source[..offset];
     let line = before.matches('\n').count() + 1;
     let column = offset - before.rfind('\n').map_or(0, |i| i + 1) + 1;

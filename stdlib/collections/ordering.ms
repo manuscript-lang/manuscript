@@ -3,24 +3,20 @@ import panic from "@std/core.ms"
 // Source-written ordering methods for the built-in scalars and String: `a.min(b)`, `a.max(b)` and `a.clamp(low, high)`,
 // defined once over `compare` so every numeric width and String agree. The methods apply to every program.
 fn lesser[T: Comparable](left: T, right: T) T:
-    if right.compare(left) < 0:
-        return right
+    if right.compare(left) < 0: return right
 
     return left
 
 fn greater[T: Comparable](left: T, right: T) T:
-    if right.compare(left) > 0:
-        return right
+    if right.compare(left) > 0: return right
 
     return left
 
 fn clamped[T: Comparable](value: T, low: T, high: T) T:
     if low.compare(high) > 0:
         panic("clamp: low must not be greater than high")
-    if value.compare(low) < 0:
-        return low
-    if value.compare(high) > 0:
-        return high
+    if value.compare(low) < 0: return low
+    if value.compare(high) > 0: return high
 
     return value
 

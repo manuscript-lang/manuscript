@@ -18,8 +18,7 @@ fn track(log: String, id: Int) Tracked:
     return Tracked(log, id)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -84,8 +83,7 @@ fn holds_wrapper(log: String) Int:
 
 fn returns_early(log: String, early: Bool) Int:
     let p = Pair(track(log.clone(), 1), track(log, 2))
-    if early:
-        return 1
+    if early: return 1
 
     return p.first.id
 

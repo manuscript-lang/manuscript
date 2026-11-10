@@ -80,12 +80,12 @@ export fn gen_c09() Unit:
             k = "{rnd.randint(-100, 100)}"
         else:
             let n = rnd.randint(1, 8)
-            for _m in 0..n: k = k + rnd.choice(["a", "b", "c", "X", "Y", "Z"])
+            for _m in 0..n: k += rnd.choice(["a", "b", "c", "X", "Y", "Z"])
 
         let mode = rnd.choice(["enc", "dec"])
         let n = rnd.randint(1, 80)
         var text = ""
-        for _m in 0..n: text = text + rnd.choice(alpha)
+        for _m in 0..n: text += rnd.choice(alpha)
 
         var trimmed = strip_spaces(text)
         if trimmed.is_empty(): trimmed = "x"

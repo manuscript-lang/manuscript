@@ -857,8 +857,7 @@ impl Run:
 
 fn member(value: JsonValue, key: String) JsonValue?:
     if let found = value.get(key): return found
-    if let index = key.parse_int():
-        return value.at(index).clone()
+    if let index = key.parse_int(): return value.at(index).clone()
 
     return none
 
@@ -1059,8 +1058,7 @@ fn number_compare(a: ExactNumber, b: ExactNumber) Int:
 
     let az = a.first == a.end
     let bz = b.first == b.end
-    if az or bz:
-        return if az == bz: 0 else if az: -1 else: 1
+    if az or bz: return if az == bz: 0 else if az: -1 else: 1
 
     var order = 0
 

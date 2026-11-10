@@ -24,8 +24,7 @@ fn read_prefixed(text: String) String!InputFailure:
 
 fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
     let position = values.binary_search(target)
-    if not position.found:
-        return error(InputFailure.MissingKey(target))
+    if not position.found: return error(InputFailure.MissingKey(target))
 
     return ok(position.index)
 
