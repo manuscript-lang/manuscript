@@ -9,7 +9,7 @@
       {
         "code": "MS3003",
         "phase": "type",
-        "message": "missing argument _0: Int in call to copy; add '_0: <Int>'",
+        "message": "missing argument 1: Int in call to copy; pass it positionally, without a label",
         "position": {
           "file": "testdefaultargumentboundaries-9.ms",
           "line": 9,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdefaultargumentboundaries-9.ms:9:12: type: missing argument _0: Int in call to copy; add '_0: <Int>'\n   |\n 9 |     return copy()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdefaultargumentboundaries-9.ms:9:12: type: missing argument 1: Int in call to copy; pass it positionally, without a label\n   |\n 9 |     return copy()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

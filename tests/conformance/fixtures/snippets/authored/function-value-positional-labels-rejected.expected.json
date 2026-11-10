@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument first; function values take positional arguments (String, String), so pass them without labels",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 14,
+          "column": 24,
+          "offset": 412
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument second; function values take positional arguments (String, String), so pass them without labels",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 14,
+          "column": 36,
+          "offset": 424
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument 1: String in call to combine; pass it positionally, without a label",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 14,
+          "column": 16,
+          "offset": 404
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument 2: String in call to combine; pass it positionally, without a label",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 14,
+          "column": 16,
+          "offset": 404
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument 2: String in call to combine; pass it positionally, without a label",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 15,
+          "column": 17,
+          "offset": 453
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument other; parameters of _hidden: _value",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 16,
+          "column": 26,
+          "offset": 491
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument _value: Int in call to _hidden; add '_value: <Int>'",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 16,
+          "column": 18,
+          "offset": 483
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument value; function values take positional arguments (Int), so pass them without labels",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 17,
+          "column": 22,
+          "offset": 522
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument 1: Int in call to transform; pass it positionally, without a label",
+        "position": {
+          "file": "function-value-positional-labels-rejected.ms",
+          "line": 17,
+          "column": 12,
+          "offset": 512
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/function-value-positional-labels-rejected.ms:14:24: type: unknown argument first; function values take positional arguments (String, String), so pass them without labels\n    |\n 14 |     let text = combine(first: \"a\", second: \"b\")\n    |                        ^\n<DIR>/function-value-positional-labels-rejected.ms:14:36: type: unknown argument second; function values take positional arguments (String, String), so pass them without labels\n    |\n 14 |     let text = combine(first: \"a\", second: \"b\")\n    |                                    ^\n<DIR>/function-value-positional-labels-rejected.ms:14:16: type: missing argument 1: String in call to combine; pass it positionally, without a label\n    |\n 14 |     let text = combine(first: \"a\", second: \"b\")\n    |                ^\n<DIR>/function-value-positional-labels-rejected.ms:14:16: type: missing argument 2: String in call to combine; pass it positionally, without a label\n    |\n 14 |     let text = combine(first: \"a\", second: \"b\")\n    |                ^\n<DIR>/function-value-positional-labels-rejected.ms:15:17: type: missing argument 2: String in call to combine; pass it positionally, without a label\n    |\n 15 |     let other = combine(\"a\")\n    |                 ^\n<DIR>/function-value-positional-labels-rejected.ms:16:26: type: unknown argument other; parameters of _hidden: _value\n    |\n 16 |     let direct = _hidden(other: 1)\n    |                          ^\n<DIR>/function-value-positional-labels-rejected.ms:16:18: type: missing argument _value: Int in call to _hidden; add '_value: <Int>'\n    |\n 16 |     let direct = _hidden(other: 1)\n    |                  ^\n<DIR>/function-value-positional-labels-rejected.ms:17:22: type: unknown argument value; function values take positional arguments (Int), so pass them without labels\n    |\n 17 |     return transform(value: 2) + keep(1)\n    |                      ^\n<DIR>/function-value-positional-labels-rejected.ms:17:12: type: missing argument 1: Int in call to transform; pass it positionally, without a label\n    |\n 17 |     return transform(value: 2) + keep(1)\n    |            ^\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

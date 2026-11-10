@@ -20,7 +20,7 @@
       {
         "code": "MS3003",
         "phase": "type",
-        "message": "missing argument _0: Int in call to callback; add '_0: <Int>'",
+        "message": "missing argument 1: Int in call to callback; pass it positionally, without a label",
         "position": {
           "file": "testexpectedresultgenericinferencerejects-4.ms",
           "line": 9,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-4.ms:7:33: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module\n   |\n 7 |     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)\n   |                                 ^\n<DIR>/testexpectedresultgenericinferencerejects-4.ms:9:5: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n   |\n 9 |     callback()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-4.ms:7:33: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module\n   |\n 7 |     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)\n   |                                 ^\n<DIR>/testexpectedresultgenericinferencerejects-4.ms:9:5: type: missing argument 1: Int in call to callback; pass it positionally, without a label\n   |\n 9 |     callback()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
