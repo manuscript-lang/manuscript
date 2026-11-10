@@ -73,6 +73,9 @@ pub struct Param {
     /// argument `var`. Part of a function type's identity (`fn(var List[Int]) Unit`); never set
     /// on a field.
     pub mutable: bool,
+    /// The parameter of a written function type (`fn(Int) Int`), which has no source label: calls
+    /// pass it positionally and the parser's `_0`, `_1` names are internal.
+    pub positional: bool,
 }
 
 impl Param {
@@ -82,6 +85,7 @@ impl Param {
             name,
             ty,
             mutable: false,
+            positional: false,
         }
     }
 }
@@ -1258,11 +1262,13 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
             name: p.name,
             ty: r,
             mutable: p.mutable,
+            positional: p.positional,
         });
         values.extend(t.params[i + 1..].iter().map(|p| Param {
             name: p.name,
             ty: sub_walk(&p.ty, bindings),
             mutable: p.mutable,
+            positional: p.positional,
         }));
         params = Some(values);
         break;

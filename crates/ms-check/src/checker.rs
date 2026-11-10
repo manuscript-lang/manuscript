@@ -1412,7 +1412,11 @@ impl Checker {
         };
         match &t.kind {
             TypeKind::Fn { params, result } => {
-                let r = self.signature(params, Some(result));
+                let mut r = (*self.signature(params, Some(result))).clone();
+                for p in &mut r.params {
+                    p.positional = true;
+                }
+                let r: Ty = Rc::new(r);
                 self.m().facts_mut().type_refs.insert(t.id, r.clone());
                 r
             }
@@ -1593,6 +1597,7 @@ impl Checker {
                 name: p.name,
                 ty,
                 mutable: p.mutable,
+                positional: false,
             });
         }
         result

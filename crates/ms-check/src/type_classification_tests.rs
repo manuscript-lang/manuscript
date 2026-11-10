@@ -35,6 +35,7 @@ fn nominal(
             name: n(&format!("f{i}")),
             ty,
             mutable: false,
+            positional: false,
         })
         .collect();
     if kind == Kind::Alternative {
@@ -148,6 +149,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
             name: n("next"),
             ty: a.clone(),
             mutable: false,
+            positional: false,
         }],
     });
     assert_eq!(classifier().class(syms, &a), Class::Move);
@@ -158,6 +160,7 @@ fn recursive_and_mutually_recursive_alternatives_stay_move() {
             name: n("next"),
             ty: b.clone(),
             mutable: false,
+            positional: false,
         }],
     });
     assert_eq!(classifier().class(syms, &a), Class::Move);
@@ -222,6 +225,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
         name: n("value"),
         ty: int(),
         mutable: false,
+        positional: false,
     });
     let a = nominal(
         &mut kept,
@@ -239,6 +243,7 @@ fn incomplete_definitions_and_function_arguments_remain_bounded() {
             name: n("next"),
             ty: a.clone(),
             mutable: false,
+            positional: false,
         }],
     });
     assert_eq!(classifier().class(syms, &a), Class::Move);
