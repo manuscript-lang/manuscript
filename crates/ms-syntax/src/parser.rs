@@ -2953,7 +2953,7 @@ impl<'a> Parser<'a> {
                 line_start = false;
                 let mut skipped = 0;
                 while skipped < indent && i < end && matches!(rb[i], b' ' | b'\t') {
-                    skipped += if rb[i] == b'\t' { 4 } else { 1 };
+                    skipped += 1;
                     i += 1;
                 }
                 continue;

@@ -123,6 +123,22 @@ fn long_bare_import_wraps_one_name_per_line() {
 }
 
 #[test]
+fn long_import_of_a_name_spelled_from_keeps_name_and_path() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let path = format!("{}.ms", "x".repeat(70));
+    for (names, count) in [("from", 1), ("a, from", 2)] {
+        let source = format!("import {names} from \"{path}\"\n");
+        for input in [source.clone(), source.replace('\n', "\r\n")] {
+            let formatted = ms_syntax::format(&file, &input).unwrap();
+            let module = ms_syntax::parser::parse(&file, &formatted).expect(&formatted);
+            assert_eq!(module.imports.len(), count, "{formatted}");
+            assert!(module.imports.iter().all(|i| i.path.as_ref() == path));
+            assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
+        }
+    }
+}
+
+#[test]
 fn a_long_index_assignment_wraps_only_its_value() {
     let file: Arc<str> = Arc::from("edits.ms");
     let source = include_str!("format_edits/index_assign.src");

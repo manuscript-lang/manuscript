@@ -38,6 +38,22 @@ fn indentation_of_the_closing_line_is_removed() {
 }
 
 #[test]
+fn tab_indentation_is_removed_like_raw_text() {
+    // Both literals indent every line and the closing quotes with the same bytes.
+    for prefix in ["\t\t", "\t  ", "  \t", "    "] {
+        for raw in ["", "r"] {
+            let literal = format!("{raw}\"\"\"\n{prefix}x\n{prefix}y\n{prefix}\"\"\"");
+            assert_eq!(parts(&literal), "(part \"x\\x0ay\" nil)", "{literal:?}");
+        }
+    }
+    // Extra indentation beyond the closing line stays.
+    assert_eq!(
+        parts("\"\"\"\n\t\t\tx\n\t\t\"\"\""),
+        "(part \"\\x09x\" nil)"
+    );
+}
+
+#[test]
 fn first_and_last_line_breaks_are_dropped_and_blank_lines_kept() {
     assert_eq!(parts("\"\"\"\n    \"\"\""), "(part \"\" nil)");
     assert_eq!(
