@@ -34,7 +34,7 @@ fn main() Unit:
 - Be terse: `print(x)` (no import); `if c: return x`, no `else` after `return`; `any all count sum map filter fold`; `m.get_or(k, d)`; infer closure types.
 - `main`: `Unit`, `Unit!`, `Int?!` or `Int` status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
-- Imports: `import a, b from "@std/x.ms"`, or `import (a, b from "x.ms", c from "y.ms")`; `export` shares. `List Map Set Optional Result Error` need none.
+- Imports: `import a, b from "x.ms"`, `import (a from "x.ms", b from "y.ms")`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
 - Bindings: `let` once, `var` reassigns, `n += 1`; unpack `let [a, b] = xs`, `let {name} = rec`, `for [a, b] in xs`. `and or not`, not `&& || !`.
 - Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates; write `\{` and `\}` for literal braces. `unit`.
