@@ -18,9 +18,7 @@ test "compression formats roundtrip and enforce expanded byte budgets":
         packed := try compress(input, format)
         try expect_equal((try decompress(packed, format, 17)), input)
 
-        limited: Bytes! = error(
-            Error("compression: limit exceeded", kind: "EOVERFLOW")
-        )
+        limited: Bytes! = error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
         try expect_equal(decompress(packed, format, 16), limited)
 
     malformed: Bytes! = error(Error("compression: invalid data", kind: "EBADMSG"))

@@ -93,15 +93,11 @@ test "decompressed streams preserve lines across decoder output batches":
 
 test "decompression budget, garbage and level are errors":
     text := "compress me compress me compress me".to_bytes()
-    packed := try read_all(
-        compressed(chunked(text.clone(), 7), CompressionFormat.Gzip)
-    )
+    packed := try read_all(compressed(chunked(text.clone(), 7), CompressionFormat.Gzip))
     limited := read_all(decompressed(chunked(packed, 7), CompressionFormat.Gzip, 4))
     try expect_equal(limited.err().kind, "EOVERFLOW")
 
-    garbage := read_all(
-        decompressed(chunked(text.clone(), 7), CompressionFormat.Gzip)
-    )
+    garbage := read_all(decompressed(chunked(text.clone(), 7), CompressionFormat.Gzip))
     try expect_equal(garbage.err().kind, "EBADMSG")
 
     whole := try compress(text.clone(), CompressionFormat.Gzip)
@@ -149,9 +145,7 @@ test "tar entries match unpack under every chunk size":
 
 test "tar entries enforce limits and report truncation":
     archive := try pack(sample(), ArchiveFormat.Tar)
-    few := read_entries(
-        chunked(archive.clone(), 700), ArchiveOptions(max_entries: 2)
-    )
+    few := read_entries(chunked(archive.clone(), 700), ArchiveOptions(max_entries: 2))
     try expect_equal(few.err().kind, "EOVERFLOW")
 
     big := read_entries(

@@ -45,9 +45,7 @@ export fn main() Int:
         expected_out := after(source, "// expect-stdout: ")
 
         for build in ["debug", "release"]:
-            ran := run(
-                ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]
-            ).wait()
+            ran := run(ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]).wait()
             checked += 1
 
             if ran.is_error():

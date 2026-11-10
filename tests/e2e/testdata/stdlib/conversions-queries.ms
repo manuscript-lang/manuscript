@@ -114,9 +114,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
     var empty_calls: List[Int] = []
-    values: Map[String, Counter] = {
-        "b": Counter(2), "a": Counter(1), "c": Counter(3)
-    }
+    values: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
     initial: List[String] = []
 
     var visits = reduce_map(

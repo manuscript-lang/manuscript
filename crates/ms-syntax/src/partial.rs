@@ -268,7 +268,7 @@ fn constant_start(source: &str) -> bool {
         .count();
     name > 0
         && !source.as_bytes()[0].is_ascii_digit()
-        && source[name..].trim_start().starts_with(':')
+        && source[name..].trim_start().starts_with(":=")
 }
 
 fn after_keyword<'a>(source: &'a str, keyword: &str) -> Option<&'a str> {

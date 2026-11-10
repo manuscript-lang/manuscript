@@ -62,9 +62,7 @@ test "typed compression preserves bytes limits and errors":
             compress(data, format, CompressOptions(max_bytes: -1)), invalid
         )
 
-        zero: Bytes! = error(
-            Error("compression: limit exceeded", kind: "EOVERFLOW")
-        )
+        zero: Bytes! = error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
         try expect_equal(compress(data, format, CompressOptions(max_bytes: 0)), zero)
 
     encoded := try compress(

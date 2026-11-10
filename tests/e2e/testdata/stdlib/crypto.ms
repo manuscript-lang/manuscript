@@ -74,9 +74,7 @@ test "authenticated encryption detects wrong associated data":
         (try open(key, nonce, encrypted, "header".to_bytes())), "secret".to_bytes()
     )
 
-    failed: Bytes! = error(
-        Error("cryptography: authentication failed", kind: "EAUTH")
-    )
+    failed: Bytes! = error(Error("cryptography: authentication failed", kind: "EAUTH"))
     try expect_equal(open(key, nonce, encrypted, "changed".to_bytes()), failed)
 
     invalid: Bytes! = error(Error("cryptography: invalid input", kind: "EINVAL"))

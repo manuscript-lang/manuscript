@@ -104,9 +104,7 @@ test "wide division distinguishes invalid divisor and quotient overflow":
     try expect_equal(division.remainder, 2)
 
     invalid: WordDivision! = error(Error("number: invalid input", kind: "EINVAL"))
-    overflow: WordDivision! = error(
-        Error("number: value out of range", kind: "ERANGE")
-    )
+    overflow: WordDivision! = error(Error("number: value out of range", kind: "ERANGE"))
     try expect_equal(divide_wide(0, 0, 0), invalid)
     try expect_equal(divide_wide(largest, largest, 0), invalid)
     try expect_equal(divide_wide(3, 0, 3), overflow)
@@ -114,9 +112,7 @@ test "wide division distinguishes invalid divisor and quotient overflow":
     try expect_equal((try remainder_wide(3, 5, 3)), 2)
     try expect_equal((try remainder_wide(largest, largest, largest)), 0)
 
-    invalid_remainder: UInt64! = error(
-        Error("number: invalid input", kind: "EINVAL")
-    )
+    invalid_remainder: UInt64! = error(Error("number: invalid input", kind: "EINVAL"))
     try expect_equal(remainder_wide(largest, largest, 0), invalid_remainder)
 
 test "binary float decomposition round trips normals subnormals and signed zero":

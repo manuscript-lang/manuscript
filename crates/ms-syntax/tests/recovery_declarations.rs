@@ -6,7 +6,7 @@ fn unfinished_functions_do_not_swallow_constants_or_externs() {
         "VALUE := 3\n",
         "enum State:\n    Ready\n",
         "export opaque enum Hidden:\n    Secret(value: Int)\n",
-        "let(\n    VALUE = 3\n)\n",
+        "VALUE := 3\n",
         "extern fn native(value: Int) Int\n",
         "extern type Handle\n",
     ] {

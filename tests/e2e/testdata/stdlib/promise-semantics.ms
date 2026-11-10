@@ -141,9 +141,7 @@ test "a promise made with a signal that already fired is cancelled at once":
     stop := cancel_switch()
     stop.cancel()
 
-    late := promise(
-        fn: ok(forever()), options: PromiseOptions(cancel: stop.signal())
-    )
+    late := promise(fn: ok(forever()), options: PromiseOptions(cancel: stop.signal()))
     reason := late.wait() | try expect_error
     try expect_equal(reason.message, "promise: cancelled")
 

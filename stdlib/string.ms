@@ -385,9 +385,7 @@ impl RegexSpanQueries for Regex:
         max_matches: Int?,
         max_captures: Int?
     ) List[List[RegexSpan?]]!:
-        raw := try msstd_regex_capture_all_spans(
-            self, text, max_matches, max_captures
-        )
+        raw := try msstd_regex_capture_all_spans(self, text, max_matches, max_captures)
         if raw.is_empty(): return ok(List[List[RegexSpan?]]())
 
         count := raw[0]

@@ -1,1 +1,1 @@
-error parse 2:10:26 "expected a name, found '='"
+error parse 2:9:25 "expected ':', found ':='; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body"

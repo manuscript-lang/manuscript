@@ -65,9 +65,7 @@ test "TLS certificate parsing verification hostname and expiration":
     )
 
 test "TLS rejects malformed PEM and certificate budgets":
-    invalid: List[CertificateInfo]! = error(
-        Error("TLS: invalid data", kind: "EBADMSG")
-    )
+    invalid: List[CertificateInfo]! = error(Error("TLS: invalid data", kind: "EBADMSG"))
     parse_certificates(pem: "not PEM") | try expect_equal(invalid)
 
     limited: List[CertificateInfo]! = error(

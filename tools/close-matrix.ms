@@ -157,9 +157,7 @@ fn constructs() List[Construct]:
         ),
         c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
         c("fn_value_lambda", "", "f := fn (v: @TY@): see(v)\n    f(@M1@)"),
-        c(
-            "fn_value_named", "", "f := see\n    x: @TY@ = @M1@\n    f(x)"
-        ),
+        c("fn_value_named", "", "f := see\n    x: @TY@ = @M1@\n    f(x)"),
         c(
             "method_temporary",
             "type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
@@ -248,17 +246,12 @@ fn constructs() List[Construct]:
         ),
         c("generic_pass_temporary", "", "pass[@TY@](@M1@)"),
         c("generic_pass_named", "", "x: @TY@ = @M1@\n    pass(x)"),
+        c("generic_ident_temporary", "", "y: @TY@ = ident(@M1@)\n    see(y)"),
         c(
-            "generic_ident_temporary", "", "y: @TY@ = ident(@M1@)\n    see(y)"
-        ),
-        c(
-            "generic_ident_named", "",
-            "x: @TY@ = @M1@\n    y := ident(x)\n    see(y)"
+            "generic_ident_named", "", "x: @TY@ = @M1@\n    y := ident(x)\n    see(y)"
         ),
         c("discard_underscore", "", "_: @TY@ = @M1@"),
-        c(
-            "closure_borrow", "", "x: @TY@ = @M1@\n    f := fn: see(x)\n    f()"
-        ),
+        c("closure_borrow", "", "x: @TY@ = @M1@\n    f := fn: see(x)\n    f()"),
         c(
             "closure_escape",
             "fn make() fn() Unit:\n    x: @TY@ = @M1@\n    return fn: see(x)",
@@ -309,8 +302,7 @@ fn constructs() List[Construct]:
             "xs := @M1@\n    for m in xs:\n        see_marker(m)"
         ),
         only(
-            "list_for_break", "list", "",
-            "xs := @M1@\n    for m in xs:\n        break"
+            "list_for_break", "list", "", "xs := @M1@\n    for m in xs:\n        break"
         ),
         only(
             "result_match", "result", "",

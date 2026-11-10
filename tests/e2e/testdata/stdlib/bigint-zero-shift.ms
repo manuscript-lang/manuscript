@@ -10,9 +10,7 @@ test "zero shifts have zero result bits at every nonnegative count":
 
 test "nonzero shifts still enforce the result bit budget":
     limit := 16777216
-    limited: BigInt! = error(
-        Error("big integer: limit exceeded", kind: "EOVERFLOW")
-    )
+    limited: BigInt! = error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(from_int(1).shift_left(limit), limited)
     try expect_equal(from_int(-1).shift_left(limit), limited)
 

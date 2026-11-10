@@ -37,9 +37,7 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
         bytes := text.byte_length()
         try expect_equal((try stringify(rows, options, bytes)), text)
 
-        limited_text: String! = error(
-            Error("CSV: limit exceeded", kind: "EOVERFLOW")
-        )
+        limited_text: String! = error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
         try expect_equal(stringify(rows, options, bytes - 1), limited_text)
         try expect_equal(stringify([[""]], options, 0), limited_text)
         try expect_equal((try parse(text, CsvOptions(",", ending.clone(), 3, 3))), rows)

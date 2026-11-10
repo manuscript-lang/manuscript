@@ -94,9 +94,7 @@ test "base64 encoding matches the whole-value function under every chunk size":
 
     for size in 1..data.length() + 1:
         for url_safe in [false, true]:
-            got := try join_text(
-                base64_encoded(chunked(data.clone(), size), url_safe)
-            )
+            got := try join_text(base64_encoded(chunked(data.clone(), size), url_safe))
             if got != base64_encode(data.clone(), url_safe): return fail(
                 "size {size} url_safe {url_safe}"
             )

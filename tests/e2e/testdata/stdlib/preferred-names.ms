@@ -169,9 +169,7 @@ test "regex replace_all preserves literal text and exact output budgets":
     limited: String! = error(
         Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
-    invalid: String! = error(
-        Error("regular expression: invalid input", kind: "EINVAL")
-    )
+    invalid: String! = error(Error("regular expression: invalid input", kind: "EINVAL"))
     try expect_equal(pattern.replace_all("aa", "é", 3), limited)
     try expect_equal(all("a", "", -1), invalid)
     try expect_equal((try all("a", "", 0)), "")

@@ -25,9 +25,7 @@ test "time rejects invalid timestamps and out of range nanoseconds":
     invalid: Timestamp! = error(Error("time: invalid data", kind: "EBADMSG"))
     try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
 
-    out_of_range: Timestamp! = error(
-        Error("time: value out of range", kind: "ERANGE")
-    )
+    out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
     try expect_equal(timestamp(0, 1000000000), out_of_range)
 
 test "host clocks are usable and zero sleep completes":
@@ -39,9 +37,7 @@ test "host clocks are usable and zero sleep completes":
     try expect_equal((try parse_timestamp(current.to_string())), current)
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
-    out_of_range: Timestamp! = error(
-        Error("time: value out of range", kind: "ERANGE")
-    )
+    out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
     for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
         if parse_timestamp(text) != out_of_range: return fail("range {text}")
 
@@ -106,9 +102,7 @@ test "timestamp parsing preserves maximum-width precision and offsets":
         try expect_equal(parsed.nanoseconds(), 123456789)
         try expect_equal((try parse_timestamp(parsed.to_string())), parsed)
 
-    out_of_range: Timestamp! = error(
-        Error("time: value out of range", kind: "ERANGE")
-    )
+    out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
     try expect_equal(
         parse_timestamp("0001-01-01T00:00:00.123456789+00:01"), out_of_range
     )

@@ -47,9 +47,7 @@ test "dotenv accepts empty text and a byte-order mark":
     ) | try expect_equal("2")
 
 test "dotenv rejects malformed lines with their line number":
-    bad := [
-        "=x", "A B=1", "1A=2", "A='open", "A='x' junk", "NOEQUALS", "export  =bad"
-    ]
+    bad := ["=x", "A B=1", "1A=2", "A='open", "A='x' junk", "NOEQUALS", "export  =bad"]
     for text in bad:
         if _ := parse_dotenv(text): return fail("accepted {text}")
 

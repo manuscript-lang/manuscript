@@ -106,12 +106,8 @@ test "complex exp retains overflow and nonfinite controls":
 // component separately: one legitimately overflows while the other fits.
 test "complex trig keeps finite components after hyperbolic overflow":
     phases := [0.5, 1.0, -0.5, -1.0]
-    sine_parts := [
-        1.4556863256554153e308, infinity, -1.4556863256554153e308, -infinity
-    ]
-    cosine_parts := [
-        infinity, 1.640527287432755e308, infinity, 1.640527287432755e308
-    ]
+    sine_parts := [1.4556863256554153e308, infinity, -1.4556863256554153e308, -infinity]
+    cosine_parts := [infinity, 1.640527287432755e308, infinity, 1.640527287432755e308]
 
     for index in 0..phases.length():
         for argument in [711.0, -711.0]:

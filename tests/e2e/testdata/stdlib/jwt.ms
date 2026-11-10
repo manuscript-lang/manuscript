@@ -292,11 +292,7 @@ test "eddsa signs with a seed and verifies with the public key":
     seed := (random_bytes(32) | try expect_ok)
     public := (public_key(seed) | try expect_ok)
     check := JwtCheck(algorithm: JwtAlgorithm.EdDsa)
-    token := (
-        sign_token(
-            session(1900000000), seed, JwtAlgorithm.EdDsa
-        ) | try expect_ok
-    )
+    token := (sign_token(session(1900000000), seed, JwtAlgorithm.EdDsa) | try expect_ok)
     (verify_token[Session](token, public, check) | try expect_ok).sub | try expect_equal(
         "42"
     )

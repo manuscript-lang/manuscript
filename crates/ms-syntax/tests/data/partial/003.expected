@@ -1,4 +1,4 @@
-diag parse 5:8:135 end=- fix=- "indentation must be a multiple of four spaces, found 7; use 4 or 8"
+diag parse 5:8:132 end=- fix=- "indentation must be a multiple of four spaces, found 7; use 4 or 8"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
 import 1:1:0 1:22:21 "expect_false" "@std/test/test.ms"
 omitted []

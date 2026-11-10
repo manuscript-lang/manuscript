@@ -17,9 +17,7 @@ test "table aligns columns with no added trailing spaces or final LF":
         try tight.add(row.clone())
     try expect_equal(tight.render(), "name   count\ntea    2\ncoffee 30")
 
-    centered := try build(
-        [Align.Center, Align.Center], [["abc", "abcd"], ["x", "y"]]
-    )
+    centered := try build([Align.Center, Align.Center], [["abc", "abcd"], ["x", "y"]])
     try expect_equal(centered.render(), "abc  abcd\n x    y")
 
 test "table keeps combining wide and emoji sequences intact":

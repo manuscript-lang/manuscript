@@ -3,9 +3,7 @@ import parse, JsonValue from "@std/data/json.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn check(expression: String, data: String, expected: String) Unit!:
-    template := try compile(
-        "\{\{ if {expression} \}\}yes\{\{ else \}\}no\{\{ end \}\}"
-    )
+    template := try compile("\{\{ if {expression} \}\}yes\{\{ else \}\}no\{\{ end \}\}")
     try expect_equal((try template.render(try parse(data))), expected)
     return ok(unit)
 

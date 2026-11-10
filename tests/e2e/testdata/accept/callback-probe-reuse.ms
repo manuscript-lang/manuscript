@@ -17,9 +17,7 @@ type Failure[T]:
 
 test "callback inference retains captures and contextual metadata":
     offset := 7
-    values := [1, 2].map(
-        fn outer: [3, 4].map(fn inner: return outer + inner + offset)
-    )
+    values := [1, 2].map(fn outer: [3, 4].map(fn inner: return outer + inner + offset))
     try expect_equal(values, [[11, 12], [12, 13]])
 
     callable: fn(Int) fn(Int) Int = apply(
@@ -43,9 +41,7 @@ test "callback inference retains captures and contextual metadata":
 
     try expect_equal(failure, Result[Int, Error].error(Error("expected")))
 
-    failed: Int!Failure[Int] = apply(
-        value: 9, transform: fn item: error(Failure(item))
-    )
+    failed: Int!Failure[Int] = apply(value: 9, transform: fn item: error(Failure(item)))
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().detail, 9)
 

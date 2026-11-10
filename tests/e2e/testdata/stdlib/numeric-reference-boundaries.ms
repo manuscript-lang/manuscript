@@ -186,9 +186,9 @@ test "to_fixed matches the exact decimal expansion":
                 actual := x.to_fixed(digits)
 
                 // A negative value that rounds to zero prints as `-0`, as in C; compare it without the sign.
-                unsigned := if actual.starts_with(
-                    "-"
-                ) and not expected.starts_with("-"): actual.drop(1) else: actual
+                unsigned := if actual.starts_with("-") and not expected.starts_with("-"): actual.drop(
+                    1
+                ) else: actual
                 try expect_equal(unsigned, expected)
 
 test "truncate_to_int is exact inside the Int range and none outside it":
@@ -266,10 +266,7 @@ test "divide_wide and remainder_wide match exact division":
     for high in word_boundaries():
         for low in word_boundaries():
             for divisor in word_boundaries():
-                numerator := (
-                    (try big_of_word(high).shift_left(64))
-                    + big_of_word(low)
-                )
+                numerator := ((try big_of_word(high).shift_left(64)) + big_of_word(low))
 
                 if divisor == 0:
                     _failure := try expect_error(divide_wide(high, low, divisor))

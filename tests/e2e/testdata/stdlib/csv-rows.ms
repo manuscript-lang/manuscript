@@ -94,9 +94,7 @@ test "options apply":
     )
 
 test "empty CSV streams reject invalid options":
-    invalid: List[List[String]]! = error(
-        Error("CSV: invalid input", kind: "EINVAL")
-    )
+    invalid: List[List[String]]! = error(Error("CSV: invalid input", kind: "EINVAL"))
 
     for options in [
         CsvOptions(delimiter: ""), CsvOptions(delimiter: "::"),

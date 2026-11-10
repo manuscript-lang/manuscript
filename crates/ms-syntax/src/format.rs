@@ -417,6 +417,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
             || matches!(
                 tokens[at - 2].kind,
                 Tok::Assign
+                    | Tok::ColonAssign
                     | Tok::LParen
                     | Tok::LBracket
                     | Tok::Comma
@@ -1569,7 +1570,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             let before = start.checked_sub(1).map(|i| tokens[i].kind);
             if !matches!(
                 before,
-                None | Some(Tok::Assign | Tok::Return | Tok::Newline | Tok::Indent | Tok::Dedent)
+                None | Some(
+                    Tok::Assign
+                        | Tok::ColonAssign
+                        | Tok::Return
+                        | Tok::Newline
+                        | Tok::Indent
+                        | Tok::Dedent
+                )
             ) {
                 return;
             }
@@ -1716,7 +1724,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     start += 1;
                     if binding.is_some() {
                         // `if let name = value:` wraps only the value.
-                        while tokens[start].kind != Tok::Assign {
+                        while !matches!(tokens[start].kind, Tok::Assign | Tok::ColonAssign) {
                             start += 1;
                         }
                         start += 1;
@@ -1729,12 +1737,12 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     }
                 }
                 StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
-                    let target = if matches!(s.kind, StmtKind::For { .. }) {
-                        Tok::In
+                    let is_for = matches!(s.kind, StmtKind::For { .. });
+                    while !(if is_for {
+                        tokens[start].kind == Tok::In
                     } else {
-                        Tok::Assign
-                    };
-                    while tokens[start].kind != target {
+                        matches!(tokens[start].kind, Tok::Assign | Tok::ColonAssign)
+                    }) {
                         if let Some(&end) = self.pairs.get(&start) {
                             start = end;
                         }

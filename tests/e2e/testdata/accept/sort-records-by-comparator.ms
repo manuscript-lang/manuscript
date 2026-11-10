@@ -15,9 +15,7 @@ fn entries(count: Int) List[Entry]:
     return out
 
 test "sorting plain records by a comparator orders by key and keeps equal keys in input order":
-    sorted := entries(500).sorted(
-        compare: fn(a: Entry, b: Entry) Int: (a.key - b.key)
-    )
+    sorted := entries(500).sorted(compare: fn(a: Entry, b: Entry) Int: (a.key - b.key))
     var ordered = true
 
     for i in 1..sorted.length():

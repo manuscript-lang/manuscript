@@ -23,9 +23,7 @@ test "headers round-trip":
     var headers = Map[String, String]()
     headers.add("Proc-Type", "4,ENCRYPTED")
 
-    text := encode_all(
-        [PemBlock(label: "KEY", headers: headers, data: "k".to_bytes())]
-    )
+    text := encode_all([PemBlock(label: "KEY", headers: headers, data: "k".to_bytes())])
     back := parse(text).get()
     try expect_equal(back[0].headers.get_or("Proc-Type", ""), "4,ENCRYPTED")
     try expect_equal(back[0].data.decode_utf8().get(""), "k")

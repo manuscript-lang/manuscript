@@ -391,11 +391,7 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
             if value >= high:
                 bin = bins - 1
             else:
-                position := (
-                    finite_bin_rat(value)
-                    .subtract(origin)
-                    .multiply(multiplier)
-                )
+                position := finite_bin_rat(value).subtract(origin).multiply(multiplier)
 
                 if index := position.floor().to_int():
                     bin = index

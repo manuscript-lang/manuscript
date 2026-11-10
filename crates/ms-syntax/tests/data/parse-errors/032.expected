@@ -1,1 +1,1 @@
-error parse 5:17:117 "expected an expression, found end of line; write a value, name, call, or literal here"
+error parse 5:5:102 "'let' was removed; bind with 'x := value' (or 'x: Type = value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"

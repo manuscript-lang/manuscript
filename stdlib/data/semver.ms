@@ -35,9 +35,7 @@ impl Version:
         if other_length < limit: count = other_length
 
         while index < count:
-            order := compare_identifier(
-                self.prerelease[index], other.prerelease[index]
-            )
+            order := compare_identifier(self.prerelease[index], other.prerelease[index])
             if order != 0: return order
 
             index += 1

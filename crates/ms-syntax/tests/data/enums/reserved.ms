@@ -1,1 +1,1 @@
-enum := 1
+fn enum() Int: 1

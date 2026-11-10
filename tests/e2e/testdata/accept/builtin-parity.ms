@@ -344,9 +344,7 @@ test "growth limits and invalid inputs return values":
     list_limit: List[Int]! = error(
         Error("collection: limit exceeded", kind: "EOVERFLOW")
     )
-    list_invalid: List[Int]! = error(
-        Error("collection: invalid input", kind: "EINVAL")
-    )
+    list_invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
     range_by(start: 0, end: 4, step: 1, options: RangeOptions(max_items: 3)) | try expect_equal(
         list_limit
     )

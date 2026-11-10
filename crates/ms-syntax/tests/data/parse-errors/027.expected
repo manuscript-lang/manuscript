@@ -1,1 +1,1 @@
-error parse 20:9:837 "expected a binding name, list pattern, or record pattern, found '>'; write a name, [a, b], or {x, y}"
+error parse 20:5:820 "only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"

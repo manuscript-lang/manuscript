@@ -17,9 +17,7 @@ impl Source[Int] for Counting:
         return ok(unit)
 
 test "filter keeps matching items in order":
-    kept := try collect(
-        from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none
-    )
+    kept := try collect(from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none)
     try expect_equal(kept, [2, 4, 6])
     try expect_equal(
         try collect(from_list([1, 3]) | filter(fn x: x % 2 == 0), none), List[Int]()

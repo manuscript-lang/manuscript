@@ -60,9 +60,7 @@ test "seeded invalid arguments fault":
     _first := try expect_fault(fn: discard(rng.sample([1], 2)))
     _second := try expect_fault(fn: discard(rng.weighted_choice([1, 2], [1.0])))
     _third := try expect_fault(fn: discard(rng.weighted_choice([1, 2], [0.0, 0.0])))
-    _fourth := try expect_fault(
-        fn: discard(rng.weighted_choice([1, 2], [-1.0, 2.0]))
-    )
+    _fourth := try expect_fault(fn: discard(rng.weighted_choice([1, 2], [-1.0, 2.0])))
 
 test "secure sample and weighted_choice":
     picked := try expect_ok(sample([1, 2, 3, 4], 4))

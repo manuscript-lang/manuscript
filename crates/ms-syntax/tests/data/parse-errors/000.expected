@@ -1,1 +1,1 @@
-error parse 13:16:401 "expected an expression, found 'let'; write a value, name, call, or literal here"
+error parse 13:18:396 "expected ':', found ':='; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body"

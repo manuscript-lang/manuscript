@@ -330,14 +330,7 @@ impl Image:
                             out.append(self.pixels[at + c])
                     Bilinear:
                         // Sample centers, in 1/256ths, clamped to the source.
-                        fx := max_of(
-                            0,
-                            (
-                                (2 * x + 1)
-                                * self.width
-                                * 128
-                            ) / width - 128
-                        )
+                        fx := max_of(0, ((2 * x + 1) * self.width * 128) / width - 128)
                         fy := max_of(
                             0,
                             (

@@ -54,9 +54,7 @@ fn transformed_error(log: String) Unit!:
 
 fn transformed_then(log: String) Unit!:
     value: Marker!Int = ok(Marker(12, log.clone()))
-    mapped: Marker!Int = value.and_then(
-        fn item: ok(Marker(item.id + 1, log.clone()))
-    )
+    mapped: Marker!Int = value.and_then(fn item: ok(Marker(item.id + 1, log.clone())))
     try expect_equal(value.get().id, 12)
     try expect_equal(mapped.get().id, 13)
     return ok(unit)

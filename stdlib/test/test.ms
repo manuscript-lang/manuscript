@@ -114,8 +114,7 @@ export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
 
 // Requires none; fails when a payload is present.
 export fn expect_none[T](actual: T?, site: String = caller_site()) Unit!:
-    if value := actual:
-        return error(failure("expected none, got {repr(value)}", site))
+    if value := actual: return error(failure("expected none, got {repr(value)}", site))
 
     return ok(unit)
 

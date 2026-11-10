@@ -74,9 +74,7 @@ test "Bytes values direct bound and free calls return independent lists":
 
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
     text := "aé🙂z"
-    out_of_range: String! = error(
-        Error("string: value out of range", kind: "ERANGE")
-    )
+    out_of_range: String! = error(Error("string: value out of range", kind: "ERANGE"))
     try expect_equal((try text.slice(-2, 4)), "🙂z")
     try expect_equal((try text.slice(0, -1)), "aé🙂")
     try expect_equal((try text.slice(4, 4)), "")
@@ -157,9 +155,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
     try expect_equal((try text.slice_scalars(1199, 1203)), "🙂aé€")
     try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
 
-    out_of_range: String! = error(
-        Error("string: value out of range", kind: "ERANGE")
-    )
+    out_of_range: String! = error(Error("string: value out of range", kind: "ERANGE"))
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
 
 test "builder appends literals of every short length across growth":

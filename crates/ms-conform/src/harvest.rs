@@ -350,15 +350,6 @@ fn project_text(dir: &Path) -> String {
     text
 }
 
-fn has_word(text: &str, word: &str) -> bool {
-    text.match_indices(word).any(|(i, _)| {
-        let before = text[..i].chars().next_back();
-        let after = text[i + word.len()..].chars().next();
-        !before.is_some_and(|c| c.is_alphanumeric() || c == '_')
-            && !after.is_some_and(|c| c.is_alphanumeric() || c == '_')
-    })
-}
-
 /// The milestone tier of a program: stdout and the test harness are part of the core language
 /// experience, so `io` and `testing` do not raise it.
 pub fn tier_of(imports: &BTreeSet<String>) -> &'static str {

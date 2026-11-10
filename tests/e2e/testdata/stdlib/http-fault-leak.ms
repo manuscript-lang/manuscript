@@ -42,9 +42,7 @@ test "a fetch cancelled by its timeout releases its read buffer":
 
     // Warm up the thread's buffers and the connection pool before measuring.
     for i in 0..20:
-        _ := fetch(url).with(
-            options: PromiseOptions(timeout: 5.milliseconds())
-        ).wait()
+        _ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 
     before := (memory_usage() | try expect_ok).resident
 
@@ -62,9 +60,7 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
     server := serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
     url := "http://{server.address()}/"
     for i in 0..200:
-        _ := fetch(url).with(
-            options: PromiseOptions(timeout: 5.milliseconds())
-        ).wait()
+        _ := fetch(url).with(options: PromiseOptions(timeout: 5.milliseconds())).wait()
 
     before := (memory_usage() | try expect_ok).heap_used
 

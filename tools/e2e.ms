@@ -342,9 +342,7 @@ fn timed(started: Instant, path: String) String:
 
 // The fixtures that dominate the run, from `<milliseconds> <fixture>` entries.
 fn print_slowest(times: List[String]) Unit:
-    slowest := times.sorted(
-        fn(a: String, b: String) Int: millis_of(b) - millis_of(a)
-    )
+    slowest := times.sorted(fn(a: String, b: String) Int: millis_of(b) - millis_of(a))
     var shown = List[String]()
     for entry in slowest:
         if shown.length() < 15: shown.append("  {entry}")

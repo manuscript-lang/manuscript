@@ -140,9 +140,7 @@ test "zero-size permutations preserve shape and validate sizes":
 
     _negative := try expect_fault(fn: discard(permutations(empty, -1)))
     _oversized := try expect_fault(fn: discard(permutations(empty, 1)))
-    _minimum := try expect_fault(
-        fn: discard(permutations([1], -9223372036854775808))
-    )
+    _minimum := try expect_fault(fn: discard(permutations([1], -9223372036854775808)))
     _maximum := try expect_fault(fn: discard(permutations([1], 9223372036854775807)))
 
 test "nonzero permutations retain position order and own their results":

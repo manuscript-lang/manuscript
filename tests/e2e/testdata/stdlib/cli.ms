@@ -197,16 +197,12 @@ test "schema mistakes are reported before parsing":
         "default z does not fit"
     )
 
-    rest_first := Command(
-        name: "x", args: [Arg(name: "a", rest: true), Arg(name: "b")]
-    )
+    rest_first := Command(name: "x", args: [Arg(name: "a", rest: true), Arg(name: "b")])
     (rest_first.parse([]) | try expect_error).message | try expect_contains(
         "must be last"
     )
 
-    order := Command(
-        name: "x", args: [Arg(name: "a", required: false), Arg(name: "b")]
-    )
+    order := Command(name: "x", args: [Arg(name: "a", required: false), Arg(name: "b")])
     (order.parse([]) | try expect_error).message | try expect_contains(
         "follows an optional"
     )

@@ -84,14 +84,10 @@ test "Result transforms preserve primitive errors and map to named cases":
     ).get() | try expect_equal(4)
     calls | try expect_equal(1)
 
-    chained := success.and_then(
-        fn value: Result[String, String].ok(value.to_string())
-    )
+    chained := success.and_then(fn value: Result[String, String].ok(value.to_string()))
     chained.get() | try expect_equal("4")
 
-    recovered := failure.or_else(
-        fn message: Result[Int, String].ok(message.length())
-    )
+    recovered := failure.or_else(fn message: Result[Int, String].ok(message.length()))
     recovered.get() | try expect_equal(7)
     failure.get_or_else(fn message: message.length()) | try expect_equal(7)
 

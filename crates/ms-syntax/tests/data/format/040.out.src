@@ -11,7 +11,7 @@ fn checked(value: Int) Int:
     consume(fourth)
     consume(third)
 
-    let (
+    var (
         left = third
         right = fourth
     )

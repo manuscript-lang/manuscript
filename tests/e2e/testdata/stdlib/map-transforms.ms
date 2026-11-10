@@ -158,9 +158,7 @@ test "empty transformations skip callbacks and allocate independent storage":
     empty_calls.is_empty() | try expect_true
 
 test "Map reverse fold and last match retain ordered snapshots":
-    source: Map[String, Counter] = {
-        "b": Counter(2), "a": Counter(1), "c": Counter(3)
-    }
+    source: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
     initial: List[String] = []
 
     var folded = reverse_map(

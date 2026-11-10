@@ -76,9 +76,7 @@ test "a body without the closing delimiter is InvalidData":
     try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "the part budget reports LimitExceeded":
-    big := encode_multipart(
-        [form_part("f", "x".repeat(500).get("").to_bytes())], "XyZ"
-    )
+    big := encode_multipart([form_part("f", "x".repeat(500).get("").to_bytes())], "XyZ")
     outcome := read_parts(big.clone(), 64, 100)
     try expect_equal(outcome.err().kind, "EOVERFLOW")
     try expect_equal((try read_parts(big, 64, 1000)).length(), 1)

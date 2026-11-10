@@ -60,9 +60,7 @@ test "Base64 preserves tails across small and batch boundaries":
         data := padded_input(length)
         try expect_equal(data.length(), length)
 
-        tail := if length % 3 == 1: "+w==" else: (
-            if length % 3 == 2: "+/8=" else: ""
-        )
+        tail := if length % 3 == 1: "+w==" else: (if length % 3 == 2: "+/8=" else: "")
         url_tail := if length % 3 == 1: "-w==" else: (
             if length % 3 == 2: "-_8=" else: ""
         )

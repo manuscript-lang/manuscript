@@ -1,1 +1,1 @@
-error parse 2:15:29 "'&&' is not an operator; write 'and' for logical and"
+error parse 2:12:26 "'&&' is not an operator; write 'and' for logical and"

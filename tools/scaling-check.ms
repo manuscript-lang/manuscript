@@ -74,10 +74,7 @@ fn measure(
 
     started := monotonic()
     ran := run(ms.clone(), args, RunOptions(timeout: seconds(limit))).wait()
-    took := (
-        monotonic().difference(started).to_nanoseconds().to_float()
-        / 1000000000.0
-    )
+    took := (monotonic().difference(started).to_nanoseconds().to_float() / 1000000000.0)
     if ran.is_error(): return -1.0
     if ran.get().exit_code != 0: return -1.0
 
@@ -120,9 +117,7 @@ export fn main() Int:
             files.append(file)
 
         for command in ["check", "emit"]:
-            small := measure(
-                ms.clone(), command.clone(), files[0].clone(), [], limit
-            )
+            small := measure(ms.clone(), command.clone(), files[0].clone(), [], limit)
             mid := measure(ms.clone(), command.clone(), files[1].clone(), [], limit)
             big := measure(ms.clone(), command.clone(), files[2].clone(), [], limit)
             checked += 1
@@ -141,15 +136,9 @@ export fn main() Int:
             for attempt in 0..RETRIES:
                 if ratio <= bound: break
 
-                s2 := measure(
-                    ms.clone(), command.clone(), files[0].clone(), [], limit
-                )
-                m2 := measure(
-                    ms.clone(), command.clone(), files[1].clone(), [], limit
-                )
-                b2 := measure(
-                    ms.clone(), command.clone(), files[2].clone(), [], limit
-                )
+                s2 := measure(ms.clone(), command.clone(), files[0].clone(), [], limit)
+                m2 := measure(ms.clone(), command.clone(), files[1].clone(), [], limit)
+                b2 := measure(ms.clone(), command.clone(), files[2].clone(), [], limit)
                 if s2 < 0.0 or m2 < 0.0 or b2 < 0.0: continue
 
                 again := growth(s2, m2, b2, 0.05)

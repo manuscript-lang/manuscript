@@ -164,9 +164,7 @@ impl FaultingCounterKey:
 test "counter fusion preserves faults from an equal-valued source clone":
     key := FaultingCounterKey(9223372036854775807)
     var values = {FaultingCounterKey(9223372036854775807): 1}
-    message := try expect_fault(
-        fn: values.add(key.clone(), values.get_or(key, 0) + 1)
-    )
+    message := try expect_fault(fn: values.add(key.clone(), values.get_or(key, 0) + 1))
     try expect_contains(message, "overflow")
 
 test "native borrowers retain owned arguments after a later try":

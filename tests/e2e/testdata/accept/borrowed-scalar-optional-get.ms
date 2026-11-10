@@ -177,9 +177,7 @@ test "labeled map lends evaluate receiver and key once in order":
 
     maps := [values]
     var events: List[Int] = []
-    length := maps[map_index(var events)].get(
-        key: map_key(var events)
-    ).get().length()
+    length := maps[map_index(var events)].get(key: map_key(var events)).get().length()
     try expect_equal(length, 7)
     try expect_equal(events, [1, 2])
     try expect_equal(maps.length(), 1)

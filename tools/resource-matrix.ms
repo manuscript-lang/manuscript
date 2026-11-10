@@ -89,9 +89,7 @@ fn operations() List[Operation]:
             "list_replace", list_setup(), "items", "replace", "0, @V@", "r := ",
             "saw(r)"
         ),
-        op(
-            "list_pop", list_setup(), "items", "pop", "", "r := ", "saw_opt(r)"
-        ),
+        op("list_pop", list_setup(), "items", "pop", "", "r := ", "saw_opt(r)"),
         op("list_remove", list_setup(), "items", "remove", "0", "", ""),
         op(
             "list_get", list_setup(), "items", "get", "0, @V@", "r := ", "saw(r)"
@@ -114,16 +112,15 @@ fn operations() List[Operation]:
             "print(r.message)"
         ),
         op(
-            "optional_get_present", optional_setup(true), "held", "get", "@V@",
-            "r := ", "saw(r)"
-        ),
-        op(
-            "optional_get_absent", optional_setup(false), "held", "get", "@V@",
-            "r := ", "saw(r)"
-        ),
-        op(
-            "result_get_ok", result_setup(true), "held", "get", "@V@", "r := ",
+            "optional_get_present", optional_setup(true), "held", "get", "@V@", "r := ",
             "saw(r)"
+        ),
+        op(
+            "optional_get_absent", optional_setup(false), "held", "get", "@V@", "r := ",
+            "saw(r)"
+        ),
+        op(
+            "result_get_ok", result_setup(true), "held", "get", "@V@", "r := ", "saw(r)"
         ),
         op(
             "result_get_error", result_setup(false), "held", "get", "@V@", "r := ",
@@ -200,9 +197,7 @@ fn field(entry: JsonValue, key: String) String:
 
 // Every `Type.operation` of the standard type whose declaration mentions a type parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
-    ran := try run(
-        ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]
-    ).wait()
+    ran := try run(ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]).wait()
     page := try parse(ran.stdout.decode_utf8().get(""))
     var found = List[String]()
     names := type_parameters(name.clone())
