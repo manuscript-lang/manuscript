@@ -664,8 +664,12 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Unit
                 return
 
             var has_text = false
-            for child in children:
-                if child.tag().is_empty() and child.text() != "": has_text = true
+
+            if not indent.is_empty():
+                for child in children:
+                    if child.tag().is_empty() and child.text() != "":
+                        has_text = true
+                        break
 
             if has_text or indent.is_empty():
                 out.append(">")

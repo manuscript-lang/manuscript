@@ -33,6 +33,26 @@ test "indent puts elements on lines":
         stringify(doc, "  "), "<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n"
     )
 
+test "stringify preserves compact and mixed content formatting":
+    for source in [
+        "<a/>", "<a>text<b/></a>", "<a><b/>text</a>", "<a> <b/> </a>",
+        "<a><!--comment-->text<b/></a>", "<a><b/>text<!--comment--></a>",
+        "<é:root attr=\"&amp;&quot;&#9;&#10;&#13;\">]]&gt;<日/></é:root>"
+    ]:
+        let doc = try parse(source)
+        try expect_equal(stringify(doc), source)
+        try expect_equal(stringify(doc, "  "), "{source}\n")
+
+test "stringify leaves comments and descendant text on indented lines":
+    let doc = try parse("<a><!--comment--><b>text</b><c/></a>")
+    try expect_equal(
+        stringify(doc, "  "), "<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n"
+    )
+
+    let empty = XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
+    try expect_equal(stringify(empty), "<a></a>")
+    try expect_equal(stringify(empty, "  "), "<a>\n</a>\n")
+
 test "malformed documents are errors":
     for bad in [
         "<a>", "<a></b>", "<a/><b/>", "text", "<a b=1/>", "<a b=\"1\" b=\"2\"/>",
