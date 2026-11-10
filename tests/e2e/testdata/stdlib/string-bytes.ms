@@ -208,3 +208,12 @@ test "search indexes count scalars for ascii, inline and unicode text":
     try expect_equal("ab!".last_index_of("!").get(-1), 2)
     try expect_equal("é!".last_index_of("!").get(-1), 1)
     try expect_equal(ascii.last_index_of("?").get(-1), -1)
+
+test "count matches split for nonempty parts and counts scalars plus one for an empty part":
+    try expect_equal("word,".repeat(10000).get().count(","), 10000)
+    try expect_equal("aaaa".count("aa"), 2)
+    try expect_equal("héllo".count(""), 6)
+    try expect_equal("".count("a"), 0)
+    try expect_equal("".count(""), 1)
+    try expect_equal("🙂x🙂".count("🙂"), 2)
+    try expect_equal("abc".count("abcd"), 0)

@@ -323,3 +323,21 @@ test "DOCTYPE public identifiers accept only XML PubidChar scalars":
     // A system literal has a different grammar; brackets and Unicode stay legal there.
     try expect_true(parse("<!DOCTYPE a SYSTEM 'é[<&>😀'><a/>").is_ok())
     try expect_true(parse("<!DOCTYPE a PUBLIC 'valid' 'é[<&>😀'><a/>").is_ok())
+
+test "elements with many attributes keep their order and reject duplicates at any position":
+    var text = "<root"
+    for i in 0..40:
+        text += " a{i}=\"{i}\""
+
+    let doc = parse(text + "/>").get()
+    try expect_equal(doc.attribute("a0").get(""), "0")
+    try expect_equal(doc.attribute("a39").get(""), "39")
+    try expect_equal(doc.attribute("a15").get(""), "15")
+    try expect_equal(doc.attribute("a16").get(""), "16")
+
+    // The 16th attribute is the first one checked through the set, and its list-scanned predecessors count.
+    try expect_true(parse(text + " a0=\"x\"/>").is_error())
+    try expect_true(parse(text + " a16=\"x\"/>").is_error())
+    try expect_true(parse(text + " a39=\"x\"/>").is_error())
+    try expect_true(parse(text + " a40=\"x\"/>").is_ok())
+    try expect_true(parse("<root a=\"1\" b=\"2\" a=\"3\"/>").is_error())

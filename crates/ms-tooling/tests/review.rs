@@ -14,6 +14,71 @@ use std::collections::BTreeMap;
 const SAMPLE_DIFF: &str = "diff --git a/src/a.ms b/src/a.ms\nindex 111..222 100644\n--- a/src/a.ms\n+++ b/src/a.ms\n@@ -1,4 +1,5 @@\n fn one() Int:\n-    return 1\n+    x := 1\n+    return x\n \n fn two() Int:\ndiff --git a/new.ms b/new.ms\nnew file mode 100644\n--- /dev/null\n+++ b/new.ms\n@@ -0,0 +1,2 @@\n+fn n() Int:\n+    return 0\n";
 
 #[test]
+fn git_metadata_only_sections_preserve_path_identity() {
+    for (old, new, path) in [
+        ("a/main.ms", "b/main.ms", "main.ms"),
+        ("a/a b/name .ms", "b/a b/name .ms", "a b/name .ms"),
+        ("a/café.ms", "b/café.ms", "café.ms"),
+        (r#""a/caf\303\251.ms""#, r#""b/caf\303\251.ms""#, "café.ms"),
+        (
+            r#""a/quote\"tab\t.ms""#,
+            r#""b/quote\"tab\t.ms""#,
+            "quote\"tab\t.ms",
+        ),
+    ] {
+        let patch = format!("diff --git {old} {new}\nold mode 100644\nnew mode 100755\n");
+        let files = parse_diff(&patch).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].old, path);
+        assert_eq!(files[0].new, path);
+        assert!(files[0].hunks.is_empty());
+        assert!(files[0].touched_lines().is_empty());
+        assert_eq!(
+            reverse_apply("unchanged\n", &files[0].hunks).unwrap(),
+            "unchanged\n"
+        );
+    }
+}
+
+#[test]
+fn git_metadata_only_empty_files_keep_the_absent_side() {
+    let patch = "diff --git a/empty.ms b/empty.ms\nnew file mode 100644\nindex 0000000..e69de29\ndiff --git a/gone.ms b/gone.ms\ndeleted file mode 100644\nindex e69de29..0000000\n";
+    let files = parse_diff(patch).unwrap();
+    assert_eq!(files.len(), 2);
+    assert!(files[0].old.is_empty());
+    assert_eq!(files[0].new, "empty.ms");
+    assert_eq!(files[1].old, "gone.ms");
+    assert!(files[1].new.is_empty());
+    assert_eq!(removed_content(&files[1].hunks), "");
+}
+
+#[test]
+fn git_text_headers_still_override_section_fallback_paths() {
+    let patch = "diff --git a/ignored.ms b/ignored.ms\nold mode 100644\nnew mode 100755\n--- a/actual.ms\n+++ b/actual.ms\n@@ -1 +1 @@\n-old\n+new\n";
+    let files = parse_diff(patch).unwrap();
+    assert_eq!(files[0].path(), "actual.ms");
+    assert_eq!(reverse_apply("new\n", &files[0].hunks).unwrap(), "old\n");
+}
+
+#[test]
+fn git_binary_metadata_stays_rejected_without_inventing_text_changes() {
+    for metadata in [
+        "Binary files a/image.png and b/image.png differ",
+        "GIT binary patch",
+    ] {
+        let patch =
+            format!("diff --git a/image.png b/image.png\nnew file mode 100644\n{metadata}\n");
+        assert!(
+            parse_diff(&patch)
+                .unwrap_err()
+                .contains("git diff --text --no-renames")
+        );
+    }
+    assert!(parse_diff("diff --git a/x.ms b/x.ms\n").is_err());
+    assert!(parse_diff("diff --git a/x.ms b/x.ms\n+missing hunk header\n").is_err());
+}
+
+#[test]
 fn parse_diff_and_reverse_apply() {
     let files = parse_diff(SAMPLE_DIFF).unwrap();
     assert_eq!(files.len(), 2);

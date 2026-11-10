@@ -32,8 +32,8 @@ export type Regression:
 export fn mean(values: List[Float]) Float?:
     if values.is_empty(): return none
 
-    sum := values.sum()
-    ordinary := sum / values.length().to_float()
+    let sum = values.sum()
+    let ordinary = sum / values.length().to_float()
     if sum.is_finite(): return ordinary
 
     // Keep the existing NaN/infinity behavior; only a finite-input overflow needs repair.
@@ -44,13 +44,13 @@ export fn mean(values: List[Float]) Float?:
     var total = rat_of_int(0)
 
     for value in values:
-        if term := rat_of_float(value):
+        if let term = rat_of_float(value):
             total = total.add(term)
         else:
             panic("statistics: finite mean input could not be converted")
 
-    if average := total.divide(rat_of_int(values.length())):
-        if result := average.to_float(): return result
+    if let average = total.divide(rat_of_int(values.length())):
+        if let result = average.to_float(): return result
 
     // The exact average of finite inputs lies between their finite extrema.
     panic("statistics: finite mean could not be represented")
@@ -60,13 +60,13 @@ export fn mean(values: List[Float]) Float?:
 export fn median(values: List[Float]) Float?:
     if values.is_empty(): return none
 
-    ordered := values.sorted()
-    middle := ordered.length() / 2
+    let ordered = values.sorted()
+    let middle = ordered.length() / 2
     if ordered.length() % 2 == 1: return ordered[middle]
 
-    low := ordered[middle - 1]
-    high := ordered[middle]
-    sum := low + high
+    let low = ordered[middle - 1]
+    let high = ordered[middle]
+    let sum = low + high
 
     // Only overflowing finite sums need halves; halving tiny values would lose precision.
     if not sum.is_finite() and low.is_finite() and high.is_finite():
@@ -79,7 +79,7 @@ export fn median(values: List[Float]) Float?:
 export fn mode(values: List[Float]) Float?:
     if values.is_empty(): return none
 
-    ordered := values.sorted()
+    let ordered = values.sorted()
     var best = ordered[0]
     var best_count = 0
     var run_start = 0
@@ -113,29 +113,29 @@ fn centered_moments(values: List[Float]) Moments?:
 
     if scale == 0.0: return Moments(squares: 0.0, exponent: 0)
 
-    exponent := frexp(scale).exponent
-    origin := ldexp(values[0], -exponent)
+    let exponent = frexp(scale).exponent
+    let origin = ldexp(values[0], -exponent)
     var total = DeviationSum()
     for value in values:
         total.add(ldexp(value, -exponent) - origin)
 
-    center := total.value() / values.length().to_float()
+    let center = total.value() / values.length().to_float()
     var squares = DeviationSum()
 
     for value in values:
-        delta := (ldexp(value, -exponent) - origin) - center
+        let delta = (ldexp(value, -exponent) - origin) - center
         squares.add(delta * delta)
 
     return Moments(squares: squares.value(), exponent: exponent)
 
 // Returns the sum of squared distances from the mean divided by `divisor`, or none for an empty list.
 fn spread_variance(values: List[Float], divisor: Int) Float?:
-    if moments := centered_moments(values):
-        result := moments.squares / divisor.to_float()
+    if let moments = centered_moments(values):
+        let result = moments.squares / divisor.to_float()
         return ldexp(ldexp(result, moments.exponent), moments.exponent)
 
     // Nonfinite input follows Float rules around the plain mean.
-    if center := mean(values):
+    if let center = mean(values):
         var total = 0.0
         for value in values:
             total += (value - center) * (value - center)
@@ -157,7 +157,7 @@ export fn variance(values: List[Float]) Float?:
 
 // Returns the population standard deviation, or none for an empty list.
 export fn population_stdev(values: List[Float]) Float?:
-    if spread_squared := population_variance(values):
+    if let spread_squared = population_variance(values):
         return deviation_from_variance(values, spread_squared, 0)
 
     return none
@@ -165,7 +165,7 @@ export fn population_stdev(values: List[Float]) Float?:
 // Returns the sample standard deviation, or none when the list has fewer than two values.
 // Example: `stdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])` is about `2.138`.
 export fn stdev(values: List[Float]) Float?:
-    if spread_squared := variance(values):
+    if let spread_squared = variance(values):
         return deviation_from_variance(values, spread_squared, 1)
 
     return none
@@ -176,7 +176,7 @@ fn deviation_from_variance(
     spread_squared: Float,
     correction: Int
 ) Float:
-    ordinary := sqrt(spread_squared)
+    let ordinary = sqrt(spread_squared)
     if spread_squared.is_finite() and spread_squared >= 2.2250738585072014e-308:
         return ordinary
 
@@ -189,21 +189,21 @@ fn deviation_from_variance(
 
     if scale == 0.0: return 0.0
 
-    exponent := frexp(scale).exponent
-    origin := ldexp(values[0], -exponent)
+    let exponent = frexp(scale).exponent
+    let origin = ldexp(values[0], -exponent)
     var total = DeviationSum()
     for value in values:
         total.add(ldexp(value, -exponent) - origin)
 
-    center := total.value() / values.length().to_float()
+    let center = total.value() / values.length().to_float()
     var squares = DeviationSum()
 
     for value in values:
-        delta := (ldexp(value, -exponent) - origin) - center
+        let delta = (ldexp(value, -exponent) - origin) - center
         squares.add(delta * delta)
 
-    normalized := sqrt(squares.value() / (values.length() - correction).to_float())
-    result := ldexp(normalized, exponent)
+    let normalized = sqrt(squares.value() / (values.length() - correction).to_float())
+    let result = ldexp(normalized, exponent)
 
     // Population deviation cannot exceed the greatest input magnitude.
     if correction == 0: return result.min(scale)
@@ -223,20 +223,20 @@ fn sample_deviation_overflows(values: List[Float]) Bool:
     var squares = rat_of_int(0)
 
     for value in values:
-        if term := rat_of_float(value):
+        if let term = rat_of_float(value):
             total = total.add(term)
             squares = squares.add(term.multiply(term))
         else:
             panic("statistics: finite deviation input could not be converted")
 
-    count := rat_of_int(values.length())
-    numerator := squares.multiply(count).subtract(total.multiply(total))
+    let count = rat_of_int(values.length())
+    let numerator = squares.multiply(count).subtract(total.multiply(total))
 
     // Round-to-nearest overflows at MAX + half its upward ulp, including the tie.
-    if maximum := rat_of_float(1.7976931348623157e308):
-        if half_ulp := rat_of_float(ldexp(1.0, 970)):
-            midpoint := maximum.add(half_ulp)
-            bound := midpoint.multiply(
+    if let maximum = rat_of_float(1.7976931348623157e308):
+        if let half_ulp = rat_of_float(ldexp(1.0, 970)):
+            let midpoint = maximum.add(half_ulp)
+            let bound = midpoint.multiply(
                 midpoint
             ).multiply(count).multiply(rat_of_int(values.length() - 1))
             return numerator.compare(bound) >= 0
@@ -250,7 +250,7 @@ type DeviationSum:
 
 impl DeviationSum:
     var fn add(value: Float) Unit:
-        next := self.total + value
+        let next = self.total + value
 
         if self.total.abs() >= value.abs():
             self.correction += (self.total - next) + value
@@ -277,16 +277,16 @@ export fn percentile(values: List[Float], percent: Float) Float?:
 // Interpolates the percentile of an already sorted, non-empty list.
 // The rank is `percent * (n - 1) / 100`, so an integer percent at an exact rank is not displaced by an earlier rounding of `percent / 100`.
 fn percentile_sorted(ordered: List[Float], percent: Float) Float:
-    position := percent * (ordered.length() - 1).to_float() / 100.0
-    below := position.truncate_to_int().get(0)
+    let position = percent * (ordered.length() - 1).to_float() / 100.0
+    let below = position.truncate_to_int().get(0)
     return interpolate_sorted(ordered, below, position - below.to_float())
 
 // Blends the neighbours at `below` and `below + 1` by `fraction` in 0 through 1.
 fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
     if below + 1 >= ordered.length(): return ordered[ordered.length() - 1]
 
-    low := ordered[below]
-    high := ordered[below + 1]
+    let low = ordered[below]
+    let high = ordered[below + 1]
 
     // An exact position or equal neighbors return the neighbor; interpolating would turn `inf - inf` or `inf * 0` into NaN.
     if fraction == 0.0 or low == high: return low
@@ -294,7 +294,7 @@ fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
     // A lone infinite neighbor stays the result of the weighted blend.
     if not low.is_finite() and high != -low: return low
 
-    span := high - low
+    let span = high - low
 
     // Finite opposite-sign endpoints can overflow their difference, not their weighted mean.
     // Keep the original formula for finite spans to preserve small/subnormal rounding.
@@ -315,13 +315,13 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
     var cuts: List[Float] = []
     if values.is_empty(): return cuts
 
-    ordered := values.sorted()
+    let ordered = values.sorted()
 
     // The rank `i * (n - 1) / parts` is split in integers, so cut points at exact ranks return the element.
-    span := ordered.length() - 1
+    let span = ordered.length() - 1
 
     for i in 1..parts:
-        numerator := i * span
+        let numerator = i * span
         cuts.append(
             interpolate_sorted(
                 ordered, numerator / parts,
@@ -334,20 +334,20 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 /*
 Counts the values into `bins` equal-width bins between the least and greatest value, or returns none for an empty list.
 Values equal to the greatest value fall in the last bin (so an infinite value does), and when every value is equal they all fall in the first bin. When the range is infinite, the finite values fall in the first bin. A `bins` below 1 faults.
-Example: `if bins := bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` prints `[1, 3]`.
+Example: `if let bins = bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` prints `[1, 3]`.
 */
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     if bins < 1:
         panic("bin_counts: bins must be at least 1")
     if values.is_empty(): return none
 
-    low := values.min().get(0.0)
-    high := values.max().get(0.0)
+    let low = values.min().get(0.0)
+    let high = values.max().get(0.0)
 
     // A range beyond the Float maximum (or an infinite end) is measured in halves so the width stays finite where it can.
-    halved := not (high - low).is_finite()
-    origin := if halved: low / 2.0 else: low
-    width := (if halved: high / 2.0 - origin else: high - low) / bins.to_float()
+    let halved = not (high - low).is_finite()
+    let origin = if halved: low / 2.0 else: low
+    let width = (if halved: high / 2.0 - origin else: high - low) / bins.to_float()
 
     if (
         low < high
@@ -371,7 +371,7 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
         if low < high and value >= high:
             bin = bins - 1
         else if width > 0.0 and width.is_finite():
-            scaled := if halved: value / 2.0 else: value
+            let scaled = if halved: value / 2.0 else: value
             bin = ((scaled - origin) / width).truncate_to_int().get(0)
 
         if bin >= bins:
@@ -382,20 +382,24 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 
 // A subnormal width loses bin boundaries. Classify exact binary64 inputs instead.
 fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) List[Int]:
-    origin := finite_bin_rat(low)
-    span := finite_bin_rat(high).subtract(origin)
+    let origin = finite_bin_rat(low)
+    let span = finite_bin_rat(high).subtract(origin)
     var counts = [0].repeated(bins)
 
-    if multiplier := rat_of_int(bins).divide(span):
+    if let multiplier = rat_of_int(bins).divide(span):
         for value in values:
             var bin = 0
 
             if value >= high:
                 bin = bins - 1
             else:
-                position := finite_bin_rat(value).subtract(origin).multiply(multiplier)
+                let position = (
+                    finite_bin_rat(value)
+                    .subtract(origin)
+                    .multiply(multiplier)
+                )
 
-                if index := position.floor().to_int():
+                if let index = position.floor().to_int():
                     bin = index
                 else:
                     panic("statistics: finite bin index could not be represented")
@@ -407,7 +411,7 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
     panic("statistics: finite bin range could not be divided")
 
 fn finite_bin_rat(value: Float) BigRat:
-    if result := rat_of_float(value): return result
+    if let result = rat_of_float(value): return result
 
     panic("statistics: finite bin input could not be converted")
 
@@ -424,15 +428,15 @@ fn spread(xs: List[Float], ys: List[Float]) Spread?:
         panic("statistics: the lists must have the same length")
     if xs.length() < 2: return none
 
-    mean_x := mean(xs).get(0.0)
-    mean_y := mean(ys).get(0.0)
+    let mean_x = mean(xs).get(0.0)
+    let mean_y = mean(ys).get(0.0)
     var xy = 0.0
     var xx = 0.0
     var yy = 0.0
 
     for i in 0..xs.length():
-        dx := xs[i] - mean_x
-        dy := ys[i] - mean_y
+        let dx = xs[i] - mean_x
+        let dy = ys[i] - mean_y
         xy += dx * dy
         xx += dx * dx
         yy += dy * dy
@@ -449,7 +453,7 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
         panic("statistics: the lists must have the same length")
 
     // Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
-    if s := spread(unit_scaled(xs), unit_scaled(ys)):
+    if let s = spread(unit_scaled(xs), unit_scaled(ys)):
         if s.xx == 0.0 or s.yy == 0.0: return none
 
         return s.xy / (sqrt(s.xx) * sqrt(s.yy))
@@ -467,7 +471,7 @@ fn unit_scaled(values: List[Float]) List[Float]:
 
     if scale == 0.0: return values.clone()
 
-    exponent := frexp(scale).exponent
+    let exponent = frexp(scale).exponent
     var scaled = values.map(fn value: ldexp(value, -exponent))
     return scaled
 
@@ -477,10 +481,100 @@ Lists of different lengths fault.
 Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` and intercept `1.0`.
 */
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
-    if s := spread(xs, ys):
+    if let s = spread(xs, ys):
+        if (
+            well_conditioned(s.mean_x, s.xx, xs.length(), false)
+            and well_conditioned(s.mean_y, s.yy, ys.length(), true)
+        ):
+            let slope = s.xy / s.xx
+            return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
+
+        if let x_exponent = unit_exponent(xs):
+            if let y_exponent = unit_exponent(ys):
+                return finite_regression(xs, ys, x_exponent, y_exponent)
+
+        // Nonfinite input follows Float rules around the plain means.
         if s.xx == 0.0: return none
 
-        slope := s.xy / s.xx
+        let slope = s.xy / s.xx
         return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
 
     return none
+
+/*
+Whether the plain sum of squared deviations `squares` around `mean` is trustworthy: it neither overflowed nor lost precision to
+underflow, and the spread is not lost against a large common offset (mean square deviation above 2^-20 of the squared mean).
+A flat list (`allow_flat`) has no spread to lose. Anything else, including nonfinite input, takes the scaled path or plain Float rules.
+*/
+fn well_conditioned(mean: Float, squares: Float, count: Int, allow_flat: Bool) Bool:
+    if squares == 0.0: return allow_flat and mean.is_finite()
+    if not (squares >= 1e-250 and squares <= 1e250): return false
+
+    return squares > mean * mean * count.to_float() * 9.5367431640625e-7
+
+// The exponent that brings the greatest magnitude into [0.5, 1), or none when a value is not finite; zeros give 0.
+fn unit_exponent(values: List[Float]) Int?:
+    var scale = 0.0
+
+    for value in values:
+        if not value.is_finite(): return none
+
+        scale = scale.max(value.abs())
+
+    if scale == 0.0: return 0
+
+    return frexp(scale).exponent
+
+// Values scaled by a power of two, as offsets from the first one and then from their center.
+type Centered:
+    origin: Float
+    center: Float
+    deviations: List[Float]
+
+fn centered(values: List[Float], exponent: Int) Centered:
+    let origin = ldexp(values[0], -exponent)
+    var total = DeviationSum()
+    for value in values:
+        total.add(ldexp(value, -exponent) - origin)
+
+    let center = total.value() / values.length().to_float()
+    var deviations: List[Float] = []
+    for value in values:
+        deviations.append((ldexp(value, -exponent) - origin) - center)
+    return Centered(origin: origin, center: center, deviations: deviations)
+
+/*
+Each list is scaled by its own power of two and measured from its first value, so squares and products stay in range and a large common
+offset keeps its variation; the deviations are then scaled again, summed with compensation, and the units are restored at the end.
+*/
+fn finite_regression(
+    xs: List[Float],
+    ys: List[Float],
+    x_exponent: Int,
+    y_exponent: Int
+) Regression?:
+    let x = centered(xs, x_exponent)
+    let y = centered(ys, y_exponent)
+    let x_unit = unit_exponent(x.deviations).get(0)
+    let y_unit = unit_exponent(y.deviations).get(0)
+    var xx = DeviationSum()
+    var xy = DeviationSum()
+
+    for i in 0..xs.length():
+        let a = ldexp(x.deviations[i], -x_unit)
+        let b = ldexp(y.deviations[i], -y_unit)
+        xx.add(a * a)
+        xy.add(a * b)
+
+    if xx.value() == 0.0: return none
+
+    let ratio = xy.value() / xx.value()
+    let scaled_slope = ldexp(ratio, y_unit - x_unit)
+    let scaled_intercept = (
+        (y.origin - scaled_slope * x.origin)
+        + (y.center - scaled_slope * x.center)
+    )
+    return Regression(
+        slope: ldexp(ratio, y_unit - x_unit + y_exponent - x_exponent),
+        intercept: ldexp(scaled_intercept, y_exponent)
+    )

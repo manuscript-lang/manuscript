@@ -5,8 +5,7 @@
 Formatter, LSP, CLI, diagnostics, documentation, site.
 
 - [Effects are implicit-deny comment directives](effects-are-implicit-deny-comment-directives.md): `allow_effect` permits, `effect` declares, `std.` tags on exported stdlib functions, MSL116 warns first.
-- [Bound formatter scans to required context](bound-formatter-scans-to-required-context.md): track flow prefix facts and stop suffix measurement once a safe bound forces expansion.
-- [Bound navigation coordinate work to the query](bound-navigation-coordinate-work-to-the-query.md): avoid repeated prefix scans while preserving malformed snapshots and early-reference costs.
+- [Bounded editor work rules](bounded-editor-work-rules.md): Formatter, navigation and token-batch work stays bounded to the query and required context.
 - [Workspace scans filter files before running the checker](workspace-scans-filter-files-before-running-the-checker.md): `ms search_symbol` took minutes at the repository root until the lexical prefilter and reference search skipped unrelated files.
 
 - [Agent help is CLI commands, not a protocol server](agent-help-is-cli-commands-not-a-protocol-server.md): the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed.
@@ -22,14 +21,12 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [Profile native programs by Manuscript position](profile-native-programs-by-manuscript-position.md): `ms profile` replaces the debugger (the debugger and DAP are dropped).
 - [Project review must keep library internals behind their boundary](project-review-must-keep-library-internals-behind-their-boun.md): inspection deliberately includes bundled standard source modules.
 - [Readable formatting needs paragraphs while retaining inline guards](readable-formatting-needs-paragraphs-while-retaining-inline.md): the user's formatter request keeps inline `if` bodies and introduces natural reading boundaries around declarations, guard sections, substan…
-- [Select boundaries before scanning default ranges](select-boundaries-before-scanning-default-ranges.md): avoid multiplying discarded EOF scans when choosing outline ranges.
 - [Sell the language through a story and concrete proof](sell-the-language-through-a-story-and-concrete-proof.md): preserve the prominent tagline, “The language for the agentic era.”, and lead with agents writing correct, fast programs that are easy to review.
 - [Shared editor analysis must preserve selected roots and overlays](shared-editor-analysis-must-preserve-selected-roots-and-over.md): resolve the nearest manifest before sharing analysis.
 - [Signature labels follow checked callees](signature-labels-follow-checked-callees.md): use checked callee spans and retain grouped receiver boundaries inside interpolation.
 - [Source freshness does not establish published freshness](source-freshness-does-not-establish-published-freshness.md): after the concurrency simplification, source declarations and generated Markdown were current while the checked-in website still exposed ret…
 - [Standard declarations are source that tools must navigate](standard-declarations-are-source-that-tools-must-navigate.md): the user asked to keep standard type definitions in Manuscript so editor tooling can use them.
 - [Standard-library prose has the same owner as declarations](standard-library-prose-has-the-same-owner-as-declarations.md): the user requires `.ms` standard-library sources to own all library documentation.
-- [Stream coordinates for ordered token batches](stream-coordinates-for-ordered-token-batches.md): keep an exact boundary anchor to avoid repeated UTF-16 prefix work without changing exceptional offsets.
 - [Teach a runnable path before formal reference](teach-a-runnable-path-before-formal-reference.md): public documentation should focus on Manuscript and what readers can build.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
 - [Tooling change checklist](tooling-change-checklist.md): formatter, LSP, CLI, diagnostics, and debugging rules to check before editing tooling.

@@ -96,7 +96,7 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     if count < 0 or count > values.length():
         return error(Error("random: invalid input", kind: "EINVAL"))
 
-    var order = positions(values.length())
+    var order = positions(if count == 0: 0 else: values.length())
     var out: List[T] = []
 
     for i in 0..count:
@@ -262,7 +262,7 @@ impl SeededRandom:
         if count < 0 or count > values.length():
             panic("random sample: count must be from 0 to the list length")
 
-        var order = positions(values.length())
+        var order = positions(if count == 0: 0 else: values.length())
         var out: List[T] = []
 
         for i in 0..count:

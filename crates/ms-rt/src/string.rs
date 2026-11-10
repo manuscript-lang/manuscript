@@ -584,6 +584,20 @@ unsafe fn scalar_index(s: *const StrVal, text: &[u8], at: usize) -> usize {
     }
 }
 
+/// Non-overlapping occurrences of `v` in `a`; an empty `v` counts the scalars plus one.
+#[unsafe(no_mangle)]
+// ms: leaf
+pub unsafe extern "C-unwind" fn msrt_string_count(a: *const StrVal, v: *const StrVal) -> i64 {
+    // SAFETY: caller passes live strings.
+    unsafe {
+        let (text, part) = (bytes(a), bytes(v));
+        if part.is_empty() {
+            return utf8::count(text) as i64 + 1;
+        }
+        count_matches(text, part) as i64
+    }
+}
+
 /// Int? result: present flag, value through `out`.
 #[unsafe(no_mangle)]
 // ms: leaf

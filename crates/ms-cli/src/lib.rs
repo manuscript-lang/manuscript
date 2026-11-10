@@ -136,7 +136,14 @@ fn default_project_target(args: &[String]) -> Option<Vec<String>> {
         let mut out = vec![args[0].clone(), target];
         if lists {
             // Further inputs follow `--` so they are not read as options.
-            let others = (1..args.len()).filter(|i| !inputs.contains(i) && *i != dashes);
+            // `inputs` is sorted, so one pass over it replaces a membership search per argument.
+            let mut next_input = inputs.iter().peekable();
+            let others = (1..args.len()).filter(|&i| {
+                if next_input.next_if_eq(&&i).is_some() {
+                    return false;
+                }
+                i != dashes
+            });
             out.extend(others.map(|i| args[i].clone()));
             if inputs.len() > 1 {
                 out.push("--".to_string());
@@ -352,6 +359,21 @@ mod default_target_tests {
             default_project_target(&args(&["check", "--json", "a.ms", "b.ms"])),
             Some(args(&["check", "a.ms", "--json", "--", "b.ms"]))
         );
+    }
+
+    #[test]
+    fn many_targets_keep_order_options_and_literal_names() {
+        let mut input = args(&["check", "--json"]);
+        input.extend((0..100_000).map(|i| format!("f{i}.ms")));
+        input.extend(args(&["--help", "--", "--literal", "z.ms"]));
+        let out = default_project_target(&input).expect("normalized");
+        assert_eq!(out[..2], args(&["check", "f0.ms"]));
+        assert_eq!(out[2..4], args(&["--json", "--help"]));
+        assert_eq!(out[4], "--");
+        assert_eq!(out.len(), 5 + 99_999 + 2);
+        assert_eq!(out[5], "f1.ms");
+        assert_eq!(out[5 + 99_998], "f99999.ms");
+        assert_eq!(out[out.len() - 2..], args(&["--literal", "z.ms"]));
     }
 
     #[test]

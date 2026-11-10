@@ -216,6 +216,27 @@ test "complex log is finite when the magnitude overflows":
     try expect_true(near(axis, complex(709.7268368932282, 3.141592653589793)))
     try expect_true(near(complex(1.0, 0.0).log(), complex(0.0, 0.0)))
 
+test "complex log keeps the real part near the unit circle and for subnormal magnitudes":
+    // Exact-input references (mpmath, 750 digits): 5e-17, 5e-201 and -744.0934983311013.
+    try component_close(complex(1.0, 1e-8).log().re, 5.0000000000000005e-17)
+    try component_close(complex(1.0, 1e-100).log().re, 5e-201)
+    try component_close(complex(5e-324, 5e-324).log().re, -744.0934983311013)
+    try expect_equal(complex(5e-324, 5e-324).log().im, 0.7853981633974483)
+
+    // Just below the unit circle the real part is negative, and both signs of each part agree.
+    try expect_true(complex(-1.0, -1e-8).log().re > 0.0)
+    try expect_true(complex(0.0, 1.0 - 1e-9).log().re < 0.0)
+    try component_close(complex(0.0, 1.0 - 1e-9).log().re, -9.999999722180686e-10)
+
+    // Zero, one and ordinary magnitudes are unchanged.
+    try expect_equal(complex(0.0, 0.0).log().re, -infinity)
+    try expect_equal(complex(1.0, 0.0).log().re, 0.0)
+    try expect_true(
+        near(
+            complex(3.0, 4.0).log(), complex(1.6094379124341003, 0.9272952180016122)
+        )
+    )
+
 test "complex sqrt keeps a finite root for a subnormal input":
     root := complex(0.0, 5.0e-324).sqrt()
     try expect_true(root.re > 0.0 and root.re.is_finite())
