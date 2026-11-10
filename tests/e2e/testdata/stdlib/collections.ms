@@ -1,5 +1,5 @@
 import (
-	expect_equal, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 	range_by,
 	RangeOptions,
 	filled,
@@ -94,6 +94,21 @@ test "set algebra removes duplicates and preserves values":
 	try expect_equal(left.symmetric_difference(right).values(), [1, 3])
 	try expect_false(not left.is_subset_of(left.union(right)))
 	try expect_false(not left.is_disjoint_from(([3]).to_set()))
+
+test "empty intersections preserve owned string inputs":
+	left := (["a long owned document identifier", "another owned identifier"]).to_set()
+	var right = (["removed owned identifier"]).to_set()
+	right.remove("removed owned identifier")
+
+	var result = left.intersection(right)
+	try expect_true(result.is_empty())
+	result.add("new independent owned identifier")
+	try expect_equal(result.values(), ["new independent owned identifier"])
+	try expect_equal(
+		left.values(), ["a long owned document identifier", "another owned identifier"]
+	)
+	try expect_true(right.is_empty())
+	try expect_true(right.intersection(left).is_empty())
 
 test "collection constructors validate bounds and exact limits":
 	try expect_equal(

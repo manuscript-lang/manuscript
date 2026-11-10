@@ -1,0 +1,1190 @@
+cargo xtask runtime
+   Compiling ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+   Compiling ms-std-path v0.1.0 (/workspace/manuscript/crates/ms-std-path)
+   Compiling ms-std-core v0.1.0 (/workspace/manuscript/crates/ms-std-core)
+   Compiling ms-std-regex v0.1.0 (/workspace/manuscript/crates/ms-std-regex)
+   Compiling ms-std-fs v0.1.0 (/workspace/manuscript/crates/ms-std-fs)
+   Compiling ms-std-archive v0.1.0 (/workspace/manuscript/crates/ms-std-archive)
+   Compiling ms-std-bigint v0.1.0 (/workspace/manuscript/crates/ms-std-bigint)
+   Compiling ms-std-io v0.1.0 (/workspace/manuscript/crates/ms-std-io)
+   Compiling ms-std-process v0.1.0 (/workspace/manuscript/crates/ms-std-process)
+   Compiling ms-std-system v0.1.0 (/workspace/manuscript/crates/ms-std-system)
+   Compiling ms-std-decimal v0.1.0 (/workspace/manuscript/crates/ms-std-decimal)
+   Compiling ms-std-crypto v0.1.0 (/workspace/manuscript/crates/ms-std-crypto)
+   Compiling ms-std-json v0.1.0 (/workspace/manuscript/crates/ms-std-json)
+   Compiling ms-std-terminal v0.1.0 (/workspace/manuscript/crates/ms-std-terminal)
+   Compiling ms-std-html v0.1.0 (/workspace/manuscript/crates/ms-std-html)
+   Compiling ms-std-table v0.1.0 (/workspace/manuscript/crates/ms-std-table)
+   Compiling ms-std-time v0.1.0 (/workspace/manuscript/crates/ms-std-time)
+   Compiling ms-std-url v0.1.0 (/workspace/manuscript/crates/ms-std-url)
+   Compiling ms-std-net v0.1.0 (/workspace/manuscript/crates/ms-std-net)
+   Compiling ms-native v0.1.0 (/workspace/manuscript/crates/ms-native)
+    Finished `release` profile [optimized] target(s) in 24.09s
+   Compiling ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+   Compiling ms-std-path v0.1.0 (/workspace/manuscript/crates/ms-std-path)
+   Compiling ms-std-core v0.1.0 (/workspace/manuscript/crates/ms-std-core)
+   Compiling ms-std-decimal v0.1.0 (/workspace/manuscript/crates/ms-std-decimal)
+   Compiling ms-std-crypto v0.1.0 (/workspace/manuscript/crates/ms-std-crypto)
+   Compiling ms-std-fs v0.1.0 (/workspace/manuscript/crates/ms-std-fs)
+   Compiling ms-std-archive v0.1.0 (/workspace/manuscript/crates/ms-std-archive)
+   Compiling ms-std-io v0.1.0 (/workspace/manuscript/crates/ms-std-io)
+   Compiling ms-std-process v0.1.0 (/workspace/manuscript/crates/ms-std-process)
+   Compiling ms-std-system v0.1.0 (/workspace/manuscript/crates/ms-std-system)
+   Compiling ms-std-json v0.1.0 (/workspace/manuscript/crates/ms-std-json)
+   Compiling ms-std-terminal v0.1.0 (/workspace/manuscript/crates/ms-std-terminal)
+   Compiling ms-std-table v0.1.0 (/workspace/manuscript/crates/ms-std-table)
+   Compiling ms-std-time v0.1.0 (/workspace/manuscript/crates/ms-std-time)
+   Compiling ms-std-html v0.1.0 (/workspace/manuscript/crates/ms-std-html)
+   Compiling ms-std-url v0.1.0 (/workspace/manuscript/crates/ms-std-url)
+   Compiling ms-std-regex v0.1.0 (/workspace/manuscript/crates/ms-std-regex)
+   Compiling ms-std-net v0.1.0 (/workspace/manuscript/crates/ms-std-net)
+   Compiling ms-std-bigint v0.1.0 (/workspace/manuscript/crates/ms-std-bigint)
+   Compiling ms-native v0.1.0 (/workspace/manuscript/crates/ms-native)
+    Finished `release` profile [optimized] target(s) in 21.93s
+    Finished `release` profile [optimized] target(s) in 0.04s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+cargo xtask symbols --check
+   Compiling zeroize v1.9.1
+   Compiling subtle v2.6.1
+   Compiling rand_core v0.10.1
+   Compiling typenum v1.20.1
+   Compiling cmov v0.5.4
+   Compiling autocfg v1.5.1
+   Compiling const-oid v0.10.2
+   Compiling ctutils v0.4.3
+   Compiling cfg-if v1.0.5
+   Compiling proc-macro2 v1.0.107
+   Compiling num-traits v0.2.19
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling cpubits v0.1.1
+   Compiling base64ct v1.8.3
+   Compiling cpufeatures v0.3.1
+   Compiling pem-rfc7468 v1.0.0
+   Compiling hybrid-array v0.4.15
+   Compiling der v0.8.2
+   Compiling ff v0.14.0
+   Compiling syn v2.0.119
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling crypto-bigint v0.7.5
+   Compiling digest v0.11.3
+   Compiling spki v0.8.1
+   Compiling hmac v0.13.0
+   Compiling pkcs8 v0.11.0
+   Compiling signature v3.0.0
+   Compiling cc v1.9.0
+   Compiling group v0.14.0
+   Compiling syn v3.0.9
+   Compiling num-integer v0.1.47
+   Compiling base16ct v1.0.0
+   Compiling sec1 v0.8.1
+   Compiling ring v0.17.14
+   Compiling hkdf v0.13.0
+   Compiling inout v0.2.5
+   Compiling ms-std-path v0.1.0 (/workspace/manuscript/crates/ms-std-path)
+   Compiling time-core v0.1.9
+   Compiling getrandom v0.4.3
+   Compiling num-conv v0.2.2
+   Compiling minimal-lexical v0.2.1
+   Compiling semver v1.0.28
+   Compiling thiserror v2.0.21
+   Compiling rustc_version v0.4.1
+   Compiling nom v7.1.3
+   Compiling time-macros v0.2.32
+   Compiling thiserror-impl v2.0.21
+   Compiling elliptic-curve v0.14.1
+   Compiling primefield v0.14.0
+   Compiling synstructure v0.13.2
+   Compiling sha2 v0.11.1
+   Compiling powerfmt v0.2.1
+   Compiling libm v0.2.16
+   Compiling deranged v0.5.9
+   Compiling asn1-rs-derive v0.6.0
+   Compiling rusticata-macros v4.1.0
+   Compiling wnaf v0.14.1
+   Compiling asn1-rs-impl v0.2.0
+   Compiling curve25519-dalek v5.0.0
+   Compiling ms-std-fs v0.1.0 (/workspace/manuscript/crates/ms-std-fs)
+   Compiling displaydoc v0.2.7
+   Compiling time v0.3.55
+   Compiling cipher v0.5.2
+   Compiling rfc6979 v0.6.0
+   Compiling getrandom v0.2.17
+   Compiling untrusted v0.9.0
+   Compiling rustix v1.1.5
+   Compiling ecdsa v0.17.0
+   Compiling primeorder v0.14.0
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling asn1-rs v0.7.2
+   Compiling universal-hash v0.6.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling crc32fast v1.5.2
+   Compiling simd-adler32 v0.3.10
+   Compiling linux-raw-sys v0.12.1
+   Compiling adler2 v2.0.1
+   Compiling oid-registry v0.8.1
+   Compiling bitflags v2.13.2
+   Compiling miniz_oxide v0.9.1
+   Compiling polyval v0.7.3
+   Compiling ms-std-io v0.1.0 (/workspace/manuscript/crates/ms-std-io)
+   Compiling num-bigint v0.4.8
+   Compiling num-bigint v0.5.1
+   Compiling aho-corasick v1.1.5
+   Compiling rustls v0.23.46
+   Compiling regex-syntax v0.8.11
+   Compiling httparse v1.10.1
+   Compiling der-parser v10.0.0
+   Compiling ghash v0.6.0
+   Compiling rustls-webpki v0.103.15
+   Compiling ms-std-core v0.1.0 (/workspace/manuscript/crates/ms-std-core)
+   Compiling regex-automata v0.4.18
+   Compiling ctr v0.10.1
+   Compiling aes v0.9.3
+   Compiling aead v0.6.1
+   Compiling crypto-primes v0.7.2
+   Compiling ed25519 v3.0.0
+   Compiling pkcs1 v0.8.0-rc.5
+   Compiling keccak v0.2.2
+   Compiling once_cell v1.21.4
+   Compiling lazy_static v1.5.1
+   Compiling sponge-cursor v0.1.0
+   Compiling openssl-probe v0.2.1
+   Compiling data-encoding v2.11.1
+   Compiling psl-types v2.0.11
+   Compiling jiff-tzdb v0.1.9
+   Compiling jiff-core v0.1.1
+   Compiling regex v1.13.1
+   Compiling psl v2.1.245
+   Compiling rsa v0.10.0-rc.19
+   Compiling jiff v0.2.38
+   Compiling x509-parser v0.18.1
+   Compiling rustls-native-certs v0.8.5
+   Compiling sha3 v0.12.0
+   Compiling ed25519-dalek v3.0.0
+   Compiling aes-gcm v0.11.1
+   Compiling flate2 v1.1.10
+   Compiling ms-decimal v0.1.0 (/workspace/manuscript/crates/ms-decimal)
+   Compiling x25519-dalek v3.0.0
+   Compiling ms-std-process v0.1.0 (/workspace/manuscript/crates/ms-std-process)
+   Compiling p384 v0.14.0
+   Compiling p521 v0.14.0
+   Compiling p256 v0.14.0
+   Compiling cbc v0.2.1
+   Compiling sha1 v0.11.0
+   Compiling md-5 v0.11.0
+   Compiling socket2 v0.6.5
+   Compiling unicode-width v0.2.3
+   Compiling ms-std-table v0.1.0 (/workspace/manuscript/crates/ms-std-table)
+   Compiling ms-std-system v0.1.0 (/workspace/manuscript/crates/ms-std-system)
+   Compiling ms-std-net v0.1.0 (/workspace/manuscript/crates/ms-std-net)
+   Compiling ms-std-time v0.1.0 (/workspace/manuscript/crates/ms-std-time)
+   Compiling ms-std-decimal v0.1.0 (/workspace/manuscript/crates/ms-std-decimal)
+   Compiling ms-std-regex v0.1.0 (/workspace/manuscript/crates/ms-std-regex)
+   Compiling ms-std-terminal v0.1.0 (/workspace/manuscript/crates/ms-std-terminal)
+   Compiling ms-std-archive v0.1.0 (/workspace/manuscript/crates/ms-std-archive)
+   Compiling ms-std-crypto v0.1.0 (/workspace/manuscript/crates/ms-std-crypto)
+   Compiling ms-std-bigint v0.1.0 (/workspace/manuscript/crates/ms-std-bigint)
+   Compiling ms-std-url v0.1.0 (/workspace/manuscript/crates/ms-std-url)
+   Compiling ms-std-html v0.1.0 (/workspace/manuscript/crates/ms-std-html)
+   Compiling ms-std-json v0.1.0 (/workspace/manuscript/crates/ms-std-json)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 27.62s
+     Running unittests src/lib.rs (target/debug/deps/ms_rt-b9eb529fe4f7aa1d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 214 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_archive-7c81be81497a6815)
+
+running 10 tests
+test compress::ffi::msstd_compress_decoder_new::ms_signature ... ok
+test compress::ffi::msstd_compress_compress::ms_signature ... ok
+test compress::ffi::msstd_compress_decoder_end::ms_signature ... ok
+test compress::ffi::msstd_compress_decoder_push::ms_signature ... ok
+test compress::ffi::msstd_compress_decompress::ms_signature ... ok
+test compress::ffi::msstd_compress_encoder_end::ms_signature ... ok
+test compress::ffi::msstd_compress_encoder_new::ms_signature ... ok
+test compress::ffi::msstd_compress_encoder_push::ms_signature ... ok
+test ffi::msstd_archive_pack::ms_signature ... ok
+test ffi::msstd_archive_unpack::ms_signature ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_bigint-e6e81b73ae907882)
+
+running 31 tests
+test msstd_bigint_add::ms_signature ... ok
+test msstd_bigint_bit_and::ms_signature ... ok
+test msstd_bigint_abs::ms_signature ... ok
+test msstd_bigint_bit_not::ms_signature ... ok
+test msstd_bigint_bit_or::ms_signature ... ok
+test msstd_bigint_divide::ms_signature ... ok
+test msstd_bigint_bit_xor::ms_signature ... ok
+test msstd_bigint_compare::ms_signature ... ok
+test msstd_bigint_equal::ms_signature ... ok
+test msstd_bigint_from_int::ms_signature ... ok
+test msstd_bigint_from_u64::ms_signature ... ok
+test msstd_bigint_gcd::ms_signature ... ok
+test msstd_bigint_inverse_mod::ms_signature ... ok
+test msstd_bigint_from_seconds_nanos::ms_signature ... ok
+test msstd_bigint_lcm::ms_signature ... ok
+test msstd_bigint_modulo::ms_signature ... ok
+test msstd_bigint_multiply::ms_signature ... ok
+test msstd_bigint_negate::ms_signature ... ok
+test msstd_bigint_parse::ms_signature ... ok
+test msstd_bigint_pow::ms_signature ... ok
+test msstd_bigint_quotient::ms_signature ... ok
+test msstd_bigint_remainder::ms_signature ... ok
+test msstd_bigint_pow_mod::ms_signature ... ok
+test msstd_bigint_shift_left::ms_signature ... ok
+test msstd_bigint_shift_right::ms_signature ... ok
+test msstd_bigint_sign::ms_signature ... ok
+test msstd_bigint_sqrt::ms_signature ... ok
+test msstd_bigint_subtract::ms_signature ... ok
+test msstd_bigint_to_float::ms_signature ... ok
+test msstd_bigint_to_int::ms_signature ... ok
+test msstd_bigint_to_string_radix::ms_signature ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_core-9fcfe637ead2b22e)
+
+running 70 tests
+test checksum::msstd_checksum_crc32::ms_signature ... ok
+test checksum::msstd_checksum_adler32_update::ms_signature ... ok
+test encoding::ffi::msstd_encoding_ascii85_decode::ms_signature ... ok
+test checksum::msstd_checksum_crc32_update::ms_signature ... ok
+test encoding::ffi::msstd_encoding_ascii85_encode::ms_signature ... ok
+test encoding::ffi::msstd_encoding_base32_encode::ms_signature ... ok
+test encoding::ffi::msstd_encoding_base32_decode::ms_signature ... ok
+test encoding::ffi::msstd_encoding_base64_decode_unpadded::ms_signature ... ok
+test encoding::ffi::msstd_encoding_base64_decode::ms_signature ... ok
+test encoding::ffi::msstd_encoding_base64_encode_unpadded::ms_signature ... ok
+test encoding::ffi::msstd_encoding_base64_encode::ms_signature ... ok
+test math::msstd_math_acos::ms_signature ... ok
+test math::msstd_math_acosh::ms_signature ... ok
+test math::msstd_math_asin::ms_signature ... ok
+test math::msstd_math_add_with_carry::ms_signature ... ok
+test math::msstd_math_atan::ms_signature ... ok
+test math::msstd_math_atan2::ms_signature ... ok
+test math::msstd_math_asinh::ms_signature ... ok
+test math::msstd_math_atanh::ms_signature ... ok
+test math::msstd_math_cbrt::ms_signature ... ok
+test math::msstd_math_copy_sign::ms_signature ... ok
+test math::msstd_math_ceil::ms_signature ... ok
+test math::msstd_math_cos::ms_signature ... ok
+test math::msstd_math_cosh::ms_signature ... ok
+test math::msstd_math_divide_wide::ms_signature ... ok
+test math::msstd_math_exp2::ms_signature ... ok
+test math::msstd_math_exp::ms_signature ... ok
+test math::msstd_math_expm1::ms_signature ... ok
+test math::msstd_math_floor::ms_signature ... ok
+test math::msstd_math_fma::ms_signature ... ok
+test math::msstd_math_frexp::ms_signature ... ok
+test math::msstd_math_ieee_remainder::ms_signature ... ok
+test math::msstd_math_is_integer::ms_signature ... ok
+test math::msstd_math_hypot::ms_signature ... ok
+test math::msstd_math_ldexp::ms_signature ... ok
+test math::msstd_math_is_safe_integer::ms_signature ... ok
+test math::msstd_math_log10::ms_signature ... ok
+test math::msstd_math_log1p::ms_signature ... ok
+test math::msstd_math_log2::ms_signature ... ok
+test math::msstd_math_log::ms_signature ... ok
+test math::msstd_math_modf::ms_signature ... ok
+test math::msstd_math_next_after::ms_signature ... ok
+test math::msstd_math_multiply_wide::ms_signature ... ok
+test math::msstd_math_pow::ms_signature ... ok
+test math::msstd_math_remainder::ms_signature ... ok
+test math::msstd_math_remainder_wide::ms_signature ... ok
+test math::msstd_math_reverse_bytes::ms_signature ... ok
+test math::msstd_math_reverse_bits::ms_signature ... ok
+test math::msstd_math_round::ms_signature ... ok
+test math::msstd_math_round_to_even::ms_signature ... ok
+test math::msstd_math_sign::ms_signature ... ok
+test math::msstd_math_sign_bit::ms_signature ... ok
+test math::msstd_math_sin::ms_signature ... ok
+test math::msstd_math_sinh::ms_signature ... ok
+test math::msstd_math_sqrt::ms_signature ... ok
+test math::msstd_math_subtract_with_borrow::ms_signature ... ok
+test math::msstd_math_tan::ms_signature ... ok
+test math::msstd_math_tanh::ms_signature ... ok
+test math::msstd_math_truncate::ms_signature ... ok
+test random::ffi::msstd_random_os_bytes::ms_signature ... ok
+test unicode::msstd_unicode_fields::ms_signature ... ok
+test unicode::msstd_unicode_is_alphabetic::ms_signature ... ok
+test unicode::msstd_unicode_is_alphanumeric::ms_signature ... ok
+test unicode::msstd_unicode_is_ascii::ms_signature ... ok
+test unicode::msstd_unicode_is_control::ms_signature ... ok
+test unicode::msstd_unicode_is_lowercase::ms_signature ... ok
+test unicode::msstd_unicode_is_uppercase::ms_signature ... ok
+test unicode::msstd_unicode_is_numeric::ms_signature ... ok
+test unicode::msstd_utf8_is_valid::ms_signature ... ok
+test unicode::msstd_unicode_is_whitespace::ms_signature ... ok
+
+test result: ok. 70 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_crypto-9bca536a15a5bc48)
+
+running 29 tests
+test ffi::msstd_crypto_aes_cbc_decrypt::ms_signature ... ok
+test ffi::msstd_crypto_aes_cbc_encrypt::ms_signature ... ok
+test ffi::msstd_crypto_aes_ctr::ms_signature ... ok
+test ffi::msstd_crypto_constant_time_equal::ms_signature ... ok
+test ffi::msstd_crypto_derive_key::ms_signature ... ok
+test ffi::msstd_crypto_digest::ms_signature ... ok
+test ffi::msstd_crypto_ecdsa_generate::ms_signature ... ok
+test ffi::msstd_crypto_ecdsa_sign::ms_signature ... ok
+test ffi::msstd_crypto_ecdh_shared_secret::ms_signature ... ok
+test ffi::msstd_crypto_ecdsa_verify::ms_signature ... ok
+test ffi::msstd_crypto_hasher_finish::ms_signature ... ok
+test ffi::msstd_crypto_hasher_new::ms_signature ... ok
+test ffi::msstd_crypto_hasher_update::ms_signature ... ok
+test ffi::msstd_crypto_hmac::ms_signature ... ok
+test ffi::msstd_crypto_hkdf::ms_signature ... ok
+test ffi::msstd_crypto_hmac_hasher_new::ms_signature ... ok
+test ffi::msstd_crypto_open::ms_signature ... ok
+test ffi::msstd_crypto_public_key::ms_signature ... ok
+test ffi::msstd_crypto_rsa_decrypt::ms_signature ... ok
+test ffi::msstd_crypto_public_key_der::ms_signature ... ok
+test ffi::msstd_crypto_rsa_generate::ms_signature ... ok
+test ffi::msstd_crypto_rsa_encrypt::ms_signature ... ok
+test ffi::msstd_crypto_rsa_sign::ms_signature ... ok
+test ffi::msstd_crypto_rsa_sign_pss::ms_signature ... ok
+test ffi::msstd_crypto_rsa_verify::ms_signature ... ok
+test ffi::msstd_crypto_rsa_verify_pss::ms_signature ... ok
+test ffi::msstd_crypto_sign::ms_signature ... ok
+test ffi::msstd_crypto_seal::ms_signature ... ok
+test ffi::msstd_crypto_verify::ms_signature ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_decimal-e42ca61f4fcc9013)
+
+running 14 tests
+test ffi::msstd_decimal_from_int::ms_signature ... ok
+test ffi::msstd_decimal_divide::ms_signature ... ok
+test ffi::msstd_decimal_from_uint::ms_signature ... ok
+test ffi::msstd_decimal_multiply::ms_signature ... ok
+test ffi::msstd_decimal_negate::ms_signature ... ok
+test ffi::msstd_decimal_parse::ms_signature ... ok
+test ffi::msstd_decimal_round::ms_signature ... ok
+test ffi::msstd_decimal_subtract::ms_signature ... ok
+test ffi::msstd_decimal_to_fixed::ms_signature ... ok
+test ffi::msstd_decimal_to_float::ms_signature ... ok
+test ffi::msstd_decimal_to_string::ms_signature ... ok
+test ffi::msstd_decimal_truncate_to_int::ms_signature ... ok
+test ffi::msstd_decimal_compare::ms_signature ... ok
+test ffi::msstd_decimal_add::ms_signature ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_fs-00b59bfd519c5b3c)
+
+running 53 tests
+test msstd_fs_admit::ms_signature ... ok
+test msstd_fs_canonicalize::ms_signature ... ok
+test msstd_fs_append_file::ms_signature ... ok
+test msstd_fs_access::ms_signature ... ok
+test msstd_fs_chmod::ms_signature ... ok
+test msstd_fs_chown::ms_signature ... ok
+test msstd_fs_create_directory::ms_signature ... ok
+test msstd_fs_copy::ms_signature ... ok
+test msstd_fs_create_link::ms_signature ... ok
+test msstd_fs_directory_close::ms_signature ... ok
+test msstd_fs_directory_open::ms_signature ... ok
+test msstd_fs_directory_path::ms_signature ... ok
+test msstd_fs_directory_read::ms_signature ... ok
+test msstd_fs_file_chmod::ms_signature ... ok
+test msstd_fs_file_chown::ms_signature ... ok
+test msstd_fs_file_clone::ms_signature ... ok
+test msstd_fs_file_data_sync::ms_signature ... ok
+test msstd_fs_file_read_file::ms_signature ... ok
+test msstd_fs_file_read_at::ms_signature ... ok
+test msstd_fs_file_read_lines::ms_signature ... ok
+test msstd_fs_file_read_vectors::ms_signature ... ok
+test msstd_fs_file_seek::ms_signature ... ok
+test msstd_fs_file_set_times::ms_signature ... ok
+test msstd_fs_file_sync::ms_signature ... ok
+test msstd_fs_file_stat::ms_signature ... ok
+test msstd_fs_file_truncate::ms_signature ... ok
+test msstd_fs_file_try_lock::ms_signature ... ok
+test msstd_fs_file_write_at::ms_signature ... ok
+test msstd_fs_file_unlock::ms_signature ... ok
+test msstd_fs_file_write_vectors::ms_signature ... ok
+test msstd_fs_glob_entries::ms_signature ... ok
+test msstd_fs_hard_link::ms_signature ... ok
+test msstd_fs_list::ms_signature ... ok
+test msstd_fs_open::ms_signature ... ok
+test msstd_fs_read_link::ms_signature ... ok
+test msstd_fs_read_file::ms_signature ... ok
+test msstd_fs_release::ms_signature ... ok
+test msstd_fs_remove::ms_signature ... ok
+test msstd_fs_set_times::ms_signature ... ok
+test msstd_fs_rename::ms_signature ... ok
+test msstd_fs_stat::ms_signature ... ok
+test msstd_fs_stat_filesystem::ms_signature ... ok
+test msstd_fs_temporary_directory::ms_signature ... ok
+test msstd_fs_temporary_close::ms_signature ... ok
+test msstd_fs_temporary_open::ms_signature ... ok
+test msstd_fs_temporary_path::ms_signature ... ok
+test msstd_fs_truncate::ms_signature ... ok
+test msstd_fs_temporary_root::ms_signature ... ok
+test msstd_fs_watch_close::ms_signature ... ok
+test msstd_fs_watch::ms_signature ... ok
+test msstd_fs_watch_native::ms_signature ... ok
+test msstd_fs_watch_next::ms_signature ... ok
+test msstd_fs_write_file::ms_signature ... ok
+
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 21 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_html-e68b98e0b06118cf)
+
+running 12 tests
+test ffi::msstd_html_attr_count::ms_signature ... ok
+test ffi::msstd_html_attr::ms_signature ... ok
+test ffi::msstd_html_data::ms_signature ... ok
+test ffi::msstd_html_doctype_id::ms_signature ... ok
+test ffi::msstd_html_escape::ms_signature ... ok
+test ffi::msstd_html_first_child::ms_signature ... ok
+test ffi::msstd_html_kind::ms_signature ... ok
+test ffi::msstd_html_namespace::ms_signature ... ok
+test ffi::msstd_html_next_sibling::ms_signature ... ok
+test ffi::msstd_html_parse::ms_signature ... ok
+test ffi::msstd_html_root::ms_signature ... ok
+test ffi::msstd_html_unescape::ms_signature ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_io-dd95125d5a4bbbe0)
+
+running 5 tests
+test msstd_io_read::ms_signature ... ok
+test msstd_io_write::ms_signature ... ok
+test msstd_io_redirect_null::ms_signature ... ok
+test msstd_io_close::ms_signature ... ok
+test msstd_io_write_bytes::ms_signature ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_json-56eefaa430e98eda)
+
+running 41 tests
+test ffi::msstd_json_bool::ms_signature ... ok
+test ffi::msstd_json_dec_float32::ms_signature ... ok
+test ffi::msstd_json_dec_float::ms_signature ... ok
+test ffi::msstd_json_dec_int::ms_signature ... ok
+test ffi::msstd_json_dec_int_in::ms_signature ... ok
+test ffi::msstd_json_dec_uint::ms_signature ... ok
+test ffi::msstd_json_find::ms_signature ... ok
+test ffi::msstd_json_has_unknown::ms_signature ... ok
+test ffi::msstd_json_item::ms_signature ... ok
+test ffi::msstd_json_key::ms_signature ... ok
+test ffi::msstd_json_kind::ms_signature ... ok
+test ffi::msstd_json_len::ms_signature ... ok
+test ffi::msstd_json_mismatch::ms_signature ... ok
+test ffi::msstd_json_mismatch_text::ms_signature ... ok
+test ffi::msstd_json_parse::ms_signature ... ok
+test ffi::msstd_json_text::ms_signature ... ok
+test ffi::msstd_json_parse_tree::ms_signature ... ok
+test ffi::msstd_json_tree_object::ms_signature ... ok
+test ffi::msstd_json_tree_array::ms_signature ... ok
+test ffi::msstd_json_variant::ms_signature ... ok
+test ffi::msstd_json_w_begin_array::ms_signature ... ok
+test ffi::msstd_json_w_begin_object::ms_signature ... ok
+test ffi::msstd_json_w_bool::ms_signature ... ok
+test ffi::msstd_json_w_end_array::ms_signature ... ok
+test ffi::msstd_json_w_end_object::ms_signature ... ok
+test ffi::msstd_json_w_finish::ms_signature ... ok
+test ffi::msstd_json_w_float32::ms_signature ... ok
+test ffi::msstd_json_w_float::ms_signature ... ok
+test ffi::msstd_json_w_int::ms_signature ... ok
+test ffi::msstd_json_w_item::ms_signature ... ok
+test ffi::msstd_json_w_key::ms_signature ... ok
+test ffi::msstd_json_w_key_quoted::ms_signature ... ok
+test ffi::msstd_json_w_lost::ms_signature ... ok
+test ffi::msstd_json_w_no_form::ms_signature ... ok
+test ffi::msstd_json_w_null::ms_signature ... ok
+test ffi::msstd_json_w_number::ms_signature ... ok
+test ffi::msstd_json_w_string::ms_signature ... ok
+test ffi::msstd_json_w_tree::ms_signature ... ok
+test ffi::msstd_json_w_undo::ms_signature ... ok
+test ffi::msstd_json_w_uint::ms_signature ... ok
+test ffi::msstd_json_writer_new::ms_signature ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_net-03a5181b54240993)
+
+running 90 tests
+test ffi::http_client::msstd_http_body_close::ms_signature ... ok
+test ffi::http_client::msstd_http_body_metadata::ms_signature ... ok
+test ffi::http_client::msstd_http_body_read::ms_signature ... ok
+test ffi::http_client::msstd_http_body_read_all::ms_signature ... ok
+test ffi::http_client::msstd_http_client_close::ms_signature ... ok
+test ffi::http_client::msstd_http_client_share::ms_signature ... ok
+test ffi::http_client::msstd_http_headers_append::ms_signature ... ok
+test ffi::http_client::msstd_http_client_request_bytes::ms_signature ... ok
+test ffi::http_client::msstd_http_headers_names::ms_signature ... ok
+test ffi::http_client::msstd_http_headers_clone::ms_signature ... ok
+test ffi::http_client::msstd_http_headers_new::ms_signature ... ok
+test ffi::http_client::msstd_http_headers_remove::ms_signature ... ok
+test ffi::http_client::msstd_http_headers_values::ms_signature ... ok
+test ffi::http_client::msstd_net_network_http_client::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_close::ms_signature ... ok
+test ffi::http_client::msstd_net_network_request_bytes::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_method::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_headers::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_query::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_read::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_path::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_protocol::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_send::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_send_headers::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_write::ms_signature ... ok
+test ffi::http_server::msstd_http_exchange_write_bytes::ms_signature ... ok
+test ffi::http_server::msstd_http_serving_accept::ms_signature ... ok
+test ffi::http_server::msstd_http_serving_address::ms_signature ... ok
+test ffi::http_server::msstd_http_serving_release::ms_signature ... ok
+test ffi::http_server::msstd_http_serving_new::ms_signature ... ok
+test ffi::http_server::msstd_http_serving_share::ms_signature ... ok
+test ffi::net::msstd_json_dec_cidr::ms_signature ... ok
+test ffi::http_server::msstd_http_worker_close::ms_signature ... ok
+test ffi::http_server::msstd_http_serving_worker::ms_signature ... ok
+test ffi::net::msstd_json_dec_ip::ms_signature ... ok
+test ffi::net::msstd_net_cidr_text::ms_signature ... ok
+test ffi::net::msstd_net_connection_close::ms_signature ... ok
+test ffi::net::msstd_net_connection_close_if_last::ms_signature ... ok
+test ffi::net::msstd_net_connection_peer_address::ms_signature ... ok
+test ffi::http_server::msstd_http_worker_adopt::ms_signature ... ok
+test ffi::net::msstd_net_connection_read::ms_signature ... ok
+test ffi::net::msstd_net_connection_local_address::ms_signature ... ok
+test ffi::net::msstd_net_connection_share::ms_signature ... ok
+test ffi::net::msstd_net_connection_shutdown_write::ms_signature ... ok
+test ffi::net::msstd_net_connection_write_bytes::ms_signature ... ok
+test ffi::net::msstd_net_contains_ip::ms_signature ... ok
+test ffi::net::msstd_net_datagram_address::ms_signature ... ok
+test ffi::net::msstd_net_datagram_close::ms_signature ... ok
+test ffi::net::msstd_net_datagram_close_if_last::ms_signature ... ok
+test ffi::net::msstd_net_datagram_receive::ms_signature ... ok
+test ffi::net::msstd_net_datagram_send_bytes::ms_signature ... ok
+test ffi::net::msstd_net_datagram_share::ms_signature ... ok
+test ffi::net::msstd_net_dns_kind_text::ms_signature ... ok
+test ffi::net::msstd_net_error_message::ms_signature ... ok
+test ffi::net::msstd_net_ip_address_text::ms_signature ... ok
+test ffi::net::msstd_net_ip_family_text::ms_signature ... ok
+test ffi::net::msstd_net_ip_address_family::ms_signature ... ok
+test ffi::net::msstd_net_listener_accept::ms_signature ... ok
+test ffi::net::msstd_net_listener_address::ms_signature ... ok
+test ffi::net::msstd_net_listener_share::ms_signature ... ok
+test ffi::net::msstd_net_listener_close::ms_signature ... ok
+test ffi::net::msstd_net_network::ms_signature ... ok
+test ffi::net::msstd_net_network_bind_datagram::ms_signature ... ok
+test ffi::net::msstd_net_network_close::ms_signature ... ok
+test ffi::net::msstd_net_network_connect::ms_signature ... ok
+test ffi::net::msstd_net_network_connect_unix::ms_signature ... ok
+test ffi::net::msstd_net_network_listen::ms_signature ... ok
+test ffi::net::msstd_net_network_listen_unix::ms_signature ... ok
+test ffi::net::msstd_net_network_lookup::ms_signature ... ok
+test ffi::net::msstd_net_network_resolve::ms_signature ... ok
+test ffi::net::msstd_net_network_restrict::ms_signature ... ok
+test ffi::net::msstd_net_network_with_resolver::ms_signature ... ok
+test ffi::net::msstd_net_parse_cidr::ms_signature ... ok
+test ffi::net::msstd_net_parse_ip::ms_signature ... ok
+test ffi::tls::msstd_net_connection_tls_info::ms_signature ... ok
+test ffi::tls::msstd_net_network_connect_tls_config::ms_signature ... ok
+test ffi::tls::msstd_net_network_listen_tls::ms_signature ... ok
+test ffi::tls::msstd_tls_error_message::ms_signature ... ok
+test ffi::tls::msstd_tls_parse_certificates::ms_signature ... ok
+test ffi::tls::msstd_tls_verify_certificates::ms_signature ... ok
+test ffi::websocket::msstd_http_exchange_upgrade::ms_signature ... ok
+test ffi::websocket::msstd_websocket_close_if_last::ms_signature ... ok
+test ffi::websocket::msstd_websocket_close::ms_signature ... ok
+test ffi::websocket::msstd_websocket_ping::ms_signature ... ok
+test ffi::websocket::msstd_net_network_web_socket::ms_signature ... ok
+test ffi::websocket::msstd_websocket_ping_bytes::ms_signature ... ok
+test ffi::websocket::msstd_websocket_receive::ms_signature ... ok
+test ffi::websocket::msstd_websocket_send_bytes::ms_signature ... ok
+test ffi::websocket::msstd_websocket_share::ms_signature ... ok
+test ffi::websocket::msstd_websocket_subprotocol::ms_signature ... ok
+
+test result: ok. 90 passed; 0 failed; 0 ignored; 0 measured; 293 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_path-fcedca8d5bdd06ca)
+
+running 1 test
+test ffi::msstd_path_matches_glob::ms_signature ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_process-1787233a25ab2af5)
+
+running 34 tests
+test msstd_process_command_run::ms_signature ... ok
+test msstd_process_change_directory::ms_signature ... ok
+test msstd_process_available_memory::ms_signature ... ok
+test msstd_process_command_spawn::ms_signature ... ok
+test msstd_process_constrained_memory::ms_signature ... ok
+test msstd_process_cpu_usage::ms_signature ... ok
+test msstd_process_elapsed::ms_signature ... ok
+test msstd_process_environment::ms_signature ... ok
+test msstd_process_environment_map::ms_signature ... ok
+test msstd_process_initialize_groups::ms_signature ... ok
+test msstd_process_load_environment::ms_signature ... ok
+test msstd_process_info::ms_signature ... ok
+test msstd_process_groups::ms_signature ... ok
+test msstd_process_memory_usage::ms_signature ... ok
+test msstd_process_resource_usage::ms_signature ... ok
+test msstd_process_replace::ms_signature ... ok
+test msstd_process_set_environment::ms_signature ... ok
+test msstd_process_set_groups::ms_signature ... ok
+test msstd_process_set_title::ms_signature ... ok
+test msstd_process_set_identity::ms_signature ... ok
+test msstd_process_signal_close::ms_signature ... ok
+test msstd_process_signal_next::ms_signature ... ok
+test msstd_process_send_signal::ms_signature ... ok
+test msstd_process_subprocess_close::ms_signature ... ok
+test msstd_process_subprocess_kill::ms_signature ... ok
+test msstd_process_subprocess_max_resident::ms_signature ... ok
+test msstd_process_subprocess_stream_id::ms_signature ... ok
+test msstd_process_subprocess_terminate::ms_signature ... ok
+test msstd_process_subprocess_wait::ms_signature ... ok
+test msstd_process_title::ms_signature ... ok
+test msstd_process_uptime::ms_signature ... ok
+test msstd_process_umask::ms_signature ... ok
+test msstd_process_watch_signals::ms_signature ... ok
+test msstd_process_working_directory::ms_signature ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_regex-4ad63be9b121aa35)
+
+running 13 tests
+test ffi::msstd_regex_capture_all_spans::ms_signature ... ok
+test ffi::msstd_regex_captures::ms_signature ... ok
+test ffi::msstd_regex_capture_spans::ms_signature ... ok
+test ffi::msstd_regex_captures_all::ms_signature ... ok
+test ffi::msstd_regex_compile::ms_signature ... ok
+test ffi::msstd_regex_find_all::ms_signature ... ok
+test ffi::msstd_regex_find_all_spans::ms_signature ... ok
+test ffi::msstd_regex_find_span::ms_signature ... ok
+test ffi::msstd_regex_matches::ms_signature ... ok
+test ffi::msstd_regex_replace_all::ms_signature ... ok
+test ffi::msstd_regex_named_captures::ms_signature ... ok
+test ffi::msstd_regex_split::ms_signature ... ok
+test ffi::msstd_regex_replace_template::ms_signature ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_system-54e2e13953e953c8)
+
+running 17 tests
+test msstd_system_cpus::ms_signature ... ok
+test msstd_system_dev_null::ms_signature ... ok
+test msstd_system_end_of_line::ms_signature ... ok
+test msstd_system_constants::ms_signature ... ok
+test msstd_system_endianness::ms_signature ... ok
+test msstd_system_get_priority::ms_signature ... ok
+test msstd_system_hostname::ms_signature ... ok
+test msstd_system_home_directory::ms_signature ... ok
+test msstd_system_info::ms_signature ... ok
+test msstd_system_machine::ms_signature ... ok
+test msstd_system_metrics::ms_signature ... ok
+test msstd_system_os::ms_signature ... ok
+test msstd_system_network_interfaces::ms_signature ... ok
+test msstd_system_os_release::ms_signature ... ok
+test msstd_system_set_priority::ms_signature ... ok
+test msstd_system_os_version::ms_signature ... ok
+test msstd_system_user_info::ms_signature ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_table-5217cc82cad45ffb)
+
+running 1 test
+test msstd_unicode_display_width::ms_signature ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_terminal-25a0c4849f34d97c)
+
+running 26 tests
+test msstd_terminal_capabilities_error_is_terminal::ms_signature ... ok
+test msstd_terminal_capabilities_colors::ms_signature ... ok
+test msstd_terminal_capabilities_input_is_terminal::ms_signature ... ok
+test msstd_terminal_capabilities_output_is_terminal::ms_signature ... ok
+test msstd_terminal_capabilities_raw_mode::ms_signature ... ok
+test msstd_terminal_capabilities_resize_events::ms_signature ... ok
+test msstd_terminal_event_columns::ms_signature ... ok
+test msstd_terminal_event_alt::ms_signature ... ok
+test msstd_terminal_event_ctrl::ms_signature ... ok
+test msstd_terminal_event_rows::ms_signature ... ok
+test msstd_terminal_event_shift::ms_signature ... ok
+test msstd_terminal_event_kind::ms_signature ... ok
+test msstd_terminal_event_text::ms_signature ... ok
+test msstd_terminal_raw_mode::ms_signature ... ok
+test msstd_terminal_raw_terminal_close::ms_signature ... ok
+test msstd_terminal_raw_terminal_erase::ms_signature ... ok
+test msstd_terminal_raw_terminal_move_cursor::ms_signature ... ok
+test msstd_terminal_raw_terminal_next_event::ms_signature ... ok
+test msstd_terminal_raw_terminal_show_cursor::ms_signature ... ok
+test msstd_terminal_raw_terminal_size_columns::ms_signature ... ok
+test msstd_terminal_raw_terminal_share::ms_signature ... ok
+test msstd_terminal_raw_terminal_size_rows::ms_signature ... ok
+test msstd_terminal_raw_terminal_size_status::ms_signature ... ok
+test msstd_terminal_size_columns::ms_signature ... ok
+test msstd_terminal_size_rows::ms_signature ... ok
+test msstd_terminal_size_status::ms_signature ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_time-baeb1fbc8d51f6a9)
+
+running 35 tests
+test msstd_time_clock_now::ms_signature ... ok
+test msstd_time_duration_compare::ms_signature ... ok
+test msstd_time_duration_add::ms_signature ... ok
+test msstd_time_duration_abs::ms_signature ... ok
+test msstd_time_duration_minus::ms_signature ... ok
+test msstd_time_duration_divide::ms_signature ... ok
+test msstd_time_duration_multiply::ms_signature ... ok
+test msstd_time_duration_negate::ms_signature ... ok
+test msstd_time_duration_plus::ms_signature ... ok
+test msstd_time_duration_subtract::ms_signature ... ok
+test msstd_time_duration_to_hours::ms_signature ... ok
+test msstd_time_duration_to_microseconds::ms_signature ... ok
+test msstd_time_duration_to_minutes::ms_signature ... ok
+test msstd_time_duration_to_milliseconds::ms_signature ... ok
+test msstd_time_duration_to_seconds::ms_signature ... ok
+test msstd_time_error_message::ms_signature ... ok
+test msstd_time_from_calendar::ms_signature ... ok
+test msstd_time_instant_compare::ms_signature ... ok
+test msstd_time_instant_difference::ms_signature ... ok
+test msstd_time_instant_shift::ms_signature ... ok
+test msstd_time_instant_unshift::ms_signature ... ok
+test msstd_time_int_milliseconds::ms_signature ... ok
+test msstd_time_int_minutes::ms_signature ... ok
+test msstd_time_int_seconds::ms_signature ... ok
+test msstd_time_local_zone::ms_signature ... ok
+test msstd_time_instant_equal::ms_signature ... ok
+test msstd_time_parse_timestamp::ms_signature ... ok
+test msstd_time_timestamp::ms_signature ... ok
+test msstd_time_timestamp_calendar::ms_signature ... ok
+test msstd_time_timestamp_compare::ms_signature ... ok
+test msstd_time_timestamp_format::ms_signature ... ok
+test msstd_time_timestamp_difference::ms_signature ... ok
+test msstd_time_timestamp_shift::ms_signature ... ok
+test msstd_time_timestamp_to_string::ms_signature ... ok
+test msstd_time_wall_clock_now::ms_signature ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/ms_std_url-dd54515cbd60dc07)
+
+running 7 tests
+test ffi::msstd_url_decode_component::ms_signature ... ok
+test ffi::msstd_url_format::ms_signature ... ok
+test ffi::msstd_url_format_query::ms_signature ... ok
+test ffi::msstd_url_encode_component::ms_signature ... ok
+test ffi::msstd_url_parse::ms_signature ... ok
+test ffi::msstd_url_resolve::ms_signature ... ok
+test ffi::msstd_url_parse_query::ms_signature ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.00s
+
+/workspace/manuscript/crates/xtask/../../crates/ms-lower/rt_symbols.txt is current (826 symbols)
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+    Checking memchr v2.8.3
+    Checking ms-rt-abi v0.1.0 (/workspace/manuscript/crates/ms-rt-abi)
+    Checking zeroize v1.9.1
+    Checking libc v0.2.191
+    Checking tinyvec v1.13.3
+    Checking ms-rt-hot v0.1.0 (/workspace/manuscript/crates/ms-rt-hot)
+    Checking rand_core v0.10.1
+    Checking subtle v2.6.1
+    Checking typenum v1.20.1
+    Checking unicode-normalization v0.1.26
+    Checking cmov v0.5.4
+    Checking cfg-if v1.0.5
+    Checking ctutils v0.4.3
+    Checking num-traits v0.2.19
+    Checking const-oid v0.10.2
+    Checking ms-syntax v0.0.0 (/workspace/manuscript/crates/ms-syntax)
+    Checking mio v1.2.4
+    Checking ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+    Checking hybrid-array v0.4.15
+   Compiling libm v0.2.16
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking digest v0.11.3
+    Checking cpufeatures v0.3.1
+    Checking foldhash v0.2.0
+    Checking hashbrown v0.17.1
+    Checking num-integer v0.1.47
+   Compiling cranelift-srcgen v0.136.3
+    Checking sha2 v0.11.1
+   Compiling cranelift-assembler-x64-meta v0.136.3
+    Checking ms-json v0.1.0 (/workspace/manuscript/crates/ms-json)
+   Compiling ring v0.17.14
+   Compiling wasmtime-internal-core v49.0.0
+    Checking adler2 v2.0.1
+   Compiling crc32fast v1.5.2
+    Checking simd-adler32 v0.3.10
+    Checking miniz_oxide v0.9.1
+    Checking getrandom v0.2.17
+    Checking equivalent v1.0.3
+    Checking untrusted v0.9.0
+    Checking cpubits v0.1.1
+   Compiling cranelift-isle v0.136.0
+    Checking indexmap v2.14.2
+    Checking rustls-pki-types v1.15.1
+   Compiling cranelift-codegen-shared v0.136.3
+   Compiling heck v0.5.0
+   Compiling cranelift-codegen-meta v0.136.3
+    Checking cranelift-bitset v0.136.0
+   Compiling cranelift-assembler-x64 v0.136.3
+    Checking num-bigint v0.5.1
+    Checking allocator-api2 v0.2.21
+    Checking fnv v1.0.7
+   Compiling target-lexicon v0.13.5
+    Checking bumpalo v3.20.3
+   Compiling rustls v0.23.46
+    Checking rustls-webpki v0.103.15
+    Checking cranelift-entity v0.136.0
+    Checking once_cell v1.21.4
+   Compiling cranelift-codegen v0.136.0 (/workspace/manuscript/vendor/cranelift-codegen)
+    Checking openssl-probe v0.2.1
+    Checking arbitrary v1.5.0
+    Checking log v0.4.34
+    Checking rustc-hash v2.1.3
+    Checking hashbrown v0.16.1
+    Checking smallvec v1.16.3
+    Checking base64ct v1.8.3
+    Checking regalloc2 v0.15.2
+    Checking pem-rfc7468 v1.0.0
+    Checking gimli v0.33.0
+    Checking cranelift-control v0.136.3
+    Checking rustls-native-certs v0.8.5
+    Checking cranelift-bforest v0.136.0
+    Checking httparse v1.10.1
+    Checking flate2 v1.1.10
+    Checking der v0.8.2
+    Checking crypto-bigint v0.7.5
+    Checking ms-mir v0.0.0 (/workspace/manuscript/crates/ms-mir)
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+   Compiling anyhow v1.0.104
+    Checking ms-decimal v0.1.0 (/workspace/manuscript/crates/ms-decimal)
+    Checking spki v0.8.1
+    Checking ff v0.14.0
+    Checking getrandom v0.4.3
+    Checking object v0.40.0
+    Checking hmac v0.13.0
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+    Checking group v0.14.0
+    Checking pkcs8 v0.11.0
+    Checking gimli v0.34.0
+    Checking ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+    Checking ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+    Checking signature v3.0.0
+    Checking aho-corasick v1.1.5
+    Checking base16ct v1.0.0
+    Checking regex-syntax v0.8.11
+    Checking sec1 v0.8.1
+    Checking hkdf v0.13.0
+    Checking ms-std-path v0.1.0 (/workspace/manuscript/crates/ms-std-path)
+    Checking inout v0.2.5
+   Compiling ms-lower v0.0.0 (/workspace/manuscript/crates/ms-lower)
+    Checking elliptic-curve v0.14.1
+    Checking primefield v0.14.0
+    Checking minimal-lexical v0.2.1
+   Compiling num-conv v0.2.2
+   Compiling time-core v0.1.9
+   Compiling time-macros v0.2.32
+    Checking regex-automata v0.4.18
+    Checking nom v7.1.3
+    Checking wnaf v0.14.1
+    Checking cipher v0.5.2
+    Checking rfc6979 v0.6.0
+    Checking deranged v0.5.9
+    Checking regex v1.13.1
+    Checking powerfmt v0.2.1
+    Checking linux-raw-sys v0.12.1
+    Checking bitflags v2.13.2
+    Checking rusticata-macros v4.1.0
+    Checking ecdsa v0.17.0
+    Checking time v0.3.55
+    Checking thiserror v2.0.21
+    Checking primeorder v0.14.0
+    Checking rustix v1.1.5
+    Checking ms-std-fs v0.1.0 (/workspace/manuscript/crates/ms-std-fs)
+    Checking ms-std-core v0.1.0 (/workspace/manuscript/crates/ms-std-core)
+    Checking universal-hash v0.6.1
+    Checking polyval v0.7.3
+    Checking asn1-rs v0.7.2
+    Checking curve25519-dalek v5.0.0
+    Checking ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+    Checking ghash v0.6.0
+    Checking ms-std-io v0.1.0 (/workspace/manuscript/crates/ms-std-io)
+    Checking aes v0.9.3
+    Checking ctr v0.10.1
+    Checking aead v0.6.1
+    Checking ed25519 v3.0.0
+    Checking pkcs1 v0.8.0-rc.5
+    Checking crypto-primes v0.7.2
+    Checking num-bigint v0.4.8
+    Checking keccak v0.2.2
+    Checking sponge-cursor v0.1.0
+    Checking jiff-core v0.1.1
+    Checking jiff-tzdb v0.1.9
+    Checking jiff v0.2.38
+    Checking der-parser v10.0.0
+    Checking rsa v0.10.0-rc.19
+    Checking sha3 v0.12.0
+    Checking ed25519-dalek v3.0.0
+    Checking aes-gcm v0.11.1
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+    Checking oid-registry v0.8.1
+    Checking x25519-dalek v3.0.0
+    Checking p384 v0.14.0
+    Checking p521 v0.14.0
+    Checking p256 v0.14.0
+    Checking cbc v0.2.1
+    Checking sha1 v0.11.0
+    Checking md-5 v0.11.0
+    Checking psl-types v2.0.11
+    Checking data-encoding v2.11.1
+    Checking lazy_static v1.5.1
+    Checking x509-parser v0.18.1
+    Checking psl v2.1.245
+    Checking cranelift-module v0.136.0
+    Checking cranelift-object v0.136.0
+    Checking cranelift-frontend v0.136.0
+    Checking cranelift-native v0.136.0
+    Checking ms-std-process v0.1.0 (/workspace/manuscript/crates/ms-std-process)
+    Checking socket2 v0.6.5
+    Checking unicode-width v0.2.3
+    Checking ms-std-crypto v0.1.0 (/workspace/manuscript/crates/ms-std-crypto)
+    Checking ms-std-time v0.1.0 (/workspace/manuscript/crates/ms-std-time)
+    Checking ms-std-archive v0.1.0 (/workspace/manuscript/crates/ms-std-archive)
+    Checking ms-std-regex v0.1.0 (/workspace/manuscript/crates/ms-std-regex)
+    Checking ms-std-html v0.1.0 (/workspace/manuscript/crates/ms-std-html)
+    Checking ms-std-url v0.1.0 (/workspace/manuscript/crates/ms-std-url)
+    Checking ms-std-json v0.1.0 (/workspace/manuscript/crates/ms-std-json)
+    Checking ms-std-net v0.1.0 (/workspace/manuscript/crates/ms-std-net)
+    Checking ms-std-table v0.1.0 (/workspace/manuscript/crates/ms-std-table)
+    Checking ms-std-system v0.1.0 (/workspace/manuscript/crates/ms-std-system)
+    Checking ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Checking ms-std-terminal v0.1.0 (/workspace/manuscript/crates/ms-std-terminal)
+    Checking ms-std-decimal v0.1.0 (/workspace/manuscript/crates/ms-std-decimal)
+    Checking ms-std-bigint v0.1.0 (/workspace/manuscript/crates/ms-std-bigint)
+    Checking ms-conform v0.1.0 (/workspace/manuscript/crates/ms-conform)
+    Checking ms-native v0.1.0 (/workspace/manuscript/crates/ms-native)
+    Checking ms-repo-check v0.0.0 (/workspace/manuscript/crates/ms-repo-check)
+    Checking xtask v0.1.0 (/workspace/manuscript/crates/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 41.09s
+cargo run --release --locked -q -p ms-repo-check
+Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, internal externs, optional defaults, crate layering, and thread affinity agree.
+cargo build --release --locked -p ms-cli
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Finished `release` profile [optimized + debuginfo] target(s) in 12.90s
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (24 modules)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked ms.toml (1 module)
+Checked bench/perf/ascii-decode/memory.ms
+Checked bench/perf/binding-flags/fixtures/generic.ms
+Checked bench/perf/binding-flags/fixtures/resources.ms
+Checked bench/perf/bytes-index/main.ms
+Checked bench/perf/combinations/main.ms
+Checked bench/perf/csv-streams/probe.ms
+Checked bench/perf/deque-rotation/main.ms
+Checked bench/perf/diff-context/main.ms
+Checked bench/perf/float-parse-ascii/main.ms
+Checked bench/perf/float-parse-ascii/source-tests.ms
+Checked bench/perf/iface/main.ms
+Checked bench/perf/integer-parse-radix/main.ms
+Checked bench/perf/integer-parse-radix/source-tests.ms
+Checked bench/perf/itertools-cycle/main.ms
+Checked bench/perf/list-distinct/inlined-helper-main.ms
+Checked bench/perf/list-distinct/main.ms
+Checked bench/perf/list-distinct/rejected-return-bool-main.ms
+Checked bench/perf/lsp-outline/function.ms
+Checked bench/perf/lsp-outline/references.ms
+Checked bench/perf/lsp-semantic/function.ms
+Checked bench/perf/lsp-semantic/list.ms
+Checked bench/perf/lsp-semantic/references.ms
+Checked bench/perf/lsp/function.ms
+Checked bench/perf/lsp/references.ms
+Checked bench/perf/mailbox/main.ms
+Checked bench/perf/map-runtime-audit/empty-intersection-repro.ms
+Checked bench/perf/map-runtime-audit/intersection-strings.ms
+Checked bench/perf/map-runtime-audit/intersection.ms
+Checked bench/perf/permutations-zero/main.ms
+Checked bench/perf/pipe-chain/main.ms
+Checked bench/perf/pipe-pipeline/main.ms
+Checked bench/perf/priority-queue-singleton/candidate-tests.ms
+Checked bench/perf/priority-queue-singleton/main.ms
+Checked bench/perf/promise-tree/main.ms
+Checked bench/perf/pure-utilities/historical/url-component-decoding.ms
+Checked bench/perf/pure-utilities/path-separator-scan.ms
+Checked bench/perf/pure-utilities/path.ms
+Checked bench/perf/pure-utilities/url.ms
+Checked bench/perf/set-empty-relations/main.ms
+Checked bench/perf/set-empty-relations/maps-control.ms
+Checked bench/perf/set-empty-relations/maps-growth-control.ms
+Checked bench/perf/statistics-correlation/main.ms
+Checked bench/perf/streams/main.ms
+Checked bench/perf/string-lines/exploratory/initial-main.ms
+Checked bench/perf/string-lines/main.ms
+Checked bench/perf/string-normalization-rollback/inputs/normalize-focused.ms
+Checked bench/perf/string-normalization-rollback/inputs/normalize-full.ms
+Checked bench/perf/string-normalization-rollback/inputs/reverse-focused.ms
+Checked bench/perf/string-normalization-rollback/inputs/reverse-full.ms
+Checked bench/perf/string-normalization-rollback/partial-revert-results/inputs/executed-formatted72.ms
+Checked bench/perf/string-normalization-rollback/partial-revert-results/inputs/original100.ms
+Checked bench/perf/string-normalize-ascii/focused-controls.ms
+Checked bench/perf/string-normalize-ascii/main.ms
+Checked bench/perf/string-normalize-ascii/rss.ms
+Checked bench/perf/string-normalize-stream/exploratory/source-tests.ms
+Checked bench/perf/string-normalize-stream/focused-controls.ms
+Checked bench/perf/string-normalize-stream/main.ms
+Checked bench/perf/tasks/growth.ms
+Checked bench/perf/tasks/main.ms
+Checked bench/perf/template-numbers/main.ms
+Checked bench/perf/time-shift/main.ms
+Checked bench/perf/toml-control-scan/error.ms
+Checked bench/perf/toml-control-scan/file-error.ms
+Checked bench/perf/toml-control-scan/file-writer.ms
+Checked bench/perf/toml-control-scan/file.ms
+Checked bench/perf/toml-control-scan/main.ms
+Checked bench/perf/toml-control-scan/read.ms
+Checked bench/perf/toml-quoting/main.ms
+Checked bench/perf/wait-all/main.ms
+Checked bench/perf/xml-stringify/probe.ms
+Checked bench/tools/bytes_index_compare.ms
+Checked bench/tools/cargo_vs_ms.ms
+Checked bench/tools/close_parts.ms
+Checked bench/tools/codecs_compare.ms
+Checked bench/tools/compare_stdlib.ms
+Checked bench/tools/compile_time.ms
+Checked bench/tools/copy_report.ms
+Checked bench/tools/datastructures.ms
+Checked bench/tools/datastructures_table.ms
+Checked bench/tools/datastructures_table_test.ms
+Checked bench/tools/effect_reachability.ms
+Checked bench/tools/formatter_flow_compare.ms
+Checked bench/tools/json_bench.ms
+Checked bench/tools/kernels.ms
+Checked bench/tools/kernels_table.ms
+Checked bench/tools/kernels_table_test.ms
+Checked bench/tools/language_benchmark.ms
+Checked bench/tools/lib.ms
+Checked bench/tools/life_reference.ms
+Checked bench/tools/listloops.ms
+Checked bench/tools/lists_native.ms
+Checked bench/tools/lsp_compare.ms
+Checked bench/tools/map_intersection_audit.ms
+Checked bench/tools/programs.ms
+Checked bench/tools/programs_compare.ms
+Checked bench/tools/programs_table.ms
+Checked bench/tools/programs_table_test.ms
+Checked bench/tools/stdlib_bench.ms
+Checked bench/tools/stdlib_results.ms
+Checked bench/tools/stdlib_results_test.ms
+Checked bench/tools/strappend.ms
+Checked bench/tools/strappend_table.ms
+Checked bench/tools/strappend_table_test.ms
+Checked bench/tools/string_lines_compare.ms
+Checked bench/tools/study.ms
+Checked bench/tools/web_bench.ms
+Checked bench/tools/workloads.ms
+Checked bench/tools/workloads_measure.ms
+Checked bench/tools/workloads_measure_test.ms
+RUN datastructures_table_test.ms::minimum and legitimately missing go operation
+PASS datastructures_table_test.ms::minimum and legitimately missing go operation
+RUN datastructures_table_test.ms::zero samples stay visible without ratios
+PASS datastructures_table_test.ms::zero samples stay visible without ratios
+RUN datastructures_table_test.ms::rejects invalid evidence
+PASS datastructures_table_test.ms::rejects invalid evidence
+RUN datastructures_table_test.ms::a late bad sample produces no report
+PASS datastructures_table_test.ms::a late bad sample produces no report
+RUN datastructures_table_test.ms::invalid repeats are refused before building
+PASS datastructures_table_test.ms::invalid repeats are refused before building
+5 tests, 0 failed
+RUN kernels_table_test.ms::complete rotating trials preserve minimum and columns
+PASS kernels_table_test.ms::complete rotating trials preserve minimum and columns
+RUN kernels_table_test.ms::ablation versions and folded times
+PASS kernels_table_test.ms::ablation versions and folded times
+RUN kernels_table_test.ms::plain C omits map_count and reports n/a
+PASS kernels_table_test.ms::plain C omits map_count and reports n/a
+RUN kernels_table_test.ms::rejects invalid evidence
+PASS kernels_table_test.ms::rejects invalid evidence
+RUN kernels_table_test.ms::a late checksum mismatch produces no report
+PASS kernels_table_test.ms::a late checksum mismatch produces no report
+RUN kernels_table_test.ms::a producer that fails or prints nothing is rejected
+PASS kernels_table_test.ms::a producer that fails or prints nothing is rejected
+6 tests, 0 failed
+RUN programs_table_test.ms::complete equivalent work
+PASS programs_table_test.ms::complete equivalent work
+RUN programs_table_test.ms::extra versions add columns
+PASS programs_table_test.ms::extra versions add columns
+RUN programs_table_test.ms::rejects invalid evidence
+PASS programs_table_test.ms::rejects invalid evidence
+3 tests, 0 failed
+RUN stdlib_results_test.ms::invalid numeric fields are rejected
+PASS stdlib_results_test.ms::invalid numeric fields are rejected
+RUN stdlib_results_test.ms::huge exponents and non-finite constants are rejected, finite zero is not
+PASS stdlib_results_test.ms::huge exponents and non-finite constants are rejected, finite zero is not
+RUN stdlib_results_test.ms::labels disambiguate only collisions
+PASS stdlib_results_test.ms::labels disambiguate only collisions
+RUN stdlib_results_test.ms::a user label cannot collide with a qualified display name
+PASS stdlib_results_test.ms::a user label cannot collide with a qualified display name
+RUN stdlib_results_test.ms::reads operations and median per case
+PASS stdlib_results_test.ms::reads operations and median per case
+RUN stdlib_results_test.ms::qualified case identity
+PASS stdlib_results_test.ms::qualified case identity
+RUN stdlib_results_test.ms::changed cases or operation counts are rejected
+PASS stdlib_results_test.ms::changed cases or operation counts are rejected
+RUN stdlib_results_test.ms::failed, duplicate, empty or uncompiled runs are rejected
+PASS stdlib_results_test.ms::failed, duplicate, empty or uncompiled runs are rejected
+RUN stdlib_results_test.ms::impossible measurements are rejected
+PASS stdlib_results_test.ms::impossible measurements are rejected
+RUN stdlib_results_test.ms::a failed producer yields no report
+PASS stdlib_results_test.ms::a failed producer yields no report
+10 tests, 0 failed
+RUN strappend_table_test.ms::minima and reordered samples
+PASS strappend_table_test.ms::minima and reordered samples
+RUN strappend_table_test.ms::invalid evidence
+PASS strappend_table_test.ms::invalid evidence
+2 tests, 0 failed
+RUN workloads_measure_test.ms::every trial rotates and retains samples
+PASS workloads_measure_test.ms::every trial rotates and retains samples
+RUN workloads_measure_test.ms::wrong or failed warm-up and early trials are rejected for every version
+PASS workloads_measure_test.ms::wrong or failed warm-up and early trials are rejected for every version
+RUN workloads_measure_test.ms::invalid repeat counts are refused
+PASS workloads_measure_test.ms::invalid repeat counts are refused
+3 tests, 0 failed
+cargo nextest run --workspace
+error: no such command: `nextest`
+
+help: a command with a similar name exists: `test`
+
+help: view all installed commands with `cargo --list`
+help: find a package to install `nextest` with `cargo search cargo-nextest`
+make: *** [Makefile:47: unit] Error 101

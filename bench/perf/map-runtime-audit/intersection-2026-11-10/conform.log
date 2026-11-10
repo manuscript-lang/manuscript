@@ -1,0 +1,404 @@
+cargo xtask runtime
+    Finished `release` profile [optimized] target(s) in 0.08s
+    Finished `release` profile [optimized] target(s) in 0.07s
+    Finished `release` profile [optimized] target(s) in 0.04s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+cargo build --release --locked -p ms-cli
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Finished `release` profile [optimized + debuginfo] target(s) in 13.69s
+/workspace/manuscript/target/release/ms run tools/conform.ms
+    Finished `release` profile [optimized] target(s) in 0.08s
+    Finished `release` profile [optimized] target(s) in 0.07s
+    Finished `release` profile [optimized] target(s) in 0.03s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+3900 fixtures, 0 problems
+running 2347 of 3900 fixtures with /workspace/manuscript/target/debug/ms
+2347 fixtures: 0 pass, 2347 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (0.0%)
+  check      0/1579  0.0%  0 s fixture time
+  run        0/553   0.0%  0 s fixture time
+  test       0/215   0.0%  0 s fixture time
+slowest fixtures:
+     0.01 s  check fuzz/types/seed-0004
+     0.00 s  check snippets/checker/testdiagnosticsstatecauseandfix-30
+     0.00 s  check snippets/compiler/testpreludenamescannotberedeclared-6
+     0.00 s  check snippets/tooling/format-testformatparagraphs-7
+     0.00 s  check snippets/tooling/lsp-testexpectedgenericresulteditorconflict-1
+     0.00 s  check docs/core-language-basics-numbers-and-booleans-3
+     0.00 s  check docs/core-language-control-flow-pattern-matching-1
+     0.00 s  test  e2e/accept/sibling-operand-order
+     0.00 s  check fuzz/types/seed-0005
+     0.00 s  check fuzz/types/seed-0006
+     0.00 s  check fuzz/types/seed-0007
+     0.00 s  check fuzz/types/seed-0009
+     0.00 s  test  snippets/authored/result-error-values
+     0.00 s  check snippets/parser/testinlinesuites-3
+     0.00 s  check snippets/parser/testresulttypefollowsparameterswithoutarrow-4
+FAIL bench/agent-templates-ms
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/language-calls
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/language-life
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/language-list
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/language-numeric
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/lists-program
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/lists-repro-cleared-tail
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL bench/lowering-native-defaults
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked lowering-native-defaults.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL bench/lowering-production
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked lowering-production.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL bench/lowering-program
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked lowering-program.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL bench/perf-results-2026-10-18-linux-amd64-dynamic-counter
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS3001"
+    - diagnostics[0].phase: "type"
+    - diagnostics[0].message: "expected String, found Bytes (in argument 'value' of write)"
+    - diagnostics[0].position.file: "perf-results-2026-10-18-linux-amd64-dynamic-counter.ms"
+    - diagnostics[0].position.line: 18
+    - diagnostics[0].position.column: 36
+    - ... 8 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/contributing-compiler-conformance-semantic-tests-1
+    - exit_code: 0
+    - report.repeat: 1
+    - report.format: 1
+    - report.source_root: "<DIR>"
+    - report.tests[0].index: 0
+    - report.tests[0].name: "contributing-compiler-conformance-semantic-tests-1.ms::checked decrement"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - ... 32 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + report.unparsable_json: "unexpected end of JSON input"
+    + report.stdout: ""
+    + shape[0]: "stdout"
+    + shape[1]: "unparsable_json"
+
+FAIL docs/cookbook-command-line-1
+    - exit_code: 0
+    - stdout:1| Hello, Manuscript!
+    - stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + stdout: ""
+
+FAIL docs/cookbook-command-line-2
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-command-line-2.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/cookbook-command-line-3
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-command-line-3.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/cookbook-files-and-input-1
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-files-and-input-1.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/cookbook-files-and-input-2
+    - exit_code: 0
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+
+FAIL docs/cookbook-files-and-input-3
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-files-and-input-3.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/cookbook-text-and-data-1
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-text-and-data-1.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/cookbook-text-and-data-2
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-text-and-data-2.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/cookbook-text-and-data-3
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked cookbook-text-and-data-3.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/core-language-basics-bindings-5
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS3001"
+    - diagnostics[0].phase: "type"
+    - diagnostics[0].message: "expected Int, found Float; Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)"
+    - diagnostics[0].position.file: "core-language-basics-bindings-5.ms"
+    - diagnostics[0].position.line: 7
+    - diagnostics[0].position.column: 17
+    - ... 8 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/core-language-basics-expressions-1
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS2001"
+    - diagnostics[0].phase: "resolution"
+    - diagnostics[0].message: "unknown type Config; declare it with 'type Config:' / 'enum Config:' / 'interface Config:', declare it as a type parameter, or import it"
+    - diagnostics[0].position.file: "core-language-basics-expressions-1.ms"
+    - diagnostics[0].position.line: 4
+    - diagnostics[0].position.column: 23
+    - ... 19 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/core-language-basics-expressions-2
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked core-language-basics-expressions-2.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/core-language-basics-grammar-2
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS2001"
+    - diagnostics[0].phase: "resolution"
+    - diagnostics[0].message: "unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T:', or import it from a module"
+    - diagnostics[0].position.file: "core-language-basics-grammar-2.ms"
+    - diagnostics[0].position.line: 5
+    - diagnostics[0].position.column: 12
+    - ... 8 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/core-language-basics-grammar-3
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS2001"
+    - diagnostics[0].phase: "resolution"
+    - diagnostics[0].message: "unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T:', or import it from a module"
+    - diagnostics[0].position.file: "core-language-basics-grammar-3.ms"
+    - diagnostics[0].position.line: 5
+    - diagnostics[0].position.column: 12
+    - ... 8 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/core-language-basics-grammar-4
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS2001"
+    - diagnostics[0].phase: "resolution"
+    - diagnostics[0].message: "unknown binding apply; declare it with 'apply := ...' before use, define 'fn apply(...) T:', or import it from a module"
+    - diagnostics[0].position.file: "core-language-basics-grammar-4.ms"
+    - diagnostics[0].position.line: 5
+    - diagnostics[0].position.column: 12
+    - ... 8 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/core-language-basics-grammar-5
+    - exit_code: 0
+    - format: 1
+    - text.exit_code: 0
+    - text.stdout:1| Checked core-language-basics-grammar-5.ms
+    - text.stdout:2| 
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stdout: ""
+
+FAIL docs/core-language-basics-numbers-and-booleans-1
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS2002"
+    - diagnostics[0].phase: "resolution"
+    - diagnostics[0].message: "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/math/decimal.ms\""
+    - diagnostics[0].position.file: "core-language-basics-numbers-and-booleans-1.ms"
+    - diagnostics[0].position.line: 6
+    - diagnostics[0].position.column: 10
+    - ... 18 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+FAIL docs/core-language-basics-numbers-and-booleans-2
+    - exit_code: 1
+    - format: 1
+    - diagnostics[0].code: "MS2001"
+    - diagnostics[0].phase: "resolution"
+    - diagnostics[0].message: "unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\""
+    - diagnostics[0].position.file: "core-language-basics-numbers-and-booleans-2.ms"
+    - diagnostics[0].position.line: 7
+    - diagnostics[0].position.column: 14
+    - ... 38 more
+    + exit_code: 127
+    + spawn_error: "/workspace/manuscript/target/debug/ms: No such file or directory (os error 2)"
+    + diagnostics: []
+    + raw.unparsable_json: "unexpected end of JSON input"
+    + raw.stdout: ""
+    + text.exit_code: 127
+    + text.stderr: ""
+
+... 2317 more failures (see --markdown / --json)
+make: *** [Makefile:60: conform] Error 1

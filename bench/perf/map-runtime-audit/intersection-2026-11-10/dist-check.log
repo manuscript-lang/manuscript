@@ -1,0 +1,110 @@
+cargo xtask runtime
+    Finished `release` profile [optimized] target(s) in 0.09s
+    Finished `release` profile [optimized] target(s) in 0.06s
+    Finished `release` profile [optimized] target(s) in 0.03s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+cargo build --release --locked -p ms-cli
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Finished `release` profile [optimized + debuginfo] target(s) in 15.08s
+/workspace/manuscript/target/release/ms run tools/package.ms
+    Finished `release` profile [optimized] target(s) in 0.06s
+    Finished `release` profile [optimized] target(s) in 0.07s
+    Finished `release` profile [optimized] target(s) in 0.03s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+   Compiling foldhash v0.2.0
+   Compiling cranelift-srcgen v0.136.3
+   Compiling libm v0.2.16
+   Compiling wasmtime-internal-core v49.0.0
+   Compiling cranelift-isle v0.136.0
+   Compiling hashbrown v0.17.1
+   Compiling cranelift-assembler-x64-meta v0.136.3
+   Compiling equivalent v1.0.3
+   Compiling cfg-if v1.0.5
+   Compiling cranelift-codegen-shared v0.136.3
+   Compiling heck v0.5.0
+   Compiling indexmap v2.14.2
+   Compiling cranelift-assembler-x64 v0.136.3
+   Compiling cranelift-codegen-meta v0.136.3
+   Compiling target-lexicon v0.13.5
+   Compiling cranelift-bitset v0.136.0
+   Compiling allocator-api2 v0.2.21
+   Compiling fnv v1.0.7
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling bumpalo v3.20.3
+   Compiling cc v1.9.0
+   Compiling cranelift-entity v0.136.0
+   Compiling log v0.4.34
+   Compiling smallvec v1.16.3
+   Compiling ms-syntax v0.0.0 (/workspace/manuscript/crates/ms-syntax)
+   Compiling hashbrown v0.16.1
+   Compiling arbitrary v1.5.0
+   Compiling libc v0.2.191
+   Compiling cranelift-codegen v0.136.0 (/workspace/manuscript/vendor/cranelift-codegen)
+   Compiling rustc-hash v2.1.3
+   Compiling autocfg v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling cranelift-control v0.136.3
+   Compiling regalloc2 v0.15.2
+   Compiling ring v0.17.14
+   Compiling gimli v0.33.0
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+   Compiling cranelift-bforest v0.136.0
+   Compiling typenum v1.20.1
+   Compiling crc32fast v1.5.2
+   Compiling hybrid-array v0.4.15
+   Compiling anyhow v1.0.104
+   Compiling zeroize v1.9.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling getrandom v0.2.17
+   Compiling untrusted v0.9.0
+   Compiling num-integer v0.1.47
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling httparse v1.10.1
+   Compiling adler2 v2.0.1
+   Compiling simd-adler32 v0.3.10
+   Compiling memchr v2.8.3
+   Compiling rustls v0.23.46
+   Compiling object v0.40.0
+   Compiling miniz_oxide v0.9.1
+   Compiling digest v0.11.3
+   Compiling num-bigint v0.5.1
+   Compiling rustls-webpki v0.103.15
+   Compiling openssl-probe v0.2.1
+   Compiling ms-rt-abi v0.1.0 (/workspace/manuscript/crates/ms-rt-abi)
+   Compiling ms-mir v0.0.0 (/workspace/manuscript/crates/ms-mir)
+   Compiling ms-lower v0.0.0 (/workspace/manuscript/crates/ms-lower)
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling once_cell v1.21.4
+   Compiling cranelift-module v0.136.0
+   Compiling cpufeatures v0.3.1
+   Compiling subtle v2.6.1
+   Compiling sha2 v0.11.1
+   Compiling cranelift-object v0.136.0
+   Compiling cranelift-frontend v0.136.0
+   Compiling cranelift-native v0.136.0
+   Compiling rustls-native-certs v0.8.5
+   Compiling ms-decimal v0.1.0 (/workspace/manuscript/crates/ms-decimal)
+   Compiling flate2 v1.1.10
+   Compiling gimli v0.34.0
+   Compiling ms-json v0.1.0 (/workspace/manuscript/crates/ms-json)
+   Compiling regex-syntax v0.8.11
+   Compiling regex-automata v0.4.18
+   Compiling ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+   Compiling ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+   Compiling regex v1.13.1
+    Finished `release` profile [optimized + debuginfo] target(s) in 1m 51s
+dist/manuscript-rust-linux-amd64.tar.gz
+/workspace/manuscript/target/release/ms run tools/dist-check.ms
+Manuscript 0.1.0
+Built /workspace/map-rust/tmp/ms-dist-check-2753246644/hello
+RUN test.ms::getting started
+PASS test.ms::getting started
+1 tests, 0 failed
+dist-check ok

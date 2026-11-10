@@ -1,0 +1,1296 @@
+cargo xtask runtime
+    Finished `release` profile [optimized] target(s) in 0.07s
+    Finished `release` profile [optimized] target(s) in 0.08s
+    Finished `release` profile [optimized] target(s) in 0.04s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+cargo build --release --locked -p ms-cli
+   Compiling ms-clif v0.0.0 (/workspace/manuscript/crates/ms-clif)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript/crates/ms-cli)
+   Compiling ms-build v0.0.0 (/workspace/manuscript/crates/ms-build)
+    Finished `release` profile [optimized + debuginfo] target(s) in 14.68s
+/workspace/manuscript/target/release/ms run tools/e2e.ms
+    Finished `release` profile [optimized] target(s) in 0.07s
+    Finished `release` profile [optimized] target(s) in 0.08s
+    Finished `release` profile [optimized] target(s) in 0.03s
+/workspace/manuscript/crates/xtask/../../target/ms-native/libms_native.a
+FAIL tests/e2e/testdata/accept/borrowed-scalar-optional-get.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bound-native-members.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/calendar-format-tokens.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/callback-probe-reuse.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/clonable-bound.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/closure-var-arguments.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/conditional-arm-call-argument.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/data-bound.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/direct-members.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/escaping-closures-keep-captures.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/float32-literal-rounding.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/fs-calls-in-tasks.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-operations.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-var-function-type.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/if-var-list-entry.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/interface-call-closes-optional-temporary.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/library-errors.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/list-shrink-consumers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-and-set-remove-to-empty.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-get-default-mutates-map.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-update-get-or.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/native-optional-default-borrows.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-chaining.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-or-else-ownership.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-unused-resource-cause.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/place-receiver-fault-order.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/promise-fault-scope-close-unwind.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/read-line-presence-tail.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/result-error-values.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/self-type.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/sort-with-capturing-comparator.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/source-owned-arguments-across-try.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/string-scalar-values-loop.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/text-interpolation-integers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/type-argument-defaults.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/var-destructuring-reassigns.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/wrapper-passthrough-resource-transfer.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/big-rat-float.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bigint.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/borrowed-string-loop.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/call-defaults.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/cli.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/complex.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/core-parity.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/csv.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/decimal-to-string.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/descriptor-backpressure.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/encoding-ascii85.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/error-categories.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/flow.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs-watch-cancel.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/host.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-headers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/image-fuzz.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/implicit-close.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/io.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/json-failure.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-binary-search.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-reshape.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/mail.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/math-functions.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/naming-migration.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/net-thread-bound.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/numeric-wide.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/preferred-names.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/queues.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/regex-spans.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/semver.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/stream-cancel.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/streams.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-fields.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-parse-float.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/template.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/text.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/toml-properties.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/unicode-categories.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/varint.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-comment-continuation-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-key-line-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/argument-labels.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/borrowing-result-cases.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bound-native-resource-closes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/call-later-operand-fault-closes-resource.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/captured-list-element-writes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/close-error-precedence.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/closures-retained-by-natives.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/constructor-resource-lifetime.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/data-map-string-key.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/direct-methods.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/expression-conveniences.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/float32-registers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/function-field-borrow.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-optional-callbacks.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/get-default-closes-unused.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/if-var-optional-copy.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/interface-var-parameters.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/list-filled-by-counted-loop.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/list-zip-with-itself.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-bytes-indexing.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-get-result-borrows-map.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/match-temporary-scrutinee-return-closes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/nested-place-index-order.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-implicit-default.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-resource-argument-moves.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/owned-loop-early-exit-closes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/positional-arguments.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/promise-file-reads.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/reader-function-for-var-function.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/result-get-scalar-resource.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/sized-list-extremes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/source-borrowed-wrapper-temporary-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/stack-overflow.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/task-stack-growth.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/timestamp-text.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/unary-plus-literal-context.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/var-method-on-list-element.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/wrapper-preserved-payloads.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/big-rat-power-limits.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bits.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/borrowing-iteration.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/chacha20poly1305.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/cli_table.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/compress-archive.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/crypto-rsa.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/decimal-comparison-alignment.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/decimal-zero-identities.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/destructure-moves-parts.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/encoding-base64.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fetch.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs-atomic-lock-move.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs-write-backpressure.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/html.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-limits.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/image-jpeg-vectors.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/integer-radix.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/iotest-golden.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/json-reader.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-distinct.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-source-methods.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/map-get-borrow.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/memo.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/native-bindings.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/net.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/ordering.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/process-which.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/random-distributions.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/regex.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/sorted_map_lists.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/stream-close-once.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-basics.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-lines.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-text.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/test-sites.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/time-parse-duration.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/toml-quoting.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/unicode.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/xml.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-document-boundaries.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-node-scan-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/borrowed-container-reads.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bound-missing-value-source.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bound-source-borrowed-result.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/callable-default-adapters.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/case-identifier.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/closed-int-list-bounds.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/closures-stored-through-helpers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/consumed-arguments-stay-linear.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/default-arguments.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/discard-close-failure-closes-once.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/extern-libc.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/fn-var-parameter-types.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/function-value-wrapper-temporary-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-resource-forward.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/hex-literal-context.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/implicit-close-shielded.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/interface-views.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/list-go-range.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/literal-arithmetic-takes-expected-type.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-closes-values-newest-first.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-in-place.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/multi-line-text.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/non-escaping-closures-borrow-captures.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-keys.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-result-combinators.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/owned-temp-before-try-argument.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/posix-path-components.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/promise-loop-try.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/recursive-types.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/return-bytes-view-clone.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/sort-by-difference.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/source-bound-capture-close.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/statement-match.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/temporary-mutator-unit.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/to-string.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/url-component-decoding.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/var-param-consumes-resource.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/wrapper-scalar-payload-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bigint-number-theory.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bitset-relations.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bytes-index-search.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/checksum-incremental.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/close-in-place.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/compression-defaults.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/crypto-subtle.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/decimal-comparison-gaps.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/defaults.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/diff.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/encoding-hex-limits.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/file-handle-owned.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs-defaults.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-exchange-helpers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-paths.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/image-png-vectors.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/integer-shared-operations.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/itertools.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/json.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-parity.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-structural-ops.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/map-merge-wide.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/metrics-histogram.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/native-function-values.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/numeric-boundaries.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/overwrite-close-parts.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/promise-cross-thread.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/random-extras.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/resource-clone.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/sse-stream.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/stream-filter-take-fold.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-bytes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-normalize-ascii.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-view.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/testing.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/time-units.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/toml.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/utf8.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-block-indentation.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-empty-entry-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-properties.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/borrowed-helper-loop-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bound-mutating-method-values.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bounded-int-arithmetic.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/callable-parameter-names.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/checked-place-evaluation.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/closure-assigns-capture.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/collection-prelude-support.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/consumed-param-closes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/default-failure-releases-var-copies.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/disjoint-hex-indexes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/fallible-close.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/for-destructuring.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-bound-declaration-order.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-result-optional-payload.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/holder-conditional-move-closes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/int-float32-rounding.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/iterable-string-elements.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/list-incoming-resource-transfer.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/lone-interpolation-owned.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-counter-key-stability.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-record-keys.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/mutation.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/one-owner-moves.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-members-call-directly.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-sized-literal-context.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/path-case-mapping.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/prelude.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/promise-owned-captures.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/replaced-close-fault-keeps-incoming.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/returned-promise-owns-captures.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/sort-empty-integers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/source-capture-borrowed-string-result.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/string-equality-across-kinds.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/temporary-var-receiver-closes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/try-owned-local-error.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/var-borrows-map-entry.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/var-parameter-reassigned-from-itself.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/archive-stream.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bigint-power-limits.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/blake2.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bytes-join.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/checksum-stream.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/collection-loop-owned-elements.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/config.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/crypto.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/decimal-math.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/deque-resource-growth.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/directory-owned.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/encoding-stream.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/float-precision.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs-glob-relative.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/hash.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-fault-leak.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-websocket.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/image.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/io-line-endings.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/json-accessors.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/jwt.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-predicates.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-take-drop.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/map-transforms.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/mime.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/nested-list-loop.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/numeric-helpers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/pem.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/promise-semantics.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/random-weight-ranges.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/result-library-adapters.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/standard-streams-scope.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/stream-loops.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-cut-prelude.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-normalize-identity.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/sync-timers-errors.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/text-cursor.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/time.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/tree.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/uuid.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-block-key-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-error-location-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-regressions.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/borrowed-optional-source-close.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/bound-native-clonable-arguments.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/builtin-parity.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/callback-implementation-identity.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/cl-10b.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/closure-field-calls.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/collection-prelude.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/contract-lowercase-pattern.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/defaults-by-resolution.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/enum-declarations.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/fallible-default-closes-temporary.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/for-each-changes-elements.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-contract-two-applications.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/generic-result-wraps-temporary-resource.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/if-literal-index-closure.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/interface-borrowed-wrapper-temporary-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/kept-parts-of-borrowed-reads.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/list-mutator-fault-closes-incoming.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/long-map-literal.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-element-places.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/map-string-values-general-lookup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/mutator-receiver-order.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-chain-pending-temporary.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-methods.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/optional-unused-cause-receiver-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/path-separator-scans.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/promise-borrowed-captures.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/promise-system-inventory.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/resource-place-evaluation.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/scalar-lowering.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/sort-records-by-comparator.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/source-function-borrowed-result.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/string-replace.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/terse-data.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/try-result-payloads.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/var-closes-final-value.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/accept/wrapped-borrows.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/big-rat-exponent-errors.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bigint-zero-shift.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/borrowed-helper-loop.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/bytes-scan.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/checksum.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/collections.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/conversions-queries.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/csv-rows.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/decimal-rounding.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/deque-rotation.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/encoding-ascii.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/encoding-variants.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/float-shortest.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/fs-kinds-and-sources.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/host-contracts.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http-hardening.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/http2-cancelled-requests.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/implicit-close-parts.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/io-lines.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/json-base64.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-aggregates.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/list-replace-swap.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/log.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/map-update-differential.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/multipart-stream.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/net-broken-pipe.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/numeric-reference-boundaries.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/pipe.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/promise-wait-first.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/regex-hex-escapes.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/router.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/statistics.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/stream-resource-lifetime.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-cut.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/string-normalize-stream.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/template-exact-numbers.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/text-padding.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/tls.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/typed-codecs.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/values-cleanup.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-colon-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml-incremental-flow-regression.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/stdlib/yaml.ms
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/bound_missing_value
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/command
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/core_parity
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/embedded_files
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/http
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/interface_defaults_by_module
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/interface_views
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/library
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/lifecycle
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/local_extensions
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/logging
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/map_add_scope
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/map_remove
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/networking
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/nominal_cycle_identity
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/opaque
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/path_oracle
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/preferred_names
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/same_type_names
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/set_operand_hash
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/signal
+cannot start /workspace/manuscript/target/debug/ms
+
+FAIL tests/e2e/testdata/projects/stream_writers
+cannot start /workspace/manuscript/target/debug/ms
+
+slowest fixtures (ms):
+  0 tests/e2e/testdata/accept/borrowed-scalar-optional-get.ms
+  0 tests/e2e/testdata/accept/bound-native-members.ms
+  0 tests/e2e/testdata/accept/calendar-format-tokens.ms
+  0 tests/e2e/testdata/accept/callback-probe-reuse.ms
+  0 tests/e2e/testdata/accept/clonable-bound.ms
+  0 tests/e2e/testdata/accept/closure-var-arguments.ms
+  0 tests/e2e/testdata/accept/conditional-arm-call-argument.ms
+  0 tests/e2e/testdata/accept/data-bound.ms
+  0 tests/e2e/testdata/accept/direct-members.ms
+  0 tests/e2e/testdata/accept/escaping-closures-keep-captures.ms
+  0 tests/e2e/testdata/accept/float32-literal-rounding.ms
+  0 tests/e2e/testdata/accept/fs-calls-in-tasks.ms
+  0 tests/e2e/testdata/accept/generic-operations.ms
+  0 tests/e2e/testdata/accept/generic-var-function-type.ms
+  0 tests/e2e/testdata/accept/if-var-list-entry.ms
+e2e: 506 fixtures, 421 failed (Release)
+make: *** [Makefile:71: e2e] Error 1

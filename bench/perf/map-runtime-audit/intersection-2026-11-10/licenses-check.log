@@ -1,0 +1,1 @@
+cargo run --release --locked -q -p ms-repo-check -- licenses -check

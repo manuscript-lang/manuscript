@@ -1,0 +1,128 @@
+{
+  "baseline_revision": "6c9260f8c39a45c55a7f59f7df28bf373b6f97df",
+  "latest_fetched_main": "613f7b0ef1c7dd6e4e59aa48e2c4585b6201677c",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "measurement_affinity": [
+    0
+  ],
+  "rust": "1.99.1",
+  "profile": "make build; LLVM Release",
+  "hashes": {
+    "/workspace/map-iteration-evidence/baseline/ms": "9a89962eb7c835893ad2c7cd609a660f96d0b9382d10ef2a85f7e8469775bf94",
+    "/workspace/map-iteration-evidence/baseline/intersection": "65548291567f65df14bd6eaf8f19b539c6446eb264534b5a2a8cbcd70bf1d070",
+    "/workspace/map-iteration-evidence/baseline/intersection-strings": "2446ecb1f402ea9252e3a5e4877aebdc943872ec5315cf84ddaf33366a06f5f6",
+    "/workspace/map-iteration-evidence/baseline/maps-control": "61025dc4541af1c88a9f4dc70e2c1463c7c754ee362772ff06fce3077283208e",
+    "/workspace/map-iteration-evidence/candidate/ms": "2937d2b21a7ce395641c7b31f2f8a94f61f485774157759d6ad5a1b9827269df",
+    "/workspace/map-iteration-evidence/candidate/intersection": "3aba71b65b2746c39d2870508bba31a1d25f4cc55a6be020672c537797f6fbe8",
+    "/workspace/map-iteration-evidence/candidate/intersection-strings": "d9f479453ebd8bc743566db38fa4766ecb08ae894d4189e7c678e11e3e5c2bbe",
+    "/workspace/map-iteration-evidence/candidate/maps-control": "0bf3cba75f4259ac8e547c3662d33835df3ddde0d57398608c9d74b259e63bdf",
+    "crates/ms-rt/src/map.rs": "22fc736f5476145df8b0067287244200263b7ae86e5711d2386f399afa0730a5",
+    "bench/perf/map-runtime-audit/intersection.ms": "3ce5b46e99f45901f6ee82be4029310a17ab91e207b72631f3307f51698fee57",
+    "bench/perf/map-runtime-audit/intersection-strings.ms": "23402c19fb1a9200a61bbf1b54d5190c4b84410e23d58d0ef2d5dac684816d67",
+    "bench/tools/map_intersection_audit.ms": "58b8118de5a6f1d62cb810f48a8280457e668a2f3cff1aac186d719f6b71c672",
+    "bench/tools/map_lookup_audit.ms": "91a11d8232132aedd4add86dd789b01f567a7517a47cd2f94997f093b8991e2a"
+  },
+  "map_confirmation_labels": {
+    "0": "candidate",
+    "1": "baseline"
+  },
+  "map_confirmation_arguments": [
+    [
+      "string_get",
+      4096,
+      5000,
+      0
+    ],
+    [
+      "string_get",
+      4096,
+      38,
+      4096
+    ],
+    [
+      "string_update",
+      65536,
+      11,
+      256
+    ],
+    [
+      "int_update",
+      128,
+      100000,
+      0
+    ],
+    [
+      "string_get",
+      128,
+      50000,
+      16
+    ],
+    [
+      "string_update",
+      4096,
+      5000,
+      0
+    ]
+  ],
+  "map_confirmation_pairs": 24,
+  "candidate_build_note": "The later creator-insertion unit test and source fixture were added after the candidate binary build. Production code remained exactly the same five-line branch. The retained patch includes final tests.",
+  "build_metadata": {
+    "/workspace/map-iteration-evidence/baseline/intersection.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/baseline/intersection-strings.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/baseline/maps-control.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/candidate/intersection.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/candidate/intersection-strings.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    },
+    "/workspace/map-iteration-evidence/candidate/maps-control.ms-build.json": {
+      "format": 1,
+      "version": "0.1.0",
+      "backend": "llvm",
+      "build_type": "Release"
+    }
+  },
+  "first_pr_head": "10d69c6db2ddddb8ec33b5ea6572ee397dff424a",
+  "pr": "https://github.com/manuscript-lang/manuscript/pull/3505",
+  "rustc_verbose": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cargo_version": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "toolchain_paths": {
+    "RUSTUP_HOME": "/workspace/map-rust/rustup",
+    "CARGO_HOME": "/workspace/map-rust/cargo",
+    "XDG_CACHE_HOME": "/workspace/map-rust/cache",
+    "TMPDIR": "/workspace/map-rust/tmp"
+  },
+  "instruction_counts": "not collected; perf and valgrind absent from PATH",
+  "latest_fetched_main_before_pr": "975bbaa03547596ed6d5938277549b6efac1d1b0",
+  "overlap_check": "map.rs, tree.rs and ms-rt-hot unchanged between measured baseline and latest main before PR"
+}

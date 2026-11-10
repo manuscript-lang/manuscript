@@ -1,0 +1,12 @@
+2026-11-10, official nextest installation into the permitted workspace:
+curl -fLsS https://get.nexte.st/latest/linux -o /workspace/map-rust/nextest.tar.gz
+Exit status: 22
+curl: (22) The requested URL returned error: 403
+
+The archive was not extracted and nextest was not installed. No retry or
+alternate source was used. This is an HTTP failure, not an auto-review denial.
+
+make verify-full later stopped at:
+cargo nextest run --workspace
+error: no such command: `nextest`
+make: *** [Makefile:47: unit] Error 101

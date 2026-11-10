@@ -1,0 +1,3 @@
+cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check
+API descriptions: 832/832 declarations, 1911/1911 members (including prelude aliases)
+Description quality: 832/832 declarations, 1911/1911 members pass structural checks; semantic review remains required
