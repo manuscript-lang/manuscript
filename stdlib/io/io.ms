@@ -64,24 +64,9 @@ impl ReadStream[T]:
 	// With `timeout`, a read that waits that long in all (a stalled socket) fails with `ETIMEDOUT`; the source may be left mid-item, so close the stream afterwards.
 	var fn next(timeout: Duration? = none) T?!:
 		if self.closed: return ok(none)
-		if bound := timeout: return self.next_within(bound)
+		if bound := timeout: return read_bounded(var self.source, bound)
 
 		return self.source.next()
-
-	// One read that waits at most `bound` in all.
-	var fn next_within(bound: Duration) T?!:
-		var nanos = bound.to_nanoseconds()
-		if nanos < 0: nanos = 0
-
-		started := monotonic()
-		msrt_task_read_limit(nanos)
-
-		got := self.source.next()
-		msrt_task_read_limit(-1)
-		if got.is_error() and monotonic().difference(started).compare(bound) >= 0:
-			return error(Error("I/O: read timed out", kind: "ETIMEDOUT"))
-
-		return got
 
 impl Closeable for ReadStream[T]:
 	// Closes the source and drops it, so a socket or file it held is released now; later calls do nothing.
@@ -93,6 +78,21 @@ impl Closeable for ReadStream[T]:
 		result := self.source.close()
 		self.source = EndedSource[T]()
 		return result
+
+// One read of `source` that waits at most `bound` in all.
+fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
+	var nanos = bound.to_nanoseconds()
+	if nanos < 0: nanos = 0
+
+	started := monotonic()
+	msrt_task_read_limit(nanos)
+
+	got := source.next()
+	msrt_task_read_limit(-1)
+	if got.is_error() and monotonic().difference(started).compare(bound) >= 0:
+		return error(Error("I/O: read timed out", kind: "ETIMEDOUT"))
+
+	return got
 
 // A source with nothing left: the one a closed `ReadStream` holds.
 type EndedSource[T]:
