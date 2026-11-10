@@ -188,3 +188,21 @@ fn required_type_arity_omits_only_a_fully_defaulted_suffix() {
         }
     }
 }
+
+#[test]
+fn exported_generic_defaults_cannot_expose_private_types() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/visibility.ms"
+    ));
+    assert_eq!(got.len(), 4, "{got:?}");
+    assert_eq!(
+        got.iter().map(|d| d.pos.line).collect::<Vec<_>>(),
+        [7, 10, 13, 16]
+    );
+    assert!(
+        got.iter().all(|d| d
+            .message
+            .starts_with("public signature exposes private type Secret;")),
+        "{got:?}"
+    );
+}

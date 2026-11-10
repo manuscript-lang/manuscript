@@ -34,3 +34,5 @@ Use for `crates/ms-syntax`, `ms-check`, `ms-mir`, `ms-lower`, `ms-clif`, `ms-dri
 - Route new shapes through [tooling](../tooling-and-docs/tooling-change-checklist.md). Verify traversal, accepted/rejected parsing, recovery, formatting idempotence, and affected editor scopes/navigation. Preserve reproducible parser failures as regression tests.
 
 - Every source function-value thunk has an owned-result callable ABI, including plain free functions as well as bound/defaulted methods. Adapt inferred borrowed Clonable results at that boundary; never return a borrowed MIR value as owned or copy a resource result (#3112).
+
+- Public-signature closure also needs generic defaults: inspect both declaration variables and interface-operation variables, including parameters unused in the signature. Default well-formedness and bounds checking does not establish visibility. Preserve private defaults on private declarations.

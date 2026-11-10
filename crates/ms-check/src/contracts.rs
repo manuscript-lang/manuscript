@@ -1438,12 +1438,22 @@ impl Checker {
                         for b in v.bounds() {
                             self.check_declared(&b, d.pos(), s.export);
                         }
+                        if s.export
+                            && let Some(default) = v.default_ty()
+                        {
+                            self.public(&default, d.pos(), &mut HashSet::new());
+                        }
                     }
                 }
             }
             for v in s.variables() {
                 for b in v.bounds() {
                     self.check_declared(&b, d.pos(), s.export);
+                }
+                if s.export
+                    && let Some(default) = v.default_ty()
+                {
+                    self.public(&default, d.pos(), &mut HashSet::new());
                 }
             }
             self.scope = old;
