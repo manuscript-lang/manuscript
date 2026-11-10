@@ -18,7 +18,9 @@ Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"80
 */
 export fn parse_dotenv(text: String) Map[String, String]!:
     var out = Map[String, String]()
-    let lines = text.cut_prefix("\u{feff}").get(text).lines()
+
+    // Split on LF alone: a CR before it stays until the parser knows it is outside a quoted value.
+    let lines = text.cut_prefix("\u{feff}").get(text).split("\n")
     var index = 0
 
     while index < lines.length():
@@ -159,6 +161,15 @@ fn ini_value(value: String) String:
         and trimmed.ends_with(quote)
     ):
         return trimmed.drop(1).take(trimmed.length() - 2)
+
+    // A closing quote followed by a ` #` or ` ;` comment ends the value before the comment.
+    if quote == "\"" or quote == "'":
+        if let closing = trimmed.drop(1).index_of(quote):
+            let tail = trimmed.drop(closing + 2)
+            let spaced = tail.starts_with(" ") or tail.starts_with("\t")
+            let marker = tail.trim_start()
+            if spaced and (marker.starts_with("#") or marker.starts_with(";")):
+                return trimmed.drop(1).take(closing)
 
     var cut = value.length()
     for marker in [" #", " ;"]:
