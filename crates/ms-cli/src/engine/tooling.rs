@@ -9,7 +9,7 @@ use ms_driver::project::{Overlay, ProjectError, pathops};
 use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
 use ms_tooling::collect::collect_facts;
 use ms_tooling::diagram::diagram_ascii;
-use ms_tooling::diff::{DiffFile, parse_diff, removed_content, reverse_apply};
+use ms_tooling::diff::{DiffFile, parse_diff, reverse_apply};
 use ms_tooling::facts::Facts;
 use ms_tooling::inspect::inspect;
 use ms_tooling::mark::{explain, explain_json, mark_changes};
@@ -910,7 +910,9 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
                     ));
                 }
             }
-            overlay.insert(absolute, removed_content(&file.hunks));
+            let base = reverse_apply("", &file.hunks)
+                .map_err(|message| format!("{}: {message}", file.path()))?;
+            overlay.insert(absolute, base);
         } else {
             let head = std::fs::read(&absolute).map_err(|error| {
                 format!(

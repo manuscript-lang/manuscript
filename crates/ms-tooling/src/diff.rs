@@ -90,6 +90,12 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
                 have_current = true;
             }
             let current = files.last_mut().expect("a file was just pushed");
+            if git && !current.hunks.is_empty() {
+                return Err(format!(
+                    "diff line {}: multiple text headers in one Git file section",
+                    i + 1
+                ));
+            }
             current.old = diff_path(&line[4..], "a/", git)
                 .map_err(|e| format!("diff line {}: {e}", i + 1))?;
             current.new = diff_path(&lines[i + 1][4..], "b/", git)
@@ -255,7 +261,12 @@ fn parse_hunk(lines: &[&str], start: usize) -> Result<(DiffHunk, usize), String>
     while i < lines.len() && (old_left > 0 || new_left > 0) {
         let mut line = lines[i];
         if line.starts_with('\\') {
-            record_no_newline(&mut h);
+            if !record_no_newline(&mut h, old_left, new_left) {
+                return Err(format!(
+                    "diff line {}: no-newline marker is not after the final line of its side",
+                    i + 1
+                ));
+            }
             i += 1;
             continue;
         }
@@ -286,19 +297,48 @@ fn parse_hunk(lines: &[&str], start: usize) -> Result<(DiffHunk, usize), String>
         ));
     }
     while i < lines.len() && lines[i].starts_with('\\') {
-        record_no_newline(&mut h);
+        if !record_no_newline(&mut h, 0, 0) {
+            return Err(format!(
+                "diff line {}: no-newline marker is not after the final line of its side",
+                i + 1
+            ));
+        }
         i += 1;
+    }
+    // Empty separators do not turn later body lines into ignorable metadata.
+    while i < lines.len() && lines[i].is_empty() {
+        i += 1;
+    }
+    if let Some(line) = lines.get(i)
+        && line != &"-- "
+        && matches!(line.as_bytes().first(), Some(b' ' | b'+' | b'-'))
+        && !(line.starts_with("--- ")
+            && lines
+                .get(i + 1)
+                .is_some_and(|next| next.starts_with("+++ ")))
+    {
+        return Err(format!(
+            "diff line {}: hunk is longer than its header declares",
+            i + 1
+        ));
     }
     Ok((h, i))
 }
 
 // The no-newline note can be localized by the diff producer; its leading
 // backslash and the preceding side marker carry the structural meaning.
-fn record_no_newline(hunk: &mut DiffHunk) {
-    if let Some(line) = hunk.lines.last() {
-        hunk.old_no_newline |= !line.starts_with('+');
-        hunk.new_no_newline |= !line.starts_with('-');
+fn record_no_newline(hunk: &mut DiffHunk, old_left: i64, new_left: i64) -> bool {
+    let Some(line) = hunk.lines.last() else {
+        return false;
+    };
+    let old = !line.starts_with('+');
+    let new = !line.starts_with('-');
+    if (old && old_left != 0) || (new && new_left != 0) {
+        return false;
     }
+    hunk.old_no_newline |= old;
+    hunk.new_no_newline |= new;
+    true
 }
 
 fn parse_range(text: &str) -> Result<(i64, i64), String> {
@@ -330,6 +370,8 @@ fn parse_range(text: &str) -> Result<(i64, i64), String> {
 pub fn reverse_apply(head: &str, hunks: &[DiffHunk]) -> Result<String, String> {
     let source: Vec<&str> = head.split_terminator('\n').collect();
     let mut trailing_newline = head.ends_with('\n');
+    // A later insertion-only hunk must retain an earlier old-side EOF marker.
+    let mut old_eof = None;
     let mut out: Vec<&str> = Vec::new();
     let mut position = 0usize;
     let same = |a: &str, b: &str| a.trim_end_matches('\r') == b.trim_end_matches('\r');
@@ -346,6 +388,12 @@ pub fn reverse_apply(head: &str, hunks: &[DiffHunk]) -> Result<String, String> {
         }
         let mut index = index as usize;
         out.extend_from_slice(&source[position..index]);
+        if hunk.old_start.checked_sub(i64::from(hunk.old_len > 0)) != Some(out.len() as i64) {
+            return Err(format!(
+                "old hunk position {} does not match the reconstructed base",
+                hunk.old_start
+            ));
+        }
         for line in &hunk.lines {
             let text = &line[1..];
             if line.as_bytes()[0] == b'-' {
@@ -360,6 +408,12 @@ pub fn reverse_apply(head: &str, hunks: &[DiffHunk]) -> Result<String, String> {
             }
             index += 1;
         }
+        if old_eof.is_some_and(|end| end != out.len()) {
+            return Err("no-newline marker appears before the end of the base file".to_string());
+        }
+        if hunk.old_no_newline {
+            old_eof = Some(out.len());
+        }
         if hunk.new_no_newline && index != source.len() {
             return Err("no-newline marker appears before the end of the file".to_string());
         }
@@ -367,11 +421,14 @@ pub fn reverse_apply(head: &str, hunks: &[DiffHunk]) -> Result<String, String> {
             if hunk.new_len > 0 && hunk.new_no_newline == head.ends_with('\n') {
                 return Err("final newline does not match the diff".to_string());
             }
-            trailing_newline = !hunk.old_no_newline;
+            trailing_newline = old_eof.is_none();
         }
         position = index;
     }
     out.extend_from_slice(&source[position..]);
+    if old_eof.is_some_and(|end| end != out.len()) {
+        return Err("no-newline marker appears before the end of the base file".to_string());
+    }
     let mut result = out.join("\n");
     if !out.is_empty() && trailing_newline {
         result.push('\n');
