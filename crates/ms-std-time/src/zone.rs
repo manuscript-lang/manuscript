@@ -1,6 +1,7 @@
 //! Zones: UTC, fixed offsets such as `+05:30`, the host's local zone and IANA names (bundled data).
+use crate::civil::civil_of;
 use alloc::string::{String, ToString};
-use jiff::tz::TimeZone;
+use jiff::tz::{AmbiguousOffset, TimeZone};
 
 pub enum Zone {
     Utc,
@@ -61,12 +62,31 @@ impl Zone {
         }
     }
 
-    pub fn offset_at(&self, unix: i64) -> i64 {
-        match self {
-            Zone::Utc => 0,
-            Zone::Fixed { seconds, .. } => *seconds as i64,
-            Zone::Named(_) => self.at(unix).0,
-        }
+    /// Resolves validated local fields, choosing the pre-transition offset in gaps and folds.
+    pub fn offset_for_local(&self, local: i64, nanos: i64) -> i64 {
+        let tz = match self {
+            Zone::Utc => return 0,
+            Zone::Fixed { seconds, .. } => return i64::from(*seconds),
+            Zone::Named(tz) => tz,
+        };
+        let civil = civil_of(local, nanos);
+        let datetime = jiff::civil::DateTime::new(
+            civil.year as i16,
+            civil.month as i8,
+            civil.day as i8,
+            civil.hour as i8,
+            civil.minute as i8,
+            civil.second as i8,
+            civil.nanosecond as i32,
+        )
+        .expect("from_calendar validates civil fields");
+        // Inspect the raw offset rather than constructing a Jiff Timestamp, whose
+        // supported range excludes part of Manuscript's final UTC day.
+        let offset = match tz.to_ambiguous_timestamp(datetime).offset() {
+            AmbiguousOffset::Unambiguous { offset } => offset,
+            AmbiguousOffset::Gap { before, .. } | AmbiguousOffset::Fold { before, .. } => before,
+        };
+        i64::from(offset.seconds())
     }
 }
 
