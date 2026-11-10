@@ -303,9 +303,12 @@ impl Complex:
 
 	// Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.
 	fn asin() Complex:
-		root := Complex(re: 1.0, im: 0.0).subtract(self.multiply(self)).sqrt()
-		inner := imaginary_unit().multiply(self).add(root).log()
-		return Complex(re: inner.im, im: -inner.re)
+		// asin(-z) = -asin(z). In the upper half plane iz and the root have opposite real parts and cancel for large |im|, so evaluate through the lower half plane, where they add.
+		sign := if self.im > 0.0: -1.0 else: 1.0
+		z := Complex(re: sign * self.re, im: sign * self.im)
+		root := Complex(re: 1.0, im: 0.0).subtract(z.multiply(z)).sqrt()
+		inner := imaginary_unit().multiply(z).add(root).log()
+		return Complex(re: sign * inner.im, im: -sign * inner.re)
 
 	// Returns the principal inverse cosine, pi/2 minus the inverse sine.
 	fn acos() Complex:
