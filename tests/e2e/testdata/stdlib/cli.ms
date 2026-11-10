@@ -93,6 +93,17 @@ test "nested command resolves path and typed options":
 	matches.string("root") | try expect_equal("site")
 	matches.bool("verbose") | try expect_equal(false)
 
+test "run rejects paths outside this command root":
+	leaf := Command(name: "build", exec: fn matches: ok(29))
+	tool := Command(name: "tool", exec: fn matches: ok(17), children: [leaf])
+	try expect_equal(tool.run(Matches(path: [])).is_error(), true)
+	try expect_equal(tool.run(Matches(path: ["other"])).is_error(), true)
+	try expect_equal(tool.run(Matches(path: ["other", "build"])).is_error(), true)
+	try expect_equal(tool.run(Matches(path: ["build"])).is_error(), true)
+	try expect_equal(tool.run(Matches(path: ["tool", "missing"])).is_error(), true)
+	try expect_equal(tool.run(Matches(path: ["tool"])).get(), 17)
+	try expect_equal(tool.run(Matches(path: ["tool", "build"])).get(), 29)
+
 test "flags take values in every spelling and persistent flags work on both sides":
 	matches := (
 		run(

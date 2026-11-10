@@ -220,8 +220,8 @@ impl Command:
 	// Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
 	// The path starts at this node's name; an unknown path is an `EINVAL` error.
 	fn run(matches: Matches) Int!:
-		if node := node_at(self, matches.path, 1): return node.exec(matches)
-
+		if matches.path.length() > 0 and matches.path[0] == self.name:
+			if node := node_at(self, matches.path, 1): return node.exec(matches)
 		return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
 	// Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
