@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Int:\n    value: String\n"
+    "fmt": "type Int:\n\tvalue: String\n"
   }
 }

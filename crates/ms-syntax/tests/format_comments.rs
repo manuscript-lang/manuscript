@@ -3,11 +3,11 @@ use std::sync::Arc;
 #[test]
 fn a_blank_line_after_a_comment_block_is_kept() {
     let file: Arc<str> = Arc::from("comments.ms");
-    let source = "// module intro\n\n\n// about f\nfn f() Int:\n    return 1\n";
+    let source = "// module intro\n\n\n// about f\nfn f() Int:\n\treturn 1\n";
     let formatted = ms_syntax::format(&file, source).unwrap();
     assert_eq!(
         formatted,
-        "// module intro\n\n// about f\nfn f() Int:\n    return 1\n"
+        "// module intro\n\n// about f\nfn f() Int:\n\treturn 1\n"
     );
     assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
 }
@@ -52,9 +52,8 @@ fn private_use_payloads_do_not_exhaust_formatter_placeholders() {
         "{payload}{}\u{e000}0\u{e000}\u{e000}1\u{e000}",
         "\u{e000}".repeat(65)
     );
-    let source = format!(
-        "/* {payload} */\nfn text() String:\n    return \"\"\"\n        {payload}\n        \"\"\"\n"
-    );
+    let source =
+        format!("/* {payload} */\nfn text() String:\n\treturn \"\"\"\n\t\t{payload}\n\t\t\"\"\"\n");
     for input in [source.clone(), source.replace('\n', "\r\n")] {
         ms_syntax::parser::parse(&file, &input).unwrap();
         let formatted = ms_syntax::format(&file, &input).unwrap();

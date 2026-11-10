@@ -1,5 +1,5 @@
 fn clone() Unit:
-    return unit
+	return unit
 
 fn ordinary() Unit:
-    return unit
+	return unit

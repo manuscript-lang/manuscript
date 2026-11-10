@@ -37,7 +37,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     spans.extend(lexed.block_comments.iter().map(|&(lo, hi)| (lo, hi, true)));
     spans.sort_unstable();
     if spans.is_empty() {
-        return format_lines(file, &normalized);
+        return Ok(tabify(&format_lines(file, &normalized)?));
     }
     // The line-based passes cannot see inside a multi-line text literal, so a
     // one-line placeholder stands in for each and the literal text returns
@@ -68,7 +68,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
         copied = hi;
     }
     masked.push_str(&normalized[copied..]);
-    let formatted = format_lines(file, &masked)?;
+    let formatted = tabify(&format_lines(file, &masked)?);
     let mut result = String::with_capacity(normalized.len());
     let mut copied = 0;
     for (i, &(lo, hi, _)) in spans.iter().enumerate() {
@@ -82,7 +82,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
                 .expect("placeholder survives formatting");
         result.push_str(&formatted[copied..at]);
         let line_start = result.rfind('\n').map_or(0, |n| n + 1);
-        let after = indent_of(&result[line_start..]);
+        let after = crate::doc::indent_columns(&result[line_start..]);
         result.push_str(&shift_lines(text, before, after));
         copied = at + placeholder.len();
     }
@@ -363,6 +363,22 @@ fn expand_indent_tabs(file: &Arc<str>, text: &str) -> PResult<String> {
         at += line.len();
     }
     Ok(out)
+}
+
+/// Writes each full group of four leading spaces as a tab, one token per level;
+/// spaces left over align continuation lines. The formatter works in spaces and
+/// converts once on exit.
+fn tabify(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for (i, line) in text.split('\n').enumerate() {
+        if i > 0 {
+            out.push('\n');
+        }
+        let spaces = indent_of(line);
+        out.push_str(&"\t".repeat(spaces / 4));
+        out.push_str(&line[spaces / 4 * 4..]);
+    }
+    out
 }
 
 fn indent_of(line: &str) -> usize {

@@ -1,2 +1,2 @@
 export type Key:
-    code: Float
+	code: Float

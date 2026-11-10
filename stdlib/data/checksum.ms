@@ -1,9 +1,9 @@
 import (
-    Bytes from "@std/bytes.ms",
-    ReadStream from "@std/io/io.ms",
-    msstd_checksum_crc32,
-    msstd_checksum_crc32_update,
-    msstd_checksum_adler32_update from "@std/internal/checksum.ms",
+	Bytes from "@std/bytes.ms",
+	ReadStream from "@std/io/io.ms",
+	msstd_checksum_crc32,
+	msstd_checksum_crc32_update,
+	msstd_checksum_adler32_update from "@std/internal/checksum.ms",
 )
 
 /*
@@ -14,7 +14,7 @@ Reads the input without copying it. Detects accidental corruption; it does not a
 `crc32("123456789".to_bytes())` returns 3421780262 (0xCBF43926).
 */
 export fn crc32(data: Bytes) UInt32:
-    return msstd_checksum_crc32(data).to_uint32().get()
+	return msstd_checksum_crc32(data).to_uint32().get()
 
 /*
 Computes the RFC 1950 Adler-32 checksum used by zlib. Empty input returns one.
@@ -23,7 +23,7 @@ the result is b * 65536 + a. Reads the input without copying it.
 `adler32("Wikipedia".to_bytes())` returns 300286872 (0x11E60398).
 */
 export fn adler32(data: Bytes) UInt32:
-    return msstd_checksum_adler32_update(1, data).to_uint32().get()
+	return msstd_checksum_adler32_update(1, data).to_uint32().get()
 
 /*
 An IEEE CRC-32 checksum built from ordered chunks, retaining no input bytes.
@@ -31,17 +31,17 @@ An IEEE CRC-32 checksum built from ordered chunks, retaining no input bytes.
 Reading the value does not reset it; create a new Crc32 to start over.
 */
 export type Crc32:
-    // Accumulator state, initially the empty checksum. Use update() to append data.
-    state: UInt32 = 0
+	// Accumulator state, initially the empty checksum. Use update() to append data.
+	state: UInt32 = 0
 
 impl Crc32:
-    // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-    var fn update(data: Bytes) Unit:
-        self.state = msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32().get()
+	// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
+	var fn update(data: Bytes) Unit:
+		self.state = msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32().get()
 
-    // Returns the current checksum without resetting or otherwise changing it.
-    fn value() UInt32:
-        return self.state
+	// Returns the current checksum without resetting or otherwise changing it.
+	fn value() UInt32:
+		return self.state
 
 /*
 An RFC 1950 Adler-32 checksum built from ordered chunks, retaining no input bytes.
@@ -49,38 +49,38 @@ An RFC 1950 Adler-32 checksum built from ordered chunks, retaining no input byte
 Reading the value does not reset it; create a new Adler32 to start over.
 */
 export type Adler32:
-    // Accumulator state, initially the empty checksum. Use update() to append data.
-    state: UInt32 = 1
+	// Accumulator state, initially the empty checksum. Use update() to append data.
+	state: UInt32 = 1
 
 impl Adler32:
-    // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-    var fn update(data: Bytes) Unit:
-        self.state = msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32().get()
+	// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
+	var fn update(data: Bytes) Unit:
+		self.state = msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32().get()
 
-    // Returns the current checksum without resetting or otherwise changing it.
-    fn value() UInt32:
-        return self.state
+	// Returns the current checksum without resetting or otherwise changing it.
+	fn value() UInt32:
+		return self.state
 
 /*
 Reads `input` to the end and returns the CRC-32 of all its bytes, as `crc32` does for bytes in hand.
 Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
 export fn crc32_of(input: ReadStream[Bytes]) UInt32!:
-    var sum = Crc32()
-    var source = input
-    for chunk in source:
-        sum.update(chunk)
-    try source.close()
-    return ok(sum.value())
+	var sum = Crc32()
+	var source = input
+	for chunk in source:
+		sum.update(chunk)
+	try source.close()
+	return ok(sum.value())
 
 /*
 Reads `input` to the end and returns the Adler-32 of all its bytes, as `adler32` does for bytes in hand.
 Retains no input bytes, and consumes and closes the stream. A failed read returns its error.
 */
 export fn adler32_of(input: ReadStream[Bytes]) UInt32!:
-    var sum = Adler32()
-    var source = input
-    for chunk in source:
-        sum.update(chunk)
-    try source.close()
-    return ok(sum.value())
+	var sum = Adler32()
+	var source = input
+	for chunk in source:
+		sum.update(chunk)
+	try source.close()
+	return ok(sum.value())

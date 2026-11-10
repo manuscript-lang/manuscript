@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n    Partition from \"@std/collections/collections.ms\",\n    CsvOptions from \"@std/data/csv.ms\",\n)\n\nfn example() Unit:\n    Set[String]()\n    CsvOptions(delimiter: \",\", line_ending: \"\\n\")\n"
+    "fmt": "import (\n\tPartition from \"@std/collections/collections.ms\",\n\tCsvOptions from \"@std/data/csv.ms\",\n)\n\nfn example() Unit:\n\tSet[String]()\n\tCsvOptions(delimiter: \",\", line_ending: \"\\n\")\n"
   }
 }

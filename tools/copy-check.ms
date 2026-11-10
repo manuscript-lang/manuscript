@@ -7,77 +7,77 @@
 // MS names the ms that builds the programs (default target/release/ms).
 // Usage: ms run tools/copy-check.ms [-- files]
 import (
-    tool_ms from "./lib.ms",
-    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
-    RunOptions, run from "@std/os/process.ms",
-    arguments, change_directory, working_directory from "@std/os/env.ms",
-    seconds from "@std/time.ms",
+	tool_ms from "./lib.ms",
+	glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+	RunOptions, run from "@std/os/process.ms",
+	arguments, change_directory, working_directory from "@std/os/env.ms",
+	seconds from "@std/time.ms",
 )
 
 // The probe lines the compiler printed on standard error, without their prefix.
 fn copies(text: String) List[String]:
-    var sites = List[String]()
-    for line in text.split("\n"):
-        if line.starts_with("copy-probe\t"): sites.append(
-            line.slice(11, line.length()).get("")
-        )
-    return sites
+	var sites = List[String]()
+	for line in text.split("\n"):
+		if line.starts_with("copy-probe\t"): sites.append(
+			line.slice(11, line.length()).get("")
+		)
+	return sites
 
 fn main() Int:
-    root := working_directory().get()
-    var files = List[String]()
-    for f in arguments(): files.append(f.clone())
-    if files.is_empty():
-        for dir in [
-            "tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
-            "tests/e2e/testdata/accept", "tests/e2e/testdata/stdlib",
-            "tests/ownership-counts"
-        ]:
-            for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
-                files.append("{dir}/{f.path}")
+	root := working_directory().get()
+	var files = List[String]()
+	for f in arguments(): files.append(f.clone())
+	if files.is_empty():
+		for dir in [
+			"tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
+			"tests/e2e/testdata/accept", "tests/e2e/testdata/stdlib",
+			"tests/ownership-counts"
+		]:
+			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
+				files.append("{dir}/{f.path}")
 
-    ms := tool_ms(root.clone())
-    scratch := temporary("ms-copy-").get()
-    binary := "{scratch.path()}/program"
-    var env = Map[String, String]()
-    env.add("MS_COPY_PROBE", "1")
-    env.add("MS_CACHE", "off")
+	ms := tool_ms(root.clone())
+	scratch := temporary("ms-copy-").get()
+	binary := "{scratch.path()}/program"
+	var env = Map[String, String]()
+	env.add("MS_COPY_PROBE", "1")
+	env.add("MS_CACHE", "off")
 
-    var swept = 0
-    var total = 0
-    var failing = 0
+	var swept = 0
+	var total = 0
+	var failing = 0
 
-    for f in files:
-        absolute := "{root}/{f}"
-        source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
-        var command = List[String]()
+	for f in files:
+		absolute := "{root}/{f}"
+		source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
+		var command = List[String]()
 
-        if source.contains("export fn main"):
-            command = ["build", absolute.clone(), "-o", binary.clone()]
-        else if source.contains("\ntest "):
-            command = ["test", absolute.clone(), "--match", "no test is selected"]
-        else:
-            continue
+		if source.contains("export fn main"):
+			command = ["build", absolute.clone(), "-o", binary.clone()]
+		else if source.contains("\ntest "):
+			command = ["test", absolute.clone(), "--match", "no test is selected"]
+		else:
+			continue
 
-        if out := run(
-            ms.clone(), command, RunOptions(timeout: seconds(120), env: env.clone())
-        ).wait():
-            swept += 1
+		if out := run(
+			ms.clone(), command, RunOptions(timeout: seconds(120), env: env.clone())
+		).wait():
+			swept += 1
 
-            sites := copies(out.stderr.decode_utf8().get(""))
-            if sites.is_empty(): continue
+			sites := copies(out.stderr.decode_utf8().get(""))
+			if sites.is_empty(): continue
 
-            failing += 1
-            total += sites.length()
-            for site in sites: print("copy: {f}\t{site}")
+			failing += 1
+			total += sites.length()
+			for site in sites: print("copy: {f}\t{site}")
 
-    change_directory(root).get()
-    print("swept {swept} programs, {total} object copies in {failing}")
+	change_directory(root).get()
+	print("swept {swept} programs, {total} object copies in {failing}")
 
-    if swept == 0:
-        print("no program was built")
-        return 1
+	if swept == 0:
+		print("no program was built")
+		return 1
 
-    if total != 0: return 1
+	if total != 0: return 1
 
-    return 0
+	return 0

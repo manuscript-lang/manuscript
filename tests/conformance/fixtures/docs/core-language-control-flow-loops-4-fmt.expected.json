@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n    range_by from \"@std/collections/collections.ms\",\n    expect_equal from \"@std/test/test.ms\",\n)\n\ntest \"sum even indexes\":\n    indexes := try range_by(start: 0, end: 6, step: 2)\n    var total = 0\n    for index in indexes:\n        total += index\n    try expect_equal(total, 6)\n"
+    "fmt": "import (\n\trange_by from \"@std/collections/collections.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\ntest \"sum even indexes\":\n\tindexes := try range_by(start: 0, end: 6, step: 2)\n\tvar total = 0\n\tfor index in indexes:\n\t\ttotal += index\n\ttry expect_equal(total, 6)\n"
   }
 }

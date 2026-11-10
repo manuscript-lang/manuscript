@@ -1,41 +1,41 @@
 import (
-    keep, measure from "@std/test/bench.ms",
-    StringBuilder from "@std/string.ms",
-    parse, stringify, YamlValue from "@std/data/yaml.ms",
+	keep, measure from "@std/test/bench.ms",
+	StringBuilder from "@std/string.ms",
+	parse, stringify, YamlValue from "@std/data/yaml.ms",
 )
 
 fn yaml_doc(count: Int) String:
-    var sb = StringBuilder()
-    for i in 0..count:
-        sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
-    return sb.build()
+	var sb = StringBuilder()
+	for i in 0..count:
+		sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
+	return sb.build()
 
 fn yaml_length(value: YamlValue) Int:
-    if text := stringify(value): return text.length()
+	if text := stringify(value): return text.length()
 
-    return 0
+	return 0
 
 bench "yaml.parse":
-    yaml := yaml_doc(2000)
+	yaml := yaml_doc(2000)
 
-    fn work() Result[Unit, Error]:
-        if parse(yaml).is_ok(): return keep(1)
+	fn work() Result[Unit, Error]:
+		if parse(yaml).is_ok(): return keep(1)
 
-        return keep(0)
+		return keep(0)
 
-    try measure(2000, work)
+	try measure(2000, work)
 
 bench "yaml.roundtrip":
-    yaml := yaml_doc(2000)
+	yaml := yaml_doc(2000)
 
-    fn work() Result[Unit, Error]:
-        if v := parse(yaml): return keep(yaml_length(v))
+	fn work() Result[Unit, Error]:
+		if v := parse(yaml): return keep(yaml_length(v))
 
-        return keep(0)
+		return keep(0)
 
-    try measure(2000, work)
+	try measure(2000, work)
 
 bench "yaml.stringify":
-    yaml := yaml_doc(2000)
-    if v := parse(yaml):
-        try measure(2000, fn: keep(yaml_length(v)))
+	yaml := yaml_doc(2000)
+	if v := parse(yaml):
+		try measure(2000, fn: keep(yaml_length(v)))

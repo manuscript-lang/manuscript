@@ -3,16 +3,16 @@
 fn subtract(amount: Int, deduction: Int) Int: amount - deduction
 
 fn present[T](value: T) T?:
-    return value
+	return value
 
 export fn main() Int:
-    var selected = subtract
-    return selected(
-        match present(0):
-            _value:
-                selected = fn(amount: Int, deduction: Int) Int: amount + deduction
-                10
-            none: 10
-        ,
-        3
-    )
+	var selected = subtract
+	return selected(
+		match present(0):
+			_value:
+				selected = fn(amount: Int, deduction: Int) Int: amount + deduction
+				10
+			none: 10
+		,
+		3
+	)

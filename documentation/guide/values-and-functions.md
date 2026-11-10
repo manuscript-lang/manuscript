@@ -52,7 +52,7 @@ Save it as `invoice.ms` and run `ms run invoice.ms`.
 - `if` works as a statement and as an expression: `pad := if rest < 10: "0" else: ""` picks a value.
 - `{expression}` inside a string interpolates any expression, including a function call.
 - A function is a value. `prices.map(fn price: price - 200)` passes a function to `map`, and `filter` keeps the items for which a function returns `true`. `prices` itself does not change.
-- Four spaces open a block. There are no braces and no semicolons.
+- One tab (or four spaces) opens a block. There are no braces and no semicolons.
 
 ## Try it
 

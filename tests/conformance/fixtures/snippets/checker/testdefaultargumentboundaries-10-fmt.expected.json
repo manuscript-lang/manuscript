@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(value: Int = 1) Int:\n    return value\n\nfn g(value: Int) Int:\n    return value\n\nfn call() Int:\n    var copy = f\n    copy = g\n    return copy()\n"
+    "fmt": "fn f(value: Int = 1) Int:\n\treturn value\n\nfn g(value: Int) Int:\n\treturn value\n\nfn call() Int:\n\tvar copy = f\n\tcopy = g\n\treturn copy()\n"
   }
 }

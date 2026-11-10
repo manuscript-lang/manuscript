@@ -9,26 +9,26 @@
 import Closeable from "@std/core.ms"
 
 type Token:
-    id: Int
+	id: Int
 
 impl Closeable for Token:
-    var fn close() Unit!:
-        print("close {self.id}")
+	var fn close() Unit!:
+		print("close {self.id}")
 
 type Wrapped:
-    first: Token?
-    second: Token!
-    code: Int
+	first: Token?
+	second: Token!
+	code: Int
 
 fn check(fail: Bool) Int!:
-    if fail: return error(Error("field failed"))
+	if fail: return error(Error("field failed"))
 
-    return ok(42)
+	return ok(42)
 
 fn build(fail: Bool) Unit!:
-    value := Wrapped(Token(1), ok(Token(2)), try check(fail))
-    print("body {value.code}")
+	value := Wrapped(Token(1), ok(Token(2)), try check(fail))
+	print("body {value.code}")
 
 fn main() Unit:
-    print(build(false).is_error())
-    print(build(true).is_error())
+	print(build(false).is_error())
+	print(build(true).is_error())

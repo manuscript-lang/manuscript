@@ -1,75 +1,75 @@
 import (
-    Key, Cause from "./domain.ms",
-    transform_set,
-    lookup,
-    locate_map,
-    locate_set,
-    convert,
-    remap_keys,
-    remap_values from "./helpers.ms",
+	Key, Cause from "./domain.ms",
+	transform_set,
+	lookup,
+	locate_map,
+	locate_set,
+	convert,
+	remap_keys,
+	remap_values from "./helpers.ms",
 )
 
 impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.id == other.id
+	fn equals(other: Key) Bool:
+		return self.id == other.id
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+	fn hash() Int: self.id
 
 fn describe(cause: Cause) Error:
-    return Error("first {cause.count}")
+	return Error("first {cause.count}")
 
 export fn first_mapped() Set[Key]:
-    values := Set[Int]([1, 2])
-    return transform_set(values, fn n: Key(0, n.to_string()))
+	values := Set[Int]([1, 2])
+	return transform_set(values, fn n: Key(0, n.to_string()))
 
 export fn first_bound_map() fn(fn(Int) Key) Set[Key]:
-    return Set[Int]([1, 2]).map[Key]
+	return Set[Int]([1, 2]).map[Key]
 
 export fn first_generic_map[T: Hashable](values: Set[T]) Set[Key]:
-    return transform_set(values, fn n: Key(0, n.to_string()))
+	return transform_set(values, fn n: Key(0, n.to_string()))
 
 export fn first_lookup() String:
-    var values = Map[Key, String]()
-    values.add(Key(5, "original"), "found")
-    return values.filter(fn k, v: true) | lookup(Key(5, "different"), "absent")
+	var values = Map[Key, String]()
+	values.add(Key(5, "original"), "found")
+	return values.filter(fn k, v: true) | lookup(Key(5, "different"), "absent")
 
 export fn first_failure(cause: Cause) String!:
-    value: Int! = error(describe(cause))
-    return value.map(fn n: n.to_string()).and_then(fn text: ok(text))
+	value: Int! = error(describe(cause))
+	return value.map(fn n: n.to_string()).and_then(fn text: ok(text))
 
 export fn first_queries() Bool:
-    key := Key(5, "original")
-    var map = Map[Key, String]()
-    map.add(key.clone(), "found")
+	key := Key(5, "original")
+	var map = Map[Key, String]()
+	map.add(key.clone(), "found")
 
-    set := Set[Key]([key])
-    return (
-        locate_map(map, Key(5, "different")).is_some()
-        and locate_set(set, Key(5, "different")).is_some()
-    )
+	set := Set[Key]([key])
+	return (
+		locate_map(map, Key(5, "different")).is_some()
+		and locate_set(set, Key(5, "different")).is_some()
+	)
 
 export fn first_converted(cause: Cause) Int!:
-    missing: Int? = none
-    return convert(missing, fn() Error: describe(cause))
+	missing: Int? = none
+	return convert(missing, fn() Error: describe(cause))
 
 export fn first_folded(cause: Cause) Error:
-    var values = Map[String, Int]()
-    values.add("key", 1)
-    return values.fold[Error](describe(cause), fn acc, key, value: acc)
+	var values = Map[String, Int]()
+	values.add("key", 1)
+	return values.fold[Error](describe(cause), fn acc, key, value: acc)
 
 export fn first_key_transform[T: Hashable](input: Map[T, Int]) Map[Key, Int]:
-    return remap_keys(input, fn key, value: Key(0, key.to_string()))
+	return remap_keys(input, fn key, value: Key(0, key.to_string()))
 
 export fn first_bound_keys() fn(fn(Int, Int) Key) Map[Key, Int]:
-    var chain_1 = Map[Int, Int]()
-    chain_1.add(1, 10)
-    chain_1.add(2, 20)
-    return chain_1.map_keys[Key]
+	var chain_1 = Map[Int, Int]()
+	chain_1.add(1, 10)
+	chain_1.add(2, 20)
+	return chain_1.map_keys[Key]
 
 export fn first_value_transform() Int:
-    var input = Map[Key, Int]()
-    input.add(Key(5, "original"), 2)
+	var input = Map[Key, Int]()
+	input.add(Key(5, "original"), 2)
 
-    mapped := remap_values(input, fn key, value: value + 1)
-    return mapped.get_or(Key(5, "different"), 0)
+	mapped := remap_values(input, fn key, value: value + 1)
+	return mapped.get_or(Key(5, "different"), 0)

@@ -4,82 +4,82 @@
 // The reference table shows how verbose each language is when the same program is written by hand;
 // agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
 import (
-    glob, GlobOptions from "@std/os/fs.ms",
-    stdout, stderr from "@std/io/io.ms",
-    load_challenges from "./core/model.ms",
-    bash from "./lib/text.ms",
+	glob, GlobOptions from "@std/os/fs.ms",
+	stdout, stderr from "@std/io/io.ms",
+	load_challenges from "./core/model.ms",
+	bash from "./lib/text.ms",
 )
 
 LANGS := ["ts", "rust", "go", "ms"]
 
 // Token counts of `paths` from one tiktoken process; none when tiktoken is unavailable.
 fn count_tokens(paths: List[String]) List[Int]?:
-    program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
-    quoted := paths.map(fn p: "'{p}'").join(" ")
-    ran := bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
-    if ran.code != 0: return none
+	program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
+	quoted := paths.map(fn p: "'{p}'").join(" ")
+	ran := bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
+	if ran.code != 0: return none
 
-    counts := ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
-    return counts
+	counts := ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
+	return counts
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
 
 fn main() Int:
-    // Each challenge with a reference solution in every language, as a row of file paths in LANGS order.
-    var names = List[String]()
-    var paths = List[String]()
+	// Each challenge with a reference solution in every language, as a row of file paths in LANGS order.
+	var names = List[String]()
+	var paths = List[String]()
 
-    for ch in load_challenges([]):
-        var row = List[String]()
+	for ch in load_challenges([]):
+		var row = List[String]()
 
-        for lang in LANGS:
-            refs := glob("{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get(
-                []
-            )
-            if not refs.is_empty(): row.append(
-                "{ch.dir}/solutions/{lang}/{refs[0].path}"
-            )
+		for lang in LANGS:
+			refs := glob("{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get(
+				[]
+			)
+			if not refs.is_empty(): row.append(
+				"{ch.dir}/solutions/{lang}/{refs[0].path}"
+			)
 
-        if row.length() == LANGS.length():
-            names.append(ch.id.clone())
-            paths = paths.concat(row)
+		if row.length() == LANGS.length():
+			names.append(ch.id.clone())
+			paths = paths.concat(row)
 
-    counts := count_tokens(paths)
+	counts := count_tokens(paths)
 
-    if counts.is_none():
-        (
-            stderr()
-            .write(
-                "tokens.ms needs python3 with tiktoken installed (pip install tiktoken)\n"
-            )
-            .get()
-        )
-        return 1
+	if counts.is_none():
+		(
+			stderr()
+			.write(
+				"tokens.ms needs python3 with tiktoken installed (pip install tiktoken)\n"
+			)
+			.get()
+		)
+		return 1
 
-    all := counts.get([])
-    var totals = [0, 0, 0, 0]
-    var out = (
-        "challenge".pad_end(26, " ")
-        + LANGS.map(fn l: l.pad_start(8, " ")).join("")
-        + "  ms/ts\n"
-    )
+	all := counts.get([])
+	var totals = [0, 0, 0, 0]
+	var out = (
+		"challenge".pad_end(26, " ")
+		+ LANGS.map(fn l: l.pad_start(8, " ")).join("")
+		+ "  ms/ts\n"
+	)
 
-    for i in 0..names.length():
-        row := all.slice(i * 4, i * 4 + 4).get([])
-        for j in 0..4: totals[j] += row[j]
-        out = (
-            out
-            + names[i].pad_end(26, " ")
-            + row.map(fn n: "{n}".pad_start(8, " ")).join("")
-            + "  {ratio(row[3], row[0])}\n"
-        )
+	for i in 0..names.length():
+		row := all.slice(i * 4, i * 4 + 4).get([])
+		for j in 0..4: totals[j] += row[j]
+		out = (
+			out
+			+ names[i].pad_end(26, " ")
+			+ row.map(fn n: "{n}".pad_start(8, " ")).join("")
+			+ "  {ratio(row[3], row[0])}\n"
+		)
 
-    out = (
-        out
-        + "total".pad_end(26, " ")
-        + totals.map(fn n: "{n}".pad_start(8, " ")).join("")
-        + "  {ratio(totals[3], totals[0])}\n"
-    )
-    out += "ms/rust {ratio(totals[3], totals[1])}\n"
-    stdout().write(out).get()
-    return 0
+	out = (
+		out
+		+ "total".pad_end(26, " ")
+		+ totals.map(fn n: "{n}".pad_start(8, " ")).join("")
+		+ "  {ratio(totals[3], totals[0])}\n"
+	)
+	out += "ms/rust {ratio(totals[3], totals[1])}\n"
+	stdout().write(out).get()
+	return 0

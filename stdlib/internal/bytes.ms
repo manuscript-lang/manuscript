@@ -6,10 +6,10 @@ They apply wherever Bytes and BytesBuilder are used, without an import.
 The `width` bytes at `at` (1, 2, 4 or 8) as an unsigned number; eight bytes keep their bit pattern as an Int.
 */
 export extern fn msrt_bytes_read_word(
-    data: Bytes,
-    at: Int,
-    width: Int,
-    little: Bool
+	data: Bytes,
+	at: Int,
+	width: Int,
+	little: Bool
 ) Int!
 
 export extern fn msrt_float_from_bits(bits: Int) Float

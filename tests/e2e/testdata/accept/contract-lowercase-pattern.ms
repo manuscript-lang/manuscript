@@ -1,18 +1,18 @@
 import expect_equal from "@std/test/test.ms"
 
 type item:
-    n: Int
+	n: Int
 
 interface Get:
-    fn get() Int
+	fn get() Int
 
 impl Get for item:
-    fn get() Int: self.n
+	fn get() Int: self.n
 
 fn read(value: Get) Int:
-    match value:
-        item(receiver): return receiver.n
-        _: return 0
+	match value:
+		item(receiver): return receiver.n
+		_: return 0
 
 test "lowercase contract patterns require an explicit receiver":
-    try expect_equal(read(item(n: 7)), 7)
+	try expect_equal(read(item(n: 7)), 7)

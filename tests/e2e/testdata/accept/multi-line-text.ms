@@ -1,46 +1,46 @@
 import (
-    expect_equal from "@std/test/test.ms",
-    parse from "@std/data/json.ms",
+	expect_equal from "@std/test/test.ms",
+	parse from "@std/data/json.ms",
 )
 
 fn banner(name: String, count: Int) String:
-    return """
+	return """
         Hello, {name}!
           {count} items, "quoted"\t\{literal\}
         """
 
 fn payload() String:
-    return r"""
+	return r"""
         {"name": "ada", "tags": ["a", "b"], "path": "C:\dir", "n": 1}
         """
 
 test "indentation of the closing line is removed":
-    try expect_equal(
-        banner("Ada", 3), "Hello, Ada!\n  3 items, \"quoted\"\t\{literal\}"
-    )
+	try expect_equal(
+		banner("Ada", 3), "Hello, Ada!\n  3 items, \"quoted\"\t\{literal\}"
+	)
 
 test "blank lines and a trailing newline survive":
-    text := """
+	text := """
         first
 
         last
 
         """
-    try expect_equal(text, "first\n\nlast\n")
+	try expect_equal(text, "first\n\nlast\n")
 
 test "raw text keeps braces quotes and backslashes":
-    try expect_equal(
-        payload(),
-        "\{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1\}"
-    )
+	try expect_equal(
+		payload(),
+		"\{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1\}"
+	)
 
 type Person:
-    name: String
-    n: Int
+	name: String
+	n: Int
 
 test "raw text needs no escapes for JSON":
-    person := try parse[Person](text: r"""
+	person := try parse[Person](text: r"""
     {"name": "ada", "n": 1}
     """)
-    try expect_equal(person.name, "ada")
-    try expect_equal(person.n, 1)
+	try expect_equal(person.name, "ada")
+	try expect_equal(person.n, 1)

@@ -1,21 +1,21 @@
 type Item:
-    value: Int
+	value: Int
 
 enum Choice[T]:
-    missing
-    found(value: T)
-    paired(left: Item, right: List[T])
+	missing
+	found(value: T)
+	paired(left: Item, right: List[T])
 
 interface Reader:
-    fn read() Int
+	fn read() Int
 
 type Box:
-    choice: Choice[Int]
-    reader: Reader
-    case: Int
+	choice: Choice[Int]
+	reader: Reader
+	case: Int
 
 fn case(value: Int) Int:
-    return value
+	return value
 
 fn inspect(box: Box) Int:
-    return case(box.case)
+	return case(box.case)

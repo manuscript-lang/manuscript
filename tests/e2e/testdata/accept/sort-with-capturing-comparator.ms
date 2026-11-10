@@ -4,50 +4,50 @@ import expect_equal from "@std/test/test.ms"
 // being inlined into it (its `closure.cap` reads need the closure's own layout). Capturing
 // lambdas, nested functions and capture-free comparators must all sort the same way.
 type Task:
-    name: String
-    priority: Int
+	name: String
+	priority: Int
 
 fn by_length(a: String, b: String) Int:
-    return a.length() - b.length()
+	return a.length() - b.length()
 
 test "a lambda that captures a map orders by the looked-up counts":
-    var freq = Map[String, Int]()
-    freq.add("the", 3)
-    freq.add("fox", 1)
-    freq.add("dog", 2)
+	var freq = Map[String, Int]()
+	freq.add("the", 3)
+	freq.add("fox", 1)
+	freq.add("dog", 2)
 
-    words := ["fox", "the", "dog"].sorted(
-        compare: fn(a: String, b: String) Int: return (freq[b] - freq[a])
-    )
-    try expect_equal(words, ["the", "dog", "fox"])
+	words := ["fox", "the", "dog"].sorted(
+		compare: fn(a: String, b: String) Int: return (freq[b] - freq[a])
+	)
+	try expect_equal(words, ["the", "dog", "fox"])
 
 test "a nested function that captures a scalar sorts strings":
-    direction := -1
-    fn by_len(a: String, b: String) Int:
-        return (a.length() - b.length()) * direction
-    words := ["a", "ccc", "bb"].sorted(compare: by_len)
-    try expect_equal(words, ["ccc", "bb", "a"])
+	direction := -1
+	fn by_len(a: String, b: String) Int:
+		return (a.length() - b.length()) * direction
+	words := ["a", "ccc", "bb"].sorted(compare: by_len)
+	try expect_equal(words, ["ccc", "bb", "a"])
 
 test "a captured weight orders records and integers":
-    weight := 10
-    tasks := [Task(name: "b", priority: 2), Task(name: "a", priority: 1)].sorted(
-        compare: fn(x: Task, y: Task) Int: return (
-            x.priority * weight
-            - y.priority * weight
-        )
-    )
-    try expect_equal(tasks.get(0).name, "a")
+	weight := 10
+	tasks := [Task(name: "b", priority: 2), Task(name: "a", priority: 1)].sorted(
+		compare: fn(x: Task, y: Task) Int: return (
+			x.priority * weight
+			- y.priority * weight
+		)
+	)
+	try expect_equal(tasks.get(0).name, "a")
 
-    offset := 100
-    ints := [3, 1, 2].sorted(
-        compare: fn(x: Int, y: Int) Int: return ((y + offset) - (x + offset))
-    )
-    try expect_equal(ints, [3, 2, 1])
+	offset := 100
+	ints := [3, 1, 2].sorted(
+		compare: fn(x: Int, y: Int) Int: return ((y + offset) - (x + offset))
+	)
+	try expect_equal(ints, [3, 2, 1])
 
 test "a capture-free comparator still sorts":
-    try expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])
+	try expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])
 
-    plain := ["b", "a"].sorted(
-        compare: fn(a: String, b: String) Int: return a.compare(b)
-    )
-    try expect_equal(plain, ["a", "b"])
+	plain := ["b", "a"].sorted(
+		compare: fn(a: String, b: String) Int: return a.compare(b)
+	)
+	try expect_equal(plain, ["a", "b"])

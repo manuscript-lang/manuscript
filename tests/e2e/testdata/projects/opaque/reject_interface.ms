@@ -1,14 +1,14 @@
 import (
-    Approved, Mode, approve, safe from "./gate.ms",
-    parse, stringify from "@std/data/json.ms",
+	Approved, Mode, approve, safe from "./gate.ms",
+	parse, stringify from "@std/data/json.ms",
 )
 
 interface Named:
-    fn name() String
+	fn name() String
 
 impl Named for Approved:
-    fn name() String:
-        return "x"
+	fn name() String:
+		return "x"
 
 export fn main() Int:
-    return 0
+	return 0

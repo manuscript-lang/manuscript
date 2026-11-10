@@ -2,6 +2,6 @@ import Bytes from "@std/bytes.ms"
 
 // Errors returned when a byte range or numeric representation is invalid.
 export enum BinaryError:
-    // Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
-    InvalidInput
-    // A read crosses the byte buffer or a number cannot fit the requested signedness/width or result
+	// Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
+	InvalidInput
+	// A read crosses the byte buffer or a number cannot fit the requested signedness/width or result

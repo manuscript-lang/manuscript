@@ -1,6 +1,6 @@
 import expect_equal from "@std/test/test.ms"
 
 fn map_total(values: Map[String, Int]) Int:
-    var total = 0
-    for entry in values:
-        {value} := entry
+	var total = 0
+	for entry in values:
+		{value} := entry

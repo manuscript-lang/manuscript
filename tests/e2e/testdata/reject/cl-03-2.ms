@@ -1,5 +1,5 @@
 type PrivateId:
-    value: String
+	value: String
 
 export type PublicRecord:
-    ids: List[PrivateId]
+	ids: List[PrivateId]

@@ -1,32 +1,32 @@
 import (
-    deferred,
-    complete,
-    promise,
-    wait_first,
-    PromiseOptions from "@std/concurrency/promise.ms",
-    milliseconds, sleep, monotonic from "@std/time.ms",
-    expect_equal, expect_error, expect_true from "@std/test/test.ms",
+	deferred,
+	complete,
+	promise,
+	wait_first,
+	PromiseOptions from "@std/concurrency/promise.ms",
+	milliseconds, sleep, monotonic from "@std/time.ms",
+	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 )
 
 fn immediate(id: Int) Unit:
-    complete[Int](id, ok(1))
+	complete[Int](id, ok(1))
 
 fn delayed(id: Int) Unit:
-    _ := sleep(milliseconds(5000)).wait()
-    complete[Int](id, ok(1))
+	_ := sleep(milliseconds(5000)).wait()
+	complete[Int](id, ok(1))
 
 test "wait_first prefers an already completed input over unstarted deferred work":
-    pending := deferred[Int](immediate)
-    ready := promise(fn: ok(2))
-    while not ready.done():
-        _ := sleep(milliseconds(1)).wait()
-    try expect_equal((try wait_first([pending, ready])), 2)
+	pending := deferred[Int](immediate)
+	ready := promise(fn: ok(2))
+	while not ready.done():
+		_ := sleep(milliseconds(1)).wait()
+	try expect_equal((try wait_first([pending, ready])), 2)
 
 test "wait_first propagates a deferred promise construction limit":
-    pending := deferred[Int](delayed).with(
-        options: PromiseOptions(timeout: milliseconds(20))
-    )
-    start := monotonic()
-    reason := wait_first([pending]) | try expect_error
-    try expect_equal(reason.kind, "ETIMEDOUT")
-    try expect_true(monotonic().difference(start).to_milliseconds() < 2000)
+	pending := deferred[Int](delayed).with(
+		options: PromiseOptions(timeout: milliseconds(20))
+	)
+	start := monotonic()
+	reason := wait_first([pending]) | try expect_error
+	try expect_equal(reason.kind, "ETIMEDOUT")
+	try expect_true(monotonic().difference(start).to_milliseconds() < 2000)

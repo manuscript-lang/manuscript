@@ -1,89 +1,89 @@
 import (
-    keep, measure from "@std/test/bench.ms",
-    Bytes from "@std/bytes.ms",
-    list, read_file, stat, temporary, write_file from "@std/os/fs.ms",
-    create, file_transport, LoggerOptions from "@std/log.ms",
+	keep, measure from "@std/test/bench.ms",
+	Bytes from "@std/bytes.ms",
+	list, read_file, stat, temporary, write_file from "@std/os/fs.ms",
+	create, file_transport, LoggerOptions from "@std/log.ms",
 )
 
 fn block() Bytes:
-    return "0123456789abcdef".repeat(4096).get("").to_bytes()
+	return "0123456789abcdef".repeat(4096).get("").to_bytes()
 
 // Writes the 200 files that the read, stat, and list cases use.
 fn populate(root: String) Unit:
-    data := block()
-    for i in 0..200:
-        _written := write_file("{root}/f{i}.bin", data, replace: true).wait()
+	data := block()
+	for i in 0..200:
+		_written := write_file("{root}/f{i}.bin", data, replace: true).wait()
 
 bench "fs.write_file_64k":
-    data := block()
+	data := block()
 
-    if var dir = temporary("ms-bench-"):
-        root := dir.path()
+	if var dir = temporary("ms-bench-"):
+		root := dir.path()
 
-        fn work() Result[Unit, Error]:
-            var n = 0
-            for i in 0..200:
-                if write_file("{root}/f{i}.bin", data, replace: true).wait().is_ok():
-                    n += 1
-            return keep(n)
+		fn work() Result[Unit, Error]:
+			var n = 0
+			for i in 0..200:
+				if write_file("{root}/f{i}.bin", data, replace: true).wait().is_ok():
+					n += 1
+			return keep(n)
 
-        try measure(200, work)
-        dir.close().get(none)
+		try measure(200, work)
+		dir.close().get(none)
 
 bench "fs.read_file_64k":
-    if var dir = temporary("ms-bench-"):
-        root := dir.path()
-        populate(root)
+	if var dir = temporary("ms-bench-"):
+		root := dir.path()
+		populate(root)
 
-        fn work() Result[Unit, Error]:
-            var n = 0
-            for i in 0..200:
-                if b := read_file("{root}/f{i}.bin").wait():
-                    n += b.length()
-            return keep(n)
+		fn work() Result[Unit, Error]:
+			var n = 0
+			for i in 0..200:
+				if b := read_file("{root}/f{i}.bin").wait():
+					n += b.length()
+			return keep(n)
 
-        try measure(200, work)
-        dir.close().get(none)
+		try measure(200, work)
+		dir.close().get(none)
 
 bench "fs.stat":
-    if var dir = temporary("ms-bench-"):
-        root := dir.path()
-        populate(root)
+	if var dir = temporary("ms-bench-"):
+		root := dir.path()
+		populate(root)
 
-        fn work() Result[Unit, Error]:
-            var n = 0
-            for i in 0..200:
-                if stat("{root}/f{i}.bin", follow_links: true).is_ok():
-                    n += 1
-            return keep(n)
+		fn work() Result[Unit, Error]:
+			var n = 0
+			for i in 0..200:
+				if stat("{root}/f{i}.bin", follow_links: true).is_ok():
+					n += 1
+			return keep(n)
 
-        try measure(200, work)
-        dir.close().get(none)
+		try measure(200, work)
+		dir.close().get(none)
 
 bench "fs.list_200":
-    if var dir = temporary("ms-bench-"):
-        root := dir.path()
-        populate(root)
+	if var dir = temporary("ms-bench-"):
+		root := dir.path()
+		populate(root)
 
-        fn work() Result[Unit, Error]:
-            if entries := list(root): return keep(entries.length())
+		fn work() Result[Unit, Error]:
+			if entries := list(root): return keep(entries.length())
 
-            return keep(0)
+			return keep(0)
 
-        try measure(1, work)
-        dir.close().get(none)
+		try measure(1, work)
+		dir.close().get(none)
 
 bench "log.info":
-    if var dir = temporary("ms-bench-"):
-        if transport := file_transport("{dir.path()}/log.txt"):
-            if logger := create(transport, LoggerOptions(timestamp: false)):
-                fn work() Result[Unit, Error]:
-                    var n = 0
-                    for i in 0..20000:
-                        if logger.info("request {i} handled").is_ok():
-                            n += 1
-                    return keep(n)
+	if var dir = temporary("ms-bench-"):
+		if transport := file_transport("{dir.path()}/log.txt"):
+			if logger := create(transport, LoggerOptions(timestamp: false)):
+				fn work() Result[Unit, Error]:
+					var n = 0
+					for i in 0..20000:
+						if logger.info("request {i} handled").is_ok():
+							n += 1
+					return keep(n)
 
-                try measure(20000, work)
+				try measure(20000, work)
 
-        dir.close().get(none)
+		dir.close().get(none)

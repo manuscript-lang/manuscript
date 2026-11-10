@@ -14,64 +14,64 @@
 // Destructuring closes omitted resource fields even when their types own no heap storage.
 // Omitted fields close last declared first, before the fields moved into named bindings.
 import (
-    Closeable from "@std/core.ms",
-    stdout from "@std/io/io.ms",
+	Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
 )
 
 type Token:
-    id: Int
+	id: Int
 
 impl Closeable for Token:
-    var fn close() Unit!:
-        return stdout().write("close {self.id}\n")
+	var fn close() Unit!:
+		return stdout().write("close {self.id}\n")
 
 type Triple:
-    first: Token
-    second: Token
-    third: Token
+	first: Token
+	second: Token
+	third: Token
 
 type Nested:
-    kept: Token
-    omitted: Triple
+	kept: Token
+	omitted: Triple
 
 type NamedToken:
-    id: Int
-    name: String
+	id: Int
+	name: String
 
 impl Closeable for NamedToken:
-    var fn close() Unit!:
-        return stdout().write("close {self.id}\n")
+	var fn close() Unit!:
+		return stdout().write("close {self.id}\n")
 
 type NamedTriple:
-    first: NamedToken
-    second: NamedToken
-    third: NamedToken
+	first: NamedToken
+	second: NamedToken
+	third: NamedToken
 
 fn local() Unit:
-    tokens := Triple(Token(1), Token(2), Token(3))
-    {first: kept} := tokens
-    _ := kept.id
+	tokens := Triple(Token(1), Token(2), Token(3))
+	{first: kept} := tokens
+	_ := kept.id
 
 fn temporary() Unit:
-    {first: kept} := Triple(Token(4), Token(5), Token(6))
-    _ := kept.id
+	{first: kept} := Triple(Token(4), Token(5), Token(6))
+	_ := kept.id
 
 fn nested() Unit:
-    tokens := Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
-    {kept: kept} := tokens
-    _ := kept.id
+	tokens := Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
+	{kept: kept} := tokens
+	_ := kept.id
 
 fn with_storage() Unit:
-    tokens := NamedTriple(
-        NamedToken(11, "first-heap-allocated-name"),
-        NamedToken(12, "second-heap-allocated-name"),
-        NamedToken(13, "third-heap-allocated-name")
-    )
-    {first: kept} := tokens
-    _ := kept.name.length()
+	tokens := NamedTriple(
+		NamedToken(11, "first-heap-allocated-name"),
+		NamedToken(12, "second-heap-allocated-name"),
+		NamedToken(13, "third-heap-allocated-name")
+	)
+	{first: kept} := tokens
+	_ := kept.name.length()
 
 fn main() Unit:
-    local()
-    temporary()
-    nested()
-    with_storage()
+	local()
+	temporary()
+	nested()
+	with_storage()

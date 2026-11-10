@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"bad\":\n    x := unknown_name\n"
+    "fmt": "test \"bad\":\n\tx := unknown_name\n"
   }
 }

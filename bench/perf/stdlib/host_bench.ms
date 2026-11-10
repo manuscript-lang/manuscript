@@ -1,109 +1,109 @@
 import (
-    keep, measure from "@std/test/bench.ms",
-    Bytes from "@std/bytes.ms",
-    pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms",
-    sse_events from "@std/net/sse.ms",
-    ReadStream, Source from "@std/io/io.ms",
-    parse_timestamp from "@std/time.ms",
-    uuid_v4 from "@std/data/uuid.ms",
+	keep, measure from "@std/test/bench.ms",
+	Bytes from "@std/bytes.ms",
+	pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms",
+	sse_events from "@std/net/sse.ms",
+	ReadStream, Source from "@std/io/io.ms",
+	parse_timestamp from "@std/time.ms",
+	uuid_v4 from "@std/data/uuid.ms",
 )
 
 fn entries(count: Int) List[ArchiveEntry]:
-    var out: List[ArchiveEntry] = []
-    for i in 0..count:
-        out.append(
-            ArchiveEntry(
-                "dir/file{i}.txt", "contents of file {i}".to_bytes(), directory: false
-            )
-        )
-    return out
+	var out: List[ArchiveEntry] = []
+	for i in 0..count:
+		out.append(
+			ArchiveEntry(
+				"dir/file{i}.txt", "contents of file {i}".to_bytes(), directory: false
+			)
+		)
+	return out
 
 fn sse_stream(count: Int) Bytes:
-    var parts: List[String] = []
-    for i in 0..count:
-        parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
-    return parts.join("").to_bytes()
+	var parts: List[String] = []
+	for i in 0..count:
+		parts.append("event: tick\nid: {i}\ndata: payload {i}\ndata: second line\n\n")
+	return parts.join("").to_bytes()
 
 // Hands out its bytes as one chunk.
 type Whole:
-    data: Bytes
-    done: Bool
+	data: Bytes
+	done: Bool
 
 impl Source[Bytes] for Whole:
-    var fn next() Bytes?!:
-        if self.done: return ok(none)
+	var fn next() Bytes?!:
+		if self.done: return ok(none)
 
-        self.done = true
-        return ok(self.data.clone())
+		self.done = true
+		return ok(self.data.clone())
 
-    var fn close() Unit!:
-        return ok(unit)
+	var fn close() Unit!:
+		return ok(unit)
 
 fn count_events(data: Bytes) Int:
-    var events = sse_events(ReadStream[Bytes](Whole(data, false)))
-    var count = 0
+	var events = sse_events(ReadStream[Bytes](Whole(data, false)))
+	var count = 0
 
-    while true:
-        if next := events.next():
-            if next.is_none(): break
+	while true:
+		if next := events.next():
+			if next.is_none(): break
 
-            count += 1
-        else:
-            break
+			count += 1
+		else:
+			break
 
-    return count
+	return count
 
 bench "archive.zip_pack":
-    list := entries(2000)
+	list := entries(2000)
 
-    fn work() Result[Unit, Error]:
-        if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
+	fn work() Result[Unit, Error]:
+		if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
 
-        return keep(0)
+		return keep(0)
 
-    try measure(2000, work)
+	try measure(2000, work)
 
 bench "archive.tar_pack":
-    list := entries(2000)
+	list := entries(2000)
 
-    fn work() Result[Unit, Error]:
-        if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
+	fn work() Result[Unit, Error]:
+		if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
 
-        return keep(0)
+		return keep(0)
 
-    try measure(2000, work)
+	try measure(2000, work)
 
 bench "archive.zip_unpack":
-    if packed := pack(entries(2000), ArchiveFormat.Zip):
-        fn work() Result[Unit, Error]:
-            if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
+	if packed := pack(entries(2000), ArchiveFormat.Zip):
+		fn work() Result[Unit, Error]:
+			if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
 
-            return keep(0)
+			return keep(0)
 
-        try measure(2000, work)
+		try measure(2000, work)
 
 bench "sse.feed":
-    data := sse_stream(2000)
-    fn work() Result[Unit, Error]:
-        return keep(count_events(data.clone()))
-    try measure(2000, work)
+	data := sse_stream(2000)
+	fn work() Result[Unit, Error]:
+		return keep(count_events(data.clone()))
+	try measure(2000, work)
 
 bench "time.timestamp_to_string":
-    fn work() Result[Unit, Error]:
-        var n = 0
-        if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
-            for i in 0..20000:
-                n += t.to_string().length()
-        return keep(n)
+	fn work() Result[Unit, Error]:
+		var n = 0
+		if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
+			for i in 0..20000:
+				n += t.to_string().length()
+		return keep(n)
 
-    try measure(20000, work)
+	try measure(20000, work)
 
 bench "random.uuid_v4":
-    fn work() Result[Unit, Error]:
-        var n = 0
-        for i in 0..20000:
-            if u := uuid_v4():
-                n += u.length()
-        return keep(n)
+	fn work() Result[Unit, Error]:
+		var n = 0
+		for i in 0..20000:
+			if u := uuid_v4():
+				n += u.length()
+		return keep(n)
 
-    try measure(20000, work)
+	try measure(20000, work)

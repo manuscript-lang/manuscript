@@ -1,30 +1,30 @@
 import JsonValue from "@std/data/json.ms"
 
 export opaque type Approved:
-    entity: String
-    nonce: String
+	entity: String
+	nonce: String
 
 export opaque enum Mode:
-    Safe
-    Wild(level: Int)
+	Safe
+	Wild(level: Int)
 
 export fn approve(entity: String) Approved:
-    return Approved(entity: entity, nonce: "n1")
+	return Approved(entity: entity, nonce: "n1")
 
 export fn entity(a: Approved) String:
-    return a.entity.clone()
+	return a.entity.clone()
 
 export fn safe() Mode:
-    return Safe
+	return Safe
 
 export fn wild(level: Int) Mode:
-    return Wild(level)
+	return Wild(level)
 
 export fn level(m: Mode) Int:
-    match m:
-        Safe: return 0
-        Wild(level): return level
+	match m:
+		Safe: return 0
+		Wild(level): return level
 
 impl Approved:
-    fn label() String:
-        return "approved:{self.entity}"
+	fn label() String:
+		return "approved:{self.entity}"

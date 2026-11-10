@@ -1,3 +1,3 @@
 export type Key:
-    id: Int
-    label: String
+	id: Int
+	label: String

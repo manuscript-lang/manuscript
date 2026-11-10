@@ -1,19 +1,19 @@
 import expect_equal from "@std/test/test.ms"
 
 fn positives(values: List[Int]) List[Int]:
-    result: List[Int] = []
-    for value in values:
-        if value > 0:
-            result.append(value)
-    return result
+	result: List[Int] = []
+	for value in values:
+		if value > 0:
+			result.append(value)
+	return result
 
 test "dynamic mutable data and explicit copies":
-    try expect_equal(positives([3, -1, 2]), [3, 2])
+	try expect_equal(positives([3, -1, 2]), [3, 2])
 
-    absent: Int? = none
-    try expect_equal([1].get(5, default: -1), -1)
+	absent: Int? = none
+	try expect_equal([1].get(5, default: -1), -1)
 
-    original := Map[String, Int]().add("a", 1)
-    updated := original.clone().add("b", 2).add("a", 3)
-    try expect_equal(original.get("a"), 1)
-    try expect_equal(updated.get("a"), 3)
+	original := Map[String, Int]().add("a", 1)
+	updated := original.clone().add("b", 2).add("a", 3)
+	try expect_equal(original.get("a"), 1)
+	try expect_equal(updated.get("a"), 3)

@@ -1,119 +1,119 @@
 import (
-    expect_equal, expect_true from "@std/test/test.ms",
-    sqrt from "@std/math/math.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+	sqrt from "@std/math/math.ms",
 )
 
 fn increment(value: Int) Int:
-    return value + 1
+	return value + 1
 
 fn identity[T](value: T) T:
-    return value
+	return value
 
 fn sum(values: List[Int]) Int:
-    var total = 0
-    for value in values:
-        total += value
-    return total
+	var total = 0
+	for value in values:
+		total += value
+	return total
 
 fn apply(transform: fn(Int) Int) Int:
-    return transform(4)
+	return transform(4)
 
 fn select() fn(Int) Int:
-    return increment
+	return increment
 
 fn subtract(amount: Int, deduction: Int) Int:
-    return amount - deduction
+	return amount - deduction
 
 interface Increment:
-    fn apply(value: Int) Int
+	fn apply(value: Int) Int
 
 type Offset:
-    delta: Int
+	delta: Int
 
 impl Increment for Offset:
-    fn apply(value: Int) Int:
-        return value + self.delta
+	fn apply(value: Int) Int:
+		return value + self.delta
 
 type Counter:
-    value: Int
+	value: Int
 
 fn next(var state: Counter) Int:
-    value := state.value
-    state.value = value + 1
-    return value
+	value := state.value
+	state.value = value + 1
+	return value
 
 fn prepare_receiver(var state: Counter) Offset!:
-    next(var state) | try expect_equal(0)
-    return ok(Offset(2))
+	next(var state) | try expect_equal(0)
+	return ok(Offset(2))
 
 fn prepare_function(var state: Counter) (fn(Int) Int)!:
-    next(var state) | try expect_equal(4)
-    return ok(increment)
+	next(var state) | try expect_equal(4)
+	return ok(increment)
 
 fn absent(value: Int?) Bool:
-    missing: Int? = none
-    return value == missing
+	missing: Int? = none
+	return value == missing
 
 test "optional labels on single-parameter functions":
-    increment(3) | try expect_equal(increment(value: 3))
+	increment(3) | try expect_equal(increment(value: 3))
 
-    multiline := increment(3)
-    multiline | try expect_equal(4)
-    identity(7) | try expect_equal(7)
-    identity[Int](7) | try expect_equal(7)
-    (identity(true)) | try expect_true
-    identity(unit) | try expect_equal(unit)
-    (absent(none)) | try expect_true
-    "{increment(3)}" | try expect_equal("4")
-    select()(5) | try expect_equal(6)
+	multiline := increment(3)
+	multiline | try expect_equal(4)
+	identity(7) | try expect_equal(7)
+	identity[Int](7) | try expect_equal(7)
+	(identity(true)) | try expect_true
+	identity(unit) | try expect_equal(unit)
+	(absent(none)) | try expect_true
+	"{increment(3)}" | try expect_equal("4")
+	select()(5) | try expect_equal(6)
 
-    specialized := identity[Int]
-    specialized(8) | try expect_equal(8)
+	specialized := identity[Int]
+	specialized(8) | try expect_equal(8)
 
-    closure := fn(value: Int):
-        return value * 2
-    closure(3) | try expect_equal(6)
-    apply(closure) | try expect_equal(8)
+	closure := fn(value: Int):
+		return value * 2
+	closure(3) | try expect_equal(6)
+	apply(closure) | try expect_equal(8)
 
-    result := apply(fn value: return value + 2)
-    result | try expect_equal(6)
-    subtract(deduction: increment(1), amount: increment(8)) | try expect_equal(7)
+	result := apply(fn value: return value + 2)
+	result | try expect_equal(6)
+	subtract(deduction: increment(1), amount: increment(8)) | try expect_equal(7)
 
 test "optional labels on methods and native functions":
-    offset := Offset(3)
-    offset.apply(4) | try expect_equal(7)
+	offset := Offset(3)
+	offset.apply(4) | try expect_equal(7)
 
-    view: Increment = offset
-    view.apply(4) | try expect_equal(7)
+	view: Increment = offset
+	view.apply(4) | try expect_equal(7)
 
-    method := view.apply
-    method(5) | try expect_equal(8)
-    sqrt(9.0) | try expect_equal(3.0)
+	method := view.apply
+	method(5) | try expect_equal(8)
+	sqrt(9.0) | try expect_equal(3.0)
 
-    native := sqrt
-    native(16.0) | try expect_equal(4.0)
-    sum([]) | try expect_equal(0)
-    sum([1, 2, 3]) | try expect_equal(6)
+	native := sqrt
+	native(16.0) | try expect_equal(4.0)
+	sum([]) | try expect_equal(0)
+	sum([1, 2, 3]) | try expect_equal(6)
 
-    var chain_1 = ([1, 2, 3])
-    chain_1.reverse()
-    chain_1 | try expect_equal([3, 2, 1])
+	var chain_1 = ([1, 2, 3])
+	chain_1.reverse()
+	chain_1 | try expect_equal([3, 2, 1])
 
-    var chain_2 = [1, 2]
-    chain_2.append(3)
-    chain_2 | try expect_equal([1, 2, 3])
+	var chain_2 = [1, 2]
+	chain_2.append(3)
+	chain_2 | try expect_equal([1, 2, 3])
 
-    lookup := [4, 5].get
-    lookup(1) | try expect_equal(5)
-    [4, 5].get(0) | try expect_equal(4)
+	lookup := [4, 5].get
+	lookup(1) | try expect_equal(5)
+	[4, 5].get(0) | try expect_equal(4)
 
 test "omitted labels preserve evaluation order":
-    var state = Counter(value: 0)
-    (try prepare_receiver(var state)).apply(next(var state)) | try expect_equal(3)
-    state.value | try expect_equal(2)
-    subtract(deduction: next(var state), amount: next(var state)) | try expect_equal(1)
-    state.value | try expect_equal(4)
-    (try prepare_function(var state))(next(var state)) | try expect_equal(6)
-    state.value | try expect_equal(6)
-    sum([next(var state), next(var state)]) | try expect_equal(13)
-    state.value | try expect_equal(8)
+	var state = Counter(value: 0)
+	(try prepare_receiver(var state)).apply(next(var state)) | try expect_equal(3)
+	state.value | try expect_equal(2)
+	subtract(deduction: next(var state), amount: next(var state)) | try expect_equal(1)
+	state.value | try expect_equal(4)
+	(try prepare_function(var state))(next(var state)) | try expect_equal(6)
+	state.value | try expect_equal(6)
+	sum([next(var state), next(var state)]) | try expect_equal(13)
+	state.value | try expect_equal(8)

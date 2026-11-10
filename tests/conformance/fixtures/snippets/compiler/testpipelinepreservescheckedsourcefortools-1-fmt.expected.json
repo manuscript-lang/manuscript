@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn value(flag: Bool = not false) Bool:\n    callback := fn() Bool: return not (false or false)\n    return (not false and callback()) or flag\n"
+    "fmt": "fn value(flag: Bool = not false) Bool:\n\tcallback := fn() Bool: return not (false or false)\n\treturn (not false and callback()) or flag\n"
   }
 }

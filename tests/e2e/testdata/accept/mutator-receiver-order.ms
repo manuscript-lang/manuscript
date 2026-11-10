@@ -1,33 +1,33 @@
 import expect_equal from "@std/test/test.ms"
 
 fn receiver(var events: List[Int]) List[Int]:
-    events.append(1)
-    return [0]
+	events.append(1)
+	return [0]
 
 fn argument(var events: List[Int]) Int:
-    events.append(2)
-    return 9
+	events.append(2)
+	return 9
 
 fn checked(var events: List[Int], fail: Bool) Int!:
-    events.append(2)
-    if fail: return error(Error("stop", kind: "EINVAL"))
+	events.append(2)
+	if fail: return error(Error("stop", kind: "EINVAL"))
 
-    return ok(9)
+	return ok(9)
 
 fn set_with_try(var events: List[Int], fail: Bool) Unit!:
-    receiver(var events).set(0, try checked(var events, fail))
-    events.append(3)
+	receiver(var events).set(0, try checked(var events, fail))
+	events.append(3)
 
 test "a changing method evaluates a temporary receiver before its arguments":
-    var events: List[Int] = []
-    receiver(var events).set(0, argument(var events))
-    try expect_equal(events, [1, 2])
+	var events: List[Int] = []
+	receiver(var events).set(0, argument(var events))
+	try expect_equal(events, [1, 2])
 
 test "an argument that leaves through try follows the receiver and releases it":
-    var events: List[Int] = []
-    try expect_equal(set_with_try(var events, false).is_ok(), true)
-    try expect_equal(events, [1, 2, 3])
+	var events: List[Int] = []
+	try expect_equal(set_with_try(var events, false).is_ok(), true)
+	try expect_equal(events, [1, 2, 3])
 
-    var failed: List[Int] = []
-    try expect_equal(set_with_try(var failed, true).is_error(), true)
-    try expect_equal(failed, [1, 2])
+	var failed: List[Int] = []
+	try expect_equal(set_with_try(var failed, true).is_error(), true)
+	try expect_equal(failed, [1, 2])

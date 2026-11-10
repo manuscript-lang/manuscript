@@ -96,7 +96,7 @@ fn interpolation_errors_point_into_the_right_line() {
 #[test]
 fn formatting_is_idempotent_and_keeps_text() {
     let file: Arc<str> = Arc::from("m.ms");
-    let source = "fn f(n: Int) String:\n    if n > 0:\n        return \"\"\"\n            a {n}\n              b\n            \"\"\"\n\n    return r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
+    let source = "fn f(n: Int) String:\n\tif n > 0:\n\t\treturn \"\"\"\n            a {n}\n              b\n            \"\"\"\n\n\treturn r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
     let once = format(&file, source).unwrap();
     assert_eq!(once, source);
     assert_eq!(format(&file, &once).unwrap(), once);
@@ -195,7 +195,7 @@ fn recovery_keeps_a_multi_line_import_path_in_one_chunk() {
 #[test]
 fn restoring_adjacent_literals_uses_the_restored_line_indentation() {
     let file: Arc<str> = Arc::from("m.ms");
-    let source = "fn f() String:\n    return \"\"\"\n        first\n        \"\"\" + \"\"\"\n        second\n        \"\"\"\n";
+    let source = "fn f() String:\n\treturn \"\"\"\n        first\n        \"\"\" + \"\"\"\n        second\n        \"\"\"\n";
     let once = format(&file, source).unwrap();
     assert_eq!(once, source);
     assert_eq!(format(&file, &once).unwrap(), once);

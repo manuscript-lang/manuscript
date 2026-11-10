@@ -3,22 +3,22 @@
 // expect-stdout: close 1
 // Fields close last-declared first; the record's own close would run before them.
 import (
-    stdout from "@std/io/io.ms",
-    Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
+	Closeable from "@std/core.ms",
 )
 
 type Res:
-    id: Int
+	id: Int
 
 impl Closeable for Res:
-    var fn close() Unit!:
-        stdout().write("close {self.id}\n").get()
+	var fn close() Unit!:
+		stdout().write("close {self.id}\n").get()
 
 type Pair:
-    a: Res
-    b: Res
+	a: Res
+	b: Res
 
 export fn main() Int:
-    p := Pair(a: Res(1), b: Res(2))
-    _c := Res(3)
-    return p.a.id - 1
+	p := Pair(a: Res(1), b: Res(2))
+	_c := Res(3)
+	return p.a.id - 1

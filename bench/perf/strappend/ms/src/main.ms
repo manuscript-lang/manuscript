@@ -1,57 +1,57 @@
 import (
-    stdout from "@std/io/io.ms",
-    StringBuilder from "@std/string.ms",
-    monotonic from "@std/time.ms",
+	stdout from "@std/io/io.ms",
+	StringBuilder from "@std/string.ms",
+	monotonic from "@std/time.ms",
 )
 
 // Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
 fn run(piece: String, count: Int) Int:
-    var sb = StringBuilder()
-    for i in 0..count:
-        sb.append(piece)
-    return sb.build().byte_length()
+	var sb = StringBuilder()
+	for i in 0..count:
+		sb.append(piece)
+	return sb.build().byte_length()
 
 // Builds a list of `count` Ints with append in a `while` loop, so growth is by doubling, the path every list shares with the builder.
 fn fill(count: Int) Int:
-    var items: List[Int] = []
-    var i = 0
+	var items: List[Int] = []
+	var i = 0
 
-    while i < count:
-        items.append(i)
-        i += 1
+	while i < count:
+		items.append(i)
+		i += 1
 
-    return items.length()
+	return items.length()
 
 fn main() Unit:
-    var piece = "x"
+	var piece = "x"
 
-    for size in [4, 16, 64, 256, 1024, 8192]:
-        piece = "x".repeat(size).get()
+	for size in [4, 16, 64, 256, 1024, 8192]:
+		piece = "x".repeat(size).get()
 
-        count := 1000000 / size
-        var best = 1000000000000
-        var checksum = 0
+		count := 1000000 / size
+		var best = 1000000000000
+		var checksum = 0
 
-        for rep in 0..40:
-            started := monotonic()
-            checksum += run(piece, count)
+		for rep in 0..40:
+			started := monotonic()
+			checksum += run(piece, count)
 
-            elapsed := monotonic().difference(started).to_nanoseconds()
-            if elapsed < best:
-                best = elapsed
+			elapsed := monotonic().difference(started).to_nanoseconds()
+			if elapsed < best:
+				best = elapsed
 
-        _ignored := stdout().write("append{size}\t{best / 1000}\t# {checksum}\n")
+		_ignored := stdout().write("append{size}\t{best / 1000}\t# {checksum}\n")
 
-    for count in [10000, 100000, 1000000]:
-        var best = 1000000000000
-        var checksum = 0
+	for count in [10000, 100000, 1000000]:
+		var best = 1000000000000
+		var checksum = 0
 
-        for rep in 0..40:
-            started := monotonic()
-            checksum += fill(count)
+		for rep in 0..40:
+			started := monotonic()
+			checksum += fill(count)
 
-            elapsed := monotonic().difference(started).to_nanoseconds()
-            if elapsed < best:
-                best = elapsed
+			elapsed := monotonic().difference(started).to_nanoseconds()
+			if elapsed < best:
+				best = elapsed
 
-        _ignored := stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
+		_ignored := stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
