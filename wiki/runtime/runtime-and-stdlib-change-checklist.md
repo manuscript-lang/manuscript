@@ -35,6 +35,11 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Preserve declared error types/cases/causes and checked binding identities.
 - Filesystem prechecks must keep the same error kind as the equivalent host failure. `Directory::open` used a generic `EIO` for a regular file while `open_directory` promises `EINVAL`; `fs-kinds-and-sources.ms` checks file, missing-path, non-directory ancestor and valid-directory controls through the public API.
 - Rational powers must propagate fallible integer powers: numeric defaults turn a size-limit error into a successful but wrong fraction. `big-rat-power-limits.ms` checks oversized numerator/denominator powers with either exponent sign and retains zero/unit controls (#3334).
+- Modular square-root nonresidue searches cannot use a fixed attempt cutoff:
+  valid primes can have no nonresidue among the first thousand candidates.
+  Continue on Euler result +1, stop on -1, and reject other results as composite
+  witnesses. `bigint-number-theory.ms` certifies a prime whose least nonresidue
+  is 1013 and checks signed squares and composite-search exits (#3391).
 - Interpolation of finite endpoints must not overflow solely in their difference. Use a weighted blend when the finite endpoint span overflows, retaining the existing finite-span formula for tiny/subnormal rounding and existing nonfinite-input behavior; For median, halve finite neighbors only when their sum overflows; always halving loses subnormal precision. `statistics.ms` tests these boundaries (#2955, #2956).
 - A finite-input mean can overflow in its sum although the average is representable. Preserve the ordinary finite-sum path and nonfinite-input behavior; an exact rational overflow fallback keeps cancellation residuals that rescaling or per-term division can lose. `statistics.ms` exercises exact binary64 boundary cases (#2957).
 - Subnormal histogram bin widths can underflow or round enough to move interior values. For finite inputs, use exact rational positions and floor before converting the index; keep ordinary widths and nonfinite behavior unchanged. `statistics.ms` covers signed/shifted integer-grid boundaries (#2967).
