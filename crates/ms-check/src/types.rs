@@ -1239,6 +1239,11 @@ fn sub_walk(t: &Ty, bindings: &Subst) -> Ty {
     // at its first changed child, while still walking variables to snapshot their bounds.
     let mut args: Option<Vec<Ty>> = None;
     for (i, a) in t.args.iter().enumerate() {
+        // An argument that is the same node as the previous unchanged one is unchanged too, and
+        // holds no variable to snapshot: skip the repeated walk of a shared subtree.
+        if i > 0 && Rc::ptr_eq(a, &t.args[i - 1]) {
+            continue;
+        }
         let r = sub_walk(a, bindings);
         if Rc::ptr_eq(&r, a) {
             continue;
