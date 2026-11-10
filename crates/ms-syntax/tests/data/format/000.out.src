@@ -1,10 +1,10 @@
 import (
-    expect_equal from "@std/test/test.ms",
-    Bytes from "@std/bytes.ms",
+	expect_equal from "@std/test/test.ms",
+	Bytes from "@std/bytes.ms",
 )
 
 test "explicit byte conversion":
-    try expect_equal("é".byte_length(), 2)
-    try expect_equal("é".to_bytes().decode_utf8(), "é")
+	try expect_equal("é".byte_length(), 2)
+	try expect_equal("é".to_bytes().decode_utf8(), "é")
 
-    invalid: String? = n
+	invalid: String? = n

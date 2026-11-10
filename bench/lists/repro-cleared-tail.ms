@@ -1,15 +1,15 @@
 import panic from "@std/core.ms"
 
 fn main() Unit:
-    var values = [1, 2, 3]
-    var total = 0
-    var count = 0
+	var values = [1, 2, 3]
+	var total = 0
+	var count = 0
 
-    for value in values.clone():
-        total += value
-        if count == 0:
-            values.remove(0)
-        count += 1
+	for value in values.clone():
+		total += value
+		if count == 0:
+			values.remove(0)
+		count += 1
 
-    if total != 6:
-        panic("unexpected sum")
+	if total != 6:
+		panic("unexpected sum")

@@ -3,19 +3,19 @@ import Bytes from "@std/bytes.ms"
 // An expected failure as a plain value: a message, a short code callers can branch on, and string details.
 // Build one like any record: `Error("no such file", kind: "ENOENT", details: {"path": path})`. `T!` is `Result[T, Error]`.
 export type Error:
-    // Human-readable description of the failure.
-    message: String
-    // A short code for what went wrong, or `none` when no code fits. The kind itself never allocates when it is a literal or at most 15 bytes.
-    // The standard library reports POSIX errno names (`EAUTH` is Manuscript's own), so `error.kind == "ENOENT"` means the same on every platform:
-    //   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
-    //   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
-    //   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,
-    //   EIO a task, process or peer ended abnormally, EAGAIN service unavailable, EBUSY resource busy,
-    //   ETIMEDOUT a deadline expired, ECANCELED cancelled, EAUTH authentication failed.
-    // Your own code uses its own prefix, such as `"EQUOTA"`.
-    kind: String? = none
-    // Extra facts about the failure, such as the path or operation, keyed by name.
-    details: Map[String, String] = Map[String, String]()
+	// Human-readable description of the failure.
+	message: String
+	// A short code for what went wrong, or `none` when no code fits. The kind itself never allocates when it is a literal or at most 15 bytes.
+	// The standard library reports POSIX errno names (`EAUTH` is Manuscript's own), so `error.kind == "ENOENT"` means the same on every platform:
+	//   EINVAL caller input is invalid, EBADMSG input data is malformed, EOVERFLOW a limit was exceeded,
+	//   ERANGE a value or index is out of range, ENOENT not found, EEXIST already exists, ENOTEMPTY directory not empty,
+	//   EACCES permission denied, ENOTSUP unsupported, ENOTTY not a terminal, EBADF resource closed,
+	//   EIO a task, process or peer ended abnormally, EAGAIN service unavailable, EBUSY resource busy,
+	//   ETIMEDOUT a deadline expired, ECANCELED cancelled, EAUTH authentication failed.
+	// Your own code uses its own prefix, such as `"EQUOTA"`.
+	kind: String? = none
+	// Extra facts about the failure, such as the path or operation, keyed by name.
+	details: Map[String, String] = Map[String, String]()
 
 // The runtime reports a failed native as a status number; lowering builds the `Error` from these rows (`// ms: status <number> <kind> <words>`, built by crates/ms-lower/build.rs).
 // The message is `<domain>: <words>`, and `-` words mean the native's own text is the whole message.
@@ -56,8 +56,8 @@ print(order)
 */
 // ms: effect std.console.write
 export fn print[T](value: T) Unit:
-    msrt_io_write_stdout(value.to_string())
-    msrt_io_write_stdout("\n")
+	msrt_io_write_stdout(value.to_string())
+	msrt_io_write_stdout("\n")
 
 /*
 Data that a write accepts as either text or raw bytes: `String` and `Bytes` both implement it, so
@@ -65,8 +65,8 @@ Data that a write accepts as either text or raw bytes: `String` and `Bytes` both
 Text is written as its UTF-8 encoding.
 */
 export interface Writable:
-    // The bytes to write, as a new value the writer may keep.
-    fn as_bytes() Bytes
+	// The bytes to write, as a new value the writer may keep.
+	fn as_bytes() Bytes
 
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
@@ -77,12 +77,12 @@ already returning an error, that error is kept and the close error is dropped. C
 handle the failure; the binding is then consumed.
 */
 export interface Closeable:
-    /*
+	/*
     Releases the implementation's resource state; with calls this on every scope exit.
     Cleanup runs during return, expected errors, faults, and cancellation too. A type whose release cannot
     fail returns `ok(unit)`.
     */
-    var fn close() Unit!
+	var fn close() Unit!
 
 /*
 A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
@@ -92,111 +92,111 @@ returning `none` after the end. The item is a borrow: it stays valid, and the it
 unchanged, until the loop body ends; clone it to keep it.
 */
 export interface Iterator[T]:
-    // Returns the next item, or none when no items remain. The item borrows from the iterator
-    // (an iterator over a container borrows from the container instead).
-    var fn next() T?
+	// Returns the next item, or none when no items remain. The item borrows from the iterator
+	// (an iterator over a container borrows from the container instead).
+	var fn next() T?
 
 // Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a `T?` is expected.
 export enum Optional[T]:
-    // A present payload, retained by reference when T is mutable.
-    some(
-        // The contained value; unwrap and matching return this original payload.
-        value: T
-    )
-    // An absent value with no payload; no T needs to be constructed.
-    none
+	// A present payload, retained by reference when T is mutable.
+	some(
+		// The contained value; unwrap and matching return this original payload.
+		value: T
+	)
+	// An absent value with no payload; no T needs to be constructed.
+	none
 
 impl T?:
-    // Returns True when a value is present, and False for none.
-    fn is_some() Bool: ...
+	// Returns True when a value is present, and False for none.
+	fn is_some() Bool: ...
 
-    // Reports whether this value is absent.
-    fn is_none() Bool: ...
+	// Reports whether this value is absent.
+	fn is_none() Bool: ...
 
-    // Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if value := optional:` unless absence is a bug.
-    // Without a default, `none` raises a fault.
-    fn get(default: T?) T: ...
+	// Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if value := optional:` unless absence is a bug.
+	// Without a default, `none` raises a fault.
+	fn get(default: T?) T: ...
 
-    // Transforms a present payload; none remains absent.
-    fn map[U](transform: fn(T) U) U?: ...
+	// Transforms a present payload; none remains absent.
+	fn map[U](transform: fn(T) U) U?: ...
 
-    // Calls transform only when present, returning its Optional unchanged.
-    fn and_then[U](transform: fn(T) U?) U?: ...
+	// Calls transform only when present, returning its Optional unchanged.
+	fn and_then[U](transform: fn(T) U?) U?: ...
 
-    // Returns the payload, or calls create once and returns its value only when absent.
-    fn get_or_else(create: fn() T) T: ...
+	// Returns the payload, or calls create once and returns its value only when absent.
+	fn get_or_else(create: fn() T) T: ...
 
-    // Calls create once only when absent, returning its Optional unchanged.
-    fn or_else(create: fn() T?) T?: ...
+	// Calls create once only when absent, returning its Optional unchanged.
+	fn or_else(create: fn() T?) T?: ...
 
-    // Returns ok with the original payload, or error with the eager cause.
-    // Without a cause, E is Error (kind ENOENT) and the message names the calling source file and line.
-    fn ok_or[E = Error](cause: E?) T!E: ...
+	// Returns ok with the original payload, or error with the eager cause.
+	// Without a cause, E is Error (kind ENOENT) and the message names the calling source file and line.
+	fn ok_or[E = Error](cause: E?) T!E: ...
 
-    // Constructs an error once only for none; present payloads remain unchanged.
-    fn ok_or_else[E](create: fn() E) T!E: ...
+	// Constructs an error once only for none; present payloads remain unchanged.
+	fn ok_or_else[E](create: fn() E) T!E: ...
 
 // Holds either a successful value (`ok`) or an expected failure (`error`).
 export enum Result[T, E]:
-    // A successful result, retaining its payload without a deep copy.
-    ok(
-        // The successful value returned by unwrap, matching, or propagation.
-        value: T
-    )
-    // An expected failure value; it is distinct from faults and cancellation.
-    error(
-        // The original domain error, retained through compatible Result propagation.
-        cause: E
-    )
+	// A successful result, retaining its payload without a deep copy.
+	ok(
+		// The successful value returned by unwrap, matching, or propagation.
+		value: T
+	)
+	// An expected failure value; it is distinct from faults and cancellation.
+	error(
+		// The original domain error, retained through compatible Result propagation.
+		cause: E
+	)
 
 impl T!E:
-    // Reports whether this result contains a successful value.
-    fn is_ok() Bool: ...
+	// Reports whether this result contains a successful value.
+	fn is_ok() Bool: ...
 
-    // Reports whether this result contains an expected error.
-    fn is_error() Bool: ...
+	// Reports whether this result contains an expected error.
+	fn is_error() Bool: ...
 
-    // Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
-    // Without a default, an error raises a fault.
-    fn get(default: T?) T: ...
+	// Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
+	// Without a default, an error raises a fault.
+	fn get(default: T?) T: ...
 
-    // Returns the error payload; check `is_error()` first, because a successful result raises a fault.
-    fn err() E: ...
+	// Returns the error payload; check `is_error()` first, because a successful result raises a fault.
+	fn err() E: ...
 
-    // Returns the successful payload, or calls create once with the original error and returns its value.
-    fn get_or_else(create: fn(E) T) T: ...
+	// Returns the successful payload, or calls create once with the original error and returns its value.
+	fn get_or_else(create: fn(E) T) T: ...
 
-    // Calls create once with the original error only when this is an error, returning its Result.
-    fn or_else(create: fn(E) T!E) T!E: ...
+	// Calls create once with the original error only when this is an error, returning its Result.
+	fn or_else(create: fn(E) T!E) T!E: ...
 
-    // Transforms only an error, preserving a successful payload unchanged.
-    fn map_error[F](transform: fn(E) F) T!F: ...
+	// Transforms only an error, preserving a successful payload unchanged.
+	fn map_error[F](transform: fn(E) F) T!F: ...
 
-    // Transforms only a successful payload, preserving an error unchanged.
-    fn map[U](transform: fn(T) U) U!E: ...
+	// Transforms only a successful payload, preserving an error unchanged.
+	fn map[U](transform: fn(T) U) U!E: ...
 
-    // Calls transform only on success. Its result keeps the same error type.
-    fn and_then[U](transform: fn(T) U!E) U!E: ...
+	// Calls transform only on success. Its result keeps the same error type.
+	fn and_then[U](transform: fn(T) U!E) U!E: ...
 
-    // Returns some with the original success payload, or none for an error.
-    fn to_optional() T?: ...
+	// Returns some with the original success payload, or none for an error.
+	fn to_optional() T?: ...
 
 // Equality and hashing are ordinary operation interfaces. Built-in data retains
 // its value semantics; an explicit implementation selects domain identity.
 export interface Equal:
-    // Compares this value with another value of the same type.
-    fn equals(other: Self) Bool
+	// Compares this value with another value of the same type.
+	fn equals(other: Self) Bool
 
 // A type with a total order; `compare` agrees with `equals` when both are implemented.
 export interface Comparable:
-    // Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
-    fn compare(other: Self) Int
+	// Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
+	fn compare(other: Self) Int
 
 // A type whose values can be duplicated. Plain data is Clonable; resource handles, natives without a `clone` of their own (a `Regex`, a `Pipe`), function values, and any record, alternative or collection holding one of those are not.
 // There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
 export interface Clonable:
-    // Returns an independent deep copy of this value.
-    fn clone() Self
+	// Returns an independent deep copy of this value.
+	fn clone() Self
 
 /*
 A type whose values are plain data: no resource, function, interface value, or runtime handle
@@ -217,8 +217,8 @@ export interface Copy: ...
 
 // A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
-    // Returns a stable hash consistent with `equals` for the same value.
-    fn hash() Int
+	// Returns a stable hash consistent with `equals` for the same value.
+	fn hash() Int
 
 /*
 Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
@@ -226,20 +226,20 @@ Returns a copy of `cause` with `context` in front of its message: `try read(path
 in `details["cause"]`.
 */
 export fn wrap_error(context: String, cause: Error) Error:
-    var details = cause.details.clone()
-    details.add("cause", cause.message.clone())
-    return Error(context + ": " + cause.message, cause.kind, details)
+	var details = cause.details.clone()
+	details.add("cause", cause.message.clone())
+	return Error(context + ": " + cause.message, cause.kind, details)
 
 // Combines `errors` into one error whose message holds theirs, one per line, and whose `count` detail is
 // how many there were. Returns none when the list is empty.
 export fn join_errors(errors: List[Error]) Error?:
-    if errors.is_empty(): return none
+	if errors.is_empty(): return none
 
-    var text = ""
+	var text = ""
 
-    for cause in errors:
-        if text != "":
-            text += "\n"
-        text += cause.message
+	for cause in errors:
+		if text != "":
+			text += "\n"
+		text += cause.message
 
-    return Error(text, none, {"count": errors.length().to_string()})
+	return Error(text, none, {"count": errors.length().to_string()})

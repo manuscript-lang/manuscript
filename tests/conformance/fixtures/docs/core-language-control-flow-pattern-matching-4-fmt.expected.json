@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn paid(payment: Payment) Bool:\n    match payment:\n        Paid(_):\n            return true\n        _:\n            return false\n"
+    "fmt": "fn paid(payment: Payment) Bool:\n\tmatch payment:\n\t\tPaid(_):\n\t\t\treturn true\n\t\t_:\n\t\t\treturn false\n"
   }
 }

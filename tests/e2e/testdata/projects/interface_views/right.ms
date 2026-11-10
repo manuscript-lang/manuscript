@@ -1,8 +1,8 @@
 import Read, Reader from "./domain.ms"
 
 impl Read for Reader:
-    fn read() Int: self.operation() + 20
+	fn read() Int: self.operation() + 20
 
 export fn right() Read:
-    value := 2
-    return Reader(fn() Int: value)
+	value := 2
+	return Reader(fn() Int: value)

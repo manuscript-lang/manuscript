@@ -1,28 +1,28 @@
 import Read from "./contracts.ms"
 
 export interface Original:
-    fn original() Int
+	fn original() Int
 
 export type Item:
-    value: Int
+	value: Int
 
 impl Original for Item:
-    fn original() Int:
-        return self.value
+	fn original() Int:
+		return self.value
 
 export type Box[T: Clonable]:
-    value: T
+	value: T
 
 export type Holder[T: Read[Int]]:
-    value: T
+	value: T
 
 impl Read[Int] for Holder[T]:
-    fn get() Int:
-        return self.value.get()
+	fn get() Int:
+		return self.value.get()
 
 export enum Choice:
-    Some(value: Int)
-    Empty
+	Some(value: Int)
+	Empty
 
 export type Resource:
-    events: String
+	events: String

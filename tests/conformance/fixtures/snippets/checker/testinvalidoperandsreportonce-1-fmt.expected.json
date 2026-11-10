@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Int:\n    x := nope\n    return x + x\n"
+    "fmt": "fn f() Int:\n\tx := nope\n\treturn x + x\n"
   }
 }

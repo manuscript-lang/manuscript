@@ -1,7 +1,7 @@
 // Parser fixture: lexical forms, independent of name resolution.
 import (
-    stdout from "@std/io/io.ms",
-    Sample from "./support.ms",
+	stdout from "@std/io/io.ms",
+	Sample from "./support.ms",
 )
 
 extern type Native
@@ -9,28 +9,28 @@ extern type Native
 extern fn native_call(value: Int) Int
 
 export type Box[T: Equal & Hashable = Int]:
-    value: T
+	value: T
 
 enum State:
-    Ready
-    Data(value: Int)
+	Ready
+	Data(value: Int)
 
 interface Reader:
-    fn text() String
+	fn text() String
 
 type Document:
-    value: String
+	value: String
 
 impl Reader for Document:
-    fn text() String:
-        return self.value
+	fn text() String:
+		return self.value
 
 impl Document:
-    var fn replace(value: String) Unit:
-        self.value = value
+	var fn replace(value: String) Unit:
+		self.value = value
 
 export fn identity[T](value: T) T:
-    return value
+	return value
 
 MASK := 0xFF_FF
 FLAGS := 0b1010_0101
@@ -39,61 +39,61 @@ RATIO := 3.141_592e-2
 PRICE := 1_000.50_25E+2d
 
 fn syntax(var items: List[Int], doc: Document, state: State) Int:
-    from := 1
-    as := from
-    borrowed := doc.value
-    var exclusive = items[0]
-    [first, second] := [1, 2]
-    {value: label} := doc
-    callback := fn value: value + 1
-    typed: fn(Int) Int = fn(value: Int) Int: value * 2
-    specialized := identity[List[Int]](items)
-    mapping := {"count": COUNT, "ratio": RATIO}
-    plain := "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
-    message := "\{escaped\} {mapping.get("count")} {"{callback(1)}"} \u{41}"
-    selected := if true and not false or as == 0: first else: second
-    var total = 0
-    total += 1
-    total -= 2
-    total *= 3
-    total /= 4
-    total %= 5
+	from := 1
+	as := from
+	borrowed := doc.value
+	var exclusive = items[0]
+	[first, second] := [1, 2]
+	{value: label} := doc
+	callback := fn value: value + 1
+	typed: fn(Int) Int = fn(value: Int) Int: value * 2
+	specialized := identity[List[Int]](items)
+	mapping := {"count": COUNT, "ratio": RATIO}
+	plain := "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"
+	message := "\{escaped\} {mapping.get("count")} {"{callback(1)}"} \u{41}"
+	selected := if true and not false or as == 0: first else: second
+	var total = 0
+	total += 1
+	total -= 2
+	total *= 3
+	total /= 4
+	total %= 5
 
-    for item in 0..10:
-        if item != selected:
-            continue
-        else if item >= 2:
-            break
-        else:
-            total = item
+	for item in 0..10:
+		if item != selected:
+			continue
+		else if item >= 2:
+			break
+		else:
+			total = item
 
-    while total <= 10:
-        total += 1
-    if value := items.first():
-        total = value
-    if var value = items[0]?:
-        value += 1
+	while total <= 10:
+		total += 1
+	if value := items.first():
+		total = value
+	if var value = items[0]?:
+		value += 1
 
-    var resource = acquire()
-    resource.read()
-    resource.close()
+	var resource = acquire()
+	resource.read()
+	resource.close()
 
-    var guard = lock()
-    guard.value = total
-    guard.close()
+	var guard = lock()
+	guard.value = total
+	guard.close()
 
-    result := match state:
-        Ready: 0
-        Data(value): value
-        _: -1
+	result := match state:
+		Ready: 0
+		Data(value): value
+		_: -1
 
-    parsed := "42" | try parse | normalize
-    return result + parsed
+	parsed := "42" | try parse | normalize
+	return result + parsed
 
 test "fixture and unit":
-    fixture.setup()
+	fixture.setup()
 
-    empty := unit
-    check(empty)
+	empty := unit
+	check(empty)
 
 fn runtime_bound() Unit: ...

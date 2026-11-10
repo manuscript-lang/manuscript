@@ -10,55 +10,55 @@
 import stdout from "@std/io/io.ms"
 
 type Big:
-    name: String
-    items: List[Int]
+	name: String
+	items: List[Int]
 
 type Wrap:
-    inner: Big
-    tag: Int
+	inner: Big
+	tag: Int
 
 fn items_of(b: Big) List[Int]:
-    return b.items
+	return b.items
 
 fn size(xs: List[Int]) Int:
-    ys := xs
-    return ys.length()
+	ys := xs
+	return ys.length()
 
 fn both(b: Big) Int:
-    n := size(b.items)
-    return n + b.name.length()
+	n := size(b.items)
+	return n + b.name.length()
 
 fn branch(b: Big, flag: Bool) Int:
-    if flag: return size(b.items)
+	if flag: return size(b.items)
 
-    return b.name.length() + b.items.length()
+	return b.name.length() + b.items.length()
 
 fn reinit(b: Big) Int:
-    var c = b
-    n := size(c.items)
-    c.items = [n, n]
-    return c.items.length()
+	var c = b
+	n := size(c.items)
+	c.items = [n, n]
+	return c.items.length()
 
 fn nested(w: Wrap) List[Int]:
-    return w.inner.items
+	return w.inner.items
 
 fn main() Unit:
-    name := "a name that is long enough to live on the heap"
-    total := (
-        items_of(Big(name: name.clone(), items: [1, 2, 3])).length()
-        + both(Big(name: "xy", items: [1, 2]))
-        - 2
-    )
-    (
-        stdout().write(
-            "{total + branch(Big(name: name.clone(), items: [1]), true)}\n"
-        ).get()
-    )
-    (
-        stdout()
-        .write(
-            "{nested(Wrap(inner: Big(name: name.clone(), items: [1, 2, 3]), tag: 1)).length()}\n"
-        )
-        .get()
-    )
-    stdout().write("{reinit(Big(name: name.clone(), items: [7]))}\n").get()
+	name := "a name that is long enough to live on the heap"
+	total := (
+		items_of(Big(name: name.clone(), items: [1, 2, 3])).length()
+		+ both(Big(name: "xy", items: [1, 2]))
+		- 2
+	)
+	(
+		stdout().write(
+			"{total + branch(Big(name: name.clone(), items: [1]), true)}\n"
+		).get()
+	)
+	(
+		stdout()
+		.write(
+			"{nested(Wrap(inner: Big(name: name.clone(), items: [1, 2, 3]), tag: 1)).length()}\n"
+		)
+		.get()
+	)
+	stdout().write("{reinit(Big(name: name.clone(), items: [7]))}\n").get()

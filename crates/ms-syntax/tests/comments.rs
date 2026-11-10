@@ -18,64 +18,63 @@ fn format(source: &str) -> String {
 
 #[test]
 fn line_comments_stand_alone_and_trail_code() {
-    parse("// top\nfn f() Int:\n    // inside\n    return 1 // trailing\n").unwrap();
+    parse("// top\nfn f() Int:\n\t// inside\n\treturn 1 // trailing\n").unwrap();
 }
 
 #[test]
 fn hash_is_not_a_comment() {
-    let message = parse("# old\nfn f() Int:\n    return 1\n").unwrap_err();
+    let message = parse("# old\nfn f() Int:\n\treturn 1\n").unwrap_err();
     assert!(message.contains("comments start with '//'"), "{message}");
 }
 
 #[test]
 fn text_keeps_comment_markers() {
-    parse("fn f() String:\n    return \"a // b /* c */ d\"\n").unwrap();
+    parse("fn f() String:\n\treturn \"a // b /* c */ d\"\n").unwrap();
 }
 
 #[test]
 fn block_comments_span_lines_and_ignore_layout() {
-    let source = "/*\nfree form\n      any indentation\n*/\nfn f() Int:\n    /*\n  odd\n    */\n    return (\n        /* inside parens */\n        1\n    )\n";
+    let source = "/*\nfree form\n\t  any indentation\n*/\nfn f() Int:\n\t/*\n  odd\n\t*/\n\treturn (\n\t\t/* inside parens */\n\t\t1\n\t)\n";
     parse(source).unwrap();
 }
 
 #[test]
 fn single_line_block_may_end_with_a_line_comment() {
-    parse("/* one line */ // and more\nfn f() Int:\n    return 1\n").unwrap();
+    parse("/* one line */ // and more\nfn f() Int:\n\treturn 1\n").unwrap();
 }
 
 #[test]
 fn block_comment_errors() {
-    let nested = parse("/* a /* b */ */\nfn f() Int:\n    return 1\n").unwrap_err();
+    let nested = parse("/* a /* b */ */\nfn f() Int:\n\treturn 1\n").unwrap_err();
     assert!(nested.contains("do not nest"), "{nested}");
-    let open = parse("fn f() Int:\n    return 1\n/* never closed\n").unwrap_err();
+    let open = parse("fn f() Int:\n\treturn 1\n/* never closed\n").unwrap_err();
     assert!(open.contains("unterminated block comment"), "{open}");
-    let after = parse("/* a */ fn f() Int:\n    return 1\n").unwrap_err();
+    let after = parse("/* a */ fn f() Int:\n\treturn 1\n").unwrap_err();
     assert!(after.contains("cannot follow a block comment"), "{after}");
-    let trailing = parse("fn f() Int:\n    return 1 /* c */\n").unwrap_err();
+    let trailing = parse("fn f() Int:\n\treturn 1 /* c */\n").unwrap_err();
     assert!(trailing.contains("must start its own line"), "{trailing}");
 }
 
 #[test]
 fn block_comment_does_not_end_a_continued_pipe() {
-    parse("fn f() Int:\n    return [1]\n        // step\n        | length\n").unwrap();
-    parse("fn f() Int:\n    return [1]\n        /* step */\n        | length\n").unwrap();
+    parse("fn f() Int:\n\treturn [1]\n\t\t// step\n\t\t| length\n").unwrap();
+    parse("fn f() Int:\n\treturn [1]\n\t\t/* step */\n\t\t| length\n").unwrap();
 }
 
 #[test]
 fn formatter_keeps_block_contents_and_normalizes_trailing_gap() {
-    let source =
-        "fn f() Int:\n    /*\n    keep   this\n       and this\n    */\n    return 1 // x\n";
+    let source = "fn f() Int:\n\t/*\n\tkeep   this\n\t   and this\n\t*/\n\treturn 1 // x\n";
     let out = format(source);
     assert_eq!(
         out,
-        "fn f() Int:\n    /*\n    keep   this\n       and this\n    */\n    return 1  // x\n"
+        "fn f() Int:\n\t/*\n\tkeep   this\n\t   and this\n\t*/\n\treturn 1  // x\n"
     );
     assert_eq!(format(&out), out);
 }
 
 #[test]
 fn formatter_is_idempotent_on_block_before_declaration() {
-    let source = "/*\nDocs for f.\n  Indented line.\n*/\nfn f() Int:\n    return 1  // one\n";
+    let source = "/*\nDocs for f.\n  Indented line.\n*/\nfn f() Int:\n\treturn 1  // one\n";
     let out = format(source);
     assert_eq!(out, source);
 }
@@ -85,7 +84,7 @@ fn formatter_restores_many_comment_and_text_spans_in_order() {
     let mut source = String::new();
     for i in 0..128 {
         source.push_str(&format!(
-            "/* docs {i}\n    keep this indentation\n*/\nfn text_{i}() String:\n    /* inside {i} */\n    return \"\"\"\n        first {i}\n        second\n        \"\"\"\n\n"
+            "/* docs {i}\n\tkeep this indentation\n*/\nfn text_{i}() String:\n\t/* inside {i} */\n\treturn \"\"\"\n\t\tfirst {i}\n\t\tsecond\n\t\t\"\"\"\n\n"
         ));
     }
     let formatted = format(&source);

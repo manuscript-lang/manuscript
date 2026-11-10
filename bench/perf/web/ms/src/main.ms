@@ -1,133 +1,133 @@
 // Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on one of that many scheduler threads. The Go server in ../go answers the same requests.
 import (
-    Bytes from "@std/bytes.ms",
-    read_file, write_file from "@std/os/fs.ms",
-    HttpServerOptions,
-    headers,
-    HttpExchange,
-    HttpRequest,
-    HttpResponse,
-    buffered from "@std/net/http.ms",
-    lookup, serve from "@std/net/net.ms",
-    max from "@std/math/math.ms",
-    arguments from "@std/os/env.ms",
+	Bytes from "@std/bytes.ms",
+	read_file, write_file from "@std/os/fs.ms",
+	HttpServerOptions,
+	headers,
+	HttpExchange,
+	HttpRequest,
+	HttpResponse,
+	buffered from "@std/net/http.ms",
+	lookup, serve from "@std/net/net.ms",
+	max from "@std/math/math.ms",
+	arguments from "@std/os/env.ms",
 )
 
 fn score(id: Int) Int:
-    return id * 7919 % 1000
+	return id * 7919 % 1000
 
 fn reply(status: Int, text: String) HttpResponse:
-    return HttpResponse(status, headers(), text.to_bytes())
+	return HttpResponse(status, headers(), text.to_bytes())
 
 // Next entry after (prev_id, prev_score) in score-descending, id-ascending order.
 fn pick_after(prev_id: Int, prev_score: Int) Int:
-    var best = -1
-    var best_score = -1
-    var id = 0
+	var best = -1
+	var best_score = -1
+	var id = 0
 
-    while id < 1000:
-        sc := score(id)
+	while id < 1000:
+		sc := score(id)
 
-        if sc < prev_score or (sc == prev_score and id > prev_id):
-            if sc > best_score:
-                best = id
-                best_score = sc
+		if sc < prev_score or (sc == prev_score and id > prev_id):
+			if sc > best_score:
+				best = id
+				best_score = sc
 
-        id += 1
+		id += 1
 
-    return best
+	return best
 
 fn top(k: Int) String:
-    var out = "["
-    var n = 0
-    var prev_id = -1
-    var prev_score = 1000
+	var out = "["
+	var n = 0
+	var prev_id = -1
+	var prev_score = 1000
 
-    while n < k:
-        best := pick_after(prev_id, prev_score)
-        if n > 0:
-            out = "{out},"
-        out = "{out}\{\"id\":{best},\"score\":{score(best)}\}"
-        prev_id = best
-        prev_score = score(best)
-        n += 1
+	while n < k:
+		best := pick_after(prev_id, prev_score)
+		if n > 0:
+			out = "{out},"
+		out = "{out}\{\"id\":{best},\"score\":{score(best)}\}"
+		prev_id = best
+		prev_score = score(best)
+		n += 1
 
-    return "{out}]\n"
+	return "{out}]\n"
 
 fn top_reply(query: String) HttpResponse:
-    parts := query.split("=")
-    if parts.length() != 2 or parts.get(0) != "n": return reply(400, "bad n\n")
+	parts := query.split("=")
+	if parts.length() != 2 or parts.get(0) != "n": return reply(400, "bad n\n")
 
-    if k := parts.get(1).parse_int():
-        if k >= 1 and k <= 50: return reply(200, top(k))
-    return reply(400, "bad n\n")
+	if k := parts.get(1).parse_int():
+		if k >= 1 and k <= 50: return reply(200, top(k))
+	return reply(400, "bad n\n")
 
 fn user_reply(path: String) HttpResponse:
-    parts := path.split("/")
-    if parts.length() != 3: return reply(404, "not found\n")
+	parts := path.split("/")
+	if parts.length() != 3: return reply(404, "not found\n")
 
-    if id := parts.get(2).parse_int():
-        if id >= 0 and id < 1000:
-            return reply(
-                200, "\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
-            )
-    return reply(404, "not found\n")
+	if id := parts.get(2).parse_int():
+		if id >= 0 and id < 1000:
+			return reply(
+				200, "\{\"id\":{id},\"name\":\"user{id}\",\"score\":{score(id)}\}\n"
+			)
+	return reply(404, "not found\n")
 
 // Resolve localhost, write 1 MiB to the connection's own file, read it back.
 fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
-    if addresses := lookup("localhost"):
-        path := "{dir}/m{slot}.bin"
-        if got := write_and_read(path, payload):
-            return reply(200, "{addresses.length()} {got.length()}\n")
+	if addresses := lookup("localhost"):
+		path := "{dir}/m{slot}.bin"
+		if got := write_and_read(path, payload):
+			return reply(200, "{addresses.length()} {got.length()}\n")
 
-        return reply(500, "file failed\n")
+		return reply(500, "file failed\n")
 
-    return reply(500, "lookup failed\n")
+	return reply(500, "lookup failed\n")
 
 fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
-    try write_file(path, payload, replace: true).wait()
-    return ok(try read_file(path).wait())
+	try write_file(path, payload, replace: true).wait()
+	return ok(try read_file(path).wait())
 
 // The benchmark endpoints.
 fn make_handler(dir: String) fn(var HttpExchange) Result[Unit, Error]:
-    var text = "0123456789abcdef"
-    var i = 0
+	var text = "0123456789abcdef"
+	var i = 0
 
-    while i < 16:
-        text = "{text}{text}"
-        i += 1
+	while i < 16:
+		text = "{text}{text}"
+		i += 1
 
-    payload := text.to_bytes()
-    dir_copy := dir.clone()
+	payload := text.to_bytes()
+	dir_copy := dir.clone()
 
-    handler := fn(request: HttpRequest) HttpResponse:
-        if request.path == "/health": return reply(200, "ok\n")
-        if request.path == "/top": return top_reply(request.query)
-        if request.path == "/io": return io_reply(dir_copy, request.query, payload)
-        if request.path.starts_with("/user/"): return user_reply(request.path)
+	handler := fn(request: HttpRequest) HttpResponse:
+		if request.path == "/health": return reply(200, "ok\n")
+		if request.path == "/top": return top_reply(request.query)
+		if request.path == "/io": return io_reply(dir_copy, request.query, payload)
+		if request.path.starts_with("/user/"): return user_reply(request.path)
 
-        return reply(404, "not found\n")
+		return reply(404, "not found\n")
 
-    return buffered(handler)
+	return buffered(handler)
 
 // Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads until the server stops.
 fn serve_here(port: String, dir: String, threads: Int) Int:
-    options := HttpServerOptions(cores: threads)
+	options := HttpServerOptions(cores: threads)
 
-    if acquired := serve(
-        address: "127.0.0.1:{port}", handler: make_handler(dir), options: options
-    ):
-        server := acquired
-        _ignored := server.wait()
-        return 0
+	if acquired := serve(
+		address: "127.0.0.1:{port}", handler: make_handler(dir), options: options
+	):
+		server := acquired
+		_ignored := server.wait()
+		return 0
 
-    return 1
+	return 1
 
 fn main() Int:
-    args := arguments()
-    if args.length() < 2 or args.length() > 3: return 2
+	args := arguments()
+	if args.length() < 2 or args.length() > 3: return 2
 
-    var threads = 1
-    if args.length() == 3:
-        threads = args.get(2).parse_int().get(1)
-    return serve_here(args.get(0), args.get(1), max(threads, 1))
+	var threads = 1
+	if args.length() == 3:
+		threads = args.get(2).parse_int().get(1)
+	return serve_here(args.get(0), args.get(1), max(threads, 1))

@@ -1,6 +1,6 @@
 import (
-    NativeRawTerminal from "@std/cli/terminal.ms",
-    Duration from "@std/time.ms",
+	NativeRawTerminal from "@std/cli/terminal.ms",
+	Duration from "@std/time.ms",
 )
 
 export extern fn msstd_terminal_event_kind() Int
@@ -42,16 +42,16 @@ export extern fn msstd_terminal_size_rows() Int
 export extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Unit
 
 export extern fn msstd_terminal_raw_terminal_share(
-    handle: NativeRawTerminal
+	handle: NativeRawTerminal
 ) NativeRawTerminal
 
 export extern fn msstd_terminal_raw_terminal_next_event(
-    handle: NativeRawTerminal,
-    timeout: Duration?
+	handle: NativeRawTerminal,
+	timeout: Duration?
 ) Unit?!
 
 export extern fn msstd_terminal_raw_terminal_size_status(
-    handle: NativeRawTerminal
+	handle: NativeRawTerminal
 ) Unit!
 
 export extern fn msstd_terminal_raw_terminal_size_columns(handle: NativeRawTerminal) Int
@@ -59,17 +59,17 @@ export extern fn msstd_terminal_raw_terminal_size_columns(handle: NativeRawTermi
 export extern fn msstd_terminal_raw_terminal_size_rows(handle: NativeRawTerminal) Int
 
 export extern fn msstd_terminal_raw_terminal_move_cursor(
-    handle: NativeRawTerminal,
-    row: Int,
-    column: Int
+	handle: NativeRawTerminal,
+	row: Int,
+	column: Int
 ) Unit!
 
 export extern fn msstd_terminal_raw_terminal_show_cursor(
-    handle: NativeRawTerminal,
-    visible: Bool
+	handle: NativeRawTerminal,
+	visible: Bool
 ) Unit!
 
 export extern fn msstd_terminal_raw_terminal_erase(
-    handle: NativeRawTerminal,
-    region: Int
+	handle: NativeRawTerminal,
+	region: Int
 ) Unit!

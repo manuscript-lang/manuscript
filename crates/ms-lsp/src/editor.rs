@@ -593,7 +593,7 @@ pub fn query_editor(
             line -= 1;
         }
         let current = lines[line].clone();
-        let indent = current.len() - current.trim_start_matches(' ').len();
+        let indent = ms_syntax::doc::indent_columns(&current);
         if current.contains(&marker) {
             // A half-written statement can still query the scope using a standalone
             // expression at the same indentation. Member queries retain the receiver.

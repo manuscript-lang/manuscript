@@ -1,19 +1,19 @@
 type Key:
-    id: Int
+	id: Int
 
 type Other:
-    id: Int
+	id: Int
 
 impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.id == other.id
+	fn equals(other: Key) Bool:
+		return self.id == other.id
 
 fn same[T: Equal](left: T, right: T) Bool:
-    return left.equals(right)
+	return left.equals(right)
 
 export fn main() Int:
-    key := Key(1)
-    other := Other(1)
-    if key.equals(other): return 1
+	key := Key(1)
+	other := Other(1)
+	if key.equals(other): return 1
 
-    return 0
+	return 0

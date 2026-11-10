@@ -141,12 +141,22 @@ fn compaction_joins_guards_and_shortens_self_assignments() {
 }
 
 #[test]
-fn leading_tabs_are_one_indent_level_and_format_to_spaces() {
+fn leading_whitespace_formats_to_one_tab_per_level() {
     let file: Arc<str> = Arc::from("tabs.ms");
     let tabbed = "fn f(n: Int) Int:\n\tvar t = 0\n\tfor i in 0..n:\n\t\tif i > 1:\n\t\t\tt += i\n\treturn t\n\nfn text() String:\n\treturn \"\"\"\n\t\ta\tb\n\t\t\"\"\"\n";
     let formatted = ms_syntax::format(&file, tabbed).unwrap();
-    // Code indentation becomes spaces; text content is kept byte for byte.
-    assert!(formatted.starts_with("fn f(n: Int) Int:\n    var t = 0\n    for i in 0..n:\n        if i > 1:\n            t += i\n"));
+    // Code indentation becomes tabs; text content is kept byte for byte.
+    assert!(formatted.starts_with(
+        "fn f(n: Int) Int:\n\tvar t = 0\n\tfor i in 0..n:\n\t\tif i > 1:\n\t\t\tt += i\n"
+    ));
+    let (code, _) = tabbed.split_once("\nfn text").unwrap();
+    let spaced = code.replace('\t', "    ");
+    assert_eq!(
+        ms_syntax::format(&file, &spaced).unwrap(),
+        ms_syntax::format(&file, code).unwrap()
+    );
+    let piped = "fn f(xs: List[Int]) Int:\n\treturn xs\n\t\t| map(g)\n\t\t| sum()\n";
+    assert_eq!(ms_syntax::format(&file, piped).unwrap(), piped);
     assert!(
         formatted.contains("\n\t\ta\tb\n\t\t\"\"\"\n"),
         "{formatted:?}"

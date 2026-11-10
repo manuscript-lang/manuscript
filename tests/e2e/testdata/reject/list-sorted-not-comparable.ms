@@ -1,5 +1,5 @@
 type Plain:
-    value: Int
+	value: Int
 
 export fn main() Int:
-    return [Plain(2), Plain(1)].sorted().length()
+	return [Plain(2), Plain(1)].sorted().length()

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import stdout from \"@std/io/io.ms\"\n\nfn main() Unit:\n    a := 0xFF_FF\n    b := 0b1010_0101\n    c := 1_000_000\n    d := -0x10\n    e: Int32 = 0x7FFF_FFFF\n    m := {0xFF: \"x\"}\n    f := 3.141_592\n    _ := stdout().write(\n        \"{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\\n\"\n    )\n"
+    "fmt": "import stdout from \"@std/io/io.ms\"\n\nfn main() Unit:\n\ta := 0xFF_FF\n\tb := 0b1010_0101\n\tc := 1_000_000\n\td := -0x10\n\te: Int32 = 0x7FFF_FFFF\n\tm := {0xFF: \"x\"}\n\tf := 3.141_592\n\t_ := stdout().write(\n\t\t\"{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\\n\"\n\t)\n"
   }
 }

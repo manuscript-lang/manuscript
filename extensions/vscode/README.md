@@ -10,7 +10,7 @@ Inline type hints are off by default to keep code readable. Hover over a name to
 
 **Manuscript: Capture sampling profile** chooses a new output directory and runs `ms profile` on the containing project or source in a terminal. The bundle contains the executable, folded stacks, a pprof profile, a top report, and a manifest. Open `profile.pb` with a pprof viewer.
 
-Project manifests provide detected build/check/test/lint tasks with positioned problem matching. Process invocation uses argument arrays rather than a shell. Indentation defaults to four spaces and Manuscript is the default formatter for `.ms` files.
+Project manifests provide detected build/check/test/lint tasks with positioned problem matching. Process invocation uses argument arrays rather than a shell. Indentation defaults to tabs and Manuscript is the default formatter for `.ms` files.
 
 From the repository root, package and install the extension with Make and the Node version in [`.node-version`](../../.node-version) (including npm):
 

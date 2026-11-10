@@ -55,7 +55,7 @@ pub fn folding_ranges(d: &Document) -> Json {
 
 fn indentation_folding(d: &Document) -> Json {
     let lines: Vec<&str> = d.text.split('\n').collect();
-    let indent = |line: &str| line.len() - line.trim_start_matches(' ').len();
+    let indent = ms_syntax::doc::indent_columns;
     let mut result = Vec::new();
     for (start, line) in lines.iter().enumerate() {
         let header = text::editor_tokens(line)

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"test\":\n    value := fixture.value\n"
+    "fmt": "test \"test\":\n\tvalue := fixture.value\n"
   }
 }

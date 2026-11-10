@@ -29,7 +29,7 @@ fn fmt_rewrites_checks_and_rejects_invalid_source() {
     assert_eq!(status, 0, "{stderr}");
     assert_eq!(
         std::fs::read_to_string(dir.join("a.ms")).unwrap(),
-        "fn main() Unit:\n    x := 1\n"
+        "fn main() Unit:\n\tx := 1\n"
     );
     assert_eq!(ms(&dir, &["fmt", "--check", "a.ms"]).0, 0);
 

@@ -1,6 +1,6 @@
 fn h(xs: List[Int]) List[Int]: xs
 
 export fn main() Int:
-    a := h([1, 5])[1]
-    b := h([1])[0] + h([2])[0]
-    return a + b
+	a := h([1, 5])[1]
+	b := h([1])[0] + h([2])[0]
+	return a + b

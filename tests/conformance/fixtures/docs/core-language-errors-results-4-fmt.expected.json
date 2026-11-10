@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "\nfn successful_price(outcome: Result[Decimal, Error]) Decimal?:\n    return outcome.to_optional()\n"
+    "fmt": "\nfn successful_price(outcome: Result[Decimal, Error]) Decimal?:\n\treturn outcome.to_optional()\n"
   }
 }

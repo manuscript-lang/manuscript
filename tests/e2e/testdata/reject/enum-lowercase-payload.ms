@@ -1,6 +1,6 @@
 enum Keyword:
-    case(value: Int)
+	case(value: Int)
 
 fn read(value: Keyword) Int:
-    match value:
-        case: return 0
+	match value:
+		case: return 0

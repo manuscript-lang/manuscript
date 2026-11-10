@@ -1,59 +1,59 @@
 import (
-    expect_equal from "@std/test/test.ms",
-    Queue from "@std/collections/queue.ms",
+	expect_equal from "@std/test/test.ms",
+	Queue from "@std/collections/queue.ms",
 )
 
 test "each paragraph develops one case":
-    var queue = Queue[Int]()
-    queue.enqueue(7)
-    try expect_equal(queue.dequeue(), 7)
+	var queue = Queue[Int]()
+	queue.enqueue(7)
+	try expect_equal(queue.dequeue(), 7)
 
-    var copy = queue.clone()
-    copy.enqueue(9)
-    try expect_equal(copy.dequeue(), 9)
+	var copy = queue.clone()
+	copy.enqueue(9)
+	try expect_equal(copy.dequeue(), 9)
 
-    // An absent value stays absent.
-    missing: Int? = none
-    try expect_equal(queue.dequeue(), missing)
+	// An absent value stays absent.
+	missing: Int? = none
+	try expect_equal(queue.dequeue(), missing)
 
 fn prepare(value: Int) Int:
-    adjusted := value + 1
-    return adjusted
+	adjusted := value + 1
+	return adjusted
 
 fn guarded(value: Int) Int:
-    adjusted := value + 1
-    if adjusted < 0: return 0
-    if adjusted > 10: return 10
+	adjusted := value + 1
+	if adjusted < 0: return 0
+	if adjusted > 10: return 10
 
-    record(adjusted)
+	record(adjusted)
 
-    result := adjusted * 2
-    return result
+	result := adjusted * 2
+	return result
 
 fn sections() Unit:
-    first := 1
+	first := 1
 
-    // Explain the next stage.
-    second := first + 1
-    record(second)
+	// Explain the next stage.
+	second := first + 1
+	record(second)
 
-    // Report its result.
-    record(first + second)
+	// Report its result.
+	record(first + second)
 
 fn callbacks() Unit:
-    record(0)
+	record(0)
 
-    transform := fn(value: Int) Int:
-        adjusted := value + 1
-        return adjusted
+	transform := fn(value: Int) Int:
+		adjusted := value + 1
+		return adjusted
 
-    record(transform(2))
+	record(transform(2))
 
-    consume(
-        fn:
-            value := 3
-            return value
-    )
+	consume(
+		fn:
+			value := 3
+			return value
+	)
 
-    record(4)
-    consume(fn: return 7)
+	record(4)
+	consume(fn: return 7)

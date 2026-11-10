@@ -1,6 +1,14 @@
 //! Doc-comment extraction: the `//` lines and `/* */` blocks directly above a declaration, and a
 //! trailing `//` on its line.
 
+/// The columns of leading whitespace in `line`, a tab counting four.
+pub fn indent_columns(line: &str) -> usize {
+    line.chars()
+        .take_while(|c| matches!(c, ' ' | '\t'))
+        .map(|c| if c == '\t' { 4 } else { 1 })
+        .sum()
+}
+
 /// The comments that end on the line above `line_start` (a byte offset at the start of a line).
 /// A blank line or a line of code detaches the block. When `indent` is given, only comments at
 /// that indentation count. Markers are removed; the text is otherwise preserved.
@@ -11,7 +19,7 @@ pub fn comments_above(source: &str, line_start: usize, indent: Option<usize>) ->
     // the whole prefix would make each call cost the text before it (every completion item asks).
     let mut rest = (!before.is_empty()).then_some(before);
     let mut nearest: Vec<&str> = Vec::new();
-    let width = |s: &str| s.len() - s.trim_start_matches([' ', '\t']).len();
+    let width = indent_columns;
     let mut blocks: Vec<String> = Vec::new();
     // Lines already consumed from the end.
     let mut used = 0;

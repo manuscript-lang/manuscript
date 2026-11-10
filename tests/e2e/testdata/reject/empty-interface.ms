@@ -1,4 +1,4 @@
 interface Marker: ...
 
 export fn main() Int:
-    return 0
+	return 0

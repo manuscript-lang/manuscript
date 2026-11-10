@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import Logger, LogLevel, record from \"@std/log.ms\"\n\ntype Request:\n    request: String\n\ntype Payload:\n    count: Int\n    ok: Bool\n    nested: List[Bool?]\n    service: String\n    level: Int\n    msg: String\n    time: Int\n\nexport fn emit(logger: Logger) Unit!:\n    child := try logger.child_json(\"\\{\\\"request\\\":\\\"req-1\\\"\\}\")\n    fields := Payload(\n        count: 9007199254740993, ok: true, nested: [none, false], service: \"worker\",\n        level: 0, msg: \"spoofed\", time: 0\n    )\n    try child.debug(\"filtered\")\n    try record(\n        logger: child, level: LogLevel.Info, message: \"received \\\"payload\\\"\\nnext\",\n        fields\n    )\n    try logger.warn(\"complete\")\n"
+    "fmt": "import Logger, LogLevel, record from \"@std/log.ms\"\n\ntype Request:\n\trequest: String\n\ntype Payload:\n\tcount: Int\n\tok: Bool\n\tnested: List[Bool?]\n\tservice: String\n\tlevel: Int\n\tmsg: String\n\ttime: Int\n\nexport fn emit(logger: Logger) Unit!:\n\tchild := try logger.child_json(\"\\{\\\"request\\\":\\\"req-1\\\"\\}\")\n\tfields := Payload(\n\t\tcount: 9007199254740993, ok: true, nested: [none, false], service: \"worker\",\n\t\tlevel: 0, msg: \"spoofed\", time: 0\n\t)\n\ttry child.debug(\"filtered\")\n\ttry record(\n\t\tlogger: child, level: LogLevel.Info, message: \"received \\\"payload\\\"\\nnext\",\n\t\tfields\n\t)\n\ttry logger.warn(\"complete\")\n"
   }
 }

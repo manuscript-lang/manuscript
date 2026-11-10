@@ -1,22 +1,22 @@
 import (
-    Duration from "@std/time.ms",
-    CpuInfo,
-    MemoryUsage,
-    NetworkInterface,
-    SystemInfo,
-    UserInfo from "@std/os/system.ms",
+	Duration from "@std/time.ms",
+	CpuInfo,
+	MemoryUsage,
+	NetworkInterface,
+	SystemInfo,
+	UserInfo from "@std/os/system.ms",
 )
 
 // The host's memory, uptime, load, and parallelism numbers in one flat record; `metrics` shapes it into `SystemMetrics`.
 export type MetricsSnapshot:
-    total_memory: Int
-    free_memory: Int
-    available_memory: Int
-    uptime_nanos: Int
-    load_1: Float
-    load_5: Float
-    load_15: Float
-    available_parallelism: Int
+	total_memory: Int
+	free_memory: Int
+	available_memory: Int
+	uptime_nanos: Int
+	load_1: Float
+	load_5: Float
+	load_15: Float
+	available_parallelism: Int
 
 export extern fn msstd_system_endianness() String
 
