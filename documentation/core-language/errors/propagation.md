@@ -43,7 +43,7 @@ PASS ready_test.ms::prepare before returning a label
 
 Standalone `try call()` requires a `Unit` success. Otherwise bind it (`name := try call()`) or `return try call()`.
 
-Omitting `try` discards the Result, which the checker rejects. To ignore it deliberately, use [`let _ =`](results.md#discarding-a-result).
+Omitting `try` discards the Result, which the checker rejects. To ignore it deliberately, use [`_ :=`](results.md#discarding-a-result).
 
 ## Try in a pipe flow
 

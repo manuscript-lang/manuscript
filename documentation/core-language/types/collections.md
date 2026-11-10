@@ -94,7 +94,7 @@ bo: 72
 
 ## Mutation and copies
 
-Mutators update the receiver in place and return Unit; a `let` binding cannot be mutated, so declare the collection with `var`.
+Mutators update the receiver in place and return Unit; a `:=` binding cannot be mutated, so declare the collection with `var`.
 
 - List: `append`, `prepend`, `insert`, `set`, `replace`, `swap`, `remove`, `splice`, `fill`, `copy_within`, `reverse`.
 - Map: `add`, `remove`, `add_default`, `add_default_from`, `merge`, `clear`. Removing an absent key is a no-op.

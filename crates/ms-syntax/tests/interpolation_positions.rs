@@ -74,9 +74,8 @@ fn later_interpolation_errors_keep_positions_and_brace_columns() {
     let file = Arc::from("positions.ms");
     for prefix in ["é {value} ".repeat(64), "{value}".repeat(64)] {
         for ending in ["\n", "\r\n"] {
-            let source = format!(
-                "fn head() Int: 1{ending}text := \"{prefix}{{value(item = 2)}}\"{ending}"
-            );
+            let source =
+                format!("fn head() Int: 1{ending}text := \"{prefix}{{value(item = 2)}}\"{ending}");
             let error = ms_syntax::parser::parse(&file, &source).unwrap_err();
             assert!(error.message.starts_with("argument labels use a colon;"));
             assert_eq!(error.pos.offset as usize, source.rfind('=').unwrap());

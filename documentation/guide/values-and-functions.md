@@ -48,7 +48,7 @@ Save it as `invoice.ms` and run `ms run invoice.ms`.
 
 ## What to notice
 
-- `let` names a value and `var` names one that changes. `subtotal` is a `var` because the loop adds to it; everything else is a `let`. Types are inferred, so you rarely write them.
+- `:=` names a value and `var` names one that changes. `subtotal` is a `var` because the loop adds to it; everything else is a `:=`. Types are inferred, so you rarely write them.
 - A function declares its parameter types and its result type after the parameter list. `quantity: Int = 1` is a default, so `line_total(price)` works without the second argument.
 - `if` works as a statement and as an expression: `pad := if rest < 10: "0" else: ""` picks a value.
 - `{expression}` inside a string interpolates any expression, including a function call.

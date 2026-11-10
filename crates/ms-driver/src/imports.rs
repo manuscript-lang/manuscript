@@ -60,9 +60,7 @@ pub fn exported_declarations(syms: ms_syntax::Names, source: &str) -> Vec<Export
             .trim_start();
         // A declaration keyword, or a constant `NAME := value` / `NAME: Type = value`.
         let (keyword, rest) = match rest.split_once(char::is_whitespace) {
-            Some((keyword, tail))
-                if matches!(keyword, "fn" | "type" | "enum" | "interface") =>
-            {
+            Some((keyword, tail)) if matches!(keyword, "fn" | "type" | "enum" | "interface") => {
                 (keyword, tail.trim_start())
             }
             _ => ("", rest),

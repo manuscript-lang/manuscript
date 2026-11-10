@@ -61,11 +61,7 @@ fn check_deeply_nested_fstrings() {
 
     let file: Arc<str> = Arc::from("nested.ms");
     for depth in [64, 128, 256] {
-        let source = format!(
-            "text := {}1{}\n",
-            "\"{".repeat(depth),
-            "}\"".repeat(depth)
-        );
+        let source = format!("text := {}1{}\n", "\"{".repeat(depth), "}\"".repeat(depth));
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
         let mut count = Count(0);
         for decl in &module.decls {
@@ -108,8 +104,7 @@ fn nested_interpolation_errors_keep_their_original_positions_and_hints() {
 fn nested_interpolations_inside_multiline_functions_keep_expression_forms() {
     let file: Arc<str> = Arc::from("nested.ms");
     for ending in ["\n", "\r\n"] {
-        let source =
-            format!("fn get() String:\n    x := \"{{\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
+        let source = format!("fn get() String:\n    x := \"{{\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
         assert_eq!(module.decls.len(), 1);
         let formatted = ms_syntax::format(&file, &source).unwrap();

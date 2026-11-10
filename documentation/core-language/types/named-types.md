@@ -118,7 +118,7 @@ scores
 ```
 
 - The outer list owns `report.rows` after construction. The sibling field `report.title` remains readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected; use `report.rows.clone()` at construction if both owners need the rows.
-- Field moves apply to owned fields (strings, lists, types, resources) of a `let` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and types that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
+- Field moves apply to owned fields (strings, lists, types, resources) of a `:=` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and types that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
 - A parameter whose field is moved into another owner is consumed: its caller gives up the type. Passing `.clone()` keeps an independent caller-owned type.
 
 Reading a field is different from moving it. `rows := report.rows` borrows it. A getter that returns the field also returns an inferred borrow:

@@ -7,7 +7,7 @@ weight = 1
 
 Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` may be any value type. Most failures use the prelude type [`Error`](#the-error-type). `Result`, `ok`, `error`, and `Error` are in the prelude.
 
-Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if let`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
+Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if v := x`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Validate a value and show the outcome
 
@@ -141,7 +141,7 @@ price := discount(price: 20d, percent: 10d).get(0d)
 text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
-Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
+Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if v := x`, or `try`.
 
 ## Converting success to an Optional
 
@@ -156,13 +156,13 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if let`, `try`, or return it. To ignore it deliberately, bind it to `_`:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if v := x`, `try`, or return it. To ignore it deliberately, bind it to `_`:
 
 ```manuscript
 _ := discount(price: 20d, percent: 10d)
 ```
 
-The initializer still runs and the outcome is dropped unread. Several `let _` may share a scope. This does not handle an error or stop a fault.
+The initializer still runs and the outcome is dropped unread. Several `_ :=` may share a scope. This does not handle an error or stop a fault.
 
 ## Converting a domain error to Error
 

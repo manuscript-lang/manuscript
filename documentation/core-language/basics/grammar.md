@@ -17,7 +17,7 @@ The language uses these keywords:
 
 ```manuscript
 and break continue else enum export extern false fixture fn for if
-impl import in interface let match not or return self test true try type
+impl import in interface match not or return self test true try type
 unit var while
 ```
 
@@ -116,8 +116,7 @@ ImportNames   = Name, { ",", Name } ;
 Declaration   = [ "export" ], (TypeDeclaration | EnumDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
-ConstantDeclaration = "let", ( ConstantBinding | "(", NEWLINE, INDENT, ConstantBinding, { ConstantBinding }, DEDENT, ")", NEWLINE ) ;
-ConstantBinding = Name, [ ":", Type ], "=", Expression, NEWLINE ;
+ConstantDeclaration = Name, ( ":=", Expression | ":", Type, "=", Expression ), NEWLINE ;
 
 TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
                   ("...", NEWLINE | NEWLINE, INDENT, RecordBody, DEDENT) ;
@@ -173,7 +172,7 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 - `export` applies to records, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or `impl` blocks.
 - `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Receiver parameters must occur in the receiver application. Operations and source methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Overlap follows [contracts](../types/contracts.md#generic-implementations).
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
-- No module-level statements or `var`; a top-level `let` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
+- No module-level statements or `var`; a top-level `:=` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
 
 ## Statements and patterns
 
@@ -183,16 +182,18 @@ Statement     = SimpleStatement, NEWLINE
               | IfStatement | WhileStatement | ForStatement ;
 SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
-Binding       = ("let" | "var"), ( BindingEntry
-              | "(", NEWLINE, { BindingEntry, NEWLINE }, ")" ) ;
-BindingEntry  = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
+Binding       = ImmutableBinding | "var", ( VarEntry
+              | "(", NEWLINE, { VarEntry, NEWLINE }, ")" ) ;
+ImmutableBinding = ( Name | PositionalPattern | RecordPattern ), ":=", Expression
+              | Name, ":", Type, "=", Expression ;
+VarEntry      = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = AssignmentTarget, "=", Expression ;
 AssignmentTarget = Name, { ".", Name | "[", Expression, "]" } ;
 CompoundAssignment = AssignmentTarget, ( "+=" | "-=" | "*=" | "/=" | "%=" ), Expression ;
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
-IfStatement   = "if", [ ("let" | "var"), Name, "=" ], Expression, Suite,
-                { "else", "if", [ ("let" | "var"), Name, "=" ], Expression, Suite },
+IfStatement   = "if", [ Name, ":=" | "var", Name, "=" ], Expression, Suite,
+                { "else", "if", [ Name, ":=" | "var", Name, "=" ], Expression, Suite },
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
@@ -238,7 +239,7 @@ count := 3                       // Not a complete module item.
 fn wrong() Int:
   return 1                          // A suite requires four spaces.
 fn wrong() Int:
-    let (first, second) = pair       // Parentheses are not a binding pattern.
+    (first, second) := pair          // Parentheses are not a binding pattern.
 ```
 
 Each example is an independent rejected form.

@@ -28,10 +28,10 @@ ms run count.ms
 3
 ```
 
-Change `var count` to `let count`, then run `ms check count.ms`. It exits with status 1 and points to the assignment on line 3. The diagnostic message is:
+Change `var count` to `count := ...`, then run `ms check count.ms`. It exits with status 1 and points to the assignment on line 3. The diagnostic message is:
 
 ```text
-cannot assign immutable binding count; declare it with 'var count = ...' instead of 'let'
+cannot assign immutable binding count; declare it with 'var count = ...' instead of 'count := ...'
 ```
 
 Here the intended repair is mechanical, so you can apply it and run again:
@@ -49,7 +49,7 @@ Each diagnostic also has a stable rule code and source position for editor and a
 
 Messages read `<cause>; <fix>`. The cause has stable wording naming the offending name, type, or count.
 
-The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/core.ms"`, `declare it with 'var x = ...' instead of 'let'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported.
+The fix says what to write, such as `did you mean 'count'?`, `add: import panic from "@std/core.ms"`, `declare it with 'var x = ...' instead of 'count := ...'`, or the valid arguments, members, cases, or exports. Codes classify only the text before the first `; `, and follow-on errors that restate an earlier one are not reported.
 
 ## Explaining a violated rule
 
@@ -63,7 +63,7 @@ Several inputs share one document; see [analysis selection](../implementation.md
 Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-path spelling, including paths relative to the invocation directory for collection inputs.
 
 - Optional `end` has the same coordinate fields (exclusive). Parser token errors and failed import names provide it.
-- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, members, labels and types with one `did you mean` candidate, unresolved standard names and the `Decimal` literal import (an `import` inserted at the top of the file), `Some`/`Ok`/`Err`/`True`/`null`/`this` habits, assignment to a `let` binding (`let` becomes `var`), and `Case()` on a nullary case, Int values used as Float (`.to_float()`, or `3.0` for a literal), Int, Float and Bool values used as String (`"{value}"`), and `ms lint` unused imports (MSL102, the name with its separator, or the whole statement) carry one; string-match rewrites, ambiguous imports and ownership errors get prose only: a machine-applied `.clone()` would hide the design choice and cost time and memory. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
+- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, members, labels and types with one `did you mean` candidate, unresolved standard names and the `Decimal` literal import (an `import` inserted at the top of the file), `Some`/`Ok`/`Err`/`True`/`null`/`this` habits, assignment to a `:=` binding (`:=` becomes `var`), and `Case()` on a nullary case, Int values used as Float (`.to_float()`, or `3.0` for a literal), Int, Float and Bool values used as String (`"{value}"`), and `ms lint` unused imports (MSL102, the name with its separator, or the whole statement) carry one; string-match rewrites, ambiguous imports and ownership errors get prose only: a machine-applied `.clone()` would hide the design choice and cost time and memory. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
 - Optional `subcode` (`MS3000.1`) names the cause within the family `code`; it is absent for messages without a known cause. Sub-codes are never renumbered or reused.
 - Consumers must tolerate absent optional fields.
 

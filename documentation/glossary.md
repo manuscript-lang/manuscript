@@ -9,7 +9,7 @@ Unfamiliar term? Follow its link for exact rules.
 
 | Term | Meaning in this guide |
 | --- | --- |
-| [Binding](core-language/basics/bindings.md) | A name attached to a value. `let` prevents reassignment; `var` allows a replacement value. |
+| [Binding](core-language/basics/bindings.md) | A name attached to a value. `:=` prevents reassignment; `var` allows a replacement value. |
 | [Scope](core-language/basics/bindings.md#scope-and-shadowing) | The part of a program where a name is visible. |
 | [Module](core-language/modules/declarations.md) | One `.ms` source file. It imports and exports individual declarations. |
 | [Type](core-language/types/named-types.md) | A value with named fields, such as a customer with a name and email. |
@@ -28,7 +28,7 @@ Unfamiliar term? Follow its link for exact rules.
 | [Effect](core-language/functions/effects.md) | Something a function does beyond computing a value, such as printing, reading a file or the clock. `// ms: allow_effect` permits one; a function with no line is pure. |
 | [Closure](core-language/functions/function-values-and-closures.md) | A function value that keeps the surrounding values it uses. |
 | [Own](core-language/types/references.md) | The binding, field, or collection slot responsible for dropping a value. A move transfers that responsibility; replacing an owned value drops the old one. |
-| [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`let`, plain argument) or exclusive (`var`). It ends at its last use. |
+| [Borrow](core-language/types/references.md#borrowing) | Access to a value another holder owns, without taking it: shared (`:=`, plain argument) or exclusive (`var`). It ends at its last use. |
 | [Move](core-language/types/references.md) | Ownership transfers to a new holder at the value's last use. The old name is dead until reassigned. |
 | [Clone](core-language/types/named-types.md#mutation-and-cloning) | `.clone()`: the only explicit, deep duplicate of an owned value. Numbers and other plain values copy implicitly. |
 | [Capture](core-language/functions/function-values-and-closures.md) | A binding used from a surrounding function. Non-escaping closures borrow captures; escaping closures take ownership when created, following the move rules. |

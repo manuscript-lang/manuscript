@@ -100,7 +100,7 @@ fn total(values: Map[String, Int]) Int:
 
 ## Destructuring the element
 
-A list or record pattern after `for` binds the same names as `let` does with the element, so `for [a, b] in pairs:` is `for pair in pairs:` followed by `[a, b] := pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `let`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
+A list or record pattern after `for` binds the same names as `:=` does with the element, so `for [a, b] in pairs:` is `for pair in pairs:` followed by `[a, b] := pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `:=`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript

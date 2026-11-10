@@ -36,7 +36,7 @@ Run it next to an `orders.csv` file containing a header and two rows. With an em
 
 ## What to notice
 
-- `open` returns a file handle. Binding it with `let file` is all it takes: the handle closes when `count_orders` returns, on the normal path and on every `try` or `return error(...)` before it.
+- `open` returns a file handle. Binding it with `file := ...` is all it takes: the handle closes when `count_orders` returns, on the normal path and on every `try` or `return error(...)` before it.
 - If `open` itself fails, there is nothing to close and the error goes to the caller.
 - Cancellation and runtime faults close it as well. You cannot forget a close by returning early.
 - Scopes nest. Inner resources close before outer ones, and in one scope the last declared closes first.

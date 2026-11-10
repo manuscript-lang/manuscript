@@ -216,10 +216,7 @@ fn fix_wraps_expressions_to_convert_types() {
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
     assert!(fixed.contains("_a: Float = n.to_float()"), "{fixed}");
-    assert!(
-        fixed.contains("_b: Float = (n + m).to_float()"),
-        "{fixed}"
-    );
+    assert!(fixed.contains("_b: Float = (n + m).to_float()"), "{fixed}");
     assert!(fixed.contains("_d: Float = 7.0"), "{fixed}");
     assert!(fixed.contains("1.5 * n.to_float()"), "{fixed}");
     assert!(fixed.contains("say(text: \"{n + 1}\")"), "{fixed}");

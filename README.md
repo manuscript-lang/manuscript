@@ -23,7 +23,7 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
 fn listen() Unit!:
-    let server = try serve("127.0.0.1:0", buffered(handle))
+    server := try serve("127.0.0.1:0", buffered(handle))
     print("{server.address()}")
     try server.wait()
     return ok(unit)
@@ -40,7 +40,7 @@ HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise a
 ```rust
 export fn main() Int:
     var names = List[String]()
-    let first = "ada"
+    first := "ada"
     names.append(first)
     print(first)
     return 0
@@ -62,7 +62,7 @@ fn fib(n: Int) Int:
     return if n < 2: n else: fib(n - 1) + fib(n - 2)
 
 export fn main() Int:
-    let tasks = [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
+    tasks := [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
     print(wait_all(tasks).get(List[Int]()).length())
     return 0
 ```
@@ -106,7 +106,7 @@ type Config:
     enabled: Bool = true
 
 fn roundtrip(text: String) Result[String, Error]:
-    let config = try parse[Config](text)
+    config := try parse[Config](text)
     return stringify(config, StringifyOptions(strict: true))
 ```
 

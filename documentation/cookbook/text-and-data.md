@@ -36,7 +36,7 @@ ms run number.ms -- 42
 42
 ```
 
-Use `get(default)` for a default, or `if let` with a failure path ([Optional values](../core-language/types/optionals.md)).
+Use `get(default)` for a default, or `if v := x` with a failure path ([Optional values](../core-language/types/optionals.md)).
 
 ## Parse JSON
 

@@ -265,9 +265,9 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL103 | warning | Unreachable statement |
 | MSL106 | error | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
 | MSL107 | error | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
-| MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
-| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if let` or a Result method |
-| MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
+| MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if v := x` or an Optional method |
+| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if v := x` or a Result method |
+| MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if v := x`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `try x.flush()`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |

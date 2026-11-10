@@ -518,7 +518,7 @@ pub fn aliasing_dependent(text: &str) -> bool {
             let Some((lhs, _)) = t.split_once(" = ") else {
                 return false;
             };
-            lhs.contains('.') && !lhs.contains(' ') && !t.starts_with("let ")
+            lhs.contains('.') && !lhs.contains(' ')
         })
         || text.contains("[0] = ")
         || text.contains("] = ");
@@ -527,10 +527,11 @@ pub fn aliasing_dependent(text: &str) -> bool {
     }
     text.lines().any(|l| {
         let t = l.trim();
-        let Some(rest) = t.strip_prefix("let ").or_else(|| t.strip_prefix("var ")) else {
-            return false;
+        let rhs = match t.strip_prefix("var ") {
+            Some(rest) => rest.split_once(" = "),
+            None => t.split_once(" := "),
         };
-        let Some((_, rhs)) = rest.split_once(" = ") else {
+        let Some((_, rhs)) = rhs else {
             return false;
         };
         let rhs = rhs.trim();

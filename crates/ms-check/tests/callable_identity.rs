@@ -24,8 +24,7 @@ fn diagnostics(body: &str) -> Vec<String> {
 
 #[test]
 fn generic_arguments_ignore_callable_parameter_names() {
-    let got =
-        diagnostics("    selected := choose(first, second)\n    _answer := selected(3)");
+    let got = diagnostics("    selected := choose(first, second)\n    _answer := selected(3)");
     assert!(got.is_empty(), "{got:?}");
 }
 
@@ -42,9 +41,8 @@ fn inferred_collections_and_constructors_ignore_callable_parameter_names() {
 
 #[test]
 fn callable_replacement_ignores_parameter_names() {
-    let got = diagnostics(
-        "    var callback = first\n    callback = second\n    _answer := callback(3)",
-    );
+    let got =
+        diagnostics("    var callback = first\n    callback = second\n    _answer := callback(3)");
     assert!(got.is_empty(), "{got:?}");
 }
 

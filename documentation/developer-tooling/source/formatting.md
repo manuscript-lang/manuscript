@@ -14,7 +14,7 @@ Save this valid but unevenly spaced program as `format.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"5\n"} -->
 ```manuscript
 export fn main() Int:
-    let total=2+3
+    total:=2+3
     print(total)
     return 0
 ```

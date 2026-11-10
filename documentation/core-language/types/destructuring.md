@@ -24,7 +24,7 @@ export fn main() Int:
 Ada and Grace
 ```
 
-Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `let (a, b) = value` are not binding patterns.
+Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `(a, b) := value` are not binding patterns.
 
 ## Type bindings
 
@@ -38,10 +38,10 @@ Shorthand binds a field to a same-named local; `field: local` renames it. A patt
 ## Nested patterns
 
 ```manuscript
-let {customer: {name}, shipping: {city: destination}} = order
+{customer: {name}, shipping: {city: destination}} := order
 [{name: first_name}, {name: second_name}] := customers
 ```
 
 Patterns nest freely. The initializer is evaluated once and extraction follows pattern order. Duplicate binding names are rejected.
 
-`let` makes every introduced local immutable and `var` makes them reassignable. Elisions, rest patterns, defaults, destructuring assignment, and parameter patterns are rejected.
+`:=` makes every introduced local immutable and `var` makes them reassignable. Elisions, rest patterns, defaults, destructuring assignment, and parameter patterns are rejected.

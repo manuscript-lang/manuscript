@@ -5,7 +5,7 @@ weight = 1
 
 # Source files
 
-A `.ms` file is a module. Top level holds imports, types, functions, constants, and tests. Executable statements and local `let`/`var` bindings go inside a function or test. There is no `module` declaration or top-level initializer; a top-level `let` is a [constant](../modules/declarations.md#constants).
+A `.ms` file is a module. Top level holds imports, types, functions, constants, and tests. Executable statements and local `:=`/`var` bindings go inside a function or test. There is no `module` declaration or top-level initializer; a top-level `:=` is a [constant](../modules/declarations.md#constants).
 
 `src/greeting.ms`:
 

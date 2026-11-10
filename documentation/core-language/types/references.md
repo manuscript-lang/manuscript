@@ -43,12 +43,12 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `x := m.get(k)` keeps `m` unchangeable until `x` is last used, `x := m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if let` to read a borrowed resource or function value without moving it out of its container.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `x := m.get(k)` keeps `m` unchangeable until `x` is last used, `x := m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if v := x` to read a borrowed resource or function value without moving it out of its container.
 
 ## Reassignment
 
-- Reassigning an owning `var` drops its previous value and closes any resources it held. A live borrow prevents reassignment. A `let` cannot be reassigned.
-- A resource in a `let` binding cannot be reassigned. A `var` binding can change; replacement closes its previous resource and scope-end cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
+- Reassigning an owning `var` drops its previous value and closes any resources it held. A live borrow prevents reassignment. A `:=` cannot be reassigned.
+- A resource in a `:=` binding cannot be reassigned. A `var` binding can change; replacement closes its previous resource and scope-end cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
 - Non-escaping closures borrow captures; escaping closures own them, so a parameter captured by one is moved by the function (the caller passes `.clone()` to keep the value). Borrowed roots cannot be changed or moved while the borrow is live.
 

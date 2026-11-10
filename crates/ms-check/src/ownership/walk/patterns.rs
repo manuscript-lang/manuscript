@@ -95,27 +95,12 @@ impl Walker<'_> {
             Perm::Immutable => {
                 let _ = role;
                 let message = format!(
-                    "cannot {what} `{text}`: `{}` is declared with let, which is immutable including its contents; declare it `var {}` to change it",
+                    "cannot {what} `{text}`: `{}` is an immutable binding, immutable including its contents; declare it `var {}` to change it",
                     self.syms.str(root.name),
                     self.syms.str(root.name)
                 );
-                match self.let_pos.get(&root.uid).copied() {
-                    Some(at) => {
-                        let end = Pos {
-                            offset: at.offset + 3,
-                            line: at.line,
-                            column: at.column + 3,
-                        };
-                        self.error_fix(
-                            pos,
-                            message,
-                            DiagnosticFix {
-                                pos: at,
-                                end,
-                                replacement: "var".to_string(),
-                            },
-                        )
-                    }
+                match self.var_fixes.get(&root.uid).cloned() {
+                    Some(fix) => self.error_fix(pos, message, fix),
                     None => self.error(pos, message),
                 }
             }

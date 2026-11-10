@@ -165,7 +165,10 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
     let line: Vec<&EditorToken> = before.iter().filter(|t| t.start >= line_start).collect();
     let has = |c: u8| line.iter().any(|t| t.is(c));
     let binding = line.first().is_some_and(|t| t.is_name("var"))
-        || (line.first().is_some_and(|t| t.kind == crate::text::EditorKind::Name) && line.get(1).is_some_and(|t| t.is(b':')));
+        || (line
+            .first()
+            .is_some_and(|t| t.kind == crate::text::EditorKind::Name)
+            && line.get(1).is_some_and(|t| t.is(b':')));
     c.declaration = declaration_start(&d.text, line_start);
     c.type_context = (binding && has(b':') && !has(b'='))
         || function_result_at(&before)
@@ -517,12 +520,16 @@ pub fn query_editor(
             .map_or(bytes.len(), |at| at + c.start);
         let line = modified.text[line_start..line_end].to_string();
         let trimmed = line.trim();
-        if trimmed.starts_with("let ") || trimmed.starts_with("var ") {
+        if trimmed.starts_with("var ")
+            || trimmed.split_once(':').is_some_and(|(name, _)| {
+                !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+            })
+        {
             // Query the lexical environment before this local annotation. A type
             // marker alone cannot capture bindings that shadow a prelude type.
             let indent = &line[..line.len() - line.trim_start_matches([' ', '\t']).len()];
             modified.text = format!(
-                "{}{indent}let {marker}_value = {marker}{}",
+                "{}{indent}{marker}_value := {marker}{}",
                 &modified.text[..line_start],
                 &modified.text[line_end..]
             );
@@ -886,11 +893,7 @@ mod literal_context_tests {
                     false,
                     true,
                 ),
-                (
-                    "text := r\"\"\"\n    {\"key\": value.member",
-                    true,
-                    false,
-                ),
+                ("text := r\"\"\"\n    {\"key\": value.member", true, false),
                 ("text := \"\"\"\n    \\{value.member", true, false),
                 ("text := \"\"\"\n    {join(\"value.member", true, false),
             ] {

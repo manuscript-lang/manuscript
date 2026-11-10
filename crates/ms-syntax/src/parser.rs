@@ -242,7 +242,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
 /// spelling to replace the word with, when there is one.
 fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static str>)> {
     if t.kind == Tok::Var {
-        return Some(("module level holds only 'let' constants; keep mutable state in a 'var' inside a fn, or in a field of a type".into(), None));
+        return Some(("module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type".into(), None));
     }
     if t.kind != Tok::Name {
         return None;
@@ -1863,7 +1863,11 @@ impl<'a> Parser<'a> {
                         return self.fail(t, "an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'");
                     }
                     binding = Some(pat);
-                    self.need(if mutable { Tok::Assign } else { Tok::ColonAssign })?;
+                    self.need(if mutable {
+                        Tok::Assign
+                    } else {
+                        Tok::ColonAssign
+                    })?;
                 }
                 let cond = self.expression(0)?;
                 let body = self.suite()?;
@@ -1968,7 +1972,7 @@ impl<'a> Parser<'a> {
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
                         "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
-                        "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
+                        "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n_t}' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", n_t = self.names.str(n))),
                         "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"),

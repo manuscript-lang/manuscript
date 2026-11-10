@@ -6,7 +6,7 @@ aliases = ["/core-language/cleanup/resource-release/", "/core-language/cleanup/e
 
 # Scope-end cleanup
 
-A `let` or `var` that holds a resource closes it when its scope ends. There is no extra syntax: bind the value and use it.
+A `:=` or `var` that holds a resource closes it when its scope ends. There is no extra syntax: bind the value and use it.
 
 This function reads a file and closes its handle on every exit:
 
@@ -39,7 +39,7 @@ A concrete type opts in through an implementation of the standard `Closeable` in
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a moving parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `try` or `let _ =`.
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `try` or `_ :=`.
 
 ```manuscript
 var file = try open(path)

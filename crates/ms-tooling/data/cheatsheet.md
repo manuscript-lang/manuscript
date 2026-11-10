@@ -37,7 +37,7 @@ export fn main() Int:
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
-- Bindings: `let` once, `var` reassigns, `n += 1`; unpack `[a, b] := xs`, `{name} := rec`, `for [a, b] in xs`. `and or not`, not `&& || !`.
+- Bindings: `x := e` (or `x: T = e`) once, `var x = e` reassigns, `n += 1`; unpack `[a, b] := xs`, `{name} := rec`, `for [a, b] in xs`. `and or not`, not `&& || !`.
 - Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates; write `\{` and `\}` for literal braces. `unit`.
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:` (no `->`; `Unit` if none), called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
@@ -48,7 +48,7 @@ export fn main() Int:
 - Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `try r` gives the value or returns a compatible error; `if x := r:` handles success.
 - Faults (`panic`, failed `get()`) abort, not a `Result`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
-- Ownership: every `String`, list, map, record and enum has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `let` is immutable including contents: `xs := [1]; xs.append(2)` fails, write `var xs`.
+- Ownership: every `String`, list, map, record and enum has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `:=` is immutable including contents: `xs := [1]; xs.append(2)` fails, write `var xs`.
 - Borrow: `b := a`, `x := a.b`, `xs[i]`, arguments, loop variables and match payloads read the owner's value in place; while `b` is used, `a` cannot change. `var x = a.b` changes `a.b` through `x`.
 - Move: storing a value (`xs.append(s)`, a field, a list) gives it a new owner and kills the old name, so `xs.append(s.clone())` unless it is the last use. A borrowed part cannot be stored: `names.append(u.name.clone())`.
 - A fn returning part of a parameter or receiver returns a borrow, no `.clone()`: `fn name(u: User) String: return u.name`; the caller reads it in place, `.clone()` to keep it. A sibling path returning a new value needs `.clone()` on the borrowed path.

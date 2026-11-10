@@ -80,7 +80,7 @@
     },
     {
       "name": "keyword.control.manuscript",
-      "match": "\\b(fn|type|enum|interface|impl|import|export|extern|ref|let|var|if|else|for|in|while|match|return|try|break|continue|test|fixture|and|or|not|self)\\b"
+      "match": "\\b(fn|type|enum|interface|impl|import|export|extern|ref|var|if|else|for|in|while|match|return|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",

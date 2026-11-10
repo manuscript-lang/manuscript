@@ -154,8 +154,7 @@ mod tests {
 
     #[test]
     fn counts_multi_line_programs_only() {
-        let program =
-            "a := \"export fn main() Int:\\n    x := 1\\n    y := 2\\n    return 0\\n\";";
+        let program = "a := \"export fn main() Int:\\n    x := 1\\n    y := 2\\n    return 0\\n\";";
         assert_eq!(programs(program), 1);
         let raw = "const P: &str = r#\"export fn main() Int:\n    a\n    b\n    return 0\n\"#;";
         assert_eq!(programs(raw), 1);
