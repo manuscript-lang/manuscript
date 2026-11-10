@@ -64,6 +64,8 @@ fn check(rows: List[String], limit: Int) String:
 - A one-line `if c: return x` or `continue` replaces a two-line block.
 - `xs[i]` reads in place; `for i in 0..n:` counts; `for x in xs:` when the index is unused.
 - Prefer `any`, `all`, `count`, `sum`, `map`, `filter`, `fold` and `[0].repeated(n)` to a loop that builds or tests a collection.
+- No `else` after a `return`; `for _i in 0..n:` when the counter is unused; `a.extend(b)` over an append loop; `(0..n)` is already a `List[Int]`; `x` and `not x` over `== true` and `== false`; `a.max(b)` over a compare-and-assign.
+- `if let v = o:` or `o.get(d)` over `is_some()` then `get()`; `try` over `match` to unwrap a `Result`.
 - `is_empty()` over `length() == 0`; `let x = if c: a else: b` over a `var` assigned in a branch; `m.get_or(k, d)` over `m.get(k).get(d)`.
 
 ## Module boundaries
