@@ -185,3 +185,18 @@ test "equality never crosses value kinds":
 	try expect_equal(
 		render("\{\{ yes == \"true\" \}\}|\{\{ one != text \}\}", d).get(), "false|true"
 	)
+
+test "nested paths resolve through the loop frames and miss cleanly":
+	d := data(
+		"\{\"a\":\{\"b\":\{\"c\":\"deep\"\},\"l\":[\"x\",\"y\"]\},\"rows\":[\{\"a\":\{\"b\":\"row\"\}\}]\}"
+	)
+	try expect_equal(
+		render(
+			"\{\{ a.b.c \}\}|\{\{ a.l.1 \}\}|\{\{ a.zz.c | default(\"none\") \}\}|\{\{ a.b.c.d | default(\"none\") \}\}",
+			d
+		).get(),
+		"deep|y|none|none"
+	)
+	try expect_equal(
+		render("\{\{ for r in rows \}\}\{\{ r.a.b \}\}\{\{ end \}\}", d).get(), "row"
+	)
