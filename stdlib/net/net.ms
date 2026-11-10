@@ -123,8 +123,7 @@ impl ConnectionInfo:
     // Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     // A connection that is not TLS returns EINVAL.
     fn tls_info() TlsInfo!:
-        if let info = self.tls:
-            return ok(info.clone())
+        if let info = self.tls: return ok(info.clone())
 
         return error(Error("network: invalid input", kind: "EINVAL"))
 
@@ -540,8 +539,7 @@ export fn serve(
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
     if let cores = options.cores:
-        if cores < 1:
-            return error(Error("network: invalid input", kind: "EINVAL"))
+        if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
 
     let serving = try msstd_http_serving_new(address, options, handler)
     let bound = msstd_http_serving_address(serving)
@@ -616,8 +614,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
         let accepted = msstd_http_serving_accept(listening.serving)
 
         if accepted.is_error():
-            if accepted.err().kind == "EBADF":
-                return ok(unit)
+            if accepted.err().kind == "EBADF": return ok(unit)
 
             sleep(50.milliseconds()).wait().get(unit)
             continue
@@ -633,8 +630,7 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 
     while true:
         let item = input.receive()
-        if item.is_error():
-            break
+        if item.is_error(): break
 
         if let raw = item.get():
             msstd_http_worker_adopt(engine.worker, raw)

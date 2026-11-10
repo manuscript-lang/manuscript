@@ -12,8 +12,7 @@ import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.m
 import Duration, milliseconds, sleep, monotonic from "@std/time.ms"
 
 fn flaky(attempt: Int) Int!String:
-    if attempt < 3:
-        return error("try again")
+    if attempt < 3: return error("try again")
 
     return ok(attempt)
 

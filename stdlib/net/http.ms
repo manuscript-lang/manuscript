@@ -315,8 +315,7 @@ impl HttpServer:
         set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
         let ended = self.accepting.wait()
-        if self.stopped:
-            return ok(unit)
+        if self.stopped: return ok(unit)
 
         return ended
 
@@ -398,8 +397,7 @@ fn response(raw: RawResponse) StreamingResponse:
 // A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int?) Bytes!:
     let first = try exchange.read()
-    if let head = first:
-        return read_rest(var exchange, head, limit)
+    if let head = first: return read_rest(var exchange, head, limit)
 
     return ok("".to_bytes())
 
@@ -440,8 +438,7 @@ fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit:
             return ok(join(parts))
 
 fn over_limit(total: Int, limit: Int?) Bool:
-    if let max = limit:
-        return total > max
+    if let max = limit: return total > max
 
     return false
 

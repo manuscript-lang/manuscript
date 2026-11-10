@@ -46,8 +46,7 @@ fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 fn fib(n: Int) Int:
-    if n < 2:
-        return n
+    if n < 2: return n
 
     return fib(n - 1) + fib(n - 2)
 
@@ -125,8 +124,7 @@ fn word_map(n: Int) Int:
     return m.length() + m.get_or("word7", 0)
 
 fn check(i: Int) Result[Int, Fail]:
-    if i % 1000 == 999:
-        return error(Fail(i))
+    if i % 1000 == 999: return error(Fail(i))
 
     return ok(i)
 

@@ -16,8 +16,7 @@ type Slot:
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 

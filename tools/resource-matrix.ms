@@ -194,8 +194,7 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
     return false
 
 fn field(entry: JsonValue, key: String) String:
-    if let value = entry.get(key):
-        return value.as_string().get("")
+    if let value = entry.get(key): return value.as_string().get("")
 
     return ""
 

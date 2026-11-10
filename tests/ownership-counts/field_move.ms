@@ -29,8 +29,7 @@ fn both(b: Big) Int:
     return n + b.name.length()
 
 fn branch(b: Big, flag: Bool) Int:
-    if flag:
-        return size(b.items)
+    if flag: return size(b.items)
 
     return b.name.length() + b.items.length()
 

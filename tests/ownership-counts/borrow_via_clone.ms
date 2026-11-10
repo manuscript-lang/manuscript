@@ -14,16 +14,13 @@ fn build(depth: Int) Node:
     return Node(depth, kids)
 
 fn first_kid(n: Node) Node?:
-    if n.kids.length() == 0:
-        return none
+    if n.kids.length() == 0: return none
 
     return n.kids[0].clone()
 
 fn descend(n: Node, d: Int) Int:
-    if d == 0:
-        return n.key
-    if let k = first_kid(n):
-        return descend(k, d - 1)
+    if d == 0: return n.key
+    if let k = first_kid(n): return descend(k, d - 1)
 
     return 0
 

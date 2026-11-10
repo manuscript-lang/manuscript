@@ -66,8 +66,7 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
         // Calibration doubles as the warmup.
         while true:
             let elapsed = try time_batch(body, count)
-            if elapsed >= config.target_nanoseconds or count >= max_iterations:
-                break
+            if elapsed >= config.target_nanoseconds or count >= max_iterations: break
 
             count = next_count(count, elapsed, config.target_nanoseconds)
 
@@ -98,8 +97,7 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
     try body()
 
     let environment = environment().get(Map[String, String]())
-    if environment.get_or(measured_flag, "") == "1":
-        return ok(unit)
+    if environment.get_or(measured_flag, "") == "1": return ok(unit)
 
     return measure(operations, body)
 

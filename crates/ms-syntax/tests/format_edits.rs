@@ -130,3 +130,12 @@ fn a_long_index_assignment_wraps_only_its_value() {
     assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
     assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
 }
+
+#[test]
+fn compaction_joins_guards_and_shortens_self_assignments() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    let source = include_str!("format_edits/compact.src");
+    let expected = include_str!("format_edits/compact.expected");
+    assert_eq!(ms_syntax::format(&file, source).unwrap(), expected);
+    assert_eq!(ms_syntax::format(&file, expected).unwrap(), expected);
+}

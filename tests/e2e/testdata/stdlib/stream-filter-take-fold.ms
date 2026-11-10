@@ -52,8 +52,7 @@ type Intermittent:
 impl Source[Int] for Intermittent:
     var fn next() Int?!:
         self.calls += 1
-        if self.calls % 2 == 1:
-            return error(Error("retry this read", kind: "EAGAIN"))
+        if self.calls % 2 == 1: return error(Error("retry this read", kind: "EAGAIN"))
 
         return ok(self.calls)
 

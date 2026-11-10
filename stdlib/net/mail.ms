@@ -229,8 +229,7 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
         return none
 
     if set == "utf-8" or set == "us-ascii": return bytes.decode_utf8()
-    if set == "iso-8859-1" or set == "latin1":
-        return latin1_decode(bytes)
+    if set == "iso-8859-1" or set == "latin1": return latin1_decode(bytes)
 
     return none
 

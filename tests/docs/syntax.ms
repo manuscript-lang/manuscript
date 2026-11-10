@@ -68,7 +68,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
             total = item
 
     while total <= 10:
-        total = total + 1
+        total += 1
     if let value = items.first():
         total = value
     if var value = items[0]?:

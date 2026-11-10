@@ -199,7 +199,6 @@ export fn main() Int:
     total += bench_bytes(4000000)
     total += bench_pq(300000)
     total += bench_sorted_map(300000)
-    if total == 0:
-        return 1
+    if total == 0: return 1
 
     return 0

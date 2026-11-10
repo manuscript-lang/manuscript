@@ -55,9 +55,9 @@ test "semver orders by precedence":
                 ) != expected
             ): return fail("order {left} {right}")
 
-            j = j + 1
+            j += 1
 
-        i = i + 1
+        i += 1
 
 test "semver ignores build metadata and compares huge numeric identifiers":
     let a = (parse(text: "1.0.0+a") | try expect_ok)

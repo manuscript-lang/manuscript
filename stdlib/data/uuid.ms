@@ -78,8 +78,7 @@ fn uuid_to_bytes(text: String) Bytes!:
         return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
     let decoded = hex_decode(text.replace("-", ""), 16)
-    if let bytes = decoded:
-        return ok(bytes)
+    if let bytes = decoded: return ok(bytes)
 
     return error(Error("uuid: invalid data", kind: "EBADMSG"))
 

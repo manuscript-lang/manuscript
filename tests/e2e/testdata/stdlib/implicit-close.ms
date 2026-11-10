@@ -21,8 +21,7 @@ fn falls_off_the_end(dir: String) Int:
 
 fn returns_early(dir: String, early: Bool) Int:
     let r = Resource(dir, 2)
-    if early:
-        return 1
+    if early: return 1
 
     return r.id
 
@@ -38,10 +37,8 @@ fn breaks_out(dir: String) Int:
     while i < 3:
         let r = Resource(dir.clone(), 10 + i)
         i += 1
-        if i == 2:
-            break
-        if r.id == 10:
-            continue
+        if i == 2: break
+        if r.id == 10: continue
 
     return i
 

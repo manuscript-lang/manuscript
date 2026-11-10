@@ -10,8 +10,7 @@ Strings are compared by Unicode scalar, lines by exact equality.
 // Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
 // Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
 export fn edit_distance(left: String, right: String) Int:
-    if left == right:
-        return 0
+    if left == right: return 0
 
     let a = left.chars()
     let b = right.chars()
@@ -57,14 +56,12 @@ Two empty strings give 1.0. Use `close_matches` to rank a list of candidates by 
 Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 */
 export fn similarity_ratio(left: String, right: String) Float:
-    if left == right:
-        return 1.0
+    if left == right: return 1.0
 
     let a = left.chars()
     let b = right.chars()
     let total = a.length() + b.length()
-    if total == 0:
-        return 1.0
+    if total == 0: return 1.0
 
     return 2.0 * common_length(a, b).to_float() / total.to_float()
 
@@ -107,10 +104,8 @@ export fn close_matches(
     return ranked.take(limit).map(fn s: s.text.clone())
 
 fn compare_scores(left: Float, right: Float) Int:
-    if left > right:
-        return -1
-    if left < right:
-        return 1
+    if left > right: return -1
+    if left < right: return 1
 
     return 0
 
@@ -209,10 +204,8 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
     return steps
 
 fn hunk_range(start: Int, length: Int) String:
-    if length == 1:
-        return "{start + 1}"
-    if length == 0:
-        return "{start},0"
+    if length == 1: return "{start + 1}"
+    if length == 0: return "{start},0"
 
     return "{start + 1},{length}"
 
@@ -259,8 +252,7 @@ export fn unified_diff(
                 keep.set(j, true)
                 j -= 1
 
-    if not any_change:
-        return ""
+    if not any_change: return ""
 
     var out = StringBuilder()
     out.append("--- {old_name}\n+++ {new_name}\n")

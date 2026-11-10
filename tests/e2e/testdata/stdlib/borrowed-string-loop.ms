@@ -106,10 +106,8 @@ test "borrowed string scans support break continue return and try":
     var output = ""
 
     for c in first(words).chars():
-        if c == "é":
-            continue
-        if c == "b":
-            break
+        if c == "é": continue
+        if c == "b": break
 
         output += c
 

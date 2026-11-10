@@ -11,7 +11,7 @@ test "decimal comparison aligns every significant digit without losing signs":
         try expect_equal(base.compare(larger), -1)
         try expect_equal((-larger).compare(-base), -1)
         try expect_equal((-base).compare(-larger), 1)
-        step = step / 10d
+        step /= 10d
 
     try expect_equal(9.999999999999999999999999999999999e6144d.compare(1e6144d), 1)
     try expect_equal((-9.999999999999999999999999999999999e6144d).compare(-1e6144d), -1)

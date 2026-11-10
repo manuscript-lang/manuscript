@@ -7,13 +7,11 @@ fn doc() JsonValue:
 
 fn user_field(d: JsonValue, key: String) JsonValue?:
     if let user = d.get("user"):
-        if let field = user.get(key):
-            return field.clone()
+        if let field = user.get(key): return field.clone()
     return none
 
 fn string_of(value: JsonValue) String?:
-    if let text = value.as_string():
-        return text.clone()
+    if let text = value.as_string(): return text.clone()
 
     return none
 
@@ -23,8 +21,7 @@ fn has_map(value: JsonValue) Bool:
 fn tag(d: JsonValue, index: Int) String?:
     if let tags = d.get("user"):
         if let list = tags.get("tags"):
-            if let item = list.at(index):
-                return string_of(item)
+            if let item = list.at(index): return string_of(item)
     return none
 
 test "JSON accessors read nested objects without copying subtrees":
@@ -92,8 +89,7 @@ test "JSON is_null distinguishes null from absent and other values":
 
 // `get_in` returns a clone of the member it reaches.
 fn user_name(d: JsonValue) String?:
-    if let name = d.get_in(["user", "name"]):
-        return name.as_string()
+    if let name = d.get_in(["user", "name"]): return name.as_string()
 
     return none
 

@@ -18,8 +18,7 @@ fn counts_entries(path: String) Int!:
 
     while true:
         let next = try cursor.read()
-        if next.is_none():
-            break
+        if next.is_none(): break
 
         seen += 1
 

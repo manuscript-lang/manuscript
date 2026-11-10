@@ -49,8 +49,7 @@ fn draw_below(min: Int, width: Int) Int!:
 // An integer at least `min` and below `max_exclusive` (below the largest Int when none).
 export fn draw_int(min: Int, max_exclusive: Int?) Int!:
     let max = max_exclusive.get(max_int)
-    if min >= max:
-        return error(invalid_input())
+    if min >= max: return error(invalid_input())
 
     return draw_below(min, wrapping_subtract(max, min))
 
@@ -90,8 +89,7 @@ export fn draw_shuffle[T](values: List[T]) List[T]!:
 
 // A uniformly chosen item, or none for an empty list.
 export fn draw_choice[T](values: List[T]) T?!:
-    if values.is_empty():
-        return ok(none)
+    if values.is_empty(): return ok(none)
 
     let at = try draw_below(0, values.length())
     return ok(values.get(at))

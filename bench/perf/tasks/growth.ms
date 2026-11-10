@@ -5,8 +5,7 @@ import monotonic from "@std/time.ms"
 import read_file from "@std/os/fs.ms"
 
 fn depth(n: Int) Int:
-    if n == 0:
-        return 0
+    if n == 0: return 0
 
     return depth(n - 1) + 1
 

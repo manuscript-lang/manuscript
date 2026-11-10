@@ -112,8 +112,7 @@ fn blank_trim(text: String) String:
     return blank_trim_end(blank_trim_start(text))
 
 fn within(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value <= maximum
+    if let maximum = limit: return value <= maximum
 
     return true
 
@@ -510,8 +509,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
         let name = try anchor_name(var flow)
         if let size = flow.context.sizes.get(name):
             try charge(var flow.context, size)
-        if let value = flow.context.anchors.get(name):
-            return ok(value.clone())
+        if let value = flow.context.anchors.get(name): return ok(value.clone())
 
         return error(flow_invalid(flow, "unknown or recursive alias"))
 

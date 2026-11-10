@@ -28,8 +28,7 @@ type ListSource:
 
 impl Source[Int] for ListSource:
     var fn next() Int?!:
-        if self.at >= self.items.length():
-            return ok(none)
+        if self.at >= self.items.length(): return ok(none)
 
         let v = self.items[self.at]
         self.at += 1
@@ -46,8 +45,7 @@ type MapSource:
 impl Source[Int] for MapSource:
     var fn next() Int?!:
         let step = try self.up.next()
-        if let v = step:
-            return ok(self.f(v))
+        if let v = step: return ok(self.f(v))
 
         return ok(none)
 
@@ -108,8 +106,7 @@ fn plain_take(xs: List[Int], count: Int) Int:
     var seen = 0
 
     for x in xs:
-        if seen >= count:
-            break
+        if seen >= count: break
 
         total += x
         seen += 1

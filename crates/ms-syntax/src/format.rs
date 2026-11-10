@@ -14,6 +14,8 @@ use crate::visit::{self, Visitor};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+mod compact;
+
 const WIDTH: usize = 88;
 
 /// Formats `source`. Invalid syntax never produces output.
@@ -112,6 +114,11 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     let mut normalized = source.replace("\r\n", "\n");
     let mut lines: Vec<String> = normalized.split('\n').map(str::to_string).collect();
     let module = parse(file, &normalized)?;
+    if let Some(compacted) = compact::compact(file, &module, &normalized)
+        && parse(file, &compacted).is_ok()
+    {
+        return format_lines(file, &compacted);
+    }
     let breaks = paragraph_breaks(&module, &lines);
     let mut lexed = lex(file, &normalized)?.tokens;
     if let Some(aligned) = align_suite_headers(&lines, &lexed) {
