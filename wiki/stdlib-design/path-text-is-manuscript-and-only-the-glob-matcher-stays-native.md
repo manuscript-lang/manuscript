@@ -9,3 +9,5 @@ Verified: the 9.7k-case corpus recorded from the original implementation replays
 Apply when: changing path semantics, adding a dialect rule, or porting another pure-text native.
 Evidence: [path.ms](../../stdlib/os/path.ms), [oracle test](../../tests/e2e/testdata/projects/path_oracle/conformance_test.ms), [results](../../bench/perf/pure-utilities/results-2026-11-05-path-in-manuscript.md).
 Verify: `ms test tests/e2e/testdata/projects/path_oracle/conformance_test.ms` passes on Linux, macOS and Windows.
+
+Repeated positive `scalar_at` calls rescan a non-ASCII string from its beginning. Separator runs after Unicode text made path trimming and UNC parsing quadratic after the port. Scan ASCII `/` by byte position, keep single-separator fast paths, and use `Bytes.index_of_byte` for native server/share searches. `accept/path-separator-scans.ms` preserves the boundaries; the 2026-11-10 section of the [path results](../../bench/perf/pure-utilities/results-2026-11-05-path-in-manuscript.md) includes short ASCII/Unicode and clean UNC controls.
