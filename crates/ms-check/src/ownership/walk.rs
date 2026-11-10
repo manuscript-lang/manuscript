@@ -598,12 +598,14 @@ impl Walker<'_> {
             && self.class_of(e) != Class::Copy
             && self.arm_origins(arms).is_some();
         // Arms that do not all yield references produce an owned value, so a place among them
-        // is moved or must be cloned, even when the match itself is only read.
-        let arm_demand = if !borrowed && !returning && d == Demand::Read {
-            Demand::Move
-        } else {
-            d
-        };
+        // is moved or must be cloned, even when the match itself is only read. An optional chain
+        // keeps its own rule for the part it reaches.
+        let arm_demand =
+            if !borrowed && !returning && d == Demand::Read && !arms.iter().any(|a| a.chain) {
+                Demand::Move
+            } else {
+                d
+            };
         let borrowed_before = self.borrowed_return;
         let view_before = self.view_return;
         let entry = self.active.clone();
