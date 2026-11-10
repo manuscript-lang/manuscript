@@ -17,8 +17,7 @@ fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
         checksum += sum_lines(text)
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
-    if checksum != expected * iterations:
-        return 1
+    if checksum != expected * iterations: return 1
 
     let _written = stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"

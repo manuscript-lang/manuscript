@@ -34,14 +34,12 @@ export fn main() Int:
     var at = 0
 
     for result in results:
-        if result != at:
-            return 3
+        if result != at: return 3
 
         at += 1
         total += result
 
-    if at != count:
-        return 4
+    if at != count: return 4
 
     print("count " + at.to_string() + " checksum " + total.to_string())
     print("spawn_ns " + spawned.difference(before).to_nanoseconds().to_string())

@@ -7,8 +7,7 @@ bench "csv.stringify":
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
     fn work() Result[Unit, Error]:
-        if let s = stringify(rows):
-            return keep(s.length())
+        if let s = stringify(rows): return keep(s.length())
 
         return keep(0)
 
@@ -22,8 +21,7 @@ bench "csv.parse":
     let csv_text = stringify(rows).get("")
 
     fn work() Result[Unit, Error]:
-        if let r = parse(csv_text):
-            return keep(r.length())
+        if let r = parse(csv_text): return keep(r.length())
 
         return keep(0)
 

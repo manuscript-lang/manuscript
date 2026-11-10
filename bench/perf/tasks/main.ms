@@ -19,8 +19,7 @@ fn park_sleep(a: Int) Int!:
     return ok(a)
 
 fn descend(depth: Int, acc: Int) Int:
-    if depth == 0:
-        return acc
+    if depth == 0: return acc
 
     let scratch: List[Int] = [acc, depth, acc + depth]
     let below = descend(depth - 1, acc + scratch[1])
