@@ -1887,7 +1887,7 @@ impl<'a> Parser<'a> {
         } else if self.take(Tok::Assign) {
             if index_parts(&e).is_some() {
                 let value = self.expression(0)?;
-                let kind = self.index_set(e, value);
+                let kind = self.index_set(e, value, false);
                 self.end()?;
                 return Ok(kind);
             }
@@ -1944,7 +1944,9 @@ impl<'a> Parser<'a> {
 
     /// `xs[i] = value` as the call of the member `[]=`, which the checker resolves to `set` on a
     /// List and `add` on a Map.
-    fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
+    /// With `reread`, the value reads the same element, so a name or field key is cloned for the store
+    /// and the original stays borrowable for the read (and for the caller afterwards).
+    fn index_set(&mut self, target: Expr, value: Expr, reread: bool) -> StmtKind {
         let (left, index) = match target.kind {
             ExprKind::Index { left, index } => (left, index),
             ExprKind::Apply {
@@ -1955,6 +1957,28 @@ impl<'a> Parser<'a> {
             _ => unreachable!("index target"),
         };
         let pos = target.pos;
+        let index = if reread && matches!(index.kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
+            let receiver = Box::new(self.clone_chain(&index));
+            let name = self.names.intern("clone");
+            let callee = self.mk(
+                index.pos,
+                ExprKind::Member {
+                    left: receiver,
+                    name,
+                },
+            );
+            Box::new(Expr {
+                id: self.id(),
+                pos: index.pos,
+                end: index.end,
+                kind: ExprKind::Call {
+                    callee: Box::new(callee),
+                    args: Vec::new(),
+                },
+            })
+        } else {
+            index
+        };
         let member = self.mk(
             pos,
             ExprKind::Member {
@@ -2021,7 +2045,7 @@ impl<'a> Parser<'a> {
                     right: Box::new(right),
                 },
             };
-            return Ok(self.index_set(e, value));
+            return Ok(self.index_set(e, value, true));
         }
         let target = self.assign_target(start, e)?;
         let Some(left) = copy else {
@@ -3429,6 +3453,7 @@ fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
 fn plain_index(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Name(_) | ExprKind::Number(_) => true,
+        ExprKind::Member { left, .. } => plain_index(left),
         ExprKind::Text(parts) => parts.iter().all(|p| !matches!(p, TextPart::Interp(_))),
         _ => false,
     }

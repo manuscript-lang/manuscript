@@ -7,7 +7,7 @@ weight = 5
 
 ## How memory works
 
-Strings, types and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
+Strings, types and collections have one owner: a binding, a field, or a slot in another value. Scope exit releases values still owned there. Numbers, booleans and other primitives (`Int`, `Float`, `Bool`, `Unit`, enums without payloads) copy freely. `.clone()` on a scalar returns the same value. Use an explicit `.clone()` when you need independent owned data; borrowing lets functions work with existing data without a deep copy.
 
 Everything else, including strings, types, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
