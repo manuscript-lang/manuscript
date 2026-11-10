@@ -41,6 +41,7 @@ const PLAIN_STRING: &[(&str, &str, MTy)] = &[
     ("contains", "msrt_string_contains", MTy::BOOL),
     ("starts_with", "msrt_string_starts_with", MTy::BOOL),
     ("ends_with", "msrt_string_ends_with", MTy::BOOL),
+    ("count", "msrt_string_count", MTy::INT),
     ("concat", "msrt_string_concat", MTy::STR),
     ("compare", "msrt_string_compare", MTy::INT),
 ];
