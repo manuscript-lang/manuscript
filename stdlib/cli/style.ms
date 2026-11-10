@@ -18,18 +18,21 @@ import (
 	terminal_capabilities from "@std/cli/terminal.ms",
 )
 
-// A terminal color.
+// A terminal color: the terminal default, a 16-color index, a 256-color palette index, or a 24-bit RGB value. `paint` downgrades richer colors to what the terminal supports.
 export enum Color:
-	// The terminal's own default color.
+	// The terminal's own default color, which emits no color sequence.
 	Default
+	// One of the 16 ANSI colors; values outside 0 to 15 are clamped.
 	Ansi(
 		// 0 to 7 normal colors, 8 to 15 bright colors.
 		index: Int
 	)
+	// An entry of the 256-color palette; values outside 0 to 255 are clamped, and terminals below 256 colors get the nearest of 16.
 	Indexed(
 		// 0 to 255 in the 256-color palette.
 		index: Int
 	)
+	// A 24-bit color; terminals below 16777216 colors get the nearest palette entry.
 	Rgb(
 		// Red, 0 to 255.
 		red: Int,
@@ -41,15 +44,21 @@ export enum Color:
 
 // Colors and attributes of a run of text.
 export type Style:
-	// Text color.
+	// Text color; `Color.Default` leaves the terminal's own foreground.
 	foreground: Color = Color.Default
-	// Background color.
+	// Background color; `Color.Default` leaves the terminal's own background.
 	background: Color = Color.Default
+	// Heavier weight when true; defaults to false.
 	bold: Bool = false
+	// Reduced intensity when true; defaults to false.
 	dim: Bool = false
+	// Slanted text when true; defaults to false.
 	italic: Bool = false
+	// Underlined text when true; defaults to false.
 	underline: Bool = false
+	// Swaps foreground and background when true; defaults to false.
 	reverse: Bool = false
+	// Struck-through text when true; defaults to false.
 	strikethrough: Bool = false
 
 esc := "\u{1b}"

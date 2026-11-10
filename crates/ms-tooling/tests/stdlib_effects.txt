@@ -1,3 +1,5 @@
+@std/cli/screen.ms new_screen: std.console.read
+@std/cli/style.ms styled: std.console.read
 @std/cli/terminal.ms raw_mode: std.console.read, std.console.write
 @std/cli/terminal.ms terminal_capabilities: std.console.read
 @std/cli/terminal.ms terminal_size: std.console.read
