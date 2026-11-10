@@ -55,6 +55,68 @@ test "depth limit":
     try expect_true(parse("<a/>", max_depth: 0).is_error())
     try expect_equal(parse("<a><b/></a>", max_depth: 2).get().tag(), "a")
 
+test "processing instructions require a name and whitespace before data":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for instruction in [
+        "<??>", "<? ?>", "<?1bad?>", "<?@?>", "<?p!data?>", "<?p/data?>", "<?p=data?>",
+        "<?p\u{a0}data?>", "<?p", "<?p data"
+    ]:
+        try expect_equal(parse("{instruction}<a/>"), malformed)
+        try expect_equal(parse("<a>{instruction}</a>"), malformed)
+        try expect_equal(parse("<a/>{instruction}"), malformed)
+
+    for instruction in [
+        "<?p?>", "<?p ?>", "<?p\tdata?>", "<?p\r\ndata?>",
+        "<?xml-stylesheet href='style.xsl'?>", "<?xmlfoo?>", "<?XML:task?>",
+        "<?é:task data &literal; <markup> ? more?>"
+    ]:
+        try expect_equal(stringify(try parse("{instruction}<a/>{instruction}")), "<a/>")
+        try expect_equal((try parse("<a>x{instruction}y</a>")).text(), "xy")
+
+test "XML declarations occur only at the document start":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+    let declaration = "<?xml version='1.0'?>"
+
+    for target in ["xml", "XML", "Xml", "xMl", "xmL", "XMl", "xML", "XmL"]:
+        try expect_equal(parse("<a><?{target} version='1.0'?></a>"), malformed)
+        try expect_equal(parse("<a/><?{target} version='1.0'?>"), malformed)
+        if target != "xml":
+            try expect_equal(parse("<?{target} version='1.0'?><a/>"), malformed)
+
+    for prefix in [" ", "\n", "<!--c-->", "<?p?>", declaration.clone()]:
+        try expect_equal(parse("{prefix}{declaration}<a/>"), malformed)
+    try expect_equal((try parse("{declaration}<a/>")).tag(), "a")
+    try expect_equal((try parse("\u{feff}{declaration}<a/>")).tag(), "a")
+
+test "XML declarations validate ordered literal pseudo attributes":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+    for declaration in [
+        "<?xml?>", "<?xml ?>", "<?xml encoding='UTF-8'?>", "<?xml version=1.0?>",
+        "<?xml version='1.0?>", "<?xml version='2.0'?>", "<?xml version='1.'?>",
+        "<?xml version='1.a'?>", "<?xml version='1.0.0'?>", "<?xml version=' 1.0'?>",
+        "<?xml version='1.&#48;'?>", "<?xml version='1.0'encoding='UTF-8'?>",
+        "<?xml version='1.0' version='1.0'?>", "<?xml version='1.0' other='x'?>",
+        "<?xml version='1.0' encoding=''?>", "<?xml version='1.0' encoding='8UTF'?>",
+        "<?xml version='1.0' encoding='UTF 8'?>", "<?xml version='1.0' encoding='é'?>",
+        "<?xml version='1.0' encoding='UTF:8'?>",
+        "<?xml version='1.0' encoding='UTF-8' encoding='UTF-8'?>",
+        "<?xml version='1.0' standalone='true'?>",
+        "<?xml version='1.0' standalone='YES'?>",
+        "<?xml version='1.0' standalone='yes' standalone='no'?>",
+        "<?xml version='1.0' standalone='yes' encoding='UTF-8'?>"
+    ]:
+        try expect_equal(parse("{declaration}<a/>"), malformed)
+    for declaration in [
+        "<?xml version='1.0'?>", "<?xml version = \"1.0\" ?>",
+        "<?xml\tversion\n=\r'1.0'\nencoding = 'UTF-8'\tstandalone='yes' ?>",
+        "<?xml version='1.0' standalone='no'?>",
+        "<?xml version='1.0' encoding='UTF-8'?>",
+        "<?xml version='1.0' encoding='x-custom_1.2' standalone='no'?>",
+        "<?xml version='1.1'?>", "<?xml version='1.17'?>"
+    ]:
+        try expect_equal((try parse("{declaration}<a/>")).tag(), "a")
+
 test "entity decoding is linear in the text":
     let node = parse("<a>&amp;&lt;&#65;&#x42;tail</a>").get()
     try expect_equal(node.text(), "&<ABtail")
