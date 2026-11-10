@@ -86,3 +86,80 @@ fn operation_bound_visibility_preserves_private_and_public_interfaces() {
     let got = diagnostics(include_str!("../tests/operation_bounds/public_bounds.ms"));
     assert!(got.is_empty(), "{got:?}");
 }
+
+#[test]
+fn declaration_bounds_resolve_generic_arities_in_either_order() {
+    let source = include_str!("../tests/operation_bounds/declaration_order.ms");
+    for source in [
+        source.to_string(),
+        source.rsplit("\n\n").collect::<Vec<_>>().join("\n\n"),
+    ] {
+        let got = diagnostics(&source);
+        assert!(got.is_empty(), "{got:?}");
+    }
+}
+
+#[test]
+fn declaration_bounds_reject_wrong_arities_in_either_order() {
+    let source = include_str!("../tests/operation_bounds/declaration_arity.ms");
+    for source in [
+        source.to_string(),
+        source.rsplit("\n\n").collect::<Vec<_>>().join("\n\n"),
+    ] {
+        let got = diagnostics(&source);
+        assert_eq!(got.len(), 4, "{got:?}");
+        assert_eq!(
+            got.iter()
+                .filter(|d| d.starts_with("Reader requires 1 type arguments, found 0;"))
+                .count(),
+            2,
+            "{got:?}"
+        );
+        assert_eq!(
+            got.iter()
+                .filter(|d| d.starts_with("Reader requires 1 type arguments, found 2;"))
+                .count(),
+            2,
+            "{got:?}"
+        );
+    }
+}
+
+#[test]
+fn grouped_modules_register_generic_arities_before_resolving_bounds() {
+    let syms = ms_syntax::Names::global();
+    for reversed in [false, true] {
+        let session = crate::Session::new();
+        session.ensure_standard();
+        let mut imports = crate::ImportMap::default();
+        let mut modules: Vec<_> = [
+            (
+                "consumer.ms",
+                include_str!("../tests/operation_bounds/group_consumer.ms"),
+            ),
+            (
+                "provider.ms",
+                include_str!("../tests/operation_bounds/group_provider.ms"),
+            ),
+        ]
+        .into_iter()
+        .map(|(file, source)| {
+            let file: Arc<str> = Arc::from(file);
+            let parsed = ms_syntax::parser::parse(&file, source).expect("valid fixture");
+            for import in &parsed.imports {
+                let target = import.path.strip_prefix("./").expect("local import");
+                imports.insert(n(&file), import.id, n(target));
+            }
+            crate::load_module(syms, &parsed)
+        })
+        .collect();
+        if reversed {
+            modules.reverse();
+        }
+        let mut checker = Checker::new(&session, &CheckOptions::default());
+        checker.imports = imports;
+        checker.group = modules.clone();
+        let got = checker.check_modules(modules, None).diagnostics;
+        assert!(got.is_empty(), "{got:?}");
+    }
+}

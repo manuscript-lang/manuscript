@@ -694,6 +694,8 @@ impl Checker {
         self.import_symbols(module);
         self.declare_symbols(module);
         self.declare_type_variables(module);
+        self.resolve_declaration_bounds(module);
+        self.resolve_declaration_defaults(module);
         self.resolve_signatures(module);
         self.check_constant_cycles(module);
         for d in &module.decls {
@@ -747,6 +749,14 @@ impl Checker {
         for module in group {
             self.enter_module(module);
             self.declare_type_variables(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.resolve_declaration_bounds(module);
+        }
+        for module in group {
+            self.enter_module(module);
+            self.resolve_declaration_defaults(module);
         }
         for module in group {
             self.enter_module(module);
@@ -1013,6 +1023,26 @@ impl Checker {
             }
             self.scope = old;
         }
+    }
+
+    /// Every nominal parameter list must be registered before a bound can apply it.
+    fn resolve_declaration_bounds(&mut self, module: &ModRef) {
+        for d in &module.decls {
+            if !d.type_params().iter().any(|p| !p.bounds.is_empty()) {
+                continue;
+            }
+            let Some(s) = self.own_symbol(d) else {
+                continue;
+            };
+            let vars = s.variables();
+            let scope = self.variable_scope(&vars);
+            let old = std::mem::replace(&mut self.scope, scope);
+            self.resolve_type_bounds(d.type_params(), &vars);
+            self.scope = old;
+        }
+    }
+
+    fn resolve_declaration_defaults(&mut self, module: &ModRef) {
         // A default that names a type with defaulted parameters needs that type's defaults first,
         // whichever is declared earlier. A cycle leaves the inner type unresolved.
         let declared: HashMap<Name, usize> = module
@@ -1402,7 +1432,6 @@ impl Checker {
             vars.push(v.clone());
             self.scope.types.borrow_mut().insert(p.name, v);
         }
-        self.resolve_type_bounds(params, &vars);
         vars
     }
 
@@ -1410,7 +1439,7 @@ impl Checker {
     pub(crate) fn resolve_type_bounds(&mut self, params: &[TypeParam], vars: &[Ty]) {
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
-                // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
+                // Report the invalid bound kind before any unrelated type-argument errors.
                 if let TypeKind::Named { name, .. } = &b.kind
                     && !self.scope.types.borrow().contains_key(name)
                     && let Some(s) = self.sym(*name).filter(|s| s.kind == SymKind::Type)
