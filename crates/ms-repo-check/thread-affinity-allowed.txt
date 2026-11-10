@@ -24,5 +24,5 @@ crates/ms-std-net/src/sys/windows.rs 5
 crates/ms-std-net/src/tls.rs 3
 crates/ms-std-net/src/ws/dial.rs 4
 crates/ms-std-net/src/ws/socket.rs 11
-crates/ms-std-terminal/src/lib.rs 4
+crates/ms-std-terminal/src/lib.rs 2
 crates/ms-std-terminal/src/raw.rs 10

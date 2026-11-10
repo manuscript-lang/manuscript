@@ -1,62 +1,37 @@
-//! The raw terminal: termios raw input, cursor and screen control, and decoded input events.
+//! The raw terminal: raw input mode, UTF-8 text reads, writes and size.
 //!
 //! One raw terminal holds the host terminal at a time. Closing it (explicitly, by the scope that
-//! acquired it, by dropping the last reference, or at process exit) shows the cursor, leaves the
-//! alternate screen and restores the saved settings. Window changes are noticed by comparing the
-//! size while waiting for input, so a `Resize` event can lag by up to one wait step.
-#![allow(unsafe_code)] // the `ms-rt` task and exit-hook calls below
+//! acquired it, by dropping the last reference, or at process exit) writes the restore text the
+//! program registered (leaving the alternate screen, showing the cursor, and so on) and puts the
+//! saved settings back. Decoding keys and pastes from the text, resize detection and every
+//! escape sequence live in `@std/cli/terminal.ms`.
 
-use crate::decoder::{Decoder, Event};
-use alloc::collections::VecDeque;
+use crate::NS_PER_MS;
+use crate::sys::Term;
 use alloc::rc::{Rc, Weak};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use core::ops::Deref;
 use ms_rt::ffi::Failure;
 use ms_rt::ffi::Global;
-use ms_rt_abi::{
-    STATUS_CLOSED, STATUS_FAILED, STATUS_INVALID_INPUT, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK,
-};
-use rustix::event::{PollFd, PollFlags, poll};
-use rustix::fd::BorrowedFd;
-use rustix::io::{Errno, read, write};
-use rustix::termios::{
-    ControlModes, InputModes, LocalModes, OptionalActions, SpecialCodeIndex, Termios, isatty,
-    tcgetattr, tcgetwinsize, tcsetattr,
-};
-use rustix::time::{ClockId, Timespec, clock_gettime};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_FAILED, STATUS_NONE, STATUS_NOT_TERMINAL, STATUS_OK};
 
-use ms_rt::glue::pool::Cancelled;
 use ms_rt::io::msrt_io_flush;
 use ms_rt::process::msrt_process_on_exit;
-#[cfg(not(test))]
-use ms_rt::task::msrt_task_wait_fd;
 
-#[cfg(not(test))]
-const WAIT_READ: u32 = 1;
-#[cfg(not(test))]
-const WAIT_CANCELLED: u32 = 16;
-
-const NS_PER_MS: i64 = 1_000_000;
-/// The longest wait before the window size is compared again.
-const TICK_NS: i64 = 50 * NS_PER_MS;
+/// The wait for input before the caller compares the window size.
+const SLICE_NS: i64 = 50 * NS_PER_MS;
 /// How long a lone escape byte waits for the rest of its sequence.
-const ESCAPE_NS: i64 = 40 * NS_PER_MS;
-/// Cursor positions beyond this are refused, as the escape sequences cannot carry them.
-const MAX_POSITION: i64 = 65534;
+const QUICK_NS: i64 = 40 * NS_PER_MS;
 
 pub struct State {
-    input: BorrowedFd<'static>,
-    output: BorrowedFd<'static>,
-    saved: Termios,
-    alternate: bool,
-    hidden: Cell<bool>,
+    term: Term,
+    /// Written, then the settings restored, when the terminal closes.
+    restore: RefCell<Vec<u8>>,
     closed: Cell<bool>,
-    /// A task is inside `next_event`; others wait their turn.
-    reading: Cell<bool>,
-    decoder: RefCell<Decoder>,
-    queue: RefCell<VecDeque<Event>>,
-    size: Cell<Option<(i64, i64)>>,
+    /// Bytes of an incomplete UTF-8 scalar read so far.
+    carry: RefCell<Vec<u8>>,
 }
 
 /// The raw terminal currently holding the host terminal.
@@ -88,162 +63,27 @@ impl Drop for Raw {
     }
 }
 
-fn now_ns() -> i64 {
-    let ts = clock_gettime(ClockId::Monotonic);
-    ts.tv_sec
-        .saturating_mul(1_000_000_000)
-        .saturating_add(ts.tv_nsec as i64)
-}
-
-/// `(columns, rows)` of the terminal open on `fd`.
-pub fn tty_size(fd: BorrowedFd<'_>) -> Option<(i64, i64)> {
-    let w = tcgetwinsize(fd).ok()?;
-    Some((i64::from(w.ws_col), i64::from(w.ws_row)))
-}
-
-fn number(out: &mut Vec<u8>, n: i64) {
-    let mut digits = [0u8; 20];
-    let (mut at, mut n) = (digits.len(), n.max(0) as u64);
-    loop {
-        at -= 1;
-        digits[at] = b'0' + (n % 10) as u8;
-        n /= 10;
-        if n == 0 {
-            break;
-        }
-    }
-    out.extend_from_slice(&digits[at..]);
-}
-
-/// Polls `fd` for input for up to `timeout_ns`; a hangup counts as ready.
-fn poll_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> bool {
-    let timeout = Timespec {
-        tv_sec: timeout_ns / 1_000_000_000,
-        tv_nsec: (timeout_ns % 1_000_000_000) as _,
-    };
-    let mut fds = [PollFd::new(&fd, PollFlags::IN)];
-    poll(&mut fds, Some(&timeout)).is_ok_and(|n| n > 0)
-}
-
-/// Whether `fd` has input (or a hangup) ready now.
-fn readable_now(fd: BorrowedFd<'_>) -> bool {
-    poll_readable(fd, 0)
-}
-
-/// Blocks the task until `fd` is readable or `timeout_ns` passes; `Err` when a stop request
-/// ends the wait, so the caller returns and drops what it holds.
-fn wait_readable(fd: BorrowedFd<'_>, timeout_ns: i64) -> Result<bool, Cancelled> {
-    if readable_now(fd) {
-        return Ok(true);
-    }
-    if timeout_ns <= 0 {
-        return Ok(false);
-    }
-    #[cfg(not(test))]
-    {
-        // SAFETY: provided by `ms-rt`; parks the running task.
-        let woke = unsafe {
-            msrt_task_wait_fd(
-                rustix::fd::AsRawFd::as_raw_fd(&fd),
-                WAIT_READ,
-                timeout_ns.max(0),
-            )
-        };
-        if woke & WAIT_CANCELLED != 0 {
-            return Err(Cancelled);
-        }
-        // Readable or hung up; a read then reports which.
-        Ok(woke & 0b101 != 0)
-    }
-    #[cfg(test)]
-    {
-        Ok(poll_readable(fd, timeout_ns))
-    }
-}
-
-/// Sleeps the task for `ns` so another task's read can finish.
-fn pause(ns: i64) -> Result<(), Cancelled> {
-    #[cfg(not(test))]
-    {
-        use ms_rt::task::msrt_task_sleep;
-        // SAFETY: provided by `ms-rt`.
-        if unsafe { msrt_task_sleep(ns) } & WAIT_CANCELLED != 0 {
-            return Err(Cancelled);
-        }
-    }
-    #[cfg(test)]
-    std::thread::sleep(core::time::Duration::from_nanos(ns.max(0) as u64));
-    Ok(())
-}
-
-/// Clears the reading flag when `next_event` leaves, by any path.
-struct Reading<'a>(&'a Cell<bool>);
-
-impl Drop for Reading<'_> {
-    fn drop(&mut self) {
-        self.0.set(false);
-    }
-}
-
 impl Raw {
-    /// Puts `input` into raw mode and (optionally) switches `output` to the alternate screen.
-    pub fn open(
-        input: BorrowedFd<'static>,
-        output: BorrowedFd<'static>,
-        alternate: bool,
-    ) -> Result<Raw, Failure> {
-        if !(isatty(input) && isatty(output)) {
+    /// Puts the process's terminal into raw mode. `Err` with `STATUS_BUSY` while another raw
+    /// terminal is open.
+    pub fn open() -> Result<Raw, Failure> {
+        if !(crate::is_terminal(0) && crate::is_terminal(1)) {
             return Err(STATUS_NOT_TERMINAL.into());
         }
+        Raw::attach(Term::open_standard)
+    }
+
+    /// Like `open`, with the terminal supplied by `make`.
+    pub fn attach(make: impl FnOnce() -> Result<Term, Failure>) -> Result<Raw, Failure> {
         if ACTIVE.get().borrow().upgrade().is_some() {
             return Err(ms_rt_abi::STATUS_BUSY.into());
         }
-        let Ok(saved) = tcgetattr(input) else {
-            return Err(Failure::failed("cannot read terminal settings"));
-        };
-        let mut raw = saved.clone();
-        raw.input_modes.remove(
-            InputModes::IGNBRK
-                | InputModes::BRKINT
-                | InputModes::PARMRK
-                | InputModes::ISTRIP
-                | InputModes::INLCR
-                | InputModes::IGNCR
-                | InputModes::ICRNL
-                | InputModes::IXON,
-        );
-        raw.local_modes.remove(
-            LocalModes::ECHO
-                | LocalModes::ECHONL
-                | LocalModes::ICANON
-                | LocalModes::ISIG
-                | LocalModes::IEXTEN,
-        );
-        raw.control_modes
-            .remove(ControlModes::CSIZE | ControlModes::PARENB);
-        raw.control_modes.insert(ControlModes::CS8);
-        raw.special_codes[SpecialCodeIndex::VMIN] = 1;
-        raw.special_codes[SpecialCodeIndex::VTIME] = 0;
-        if tcsetattr(input, OptionalActions::Now, &raw).is_err() {
-            return Err(Failure::failed("cannot enter raw mode"));
-        }
-        let terminal = State {
-            input,
-            output,
-            saved,
-            alternate,
-            hidden: Cell::new(false),
+        let terminal = Rc::new(State {
+            term: make()?,
+            restore: RefCell::new(Vec::new()),
             closed: Cell::new(false),
-            reading: Cell::new(false),
-            decoder: RefCell::new(Decoder::default()),
-            queue: RefCell::new(VecDeque::new()),
-            size: Cell::new(tty_size(output).or_else(|| tty_size(input))),
-        };
-        if alternate {
-            // Nothing useful to report if the terminal vanished already; reads will say so.
-            let _ = terminal.write(b"\x1b[?1049h");
-        }
-        let terminal = Rc::new(terminal);
+            carry: RefCell::new(Vec::new()),
+        });
         *ACTIVE.get().borrow_mut() = Rc::downgrade(&terminal);
         if !HOOKED.get().replace(true) {
             msrt_process_on_exit(restore_at_exit);
@@ -257,19 +97,14 @@ impl State {
         self.closed.get()
     }
 
-    /// Restores the terminal; closing again does nothing.
+    /// Writes the restore text and the saved settings; closing again does nothing.
     pub fn close(&self) {
         if self.closed.replace(true) {
             return;
         }
-        if self.hidden.get() {
-            let _ = self.write(b"\x1b[?25h");
-        }
-        if self.alternate {
-            let _ = self.write(b"\x1b[?1049l");
-        }
-        // Nothing to report if the terminal vanished already.
-        let _ = tcsetattr(self.input, OptionalActions::Now, &self.saved);
+        // Nothing useful to report if the terminal vanished already.
+        let _ = self.write(&self.restore.borrow());
+        self.term.restore();
         let mut active = ACTIVE.get().borrow_mut();
         if core::ptr::eq(active.as_ptr(), self) {
             *active = Weak::new();
@@ -279,149 +114,95 @@ impl State {
     fn write(&self, bytes: &[u8]) -> Result<(), Failure> {
         // Text the program printed earlier must reach the terminal before the control sequence.
         msrt_io_flush();
-        let mut rest = bytes;
-        while !rest.is_empty() {
-            match write(self.output, rest) {
-                Ok(n) => rest = &rest[n..],
-                Err(Errno::INTR) => {}
-                Err(Errno::AGAIN) => {
-                    if pause(NS_PER_MS).is_err() {
-                        return Err(Failure::failed("cancelled"));
-                    }
-                }
-                Err(_) => return Err(Failure::failed("cannot write to the terminal")),
-            }
-        }
-        Ok(())
+        self.term.write_all(bytes)
     }
 
-    /// Writes a control sequence for an operation that fails on a closed terminal.
-    fn command(&self, bytes: &[u8]) -> Result<(), Failure> {
+    /// Writes text or control sequences to the terminal; fails on a closed terminal.
+    pub fn command(&self, bytes: &[u8]) -> Result<(), Failure> {
         if self.closed.get() {
             return Err(STATUS_CLOSED.into());
         }
         self.write(bytes)
     }
 
+    /// Sets the text written when the terminal closes.
+    pub fn set_restore(&self, bytes: &[u8]) {
+        *self.restore.borrow_mut() = bytes.to_vec();
+    }
+
     pub fn size(&self) -> Result<(i64, i64), u8> {
         if self.closed.get() {
             return Err(STATUS_CLOSED);
         }
-        tty_size(self.output)
-            .or_else(|| tty_size(self.input))
-            .ok_or(STATUS_NOT_TERMINAL)
+        self.term.size().ok_or(STATUS_NOT_TERMINAL)
     }
 
-    pub fn move_cursor(&self, row: i64, column: i64) -> Result<(), Failure> {
+    /// Waits for input, for 40 ms when `quick` and 50 ms otherwise, then stores its complete
+    /// UTF-8 scalars in `text`: `STATUS_OK`, `STATUS_NONE` when nothing came, `STATUS_CLOSED` once
+    /// closed or when input ended. The short wait lets the caller compare the window size and
+    /// resolve a lone escape byte into the Escape key.
+    pub fn read(&self, quick: bool, text: &mut String) -> u8 {
+        if ms_rt::glue::cancel_pending() {
+            return STATUS_FAILED;
+        }
         if self.closed.get() {
-            return Err(STATUS_CLOSED.into());
+            return STATUS_CLOSED;
         }
-        if !(0..=MAX_POSITION).contains(&row) || !(0..=MAX_POSITION).contains(&column) {
-            return Err(STATUS_INVALID_INPUT.into());
+        let Ok(ready) = self
+            .term
+            .wait_readable(if quick { QUICK_NS } else { SLICE_NS })
+        else {
+            return STATUS_FAILED;
+        };
+        if !ready {
+            return STATUS_NONE;
         }
-        let mut seq = b"\x1b[".to_vec();
-        number(&mut seq, row + 1);
-        seq.push(b';');
-        number(&mut seq, column + 1);
-        seq.push(b'H');
-        self.command(&seq)
+        let mut bytes = Vec::new();
+        if self.term.read_ready(&mut bytes).is_err() {
+            return STATUS_CLOSED;
+        }
+        self.decode(bytes, text);
+        if text.is_empty() {
+            STATUS_NONE
+        } else {
+            STATUS_OK
+        }
     }
 
-    pub fn show_cursor(&self, visible: bool) -> Result<(), Failure> {
-        if self.closed.get() {
-            return Err(STATUS_CLOSED.into());
-        }
-        self.hidden.set(!visible);
-        self.command(if visible { b"\x1b[?25h" } else { b"\x1b[?25l" })
-    }
-
-    /// `region` is the `EraseRegion` case index: screen, line, line end, line start.
-    pub fn erase(&self, region: i64) -> Result<(), Failure> {
-        self.command(match region {
-            0 => b"\x1b[2J",
-            1 => b"\x1b[2K",
-            2 => b"\x1b[K",
-            _ => b"\x1b[1K",
-        })
-    }
-
-    /// Waits for the next event: `STATUS_OK` with the event in `current`, `STATUS_NONE` when
-    /// `timeout_ns` elapsed first, `STATUS_CLOSED` once closed or when input ended.
-    pub fn next_event(&self, timeout_ns: Option<i64>, current: &mut Option<Event>) -> u8 {
-        let deadline = timeout_ns.map(|t| now_ns().saturating_add(t));
-        let remaining = || deadline.map(|d| d - now_ns());
-        // Concurrent callers are served one at a time.
-        while self.reading.get() {
-            if self.closed.get() {
-                return STATUS_CLOSED;
-            }
-            if remaining().is_some_and(|r| r <= 0) {
-                return STATUS_NONE;
-            }
-            if pause(NS_PER_MS).is_err() {
-                return STATUS_FAILED;
-            }
-        }
-        self.reading.set(true);
-        let _reading = Reading(&self.reading);
+    /// Appends the complete scalars of `carry + bytes` to `text`, replacing invalid bytes with
+    /// U+FFFD and keeping an incomplete trailing scalar for the next read.
+    fn decode(&self, bytes: Vec<u8>, text: &mut String) {
+        let mut carry = self.carry.borrow_mut();
+        carry.extend_from_slice(&bytes);
+        let mut rest = carry.as_slice();
         loop {
-            if ms_rt::glue::cancel_pending() {
-                return STATUS_FAILED;
-            }
-            if self.closed.get() {
-                return STATUS_CLOSED;
-            }
-            if let Some(event) = self.queue.borrow_mut().pop_front() {
-                *current = Some(event);
-                return STATUS_OK;
-            }
-            let size = tty_size(self.output).or_else(|| tty_size(self.input));
-            if size.is_some() && size != self.size.get() {
-                self.size.set(size);
-                if let Some((columns, rows)) = size {
-                    *current = Some(Event::Resize { columns, rows });
-                    return STATUS_OK;
+            match core::str::from_utf8(rest) {
+                Ok(valid) => {
+                    text.push_str(valid);
+                    rest = &[];
+                    break;
+                }
+                Err(e) => {
+                    let (valid, after) = rest.split_at(e.valid_up_to());
+                    text.push_str(core::str::from_utf8(valid).unwrap_or_default());
+                    match e.error_len() {
+                        Some(n) => {
+                            text.push('\u{fffd}');
+                            rest = &after[n..];
+                        }
+                        None => {
+                            rest = after;
+                            break;
+                        }
+                    }
                 }
             }
-            let partial = self.decoder.borrow().pending();
-            let natural = if partial { ESCAPE_NS } else { TICK_NS };
-            let step = remaining().map_or(natural, |r| natural.min(r.max(0)));
-            let Ok(ready) = wait_readable(self.input, step) else {
-                return STATUS_FAILED;
-            };
-            if ready {
-                match self.fill() {
-                    Ok(()) => continue,
-                    Err(status) => return status,
-                }
-            }
-            // A full quiet pause resolves a lone escape into the Escape key.
-            if partial && step == natural {
-                let events = self.decoder.borrow_mut().flush();
-                self.queue.borrow_mut().extend(events);
-            }
-            if self.queue.borrow().is_empty() && remaining().is_some_and(|r| r <= 0) {
-                return STATUS_NONE;
-            }
         }
-    }
-
-    /// Reads what the terminal has ready into the event queue.
-    fn fill(&self) -> Result<(), u8> {
-        let mut buf = [0u8; 4096];
-        match read(self.input, &mut buf[..]) {
-            Ok(0) => Err(STATUS_CLOSED), // input ended: hangup
-            Ok(n) => {
-                let events = self.decoder.borrow_mut().feed(&buf[..n]);
-                self.queue.borrow_mut().extend(events);
-                Ok(())
-            }
-            Err(Errno::INTR | Errno::AGAIN) => Ok(()),
-            Err(_) => Err(STATUS_CLOSED),
-        }
+        let kept = rest.to_vec();
+        *carry = kept;
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 #[path = "raw_tests.rs"]
 mod tests;

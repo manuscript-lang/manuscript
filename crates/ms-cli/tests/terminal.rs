@@ -105,6 +105,8 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
         (b"\x03", "key:c ctrl=true alt=false shift=false"),
         (b"\x1b", "key:escape ctrl=false alt=false shift=false"),
         (b"\x1b[1;5C", "key:right ctrl=true alt=false shift=false"),
+        (b"\x1b[200~a\r\nb\x1b[201~", "paste:a|b"),
+        (b"\x1b[13;2u", "key:enter ctrl=false alt=false shift=true"),
     ] {
         type_bytes(&master, keys);
         wait_for(&master, &mut log, expected);
@@ -119,6 +121,9 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
     wait_for(&master, &mut log, "\x1b[?25h");
     assert!(child.wait().unwrap().success());
     assert!(canonical(slave.as_raw_fd()), "settings restored");
-    assert!(log.starts_with("\x1b[2;3H\x1b[?25l\x1b[K"), "{log:?}");
+    let enter = "\x1b[?2004h\x1b[>4;2m\x1b[>1u";
+    let moves = "\x1b[2;3H\x1b[?25l\x1b[K\x1b[1A\x1b[2C\x1b]2;t\x07";
+    assert!(log.starts_with(&format!("{enter}{moves}")), "{log:?}");
+    assert!(log.contains("\x1b[<u\x1b[>4;0m\x1b[?2004l"), "{log:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
