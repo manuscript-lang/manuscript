@@ -1,0 +1,1469 @@
+{
+  "complete": true,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "affinity": [
+    0
+  ],
+  "sha256": {
+    "/workspace/map-iteration-evidence/baseline/maps-control": "61025dc4541af1c88a9f4dc70e2c1463c7c754ee362772ff06fce3077283208e",
+    "/workspace/map-iteration-evidence/candidate/maps-control": "0bf3cba75f4259ac8e547c3662d33835df3ddde0d57398608c9d74b259e63bdf"
+  },
+  "cases": [
+    {
+      "mode": "int_get",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1707745,
+          1880305,
+          1561364,
+          1875467,
+          1599032,
+          1458849
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1975779,
+          1687835,
+          2306127,
+          1964922,
+          1551089,
+          1441724
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1653388.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1826378.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          6491146,
+          6989048,
+          6515008,
+          7022669,
+          6797830,
+          6358277
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          6673583,
+          6206768,
+          7286957,
+          8088345,
+          6697768,
+          5858984
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 6656419.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 6685675.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          3168277,
+          2991220,
+          3057330,
+          4408277,
+          3136910,
+          3312655
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          2988897,
+          3021947,
+          3264081,
+          2918000,
+          2820143,
+          3239916
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 3152593.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 3005422.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 0,
+      "prefix_width": 16,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2768765,
+          4165240,
+          3638265,
+          3543543,
+          4208495,
+          3158642
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          2835205,
+          2862335,
+          2811309,
+          3084911,
+          3415430,
+          3000214
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 3590904.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2931274.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 0,
+      "prefix_width": 256,
+      "repeats": 111111,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          284909,
+          348216,
+          285050,
+          707457,
+          307664,
+          321725
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          290498,
+          367805,
+          376868,
+          399853,
+          481656,
+          285441
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 314694.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 372336.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 0,
+      "prefix_width": 0,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          4530000,
+          4802041,
+          4123057,
+          4147374,
+          4295106,
+          4369728
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          5812915,
+          4273733,
+          4197529,
+          3957817,
+          6381732,
+          4951456
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 4332417.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 4612594.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 0,
+      "prefix_width": 16,
+      "repeats": 1000000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          4255907,
+          4370780,
+          4709582,
+          4350570,
+          4492263,
+          4716712
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          4534298,
+          4197208,
+          5091377,
+          4813888,
+          6642536,
+          5096966
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 4431521.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 4952632.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 0,
+      "prefix_width": 256,
+      "repeats": 111111,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          565633,
+          421476,
+          467976,
+          584101,
+          829231,
+          516469
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          448596,
+          534696,
+          580996,
+          421346,
+          849361,
+          436508
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 541051.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 491646.0
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          388886,
+          352252,
+          571281,
+          542467,
+          352121,
+          352121
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          703421,
+          352121,
+          396327,
+          406193,
+          363578,
+          366433
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 370569.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 381380.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1372930,
+          1381483,
+          1328843,
+          1231647,
+          1029592,
+          2300649
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1299349,
+          1214401,
+          1344888,
+          1035711,
+          1285588,
+          1497889
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1350886.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1292468.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2157824,
+          1515435,
+          1253049,
+          1365399,
+          1241782,
+          1101080
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1569616,
+          1733634,
+          1125317,
+          1178788,
+          1182653,
+          1346520
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1309224.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1264586.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 1,
+      "prefix_width": 16,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1730509,
+          1797531,
+          1671911,
+          2187118,
+          1926605,
+          1741536
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1651670,
+          1799444,
+          1593963,
+          1865112,
+          2043882,
+          1673573
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1769533.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1736508.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 1,
+      "prefix_width": 256,
+      "repeats": 11111,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1174621,
+          1287541,
+          1488655,
+          1270186,
+          1777040,
+          1161611
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1246851,
+          1141351,
+          1204777,
+          1027399,
+          1468354,
+          1131296
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1278863.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1173064.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 1,
+      "prefix_width": 0,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2310524,
+          2415792,
+          2223843,
+          2420770,
+          2602073,
+          2098825
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3147946,
+          2424746,
+          2103492,
+          2416017,
+          2639440,
+          2290794
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 2363158.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2420381.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 1,
+      "prefix_width": 16,
+      "repeats": 100000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          5588726,
+          5524941,
+          5897452,
+          5094292,
+          5325500,
+          5020941
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          5830391,
+          6440851,
+          5083475,
+          6209472,
+          5250226,
+          5885064
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 5425220.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 5857727.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 1,
+      "prefix_width": 256,
+      "repeats": 11111,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2472868,
+          2484106,
+          2627912,
+          2419047,
+          2493320,
+          3380117
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          2604988,
+          2779310,
+          2777648,
+          2743687,
+          2626961,
+          3227426
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 2488713.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2760667.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          706095,
+          687046,
+          638282,
+          635358,
+          727327,
+          858184
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          855470,
+          633545,
+          696290,
+          717552,
+          642058,
+          779996
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 696570.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 706921.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1602526,
+          1398338,
+          1278017,
+          1368844,
+          1754295,
+          1343185
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1327181,
+          1180630,
+          1671290,
+          1362354,
+          1660935,
+          1310776
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1383591.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1344767.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1748666,
+          1870600,
+          2555182,
+          2644487,
+          2715264,
+          2063141
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1983370,
+          1773764,
+          2239837,
+          2450365,
+          2230783,
+          2056781
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 2309161.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2143782.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 8,
+      "prefix_width": 16,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2704087,
+          3112413,
+          2867739,
+          4272717,
+          2864249,
+          2643816
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3448570,
+          2873122,
+          3004981,
+          2447751,
+          3914733,
+          2849677
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 2865994.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2939051.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 8,
+      "prefix_width": 256,
+      "repeats": 2222,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2120087,
+          1860875,
+          1933776,
+          2011873,
+          2284805,
+          1737299
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1891392,
+          1815447,
+          1836499,
+          1839424,
+          1851161,
+          1810550
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1972824.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1837961.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 8,
+      "prefix_width": 0,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          3423763,
+          3513527,
+          3698587,
+          3746309,
+          3430542,
+          4135405
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3698116,
+          3492686,
+          3825107,
+          3741631,
+          4598613,
+          3643985
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 3606057.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 3719873.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 8,
+      "prefix_width": 16,
+      "repeats": 20000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          9305871,
+          8045140,
+          7888824,
+          8333355,
+          7993271,
+          8836584
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          9089705,
+          9563791,
+          7818249,
+          8749352,
+          9033521,
+          8911797
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 8189247.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 8972659.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 8,
+      "prefix_width": 256,
+      "repeats": 2222,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          4180853,
+          7642528,
+          4556230,
+          4703452,
+          4214444,
+          4787498
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3855503,
+          4303850,
+          4064558,
+          6051509,
+          4688259,
+          3928163
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 4629841.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 4184204.0
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1028341,
+          982121,
+          996152,
+          1036863,
+          1237776,
+          1507013
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          993909,
+          3012803,
+          997855,
+          1112196,
+          1000038,
+          1113129
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1032602.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1056117.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2083802,
+          1922679,
+          2039816,
+          1909179,
+          2053936,
+          2641503
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          2367950,
+          2872641,
+          2363213,
+          1960776,
+          2151574,
+          2513190
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 2046876.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2365581.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          3715411,
+          4155996,
+          3766830,
+          3979610,
+          3724897,
+          3368089
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3429661,
+          4358402,
+          4026271,
+          4380845,
+          3451674,
+          3846780
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 3745863.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 3936525.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 16,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          5302054,
+          6172897,
+          4481848,
+          4537341,
+          4265432,
+          4295587
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          4472754,
+          4500346,
+          4829943,
+          4633266,
+          5297588,
+          4602529
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 4509594.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 4617897.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 256,
+      "repeats": 222,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          3359495,
+          3898749,
+          4002665,
+          3947051,
+          3424604,
+          3318434
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3541941,
+          3628190,
+          3915073,
+          4149477,
+          3338123,
+          3389320
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 3661676.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 3585065.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 128,
+      "prefix_width": 4096,
+      "repeats": 15,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          4314425,
+          3487138,
+          3854852,
+          3727230,
+          3845959,
+          3977216
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3715221,
+          4603861,
+          4028203,
+          4212953,
+          3822684,
+          3569431
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 3850405.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 3925443.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 0,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          10088697,
+          6908727,
+          6286519,
+          6289532,
+          5986246,
+          8759828
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          6164104,
+          6513832,
+          7772008,
+          6564037,
+          8211761,
+          6494473
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 6599129.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 6538934.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 16,
+      "repeats": 2000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          13587186,
+          13812657,
+          14576899,
+          14123204,
+          14032918,
+          14472000
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          14082963,
+          14093630,
+          14047581,
+          14459002,
+          13851244,
+          14298128
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 14078061.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 14088296.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 256,
+      "repeats": 222,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          6583247,
+          6758961,
+          8569011,
+          6558518,
+          7065413,
+          6177224
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          6450766,
+          6113138,
+          6272837,
+          6757579,
+          8379463,
+          6827595
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 6671104.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 6604172.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 128,
+      "prefix_width": 4096,
+      "repeats": 15,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          5551120,
+          5980377,
+          6184065,
+          8348397,
+          6540873,
+          6185206
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          6013717,
+          6049041,
+          6458578,
+          6441252,
+          6438427,
+          7078854
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 6184635.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 6439839.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          2803647,
+          2918100,
+          2704058,
+          2646961,
+          2627392,
+          2158044
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          3236910,
+          2372918,
+          2936637,
+          2711128,
+          3014085,
+          2739341
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 2675509.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 2837989.0
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          4856373,
+          4843003,
+          7718258,
+          4472174,
+          4876212,
+          4904564
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          4751224,
+          4531292,
+          5997793,
+          3881102,
+          4395157,
+          9495878
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 4866292.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 4641258.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          6953073,
+          5799754,
+          5586213,
+          5606504,
+          6027909,
+          5107051
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          6487140,
+          5491251,
+          5463908,
+          5943922,
+          5054711,
+          5943662
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 5703129.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 5717456.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          7966813,
+          9362987,
+          12402711,
+          8059312,
+          11553291,
+          11417815
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          8821210,
+          8392374,
+          7880382,
+          7830476,
+          13908221,
+          12144832
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 10390401.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 8606792.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          6895287,
+          6859492,
+          10120640,
+          6646051,
+          6507282,
+          10552641
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          8155346,
+          7825570,
+          7995385,
+          6215150,
+          6225827,
+          6577358
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 6877389.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 7201464.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 1,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          14675158,
+          13736702,
+          26435720,
+          14032959,
+          13472454,
+          12794872
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          15074149,
+          13195355,
+          24151675,
+          12792920,
+          13915101,
+          12407087
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 13884830.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 13555228.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          11298025,
+          12237122,
+          10021280,
+          10747976,
+          10597108,
+          11610167
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          10906754,
+          10808618,
+          10550037,
+          12259156,
+          11181509,
+          13146122
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 11023000.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 11044131.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          30332766,
+          30965540,
+          28800996,
+          27053922,
+          28355004,
+          28218659
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          27190508,
+          35723584,
+          32156405,
+          29615694,
+          28244236,
+          28424222
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 28578000.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 29019958.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          11547431,
+          11578919,
+          11416574,
+          12243951,
+          11544126,
+          12833680
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          11785921,
+          11205886,
+          11170774,
+          12487319,
+          11826948,
+          11304054
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 11563175.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 11544987.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 1,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          22586125,
+          23692494,
+          22278001,
+          21244222,
+          21816966,
+          19183635
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          22781240,
+          21255499,
+          22188376,
+          20675334,
+          21879159,
+          22306184
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 22047483.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 22033767.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          7294979,
+          7699950,
+          7468621,
+          7122300,
+          7234488,
+          8171932
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          6948287,
+          7204623,
+          7387248,
+          7027796,
+          6751920,
+          7074597
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 7381800.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 7051196.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          11320549,
+          10454223,
+          11695554,
+          11100157,
+          13361356,
+          11042170
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          11108059,
+          11222001,
+          10460902,
+          11355373,
+          11045835,
+          11789726
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 11210353.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 11165030.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          11210624,
+          11820053,
+          11609814,
+          14411330,
+          12449803,
+          13473135
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          12591716,
+          12997647,
+          11630416,
+          14112359,
+          13152231,
+          11854053
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 12134928.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 12794681.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 5,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          15436905,
+          16018643,
+          14509267,
+          16027386,
+          15652201,
+          17457813
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          15876699,
+          16118944,
+          17609998,
+          15074850,
+          16444155,
+          16385076
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 15835422.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 16252010.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 1,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          17653873,
+          15063033,
+          12895454,
+          13551803,
+          12564785,
+          12597774
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          13423851,
+          14093660,
+          12778057,
+          12928183,
+          12302079,
+          14456448
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 13223628.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 13176017.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 5,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          19640014,
+          17927581,
+          19050214,
+          18930593,
+          17925088,
+          18883613
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          20543385,
+          19372901,
+          19193289,
+          18645694,
+          18590822,
+          22024078
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 18907103.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 19283095.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 5,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          34920113,
+          33981958,
+          32381023,
+          34923808,
+          31642050,
+          32185460
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          36572484,
+          33503205,
+          30564757,
+          30376141,
+          34823897,
+          31430570
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 33181490.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 32466887.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 1,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          23518250,
+          24816208,
+          22923413,
+          22570031,
+          24885382,
+          22204030
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          21108257,
+          21131963,
+          26739898,
+          26097560,
+          21867141,
+          22094013
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 23220831.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 21980577.0
+      }
+    }
+  ]
+}

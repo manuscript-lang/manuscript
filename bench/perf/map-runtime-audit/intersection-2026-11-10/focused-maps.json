@@ -1,0 +1,733 @@
+{
+  "complete": true,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "affinity": [
+    0
+  ],
+  "sha256": {
+    "/workspace/map-iteration-evidence/baseline/maps-control": "61025dc4541af1c88a9f4dc70e2c1463c7c754ee362772ff06fce3077283208e",
+    "/workspace/map-iteration-evidence/candidate/maps-control": "0bf3cba75f4259ac8e547c3662d33835df3ddde0d57398608c9d74b259e63bdf"
+  },
+  "cases": [
+    {
+      "mode": "int_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          118827610,
+          117572579,
+          111909632,
+          117329362,
+          110349620,
+          111366784,
+          119143095,
+          104225330,
+          106915468,
+          109649447,
+          114770257,
+          111983967
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          119061148,
+          114113434,
+          116515255,
+          103814849,
+          109190634,
+          105513530,
+          111666216,
+          109957289,
+          113354281,
+          114844218,
+          106117332,
+          106717336
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 111946799.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 110811752.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          268845014,
+          271080223,
+          279687035,
+          175154843,
+          304998159,
+          174324352,
+          174850454,
+          251213600,
+          177627150,
+          247037175,
+          329673908,
+          242027072
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          258513740,
+          259540527,
+          244386729,
+          273507508,
+          178138701,
+          249067275,
+          295579421,
+          177272516,
+          291516366,
+          175657772,
+          213760762,
+          267245979
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 249125387.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 253790507.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          241365175,
+          263914257,
+          277771416,
+          250120463,
+          249004611,
+          272070027,
+          326896502,
+          294568610,
+          266353511,
+          238949665,
+          243935220,
+          278035158
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          279353901,
+          251116354,
+          259302064,
+          265267586,
+          264370770,
+          290763391,
+          313469373,
+          310672401,
+          246597433,
+          249716595,
+          252236422,
+          266050143
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 265133884.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 264819178.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          446879055,
+          478597634,
+          422548131,
+          409954418,
+          389615019,
+          409389768,
+          416337736,
+          418716071,
+          396563189,
+          378477237,
+          386629401,
+          373236975
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          410409144,
+          440586922,
+          439218147,
+          395745972,
+          377012759,
+          414326275,
+          395446577,
+          452786634,
+          406534689,
+          375168020,
+          384179709,
+          407460690
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 409672093.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 406997689.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 555,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          261477836,
+          290885336,
+          278677408,
+          306692149,
+          260309549,
+          346454256,
+          325326209,
+          341721158,
+          329395773,
+          370602570,
+          320019371,
+          321688412
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          264993453,
+          270888056,
+          272479496,
+          275542683,
+          279851195,
+          369916767,
+          330545726,
+          364622669,
+          335737024,
+          336516714,
+          313375419,
+          306614490
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 320853891.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 309994954.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 38,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          447047302,
+          459331314,
+          470267509,
+          449903551,
+          469454038,
+          445538762,
+          445278329,
+          464851711,
+          470323127,
+          468699591,
+          504316268,
+          500296648
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          484660516,
+          469804470,
+          463046962,
+          432667244,
+          475567292,
+          461944720,
+          460515486,
+          500786544,
+          477179736,
+          482285454,
+          561239054,
+          494280748
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 466775651.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 476373514.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 0,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          517612292,
+          504615508,
+          500260841,
+          544085072,
+          520782765,
+          507212102,
+          527002047,
+          546973780,
+          552448814,
+          534087666,
+          575743942,
+          516009487
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          546820827,
+          503734731,
+          535839089,
+          589596197,
+          499826706,
+          512216127,
+          525939233,
+          554425118,
+          556085095,
+          539273083,
+          529956099,
+          532423749
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 523892406.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 534131419.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 16,
+      "repeats": 5000,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          1300396019,
+          1290960641,
+          1356963497,
+          1293947729,
+          1271403502,
+          1207184904,
+          1251843302,
+          1350765910,
+          1289045551,
+          1310466820,
+          1339328020,
+          1338972814
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          1373615085,
+          1292558619,
+          1269991823,
+          1258616887,
+          1232340503,
+          1190386882,
+          1230924659,
+          1252766794,
+          1266500264,
+          1305941562,
+          1254549391,
+          1356809662
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 1297171874.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 1262558575.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 256,
+      "repeats": 555,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          609522409,
+          582893552,
+          649827139,
+          609109011,
+          602943242,
+          576346778,
+          555997586,
+          574814987,
+          616502763,
+          545431930,
+          552181549,
+          571985290
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          590009409,
+          645173678,
+          635280517,
+          612567069,
+          617587381,
+          584715854,
+          584499277,
+          584769867,
+          603814367,
+          553529357,
+          549938057,
+          554220051
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 579620165.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 587389638.0
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 4096,
+      "prefix_width": 4096,
+      "repeats": 38,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          761940846,
+          794613135,
+          800396231,
+          798813165,
+          794978260,
+          731207888,
+          733293431,
+          740304576,
+          776033112,
+          821824557,
+          774577107,
+          760793929
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          771210869,
+          808911259,
+          767367274,
+          778723708,
+          778697969,
+          828551663,
+          732887258,
+          739362295,
+          792008994,
+          803621314,
+          788534226,
+          761871174
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 775305109.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 778710838.5
+      }
+    },
+    {
+      "mode": "int_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          141619734,
+          139326277,
+          143451425,
+          139903647,
+          141346291,
+          136344322,
+          136186234,
+          136958367,
+          136684554,
+          138243445,
+          140494518,
+          141124828
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          139464926,
+          140933579,
+          140431664,
+          139752489,
+          136923164,
+          135540541,
+          137114804,
+          135863217,
+          140023127,
+          138033769,
+          137415857,
+          140583802
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 139614962.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 138749347.5
+      }
+    },
+    {
+      "mode": "int_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          218265388,
+          209730933,
+          217638218,
+          228631293,
+          220107980,
+          209953108,
+          225823956,
+          224766020,
+          216906429,
+          229147609,
+          234589160,
+          226869095
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          222087339,
+          209732435,
+          207034699,
+          206147271,
+          204402821,
+          208091662,
+          225431479,
+          221533073,
+          214552922,
+          219052148,
+          228993057,
+          239472941
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 222437000.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 216802535.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          246752323,
+          232497688,
+          240660631,
+          232646152,
+          229697198,
+          232160771,
+          254725690,
+          234673794,
+          246033617,
+          236479045,
+          258575493,
+          231653690
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          247480961,
+          238972356,
+          240166836,
+          241543612,
+          230156454,
+          219876879,
+          245937883,
+          234043735,
+          239550124,
+          236379997,
+          238465574,
+          242012555
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 235576419.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 239261240.0
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          282088464,
+          302520075,
+          295384702,
+          313057103,
+          298860836,
+          281636151,
+          287021860,
+          281637013,
+          279222483,
+          279512992,
+          277634380,
+          284635426
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          302841003,
+          307912992,
+          291245985,
+          314320838,
+          290990032,
+          288630455,
+          290206430,
+          288532087,
+          280270043,
+          280284685,
+          281787377,
+          285087767
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 283361945.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 289418442.5
+      }
+    },
+    {
+      "mode": "string_get",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          118875434,
+          111799489,
+          116112099,
+          112733116,
+          115284241,
+          127012203,
+          115957406,
+          136078799,
+          117767534,
+          120563018,
+          129088894,
+          112874850
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          114431596,
+          117177975,
+          113178929,
+          118029841,
+          112231530,
+          110121710,
+          115130420,
+          114806732,
+          119895541,
+          125302942,
+          116266893,
+          131090675
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 116939816.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 115698656.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 0,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          353743196,
+          350381010,
+          353776843,
+          377745363,
+          369509529,
+          352395352,
+          364777736,
+          354019950,
+          398028660,
+          367528512,
+          374396224,
+          395453955
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          353349173,
+          367472691,
+          352563314,
+          391330447,
+          353366841,
+          353499626,
+          349838729,
+          356661903,
+          379181873,
+          403728457,
+          365080222,
+          376890930
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 366153124.0,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 360871062.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 16,
+      "repeats": 100,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          678137228,
+          650750758,
+          686930529,
+          621255822,
+          643111487,
+          630075361,
+          620886555,
+          647414420,
+          629458545,
+          657085918,
+          695512800,
+          636588702
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          637111733,
+          643836709,
+          674840315,
+          645421409,
+          611495440,
+          645325470,
+          628585990,
+          638045468,
+          659688151,
+          676645681,
+          674198933,
+          664784542
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 645262953.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 645373439.5
+      }
+    },
+    {
+      "mode": "string_update",
+      "size": 65536,
+      "prefix_width": 256,
+      "repeats": 11,
+      "samples": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": [
+          213867232,
+          241201814,
+          237870642,
+          224401591,
+          224378120,
+          211317098,
+          236511449,
+          230556067,
+          234154831,
+          214773628,
+          224209215,
+          218073236
+        ],
+        "/workspace/map-iteration-evidence/candidate/maps-control": [
+          217362711,
+          263489368,
+          252974908,
+          243155638,
+          218100703,
+          216183764,
+          237415671,
+          229080763,
+          245235924,
+          241359807,
+          226423558,
+          227585060
+        ]
+      },
+      "median_ns": {
+        "/workspace/map-iteration-evidence/baseline/maps-control": 224389855.5,
+        "/workspace/map-iteration-evidence/candidate/maps-control": 233248217.0
+      }
+    }
+  ]
+}

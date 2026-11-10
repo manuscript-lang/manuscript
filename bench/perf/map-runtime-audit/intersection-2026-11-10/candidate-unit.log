@@ -1,0 +1,35 @@
+   Compiling ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.14s
+     Running unittests src/lib.rs (target/debug/deps/ms_rt-b9eb529fe4f7aa1d)
+
+running 21 tests
+test map::tests::an_empty_map_is_all_zero_words ... ok
+test map::tests::compaction_after_a_large_drop_shrinks_to_the_live_size ... ok
+test map::tests::borrowed_adds_without_creator_evidence_use_the_caller_identity ... ok
+test map::tests::borrowed_adds_keep_creator_identity_and_release_owned_values ... ok
+test map::tests::empty_intersection_preserves_inputs_creator_and_callback_behavior ... ok
+test map::tests::empty_set_relations_do_not_hash_members ... ok
+test map::tests::equality_uses_the_probed_collections_creator_evidence ... ok
+test map::tests::empty_intersection_keeps_creator_identity_for_later_adds ... ok
+test map::tests::insertion_order_replace_remove_compact ... ok
+test map::tests::int_pair_fast_paths ... ok
+test map::tests::creator_evidence_survives_foreign_operations_copy_and_clear ... ok
+test map::tests::merge_wide_slots_preserves_order_holes_and_owned_values ... ok
+test map::tests::set_algebra_does_not_recheck_unique_output_keys ... ok
+test map::tests::set_relations_stop_at_first_decisive_key ... ok
+test map::tests::string_keys_and_set_algebra ... ok
+test map::tests::string_to_int_fast_paths_overwrite_and_release ... ok
+test map::tests::slot_finds_or_creates_with_the_default ... ok
+test map::tests::set_operations_probe_each_operands_creator_hash ... ok
+test map::tests::string_word_entry_points_match_the_general_ones ... ok
+test map::tests::word_add_matches_the_general_add ... ok
+test map::tests::word_entry_points_match_the_general_ones ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 193 filtered out; finished in 0.01s
+
+     Running tests/main.rs (target/debug/deps/it-5debbc675135afc1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
