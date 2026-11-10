@@ -24,6 +24,7 @@ impl Checker {
         if self.type_expression(left).is_some() {
             return None;
         }
+        let diagnostics = self.p.diagnostics.len();
         let receiver = self.expression(left, None);
         let rt = receiver.t();
         if invalid_ty(&rt) {
@@ -50,8 +51,18 @@ impl Checker {
         let generic = |m: &crate::types::Method| {
             !m.variables.is_empty() && (!m.native.is_bodiless() || m.contract.is_some())
         };
+        // The native probe has already resolved an ordinary source call. Falling
+        // back to member inference would check the whole receiver again, doubling
+        // work at every link of a source-method chain. Keep error recovery and
+        // explicit specialization on their existing paths.
+        let source_call = matches!(e.kind, ExprKind::Member { .. })
+            && methods.len() == 1
+            && methods[0].variables.is_empty()
+            && !methods[0].native.is_bodiless()
+            && self.p.diagnostics.len() == diagnostics;
         if methods.len() != 1
-            || (!generic(&methods[0])
+            || (!source_call
+                && !generic(&methods[0])
                 && (methods[0].contract.is_some() || !methods[0].native.is_bodiless()))
         {
             return None;
@@ -75,6 +86,10 @@ impl Checker {
             no_return: receiver.no_return,
             ..Info::default()
         };
+        if source_call {
+            self.capture_scope(member);
+            return Some(self.check_expression(member, info, None));
+        }
         self.set_info(member, info.clone());
         Some(info)
     }

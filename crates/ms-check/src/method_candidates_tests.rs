@@ -298,3 +298,132 @@ fn generic_argument_conflict_is_reported_once() {
         p.diagnostics
     );
 }
+
+#[test]
+fn source_method_chains_check_the_receiver_callback_once() {
+    let template = include_str!("../tests/method_candidates/source_chain.ms");
+    let session = crate::Session::new();
+    let checked = |links| {
+        let source = template.replace(
+            "make(fn: 0)",
+            &format!("make(fn: 0){}", ".next()".repeat(links)),
+        );
+        let program = Checker::new(&session, &CheckOptions::default())
+            .check_modules(vec![module("source_chain.ms", &source)], None);
+        assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
+        program.serial
+    };
+    let baseline = checked(0);
+    // A short chain exposes repeated callback checking before trying the large
+    // control: the old fallback doubled that work for every source method.
+    assert_eq!(checked(4), baseline);
+    assert_eq!(checked(64), baseline);
+}
+
+#[test]
+fn source_calls_keep_nested_member_scopes() {
+    let input = module(
+        "source_scope.ms",
+        include_str!("../tests/method_candidates/source_scope.ms"),
+    );
+    let options = CheckOptions {
+        scope_marker: Some("next".to_string()),
+        ..CheckOptions::default()
+    };
+    let p = Checker::new(&crate::Session::new(), &options).check_modules(vec![input.clone()], None);
+    assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
+    let facts = input.facts();
+    assert_eq!(facts.scopes.len(), 2);
+    assert!(
+        facts
+            .scopes
+            .values()
+            .all(|scope| scope.bindings.contains_key(&n("seed")))
+    );
+    assert_eq!(
+        facts
+            .scopes
+            .values()
+            .filter(|scope| scope.bindings.contains_key(&n("nested")))
+            .count(),
+        1
+    );
+    for &id in facts.scopes.keys() {
+        assert_eq!(
+            facts.info(id).unwrap().method.as_ref().unwrap().name(),
+            Some(n("next"))
+        );
+    }
+}
+
+#[test]
+fn source_calls_keep_receiver_control_flow() {
+    let input = module(
+        "source_flow.ms",
+        include_str!("../tests/method_candidates/source_flow.ms"),
+    );
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default())
+        .check_modules(vec![input.clone()], None);
+    assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
+    let facts = input.facts();
+    let members: Vec<_> = facts
+        .exprs
+        .iter()
+        .flatten()
+        .filter(|info| {
+            info.method
+                .as_ref()
+                .is_some_and(|method| method.name() == Some(n("next")))
+        })
+        .collect();
+    // Both the member callee and its call retain the receiver's control flow.
+    assert_eq!(members.len(), 4);
+    assert_eq!(members.iter().filter(|info| info.no_return).count(), 2);
+    assert_eq!(members.iter().filter(|info| info.breaks).count(), 2);
+}
+
+#[test]
+fn source_calls_keep_receiver_and_argument_diagnostics() {
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
+        vec![module(
+            "source_errors.ms",
+            include_str!("../tests/method_candidates/source_errors.ms"),
+        )],
+        None,
+    );
+    let got: Vec<_> = p
+        .diagnostics
+        .iter()
+        .map(|d| (d.pos.line, d.pos.column, d.message.as_str()))
+        .collect();
+    assert_eq!(
+        got,
+        [
+            (
+                9,
+                33,
+                "expected Int, found String (in argument 'value' of make)"
+            ),
+            (
+                11,
+                41,
+                "unknown argument mystery; parameters of next: amount"
+            ),
+            (
+                13,
+                44,
+                "too many positional arguments; every parameter is already supplied, so remove this argument"
+            ),
+            (
+                15,
+                50,
+                "type name requires a constructor call; write Int(field: value, ...) to build a value"
+            ),
+            (
+                15,
+                45,
+                "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types"
+            ),
+        ]
+    );
+}
