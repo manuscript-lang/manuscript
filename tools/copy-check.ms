@@ -11,7 +11,6 @@ import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
 import RunOptions, run from "@std/os/process.ms"
 import arguments, change_directory, working_directory from "@std/os/env.ms"
 import seconds from "@std/time.ms"
-import stdout from "@std/io/io.ms"
 
 // The probe lines the compiler printed on standard error, without their prefix.
 fn copies(text: String) List[String]:
@@ -26,7 +25,7 @@ export fn main() Int:
     let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
-    if files.length() == 0:
+    if files.is_empty():
         for dir in [
             "tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
             "tests/e2e/testdata/accept", "tests/e2e/testdata/stdlib",
@@ -64,11 +63,11 @@ export fn main() Int:
             swept += 1
 
             let sites = copies(out.stderr.decode_utf8().get(""))
-            if sites.length() == 0: continue
+            if sites.is_empty(): continue
 
             failing += 1
             total += sites.length()
-            for site in sites: stdout().write("copy: {f}\t{site}\n").get()
+            for site in sites: print("copy: {f}\t{site}")
 
     change_directory(root).get()
     print("swept {swept} programs, {total} object copies in {failing}")

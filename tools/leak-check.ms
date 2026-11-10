@@ -57,7 +57,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
             ).wait():
                 let found = leaking_tests(out.stderr.decode_utf8().get(""))
                 lines.append("swept")
-                if found.length() > 0: lines.append(
+                if not found.is_empty(): lines.append(
                     "leak: {absolute}\n  {found.join("\n  ")}"
                 )
 
@@ -67,7 +67,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
             ms.clone(), ["run", absolute.clone()], RunOptions(timeout: seconds(60))
         ).wait():
             let counts = live_blocks(out.stderr.decode_utf8().get(""))
-            if counts.length() == 0: continue
+            if counts.is_empty(): continue
 
             lines.append("swept")
 
@@ -84,7 +84,7 @@ export fn main() Int:
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
-    if files.length() == 0:
+    if files.is_empty():
         for dir in [
             "tests/conformance/fixtures/fuzz/run", "tests/conformance/fixtures/e2e",
             "tests/conformance/fixtures/examples"
@@ -95,7 +95,7 @@ export fn main() Int:
                     ""
                 ).contains("fn main"): files.append(path.clone())
 
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/e2e/testdata", GlobOptions(patterns: ["**/*.ms"])).get([]):
             let path = "tests/e2e/testdata/{f.path}"
             if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(

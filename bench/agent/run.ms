@@ -128,7 +128,7 @@ fn run_one(
     append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
     if keep:
-        stdout().write("  workspace kept: {ws}\n").get()
+        print("  workspace kept: {ws}")
     else:
         remove(base, recursive: true).get()
 
@@ -173,7 +173,7 @@ fn cmd_list(o: Options) Int!:
             "languages: {load_languages([]).map(fn l: l.id.clone()).join(", ")}\n"
         ).get()
     )
-    stdout().write("harnesses: {names().join(", ")}\n").get()
+    print("harnesses: {names().join(", ")}")
     return ok(0)
 
 fn cmd_run(opts: Options, oracle: Bool) Int!:

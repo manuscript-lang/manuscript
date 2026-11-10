@@ -29,7 +29,7 @@ export fn main() Int:
     let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
             files.append("tests/ownership-counts/{f.path}")
 
@@ -81,15 +81,15 @@ export fn main() Int:
             let counts = after(err, "ms-rt counts: ")
             let live = after(err, "ms-rt live blocks at exit: ")
 
-            if live.length() == 0 or live[0] != "0":
+            if live.is_empty() or live[0] != "0":
                 failures += 1
 
                 var shown = "an unreported number of"
-                if live.length() > 0: shown = live[0].clone()
+                if not live.is_empty(): shown = live[0].clone()
                 print("leak: {f} ({build}) left {shown} live blocks")
 
             var have = List[String]()
-            if counts.length() > 0: have = counts[0].split(" ")
+            if not counts.is_empty(): have = counts[0].split(" ")
 
             for header in after(source, "// expect-{build}: "):
                 for pair in header.split(" "):
@@ -109,7 +109,7 @@ export fn main() Int:
                             .get()
                         )
 
-            if expected_out.length() > 0:
+            if not expected_out.is_empty():
                 checked += 1
 
                 if out.trim_end() != expected_out.join("\n"):

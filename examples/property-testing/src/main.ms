@@ -1,5 +1,3 @@
-import stdout from "@std/io/io.ms"
-
 // Returns the numbers in ascending order, keeping duplicates.
 export fn insertion_sort(numbers: List[Int]) List[Int]:
     var sorted: List[Int] = []
@@ -13,5 +11,5 @@ export fn insertion_sort(numbers: List[Int]) List[Int]:
     return sorted
 
 export fn main() Int:
-    stdout().write("{insertion_sort([3, 1, 2]).join(",")}\n").get()
+    print("{insertion_sort([3, 1, 2]).join(",")}")
     return 0

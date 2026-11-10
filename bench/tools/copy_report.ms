@@ -6,7 +6,6 @@
 import capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms"
 import temporary from "@std/os/fs.ms"
 import arguments, set_environment from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
 
 // The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed by `%N`.
 fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
@@ -74,6 +73,6 @@ export fn main() Int:
 
         print("== {target}")
         for row in report(read_text(out)):
-            stdout().write(row + "\n").get()
+            print(row)
 
     return 0

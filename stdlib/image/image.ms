@@ -2033,9 +2033,9 @@ fn jpeg_codes(counts: List[Int], values: List[Int]) JpegCodes:
     var index = 0
 
     for length in 1..17:
-        for _slot in 0..counts.get(length - 1):
-            code[values.get(index)] = next
-            size[values.get(index)] = length
+        for _slot in 0..counts[length - 1]:
+            code[values[index]] = next
+            size[values[index]] = length
             next += 1
             index += 1
 
@@ -2105,7 +2105,7 @@ fn jpeg_forward(
         for y in 0..8:
             sum += dct_matrix[y * 8 + v] * tmp[y * 8 + u]
 
-        let q = quant.get(zi)
+        let q = quant[zi]
         let half = q * 8388608
         let scale = q * 16777216
         levels[zi] = if sum >= 0: (sum + half) / scale else: 0 - ((half - sum) / scale)
@@ -2163,7 +2163,7 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
     let scale = if quality < 50: 5000 / quality else: 200 - quality * 2
     var table = List[Int]()
     for zi in 0..64:
-        table.append(clamp_to(max_of((base.get(zi) * scale + 50) / 100, 1), 255))
+        table.append(clamp_to(max_of((base[zi] * scale + 50) / 100, 1), 255))
     return table
 
 // Encodes baseline JPEG: gray stays gray, Rgb uses YCbCr with the chosen chroma resolution. Alpha images fail with

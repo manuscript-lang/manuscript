@@ -25,10 +25,10 @@ fn le32(data: Bytes, at: Int) Int:
     return value
 
 fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
-    var va = state.get(a)
-    var vb = state.get(b)
-    var vc = state.get(c)
-    var vd = state.get(d)
+    var va = state[a]
+    var vb = state[b]
+    var vc = state[c]
+    var vd = state[d]
     va = bit_and(va + vb, 4294967295)
     vd = rotl32(bit_xor(vd, va), 16)
     vc = bit_and(vc + vd, 4294967295)
@@ -67,7 +67,7 @@ fn keystream(initial: List[Int]) List[Int]:
         quarter(var state, 3, 4, 9, 14)
 
     for index in 0..16:
-        state.set(index, bit_and(state.get(index) + initial.get(index), 4294967295))
+        state.set(index, bit_and(state[index] + initial[index], 4294967295))
     return state
 
 fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
