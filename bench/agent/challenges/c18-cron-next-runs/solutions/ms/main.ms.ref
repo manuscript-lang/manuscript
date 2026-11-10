@@ -1,42 +1,20 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import stdin from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
+import range_by from "@std/collections/collections.ms"
 
-fn pad2(n: Int) String:
-    if n < 10:
-        return "0{n}"
-
-    return "{n}"
+fn pad2(n: Int) String: return if n < 10: "0{n}" else: "{n}"
 
 // Parses s when it is lo to hi ASCII digits.
 fn digits(s: String, lo: Int, hi: Int) Int?:
-    let codes = s.scalar_values()
-    if codes.length() < lo or codes.length() > hi:
-        return none
-
-    var n = 0
-
-    for c in codes:
-        if c < 48 or c > 57:
-            return none
-
-        n = n * 10 + (c - 48)
-
-    return n
+    if s.length() < lo or s.length() > hi or not s.scalar_values().all(fn c: c >= 48 and c <= 57): return none
+    return s.parse_int().get()
 
 fn days_from_civil(year: Int, m: Int, d: Int) Int:
-    var y = year
-    if m <= 2:
-        y = y - 1
-
+    let y = if m <= 2: year - 1 else: year
     let era = y / 400
     let yoe = y - era * 400
-    var mp = m - 3
-    if m <= 2:
-        mp = m + 9
-
-    let doy = (153 * mp + 2) / 5 + d - 1
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-    return era * 146097 + doe - 719468
+    let doy = (153 * (if m <= 2: m + 9 else: m - 3) + 2) / 5 + d - 1
+    return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468
 
 // Returns [year, month, day].
 fn civil_from_days(days: Int) List[Int]:
@@ -44,234 +22,61 @@ fn civil_from_days(days: Int) List[Int]:
     let era = z / 146097
     let doe = z - era * 146097
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
-    var y = yoe + era * 400
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
     let mp = (5 * doy + 2) / 153
-    let d = doy - (153 * mp + 2) / 5 + 1
-    var m = mp + 3
-    if mp >= 10:
-        m = mp - 9
-    if m <= 2:
-        y = y + 1
-    return [y, m, d]
+    let m = if mp >= 10: mp - 9 else: mp + 3
+    return [yoe + era * 400 + (if m <= 2: 1 else: 0), m, doy - (153 * mp + 2) / 5 + 1]
 
 fn parse_field(text: String, lo: Int, hi: Int) List[Bool]?:
-    var set = List[Bool]()
-    var i = 0
-
-    while i <= hi:
-        set.append(false)
-        i = i + 1
-
+    var set = [false].repeated(hi + 1)
     for item in text.split(","):
         let parts = item.split("/")
-        if parts.length() > 2:
-            return none
-
-        let body = parts.get(0)
-        var step = 1
-
-        if parts.length() == 2:
-            let s = digits(parts.get(1), 1, 2)
-            if s.is_none() or s.get() < 1:
-                return none
-
-            step = s.get()
-
-        var a = 0
-        var b = 0
+        let body = parts[0]
+        let step = if parts.length() == 2: digits(parts[1], 1, 2).get(0) else: 1
         let single = digits(body, 1, 2)
-
-        if body == "*":
-            a = lo
-            b = hi
-        else if single.is_some():
-            if parts.length() == 2:
-                return none
-
-            a = single.get()
-            b = single.get()
-        else:
-            let r = body.split("-")
-            if r.length() != 2:
-                return none
-
-            let x = digits(r.get(0), 1, 2)
-            let y = digits(r.get(1), 1, 2)
-            if x.is_none() or y.is_none() or x.get() > y.get():
-                return none
-
-            a = x.get()
-            b = y.get()
-
-        if a < lo or b > hi:
-            return none
-
-        var v = a
-
-        while v <= b:
-            set.set(v, true)
-            v = v + step
-
+        let r = body.split("-")
+        if parts.length() > 2 or step < 1: return none
+        let rg = if body == "*": [lo, hi] else if single.is_some() and parts.length() == 1: [single.get(), single.get()] else if r.length() == 2 and digits(r[0], 1, 2).is_some() and digits(r[1], 1, 2).is_some(): [digits(r[0], 1, 2).get(), digits(r[1], 1, 2).get()] else: [1, 0]
+        if rg[0] > rg[1] or rg[0] < lo or rg[1] > hi: return none
+        for v in range_by(rg[0], rg[1] + 1, step).get(): set[v] = true
     return set
 
 // Returns [day number, minute of day] for a valid START, or an empty list.
 fn parse_start(s: String) List[Int]:
-    let codes = s.scalar_values()
-    let empty = List[Int]()
-    if codes.length() != 16:
-        return empty
+    if s.length() != 16 or s.slice(4, 5).get() != "-" or s.slice(7, 8).get() != "-" or s.slice(10, 11).get() != "T" or s.slice(13, 14).get() != ":": return []
+    let f = [s.slice(0, 4).get(), s.slice(5, 7).get(), s.slice(8, 10).get(), s.slice(11, 13).get(), s.slice(14, 16).get()].map(fn p: digits(p, p.length(), p.length()).get(-1))
+    let leap = (f[0] % 4 == 0 and f[0] % 100 != 0) or f[0] % 400 == 0
+    let limit = if f[1] == 2 and leap: 29 else: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31].get(f[1] - 1, 0)
+    if f.any(fn x: x < 0) or f[0] < 1970 or f[0] > 2099 or f[1] < 1 or f[1] > 12 or f[2] < 1 or f[2] > limit or f[3] > 23 or f[4] > 59: return []
+    return [days_from_civil(f[0], f[1], f[2]), f[3] * 60 + f[4]]
 
-    // '-' 45, 'T' 84, ':' 58
-    if (
-        codes.get(4) != 45
-        or codes.get(7) != 45
-        or codes.get(10) != 84
-        or codes.get(13) != 58
-    ):
-        return empty
+fn schedule(count: Int, start: List[Int], sets: List[List[Bool]]) List[String]:
+    var runs = List[String]()
+    for k in 0..3001:
+        let day = start[0] + k
+        let ymd = civil_from_days(day)
+        if not sets[3][ymd[1]] or not sets[2][ymd[2]] or not sets[4][(day + 4) % 7]: continue
+        for h in 0..24:
+            for m in 0..60:
+                if runs.length() < count and sets[1][h] and sets[0][m] and (k > 0 or h * 60 + m > start[1]): runs.append("{ymd[0]}-{pad2(ymd[1])}-{pad2(ymd[2])} {pad2(h)}:{pad2(m)}")
+    return runs
 
-    let y = digits(s.slice(0, 4).get(), 4, 4)
-    let mo = digits(s.slice(5, 7).get(), 2, 2)
-    let d = digits(s.slice(8, 10).get(), 2, 2)
-    let h = digits(s.slice(11, 13).get(), 2, 2)
-    let mi = digits(s.slice(14, 16).get(), 2, 2)
-    if y.is_none() or mo.is_none() or d.is_none() or h.is_none() or mi.is_none():
-        return empty
-
-    let year = y.get()
-    let month = mo.get()
-    let day = d.get()
-    if (
-        year < 1970
-        or year > 2099
-        or month < 1
-        or month > 12
-        or day < 1
-        or h.get() > 23
-        or mi.get() > 59
-    ):
-        return empty
-
-    let leap = (year % 4 == 0 and year % 100 != 0) or year % 400 == 0
-    let lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    var limit = lengths.get(month - 1)
-    if month == 2 and leap:
-        limit = 29
-    if day > limit:
-        return empty
-
-    return [days_from_civil(year, month, day), h.get() * 60 + mi.get()]
-
-fn run() Result[Unit, Error]:
-    var input = lines(stdin(), 1048576)
+fn solve(t: List[String]) String:
     let names = ["minute", "hour", "day-of-month", "month", "day-of-week"]
     let lows = [0, 0, 1, 1, 0]
     let highs = [59, 23, 31, 12, 6]
-    var n = 0
-
-    while true:
-        let next = try input.next()
-        if next.is_none():
-            break
-
-        n = n + 1
-
-        let l = next.get()
-        if l.replace(old: " ", new: "").is_empty():
-            continue
-
-        let pre = "line {n}:"
-        let t = l.split(" ")
-
-        if t.length() != 7:
-            try stdout().write("{pre} error: bad line\n")
-            continue
-
-        let start = parse_start(t.get(0))
-
-        if start.is_empty():
-            try stdout().write("{pre} error: bad start\n")
-            continue
-
-        let count_opt = digits(t.get(1), 1, 2)
-
-        if count_opt.is_none() or count_opt.get() < 1 or count_opt.get() > 20:
-            try stdout().write("{pre} error: bad count\n")
-            continue
-
-        let count = count_opt.get()
-        var sets = List[List[Bool]]()
-        var bad = ""
-        var i = 0
-
-        while i < 5:
-            let s = parse_field(t.get(2 + i), lows.get(i), (highs.get(i)))
-
-            if s.is_none():
-                bad = names.get(i).clone()
-                break
-
-            sets.append(s.get().clone())
-            i = i + 1
-
-        if not bad.is_empty():
-            try stdout().write("{pre} error: bad {bad}\n")
-            continue
-
-        let minutes = sets.get(0)
-        let hours = sets.get(1)
-        let doms = sets.get(2)
-        let months = sets.get(3)
-        let dows = sets.get(4)
-        var runs = List[String]()
-        var k = 0
-
-        while k <= 3000 and runs.length() < count:
-            let day = start.get(0) + k
-            let ymd = civil_from_days(day)
-
-            if (
-                months.get(ymd.get(1))
-                and doms.get(ymd.get(2))
-                and dows.get(((day + 4) % 7))
-            ):
-                var h = 0
-
-                while h < 24 and runs.length() < count:
-                    if hours.get(h):
-                        var mn = 0
-
-                        while mn < 60 and runs.length() < count:
-                            if (
-                                minutes.get(mn)
-                                and not (
-                                    k == 0
-                                    and h * 60 + mn <= start.get(
-                                        1
-                                    )
-                                )
-                            ):
-                                runs.append(
-                                    "{ymd.get(0)}-{pad2(ymd.get(1))}-{pad2(ymd.get(2))} {pad2(h)}:{pad2(mn)}"
-                                )
-                            mn = mn + 1
-
-                    h = h + 1
-
-            k = k + 1
-
-        if runs.is_empty():
-            try stdout().write("{pre} never\n")
-            continue
-
-        try stdout().write("{pre} {runs.length()} runs\n")
-        for r in runs:
-            try stdout().write("{r}\n")
-
-    return stdout().flush()
+    if t.length() != 7: return "error: bad line"
+    let start = parse_start(t[0])
+    if start.is_empty(): return "error: bad start"
+    let count = digits(t[1], 1, 2).get(0)
+    if count < 1 or count > 20: return "error: bad count"
+    let sets = (0..5).map(fn i: parse_field(t[2 + i], lows[i], highs[i]))
+    if let bad = sets.index_of(none): return "error: bad {names[bad]}"
+    let runs = schedule(count, start, sets.map(fn s: s.get([])))
+    return if runs.is_empty(): "never" else: "{runs.length()} runs\n{runs.join("\n")}"
 
 export fn main() Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if let ls = stdin() | lines | collect(none):
+        for i in 0..ls.length():
+            if not ls[i].replace(" ", "").is_empty(): print("line {i + 1}: {solve(ls[i].split(" "))}")
+    return 0
