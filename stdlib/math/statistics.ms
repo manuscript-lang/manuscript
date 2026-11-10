@@ -482,9 +482,99 @@ Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` a
 */
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
     if let s = spread(xs, ys):
+        if (
+            well_conditioned(s.mean_x, s.xx, xs.length(), false)
+            and well_conditioned(s.mean_y, s.yy, ys.length(), true)
+        ):
+            let slope = s.xy / s.xx
+            return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
+
+        if let x_exponent = unit_exponent(xs):
+            if let y_exponent = unit_exponent(ys):
+                return finite_regression(xs, ys, x_exponent, y_exponent)
+
+        // Nonfinite input follows Float rules around the plain means.
         if s.xx == 0.0: return none
 
         let slope = s.xy / s.xx
         return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
 
     return none
+
+/*
+Whether the plain sum of squared deviations `squares` around `mean` is trustworthy: it neither overflowed nor lost precision to
+underflow, and the spread is not lost against a large common offset (mean square deviation above 2^-20 of the squared mean).
+A flat list (`allow_flat`) has no spread to lose. Anything else, including nonfinite input, takes the scaled path or plain Float rules.
+*/
+fn well_conditioned(mean: Float, squares: Float, count: Int, allow_flat: Bool) Bool:
+    if squares == 0.0: return allow_flat and mean.is_finite()
+    if not (squares >= 1e-250 and squares <= 1e250): return false
+
+    return squares > mean * mean * count.to_float() * 9.5367431640625e-7
+
+// The exponent that brings the greatest magnitude into [0.5, 1), or none when a value is not finite; zeros give 0.
+fn unit_exponent(values: List[Float]) Int?:
+    var scale = 0.0
+
+    for value in values:
+        if not value.is_finite(): return none
+
+        scale = scale.max(value.abs())
+
+    if scale == 0.0: return 0
+
+    return frexp(scale).exponent
+
+// Values scaled by a power of two, as offsets from the first one and then from their center.
+type Centered:
+    origin: Float
+    center: Float
+    deviations: List[Float]
+
+fn centered(values: List[Float], exponent: Int) Centered:
+    let origin = ldexp(values[0], -exponent)
+    var total = DeviationSum()
+    for value in values:
+        total.add(ldexp(value, -exponent) - origin)
+
+    let center = total.value() / values.length().to_float()
+    var deviations: List[Float] = []
+    for value in values:
+        deviations.append((ldexp(value, -exponent) - origin) - center)
+    return Centered(origin: origin, center: center, deviations: deviations)
+
+/*
+Each list is scaled by its own power of two and measured from its first value, so squares and products stay in range and a large common
+offset keeps its variation; the deviations are then scaled again, summed with compensation, and the units are restored at the end.
+*/
+fn finite_regression(
+    xs: List[Float],
+    ys: List[Float],
+    x_exponent: Int,
+    y_exponent: Int
+) Regression?:
+    let x = centered(xs, x_exponent)
+    let y = centered(ys, y_exponent)
+    let x_unit = unit_exponent(x.deviations).get(0)
+    let y_unit = unit_exponent(y.deviations).get(0)
+    var xx = DeviationSum()
+    var xy = DeviationSum()
+
+    for i in 0..xs.length():
+        let a = ldexp(x.deviations[i], -x_unit)
+        let b = ldexp(y.deviations[i], -y_unit)
+        xx.add(a * a)
+        xy.add(a * b)
+
+    if xx.value() == 0.0: return none
+
+    let ratio = xy.value() / xx.value()
+    let scaled_slope = ldexp(ratio, y_unit - x_unit)
+    let scaled_intercept = (
+        (y.origin - scaled_slope * x.origin)
+        + (y.center - scaled_slope * x.center)
+    )
+    return Regression(
+        slope: ldexp(ratio, y_unit - x_unit + y_exponent - x_exponent),
+        intercept: ldexp(scaled_intercept, y_exponent)
+    )

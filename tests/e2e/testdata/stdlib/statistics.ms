@@ -108,6 +108,36 @@ test "correlation and regression":
     try expect_close(line.intercept, 1.0, 0.000001)
     try expect_none(linear_regression([2.0, 2.0], [1.0, 3.0]))
 
+test "regression stays finite and exact at large and tiny scales and with a large common offset":
+    let large = try expect_some(linear_regression([1e200, 2e200], [1e200, 2e200]))
+    try expect_equal(large.slope, 1.0)
+    try expect_equal(large.intercept, 0.0)
+
+    let tiny = try expect_some(linear_regression([1e-200, 2e-200], [1e-200, 2e-200]))
+    try expect_equal(tiny.slope, 1.0)
+    try expect_equal(tiny.intercept, 0.0)
+
+    let offset = try expect_some(linear_regression([1e16, 1e16 + 2.0], [0.0, 2.0]))
+    try expect_equal(offset.slope, 1.0)
+    try expect_equal(offset.intercept, -1e16)
+
+    // Different scales per axis: y = 3e-5 * x + 7 over x in 1e10 .. 4e10.
+    let mixed = try expect_some(
+        linear_regression(
+            [1e10, 2e10, 3e10, 4e10], [300007.0, 600007.0, 900007.0, 1200007.0]
+        )
+    )
+    try expect_close(mixed.slope, 3e-5, 1e-17)
+    try expect_close(mixed.intercept, 7.0, 1e-6)
+
+    // Constant x is still absent at every scale, and constant y has slope zero.
+    try expect_none(linear_regression([1e200, 1e200, 1e200], [1.0, 2.0, 3.0]))
+    try expect_none(linear_regression([1e-200, 1e-200], [1.0, 3.0]))
+
+    let flat = try expect_some(linear_regression([1.0, 2.0, 3.0], [5.0, 5.0, 5.0]))
+    try expect_equal(flat.slope, 0.0)
+    try expect_equal(flat.intercept, 5.0)
+
 fn discard[T](value: T) Unit:
     return unit
 
