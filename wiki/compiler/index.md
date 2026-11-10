@@ -4,6 +4,8 @@
 
 Checking, lowering, MIR, Cranelift, build, fault sites.
 
+- [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
+
 - [Checked Int arithmetic is language behavior](checked-int-arithmetic-is-language-behavior.md): `Int` arithmetic faults on overflow ([design contract](../../crates/DESIGN.md)).
 - [Compiler passes use the right algorithm and data structure for their input size](compiler-passes-use-the-right-algorithm-and-data-structure-f.md): the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases.
 - [Error is an indirect record, one pointer wide](error-is-an-indirect-record-one-pointer-wide.md): `T!` was 12 words; boxing `Error` cuts fallible frames by about 190 B.
