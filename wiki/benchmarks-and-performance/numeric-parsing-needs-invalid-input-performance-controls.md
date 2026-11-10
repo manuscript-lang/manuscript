@@ -33,3 +33,12 @@ accept at most 35 bytes. Reject longer text before scanning the fraction (#3282)
 Keep maximum-width valid values, oversized fractions and exact range-error controls
 alongside the ordinary timestamp benchmark; invalid input must not add an
 unbounded digit scan to this bounded grammar.
+
+The decimal Optional parser also scans irrelevant suffixes (#3357). A safe
+significant-digit bound removed that cost and passed semantic tests, but short
+early-invalid input slowed 7.6% in a longer balanced confirmation while A/A was
+flat. The candidate was rejected; retain the ordinary 19-digit and short invalid
+controls when revisiting it. This cause was not investigated further. The
+[decimal parsing benchmark](../../bench/perf/integer-parse-decimal/README.md)
+keeps the patch, all samples and exact-value controls. The Result radix parser
+has a separate full-syntax error contract and was not changed.

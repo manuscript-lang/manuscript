@@ -755,6 +755,54 @@ mod tests {
     }
 
     #[test]
+    fn decimal_parsing_with_long_leading_zeros_matches_standard_parser() {
+        for zeros in [0, 1, 18, 19, 20, 100, 4096] {
+            for sign in ["", "+", "-"] {
+                for suffix in [
+                    "",
+                    "0",
+                    "1",
+                    "123456789012345678",
+                    "9223372036854775807",
+                    "9223372036854775808",
+                    "9223372036854775809",
+                    "9999999999999999999",
+                    "+1",
+                    "-1",
+                    "+-1",
+                    "!",
+                    "\u{661}",
+                    "1 ",
+                    "1_0",
+                ] {
+                    let text = format!("{sign}{}{suffix}", "0".repeat(zeros));
+                    assert_eq!(
+                        parse_int_decimal(text.as_bytes()),
+                        text.parse().ok(),
+                        "{text:?}"
+                    );
+                }
+            }
+        }
+        for byte in 0..=255u8 {
+            for at in 0..24 {
+                let mut text = b"000000000000000000000001".to_vec();
+                text[at] = byte;
+                let expected = core::str::from_utf8(&text)
+                    .ok()
+                    .and_then(|s| s.parse().ok());
+                assert_eq!(parse_int_decimal(&text), expected, "{text:?}");
+            }
+        }
+        for text in [
+            format!("!{}", "0".repeat(1_000_000)),
+            format!("99999999999999999999{}", "0".repeat(1_000_000)),
+        ] {
+            assert_eq!(parse_int_decimal(text.as_bytes()), None);
+        }
+    }
+
+    #[test]
     fn float_strings_render_shortest() {
         let _g = crate::testutil::lock();
         let cases: [(f64, &str); 14] = [

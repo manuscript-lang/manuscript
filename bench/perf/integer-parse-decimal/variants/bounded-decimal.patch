@@ -1,0 +1,26 @@
+diff --git a/crates/ms-rt/src/num.rs b/crates/ms-rt/src/num.rs
+index a6e066089..436d433dd 100644
+--- a/crates/ms-rt/src/num.rs
++++ b/crates/ms-rt/src/num.rs
+@@ -86,6 +86,21 @@ pub fn parse_int_decimal(text: &[u8]) -> Option<i64> {
+         }
+         return Some(if neg { -acc } else { acc });
+     }
++    if digits.len() > 19 {
++        // An Int has at most nineteen significant decimal digits. Unlike the
++        // Result parser, this Optional parser can reject a long suffix without
++        // checking all of its syntax or UTF-8 first.
++        let Some(first) = digits.iter().position(|&b| b != b'0') else {
++            return Some(0);
++        };
++        let digits = &digits[first..];
++        // Do not let the unsigned parser accept a second sign after the zeros.
++        if digits.len() > 19 || !digits[0].is_ascii_digit() {
++            return None;
++        }
++        let magnitude = core::str::from_utf8(digits).ok()?.parse::<u64>().ok()? as i128;
++        return i64::try_from(if neg { -magnitude } else { magnitude }).ok();
++    }
+     core::str::from_utf8(text).ok()?.parse().ok()
+ }
+ 
