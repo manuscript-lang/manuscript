@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import resource
 import statistics
 import subprocess
 import tempfile
@@ -62,14 +63,19 @@ with tempfile.TemporaryDirectory(prefix='flow-perf-') as folder:
         path = Path(folder) / (name + '.ms')
         path.write_text(source)
         samples = {'base': [], 'fixed': []}
+        cpu_samples = {'base': [], 'fixed': []}
         expected = None
         for trial in range(-2, args.pairs):
             order = ('base', 'fixed') if trial % 2 == 0 else ('fixed', 'base')
             for version in order:
+                before_cpu = resource.getrusage(resource.RUSAGE_CHILDREN)
                 start = time.perf_counter_ns()
                 result = subprocess.run([str(binaries[version]), '--json', str(path)],
                                         capture_output=True, check=True)
                 elapsed = time.perf_counter_ns() - start
+                after_cpu = resource.getrusage(resource.RUSAGE_CHILDREN)
+                cpu_elapsed = round(((after_cpu.ru_utime - before_cpu.ru_utime)
+                                     + (after_cpu.ru_stime - before_cpu.ru_stime)) * 1e9)
                 assert not result.stderr, result.stderr
                 assert json.loads(result.stdout)['diagnostics'] == [], result.stdout
                 if expected is None:
@@ -77,11 +83,16 @@ with tempfile.TemporaryDirectory(prefix='flow-perf-') as folder:
                 assert result.stdout == expected
                 if trial >= 0:
                     samples[version].append(elapsed)
+                    cpu_samples[version].append(cpu_elapsed)
         ratios = [b / a for a, b in zip(samples['base'], samples['fixed'])]
         report['cases'][name] = {'source': source, 'source_sha256': digest(source.encode()),
                                 'output_sha256': digest(expected), 'samples_ns': samples,
+                                'cpu_samples_ns': cpu_samples,
                                 'median_pair_ratio': statistics.median(ratios),
+                                'median_cpu_pair_ratio': statistics.median(
+                                    b / a for a, b in zip(cpu_samples['base'], cpu_samples['fixed'])),
                                 'median_ns': {k: statistics.median(v) for k, v in samples.items()}}
 args.output.write_text(json.dumps(report, indent=2) + '\n')
 for name, case in report['cases'].items():
-    print(name, case['median_ns'], 'paired ratio', case['median_pair_ratio'])
+    print(name, case['median_ns'], 'wall ratio', case['median_pair_ratio'],
+          'CPU ratio', case['median_cpu_pair_ratio'])

@@ -78,3 +78,36 @@ to +1.36%. These are still whole-process observations, not proof of zero cost.
 [Latest paired samples](latest-paired.json) and
 [latest same-binary samples](latest-same-binary.json) include all raw timings,
 exact source and binary/output hashes. No earlier runs were removed.
+
+## CPU-time follow-up
+
+Review of `latest-paired.json` found an unfavorable ordinary-64 **mean** change
+of +3.65%, despite its +0.41% paired median: fixed's longest sample was 164 ms,
+baseline's 105 ms. This tail difference was not discarded or attributed to
+scheduling without evidence. The Linux runner now records child user+system CPU
+time (`getrusage(RUSAGE_CHILDREN)`) alongside wall time. Binaries and source are
+unchanged from the latest-base comparison. The runner uses Unix `resource`; the
+reported experiment is Linux-specific.
+
+An 80-pair follow-up and 40 identical-binary pairs gave these paired medians:
+
+| Case | Wall ratio | CPU ratio | Same-binary CPU ratio |
+| --- | ---: | ---: | ---: |
+| Hello example | 0.9991 | 0.9985 | 1.0113 |
+| Ordinary, 1 function | 1.0001 | 1.0004 | 1.0097 |
+| Affected, 1 function | 1.0103 | 1.0097 | 1.0098 |
+| Ordinary, 64 functions | 0.9910 | 0.9918 | 0.9920 |
+| Affected, 64 functions | 0.9990 | 0.9984 | 0.9956 |
+
+Ordinary-64 CPU mean is -3.32%, substantially influenced by a 199 ms baseline
+outlier; this does not establish a speedup. Its fixed p95 is slightly higher
+(83.1 versus 80.8 ms). Affected-1 CPU mean is +0.83% and p95 58.8 versus 55.9 ms;
+the identical-binary control shows +1.74% mean and a larger p95 increase. Wall
+and CPU closely track in these new samples, so scheduling alone is not an
+established explanation for the earlier wall-only observations.
+
+Independent review found no reproducible performance regression attributable to
+the change across the paired and identical-binary controls. Small effects and
+tail differences remain unresolved; zero overhead and unchanged tail latency
+are not claimed. Raw evidence: [CPU paired](latest-cpu-paired.json),
+[CPU same binary](latest-cpu-same-binary.json). Every earlier report remains.
