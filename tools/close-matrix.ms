@@ -210,7 +210,7 @@ fn constructs() List[Construct]:
 		),
 		only(
 			"destructure", "record", "",
-			"let \{m\} = @M1@\n    try fail()\n    see_marker(m)"
+			"\{m\} := @M1@\n    try fail()\n    see_marker(m)"
 		),
 		only(
 			"match_enum_return", "enum", "",
