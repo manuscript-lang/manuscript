@@ -137,17 +137,23 @@ fn native(windows: Bool, text: String) String:
 // Removes every trailing slash.
 fn trim_end_slashes(text: String) String:
     if not text.ends_with("/"): return text.clone()
+    if not text.ends_with("//"): return text.take(text.length() - 1)
 
-    var end = text.length()
-    while end > 0 and text.scalar_at(end - 1, none) == 47: end -= 1
-    return text.take(end)
+    let data = text.to_bytes()
+    var end = data.length()
+    while end > 0 and data.get(end - 1, none).to_int() == 47: end -= 1
+    return text_of(data, 0, end)
 
 // Removes every leading slash.
 fn trim_start_slashes(text: String) String:
+    if not text.starts_with("/"): return text.clone()
+    if not text.starts_with("//"): return text.drop(1)
+
+    let data = text.to_bytes()
     var start = 0
-    let count = text.length()
-    while start < count and text.scalar_at(start, none) == 47: start += 1
-    return text.drop(start)
+    let count = data.length()
+    while start < count and data.get(start, none).to_int() == 47: start += 1
+    return text_of(data, start, count)
 
 // The root of an already slash-normalized path: a Windows drive or UNC share, `/`, or empty.
 fn root_of(windows: Bool, text: String) String:
@@ -173,21 +179,22 @@ fn root_of(windows: Bool, text: String) String:
 
 // The `//server/share` root of a slash-normalized UNC path, or empty when the text is not one.
 fn unc_root(text: String) String:
-    let count = text.length()
+    let data = text.to_bytes()
+    let count = data.length()
     var start = 2
-    while start < count and text.scalar_at(start, none) == 47: start += 1
+    while start < count and data.get(start, none).to_int() == 47: start += 1
 
-    let server_end = text.drop(start).index_of("/")
-    if server_end.is_none(): return ""
+    let server_end = data.index_of_byte(47, start).get(count)
+    if server_end == count: return ""
 
-    var share_start = start + server_end.get(0) + 1
-    while share_start < count and text.scalar_at(share_start, none) == 47: share_start += 1
+    var share_start = server_end + 1
+    while share_start < count and data.get(share_start, none).to_int() == 47: share_start += 1
     if share_start >= count: return ""
 
-    let share_end = text.drop(share_start).index_of("/")
-    if share_end.is_none(): return text.clone()
+    let share_end = data.index_of_byte(47, share_start).get(count)
+    if share_end == count: return text.clone()
 
-    return text.take(share_start + share_end.get(0) + 1)
+    return text_of(data, 0, share_end + 1)
 
 fn root_in(windows: Bool, text: String) String:
     return root_of(windows, slash(windows, text))
