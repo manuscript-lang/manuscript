@@ -6,6 +6,8 @@ Decision (Chinmay, stdlib idiom proposal, 2026-11-05): lexical path functions li
 
 Verified: the 9.7k-case corpus recorded from the original implementation replays under `tests/e2e/testdata/projects/path_oracle` (an embed project, so the data file travels with the test). Port a lexical native by moving its cases into such a replay first. The `.ms` rules cost about 1x (basename, dirname, relative) to 2x (normalize, join, parse) the Rust natives, still under 300 ns; `bench/perf/pure-utilities/rust/src/path_rules.rs` keeps the old Rust rules as the control.
 
+Path case comparisons preserve per-scalar lowercase mapping, not whole-string contextual casing. Mapping `Σ` to `σ` before lowercasing prevents final-sigma rules from changing Windows relative components and UNC roots. `accept/path-case-mapping.ms` covers sigma, combining marks, expanding lowercase mappings, final-sigma distinction and POSIX case sensitivity beyond the recorded corpus.
+
 Apply when: changing path semantics, adding a dialect rule, or porting another pure-text native.
 Evidence: [path.ms](../../stdlib/os/path.ms), [oracle test](../../tests/e2e/testdata/projects/path_oracle/conformance_test.ms), [results](../../bench/perf/pure-utilities/results-2026-11-05-path-in-manuscript.md).
 Verify: `ms test tests/e2e/testdata/projects/path_oracle/conformance_test.ms` passes on Linux, macOS and Windows.
