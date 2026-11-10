@@ -33,6 +33,7 @@
 
 use crate::pos::{Pos, Span};
 use crate::symbol::Symbol;
+use crate::token::{Tok, Token};
 use std::sync::Arc;
 
 /// Identifies a node within one [`Module`]; dense, starting at 0.
@@ -772,42 +773,52 @@ impl Module {
 }
 
 impl Import {
-    /// Whether `source` writes this binding inside a group of clauses
+    /// The lexer tokens of this binding's statement, starting at `import`.
+    fn statement_tokens<'a>(&self, tokens: &'a [Token]) -> &'a [Token] {
+        let first = tokens.partition_point(|t| t.pos.offset < self.pos.offset);
+        &tokens[first..]
+    }
+
+    /// Whether this binding sits inside a group of clauses
     /// (`import (A from "a", B from "b")`), as opposed to a single clause.
-    pub fn in_group(&self, source: &str) -> bool {
-        let Some(rest) = source.get(self.pos.offset as usize + "import".len()..) else {
+    /// Reads lexer `tokens` of `source`, so comments and text never count.
+    pub fn in_group(&self, source: &str, tokens: &[Token]) -> bool {
+        let rest = self.statement_tokens(tokens);
+        if rest.get(1).map(|t| t.kind) != Some(Tok::LParen) {
             return false;
-        };
-        let Some(rest) = rest.trim_start().strip_prefix('(') else {
-            return false;
-        };
-        let word = rest.find(" from ").or_else(|| rest.find("\nfrom "));
-        match (word, rest.find(')')) {
-            (Some(from), Some(close)) => from < close,
-            _ => false,
         }
+        rest[2..]
+            .iter()
+            .take_while(|t| t.kind != Tok::RParen)
+            .any(|t| {
+                t.kind == Tok::Name
+                    && source.get(t.pos.offset as usize..t.end.offset as usize) == Some("from")
+            })
     }
 
     /// The byte range that deletes this binding's whole clause from a grouped
     /// import, or the whole statement when `statement` is set. The range
     /// takes the clause's trailing comma and, when the clause is alone on its
     /// line, the line itself.
-    pub fn group_removal(&self, source: &str, statement: bool) -> Option<(usize, usize)> {
+    pub fn group_removal(
+        &self,
+        source: &str,
+        tokens: &[Token],
+        statement: bool,
+    ) -> Option<(usize, usize)> {
         let start = if statement { self.pos } else { self.clause }.offset as usize;
-        let tail = source.get(self.clause.offset as usize..)?;
+        let rest = self.statement_tokens(tokens);
         let blank = |c: char| c == ' ' || c == '\t';
         let mut end = if statement {
-            let open = source.get(self.pos.offset as usize..)?.find('(')?;
-            let (mut depth, mut text) = (0usize, false);
+            let mut depth = 0usize;
             let mut close = None;
-            for (i, c) in source[self.pos.offset as usize + open..].char_indices() {
-                match c {
-                    '"' => text = !text,
-                    '(' if !text => depth += 1,
-                    ')' if !text => {
-                        depth -= 1;
+            for t in rest.get(1..)? {
+                match t.kind {
+                    Tok::LParen => depth += 1,
+                    Tok::RParen => {
+                        depth = depth.checked_sub(1)?;
                         if depth == 0 {
-                            close = Some(self.pos.offset as usize + open + i + 1);
+                            close = Some(t.end.offset as usize);
                             break;
                         }
                     }
@@ -816,10 +827,10 @@ impl Import {
             }
             close?
         } else {
-            let open = tail.find('"')?;
-            let close = open + 1 + tail[open + 1..].find('"')? + 1;
-            let mut at = self.clause.offset as usize + close;
-            let after = source[at..].trim_start_matches(blank);
+            let from = rest.partition_point(|t| t.pos.offset < self.clause.offset);
+            let path = rest[from..].iter().find(|t| t.kind == Tok::String)?;
+            let mut at = path.end.offset as usize;
+            let after = source.get(at..)?.trim_start_matches(blank);
             at = source.len() - after.len();
             if source[at..].starts_with(',') {
                 at += 1;
