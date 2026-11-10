@@ -217,6 +217,21 @@ pub(crate) fn recovery_continuations(file: &Arc<str>, source: &str, roots: &[boo
                 }
                 scanner.advance();
             }
+        } else if scanner.src[scanner.offset..].starts_with(b"r\"")
+            && !scanner.src[scanner.offset + 2..].starts_with(b"\"\"")
+            && !(scanner.offset > 0
+                && (letter(scanner.src[scanner.offset - 1])
+                    || digit(scanner.src[scanner.offset - 1])))
+        {
+            // One-line raw text ends at its first quote; no escapes.
+            scanner.advance();
+            scanner.advance();
+            while scanner.offset < scanner.src.len() {
+                let byte = scanner.advance();
+                if byte == b'"' || byte == b'\n' {
+                    break;
+                }
+            }
         } else if scanner.src[scanner.offset..].starts_with(b"r\"\"\"")
             || scanner.src[scanner.offset..].starts_with(b"\"\"\"")
         {
@@ -639,9 +654,13 @@ impl Scanner<'_> {
                         "tabs are allowed only in indentation, and lone carriage returns not at all; use spaces between tokens, and line endings of LF or CRLF",
                     );
                 }
-                if b == b'r' && self.src[self.offset + 1..].starts_with(b"\"\"\"") {
+                if b == b'r' && self.src.get(self.offset + 1) == Some(&b'"') {
                     let start = self.offset;
-                    self.scan_multiline(true)?;
+                    if self.src[self.offset + 1..].starts_with(b"\"\"\"") {
+                        self.scan_multiline(true)?;
+                    } else {
+                        self.scan_raw_line()?;
+                    }
                     self.emit(Tok::String, start, self.offset, p);
                     continue;
                 }
@@ -1161,6 +1180,30 @@ impl Scanner<'_> {
         self.fail("unterminated text literal")
     }
 
+    /// Scans one-line raw text `r"..."`: every character is literal up to the
+    /// first `"`, so it cannot hold a quote (use `r"""` for that).
+    fn scan_raw_line(&mut self) -> PResult<()> {
+        let opened = self.pos();
+        self.advance();
+        self.advance();
+        while self.offset < self.src.len() {
+            let b = self.advance();
+            if b == b'"' {
+                return Ok(());
+            }
+            if b == b'\n' {
+                return self.fail_at(opened, "unterminated raw text literal; r\"...\" must close on the same line and cannot hold a quote, so add the quote or use r\"\"\" multi-line raw text");
+            }
+            if b < 32 {
+                return self.fail("literal control characters are not allowed in text; use r\"\"\" raw text for tabs, or write an escape such as \\t in non-raw text");
+            }
+            if b == 0xE2 && self.bidi_control_at(self.offset - 1) {
+                return self.fail_previous_byte(BIDI_TEXT);
+            }
+        }
+        self.fail_at(opened, "unterminated raw text literal")
+    }
+
     /// Scans `"""` text (and `r"""` raw text when `raw`): the opening quotes end
     /// their line, the closing quotes start theirs, and every content line
     /// carries the closing line's indentation.
@@ -1326,6 +1369,15 @@ impl Scanner<'_> {
             }
             if b == b'"' {
                 self.scan_string()?;
+                continue;
+            }
+            if b == b'r'
+                && self.src.get(self.offset + 1) == Some(&b'"')
+                && !self.src[self.offset + 2..].starts_with(b"\"\"")
+                && !(self.offset > 0
+                    && (letter(self.src[self.offset - 1]) || digit(self.src[self.offset - 1])))
+            {
+                self.scan_raw_line()?;
                 continue;
             }
             self.advance();

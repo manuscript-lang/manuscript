@@ -25,7 +25,8 @@ test('opaque is a keyword only before type', () => {
 
 test('multi-line and raw strings are scoped before the one-line rule', () => {
   const order = grammar.patterns.map(p => p.include).filter(Boolean);
-  assert.deepEqual(order.slice(0, 3), ['#raw-multiline-string', '#multiline-string', '#string']);
+  assert.deepEqual(order.slice(0, 4), ['#raw-multiline-string', '#multiline-string', '#raw-string', '#string']);
+  assert.equal(new RegExp(grammar.repository['raw-string'].match).exec('x := r"\\d+{}" + "a"')[0], 'r"\\d+{}"');
   const multiline = grammar.repository['multiline-string'];
   assert.equal(multiline.begin, '"""');
   assert.ok(multiline.patterns.some(p => p.name === 'meta.interpolation.manuscript'));

@@ -2919,6 +2919,9 @@ impl<'a> Parser<'a> {
         if full.starts_with("\"\"\"") {
             return self.text_parts(token, &full[3..full.len() - 3], 3);
         }
+        if let Some(body) = full.strip_prefix("r\"") {
+            return Ok(vec![TextPart::Lit(body[..body.len() - 1].into())]);
+        }
         let raw = &full[1..full.len() - 1];
         if !raw.bytes().any(|b| b == b'\\' || b == b'{') {
             return Ok(vec![TextPart::Lit(raw.into())]);
