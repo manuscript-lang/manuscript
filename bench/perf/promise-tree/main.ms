@@ -1,6 +1,8 @@
-import promise, Promise, wait_all from "@std/concurrency/promise.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    promise, Promise, wait_all from "@std/concurrency/promise.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn fib(n: Int) Int:
     if n < 2: return n
@@ -11,21 +13,21 @@ fn fib(n: Int) Int:
 fn pfib(n: Int, cutoff: Int) Int!:
     if n < cutoff: return ok(fib(n))
 
-    m := n - 1
-    p := promise[Int](fn: pfib(m, cutoff))
-    b := try pfib(n - 2, cutoff)
-    a := try p.wait()
+    let m = n - 1
+    let p = promise[Int](fn: pfib(m, cutoff))
+    let b = try pfib(n - 2, cutoff)
+    let a = try p.wait()
     return ok(a + b)
 
 fn work(n: Int) Int!:
     return ok(fib(n))
 
-export fn main() Int:
-    args := arguments()
-    mode := args[0].clone()
-    n := args[1].parse_int().get()
-    k := args[2].parse_int().get()
-    t0 := monotonic()
+fn main() Unit:
+    let args = arguments()
+    let mode = args[0].clone()
+    let n = args[1].parse_int().get()
+    let k = args[2].parse_int().get()
+    let t0 = monotonic()
     var r = 0
 
     if mode == "fan":
@@ -33,7 +35,7 @@ export fn main() Int:
         for i in 0..k:
             ps.append(promise[Int](fn: work(n)))
 
-        rs := wait_all(ps).get()
+        let rs = wait_all(ps).get()
         for x in rs:
             r += x
     else if mode == "tree":
@@ -45,4 +47,3 @@ export fn main() Int:
             / 1000000
         ).to_string()
     )
-    return 0

@@ -9,7 +9,7 @@ impl Counter:
         self.n += 1
         return self.n
 
-export fn main() Int:
+fn main() Unit:
     var c = Counter(0)
     var xs = ["a", "b", "c", "d", "e", "f", "g"]
     one := xs[c.next()].clone()
@@ -17,4 +17,3 @@ export fn main() Int:
     len := xs[c.next()].length()
     xs[c.next()] = "z"
     print("{one} {two} {len} {xs} {c.n}")
-    return 0

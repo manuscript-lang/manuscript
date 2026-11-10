@@ -1,12 +1,14 @@
-import filled from "@std/collections/collections.ms"
-import panic from "@std/core.ms"
+import (
+    filled from "@std/collections/collections.ms",
+    panic from "@std/core.ms",
+)
 
 fn make_cells() List[Int]:
     if values := filled(0, 16384): return values
 
     return panic("fill failure")
 
-export fn main() Int:
+fn main() Int:
     var cells = make_cells()
     var next = make_cells()
 

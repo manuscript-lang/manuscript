@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import (msstd_test_catch_fault, msstd_test_repr) from "@std/internal/test.ms"
+import (
+    panic from "@std/core.ms",
+    msstd_test_catch_fault, msstd_test_repr from "@std/internal/test.ms",
+)
 
 /*
 Setup and cleanup for tests that need a fixture. Define `fn make_fixture() T` in the test file,
@@ -115,8 +117,6 @@ export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
 // Requires none; fails when a payload is present.
 export fn expect_none[T](actual: T?, site: String = caller_site()) Unit!:
     if value := actual: return error(failure("expected none, got {repr(value)}", site))
-
-    return ok(unit)
 
 // Requires ok and returns its original payload; reports an unexpected error.
 export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:

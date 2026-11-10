@@ -1,5 +1,7 @@
-import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import (ReadStream, WriteStream, Source) from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder, join from "@std/bytes.ms",
+    ReadStream, WriteStream, Source from "@std/io/io.ms",
+)
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A step pulls its input only
 // inside its own `next`, so a slow consumer slows every step and the source, and closing a step closes its input.
@@ -22,7 +24,6 @@ impl Lines:
         if limit := self.max_bytes:
             if size > limit:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
-        return ok(unit)
 
     // Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line. The range is decoded in place, with no `Bytes` copy of the line first.
     fn decode(start: Int, stop: Int) String!:

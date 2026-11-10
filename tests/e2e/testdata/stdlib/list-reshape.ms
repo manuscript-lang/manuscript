@@ -1,5 +1,7 @@
-import expect_equal, expect_true, expect_false, expect_fault from "@std/test/test.ms"
-import Deque from "@std/collections/deque.ms"
+import (
+    expect_equal, expect_true, expect_false, expect_fault from "@std/test/test.ms",
+    Deque from "@std/collections/deque.ms",
+)
 
 type Person:
     name: String

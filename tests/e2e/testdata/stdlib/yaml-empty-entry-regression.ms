@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
+import (
+    expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+)
 
 test "YAML flow mappings reject empty comma entries":
     for source in [

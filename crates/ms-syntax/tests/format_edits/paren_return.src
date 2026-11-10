@@ -7,8 +7,7 @@ fn work(
 ) (Map[String, String]?)!ApplicationError:
     return error(cause)
 
-export fn main() Int:
-    a := g()(1)
-    b := g(1)   (2)
-    c: fn(Int)(fn() Int) = x
-    return 0
+fn main() Unit:
+    let a = g()(1)
+    let b = g(1)   (2)
+    let c: fn(Int)(fn() Int) = x

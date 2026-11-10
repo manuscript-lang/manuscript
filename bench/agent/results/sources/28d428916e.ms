@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // One lexical token: `kind` is "num", "op" (`+ - * /`), "lp", "rp", or "bad".
 type Tok:
@@ -29,8 +31,7 @@ fn tokenize(line: String) List[Tok]:
             toks.append(Tok(kind: "num", text: digits))
             digits = ""
 
-        if c == " " or c == "\t":
-            continue
+        if c == " " or c == "\t": continue
 
         if "+-*/".contains(c):
             toks.append(Tok(kind: "op", text: c))
@@ -53,17 +54,16 @@ fn has_op(toks: List[Tok], pos: Int, ops: String) Bool:
     )
 
 fn parse_primary(toks: List[Tok], pos: Int) Res:
-    if pos >= toks.length():
-        return bad()
+    if pos >= toks.length(): return bad()
 
-    t := toks[pos]
+    let t = toks[pos]
     if t.kind == "num":
         return Res(
             ok: true, value: t.text.parse_int().get(0), pos: pos + 1, div0: false
         )
 
     if t.kind == "lp":
-        inner := parse_expr(toks, pos + 1)
+        let inner = parse_expr(toks, pos + 1)
         if not inner.ok or inner.pos >= toks.length() or toks[inner.pos].kind != "rp":
             return bad()
 
@@ -73,9 +73,8 @@ fn parse_primary(toks: List[Tok], pos: Int) Res:
 
 fn parse_unary(toks: List[Tok], pos: Int) Res:
     if has_op(toks, pos, "-"):
-        r := parse_unary(toks, pos + 1)
-        if not r.ok:
-            return r
+        let r = parse_unary(toks, pos + 1)
+        if not r.ok: return r
 
         return Res(ok: true, value: 0 - r.value, pos: r.pos, div0: r.div0)
 
@@ -85,10 +84,9 @@ fn parse_term(toks: List[Tok], pos: Int) Res:
     var cur = parse_unary(toks, pos)
 
     while cur.ok and has_op(toks, cur.pos, "*/"):
-        op := toks[cur.pos].text
-        r := parse_unary(toks, cur.pos + 1)
-        if not r.ok:
-            return r
+        let op = toks[cur.pos].text
+        let r = parse_unary(toks, cur.pos + 1)
+        if not r.ok: return r
 
         var value = 0
         var div0 = cur.div0 or r.div0
@@ -108,10 +106,9 @@ fn parse_expr(toks: List[Tok], pos: Int) Res:
     var cur = parse_term(toks, pos)
 
     while cur.ok and has_op(toks, cur.pos, "+-"):
-        op := toks[cur.pos].text
-        r := parse_term(toks, cur.pos + 1)
-        if not r.ok:
-            return r
+        let op = toks[cur.pos].text
+        let r = parse_term(toks, cur.pos + 1)
+        if not r.ok: return r
 
         var value = cur.value + r.value
         if op == "-":
@@ -121,12 +118,10 @@ fn parse_expr(toks: List[Tok], pos: Int) Res:
     return cur
 
 fn evaluate(line: String) String:
-    toks := tokenize(line)
-    r := parse_expr(toks, 0)
-    if not r.ok or r.pos != toks.length():
-        return "error: syntax"
-    if r.div0:
-        return "error: division by zero"
+    let toks = tokenize(line)
+    let r = parse_expr(toks, 0)
+    if not r.ok or r.pos != toks.length(): return "error: syntax"
+    if r.div0: return "error: division by zero"
 
     return "{r.value}"
 
@@ -134,9 +129,8 @@ export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
-        text := line.trim()
-        if text.length() == 0:
-            continue
+        let text = line.trim()
+        if text.length() == 0: continue
 
         out.write("{evaluate(text)}\n").get()
 

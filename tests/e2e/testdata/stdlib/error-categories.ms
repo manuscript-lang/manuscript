@@ -1,7 +1,9 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import range_by from "@std/collections/collections.ms"
-import canonicalize from "@std/os/fs.ms"
-import hex_decode from "@std/data/encoding.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    range_by from "@std/collections/collections.ms",
+    canonicalize from "@std/os/fs.ms",
+    hex_decode from "@std/data/encoding.ms",
+)
 
 // Standard failures are Error values whose kind callers compare, whatever package raised them.
 

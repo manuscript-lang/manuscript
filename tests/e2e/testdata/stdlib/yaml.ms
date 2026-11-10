@@ -4,10 +4,10 @@ import (
     expect_false,
     expect_ok,
     expect_true,
-    fail
-) from "@std/test/test.ms"
-import from_scalars from "@std/string.ms"
-import parse, stringify, YamlValue, YamlOptions from "@std/data/yaml.ms"
+    fail from "@std/test/test.ms",
+    from_scalars from "@std/string.ms",
+    parse, stringify, YamlValue, YamlOptions from "@std/data/yaml.ms",
+)
 
 fn entries(value: YamlValue) Map[String, YamlValue]!:
     match value:
@@ -31,8 +31,6 @@ fn scalar(text: String, expected: String) Unit!:
     if root["a"] != YamlValue.StringValue(expected): return error(
         Error("scalar folding: {text}")
     )
-
-    return ok(unit)
 
 test "YAML issue 133 folded paragraph":
     (try scalar(text: "a: >\n  x\n  y\n\n  z\n", expected: "x y\nz\n"))

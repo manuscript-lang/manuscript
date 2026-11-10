@@ -1,5 +1,7 @@
-import Bytes from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "byte search preserves offsets across scanner boundaries":
     needles: List[UInt8] = [0, 1, 128, 255]

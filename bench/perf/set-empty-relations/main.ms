@@ -1,12 +1,14 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
-    args := arguments()
-    mode := args[0]
-    size := args[1].parse_int().get()
-    repeats := args[2].parse_int().get()
-    pattern := args[3]
+fn main() Unit:
+    let args = arguments()
+    let mode = args[0]
+    let size = args[1].parse_int().get()
+    let repeats = args[2].parse_int().get()
+    let pattern = args[3]
     var left = Set[Int]()
     var right = Set[Int]()
 
@@ -27,11 +29,11 @@ export fn main() Int:
             else:
                 right.add(i)
 
-    start := monotonic()
+    let start = monotonic()
     var checksum = 0
 
     for iteration in 0..repeats:
-        answer := if mode == "subset": left.is_subset_of(right) else: (
+        let answer = if mode == "subset": left.is_subset_of(right) else: (
             if mode == "superset": left.is_superset_of(
                 right
             ) else: left.is_disjoint_from(right)
@@ -39,6 +41,5 @@ export fn main() Int:
         if answer:
             checksum += 1
 
-    elapsed := monotonic().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     print("{elapsed} {checksum}")
-    return 0

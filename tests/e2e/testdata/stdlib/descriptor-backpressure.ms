@@ -1,6 +1,8 @@
-import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
-import spawn from "@std/os/process.ms"
-import milliseconds, monotonic from "@std/time.ms"
+import (
+    expect_equal, expect_ok, expect_true from "@std/test/test.ms",
+    spawn from "@std/os/process.ms",
+    milliseconds, monotonic from "@std/time.ms",
+)
 
 // The child reads nothing for a second, so a writer that never waited would queue all 8 MiB and return at once.
 test "a descriptor write waits while the reader is slow":

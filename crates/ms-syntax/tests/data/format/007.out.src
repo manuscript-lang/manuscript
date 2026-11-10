@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 test "explicit byte conversion":
     try expect_equal("é".byte_length(), 2)

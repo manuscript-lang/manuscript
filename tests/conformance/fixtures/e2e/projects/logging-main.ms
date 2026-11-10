@@ -47,7 +47,6 @@ fn exercise(mode: String, path: String) Unit!:
     var logger = try create(stdout_transport(), timestamp: false)
     try logger.info("still open")
     try logger.close()
-    return ok(unit)
 
 export fn main() Int:
     args := arguments()

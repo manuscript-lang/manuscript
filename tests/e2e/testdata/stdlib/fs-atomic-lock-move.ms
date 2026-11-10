@@ -1,5 +1,5 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
     OpenMode,
     chmod,
     create_directory,
@@ -12,11 +12,11 @@ import (
     stat,
     temporary,
     write_atomic,
-    write_file
-) from "@std/os/fs.ms"
-import milliseconds from "@std/time.ms"
-import which from "@std/os/env.ms"
-import os, Os from "@std/os/system.ms"
+    write_file from "@std/os/fs.ms",
+    milliseconds from "@std/time.ms",
+    which from "@std/os/env.ms",
+    os, Os from "@std/os/system.ms",
+)
 
 fn text_of(path: String) String!:
     data := try read_file(path).wait()

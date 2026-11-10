@@ -20,41 +20,41 @@ import (
     options,
     peak_run,
     read_text,
-    write_text
-) from "./lib.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+)
 
 type Workload:
     name: String
     n: Int
 
 fn body(w: Workload) String:
-    last := (w.n - 1) * 7919 % 100003
-    var text = "export fn main() Int:\n    values := build({w.n})\n    if values.length() != {w.n}: return 1\n    if values.first().get() != 0: return 2\n    if values.last().get() != {last}: return 3\n"
+    let last = (w.n - 1) * 7919 % 100003
+    var text = "export fn main() Int:\n    let values = build({w.n})\n    if values.length() != {w.n}: return 1\n    if values.first().get() != 0: return 2\n    if values.last().get() != {last}: return 3\n"
     if w.name == "sort":
-        text += "    result := sorted(values)\n    if result.length() != {w.n}: return 4\n    if result.first().get() != 0: return 5\n    if result.last().get() != 100002: return 6\n    if values.last().get() != {last}: return 7\n"
+        text += "    let result = sorted(values)\n    if result.length() != {w.n}: return 4\n    if result.first().get() != 0: return 5\n    if result.last().get() != 100002: return 6\n    if values.last().get() != {last}: return 7\n"
     return text + "    return 0\n"
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
-    out := absolute(opts.get_or("output", ""))
+    let out = absolute(opts.get_or("output", ""))
     ensure_directory(out)
 
-    cli := absolute(opts.get_or("cli", ""))
-    cpu := opts.get_or("cpu", "")
-    source := read_text("bench/lists/program.ms")
+    let cli = absolute(opts.get_or("cli", ""))
+    let cpu = opts.get_or("cpu", "")
+    let source = read_text("bench/lists/program.ms")
     var results = List[JsonValue]()
 
     for w in [
         Workload("append", 1000000), Workload("append", 4000000),
         Workload("sort", 200000)
     ]:
-        label := "{w.name}-{w.n}"
-        program := "{out}/{label}.ms"
+        let label = "{w.name}-{w.n}"
+        let program = "{out}/{label}.ms"
         write_text(program, source.replace("export fn main() Int: return 0\n", body(w)))
 
-        binary := "{out}/{label}"
-        _build := try must(
+        let binary = "{out}/{label}"
+        let _build = try must(
             "ms build",
             capture(
                 cli.clone(),
@@ -64,23 +64,23 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
                 ]
             )
         )
-        _emit := try must(
+        let _emit = try must(
             "ms emit",
             capture(
                 cli.clone(), ["emit", program.clone(), "-o", "{out}/{label}.mir"]
             )
         )
-        _warm := try must(label, capture(binary.clone(), []))
+        let _warm = try must(label, capture(binary.clone(), []))
         var seconds = List[Float]()
         var peaks = List[Float]()
         var samples = List[JsonValue]()
 
         for i in 0..runs:
-            start := now_ns()
-            measured := if cpu == "": try peak_run(binary.clone(), []) else: try peak_run(
+            let start = now_ns()
+            let measured = if cpu == "": try peak_run(binary.clone(), []) else: try peak_run(
                 "taskset", ["-c", cpu.clone(), binary.clone()]
             )
-            elapsed := (now_ns() - start).to_float() / 1000000000.0
+            let elapsed = (now_ns() - start).to_float() / 1000000000.0
             seconds.append(elapsed)
             peaks.append(measured.kib.to_float())
 
@@ -105,18 +105,18 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     report.add("build_type", jstr("Release"))
     report.add("results", jlist(results))
 
-    text := dump(jobject(report))
+    let text = dump(jobject(report))
     write_text("{out}/results.json", text)
     return ok(text)
 
-export fn main() Int:
-    parsed := options(
+fn main() Int:
+    let parsed = options(
         arguments(), ["cli", "output", "runs", "cpu"], ["cli", "output"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    opts := parsed.get(Map[String, String]())
-    runs := opts.get_or("runs", "3").parse_int().get(0)
+    let opts = parsed.get(Map[String, String]())
+    let runs = opts.get_or("runs", "3").parse_int().get(0)
     if runs < 1: return fail("runs must be positive")
 
     return finish(run(opts, runs))

@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // A calendar time to the minute; `year` is 0 when a parsed START was invalid.
 type Stamp:
@@ -21,10 +23,8 @@ fn is_leap(year: Int) Bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 fn days_in_month(year: Int, month: Int) Int:
-    if month == 2:
-        return if is_leap(year): 29 else: 28
-    if month == 4 or month == 6 or month == 9 or month == 11:
-        return 30
+    if month == 2: return if is_leap(year): 29 else: 28
+    if month == 4 or month == 6 or month == 9 or month == 11: return 30
 
     return 31
 

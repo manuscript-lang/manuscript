@@ -1,7 +1,9 @@
-import stdout from "@std/io.ms"
-import Val, str_cps from "./vals.ms"
-import FnDef from "./ast.ms"
-import parse_main, parse_defs from "./parse.ms"
+import (
+    stdout from "@std/io.ms",
+    Val, str_cps from "./vals.ms",
+    FnDef from "./ast.ms",
+    parse_main, parse_defs from "./parse.ms",
+)
 
 fn pl(s: String) Unit:
     stdout().write("{s}\n").get()

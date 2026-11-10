@@ -1,23 +1,21 @@
-import read_to_end from "./support/conn.ms"
-import expect_equal from "@std/test/test.ms"
 import (
+    read_to_end from "./support/conn.ms",
+    expect_equal from "@std/test/test.ms",
     FetchBody,
     FetchOptions,
     FetcherOptions,
     fetch,
     fetcher,
-    json_body
-) from "@std/net/fetch.ms"
-import (
+    json_body from "@std/net/fetch.ms",
     HttpHeaders,
     HttpMethod,
     HttpRequest,
     HttpResponse,
     headers,
-    buffered
-) from "@std/net/http.ms"
-import serve from "@std/net/net.ms"
-import milliseconds, sleep from "@std/time.ms"
+    buffered from "@std/net/http.ms",
+    serve from "@std/net/net.ms",
+    milliseconds, sleep from "@std/time.ms",
+)
 
 type Greeting:
     name: String

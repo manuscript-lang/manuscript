@@ -208,7 +208,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         "(" => "; a call or parameter list starts with '('".into(),
         "from" => {
             if found == Tok::Comma {
-                "; to import several names, write import a, b from \"path.ms\"".into()
+                "; to import several names, write import a, b from \"path.ms\", or import (a from \"a.ms\", b from \"b.ms\") for several modules".into()
             } else {
                 "; imports read: import name from \"path.ms\"".into()
             }
@@ -672,10 +672,11 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses the rest of `import a, b from "path"` after `import`.
+    /// Parses the rest of an import after `import`: `a, b from "path"`,
+    /// `(a, b) from "path"`, or a group of clauses
+    /// `(a, b from "path", c from "other")`.
     fn import(&mut self, module: &mut Module) -> PResult<()> {
         let pos = self.previous().pos;
-        let mut names: Vec<Token> = Vec::new();
         if self.kind() == Tok::Star {
             let t = self.peek();
             return self.fail(t, "namespace and wildcard imports are unsupported; import individual exports with 'import Name, OtherName from \"./module.ms\"'");
@@ -686,7 +687,34 @@ impl<'a> Parser<'a> {
         }
         // A bare list is comma-separated on one line; a parenthesized list
         // wraps across lines and permits a trailing comma. Both are nonempty.
+        // Inside parentheses, `from` after the names starts a clause, so one
+        // statement can import from several modules.
         let wrapped = self.take(Tok::LParen);
+        loop {
+            let names = self.import_names(wrapped)?;
+            if wrapped && self.kind() == Tok::RParen {
+                self.need(Tok::RParen)?;
+                self.need_from()?;
+                let path = self.import_path()?;
+                self.push_imports(module, pos, names, &path);
+                break;
+            }
+            self.need_from()?;
+            let path = self.import_path()?;
+            self.push_imports(module, pos, names, &path);
+            if !wrapped {
+                break;
+            }
+            if !self.take(Tok::Comma) || self.kind() == Tok::RParen {
+                self.need(Tok::RParen)?;
+                break;
+            }
+        }
+        self.end()
+    }
+
+    fn import_names(&mut self, wrapped: bool) -> PResult<Vec<Token>> {
+        let mut names = Vec::new();
         loop {
             names.push(self.need(Tok::Name)?);
             if self.kind() == Tok::Name && self.text(self.peek()) == "as" {
@@ -694,36 +722,37 @@ impl<'a> Parser<'a> {
                 return self.fail(t, "imports cannot be renamed with 'as'; import the name as the module declares it");
             }
             if !self.take(Tok::Comma) || (wrapped && self.kind() == Tok::RParen) {
-                break;
+                return Ok(names);
             }
         }
-        if wrapped {
-            self.need(Tok::RParen)?;
-        }
-        self.need_from()?;
+    }
+
+    fn import_path(&mut self) -> PResult<Box<str>> {
         let token = self.need(Tok::String)?;
         self.single_line(token, "import paths")?;
         let mut parts = self.text_parts_of(token)?;
-        let path = match (parts.len(), parts.pop()) {
-            (1, Some(TextPart::Lit(text))) => text,
-            _ => {
-                return self.fail(
-                    token,
-                    "import paths cannot interpolate; write the path as plain text without {…}",
-                );
-            }
-        };
+        match (parts.len(), parts.pop()) {
+            (1, Some(TextPart::Lit(text))) => Ok(text),
+            _ => self.fail(
+                token,
+                "import paths cannot interpolate; write the path as plain text without {…}",
+            ),
+        }
+    }
+
+    fn push_imports(&mut self, module: &mut Module, pos: Pos, names: Vec<Token>, path: &str) {
+        let clause = names[0].pos;
         for name in names {
             let id = self.id();
             module.imports.push(Import {
                 id,
                 pos,
+                clause,
                 name_pos: name.pos,
                 name: self.sym(name),
-                path: path.clone(),
+                path: path.into(),
             });
         }
-        self.end()
     }
 
     // ---- types ----
@@ -1936,7 +1965,7 @@ impl<'a> Parser<'a> {
         } else if self.take(Tok::Assign) {
             if index_parts(&e).is_some() {
                 let value = self.expression(0)?;
-                let kind = self.index_set(e, value);
+                let kind = self.index_set(e, value, false);
                 self.end()?;
                 return Ok(kind);
             }
@@ -1993,7 +2022,9 @@ impl<'a> Parser<'a> {
 
     /// `xs[i] = value` as the call of the member `[]=`, which the checker resolves to `set` on a
     /// List and `add` on a Map.
-    fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
+    /// With `reread`, the value reads the same element, so a name or field key is cloned for the store
+    /// and the original stays borrowable for the read (and for the caller afterwards).
+    fn index_set(&mut self, target: Expr, value: Expr, reread: bool) -> StmtKind {
         let (left, index) = match target.kind {
             ExprKind::Index { left, index } => (left, index),
             ExprKind::Apply {
@@ -2004,6 +2035,28 @@ impl<'a> Parser<'a> {
             _ => unreachable!("index target"),
         };
         let pos = target.pos;
+        let index = if reread && matches!(index.kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
+            let receiver = Box::new(self.clone_chain(&index));
+            let name = self.names.intern("clone");
+            let callee = self.mk(
+                index.pos,
+                ExprKind::Member {
+                    left: receiver,
+                    name,
+                },
+            );
+            Box::new(Expr {
+                id: self.id(),
+                pos: index.pos,
+                end: index.end,
+                kind: ExprKind::Call {
+                    callee: Box::new(callee),
+                    args: Vec::new(),
+                },
+            })
+        } else {
+            index
+        };
         let member = self.mk(
             pos,
             ExprKind::Member {
@@ -2070,7 +2123,7 @@ impl<'a> Parser<'a> {
                     right: Box::new(right),
                 },
             };
-            return Ok(self.index_set(e, value));
+            return Ok(self.index_set(e, value, true));
         }
         let target = self.assign_target(start, e)?;
         let Some(left) = copy else {
@@ -2900,8 +2953,8 @@ impl<'a> Parser<'a> {
                 line_start = false;
                 let mut skipped = 0;
                 while skipped < indent && i < end && matches!(rb[i], b' ' | b'\t') {
+                    skipped += if rb[i] == b'\t' { 4 } else { 1 };
                     i += 1;
-                    skipped += 1;
                 }
                 continue;
             }
@@ -3458,6 +3511,11 @@ fn plain_chain(e: &Expr) -> bool {
     }
 }
 
+/// Whether `left[index] op= value` is accepted: both parts can be evaluated twice without effect.
+pub(crate) fn plain_index_target(left: &Expr, index: &Expr) -> bool {
+    plain_chain(left) && plain_index(index)
+}
+
 /// The member name of an index assignment; no source name can spell it.
 pub const INDEX_SET: &str = "[]=";
 
@@ -3478,6 +3536,7 @@ fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
 fn plain_index(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Name(_) | ExprKind::Number(_) => true,
+        ExprKind::Member { left, .. } => plain_index(left),
         ExprKind::Text(parts) => parts.iter().all(|p| !matches!(p, TextPart::Interp(_))),
         _ => false,
     }

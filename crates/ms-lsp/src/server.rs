@@ -144,24 +144,24 @@ fn ok(result: Json) -> Outcome {
 }
 
 /// A decoded client message.
-struct Request {
+struct Request<'a> {
     id: Option<Json>,
     method: String,
-    params: Json,
-    fields: Params,
+    params: &'a Json,
+    fields: Params<'a>,
 }
 
 /// The parameters any supported method reads.
 #[derive(Default)]
-struct Params {
+pub(crate) struct Params<'a> {
     query: String,
     range: Range,
     new_name: String,
-    document: Document,
+    pub(crate) document: Document,
     position: Position,
     only: Vec<String>,
     include_declaration: bool,
-    changes: Vec<(String, Option<Range>)>,
+    changes: Vec<(&'a str, Option<Range>)>,
 }
 
 impl Default for Document {
@@ -178,9 +178,13 @@ fn typed<'a>(value: &'a Json, key: &str) -> Result<Option<&'a Json>, ()> {
 }
 
 fn string_field(value: &Json, key: &str) -> Result<String, ()> {
+    string_field_ref(value, key).map(str::to_string)
+}
+
+fn string_field_ref<'a>(value: &'a Json, key: &str) -> Result<&'a str, ()> {
     match typed(value, key)? {
-        None => Ok(String::new()),
-        Some(Json::Str(s)) => Ok(s.clone()),
+        None => Ok(""),
+        Some(Json::Str(s)) => Ok(s),
         Some(_) => Err(()),
     }
 }
@@ -218,8 +222,8 @@ fn range_of(value: &Json) -> Result<Range, ()> {
     })
 }
 
-impl Params {
-    fn decode(value: &Json) -> Result<Params, ()> {
+impl<'a> Params<'a> {
+    pub(crate) fn decode(value: &'a Json) -> Result<Params<'a>, ()> {
         let mut p = Params::default();
         match value {
             Json::Null => return Ok(p),
@@ -271,10 +275,42 @@ impl Params {
                     None => None,
                     Some(r) => Some(range_of(r)?),
                 };
-                p.changes.push((string_field(change, "text")?, range));
+                p.changes.push((string_field_ref(change, "text")?, range));
             }
         }
         Ok(p)
+    }
+
+    /// Applies a validated change transaction to the previous snapshot. Recovery
+    /// must retain exactly the text and version that the worker accepted.
+    pub(crate) fn changed_document(&self, old: &Document) -> Option<Document> {
+        let mut d = self.document.clone();
+        if d.version <= old.version || self.changes.is_empty() {
+            return None;
+        }
+        d.text = old.text.clone();
+        for (text, range) in &self.changes {
+            let Some(range) = range else {
+                d.text = (*text).to_string();
+                continue;
+            };
+            let (Ok(start), Ok(end)) = (
+                text::edit_offset(&d.text, range.start),
+                text::edit_offset(&d.text, range.end),
+            ) else {
+                return None;
+            };
+            if end < start {
+                return None;
+            }
+            // Reuse the transactional copy when no capacity growth is needed.
+            if text.len() == end - start {
+                d.text.replace_range(start..end, text);
+            } else {
+                d.text = format!("{}{}{}", &d.text[..start], text, &d.text[end..]);
+            }
+        }
+        Some(d)
     }
 }
 
@@ -645,7 +681,7 @@ impl Server<'_> {
         let r = Request {
             id,
             method,
-            params,
+            params: &params,
             fields,
         };
         if self.shutdown && r.method != "exit" {
@@ -861,46 +897,27 @@ impl Server<'_> {
     /// empty, or malformed edits are ignored.
     fn did_change(&mut self, syms: ms_syntax::Names, r: &Request) -> Flow {
         let p = &r.fields;
-        let mut d = p.document.clone();
-        if uri::is_standard_library(&d.uri) {
-            if r.method == "textDocument/didChange" {
+        if r.method == "textDocument/didChange" && uri::is_standard_library(&p.document.uri) {
+            return Ok(());
+        }
+        let mut d = if r.method == "textDocument/didChange" {
+            let Some(old) = self.docs.get(&p.document.uri) else {
                 return Ok(());
-            }
+            };
+            let Some(changed) = p.changed_document(old) else {
+                return Ok(());
+            };
+            changed
+        } else {
+            p.document.clone()
+        };
+        if uri::is_standard_library(&d.uri) {
             match analysis::standard_library_source(syms, &self.session, &d.uri) {
                 Ok(source) => d.text = source,
                 Err(_) => return Ok(()),
             }
         }
-        if r.method == "textDocument/didChange" {
-            let Some(old) = self.docs.get(&d.uri) else {
-                return Ok(());
-            };
-            if d.version <= old.version || p.changes.is_empty() {
-                return Ok(());
-            }
-            d.text = old.text.clone();
-            for (text, range) in &p.changes {
-                let Some(range) = range else {
-                    d.text = text.clone();
-                    continue;
-                };
-                let (Ok(start), Ok(end)) = (
-                    text::edit_offset(&d.text, range.start),
-                    text::edit_offset(&d.text, range.end),
-                ) else {
-                    return Ok(());
-                };
-                if end < start {
-                    return Ok(());
-                }
-                // Reuse the transactional copy when no capacity growth is needed.
-                if text.len() == end - start {
-                    d.text.replace_range(start..end, text);
-                } else {
-                    d.text = format!("{}{}{}", &d.text[..start], text, &d.text[end..]);
-                }
-            }
-        }
+
         self.docs.insert(d.uri.clone(), d.clone());
         self.invalidate_document(syms, &d);
         if self.defer_diagnostics {

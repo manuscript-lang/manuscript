@@ -1,26 +1,26 @@
-import stdin from "@std/io/io.ms"
-import stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 fn codes(s: String) List[Int]:
-    b := s.as_bytes()
+    let b = s.as_bytes()
     var xs = List[Int]()
     for i in 0..b.length():
         xs.append(b.uint8(i).get().to_int())
     return xs
 
 fn is_num(s: String) Bool:
-    b := codes(s)
-    if b.length() < 1 or b.length() > 6:
-        return false
+    let b = codes(s)
+    if b.length() < 1 or b.length() > 6: return false
 
     for i in 0..b.length():
-        if b[i] < 48 or b[i] > 57:
-            return false
+        if b[i] < 48 or b[i] > 57: return false
     return true
 
 fn num(s: String) Int:
-    b := codes(s)
+    let b = codes(s)
     var v = 0
     for i in 0..b.length():
         v = v * 10 + (b[i] - 48)
@@ -28,8 +28,7 @@ fn num(s: String) Int:
 
 fn is_blank(s: String) Bool:
     for c in codes(s):
-        if c != 32:
-            return false
+        if c != 32: return false
     return true
 
 fn zeros(n: Int) List[Int]:
@@ -39,15 +38,15 @@ fn zeros(n: Int) List[Int]:
     return xs
 
 fn lcs(a: List[Int], b: List[Int]) Int:
-    n := a.length()
-    m := b.length()
+    let n = a.length()
+    let m = b.length()
     var dp = zeros(m + 1)
 
     for i in 1..n + 1:
         var diag = 0
 
         for j in 1..m + 1:
-            up := dp[j]
+            let up = dp[j]
 
             if a[i - 1] == b[j - 1]:
                 dp[j] = diag + 1
@@ -59,8 +58,8 @@ fn lcs(a: List[Int], b: List[Int]) Int:
     return dp[m]
 
 fn edit(a: List[Int], b: List[Int]) Int:
-    n := a.length()
-    m := b.length()
+    let n = a.length()
+    let m = b.length()
     var dp = zeros(m + 1)
     for j in 0..m + 1:
         dp[j] = j
@@ -70,10 +69,10 @@ fn edit(a: List[Int], b: List[Int]) Int:
         dp[0] = i
 
         for j in 1..m + 1:
-            up := dp[j]
+            let up = dp[j]
             var best = diag
             if a[i - 1] != b[j - 1]:
-                best = best + 1
+                best += 1
             if up + 1 < best:
                 best = up + 1
             if dp[j - 1] + 1 < best:
@@ -89,24 +88,24 @@ fn knap(cap: Int, items: List[String]) Int:
     var total_w = 0
 
     for it in items:
-        p := it.split(":")
-        w := num(p[0])
+        let p = it.split(":")
+        let w = num(p[0])
         ws.append(w)
         vs.append(num(p[1]))
         total_w += w
 
-    c_max := if cap < total_w: cap else: total_w
+    let c_max = if cap < total_w: cap else: total_w
     var dp = zeros(c_max + 1)
 
     for k in 0..ws.length():
-        w := ws[k]
-        v := vs[k]
+        let w = ws[k]
+        let v = vs[k]
 
         if w <= c_max:
             var c = c_max
 
             while c >= w:
-                cand := dp[c - w] + v
+                let cand = dp[c - w] + v
                 if cand > dp[c]:
                     dp[c] = cand
                 c -= 1
@@ -114,36 +113,33 @@ fn knap(cap: Int, items: List[String]) Int:
     return dp[c_max]
 
 fn coins(amount: Int, ds: List[String]) String:
-    inf := 1000000000
+    let inf = 1000000000
     var dp = List[Int]()
     dp.append(0)
     for _i in 1..amount + 1:
         dp.append(inf)
 
     for d in ds:
-        c := num(d)
+        let c = num(d)
         for i in c..amount + 1:
             if dp[i - c] + 1 < dp[i]:
                 dp[i] = dp[i - c] + 1
 
-    if dp[amount] >= inf:
-        return "impossible"
+    if dp[amount] >= inf: return "impossible"
 
     return "{dp[amount]}"
 
 fn item_ok(s: String) Bool:
-    p := s.split(":")
-    if p.length() != 2:
-        return false
-    if not is_num(p[0]) or not is_num(p[1]):
-        return false
+    let p = s.split(":")
+    if p.length() != 2: return false
+    if not is_num(p[0]) or not is_num(p[1]): return false
 
     return num(p[0]) >= 1
 
 fn answer(line: String) String:
-    t := line.split(" ")
-    n := t.length()
-    bad := "error: bad command"
+    let t = line.split(" ")
+    let n = t.length()
+    let bad = "error: bad command"
     if t[0] == "lcs" and n == 3 and t[1].length() > 0 and t[2].length() > 0:
         return "{lcs(codes(t[1]), codes(t[2]))}"
     if t[0] == "edit" and n == 3 and t[1].length() > 0 and t[2].length() > 0:
@@ -154,8 +150,7 @@ fn answer(line: String) String:
         for k in 2..n:
             if not item_ok(t[k]):
                 ok = false
-        if not ok:
-            return bad
+        if not ok: return bad
 
         var items = List[String]()
         for k in 2..n:
@@ -172,20 +167,18 @@ fn answer(line: String) String:
             else:
                 ds.append(t[k].clone())
 
-        if not ok:
-            return bad
+        if not ok: return bad
 
         return coins(num(t[1]), ds)
 
     return bad
 
 export fn main() Int:
-    text := read_all(stdin()).get().decode_utf8().get("")
+    let text = read_all(stdin()).get().decode_utf8().get("")
     var out = List[String]()
 
     for line in text.split("\n"):
-        if is_blank(line):
-            continue
+        if is_blank(line): continue
 
         out.append(answer(line))
 

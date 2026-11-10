@@ -1,6 +1,8 @@
-import expect_not_equal, fail from "@std/test/test.ms"
-import parse, stringify, YamlValue from "@std/data/yaml.ms"
-import Rng, next, text, mutate from "./support/generator.ms"
+import (
+    expect_not_equal, fail from "@std/test/test.ms",
+    parse, stringify, YamlValue from "@std/data/yaml.ms",
+    Rng, next, text, mutate from "./support/generator.ms",
+)
 
 fn generated(var rng: Rng, depth: Int) YamlValue:
     var choices = 6
@@ -29,15 +31,11 @@ fn check_round_trip(seed: Int, original: YamlValue) Unit!:
         "seed {seed}: changed\n{rendered}"
     )
 
-    return ok(unit)
-
 fn check_stable(seed: Int, mutated: String, first: YamlValue) Unit!:
     again := try stringify(first)
     if (try parse(again)) != first: return fail(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
-
-    return ok(unit)
 
 test "YAML stringify then parse preserves generated documents":
     for seed in 1..301:

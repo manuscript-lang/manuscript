@@ -9,22 +9,22 @@ import (
     permutations,
     read_text,
     sample,
-    write_text
-) from "./lib.ms"
-import summarize from "./programs_table.ms"
-import arguments from "@std/os/env.ms"
+    write_text from "./lib.ms",
+    summarize from "./programs_table.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn lines_of(version: String, content: String) List[String]:
     return content.split("\n").filter(fn l: l != "").map(fn l: "{version} {l}")
 
 fn run(opts: Map[String, String], n: Int) Result[String, Error]:
-    names := ["go", "before", "after"]
+    let names = ["go", "before", "after"]
     var programs = Map[String, String]()
     for name in names:
         programs.add(name.clone(), absolute(opts.get_or(name, "")))
 
-    orders := permutations(names)
-    input := read_text(opts.get_or("input", ""))
+    let orders = permutations(names)
+    let input = read_text(opts.get_or("input", ""))
     var raw = Map[String, List[String]]()
     raw.add("before", List[String]())
     raw.add("after", List[String]())
@@ -42,30 +42,30 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
             lines = lines.concat(lines_of("ms", results.get_or(revision, "")))
             raw.add(revision.clone(), lines)
 
-    out := opts.get_or("output", "")
+    let out = opts.get_or("output", "")
     ensure_directory(out)
 
     var report = List[String]()
 
     for revision in ["before", "after"]:
-        lines := raw.get_or(revision, [])
+        let lines = raw.get_or(revision, [])
         write_text("{out}/programs-{revision}.txt", lines.map(fn l: l + "\n").join(""))
 
-        table := try summarize(lines, n)
+        let table = try summarize(lines, n)
         write_text("{out}/programs-{revision}.md", table + "\n")
         report.append("{revision}\n{table}")
 
     return ok(report.join("\n"))
 
-export fn main() Int:
-    parsed := options(
+fn main() Int:
+    let parsed = options(
         arguments(), ["before", "after", "go", "input", "output", "repeats"],
         ["before", "after", "go", "input", "output"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    opts := parsed.get(Map[String, String]())
-    n := opts.get_or("repeats", "30").parse_int().get(0)
+    let opts = parsed.get(Map[String, String]())
+    let n = opts.get_or("repeats", "30").parse_int().get(0)
     if n < 1: return fail("repeats must be positive")
 
     return finish(run(opts, n))

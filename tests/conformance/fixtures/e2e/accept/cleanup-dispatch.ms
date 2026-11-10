@@ -22,7 +22,6 @@ impl OtherClose for Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         panic("closeable")
-        return ok(unit)
 
 impl Disposable for Resource:
     var fn close() Unit:

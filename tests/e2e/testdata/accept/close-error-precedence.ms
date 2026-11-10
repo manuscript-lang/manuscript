@@ -1,7 +1,9 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok, expect_error from "@std/test/test.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok, expect_error from "@std/test/test.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 type Failing:
     log: String
@@ -20,8 +22,6 @@ impl Closeable for Failing:
                         "close {self.id}", kind: "ECLOSE", details: {"id": "{self.id}"}
                     )
                 )
-
-        return ok(unit)
 
 fn events(log: String) String:
     if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")

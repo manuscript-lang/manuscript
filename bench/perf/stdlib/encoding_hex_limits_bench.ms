@@ -3,12 +3,12 @@ import (
     hex_encode,
     base64_encode,
     ascii_decode,
-    utf16_decode
-) from "@std/data/encoding.ms"
-import decode_first, decode_last, Utf8Scalar, Utf8Error from "@std/data/utf8.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
-import measure, keep from "@std/test/bench.ms"
+    utf16_decode from "@std/data/encoding.ms",
+    decode_first, decode_last, Utf8Scalar, Utf8Error from "@std/data/utf8.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+    measure, keep from "@std/test/bench.ms",
+)
 
 fn zeros(count: Int) Bytes:
     var out = BytesBuilder()
@@ -37,7 +37,6 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
         return keep(length)
 
     try measure(1, work)
-    return ok(unit)
 
 fn unicode_case(limit: Int) Unit!:
     expected: Bytes! = error(
@@ -52,7 +51,6 @@ fn unicode_case(limit: Int) Unit!:
         return keep(2)
 
     try measure(1, work)
-    return ok(unit)
 
 fn neighbor(which: Int) Unit!:
     data := zeros(if which == 3 or which == 4: 8192 else: 4096)
@@ -80,7 +78,6 @@ fn neighbor(which: Int) Unit!:
         return keep(4096)
 
     try measure(1, work)
-    return ok(unit)
 
 bench "hex.limit.empty.none":
     try decode_case(0, none, 0)

@@ -242,3 +242,121 @@ fn client_request_can_use_replay_id_without_a_restart() {
     assert!(response.get("result").is_some());
     assert!(response.get("error").is_none());
 }
+
+#[test]
+fn rejected_edits_do_not_change_documents_replayed_after_a_crash() {
+    let (input, receiver) = channel();
+    let sink = Sink(Arc::default());
+    let output = sink.clone();
+    let mut spawned = 0;
+    let supervisor = std::thread::spawn(move || {
+        ms_lsp::supervise(Pipe(receiver, Vec::new()), output, move || {
+            spawned += 1;
+            if spawned == 1 {
+                // Hold the first worker until the supervisor has tracked every
+                // edit. The next frame's header terminates the trigger's line.
+                let mut command = Command::new("sh");
+                command.args([
+                    "-c",
+                    "while IFS= read -r line; do case \"$line\" in *crash_after_edits*) exit 3;; esac; done",
+                ]);
+                command
+            } else {
+                let mut command = Command::new(env!("CARGO_BIN_EXE_ms-lsp"));
+                command.env("MS_LSP_WORKER", "1");
+                command
+            }
+        })
+    });
+    let uri = "file:///tmp/ms-lsp-supervise/recovery.ms";
+    let notice = |method: &str, params| {
+        obj([
+            ("jsonrpc", "2.0".into()),
+            ("method", method.into()),
+            ("params", params),
+        ])
+    };
+    let request = |id: usize, method: &str, params| {
+        let mut message = notice(method, params);
+        message.set("id", id.into());
+        message
+    };
+    send(&input, request(1, "initialize", obj([])));
+    send(&input, notice("initialized", obj([])));
+    send(
+        &input,
+        notice(
+            "textDocument/didOpen",
+            obj([(
+                "textDocument",
+                obj([
+                    ("uri", uri.into()),
+                    ("version", 1usize.into()),
+                    ("text", include_str!("supervise/recovery.ms").into()),
+                ]),
+            )]),
+        ),
+    );
+    send(
+        &input,
+        notice(
+            "textDocument/didChange",
+            obj([
+                (
+                    "textDocument",
+                    obj([("uri", uri.into()), ("version", 2usize.into())]),
+                ),
+                (
+                    "contentChanges",
+                    Json::Arr(vec![obj([
+                        ("range", "invalid".into()),
+                        ("text", "corrupted".into()),
+                    ])]),
+                ),
+            ]),
+        ),
+    );
+    send(&input, notice("test/crash_after_edits", obj([])));
+    send(
+        &input,
+        request(
+            2,
+            "textDocument/documentSymbol",
+            obj([("textDocument", obj([("uri", uri.into())]))]),
+        ),
+    );
+    wait_for(&sink, |messages| {
+        messages.iter().any(|message| {
+            message.get("method").and_then(Json::as_str) == Some("textDocument/publishDiagnostics")
+                && message.get("params").is_some_and(|params| {
+                    params.get("uri").and_then(Json::as_str) == Some(uri)
+                        && params.get("version").and_then(Json::as_i64) == Some(1)
+                })
+        })
+    });
+    send(
+        &input,
+        request(
+            3,
+            "textDocument/documentSymbol",
+            obj([("textDocument", obj([("uri", uri.into())]))]),
+        ),
+    );
+    wait_for(&sink, |messages| {
+        messages.iter().any(|message| {
+            message.get("id").and_then(Json::as_i64) == Some(3)
+                && message
+                    .get("result")
+                    .and_then(Json::as_array)
+                    .is_some_and(|symbols| {
+                        symbols.iter().any(|symbol| {
+                            symbol.get("name").and_then(Json::as_str) == Some("answer")
+                        })
+                    })
+        })
+    });
+    send(&input, request(4, "shutdown", obj([])));
+    send(&input, notice("exit", obj([])));
+    drop(input);
+    supervisor.join().unwrap().unwrap();
+}

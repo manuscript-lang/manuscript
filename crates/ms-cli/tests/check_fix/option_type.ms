@@ -1,3 +1,2 @@
-export fn main() Int:
-    y: Option[Int] = none
-    return 0
+fn main() Unit:
+    let y: Option[Int] = none

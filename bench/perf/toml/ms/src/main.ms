@@ -1,7 +1,9 @@
-import stdout from "@std/io/io.ms"
-import StringBuilder from "@std/string.ms"
-import monotonic from "@std/time.ms"
-import parse from "@std/data/toml.ms"
+import (
+    stdout from "@std/io/io.ms",
+    StringBuilder from "@std/string.ms",
+    monotonic from "@std/time.ms",
+    parse from "@std/data/toml.ms",
+)
 
 fn document(count: Int) String:
     var sb = StringBuilder()
@@ -15,19 +17,18 @@ fn parse_ok(text: String) Int:
     return 0
 
 // Parses the document 200 times and prints the best run in microseconds.
-export fn main() Int:
-    text := document(2000)
+fn main() Unit:
+    let text = document(2000)
     var best = 1000000000000
     var ok = 0
 
     for run in 0..200:
-        started := monotonic()
+        let started = monotonic()
         ok = parse_ok(text) + run * 0
 
-        elapsed := monotonic().difference(started).to_nanoseconds()
+        let elapsed = monotonic().difference(started).to_nanoseconds()
         if elapsed < best: best = elapsed
 
-    _ignored := stdout().write(
+    let _ignored = stdout().write(
         "ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n"
     )
-    return 0

@@ -1,11 +1,11 @@
-import Closeable from "@std/core.ms"
-import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
-import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
-import Promise, deferred, complete from "@std/concurrency/promise.ms"
-import HttpHeaders, headers from "@std/net/http.ms"
-import TlsOptions from "@std/net/tls.ms"
 import (
+    Closeable from "@std/core.ms",
+    ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
+    Bytes from "@std/bytes.ms",
+    Duration from "@std/time.ms",
+    Promise, deferred, complete from "@std/concurrency/promise.ms",
+    HttpHeaders, headers from "@std/net/http.ms",
+    TlsOptions from "@std/net/tls.ms",
     msstd_websocket_close,
     msstd_websocket_share,
     msstd_websocket_close_if_last,
@@ -13,8 +13,8 @@ import (
     msstd_websocket_ping_bytes,
     msstd_websocket_receive,
     msstd_websocket_send_bytes,
-    msstd_websocket_subprotocol
-) from "@std/internal/net.ms"
+    msstd_websocket_subprotocol from "@std/internal/net.ms",
+)
 
 // The runtime handle behind a `WebSocket`.
 export extern type NativeWebSocket
@@ -56,7 +56,6 @@ impl Source[WebSocketMessage] for WebSocketSource:
 
     var fn close() Unit!:
         msstd_websocket_close_if_last(self.native)
-        return ok(unit)
 
 type WebSocketSink:
     native: NativeWebSocket
@@ -74,7 +73,6 @@ impl Sink[WebSocketMessage] for WebSocketSink:
 
     var fn close() Unit!:
         msstd_websocket_close_if_last(self.native)
-        return ok(unit)
 
 /*
 A WebSocket connection: `input` reads whole messages and `output` writes them. Move the streams to different tasks to

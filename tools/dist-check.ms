@@ -1,10 +1,11 @@
 // Runs the packaged ms for this host (built by package.ms) on the hello example, from a path that
 // contains spaces. Usage: ms run tools/dist-check.ms
-import dist_arch, dist_os, host, note, run_program, capture from "./lib.ms"
-import create_directory, temporary from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
+import (
+    dist_arch, dist_os, host, note, run_program, capture from "./lib.ms",
+    create_directory, temporary from "@std/os/fs.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     if host() == "windows":
         note("dist-check supports Linux and macOS hosts")
         return 1
@@ -40,5 +41,5 @@ export fn main() Int:
         return 1
 
     code = run_program(ms, ["test", "{hello}/test.ms"])
-    if code == 0: stdout().write("dist-check ok\n").get()
+    if code == 0: print("dist-check ok")
     return code

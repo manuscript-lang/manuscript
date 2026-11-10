@@ -1,6 +1,8 @@
-import expect_equal from "@std/test/test.ms"
-import Echo from "./first.ms"
-import Quiet from "./second.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Echo from "./first.ms",
+    Quiet from "./second.ms",
+)
 
 // Both types implement `Commands` with the same methods; `first.ms` is padded so its node
 // ids differ from `second.ms`, and each omitted argument must still take `Commands.run`'s default.

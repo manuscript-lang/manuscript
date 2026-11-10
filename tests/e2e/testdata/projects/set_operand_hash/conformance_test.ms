@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import first_items from "./first.ms"
-import second_items, second_shared, second_empty from "./second.ms"
+import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
+    first_items from "./first.ms",
+    second_items, second_shared, second_empty from "./second.ms",
+)
 
 fn intersection[T: Hashable](left: Set[T], right: Set[T]) Set[T]:
     return left.intersection(right)

@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    panic from "@std/core.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 /*
 Compare text by edit distance, similarity, closest candidate, or a unified line diff.

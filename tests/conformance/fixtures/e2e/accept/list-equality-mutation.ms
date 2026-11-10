@@ -70,8 +70,6 @@ fn check_equality(side: String, mutation: String) Unit!:
         "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
     )
 
-    return ok(unit)
-
 test "element Equal mutating either List retains both captured headers":
     for side in ["left", "right"]:
         for mutation in [

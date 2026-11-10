@@ -15,17 +15,17 @@ import (
     platform,
     read_text,
     usage,
-    write_text
-) from "./lib.ms"
-import Ran, invalid from "./lib.ms"
-import SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms"
-import arguments from "@std/os/env.ms"
-import copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import milliseconds, sleep from "@std/time.ms"
+    write_text from "./lib.ms",
+    Ran, invalid from "./lib.ms",
+    SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms",
+    arguments from "@std/os/env.ms",
+    copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    milliseconds, sleep from "@std/time.ms",
+)
 
 fn say(text: String) Unit:
-    stdout().write(text + "\n").get()
+    print(text)
 
 fn tail(text: String) String:
     return text.trim()
@@ -38,14 +38,14 @@ fn pinned(cpus: String, argv: List[String]) List[String]:
 
 // Runs `argv` after raising the open-file limit, as the shell scripts did.
 fn raised(argv: List[String]) Ran:
-    script := "ulimit -n 20000 2>/dev/null; exec \"$@\""
+    let script = "ulimit -n 20000 2>/dev/null; exec \"$@\""
     return capture("sh", ["-c", script, "sh"].concat(argv))
 
 // Starts `argv` with standard output in `out` and the open-file limit raised.
 fn background(argv: List[String], out: String) Subprocess!:
-    script := "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
-    args := ["-c", script, "sh", out.clone()].concat(argv)
-    if child := spawn(
+    let script = "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
+    let args = ["-c", script, "sh", out.clone()].concat(argv)
+    if let child = spawn(
         "sh", args,
         SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, stderr: Stdio.Null)
     ):
@@ -61,8 +61,8 @@ type Plan:
 fn plan(w: String) Plan:
     var server = env("SERVER_CPUS", "0,1")
     var load = env("LOAD_CPUS", "2,3")
-    cpus := capture("nproc", []).stdout.trim().parse_int().get(1)
-    taskset := capture("taskset", ["--version"])
+    let cpus = capture("nproc", []).stdout.trim().parse_int().get(1)
+    let taskset = capture("taskset", ["--version"])
 
     if not taskset.ok or taskset.code != 0 or cpus < 4:
         say("note: fewer than 4 CPUs or no taskset; server and load share CPUs")
@@ -80,10 +80,10 @@ fn load(p: Plan, port: Int, args: List[String]) String:
 // Whether the server answers `/health` within five seconds of starting.
 fn wait_started(p: Plan, port: Int) Bool:
     for attempt in 0..50:
-        ran := raised(load_cmd(p, port, ["1", "1", "/health"]))
+        let ran = raised(load_cmd(p, port, ["1", "1", "/health"]))
         if ran.ok and ran.code == 0: return true
 
-        _ := sleep(milliseconds(100)).wait()
+        let _ = sleep(milliseconds(100)).wait()
 
     return false
 
@@ -92,13 +92,13 @@ fn first_pid(pattern: String) String:
 
 // Total system calls of all threads while strace is attached for `seconds`.
 fn syscalls(pid: String, seconds: Int, file: String) Int:
-    _ := capture(
+    let _ = capture(
         "timeout", ["{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()]
     )
 
     for line in read_text(file).split("\n"):
         if line.contains(" total"):
-            cells := line.split(" ").filter(fn c: c != "")
+            let cells = line.split(" ").filter(fn c: c != "")
             return cells[3].parse_int().get(0)
 
     return 0
@@ -116,7 +116,7 @@ fn measure_server(
     seconds: Int,
     ms_threads: String
 ) Unit!:
-    data := "{p.w}/data"
+    let data = "{p.w}/data"
     var argv = pinned(
         p.server_cpus.clone(), ["{p.w}/{name}/server", "{port}", data.clone()]
     )
@@ -128,7 +128,7 @@ fn measure_server(
         server.close().get(unit)
         return invalid("{name} did not start")
 
-    pid := first_pid("^{p.w}/{name}/server")
+    let pid = first_pid("^{p.w}/{name}/server")
     for path in ["/health", "/user/42", "/top?n=10"]:
         for round in 0..2:
             say("{name} {path} {load(p, port, ["64", "{seconds}", path.clone()])}")
@@ -140,8 +140,8 @@ fn measure_server(
         var mixed = try background(
             load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]), "{p.w}/mixed"
         )
-        _ := sleep(milliseconds(200)).wait()
-        during := if seconds > 1: seconds - 1 else: 1
+        let _ = sleep(milliseconds(200)).wait()
+        let during = if seconds > 1: seconds - 1 else: 1
         say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
         mixed.wait().get(0)
         say("{name} io-during-health {tail(read_text("{p.w}/mixed"))}")
@@ -159,8 +159,8 @@ fn measure_server(
             ],
             "/dev/null"
         )
-        _ := sleep(milliseconds(500)).wait()
-        reqs := (
+        let _ = sleep(milliseconds(500)).wait()
+        let reqs = (
             load(p, port, ["64", "2", "/health"]).split(" ")[
                 1
             ].parse_int().get(0)
@@ -175,7 +175,7 @@ fn measure_server(
                 fn c: c != ""
             )[3].parse_int().get(0)
 
-        per := if reqs > 0: total.to_float() / reqs.to_float() else: 0.0
+        let per = if reqs > 0: total.to_float() / reqs.to_float() else: 0.0
         say(
             "{name} syscalls_per_request {fixed(per, 2)} (requests under strace {reqs})"
         )
@@ -186,12 +186,12 @@ fn measure_server(
         ),
         "{p.w}/idle.out"
     )
-    _ := sleep(milliseconds(200)).wait()
+    let _ = sleep(milliseconds(200)).wait()
 
     for poll in 0..120:
         if read_text("{p.w}/idle.out").contains("holding"): break
 
-        _ := sleep(milliseconds(500)).wait()
+        let _ = sleep(milliseconds(500)).wait()
 
     say(
         "{name} idle_connections {tail(read_text("{p.w}/idle.out"))} rss_kb {rss_kb(pid.clone())}"
@@ -215,7 +215,7 @@ fn prepare_run(here: String, w: String) List[String]!:
     var names = ["ms", "go"]
 
     if capture("cargo", ["--version"]).code == 0:
-        ran := capture(
+        let ran = capture(
             "sh",
             [
                 "-c",
@@ -223,7 +223,7 @@ fn prepare_run(here: String, w: String) List[String]!:
                 "{w}/rust"
             ]
         )
-        _ := try must("cargo build", ran)
+        let _ = try must("cargo build", ran)
         names = ["ms", "go", "rust"]
 
     try build_ms("{w}/ms", "{w}/ms/server")
@@ -231,9 +231,9 @@ fn prepare_run(here: String, w: String) List[String]!:
 
 fn run_all(here: String, seconds: Int) Unit!:
     var tmp = temporary("web-bench-").get()
-    w := tmp.path()
-    names := try prepare_run(here, w)
-    p := plan(w.clone())
+    let w = tmp.path()
+    let names = try prepare_run(here, w)
+    let p = plan(w.clone())
     var port = 18090
 
     for name in names:
@@ -241,20 +241,19 @@ fn run_all(here: String, seconds: Int) Unit!:
         port += 1
 
     tmp.close().get(unit)
-    return ok(unit)
 
 fn cell(p: Plan, argv: List[String]) String:
     return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
 
 fn fetch_all(here: String, seconds: Int) Unit!:
     var tmp = temporary("web-fetch-").get()
-    w := tmp.path()
+    let w = tmp.path()
     copy("{here}/fetch/go", "{w}/go", CopyOptions(recursive: true, replace: true)).get()
     copy("{here}/fetch/ms", "{w}/ms", CopyOptions(recursive: true, replace: true)).get()
     create_directory("{w}/data", recursive: true).get()
     write_text("{w}/data/small", "ok\n")
 
-    _big := try must(
+    let _big = try must(
         "big",
         capture(
             "sh",
@@ -263,7 +262,7 @@ fn fetch_all(here: String, seconds: Int) Unit!:
             ]
         )
     )
-    _text := try must(
+    let _text = try must(
         "text",
         capture(
             "sh",
@@ -277,22 +276,22 @@ fn fetch_all(here: String, seconds: Int) Unit!:
     try build_go("{w}/go", "{w}/go/fetch")
     try build_ms("{w}/ms", "{w}/ms/fetch")
 
-    p := plan(w.clone())
+    let p = plan(w.clone())
     var server = try background(
         pinned(
             p.server_cpus.clone(), ["{w}/go/fetch", "serve", "18950", "{w}/data"]
         ),
         "/dev/null"
     )
-    _ := sleep(milliseconds(1000)).wait()
-    fetches := [
+    let _ = sleep(milliseconds(1000)).wait()
+    let fetches = [
         ["small", "1"], ["small", "8"], ["small", "64"], ["big", "1"], ["big", "8"]
     ]
 
     for row in fetches:
-        file := row[0].clone()
-        conns := row[1].clone()
-        url := "http://127.0.0.1:18950/{file}"
+        let file = row[0].clone()
+        let conns = row[1].clone()
+        let url = "http://127.0.0.1:18950/{file}"
         say(
             "{file} connections={conns} go {cell(p, ["{w}/go/fetch", "get", url.clone(), conns.clone(), "{seconds}"])}"
         )
@@ -306,8 +305,8 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 
     // Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one connection.
     for path in ["chunked/big", "gzip/text"]:
-        url := "http://127.0.0.1:18950/{path}"
-        go := tail(
+        let url = "http://127.0.0.1:18950/{path}"
+        let go = tail(
             raised(
                 pinned(
                     p.load_cpus.clone(),
@@ -317,7 +316,7 @@ fn fetch_all(here: String, seconds: Int) Unit!:
                 )
             ).stdout
         )
-        ms := tail(
+        let ms = tail(
             raised(
                 pinned(
                     p.load_cpus.clone(), ["{w}/ms/fetch", url.clone(), "1", "{seconds}"]
@@ -329,10 +328,9 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 
     server.close().get(unit)
     tmp.close().get(unit)
-    return ok(unit)
 
-export fn main() Int:
-    args := arguments()
+fn main() Int:
+    let args = arguments()
     if (
         args.length() < 1
         or args.length() > 2
@@ -343,13 +341,13 @@ export fn main() Int:
         "web_bench.ms needs Linux (taskset, pgrep, ps, strace)"
     )
 
-    fallback := if args[0] == "run": "5" else: "3"
-    given := if args.length() == 2: args[1].clone() else: fallback
-    seconds := given.parse_int().get(0)
+    let fallback = if args[0] == "run": "5" else: "3"
+    let given = if args.length() == 2: args[1].clone() else: fallback
+    let seconds = given.parse_int().get(0)
     if seconds <= 0: return usage("seconds must be a positive integer")
 
-    here := absolute("bench/perf/web")
-    result := if args[0] == "run": run_all(here, seconds) else: fetch_all(
+    let here = absolute("bench/perf/web")
+    let result = if args[0] == "run": run_all(here, seconds) else: fetch_all(
         here, seconds
     )
     if result.is_error(): return fail(result.err().message)

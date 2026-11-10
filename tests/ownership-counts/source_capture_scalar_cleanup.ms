@@ -18,7 +18,6 @@ type Marker:
 impl Closeable for Marker:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 impl Marker:
     fn status() Int: self.id
@@ -34,55 +33,54 @@ impl Marker:
 fn marker(id: Int) Marker: Marker(id)
 
 fn ordinary() Int:
-    read := marker(1).status
-    first := read()
+    let read = marker(1).status
+    let first = read()
     return first + read()
 
 fn defaulted() Int:
-    read := marker(2).with_default
-    first := read()
+    let read = marker(2).with_default
+    let first = read()
     return first + read(20)
 
 fn generic() Int:
-    read := marker(3).generic[Int]
-    first := read(10)
+    let read = marker(3).generic[Int]
+    let first = read(10)
     return first + read(20)
 
 fn borrow(value: Marker) Int:
-    read := value.status
-    first := read()
+    let read = value.status
+    let first = read()
     return first + read()
 
 fn borrowed_owner() Unit:
-    value := marker(4)
-    answer := borrow(value)
+    let value = marker(4)
+    let answer = borrow(value)
     print("borrowed {answer}")
 
-    _still_present := value.id
+    let _still_present = value.id
 
 fn shared(var value: Marker) Int:
-    bump := value.bump
-    first := bump()
+    let bump = value.bump
+    let first = bump()
     return first + bump(1)
 
 fn shared_owner() Unit:
     var value = marker(5)
-    answer := shared(var value)
+    let answer = shared(var value)
     print("shared {answer}")
 
-    _still_present := value.id
+    let _still_present = value.id
 
-export fn main() Int:
-    a := ordinary()
+fn main() Unit:
+    let a = ordinary()
     print("ordinary {a}")
 
-    b := defaulted()
+    let b = defaulted()
     print("default {b}")
 
-    c := generic()
+    let c = generic()
     print("generic {c}")
     borrowed_owner()
     print("after borrowed")
     shared_owner()
     print("after shared")
-    return 0

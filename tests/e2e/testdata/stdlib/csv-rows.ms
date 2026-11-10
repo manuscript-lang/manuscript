@@ -1,8 +1,10 @@
-import expect_equal, fail from "@std/test/test.ms"
-import csv_rows, parse, CsvOptions from "@std/data/csv.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import from_list, collect from "@std/io/streams.ms"
+import (
+    expect_equal, fail from "@std/test/test.ms",
+    csv_rows, parse, CsvOptions from "@std/data/csv.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    from_list, collect from "@std/io/streams.ms",
+)
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -232,3 +234,26 @@ test "rows and parse agree on malformed and odd inputs under every chunk size":
             if got != expected: return fail(
                 "{text.to_bytes().length()} bytes, chunk {size}: parse {expected}, stream {got}"
             )
+
+test "oversized EOF records stay rejected after a failed read":
+    for text in ["abcd", "\"ab\"", "é日", "\"a\nb\"", "\"\""]:
+        let bytes = text.byte_length()
+
+        for size in [1, 2, bytes]:
+            var rows = csv_rows(
+                chunked(text.to_bytes(), size), max_record_bytes: bytes - 1
+            )
+            try expect_equal(rows.next().err().kind, "EOVERFLOW")
+            try expect_equal(rows.next().err().kind, "EOVERFLOW")
+            try expect_equal((try rows.next()).is_none(), true)
+            try expect_equal((try rows.next()).is_none(), true)
+            try expect_equal(
+                try read_rows(text, size, max_record_bytes: bytes), try parse(text)
+            )
+
+    var rows = csv_rows(from_list(["x\nabcd".to_bytes()]), max_record_bytes: 3)
+    try expect_equal(rows.next().err().kind, "EOVERFLOW")
+    try expect_equal(rows.next().err().kind, "EOVERFLOW")
+    try expect_equal((try rows.next()).is_none(), true)
+    try expect_equal((try read_rows("", 1, max_record_bytes: 0)).is_empty(), true)
+    try expect_equal(try read_rows("\"\"", 1, max_record_bytes: 2), [[""]])

@@ -87,7 +87,6 @@ type BoundedResultCleanup:
 impl Closeable for BoundedResultCleanup:
     var fn close() Unit!:
         self.visits.append(7)
-        return ok(unit)
 
 fn cleanup(visits: List[Int]) Int:
     _resource := BoundedResultCleanup(visits)

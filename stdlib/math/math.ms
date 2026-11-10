@@ -1,6 +1,6 @@
-import Data, panic from "@std/core.ms"
-import random_bytes from "@std/random.ms"
 import (
+    Data, panic from "@std/core.ms",
+    random_bytes from "@std/random.ms",
     msstd_math_acos,
     msstd_math_asin,
     msstd_math_atan,
@@ -91,8 +91,8 @@ import (
     msstd_bigint_to_int,
     msstd_bigint_to_string_radix,
     msstd_bigint_from_int,
-    msstd_bigint_parse
-) from "@std/internal/math.ms"
+    msstd_bigint_parse from "@std/internal/math.ms",
+)
 
 // Returns the inverse cosine in radians.
 export fn acos(value: Float) Float:
@@ -331,7 +331,7 @@ export fn parse_float(text: String) Float!:
 
 // Parses an integer with an optional sign in a radix from 2 through 36; `_` separators and white space are not accepted.
 // Radix 0 reads a `0x`, `0o` or `0b` prefix and otherwise uses 10. A bad digit is EBADMSG, an overflow ERANGE and an unsupported radix EINVAL.
-export fn parse_int(text: String, radix: Int) Int!:
+export fn parse_int(text: String, radix: Int = 10) Int!:
     return msrt_numbers_parse_int(text, radix)
 
 // Returns the bitwise AND of two integers.
@@ -784,17 +784,16 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             twos += 1
 
         var non_residue = two.clone()
-        var tries = 0
 
-        while (
-            non_residue.pow_mod(half, modulus).get(bigint_zero()).compare(
-                minus_one
-            ) != 0
-        ):
-            non_residue += one
-            tries += 1
-            if tries > 1000:
+        while true:
+            let criterion = try non_residue.pow_mod(half, modulus)
+            if criterion.compare(minus_one) == 0: break
+
+            // A prime gives only +1 or -1 here; any other value proves compositeness.
+            if criterion.compare(one) != 0:
                 return error(Error("big integer: invalid input", kind: "EINVAL"))
+
+            non_residue += one
 
         var m = twos
         var c = non_residue.pow_mod(odd_part, modulus).get(bigint_zero())

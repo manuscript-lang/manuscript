@@ -134,7 +134,7 @@ fn overlap(a: &Ty, b: &Ty, x: &Ty, y: &Ty, vars: &[Ty]) -> bool {
                     return false;
                 }
                 for (p, q) in a.params.iter().zip(&b.params) {
-                    if p.name != q.name || !self.matches(&p.ty, &q.ty) {
+                    if p.mutable != q.mutable || !self.matches(&p.ty, &q.ty) {
                         return false;
                     }
                 }
@@ -1438,12 +1438,22 @@ impl Checker {
                         for b in v.bounds() {
                             self.check_declared(&b, d.pos(), s.export);
                         }
+                        if s.export
+                            && let Some(default) = v.default_ty()
+                        {
+                            self.public(&default, d.pos(), &mut HashSet::new());
+                        }
                     }
                 }
             }
             for v in s.variables() {
                 for b in v.bounds() {
                     self.check_declared(&b, d.pos(), s.export);
+                }
+                if s.export
+                    && let Some(default) = v.default_ty()
+                {
+                    self.public(&default, d.pos(), &mut HashSet::new());
                 }
             }
             self.scope = old;
@@ -1631,7 +1641,7 @@ pub(crate) fn native_method(
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
-            || (t.kind == Kind::Primitive && t.is(Builtin::String))
+            || t.kind == Kind::Primitive
             || t.is(Builtin::List)
             || t.is(Builtin::Map)
             || t.is(Builtin::Set)

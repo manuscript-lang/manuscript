@@ -1,5 +1,7 @@
-import read_lines from "@std/streams.ms"
-import stdin, stdout from "@std/io.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdin, stdout from "@std/io.ms",
+)
 
 // Calendar days searched after START's date, inclusive.
 WINDOW_DAYS := 3000

@@ -13,9 +13,8 @@ Save as `hello.ms`. `print` is available without an import and adds a newline.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-export fn main() Int:
+fn main() Unit:
     print("Hello, Manuscript!")
-    return 0
 ```
 
 ```sh
@@ -42,10 +41,8 @@ fn run() Result[Unit, Error]:
         try stdout().write("Hello, {name}!\n")
     return stdout().flush()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return run()
 ```
 
 ```sh
@@ -77,8 +74,8 @@ fn greet(options: Greeting) Result[Int, Error]:
     try stdout().flush()
     return ok(0)
 
-export fn main() Int:
-    hello := command[Greeting](
+fn main() Int:
+    let hello = command[Greeting](
         name: "hello",
         about: "Print a greeting",
         flags: [Flag("times", FlagKind.Int, "n", "1", "Repeat count")],

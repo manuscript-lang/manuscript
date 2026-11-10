@@ -3,9 +3,7 @@ import (
     expect_true,
     expect_false,
     expect_ok,
-    expect_some
-) from "@std/test/test.ms"
-import (
+    expect_some from "@std/test/test.ms",
     add_with_carry,
     subtract_with_borrow,
     multiply_wide,
@@ -26,8 +24,8 @@ import (
     min_float,
     max_float,
     min_int,
-    max_int
-) from "@std/math/math.ms"
+    max_int from "@std/math/math.ms",
+)
 
 fn big_word(value: UInt64) BigInt:
     return parse(value.to_string_radix(10), 10).get()

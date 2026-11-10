@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+)
 
 // ms: allow_effect std.console.read
 // Reads every line of standard input, without terminators.
@@ -11,15 +13,13 @@ fn read_input() List[String]!:
 
 // Renders a hunk range: `start`, or `start,len` unless len is exactly 1.
 fn range_text(start: Int, len: Int) String:
-    if len == 1:
-        return "{start}"
+    if len == 1: return "{start}"
 
     return "{start},{len}"
 
 export fn main() Int:
     var input = read_input().get()
-    if input.length() == 0:
-        return 0
+    if input.length() == 0: return 0
 
     head := input[0].split(" ")
     ctx := head[2].parse_int().get(0)
@@ -90,8 +90,7 @@ export fn main() Int:
     for q in 0..s:
         if kinds[q] != 0:
             has_change = true
-    if not has_change:
-        return 0
+    if not has_change: return 0
 
     // dist[q] = script distance from op q to the nearest change.
     var dist = List[Int]()

@@ -1,6 +1,8 @@
-import from_scalars from "@std/string.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
-import parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms"
+import (
+    from_scalars from "@std/string.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+    parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms",
+)
 
 test "parse reads elements attributes and text":
     doc := parse(
@@ -32,6 +34,26 @@ test "indent puts elements on lines":
     try expect_equal(
         stringify(doc, "  "), "<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n"
     )
+
+test "stringify preserves compact and mixed content formatting":
+    for source in [
+        "<a/>", "<a>text<b/></a>", "<a><b/>text</a>", "<a> <b/> </a>",
+        "<a><!--comment-->text<b/></a>", "<a><b/>text<!--comment--></a>",
+        "<é:root attr=\"&amp;&quot;&#9;&#10;&#13;\">]]&gt;<日/></é:root>"
+    ]:
+        let doc = try parse(source)
+        try expect_equal(stringify(doc), source)
+        try expect_equal(stringify(doc, "  "), "{source}\n")
+
+test "stringify leaves comments and descendant text on indented lines":
+    let doc = try parse("<a><!--comment--><b>text</b><c/></a>")
+    try expect_equal(
+        stringify(doc, "  "), "<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n"
+    )
+
+    let empty = XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
+    try expect_equal(stringify(empty), "<a></a>")
+    try expect_equal(stringify(empty, "  "), "<a>\n</a>\n")
 
 test "malformed documents are errors":
     for bad in [
@@ -261,3 +283,43 @@ test "carriage returns survive a stringify and parse round trip":
     back := parse(text).get()
     try expect_equal(back.text(), "t\r\nu")
     try expect_equal(back.attribute("k").get(""), "p\rq\nr\ts")
+
+test "DOCTYPE skipping honors quoted spans and prolog placement":
+    for accepted in [
+        "<!DOCTYPE a SYSTEM \"a>b\"><a/>", "<!DOCTYPE a SYSTEM 'a>b'><a/>",
+        "<!DOCTYPE a PUBLIC \"-//x//y\" \"u]>v\"><a/>",
+        "<!DOCTYPE a [<!ENTITY x \"]>\">]><a/>",
+        "<!DOCTYPE a [<!-- ]> --><!ELEMENT a EMPTY>]><a/>",
+        "<!DOCTYPE a [<?p ]> ?><!ELEMENT a EMPTY>]><a/>", "<!DOCTYPE a [%e;]><a/>",
+        "<?xml version=\"1.0\"?><!--c--><!DOCTYPE a><!--d--><a/>"
+    ]:
+        try expect_true(parse(accepted).is_ok())
+    for rejected in [
+        "<a/><!DOCTYPE a>", "<!DOCTYPE a><!DOCTYPE a><a/>", "<!DOCTYPEa><a/>",
+        "<!DOCTYPE><a/>", "<!DOCTYPE a SYSTEM><a/>",
+        "<!DOCTYPE a [<!ENTITY x \"]>]><a/>", "<!DOCTYPE a [<!ELEMENT a EMPTY><a/>"
+    ]:
+        try expect_true(parse(rejected).is_error())
+
+test "DOCTYPE public identifiers accept only XML PubidChar scalars":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+
+    for quote in ["\"", "'"]:
+        for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:
+            try expect_equal(invalid.length(), 1)
+            if invalid == quote: continue
+
+            let source = "<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"
+            try expect_equal(parse(source), malformed)
+
+        for valid in [
+            "", "azAZ09", " \r\n-()+,./:=?;!*#@$_%", "-//W3C//DTD XHTML 1.0 Strict//EN"
+        ]:
+            let source = "<!DOCTYPE a PUBLIC {quote}{valid}{quote} 'unused'><a/>"
+            try expect_equal((try parse(source)).tag(), "a")
+
+    try expect_true(parse("<!DOCTYPE a PUBLIC \"apostrophe's\" 'unused'><a/>").is_ok())
+
+    // A system literal has a different grammar; brackets and Unicode stay legal there.
+    try expect_true(parse("<!DOCTYPE a SYSTEM 'é[<&>😀'><a/>").is_ok())
+    try expect_true(parse("<!DOCTYPE a PUBLIC 'valid' 'é[<&>😀'><a/>").is_ok())

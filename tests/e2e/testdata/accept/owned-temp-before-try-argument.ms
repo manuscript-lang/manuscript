@@ -1,5 +1,7 @@
-import Closeable from "@std/core.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 // A temporary that owns a resource, followed by a `try` in a later argument of the same call, is moved into the
 // consumed parameter rather than copied.

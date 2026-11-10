@@ -1,5 +1,7 @@
-import panic from "@std/core.ms"
-import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
+import (
+    panic from "@std/core.ms",
+    expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
+)
 
 type Cell:
     value: Int
@@ -34,7 +36,6 @@ fn bump(var value: Int, amount: Int) Unit:
 
 fn nested_try(var rows: List[List[Int]], var events: List[Int]) Unit!:
     rows[9].set(mark(var events, 1), try fail(var events))
-    return ok(unit)
 
 test "an earlier list fault prevents a later index":
     var rows = [[0]]

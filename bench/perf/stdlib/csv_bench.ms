@@ -1,5 +1,7 @@
-import keep, measure from "@std/test/bench.ms"
-import parse, stringify from "@std/data/csv.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    parse, stringify from "@std/data/csv.ms",
+)
 
 bench "csv.stringify":
     var rows: List[List[String]] = []

@@ -1,5 +1,7 @@
-import read_all from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
+import (
+    read_all from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+)
 
 type Rec:
     timestamp: String

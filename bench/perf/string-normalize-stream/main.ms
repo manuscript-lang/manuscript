@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Pattern:
     name: String
@@ -27,14 +29,14 @@ fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     if status == 0:
         if result.is_error(): return -1
 
-        output := result.get()
+        let output = result.get()
         if output != expected: return -1
 
         return output.byte_length() + 17
 
     if not result.is_error(): return -1
 
-    actual_error := result.err()
+    let actual_error = result.err()
     if (
         status == 1
         and actual_error != Error("string: limit exceeded", kind: "EOVERFLOW")
@@ -72,20 +74,20 @@ fn measure(
     if normalize_sum(text, form, has_max, max, expected, status) != expected_sum: return 1
 
     var checksum = 0
-    started := monotonic()
+    let started = monotonic()
     for iteration in 0..iterations:
         checksum += normalize_sum(text, form, has_max, max, expected, status)
 
-    elapsed := monotonic().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
-    _written := stdout().write(
+    let _written = stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
-export fn main() Int:
-    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+fn main() Int:
+    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for pattern in [
         Pattern("empty", "", "", "", "", ""),
@@ -108,7 +110,7 @@ export fn main() Int:
         )
     ]:
         for form in ["NFC", "NFD", "NFKC", "NFKD"]:
-            expected := expected_for(pattern, form)
+            let expected = expected_for(pattern, form)
             if (
                 measure(
                     "{pattern.name}_{form}_full", pattern.text, form, false, 0,
@@ -127,10 +129,10 @@ export fn main() Int:
         Pattern("compatibility_scale", "ﬁ①", "ﬁ①", "ﬁ①", "fi1", "fi1")
     ]:
         for copies in [4096, 65536]:
-            text := pattern.text.repeat(copies).get()
+            let text = pattern.text.repeat(copies).get()
 
             for form in ["NFC", "NFD", "NFKC", "NFKD"]:
-                expected := expected_for(pattern, form).repeat(copies).get()
+                let expected = expected_for(pattern, form).repeat(copies).get()
                 if (
                     measure(
                         "{pattern.name}_{copies}_{form}_full", text, form, false, 0,
@@ -138,9 +140,9 @@ export fn main() Int:
                     ) != 0
                 ): return 1
 
-    cluster := "a" + "\u{315}\u{300}".repeat(256).get()
-    decomposed := "a" + "\u{300}".repeat(256).get() + "\u{315}".repeat(256).get()
-    composed := "à" + "\u{300}".repeat(255).get() + "\u{315}".repeat(256).get()
+    let cluster = "a" + "\u{315}\u{300}".repeat(256).get()
+    let decomposed = "a" + "\u{300}".repeat(256).get() + "\u{315}".repeat(256).get()
+    let composed = "à" + "\u{300}".repeat(255).get() + "\u{315}".repeat(256).get()
 
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         var expected = decomposed.clone()
@@ -152,14 +154,14 @@ export fn main() Int:
             ) != 0
         ): return 1
 
-    budget_text := "e\u{301}".repeat(4096).get()
+    let budget_text = "e\u{301}".repeat(4096).get()
 
     for form in ["NFC", "NFD", "NFKC", "NFKD"]:
         var expected = "e\u{301}".repeat(4096).get()
         if form == "NFC" or form == "NFKC": expected = "é".repeat(4096).get()
 
-        exact := expected.byte_length()
-        iterations := iterations_for(budget_text.byte_length())
+        let exact = expected.byte_length()
+        let iterations = iterations_for(budget_text.byte_length())
         if (
             measure(
                 "budget_{form}_zero", budget_text, form, true, 0, "", 1, iterations

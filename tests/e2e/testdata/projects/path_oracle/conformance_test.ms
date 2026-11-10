@@ -1,7 +1,9 @@
-import files from "@oracle"
-import hex_encode, hex_decode from "@std/data/encoding.ms"
-import PathOperations, PathParts, posix, win32 from "@std/os/path.ms"
-import fail from "@std/test/test.ms"
+import (
+    files from "@oracle",
+    hex_encode, hex_decode from "@std/data/encoding.ms",
+    PathOperations, PathParts, posix, win32 from "@std/os/path.ms",
+    fail from "@std/test/test.ms",
+)
 
 // Replays data/path.tsv, the corpus recorded from the original path implementation (the Go oracle,
 // then the Rust natives): one case per line as `operation<TAB>windows<TAB>inputs...<TAB>=><TAB>expected`.

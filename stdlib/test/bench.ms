@@ -1,8 +1,10 @@
-import max, min, sqrt from "@std/math/math.ms"
-import stdout from "@std/io/io.ms"
-import environment, set_environment from "@std/os/env.ms"
-import fail from "@std/test/test.ms"
-import monotonic from "@std/time.ms"
+import (
+    max, min, sqrt from "@std/math/math.ms",
+    stdout from "@std/io/io.ms",
+    environment, set_environment from "@std/os/env.ms",
+    fail from "@std/test/test.ms",
+    monotonic from "@std/time.ms",
+)
 
 /*
 Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
@@ -86,7 +88,6 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
     line := "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
     set_environment(measured_flag, "1").get()
-    return ok(unit)
 
 // Set once a body has timed its own work with `measure`.
 measured_flag := "MS_BENCH_MEASURED"
@@ -108,5 +109,3 @@ export fn keep(checksum: Int) Unit!:
         return fail(
             "bench result is the smallest Int; the workload is probably degenerate"
         )
-
-    return ok(unit)

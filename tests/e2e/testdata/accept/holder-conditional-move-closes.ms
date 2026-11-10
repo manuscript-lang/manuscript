@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -8,31 +10,30 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        _ := append_file(self.log, "{self.id},").wait()
-        return ok(unit)
+        let _ = append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
-    read := read_file(path).wait()
-    if bytes := read: return bytes.decode_utf8().get("")
+    let read = read_file(path).wait()
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
 test "a list moved on one path closes on the path that keeps it":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     block(log.clone(), 1)
     logged(log.clone()) | try expect_equal("1,")
 
 fn block(log: String, id: Int) Unit:
-    doors := [Door(id, log.clone())]
+    let doors = [Door(id, log.clone())]
     var moved: List[Door]? = none
     if doors.is_empty():
         moved = doors
     if moved.is_some(): return
 
 test "an optional resource reassigned after a conditional move closes the new value":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     reassign(log.clone())
     logged(log.clone()) | try expect_equal("1,2,")
 
@@ -44,7 +45,7 @@ fn reassign(log: String) Unit:
     if held.is_none(): return
 
 fn walk(log: String, stop: Int) Unit:
-    doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
+    let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     var kept = List[Door]()
 
     for door in doors:
@@ -54,14 +55,14 @@ fn walk(log: String, stop: Int) Unit:
             kept.append(door)
 
 test "a loop over owned resources closes each element it does not move":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     walk(log.clone(), 99)
     logged(log.clone()) | try expect_equal("2,3,1,")
 
 test "a break closes the elements the loop never reached":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     walk(log.clone(), 1)
     logged(log.clone()) | try expect_equal("1,2,3,")
 
@@ -71,13 +72,13 @@ fn wrap(door: Door, log: String) List[Door]:
     return doors
 
 test "a binding built from a call that consumes a resource closes it":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     block_wrap(log.clone())
     logged(log.clone()) | try expect_equal("1,9,")
 
 fn block_wrap(log: String) Unit:
-    made := wrap(Door(1, log.clone()), log.clone())
+    let made = wrap(Door(1, log.clone()), log.clone())
     if made.is_empty(): return
 
 enum Shape:
@@ -88,8 +89,8 @@ fn shape(log: String) Shape:
     return Shape.Circle(Door(5, log.clone()))
 
 test "a match on a temporary resource closes it when the match ends":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     var seen = 0
 
     match shape(log.clone()):

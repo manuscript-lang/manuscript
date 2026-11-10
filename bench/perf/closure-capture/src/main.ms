@@ -7,7 +7,7 @@ fn apply(f: fn(Int) Int, n: Int) Int:
         acc += f(i)
     return acc
 
-export fn main() Int:
+fn main() Int:
     var data: List[Int] = []
     for i in 0..8000000:
         data.append(i)

@@ -1,7 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import panic from "@std/core.ms"
-import parse_int from "@std/math/math.ms"
-import StringBuilder, from_scalars from "@std/string.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    panic from "@std/core.ms",
+    parse_int from "@std/math/math.ms",
+    StringBuilder, from_scalars from "@std/string.ms",
+)
 
 /*
 Conversions between text and values: booleans, integers in any base, and quoted literals.

@@ -2,31 +2,31 @@
 // dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. The release runner for
 // each target builds it natively.
 // Usage: ms run tools/package.ms [-- OS ARCH]
-import capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms"
-import chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms"
 import (
+    capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms",
+    chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms",
     arguments,
     change_directory,
     set_environment,
-    working_directory
-) from "@std/os/env.ms"
+    working_directory from "@std/os/env.ms",
+)
 
 fn supported(target_os: String, target_arch: String) Bool:
-    key := "{target_os}/{target_arch}"
+    let key = "{target_os}/{target_arch}"
     return [
         "linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64",
         "windows/arm64"
     ].contains(key)
 
-export fn main() Int:
-    args := arguments()
+fn main() Int:
+    let args = arguments()
     var target_os = dist_os()
     var target_arch = dist_arch()
 
     if args.length() == 2:
         target_os = args[0].clone()
         target_arch = args[1].clone()
-    else if args.length() != 0:
+    else if not args.is_empty():
         note("Usage: ms run tools/package.ms [-- OS ARCH]")
         return 2
 
@@ -59,11 +59,11 @@ export fn main() Int:
     )
     if code != 0: return code
 
-    name := "manuscript-rust-{target_os}-{target_arch}"
+    let name = "manuscript-rust-{target_os}-{target_arch}"
     create_directory("dist", recursive: true).get()
 
-    staging := temporary("ms-package-").get()
-    bundle := "{staging.path()}/{name}"
+    let staging = temporary("ms-package-").get()
+    let bundle = "{staging.path()}/{name}"
     create_directory("{bundle}/examples/hello/src", recursive: true).get()
     copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
     copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
@@ -84,8 +84,8 @@ export fn main() Int:
         archive = "dist/{name}.zip"
         archive_name = "{name}.zip"
 
-        _ := remove(archive.clone(), recursive: false)
-        root := working_directory().get()
+        let _ = remove(archive.clone(), recursive: false)
+        let root = working_directory().get()
         change_directory(staging.path()).get()
         code = run_program(
             "7z",
@@ -103,7 +103,7 @@ export fn main() Int:
 
     if code != 0: return code
 
-    digest := file_sha256(archive)
+    let digest = file_sha256(archive)
     write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
     print("{archive}")
     return 0

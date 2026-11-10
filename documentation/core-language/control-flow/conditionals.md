@@ -17,10 +17,9 @@ fn status(active: Bool) String:
     else:
         return "Inactive"
 
-export fn main() Int:
+fn main() Unit:
     print(status(true))
     print(status(false))
-    return 0
 ```
 
 ```text

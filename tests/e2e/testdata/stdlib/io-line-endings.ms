@@ -1,7 +1,9 @@
-import OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms"
-import lines, collect, from_list, from_bytes from "@std/io/streams.ms"
-import expect_equal from "@std/test/test.ms"
-import memory from "./support/streams.ms"
+import (
+    OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
+    lines, collect, from_list, from_bytes from "@std/io/streams.ms",
+    expect_equal from "@std/test/test.ms",
+    memory from "./support/streams.ms",
+)
 
 test "an unterminated carriage return remains line content":
     temporary := try temporary("manuscript-line-endings-")

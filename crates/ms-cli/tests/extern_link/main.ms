@@ -35,7 +35,7 @@ fn shout(result: Result[String, DivideError]) String:
 
     return "error {text(result.err())}"
 
-export fn main() Int:
+fn main() Unit:
     var out = stdout()
     _ := out.write(greet_double(21).to_string() + "\n")
     _ := out.write(greet_scale(1.5, 4.0).to_string() + "\n")
@@ -63,4 +63,3 @@ export fn main() Int:
             -3
         ).is_error().to_string() + "\n"
     )
-    return 0

@@ -3,8 +3,7 @@
 // conform: origin=Map and Bytes indexing
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
-    data := "abc".to_bytes()
-    _ := stdout().write("{data[-1]}\n")
-    _ := stdout().write("{data[3]}\n")
-    return 0
+fn main() Unit:
+    let data = "abc".to_bytes()
+    let _ = stdout().write("{data[-1]}\n")
+    let _ = stdout().write("{data[3]}\n")

@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -9,8 +11,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        _ := append_file(self.log, "{self.id},").wait()
-        return ok(unit)
+        let _ = append_file(self.log, "{self.id},").wait()
 
 impl Door:
     var fn swing() Int:
@@ -21,8 +22,8 @@ impl Door:
         return self.swings
 
 fn logged(path: String) String:
-    read := read_file(path).wait()
-    if bytes := read: return bytes.decode_utf8().get("")
+    let read = read_file(path).wait()
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -31,9 +32,9 @@ fn open_door(id: Int, log: String) Door:
 
 // A temporary that a `var fn` changes in place is still a temporary: it closes when its statement ends.
 test "a temporary receiver of a var method closes at the end of its statement":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
-    first := open_door(1, log.clone()).swing()
-    second := open_door(2, log.clone()).peek()
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    let first = open_door(1, log.clone()).swing()
+    let second = open_door(2, log.clone()).peek()
     try expect_equal(first + second, 1)
     try expect_equal(logged(log), "1,2,")

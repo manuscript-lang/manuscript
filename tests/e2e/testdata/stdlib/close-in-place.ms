@@ -1,6 +1,8 @@
-import expect_equal, expect_fault, expect_ok from "@std/test/test.ms"
-import Closeable, panic from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
+    Closeable, panic from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 // A close that changes its receiver works on the value where it lives: a holder, a part, a
 // closure's capture or the cleanup stack sees the closed state afterwards, so a second close of
@@ -16,8 +18,6 @@ impl Closeable for Latch:
             self.open = false
 
             _ := append_file(self.log, "{self.id},").wait()
-
-        return ok(unit)
 
 fn latch(log: String, id: Int) Latch:
     return Latch(log, id, true)

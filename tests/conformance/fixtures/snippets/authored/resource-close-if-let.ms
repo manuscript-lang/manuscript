@@ -13,7 +13,6 @@ type Res:
 impl Closeable for Res:
     var fn close() Unit!:
         say("close {self.name}")
-        return ok(unit)
 
 fn maybe(name: String, present: Bool) Res?:
     return if present: Res(name) else: none
@@ -60,7 +59,7 @@ fn var_payload() Unit:
         r = Res("var-reassigned")
         say("body {r.name}")
 
-export fn main() Int:
+fn main() Unit:
     early_return()
     local_optional()
     absent()
@@ -70,4 +69,3 @@ export fn main() Int:
     with_else_err()
     var_payload()
     say("end")
-    return 0

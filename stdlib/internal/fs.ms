@@ -1,7 +1,7 @@
 // ms: words 5 file or directory not found
 // ms: native msstd_fs_copy msstd_fs_glob_entries
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     Directory,
     DirectoryEntry,
     FileEvent,
@@ -14,9 +14,9 @@ import (
     NativeFile,
     NativeTemporary,
     NativeWatcher,
-    TemporaryDirectory
-) from "@std/os/fs.ms"
-import Duration, Timestamp from "@std/time.ms"
+    TemporaryDirectory from "@std/os/fs.ms",
+    Duration, Timestamp from "@std/time.ms",
+)
 
 export extern fn msstd_fs_filesystem() FileSystem
 

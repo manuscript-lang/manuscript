@@ -1,34 +1,26 @@
-import Closeable, Writable from "@std/core.ms"
-import (ReadStream, WriteStream, Source, Sink, pipe, Pipe) from "@std/io/io.ms"
-import Bytes from "@std/bytes.ms"
-import ClientResponse from "@std/net/http.ms"
-import Duration from "@std/time.ms"
-import HttpClient from "@std/net/http.ms"
-import HttpClientOptions from "@std/net/http.ms"
-import HttpExchange from "@std/net/http.ms"
-import HttpHeaders, headers from "@std/net/http.ms"
-import Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms"
-import TlsInfo, TlsOptions from "@std/net/tls.ms"
 import (
+    Closeable, Writable from "@std/core.ms",
+    ReadStream, WriteStream, Source, Sink, pipe, Pipe from "@std/io/io.ms",
+    Bytes from "@std/bytes.ms",
+    ClientResponse from "@std/net/http.ms",
+    Duration from "@std/time.ms",
+    HttpClient from "@std/net/http.ms",
+    HttpClientOptions from "@std/net/http.ms",
+    HttpExchange from "@std/net/http.ms",
+    HttpHeaders, headers from "@std/net/http.ms",
+    Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
+    TlsInfo, TlsOptions from "@std/net/tls.ms",
     WebSocket,
     WebSocketOptions,
     WebSocketWire,
-    web_socket_from
-) from "@std/net/websocket.ms"
-import HttpMethod from "@std/net/http.ms"
-import HttpServer from "@std/net/http.ms"
-import NativeServing, NativeWorker from "@std/net/http.ms"
-import HttpServerOptions from "@std/net/http.ms"
-import Timestamp from "@std/time.ms"
-import (
-    Promise,
-    promise,
-    owned_task,
-    deferred,
-    complete
-) from "@std/concurrency/promise.ms"
-import sleep from "@std/time.ms"
-import (
+    web_socket_from from "@std/net/websocket.ms",
+    HttpMethod from "@std/net/http.ms",
+    HttpServer from "@std/net/http.ms",
+    NativeServing, NativeWorker from "@std/net/http.ms",
+    HttpServerOptions from "@std/net/http.ms",
+    Timestamp from "@std/time.ms",
+    Promise, promise, owned_task, deferred, complete from "@std/concurrency/promise.ms",
+    sleep from "@std/time.ms",
     msstd_net_network,
     msstd_net_network_bind_datagram,
     msstd_net_network_close,
@@ -63,9 +55,7 @@ import (
     msstd_net_listener_accept,
     msstd_net_listener_share,
     msstd_net_listener_address,
-    msstd_net_listener_close
-) from "@std/internal/net.ms"
-import (
+    msstd_net_listener_close from "@std/internal/net.ms",
     msstd_http_serving_new,
     msstd_http_serving_share,
     msstd_http_serving_address,
@@ -75,8 +65,8 @@ import (
     msstd_http_worker_close,
     msrt_runtime_limit,
     msstd_http_serving_release,
-    msrt_runtime_set_threads
-) from "@std/internal/http.ms"
+    msrt_runtime_set_threads from "@std/internal/http.ms",
+)
 
 // The runtime handle behind a `Connection`.
 export extern type NativeConnection
@@ -92,7 +82,6 @@ impl Source[Bytes] for ConnectionSource:
     // Closes the socket when the output end is already closed.
     var fn close() Unit!:
         msstd_net_connection_close_if_last(self.native)
-        return ok(unit)
 
 type ConnectionSink:
     native: NativeConnection
@@ -108,7 +97,6 @@ impl Sink[Bytes] for ConnectionSink:
     var fn close() Unit!:
         _ := msstd_net_connection_shutdown_write(self.native)
         msstd_net_connection_close_if_last(self.native)
-        return ok(unit)
 
 // What is known about a connection, available after its streams are moved elsewhere.
 export type ConnectionInfo:
@@ -183,7 +171,6 @@ impl Source[Datagram] for DatagramSource:
 
     var fn close() Unit!:
         msstd_net_datagram_close_if_last(self.native)
-        return ok(unit)
 
 type DatagramSink:
     native: NativeDatagramSocket
@@ -200,7 +187,6 @@ impl Sink[Datagram] for DatagramSink:
 
     var fn close() Unit!:
         msstd_net_datagram_close_if_last(self.native)
-        return ok(unit)
 
 // A connectionless socket for sending and receiving datagrams. Closing it closes both streams.
 export type DatagramSocket:
@@ -239,7 +225,6 @@ impl Closeable for Listener:
     // Safe to call repeatedly; connections already accepted stay open.
     var fn close() Unit!:
         msstd_net_listener_close(self.native)
-        return ok(unit)
 
 impl Listener:
     // Starts waiting for the next incoming connection and returns its promise. A timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`.
@@ -342,7 +327,7 @@ impl Network:
 
     // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
     // Invalid or negative options return EINVAL. Closing the network closes the client.
-    fn http_client(options: HttpClientOptions) HttpClient!:
+    fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
         return msstd_net_network_http_client(self.native, options)
 
     // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
@@ -399,7 +384,11 @@ impl Network:
 
     // Returns a derived network limited to the given host names and CIDR ranges.
     // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
-    fn restrict(hosts: List[String], cidrs: List[String], allow_listen: Bool) Network!:
+    fn restrict(
+        hosts: List[String],
+        cidrs: List[String] = [],
+        allow_listen: Bool = false
+    ) Network!:
         return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
 
     // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
@@ -463,7 +452,7 @@ fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
 // Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 // ms: effect std.net.connect
-export fn http_client(options: HttpClientOptions) HttpClient!:
+export fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
     return host_network().http_client(options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
@@ -521,8 +510,8 @@ export fn resolve_dns(
 // Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
 export fn restrict(
     hosts: List[String],
-    cidrs: List[String],
-    allow_listen: Bool
+    cidrs: List[String] = [],
+    allow_listen: Bool = false
 ) Network!:
     return host_network().restrict(hosts, cidrs, allow_listen)
 
@@ -565,7 +554,6 @@ impl Closeable for ServingHandle:
     var fn close() Unit!:
         if self.listener:
             msstd_http_serving_release(self.serving)
-        return ok(unit)
 
 // One worker's HTTP engine, which owns its connections as poller registrations rather than as tasks. Closing it drains them.
 type WorkerHandle:
@@ -574,7 +562,6 @@ type WorkerHandle:
 impl Closeable for WorkerHandle:
     var fn close() Unit!:
         msstd_http_worker_close(self.worker)
-        return ok(unit)
 
 // The accept loop's pipes and workers. Its close, which runs when the loop returns, is cancelled or faults, ends the pipes so the workers drain side by side, then joins them.
 type Accepting:
@@ -591,7 +578,6 @@ impl Closeable for Accepting:
         for worker in self.workers:
             worker.cancel()
         self.workers = []
-        return ok(unit)
 
 // Accepts until the listener fails, dealing each connection to the next worker. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
 fn accept_loop(listening: ServingHandle, count: Int) Unit!:
@@ -622,8 +608,6 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
         _ := accepting.deals[next].write(accepted.get())
         next = (next + 1) % count
 
-    return ok(unit)
-
 // Runs one worker on the thread the runtime placed this promise on: it adopts each connection it is dealt, and the poller drives them from there.
 fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
     engine := WorkerHandle(worker: try msstd_http_serving_worker(handle.serving))
@@ -636,8 +620,6 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
             msstd_http_worker_adopt(engine.worker, raw)
         else:
             break
-
-    return ok(unit)
 
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
 // Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.

@@ -4,6 +4,5 @@
 fn compose[A, B, C](f: fn(A) B, g: fn(B) C) fn(A) C:
     return fn x: g(f(x))
 
-export fn main() Int:
-    e := compose(fn x: x + 1, fn y: "{y}")
-    return 0
+fn main() Unit:
+    let e = compose(fn x: x + 1, fn y: "{y}")

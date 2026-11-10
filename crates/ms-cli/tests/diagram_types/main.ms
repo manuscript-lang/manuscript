@@ -30,6 +30,5 @@ impl Box:
     fn first() Item:
         return self.items[0]
 
-export fn main() Int:
+fn main() Unit:
     print(b_item())
-    return 0

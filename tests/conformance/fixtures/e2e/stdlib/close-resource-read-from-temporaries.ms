@@ -10,7 +10,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         print("closed {self.name}")
-        return ok(unit)
 
 interface Labeled:
     fn label() String
@@ -35,16 +34,15 @@ fn pair() Pair:
 fn show(l: Labeled) String:
     return l.label()
 
-export fn main() Int:
-    present := maybe("optional").is_some()
+fn main() Unit:
+    let present = maybe("optional").is_some()
     print("--list")
 
-    second := doors()[1].label()
+    let second = doors()[1].label()
     print("--field")
 
-    first := pair().a.label()
+    let first = pair().a.label()
     print("--interface")
 
-    shown := show(Door("converted"))
+    let shown = show(Door("converted"))
     print("end {present} {second} {first} {shown}")
-    return 0

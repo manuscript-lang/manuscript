@@ -1,7 +1,9 @@
-import Closeable, Iterator from "@std/core.ms"
-import Source from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable, Iterator from "@std/core.ms",
+    Source from "@std/io/io.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Token:
     log: String
@@ -10,7 +12,6 @@ type Token:
 impl Closeable for Token:
     var fn close() Unit!:
         try append_file(self.log, "close {self.id}\n").wait()
-        return ok(unit)
 
 type Tokens:
     log: String
@@ -42,8 +43,6 @@ fn first_body(log: String) Unit!:
         token := try item
         try append_file(log, "body {token.id}\n").wait()
         break
-
-    return ok(unit)
 
 fn events(log: String) String:
     if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")

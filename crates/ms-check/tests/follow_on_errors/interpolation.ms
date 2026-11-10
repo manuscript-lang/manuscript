@@ -1,4 +1,3 @@
-export fn main() Int:
-    total := 4550
+fn main() Unit:
+    let total = 4550
     print("{totl}")
-    return 0

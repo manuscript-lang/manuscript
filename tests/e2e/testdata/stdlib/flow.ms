@@ -6,10 +6,10 @@ import (
     CircuitBreaker,
     CircuitError,
     map_concurrent,
-    Throttle
-) from "@std/concurrency/flow.ms"
-import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms"
-import Duration, milliseconds, sleep, monotonic from "@std/time.ms"
+    Throttle from "@std/concurrency/flow.ms",
+    expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms",
+    Duration, milliseconds, sleep, monotonic from "@std/time.ms",
+)
 
 fn flaky(attempt: Int) Int!String:
     if attempt < 3: return error("try again")

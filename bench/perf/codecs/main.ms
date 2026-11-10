@@ -1,20 +1,22 @@
-import parse from "@std/data/json.ms"
-import base64_encode from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse from "@std/data/json.ms",
+    base64_encode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
-    args := arguments()
-    length := args[0].parse_int().get()
-    count := args[1].parse_int().get()
-    rounds := args[2].parse_int().get()
+fn main() Int:
+    let args = arguments()
+    let length = args[0].parse_int().get()
+    let count = args[1].parse_int().get()
+    let rounds = args[2].parse_int().get()
     var bytes = BytesBuilder()
     for i in 0..length: bytes.append((i % 256).to_uint8().get())
 
-    expected := bytes.build()
-    encoded := base64_encode(expected)
+    let expected = bytes.build()
+    let encoded = base64_encode(expected)
     var json = StringBuilder()
     json.append("[")
 
@@ -24,15 +26,15 @@ export fn main() Int:
 
     json.append("]")
 
-    text := json.build()
+    let text = json.build()
     var checksum = 0
-    start := monotonic()
+    let start = monotonic()
 
     for i in 0..rounds:
-        result := parse[List[Bytes]](text)
+        let result = parse[List[Bytes]](text)
         if result.is_error(): return 2
 
-        values := result.get()
+        let values = result.get()
         if values.length() != count: return 3
 
         for value in values:
@@ -40,6 +42,6 @@ export fn main() Int:
 
             checksum += value.length()
 
-    elapsed := monotonic().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     print("{length} {count} {rounds} {checksum} {elapsed}")
     return 0

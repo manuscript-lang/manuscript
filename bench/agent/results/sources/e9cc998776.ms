@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+)
 
 // Token codes: 0 '+', 1 '-', 2 '*', 3 '/', 4 '(', 5 ')', 6 number, -1 invalid.
 type Ps:
@@ -10,23 +12,22 @@ type Ps:
     bad: Bool
 
 fn cur(p: Ps) Int:
-    if p.pos < p.codes.length():
-        return p.codes[p.pos]
+    if p.pos < p.codes.length(): return p.codes[p.pos]
 
     return -2
 
 fn primary(var p: Ps) Int:
-    c := cur(p)
+    let c = cur(p)
 
     if c == 6:
-        v := p.vals[p.pos]
+        let v = p.vals[p.pos]
         p.pos += 1
         return v
 
     if c == 4:
         p.pos += 1
 
-        v := expr(var p)
+        let v = expr(var p)
 
         if cur(p) == 5:
             p.pos += 1
@@ -49,18 +50,18 @@ fn term(var p: Ps) Int:
     var v = unary(var p)
 
     while cur(p) == 2 or cur(p) == 3:
-        op := cur(p)
+        let op = cur(p)
         p.pos += 1
 
-        r := unary(var p)
+        let r = unary(var p)
 
         if op == 2:
-            v = v * r
+            v *= r
         else if r == 0:
             p.div0 = true
             v = 0
         else:
-            v = v / r
+            v /= r
 
     return v
 
@@ -68,33 +69,26 @@ fn expr(var p: Ps) Int:
     var v = term(var p)
 
     while cur(p) == 0 or cur(p) == 1:
-        op := cur(p)
+        let op = cur(p)
         p.pos += 1
 
-        r := term(var p)
+        let r = term(var p)
 
         if op == 0:
-            v = v + r
+            v += r
         else:
-            v = v - r
+            v -= r
 
     return v
 
 fn op_code(ch: String) Int:
-    if ch == "+":
-        return 0
-    if ch == "-":
-        return 1
-    if ch == "*":
-        return 2
-    if ch == "/":
-        return 3
-    if ch == "(":
-        return 4
-    if ch == ")":
-        return 5
-    if ch == " " or ch == "\t":
-        return -3
+    if ch == "+": return 0
+    if ch == "-": return 1
+    if ch == "*": return 2
+    if ch == "/": return 3
+    if ch == "(": return 4
+    if ch == ")": return 5
+    if ch == " " or ch == "\t": return -3
 
     return -1
 
@@ -105,7 +99,7 @@ fn eval_line(line: String) String:
     var in_num = false
 
     for ch in line.chars():
-        if d := ch.parse_int():
+        if let d = ch.parse_int():
             num = num * 10 + d
             in_num = true
         else:
@@ -115,7 +109,7 @@ fn eval_line(line: String) String:
                 num = 0
                 in_num = false
 
-            code := op_code(ch)
+            let code = op_code(ch)
 
             if code != -3:
                 codes.append(code)
@@ -126,11 +120,9 @@ fn eval_line(line: String) String:
         vals.append(num)
 
     var p = Ps(codes: codes, vals: vals, pos: 0, div0: false, bad: false)
-    v := expr(var p)
-    if p.bad or p.pos != p.codes.length():
-        return "error: syntax"
-    if p.div0:
-        return "error: division by zero"
+    let v = expr(var p)
+    if p.bad or p.pos != p.codes.length(): return "error: syntax"
+    if p.div0: return "error: division by zero"
 
     return "{v}"
 

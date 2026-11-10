@@ -98,3 +98,17 @@ fn alternate_receivers() Int:
 
 test "receiver defaults stay independent and work through generic bounds":
     alternate_receivers() | try expect_equal(0)
+
+type ForwardFirst[T = ForwardMiddle]:
+    value: T
+
+type ForwardMiddle[U = ForwardLast]:
+    value: U
+
+type ForwardLast[V = Int]:
+    value: V
+
+fn forward_read(value: ForwardFirst) Int: value.value.value.value
+
+test "a default may name a type declared later, through several hops":
+    forward_read(ForwardFirst(ForwardMiddle(ForwardLast(5)))) | try expect_equal(5)

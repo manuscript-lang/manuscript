@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type TextOwner:
     text: String
@@ -11,7 +13,6 @@ impl Closeable for TextOwner:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
         self.text = "closed"
-        return ok(unit)
 
 impl TextOwner:
     fn read() String: self.text

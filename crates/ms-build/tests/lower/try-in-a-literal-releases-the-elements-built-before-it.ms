@@ -4,24 +4,23 @@ fn bad() Result[String, Error]:
     return error(Error("no"))
 
 fn list() Result[Int, Error]:
-    xs := ["a", try bad(), "c"]
+    let xs = ["a", try bad(), "c"]
     return ok(xs.length())
 
 fn nested() Result[Int, Error]:
-    xs := [["a"], ["b", try bad()]]
+    let xs = [["a"], ["b", try bad()]]
     return ok(xs.length())
 
 fn map_value() Result[Int, Error]:
-    m := {"a": "x", "b": try bad()}
+    let m = {"a": "x", "b": try bad()}
     return ok(m.length())
 
 fn map_key() Result[Int, Error]:
-    m := {"a": "x", (try bad()): "y"}
+    let m = {"a": "x", (try bad()): "y"}
     return ok(m.length())
 
-export fn main() Int:
-    _a := list()
-    _b := nested()
-    _c := map_value()
-    _d := map_key()
-    return 0
+fn main() Unit:
+    let _a = list()
+    let _b = nested()
+    let _c = map_value()
+    let _d = map_key()

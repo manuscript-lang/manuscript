@@ -1,6 +1,8 @@
-import hex_decode, hex_encode from "@std/data/encoding.ms"
-import Bytes from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    hex_decode, hex_encode from "@std/data/encoding.ms",
+    Bytes from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "hex preflight preserves byte lengths and error precedence":
     invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))

@@ -1,7 +1,9 @@
 // Python's `random.Random` (Mersenne Twister) for integer seeds, so the generators reproduce the cases
 // CPython's `random` module produced. Covers `randint`, `randrange`, `choice`, `random` and `sample`.
-import panic from "@std/core.ms"
-import bit_and, bit_xor, shift_left, shift_right from "@std/math/math.ms"
+import (
+    panic from "@std/core.ms",
+    bit_and, bit_xor, shift_left, shift_right from "@std/math/math.ms",
+)
 
 N := 624
 MASK := 0xFFFFFFFF

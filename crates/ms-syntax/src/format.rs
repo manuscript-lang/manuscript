@@ -21,7 +21,10 @@ const WIDTH: usize = 88;
 /// Formats `source`. Invalid syntax never produces output.
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     parse(file, source)?;
-    let normalized = source.replace("\r\n", "\n");
+    let mut normalized = source.replace("\r\n", "\n");
+    if normalized.contains('\t') {
+        normalized = expand_indent_tabs(file, &normalized)?;
+    }
     let lexed = lex(file, &normalized)?;
     let mut spans: Vec<(usize, usize, bool)> = lexed
         .tokens
@@ -34,7 +37,7 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
     spans.extend(lexed.block_comments.iter().map(|&(lo, hi)| (lo, hi, true)));
     spans.sort_unstable();
     if spans.is_empty() {
-        return format_lines(file, source);
+        return format_lines(file, &normalized);
     }
     // The line-based passes cannot see inside a multi-line text literal, so a
     // one-line placeholder stands in for each and the literal text returns
@@ -100,13 +103,33 @@ fn shift_lines(text: &str, before: usize, after: usize) -> String {
         } else if after >= before {
             out.push_str(&" ".repeat(after - before));
             out.push_str(line);
-        } else if indent_of(line) >= before - after {
-            out.push_str(&line[before - after..]);
+        } else if let Some(rest) = strip_columns(line, before - after) {
+            out.push_str(rest);
         } else {
             return text.to_string();
         }
     }
     out
+}
+
+/// Removes `columns` of leading whitespace, a tab counting four; `None` when the
+/// line lacks them or a tab would be split.
+fn strip_columns(line: &str, columns: usize) -> Option<&str> {
+    let mut taken = 0;
+    for (at, c) in line.char_indices() {
+        if taken == columns {
+            return Some(&line[at..]);
+        }
+        taken += match c {
+            ' ' => 1,
+            '\t' => 4,
+            _ => return None,
+        };
+        if taken > columns {
+            return None;
+        }
+    }
+    (taken == columns).then_some("")
 }
 
 fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
@@ -121,6 +144,9 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     }
     let breaks = paragraph_breaks(&module, &lines);
     let mut lexed = lex(file, &normalized)?.tokens;
+    if let Some(grouped) = group_imports(&normalized, &lexed) {
+        return format_lines(file, &grouped);
+    }
     if let Some(aligned) = align_suite_headers(&lines, &lexed) {
         // Expression layout moves the closing line of a multi-line header back
         // to the statement's indentation, so its suite must move with it.
@@ -208,6 +234,85 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     Ok(result)
 }
 
+/// Merges each run of two or more adjacent top-level imports (nothing but
+/// whitespace between them) into one grouped `import (...)` statement, one
+/// `names from "path"` clause per line. A lone import keeps its own form.
+fn group_imports(source: &str, tokens: &[Token]) -> Option<String> {
+    let text = |t: &Token| &source[t.lo as usize..t.hi as usize];
+    // (start, end, clauses) for each import statement.
+    type Clause<'a> = (Vec<&'a str>, &'a str);
+    let mut statements: Vec<(usize, usize, Vec<Clause>)> = Vec::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        if tokens[i].kind != Tok::Import {
+            i += 1;
+            continue;
+        }
+        let mut end = i + 1;
+        while end < tokens.len() && tokens[end].kind != Tok::Newline && tokens[end].kind != Tok::Eof
+        {
+            end += 1;
+        }
+        let mut clauses = Vec::new();
+        let mut names: Vec<&str> = Vec::new();
+        let mut at = i + 1;
+        while at < end {
+            let t = &tokens[at];
+            if t.kind == Tok::Name && text(t) == "from" && at + 1 < end {
+                clauses.push((std::mem::take(&mut names), text(&tokens[at + 1])));
+                at += 1;
+            } else if t.kind == Tok::Name {
+                names.push(text(t));
+            }
+            at += 1;
+        }
+        let last = &tokens[end - 1];
+        statements.push((tokens[i].lo as usize, last.hi as usize, clauses));
+        i = end;
+    }
+    let mut out = String::new();
+    let mut copied = 0;
+    let mut k = 0;
+    let mut changed = false;
+    while k < statements.len() {
+        let mut run = k + 1;
+        while run < statements.len()
+            && source[statements[run - 1].1..statements[run].0]
+                .chars()
+                .all(char::is_whitespace)
+        {
+            run += 1;
+        }
+        if run - k >= 2 {
+            out.push_str(&source[copied..statements[k].0]);
+            out.push_str("import (\n");
+            for (names, path) in statements[k..run].iter().flat_map(|s| &s.2) {
+                let flat = format!("    {} from {path},", names.join(", "));
+                if flat.chars().count() <= WIDTH {
+                    out.push_str(&flat);
+                    out.push('\n');
+                    continue;
+                }
+                // A clause too wide for a line puts one name on each line.
+                for (n, name) in names.iter().enumerate() {
+                    let tail = if n + 1 == names.len() {
+                        format!(" from {path}")
+                    } else {
+                        String::new()
+                    };
+                    out.push_str(&format!("    {name}{tail},\n"));
+                }
+            }
+            out.push(')');
+            copied = statements[run - 1].1;
+            changed = true;
+        }
+        k = run;
+    }
+    out.push_str(&source[copied..]);
+    changed.then_some(out)
+}
+
 /// A bare import list wider than the line wraps into the parenthesized form,
 /// one name per line with a trailing comma. Parenthesized imports keep the
 /// author's layout, so a second pass leaves the wrapped form unchanged.
@@ -229,6 +334,35 @@ fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
     }
     out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
     Some(out)
+}
+
+/// Replaces each tab in a code line's leading whitespace with four spaces,
+/// leaving lines inside multi-line text and block comments untouched.
+fn expand_indent_tabs(file: &Arc<str>, text: &str) -> PResult<String> {
+    let lexed = lex(file, text)?;
+    let mut protected: Vec<(usize, usize)> = lexed
+        .tokens
+        .iter()
+        .filter(|t| t.kind == Tok::String && text[t.lo as usize..t.hi as usize].contains('\n'))
+        .map(|t| (t.lo as usize, t.hi as usize))
+        .collect();
+    protected.extend(lexed.block_comments.iter().copied());
+    let mut out = String::with_capacity(text.len() + 16);
+    let mut at = 0;
+    for line in text.split_inclusive('\n') {
+        let inside = protected.iter().any(|&(lo, hi)| lo < at && at < hi);
+        let body = line.trim_start_matches([' ', '\t']);
+        if inside || !line.starts_with('\t') {
+            out.push_str(line);
+        } else {
+            for c in line[..line.len() - body.len()].chars() {
+                out.push_str(if c == '\t' { "    " } else { " " });
+            }
+            out.push_str(body);
+        }
+        at += line.len();
+    }
+    Ok(out)
 }
 
 fn indent_of(line: &str) -> usize {
@@ -691,6 +825,17 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
     for (index, node) in nodes.iter().enumerate() {
         let Some(gid) = node.group else { continue };
         let g = &layout.groups[gid];
+        // A grouped import is laid out one clause per line by `group_imports`;
+        // the item layout would split inside a clause.
+        if g.open.kind == Tok::LParen
+            && index >= 1
+            && nodes[index - 1].tok.kind == Tok::Import
+            && g.nodes.iter().any(|n| {
+                n.tok.kind == Tok::Name && &source[n.tok.lo as usize..n.tok.hi as usize] == "from"
+            })
+        {
+            continue;
+        }
         output.push_str(&source[offset..g.open.lo as usize]);
         let line = output.rsplit('\n').next().unwrap_or("");
         let indent = indent_of(line);

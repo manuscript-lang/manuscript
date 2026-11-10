@@ -1,7 +1,7 @@
-import MetricsSnapshot from "@std/internal/system.ms"
-import Duration from "@std/time.ms"
-import IpFamily from "@std/net/ip.ms"
 import (
+    MetricsSnapshot from "@std/internal/system.ms",
+    Duration from "@std/time.ms",
+    IpFamily from "@std/net/ip.ms",
     msstd_system_endianness,
     msstd_system_end_of_line,
     msstd_system_dev_null,
@@ -19,8 +19,8 @@ import (
     msstd_process_available_memory,
     msstd_process_constrained_memory,
     msstd_process_elapsed,
-    msstd_process_memory_usage
-) from "@std/internal/system.ms"
+    msstd_process_memory_usage from "@std/internal/system.ms",
+)
 
 // The operating system family the program was built for. A host outside the three named families reads as `Other`.
 export enum Os:

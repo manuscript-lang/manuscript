@@ -27,4 +27,3 @@ export fn emit(logger: Logger) Unit!:
         fields
     )
     try logger.warn("complete")
-    return ok(unit)

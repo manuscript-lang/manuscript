@@ -1,5 +1,7 @@
-import Bytes from "@std/bytes.ms"
-import DirectoryEntry, list, read_file from "@std/os/fs.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    DirectoryEntry, list, read_file from "@std/os/fs.ms",
+)
 
 fn fs_invalid_input() Error:
     return Error("filesystem: invalid input", kind: "EINVAL")
@@ -149,8 +151,6 @@ impl MemoryTree:
             if at != "": self.link(at)
             at = parent_of(at)
 
-        return ok(unit)
-
     // Writes a file, replacing any earlier content and creating missing parent directories.
     // A path that is a directory, or whose parent is a file, is `EINVAL`; the root cannot be written.
     var fn write_file(path: String, data: Bytes) Unit!:
@@ -165,7 +165,6 @@ impl MemoryTree:
         try self.create_directory(parent)
         self.files.add(inside.clone(), data)
         self.link(inside.clone())
-        return ok(unit)
 
     // Removes a file or an empty directory; `recursive` removes a directory with everything under it.
     // A missing path is `ENOENT`, a non-empty directory without `recursive` is `ENOTEMPTY`, and the root cannot be removed.
@@ -199,7 +198,6 @@ impl MemoryTree:
         self.directories.remove(inside.clone())
         self.kids.remove(inside.clone())
         self.unlink(inside.clone())
-        return ok(unit)
 
 impl FileTree for MemoryTree:
     // Reads a file held in this tree.
@@ -367,8 +365,6 @@ fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]
                 child_path(directory, child.name), child.directory and not child.symlink
             )
         )
-
-    return ok(unit)
 
 fn relative(path: String, start: String) String:
     if start == "": return path.clone()

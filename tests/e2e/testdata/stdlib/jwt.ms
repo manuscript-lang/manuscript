@@ -1,15 +1,15 @@
-import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
 import (
+    expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
     ecdsa_generate,
     public_key_der,
     rsa_generate,
     public_key,
-    Curve
-) from "@std/crypto.ms"
-import JsonValue, parse from "@std/data/json.ms"
-import (sign_token, verify_token, JwtAlgorithm, JwtCheck) from "@std/data/jwt.ms"
-import random_bytes from "@std/random.ms"
+    Curve from "@std/crypto.ms",
+    JsonValue, parse from "@std/data/json.ms",
+    sign_token, verify_token, JwtAlgorithm, JwtCheck from "@std/data/jwt.ms",
+    random_bytes from "@std/random.ms",
+)
 
 type Profile:
     sub: String
@@ -305,3 +305,110 @@ test "sign returns InvalidKey for a key that does not fit":
     if _ := result: return fail("accepted")
 
     result | try expect_equal(error(Error("jwt: invalid key", kind: "EINVAL")))
+
+// Independent HS256 signatures use key "secret" and payload {}. The comments
+// show the exact protected headers, including malformed extension requirements.
+test "verify rejects unsupported and malformed critical headers":
+    let secret = "secret".to_bytes()
+    let tokens = [
+        // {"alg":"HS256","crit":["example"],"example":true}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k",
+        // {"alg":"HS256","crit":null}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOm51bGx9.e30.T7fEZQZRbMmzsEEF2hgSkpYLBezyECPXxdhBRmgVpC8",
+        // {"alg":"HS256","crit":[]}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOltdfQ.e30.e5krqJ98ji87GRRAxDeXsEjeZ_NJrkB753cq1-K-7fM",
+        // {"alg":"HS256","crit":"example"}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOiJleGFtcGxlIn0.e30.teCRyuZjo1_D9iVNRh56ytipFddD-cls2HSSPUWaCe8",
+        // {"alg":"HS256","crit":1}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOjF9.e30.emGIS6di3OdxAlvwHO-Jv83R8EQ2vgvd4IjI8D7nxXA",
+        // {"alg":"HS256","crit":{}}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOnt9fQ.e30.kMiCqh170NlKnvBlUJCVzie3njXo8CcCU7z1ooz-Ve8",
+        // {"alg":"HS256","crit":["example",1]}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSIsMV19.e30.j23zJyHsurzzamgJMM4lrZmlGNBnwLK2kTmtmQHwEkA",
+        // {"alg":"HS256","crit":["missing"]}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsibWlzc2luZyJdfQ.e30.HtORK809lPKiPRwJYpnyFEhfW--xdouBptB1qB-kBMg",
+        // {"alg":"HS256","crit":["example","example"],"example":true}
+        "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSIsImV4YW1wbGUiXSwiZXhhbXBsZSI6dHJ1ZX0.e30.VFsrdRy355Mrq6dUXgCAbRyMAKrND-EKIHINEDy25ks",
+        // {"alg":"HS256","b64":false,"crit":["b64"]}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19.e30.eQMUUVQWh2OWV9Bmuu4Hid5-hgcjvjrLVMSCB33vgqw",
+        // {"alg":"HS256","b64":true,"crit":["b64"]}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6dHJ1ZSwiY3JpdCI6WyJiNjQiXX0.e30.kKndt9ePg2M-HhRwHLtmeT-Ll926VPZM5GW_Z_HVeWE",
+    ]
+    for token in tokens:
+        (try failure(verify_token(token, secret))) | try expect_equal(
+            Error("jwt: unsupported critical header", kind: "EBADMSG")
+        )
+
+test "verify rejects unencoded and malformed payload encoding headers":
+    let secret = "secret".to_bytes()
+    let tokens = [
+        // {"alg":"HS256","b64":false}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6ZmFsc2V9.e30.MrPklHP0bSjz-ji2syy7IlytGKYSnllWokCMIPI-hzs",
+        // {"alg":"HS256","b64":null}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6bnVsbH0.e30.TdVTSqkWAoCUAezp3U37AZ0vLraK0QlPI1H8Gqv6ip4",
+        // {"alg":"HS256","b64":"true"}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6InRydWUifQ.e30.d0hBESzMeJx_580gjgf3rYbA1yp7Y1V2YpgDMGHeNEI",
+        // {"alg":"HS256","b64":1}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6MX0.e30.aDX92yXhxyYcczIejOqfvmj-35By3-pz8WAUPa3wDf0",
+        // {"alg":"HS256","b64":[]}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6W119.e30.LkqPuote-_4HO3fD6qhi6L4lS7rPMYnRQnyo7HmOpTA",
+        // {"alg":"HS256","b64":{}}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6e319.e30.CpuY69nnDgJh7Nown0j8JP69DHt7DVidzzU1MfpguRo",
+    ]
+    for token in tokens:
+        (try failure(verify_token(token, secret))) | try expect_equal(
+            Error("jwt: unsupported payload encoding", kind: "EBADMSG")
+        )
+
+test "verify keeps unknown noncritical and default encoding headers":
+    let secret = "secret".to_bytes()
+    let tokens = [
+        // {"alg":"HS256"}
+        "eyJhbGciOiJIUzI1NiJ9.e30.XmNK3GpH3Ys_7wsYBfq4C3M6goz71I7dTgUkuIa5lyQ",
+        // {"alg":"HS256","example":true}
+        "eyJhbGciOiJIUzI1NiIsImV4YW1wbGUiOnRydWV9.e30.gGkj567vlhKu9tUUmUaaXKBgZiS_h_2m3I-WjSOAKC0",
+        // {"alg":"HS256","b64":true}
+        "eyJhbGciOiJIUzI1NiIsImI2NCI6dHJ1ZX0.e30.ytT3DcpwW1EYxFw4uI1jWb4NvSt0e3e2HCRZar54MpM",
+        // {"alg":"HS256","example":{"crit":["unknown"]}}
+        "eyJhbGciOiJIUzI1NiIsImV4YW1wbGUiOnsiY3JpdCI6WyJ1bmtub3duIl19fQ.e30._lEWMGZGyrcSAeFILDUL31ZCjeVp6DnNU9nssDc6Yu8",
+    ]
+
+    for token in tokens:
+        let claims = (verify_token(token, secret) | try expect_ok)
+        try expect_true(claims.as_map().is_some())
+        claims.as_map().get().length() | try expect_equal(0)
+        (try failure(verify_token(token, "other".to_bytes()))) | try expect_equal(
+            Error("jwt: bad signature", kind: "EBADMSG")
+        )
+
+test "configured algorithm validation precedes unsupported headers":
+    let token = "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k"
+    (
+        try failure(
+            verify_token(
+                token, "secret".to_bytes(), JwtCheck(algorithm: JwtAlgorithm.Hs512)
+            )
+        )
+    ) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
+
+test "verify rejects missing and nonstring algorithm names":
+    let tokens = [
+        // {}
+        "e30.e30.FCSDuqmCuL_yoq1hx-E3IJO5tSEpcgFbqwcZf590zhA",
+        // {"alg":null}
+        "eyJhbGciOm51bGx9.e30.D-sClfNt-cvX7ieuCLdiRbaME_Fv8F1NKCEEVhk_5As",
+        // {"alg":1}
+        "eyJhbGciOjF9.e30.Ow07NLUThAwtbjL_TGzVy6NvlTMwTHJPgkYZm62Sndw",
+        // {"alg":[]}
+        "eyJhbGciOltdfQ.e30.OWVwnk-PMcDN05dcs-txC3JgGFTC4Zv2-MyROCHH430",
+        // {"alg":{}}
+        "eyJhbGciOnt9fQ.e30.QzYcMTAAAXYy9GQSBLYh6yrTOZoRtFO8jr27wCwEhTY",
+        // {"alg":true}
+        "eyJhbGciOnRydWV9.e30.5nSaIwFMnTbuwwl-QAZ4zVqTV_qUadKxG_UpKNNIe6Y",
+        // {"alg":""}
+        "eyJhbGciOiIifQ.e30.eHpAX4gmdcAz1N_XANGlZqo-RN4PiuCyyS6tIel6RDI",
+    ]
+    for token in tokens:
+        (try failure(verify_token(token, "secret".to_bytes()))) | try expect_equal(
+            Error("jwt: wrong algorithm", kind: "EBADMSG")
+        )

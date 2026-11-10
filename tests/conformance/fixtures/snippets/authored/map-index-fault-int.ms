@@ -3,11 +3,10 @@
 // conform: origin=Map and Bytes indexing
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
-    counts := {1: 10}
+fn main() Unit:
+    let counts = {1: 10}
     var bump = counts.clone()
     bump[1] += 5
 
-    _ := stdout().write("{bump[1]}\n")
-    _ := stdout().write("{counts[2]}\n")
-    return 0
+    let _ = stdout().write("{bump[1]}\n")
+    let _ = stdout().write("{counts[2]}\n")

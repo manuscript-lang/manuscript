@@ -1,6 +1,6 @@
-import Closeable from "@std/core.ms"
-import Duration from "@std/time.ms"
 import (
+    Closeable from "@std/core.ms",
+    Duration from "@std/time.ms",
     msrt_promise_new,
     msrt_promise_put,
     msrt_promise_take,
@@ -18,8 +18,8 @@ import (
     msrt_cancel_free,
     msrt_promise_wait_any,
     msrt_promise_fault_report,
-    msrt_promise_drop
-) from "@std/internal/promises.ms"
+    msrt_promise_drop from "@std/internal/promises.ms",
+)
 
 // Promises: operations whose results are taken once with `wait()`.
 //
@@ -82,7 +82,6 @@ impl Closeable for Cancel:
     // Frees the switch. Promises made with its signals keep running; they just cannot be cancelled by it any more.
     var fn close() Unit!:
         msrt_cancel_free(self.id)
-        return ok(unit)
 
 impl Signal:
     // Whether the switch has fired, for work that loops without waiting.
@@ -175,7 +174,6 @@ impl Closeable for Promise[T]:
     // Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped.
     var fn close() Unit!:
         msrt_promise_drop(self.id)
-        return ok(unit)
 
 // Stores how `entry` ended in the promise `id`.
 export fn complete[U](id: Int, result: U!) Unit:

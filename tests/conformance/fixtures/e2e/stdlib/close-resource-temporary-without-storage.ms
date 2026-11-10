@@ -10,7 +10,6 @@ type Counter:
 impl Closeable for Counter:
     var fn close() Unit!:
         print("closed {self.id}")
-        return ok(unit)
 
 impl Counter:
     fn value() Int:
@@ -19,7 +18,6 @@ impl Counter:
 fn open_counter(id: Int) Counter:
     return Counter(id)
 
-export fn main() Int:
-    a := open_counter(7).value()
+fn main() Unit:
+    let a = open_counter(7).value()
     print("read {a}")
-    return 0

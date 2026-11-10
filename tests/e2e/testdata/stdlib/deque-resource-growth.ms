@@ -1,19 +1,9 @@
-import Closeable, panic from "@std/core.ms"
-import Deque from "@std/collections/deque.ms"
 import (
-    append_file,
-    read_file,
-    temporary,
-    open,
-    FileHandle,
-    OpenMode
-) from "@std/os/fs.ms"
-import (
-    expect_contains,
-    expect_equal,
-    expect_error,
-    expect_fault
-) from "@std/test/test.ms"
+    Closeable, panic from "@std/core.ms",
+    Deque from "@std/collections/deque.ms",
+    append_file, read_file, temporary, open, FileHandle, OpenMode from "@std/os/fs.ms",
+    expect_contains, expect_equal, expect_error, expect_fault from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -22,7 +12,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn events(log: String) String!:
     return ok((try read_file(log).wait()).decode_utf8().get(""))
@@ -55,12 +44,10 @@ fn grow(log: String, front: Bool, wrapped: Bool) Unit!:
     try expect_equal((try events(log)), before)
     try expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))
     try expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)
-    return ok(unit)
 
 fn expect_once(log: String, ids: List[Int]) Unit!:
     actual := (try events(log)).split(",").filter(fn value: value != "").sorted()
     try expect_equal(actual, ids.map(fn id: "{id}").sorted())
-    return ok(unit)
 
 test "deque growth moves resource owners from either end":
     for front in [false, true]:
@@ -98,7 +85,6 @@ fn nested(log: String) Unit!:
             popped.append(-1)
 
     try expect_equal(popped, [-1, 1, -1, 2, 3])
-    return ok(unit)
 
 test "deque growth keeps absent optional slots and nested resource owners":
     tmp := try temporary("deque-nested-")

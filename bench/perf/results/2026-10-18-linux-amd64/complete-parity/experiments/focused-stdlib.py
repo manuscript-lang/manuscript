@@ -21,11 +21,10 @@ import bench_string from "./strings.ms"
 import bench_map_set from "./maps.ms"
 import bench_regex from "./regexbench.ms"
 import bench_host from "./hostbench.ms"
-export fn main() Int:
+fn main() Unit:
     let name = arguments().get(0, "")
     if name.starts_with("string."): bench_string()
     if name.starts_with("map."): bench_map_set()
     if name.starts_with("regex."): bench_regex()
     if name.starts_with("archive."): bench_host()
-    return 0
 ''')

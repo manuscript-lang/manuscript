@@ -24,12 +24,12 @@ impl Big:
 fn first_of(b: Big) Int:
     return b.items[0]
 
-export fn main() Int:
-    w := id(mk(3))
-    p := pass(mk(4))
-    q := id(id(mk(5)))
-    r := mk(6).me()
-    s := id(mk(7)).items.length() + first_of(id(mk(8)))
+fn main() Unit:
+    let w = id(mk(3))
+    let p = pass(mk(4))
+    let q = id(id(mk(5)))
+    let r = mk(6).me()
+    let s = id(mk(7)).items.length() + first_of(id(mk(8)))
     var t = id(mk(2))
     t.items.append(9)
     (
@@ -39,4 +39,3 @@ export fn main() Int:
         )
         .get()
     )
-    return 0

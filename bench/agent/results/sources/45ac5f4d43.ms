@@ -1,5 +1,7 @@
-import stdin, stdout, read_line from "@std/io.ms"
-import from_scalars from "@std/string.ms"
+import (
+    stdin, stdout, read_line from "@std/io.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn is_blank(line: String) Bool:
     for c in line.scalar_values():
@@ -27,7 +29,7 @@ fn shift_letter(c: Int, shift: Int) Int:
 
 // Caesar key: optional '-', then 1 to 7 decimal digits. Returns none if invalid.
 fn caesar_key(key: String) Int?:
-    vs := key.scalar_values()
+    let vs = key.scalar_values()
     var i = 0
     var neg = false
 
@@ -35,13 +37,13 @@ fn caesar_key(key: String) Int?:
         neg = true
         i = 1
 
-    digits := vs.length() - i
+    let digits = vs.length() - i
     if digits < 1 or digits > 7: return none
 
     var v = 0
 
     while i < vs.length():
-        c := vs[i]
+        let c = vs[i]
         if c < 48 or c > 57: return none
 
         v = v * 10 + (c - 48)
@@ -64,42 +66,37 @@ fn vigenere_key(key: String) List[Int]:
     return out
 
 fn run_line(line: String) String:
-    parts := line.split(" ")
-    if parts.length() < 4:
-        return "error: bad command"
+    let parts = line.split(" ")
+    if parts.length() < 4: return "error: bad command"
 
-    cipher := parts[0]
-    mode := parts[1]
-    key := parts[2]
-    text := parts.slice(3, parts.length()).get().join(" ")
-    if text.length() == 0:
-        return "error: bad command"
-    if cipher != "caesar" and cipher != "vigenere":
-        return "error: bad cipher"
-    if mode != "enc" and mode != "dec":
-        return "error: bad mode"
+    let cipher = parts[0]
+    let mode = parts[1]
+    let key = parts[2]
+    let text = parts.slice(3, parts.length()).get().join(" ")
+    if text.length() == 0: return "error: bad command"
+    if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
+    if mode != "enc" and mode != "dec": return "error: bad mode"
 
-    encrypt := mode == "enc"
+    let encrypt = mode == "enc"
     var out = List[Int]()
 
     if cipher == "caesar":
-        if amount := caesar_key(key):
-            shift := wrap(if encrypt: amount else: -amount)
+        if let amount = caesar_key(key):
+            let shift = wrap(if encrypt: amount else: -amount)
             for c in text.scalar_values():
                 out.append(shift_letter(c, shift))
         else:
             return "error: bad key"
     else:
-        ks := vigenere_key(key)
-        if ks.length() == 0:
-            return "error: bad key"
+        let ks = vigenere_key(key)
+        if ks.length() == 0: return "error: bad key"
 
         var p = 0
 
         for c in text.scalar_values():
             if is_letter(c):
-                k := ks[p % ks.length()]
-                shift := wrap(if encrypt: k else: -k)
+                let k = ks[p % ks.length()]
+                let shift = wrap(if encrypt: k else: -k)
                 out.append(shift_letter(c, shift))
                 p += 1
             else:
@@ -111,11 +108,11 @@ export fn main() Int:
     var more = true
 
     while more:
-        got := read_line(stdin()).get()
+        let got = read_line(stdin()).get()
 
-        if line := got:
+        if let line = got:
             if not is_blank(line):
-                result := run_line(line)
+                let result = run_line(line)
                 stdout().write("{result}\n").get()
         else:
             more = false

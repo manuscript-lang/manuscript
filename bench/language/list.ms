@@ -1,7 +1,7 @@
 import panic from "@std/core.ms"
 
-export fn main() Int:
-    values := [1, 2, 3, 4, 5, 6, 7, 8]
+fn main() Int:
+    let values = [1, 2, 3, 4, 5, 6, 7, 8]
     var sum = 0
     for i in 0..5000000:
         sum += values.get(i % 8)

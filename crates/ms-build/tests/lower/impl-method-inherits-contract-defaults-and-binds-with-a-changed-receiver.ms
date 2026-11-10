@@ -31,15 +31,10 @@ impl Runner for Capture:
         return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
     fn spawn(program: String, arguments: List[String]) Result[Subprocess, Error]:
-        return error(
-            Error(
-                "process: service unavailable", kind: "EAGAIN"
-            )
-        )
+        return error(Error("process: service unavailable", kind: "EAGAIN"))
 
-export fn main() Int:
+fn main() Unit:
     var capture = Capture(0)
-    _bound := capture.run
-    _r := capture.run("x", [], "".to_bytes())
-    _o := CsvOptions()
-    return 0
+    let _bound = capture.run
+    let _r = capture.run("x", [], "".to_bytes())
+    let _o = CsvOptions()

@@ -1,6 +1,8 @@
-import cycle from "@std/collections/itertools.ms"
-import keep, measure from "@std/test/bench.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    cycle from "@std/collections/itertools.ms",
+    keep, measure from "@std/test/bench.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 bench "cycle.empty.large_count":
     values := List[Int]()

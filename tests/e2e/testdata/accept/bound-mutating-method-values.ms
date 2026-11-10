@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 type Counter:
     n: Int

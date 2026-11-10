@@ -35,9 +35,8 @@ fn skip_in_else() Unit:
         else:
             continue
 
-export fn main() Int:
+fn main() Unit:
     stop_in_body()
     skip_in_body()
     stop_in_else()
     skip_in_else()
-    return 0

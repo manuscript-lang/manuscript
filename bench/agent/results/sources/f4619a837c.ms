@@ -1,8 +1,10 @@
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
-import read_all from "@std/io.ms"
-import range from "@std/collections.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    stdin from "@std/io.ms",
+    stdout from "@std/io.ms",
+    read_all from "@std/io.ms",
+    range from "@std/collections.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 // Byte values of the grid characters. Validation works on bytes so that
 // columns are counted in characters: every byte before the first invalid
@@ -31,8 +33,7 @@ fn solve(data: Bytes) String:
             row += 1
             col = 0
         else:
-            if not is_cell(b):
-                return "error: bad character at {row + 1},{col + 1}"
+            if not is_cell(b): return "error: bad character at {row + 1},{col + 1}"
 
             col += 1
 
@@ -54,8 +55,7 @@ fn solve(data: Bytes) String:
 
     width := lengths.get(0)
     for n in range(0, lengths.length()):
-        if lengths.get(n) != width:
-            return "error: ragged grid"
+        if lengths.get(n) != width: return "error: ragged grid"
 
     var starts = 0
     var goals = 0
@@ -73,14 +73,10 @@ fn solve(data: Bytes) String:
             goals += 1
             goal = k
 
-    if starts == 0:
-        return "error: no start"
-    if starts > 1:
-        return "error: multiple starts"
-    if goals == 0:
-        return "error: no end"
-    if goals > 1:
-        return "error: multiple ends"
+    if starts == 0: return "error: no start"
+    if starts > 1: return "error: multiple starts"
+    if goals == 0: return "error: no end"
+    if goals > 1: return "error: multiple ends"
 
     rows := lengths.length()
     var dist: List[Int] = []
@@ -96,8 +92,7 @@ fn solve(data: Bytes) String:
     while head < queue.length():
         cur := queue.get(head)
         head += 1
-        if cur == goal:
-            return "{dist.get(cur)}"
+        if cur == goal: return "{dist.get(cur)}"
 
         r := cur / width
         c := cur % width

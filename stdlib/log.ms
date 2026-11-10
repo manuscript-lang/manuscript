@@ -1,17 +1,11 @@
-import Closeable, Data from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
 import (
-    FileHandle,
-    OpenMode,
-    OpenOptions,
-    open,
-    remove,
-    rename,
-    stat
-) from "@std/os/fs.ms"
-import stdout, stdout_bytes from "@std/io/io.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/time.ms"
+    Closeable, Data from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    FileHandle, OpenMode, OpenOptions, open, remove, rename, stat from "@std/os/fs.ms",
+    stdout, stdout_bytes from "@std/io/io.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    now from "@std/time.ms",
+)
 
 fn log_closed() Error:
     return Error("logging: resource is closed", kind: "EBADF")
@@ -284,7 +278,6 @@ impl Closeable for Logger:
     // Closes this logger's transport, which consumes the logger; a scope that owns one closes it on every exit. Children and the parent are not affected.
     var fn close() Unit!:
         self.transport.close()
-        return ok(unit)
 
 // Settings for `create`: the minimum level (default Info), whether records carry a timestamp (default true), and an optional per-record byte limit.
 export type LoggerOptions:
@@ -362,8 +355,6 @@ impl Transport for RotatingTransport:
 
     fn flush() Unit!:
         if self.closed: return error(log_closed())
-
-        return ok(unit)
 
     fn duplicate() Transport!:
         if self.closed: return error(log_closed())

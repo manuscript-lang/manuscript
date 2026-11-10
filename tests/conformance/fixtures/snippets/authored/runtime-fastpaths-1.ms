@@ -14,7 +14,7 @@ fn compare(left: Int, right: Int) Int:
 fn say(text: String) Unit:
     _ignored := stdout().write(text)
 
-export fn main() Int:
+fn main() Unit:
     var b = StringBuilder()
     var i = -3
 
@@ -63,4 +63,3 @@ export fn main() Int:
         j += 1
 
     say("{ordered}\n")
-    return 0

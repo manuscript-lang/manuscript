@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import from_int, BigInt from "@std/math/math.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    from_int, BigInt from "@std/math/math.ms",
+)
 
 test "big integer powers enforce the exact result bit limit":
     limit := 16777216

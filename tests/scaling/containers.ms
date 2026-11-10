@@ -1,11 +1,13 @@
 // Runtime half of the scaling gate (`ms run tools/scaling-check.ms`): one pass of container and string work whose
 // size is the first argument. Each phase prints `<name> <nanoseconds>`; the gate compares the same phase at two
 // sizes, so a phase that should be linear cannot silently become quadratic.
-import stdout from "@std/io/io.ms"
-import Instant, monotonic from "@std/time.ms"
-import arguments from "@std/os/env.ms"
-import StringBuilder from "@std/string.ms"
-import SortedMap from "@std/collections/sorted.ms"
+import (
+    stdout from "@std/io/io.ms",
+    Instant, monotonic from "@std/time.ms",
+    arguments from "@std/os/env.ms",
+    StringBuilder from "@std/string.ms",
+    SortedMap from "@std/collections/sorted.ms",
+)
 
 fn say(text: String) Unit:
     _ignored := stdout().write(text)

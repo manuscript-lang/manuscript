@@ -1,22 +1,22 @@
-import send, recv, within from "./support/conn.ms"
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import http_result from "./support/http.ms"
-import headers, HttpMethod, upgrade from "@std/net/http.ms"
-import text_headers, list_headers from "./support/http.ms"
 import (
+    send, recv, within from "./support/conn.ms",
+    expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    http_result from "./support/http.ms",
+    headers, HttpMethod, upgrade from "@std/net/http.ms",
+    text_headers, list_headers from "./support/http.ms",
     RequestOptions,
     connect,
     http_client,
     request,
     serve,
-    web_socket
-) from "@std/net/net.ms"
-import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
-import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
-import TlsOptions from "@std/net/tls.ms"
-import sleep from "@std/time.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
+    web_socket from "@std/net/net.ms",
+    HttpExchange, HttpServerOptions, HttpClientOptions from "@std/net/http.ms",
+    WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms",
+    TlsOptions from "@std/net/tls.ms",
+    sleep from "@std/time.ms",
+    promise, PromiseOptions from "@std/concurrency/promise.ms",
+)
 
 fn tls_options() TlsOptions:
     return TlsOptions(
@@ -34,8 +34,8 @@ fn echo(var exchange: HttpExchange) Unit!:
                 )
             )
         )
-        message := (try http_result(socket.input.next())).get()
-        _sent := (
+        let message = (try http_result(socket.input.next())).get()
+        let _sent = (
             try http_result(
                 socket.output.write(
                     WebSocketMessage(
@@ -50,18 +50,17 @@ fn echo(var exchange: HttpExchange) Unit!:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "X-Test", value: ["manuscript"])
 
-    headers := (try list_headers(chain_1))
-    _started := try exchange.send_headers(status: 201, headers: headers)
-    _written := (try http_result(exchange.write("hello")))
-    return ok(unit)
+    let headers = (try list_headers(chain_1))
+    let _started = try exchange.send_headers(status: 201, headers: headers)
+    let _written = (try http_result(exchange.write("hello")))
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
-    options := HttpServerOptions(
+    let options = HttpServerOptions(
         max_requests: 4, timeout: 3.seconds(), grace: 0.seconds(), tls: none
     )
-    server := serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
-    url := "http://{server.address()}/"
-    response := request(
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
+    let url = "http://{server.address()}/"
+    let response = request(
         method: HttpMethod.Get,
         url: url,
         options: RequestOptions(
@@ -76,7 +75,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     )
     response.metadata().headers.values("X-Test") | try expect_equal(["manuscript"])
 
-    client_options := HttpClientOptions(
+    let client_options = HttpClientOptions(
         decompress: true, cookies: true, tls: tls_options()
     )
     var client = http_client(client_options) | try expect_ok
@@ -90,7 +89,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     ((body.body.next() | try expect_ok).is_none()) | try expect_true
     try client.close()
 
-    _limited: Unit! = error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+    let _limited: Unit! = error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
     match request(
         method: HttpMethod.Get,
@@ -105,9 +104,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             try expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))
 
 test "WebSocket negotiates a protocol and echoes a text frame":
-    options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
-    server := serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
-    client_options := WebSocketOptions(
+    let options = HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
+    let client_options = WebSocketOptions(
         headers: (try text_headers(Map[String, String]())), subprotocols: ["echo"],
         max_message_bytes: 1024, timeout: 2.seconds(), tls: tls_options(),
         compression: false
@@ -115,28 +114,28 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     var socket = web_socket(url: "ws://{server.address()}/ws", options: client_options) | try expect_ok
     socket.subprotocol | try expect_equal("echo")
 
-    _sent := socket.output.write(
+    let _sent = socket.output.write(
         WebSocketMessage(data: "é🙂".to_bytes(), kind: WebSocketKind.Text)
     ) | try expect_ok
-    message := (socket.input.next() | try expect_ok).get()
+    let message = (socket.input.next() | try expect_ok).get()
     (message.kind != WebSocketKind.Text or message.data != "é🙂".to_bytes()) | try expect_false
 
 fn upgrade_status(address: String, version: String, extra: String) String!:
     var client = try connect(address, timeout: 2.seconds()).wait()
-    key := "dGhlIHNhbXBsZSBub25jZQ=="
-    request := (
+    let key = "dGhlIHNhbXBsZSBub25jZQ=="
+    let request = (
         "GET /ws {version}\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
         + "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: {key}\r\n{extra}\r\n"
     )
     try send(var client, request)
 
-    reply := (try recv(var client, 2.seconds())).get(Bytes([]))
+    let reply = (try recv(var client, 2.seconds())).get(Bytes([]))
     return ok(reply.decode_utf8().get("").split("\r\n").first().get(""))
 
 test "WebSocket upgrades need HTTP/1.1 and one key":
-    options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
-    server := serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
-    address := server.address()
+    let options = HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+    let server = serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok
+    let address = server.address()
     try expect_equal(
         try upgrade_status(address, "HTTP/1.1", ""), "HTTP/1.1 101 Switching Protocols"
     )
@@ -151,17 +150,16 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
     )
 
 fn report_host(var exchange: HttpExchange) Unit!:
-    hosts := exchange.headers().values("Host")
-    _started := try exchange.send_headers(status: 200, headers: headers())
-    _written := (try http_result(exchange.write(hosts.join(","))))
-    return ok(unit)
+    let hosts = exchange.headers().values("Host")
+    let _started = try exchange.send_headers(status: 200, headers: headers())
+    let _written = (try http_result(exchange.write(hosts.join(","))))
 
 test "HTTP streaming handlers see the Host request header":
-    options := HttpServerOptions(
+    let options = HttpServerOptions(
         max_requests: 2, timeout: 3.seconds(), grace: 0.seconds(), tls: none
     )
-    server := serve(address: "127.0.0.1:0", handler: report_host, options: options) | try expect_ok
-    response := request(
+    let server = serve(address: "127.0.0.1:0", handler: report_host, options: options) | try expect_ok
+    let response = request(
         method: HttpMethod.Get,
         url: "http://{server.address()}/",
         options: RequestOptions(
@@ -191,22 +189,21 @@ fn silent(var exchange: HttpExchange) Unit!:
             )
         )
     )
-    _ := sleep(30.seconds()).wait()
-    return ok(unit)
+    let _ = sleep(30.seconds()).wait()
 
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
-    server := serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
     var socket = web_socket("ws://{server.address()}/") | try expect_ok
     try expect_true(within(var socket.input, 50.milliseconds()).is_error())
     socket.close() | try expect_ok
 
 test "a promise cancelled while it owns a WebSocket closes it without ending the program":
-    server := serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
+    let server = serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
     var socket = web_socket("ws://{server.address()}/") | try expect_ok
 
     // The closure takes the socket; its close at the end of the cancelled task parks, which a
     // cancel still pending on that task used to turn into a process exit.
-    read := promise(fn: socket.input.next()).with(
+    let read = promise(fn: socket.input.next()).with(
         options: PromiseOptions(timeout: 50.milliseconds())
     ).wait()
     try expect_true(read.is_error())

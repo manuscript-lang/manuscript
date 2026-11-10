@@ -1,24 +1,26 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+)
 
 // ---------------------------------------------------------------- constants
 
-LABEL_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789_-"
-PRIORITIES := ["low", "medium", "high", "critical"]
-EDIT_FIELDS := [
+let LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_-"
+let PRIORITIES = ["low", "medium", "high", "critical"]
+let EDIT_FIELDS = [
     "title", "priority", "assignee", "points", "due", "labels", "reporter"
 ]
-GUARD_FIELDS := ["assignee", "points", "due", "labels", "reporter"]
-QUERY_FIELDS := [
+let GUARD_FIELDS = ["assignee", "points", "due", "labels", "reporter"]
+let QUERY_FIELDS = [
     "id", "created", "updated", "points", "title", "assignee", "reporter", "text",
     "state", "priority", "due", "label", "labels", "is", "has", "view"
 ]
-SORT_FIELDS := [
+let SORT_FIELDS = [
     "id", "created", "updated", "priority", "points", "state", "title", "assignee",
     "reporter", "due"
 ]
-IS_VALUES := ["open", "final", "overdue", "unassigned"]
-HAS_VALUES := ["assignee", "due", "points", "labels", "comments", "reporter"]
+let IS_VALUES = ["open", "final", "overdue", "unassigned"]
+let HAS_VALUES = ["assignee", "due", "points", "labels", "comments", "reporter"]
 
 // ---------------------------------------------------------------- types
 
@@ -183,14 +185,12 @@ fn digit_val(c: String) Int:
 
 // -1 when empty or not all digits; saturates at 10^12
 fn digits_value(s: String) Int:
-    if s.length() == 0:
-        return -1
+    if s.length() == 0: return -1
 
     var v = 0
 
     for c in s.chars():
-        if not is_digit(c):
-            return -1
+        if not is_digit(c): return -1
 
         if v < 1000000000000:
             v = v * 10 + digit_val(c)
@@ -199,14 +199,11 @@ fn digits_value(s: String) Int:
 
 // canonical integer rule: digits, no leading zeros, at most 1000000; -1 when invalid
 fn canon_int(s: String) Int:
-    if s.length() == 0:
-        return -1
-    if s.length() > 1 and s.starts_with("0"):
-        return -1
+    if s.length() == 0: return -1
+    if s.length() > 1 and s.starts_with("0"): return -1
 
-    v := digits_value(s)
-    if v < 0 or v > 1000000:
-        return -1
+    let v = digits_value(s)
+    if v < 0 or v > 1000000: return -1
 
     return v
 
@@ -216,70 +213,57 @@ fn id_value(s: String) Int:
     if s.starts_with("#"):
         body = sub(s.chars(), 1, s.length())
 
-    v := digits_value(body)
-    if v < 1:
-        return -1
+    let v = digits_value(body)
+    if v < 1: return -1
 
     return v
 
 fn days_in(y: Int, m: Int) Int:
     if m == 2:
-        if (y % 4 == 0 and y % 100 != 0) or y % 400 == 0:
-            return 29
+        if (y % 4 == 0 and y % 100 != 0) or y % 400 == 0: return 29
 
         return 28
 
-    if m == 4 or m == 6 or m == 9 or m == 11:
-        return 30
+    if m == 4 or m == 6 or m == 9 or m == 11: return 30
 
     return 31
 
 fn valid_date(s: String) Bool:
-    if s.length() != 10:
-        return false
+    if s.length() != 10: return false
 
-    cs := s.chars()
-    if cs[4] != "-" or cs[7] != "-":
-        return false
+    let cs = s.chars()
+    if cs[4] != "-" or cs[7] != "-": return false
 
-    y := digits_value(sub(cs, 0, 4))
-    m := digits_value(sub(cs, 5, 7))
-    d := digits_value(sub(cs, 8, 10))
-    if y < 1 or m < 1 or m > 12 or d < 1:
-        return false
+    let y = digits_value(sub(cs, 0, 4))
+    let m = digits_value(sub(cs, 5, 7))
+    let d = digits_value(sub(cs, 8, 10))
+    if y < 1 or m < 1 or m > 12 or d < 1: return false
 
     return d <= days_in(y, m)
 
 fn rank(p: String) Int:
-    if p == "low":
-        return 0
-    if p == "medium":
-        return 1
-    if p == "high":
-        return 2
+    if p == "low": return 0
+    if p == "medium": return 1
+    if p == "high": return 2
 
     return 3
 
 fn label_ok(l: String) Bool:
-    if l.length() == 0:
-        return false
+    if l.length() == 0: return false
 
     for c in l.chars():
-        if not LABEL_CHARS.contains(c):
-            return false
+        if not LABEL_CHARS.contains(c): return false
     return true
 
 fn valid_state(n: String) Bool:
-    cs := n.chars()
-    if cs.length() == 0:
-        return false
+    let cs = n.chars()
+    if cs.length() == 0: return false
 
     var i = 0
 
     for c in cs:
         if i == 0:
-            if not is_lower(c):
-                return false
+            if not is_lower(c): return false
         else:
             if not (is_lower(c) or is_digit(c) or c == "_"):
                 return false
@@ -289,16 +273,14 @@ fn valid_state(n: String) Bool:
     return true
 
 fn valid_view_name(n: String) Bool:
-    cs := n.chars()
-    if cs.length() == 0:
-        return false
+    let cs = n.chars()
+    if cs.length() == 0: return false
 
     var i = 0
 
     for c in cs:
         if i == 0:
-            if not is_lower(c):
-                return false
+            if not is_lower(c): return false
         else:
             if not (is_lower(c) or is_digit(c) or c == "_" or c == "-"):
                 return false
@@ -311,8 +293,7 @@ fn find_str(xs: List[String], s: String) Int:
     var i = 0
 
     for x in xs:
-        if x == s:
-            return i
+        if x == s: return i
 
         i += 1
 
@@ -333,8 +314,7 @@ fn join_with(xs: List[String], sep: String) String:
     return out
 
 fn split_csv(v: String) List[String]:
-    if v == "":
-        return List[String]()
+    if v == "": return List[String]()
 
     return v.split(",")
 
@@ -342,7 +322,7 @@ fn norm_labels(raw: List[String]) StrList:
     var out = List[String]()
 
     for r in raw:
-        l := r.lower()
+        let l = r.lower()
         if not label_ok(l):
             return StrList(items: List[String](), err: "bad label '{l}'")
 
@@ -354,8 +334,8 @@ fn norm_labels(raw: List[String]) StrList:
 
 // first word of s (leading whitespace skipped) and the text after it (leading whitespace skipped)
 fn split_first(s: String) SF:
-    cs := s.chars()
-    n := cs.length()
+    let cs = s.chars()
+    let n = cs.length()
     var i = 0
     while i < n and is_space(cs[i]):
         i += 1
@@ -373,8 +353,8 @@ fn split_first(s: String) SF:
 
 // token rules: whitespace separates; a double quote starts a quoted section inside a token
 fn tokenize(s: String) StrList:
-    cs := s.chars()
-    n := cs.length()
+    let cs = s.chars()
+    let n = cs.length()
     var items = List[String]()
     var cur = ""
     var in_tok = false
@@ -382,7 +362,7 @@ fn tokenize(s: String) StrList:
     var i = 0
 
     while i < n:
-        c := cs[i]
+        let c = cs[i]
 
         if in_q:
             if c == "\"":
@@ -410,15 +390,14 @@ fn tokenize(s: String) StrList:
 
         i += 1
 
-    if in_q:
-        return StrList(items: List[String](), err: "unterminated quote")
+    if in_q: return StrList(items: List[String](), err: "unterminated quote")
 
     if in_tok:
         items.append(cur)
     return StrList(items: items, err: "")
 
 fn parse_asg(tok: String) Asg:
-    parts := tok.split("=", 2)
+    let parts = tok.split("=", 2)
     if parts.length() < 2 or parts[0] == "":
         return Asg(field: "", value: "", err: "expected field=value, got '{tok}'")
 
@@ -426,102 +405,82 @@ fn parse_asg(tok: String) Asg:
 
 // "" when valid, else the error message
 fn check_assign(field: String, value: String) String:
-    if field == "state":
-        return "use move to change state"
-    if find_str(EDIT_FIELDS, field) < 0:
-        return "unknown field '{field}'"
+    if field == "state": return "use move to change state"
+    if find_str(EDIT_FIELDS, field) < 0: return "unknown field '{field}'"
 
     if field == "title":
-        if value.trim() == "":
-            return "empty title"
+        if value.trim() == "": return "empty title"
     else if field == "priority":
-        if find_str(PRIORITIES, value) < 0:
-            return "bad priority '{value}'"
+        if find_str(PRIORITIES, value) < 0: return "bad priority '{value}'"
     else if field == "points":
-        if value != "none" and canon_int(value) < 0:
-            return "bad points '{value}'"
+        if value != "none" and canon_int(value) < 0: return "bad points '{value}'"
     else if field == "due":
-        if value != "none" and not valid_date(value):
-            return "bad date '{value}'"
+        if value != "none" and not valid_date(value): return "bad date '{value}'"
     else if field == "labels":
         if value != "none":
-            r := norm_labels(split_csv(value))
-            if r.err != "":
-                return r.err.clone()
+            let r = norm_labels(split_csv(value))
+            if r.err != "": return r.err.clone()
     else if field == "assignee":
-        if value != "none" and value.trim() == "":
-            return "empty assignee"
+        if value != "none" and value.trim() == "": return "empty assignee"
     else if field == "reporter":
-        if value != "none" and value.trim() == "":
-            return "empty reporter"
+        if value != "none" and value.trim() == "": return "empty reporter"
 
     return ""
 
 // ---------------------------------------------------------------- issue values
 
 fn present_s(a: String?) Bool:
-    if _x := a:
-        return true
+    if let _x = a: return true
 
     return false
 
 fn present_i(a: Int?) Bool:
-    if _x := a:
-        return true
+    if let _x = a: return true
 
     return false
 
 fn same_s(a: String?, b: String?) Bool:
-    if x := a:
-        if y := b:
-            return x == y
+    if let x = a:
+        if let y = b: return x == y
 
         return false
 
-    if _y := b:
-        return false
+    if let _y = b: return false
 
     return true
 
 fn same_i(a: Int?, b: Int?) Bool:
-    if x := a:
-        if y := b:
-            return x == y
+    if let x = a:
+        if let y = b: return x == y
 
         return false
 
-    if _y := b:
-        return false
+    if let _y = b: return false
 
     return true
 
 fn show_s(a: String?) String:
-    if x := a:
-        return x.clone()
+    if let x = a: return x.clone()
 
     return "-"
 
 fn show_i(a: Int?) String:
-    if x := a:
-        return "{x}"
+    if let x = a: return "{x}"
 
     return "-"
 
 fn points_or_zero(a: Int?) Int:
-    if x := a:
-        return x
+    if let x = a: return x
 
     return 0
 
 fn show_labels(l: List[String]) String:
-    if l.length() == 0:
-        return "-"
+    if l.length() == 0: return "-"
 
     return join_with(l, ",")
 
 fn show_labels_spaced(l: List[String]) String:
-    if l.length() == 0:
-        return "-"
+    if l.length() == 0: return "-"
 
     return join_with(l, ", ")
 
@@ -559,7 +518,7 @@ fn with_assign(iss: Issue, field: String, value: String) Issue:
         if value == "none":
             n.labels = List[String]()
         else:
-            r := norm_labels(split_csv(value))
+            let r = norm_labels(split_csv(value))
             n.labels = r.items.clone()
     else if field == "reporter":
         if value == "none":
@@ -582,8 +541,8 @@ fn diff_entries(old: Issue, nw: Issue) List[String]:
     if not same_s(old.due, nw.due):
         out.append("due: {show_s(old.due)} -> {show_s(nw.due)}")
 
-    ol := show_labels(old.labels)
-    nl := show_labels(nw.labels)
+    let ol = show_labels(old.labels)
+    let nl = show_labels(nw.labels)
     if ol != nl:
         out.append("labels: {ol} -> {nl}")
     if not same_s(old.reporter, nw.reporter):
@@ -591,16 +550,11 @@ fn diff_entries(old: Issue, nw: Issue) List[String]:
     return out
 
 fn field_missing(iss: Issue, g: String) Bool:
-    if g == "assignee":
-        return not present_s(iss.assignee)
-    if g == "points":
-        return not present_i(iss.points)
-    if g == "due":
-        return not present_s(iss.due)
-    if g == "reporter":
-        return not present_s(iss.reporter)
-    if g == "labels":
-        return iss.labels.length() == 0
+    if g == "assignee": return not present_s(iss.assignee)
+    if g == "points": return not present_i(iss.points)
+    if g == "due": return not present_s(iss.due)
+    if g == "reporter": return not present_s(iss.reporter)
+    if g == "labels": return iss.labels.length() == 0
 
     return false
 
@@ -611,29 +565,26 @@ fn find_index(t: Tracker, id: Int) Int:
     var i = 0
 
     for iss in t.issues:
-        if iss.id == id:
-            return i
+        if iss.id == id: return i
 
         i += 1
 
     return -1
 
 fn resolve(t: Tracker, arg: String) Found:
-    id := id_value(arg)
-    if id < 1:
-        return Found(idx: -1, err: "bad issue id '{arg}'")
+    let id = id_value(arg)
+    if id < 1: return Found(idx: -1, err: "bad issue id '{arg}'")
 
-    i := find_index(t, id)
-    if i < 0:
-        return Found(idx: -1, err: "no such issue #{id}")
+    let i = find_index(t, id)
+    if i < 0: return Found(idx: -1, err: "no such issue #{id}")
 
     return Found(idx: i, err: "")
 
 // writes the new issue if anything changed; prints the result line
 fn commit_update(var t: Tracker, idx: Int, nw: Issue) String:
-    old := t.issues[idx].clone()
-    diffs := diff_entries(old, nw)
-    id := nw.id
+    let old = t.issues[idx].clone()
+    let diffs = diff_entries(old, nw)
+    let id = nw.id
 
     if diffs.length() == 0:
         print("#{id} unchanged")
@@ -660,11 +611,10 @@ fn parse_workflow(block: List[String]) Wf:
     var err = ""
 
     for raw in block:
-        s := raw.trim()
-        if s == "" or s.starts_with("#"):
-            continue
+        let s = raw.trim()
+        if s == "" or s.starts_with("#"): continue
 
-        colon := s.split(":", 2)
+        let colon = s.split(":", 2)
 
         if colon.length() == 2 and colon[0].trim() == "initial":
             if initial_seen:
@@ -673,7 +623,7 @@ fn parse_workflow(block: List[String]) Wf:
 
             initial_seen = true
 
-            nm := colon[1].trim()
+            let nm = colon[1].trim()
 
             if not valid_state(nm):
                 err = "workflow: bad state name '{nm}'"
@@ -684,7 +634,7 @@ fn parse_workflow(block: List[String]) Wf:
                 states.append(nm.clone())
         else if colon.length() == 2 and colon[0].trim() == "final":
             for part in colon[1].split(","):
-                nm := part.trim()
+                let nm = part.trim()
 
                 if not valid_state(nm):
                     err = "workflow: bad state name '{nm}'"
@@ -695,11 +645,10 @@ fn parse_workflow(block: List[String]) Wf:
                 if find_str(finals, nm) < 0:
                     finals.append(nm.clone())
 
-            if err != "":
-                break
+            if err != "": break
         else if s.contains("->"):
-            arrow := s.split("->", 2)
-            src := arrow[0].trim()
+            let arrow = s.split("->", 2)
+            let src = arrow[0].trim()
 
             if not valid_state(src):
                 err = "workflow: bad state name '{src}'"
@@ -709,7 +658,7 @@ fn parse_workflow(block: List[String]) Wf:
                 states.append(src.clone())
 
             for entry in arrow[1].split(","):
-                words := entry.fields()
+                let words = entry.fields()
                 var target = ""
                 var guard_txt = ""
 
@@ -739,8 +688,7 @@ fn parse_workflow(block: List[String]) Wf:
 
                         guards.append(g.clone())
 
-                    if err != "":
-                        break
+                    if err != "": break
 
                 transitions.append(
                     Transition(
@@ -748,8 +696,7 @@ fn parse_workflow(block: List[String]) Wf:
                     )
                 )
 
-            if err != "":
-                break
+            if err != "": break
         else:
             err = "workflow: bad line '{s}'"
             break
@@ -769,15 +716,13 @@ fn parse_workflow(block: List[String]) Wf:
     )
 
 fn cmd_workflow(var t: Tracker, block: List[String]) String:
-    if t.ever_created:
-        return "workflow: cannot redefine after issues were created"
+    if t.ever_created: return "workflow: cannot redefine after issues were created"
 
-    wf := parse_workflow(block)
-    if wf.err != "":
-        return wf.err.clone()
+    let wf = parse_workflow(block)
+    if wf.err != "": return wf.err.clone()
 
-    nstates := wf.states.length()
-    ntrans := wf.transitions.length()
+    let nstates = wf.states.length()
+    let ntrans = wf.transitions.length()
     t.states = wf.states.clone()
     t.initial = wf.initial.clone()
     t.finals = wf.finals.clone()
@@ -788,61 +733,52 @@ fn cmd_workflow(var t: Tracker, block: List[String]) String:
 // ---------------------------------------------------------------- basic commands
 
 fn cmd_actor(var t: Tracker, rest: String) String:
-    w := rest.fields()
-    if w.length() != 1:
-        return "usage: actor NAME"
+    let w = rest.fields()
+    if w.length() != 1: return "usage: actor NAME"
 
-    nm := w[0].clone()
+    let nm = w[0].clone()
     t.actor = nm.clone()
     print("actor is {nm}")
     return ""
 
 fn cmd_today(var t: Tracker, rest: String) String:
-    w := rest.fields()
-    if w.length() != 1:
-        return "usage: today DATE"
+    let w = rest.fields()
+    if w.length() != 1: return "usage: today DATE"
 
-    d := w[0].clone()
-    if not valid_date(d):
-        return "bad date '{d}'"
+    let d = w[0].clone()
+    if not valid_date(d): return "bad date '{d}'"
 
     t.today = d.clone()
     print("today is {d}")
     return ""
 
 fn cmd_create(var t: Tracker, rest: String) String:
-    tk := tokenize(rest)
-    if tk.err != "":
-        return tk.err.clone()
-    if t.states.length() == 0:
-        return "no workflow defined"
+    let tk = tokenize(rest)
+    if tk.err != "": return tk.err.clone()
+    if t.states.length() == 0: return "no workflow defined"
 
-    toks := tk.items
-    if toks.length() == 0:
-        return "usage: create TITLE [field=value...]"
+    let toks = tk.items
+    if toks.length() == 0: return "usage: create TITLE [field=value...]"
 
-    title := toks[0].clone()
-    if title.trim() == "":
-        return "empty title"
+    let title = toks[0].clone()
+    if title.trim() == "": return "empty title"
 
-    id := t.next_id
-    base := new_issue(id, t.initial, title, t.actor, t.clock + 1)
+    let id = t.next_id
+    let base = new_issue(id, t.initial, title, t.actor, t.clock + 1)
     var iss = base.clone()
     var k = 1
 
     while k < toks.length():
-        a := parse_asg(toks[k])
-        if a.err != "":
-            return a.err.clone()
+        let a = parse_asg(toks[k])
+        if a.err != "": return a.err.clone()
 
-        e := check_assign(a.field, a.value)
-        if e != "":
-            return e
+        let e = check_assign(a.field, a.value)
+        if e != "": return e
 
         iss = with_assign(iss, a.field, a.value)
         k += 1
 
-    diffs := diff_entries(base, iss)
+    let diffs = diff_entries(base, iss)
     t.clock += 1
     iss.created = t.clock
     iss.updated = t.clock
@@ -856,39 +792,32 @@ fn cmd_create(var t: Tracker, rest: String) String:
     return ""
 
 fn edit_common(var t: Tracker, id_arg: String, asgs: List[Asg], usage: String) String:
-    f := resolve(t, id_arg)
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, id_arg)
+    if f.err != "": return f.err.clone()
 
-    idx := f.idx
-    cur := t.issues[idx].clone()
-    if is_final(t.finals, cur.state):
-        return "#{cur.id} is in final state '{cur.state}'"
-    if asgs.length() == 0:
-        return usage.clone()
+    let idx = f.idx
+    let cur = t.issues[idx].clone()
+    if is_final(t.finals, cur.state): return "#{cur.id} is in final state '{cur.state}'"
+    if asgs.length() == 0: return usage.clone()
 
     var nw = cur.clone()
 
     for a in asgs:
-        if a.err != "":
-            return a.err.clone()
+        if a.err != "": return a.err.clone()
 
-        e := check_assign(a.field, a.value)
-        if e != "":
-            return e
+        let e = check_assign(a.field, a.value)
+        if e != "": return e
 
         nw = with_assign(nw, a.field, a.value)
 
     return commit_update(var t, idx, nw)
 
 fn cmd_edit(var t: Tracker, rest: String) String:
-    tk := tokenize(rest)
-    if tk.err != "":
-        return tk.err.clone()
+    let tk = tokenize(rest)
+    if tk.err != "": return tk.err.clone()
 
-    toks := tk.items
-    if toks.length() == 0:
-        return "usage: edit ID field=value..."
+    let toks = tk.items
+    if toks.length() == 0: return "usage: edit ID field=value..."
 
     var asgs = List[Asg]()
     var k = 1
@@ -900,24 +829,21 @@ fn cmd_edit(var t: Tracker, rest: String) String:
     return edit_common(var t, toks[0], asgs, "usage: edit ID field=value...")
 
 fn cmd_assign(var t: Tracker, rest: String) String:
-    tk := tokenize(rest)
-    if tk.err != "":
-        return tk.err.clone()
+    let tk = tokenize(rest)
+    if tk.err != "": return tk.err.clone()
 
-    toks := tk.items
-    if toks.length() != 2:
-        return "usage: assign ID NAME"
+    let toks = tk.items
+    if toks.length() != 2: return "usage: assign ID NAME"
 
     var asgs = List[Asg]()
     asgs.append(Asg(field: "assignee", value: toks[1].clone(), err: ""))
     return edit_common(var t, toks[0], asgs, "usage: assign ID NAME")
 
 fn label_common(var t: Tracker, id_arg: String, ops: List[String]) String:
-    f := resolve(t, id_arg)
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, id_arg)
+    if f.err != "": return f.err.clone()
 
-    idx := f.idx
+    let idx = f.idx
     var labels = t.issues[idx].labels.clone()
 
     for op in ops:
@@ -930,36 +856,32 @@ fn label_common(var t: Tracker, id_arg: String, ops: List[String]) String:
         else if op.starts_with("+"):
             body = sub(op.chars(), 1, op.length())
 
-        l := body.lower()
-        if not label_ok(l):
-            return "bad label '{l}'"
+        let l = body.lower()
+        if not label_ok(l): return "bad label '{l}'"
 
         if add:
             if find_str(labels, l) < 0:
                 labels.append(l)
         else:
-            p := find_str(labels, l)
+            let p = find_str(labels, l)
             if p >= 0:
                 labels.remove(p)
 
     labels.sort()
 
-    cur := t.issues[idx].clone()
-    if is_final(t.finals, cur.state):
-        return "#{cur.id} is in final state '{cur.state}'"
+    let cur = t.issues[idx].clone()
+    if is_final(t.finals, cur.state): return "#{cur.id} is in final state '{cur.state}'"
 
     var nw = cur.clone()
     nw.labels = labels.clone()
     return commit_update(var t, idx, nw)
 
 fn cmd_label(var t: Tracker, rest: String) String:
-    tk := tokenize(rest)
-    if tk.err != "":
-        return tk.err.clone()
+    let tk = tokenize(rest)
+    if tk.err != "": return tk.err.clone()
 
-    toks := tk.items
-    if toks.length() < 2:
-        return "usage: label ID +label -label..."
+    let toks = tk.items
+    if toks.length() < 2: return "usage: label ID +label -label..."
 
     var ops = List[String]()
     var k = 1
@@ -971,19 +893,15 @@ fn cmd_label(var t: Tracker, rest: String) String:
     return label_common(var t, toks[0], ops)
 
 fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) String:
-    f := resolve(t, id_arg)
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, id_arg)
+    if f.err != "": return f.err.clone()
 
-    idx := f.idx
-    cur := t.issues[idx].clone()
-    from := cur.state.clone()
-    if is_final(t.finals, from):
-        return "#{cur.id} is in final state '{from}'"
-    if find_str(t.states, dst) < 0:
-        return "unknown state '{dst}'"
-    if from == dst:
-        return "already in state '{from}'"
+    let idx = f.idx
+    let cur = t.issues[idx].clone()
+    let from = cur.state.clone()
+    if is_final(t.finals, from): return "#{cur.id} is in final state '{from}'"
+    if find_str(t.states, dst) < 0: return "unknown state '{dst}'"
+    if from == dst: return "already in state '{from}'"
 
     var guards = List[String]()
     var found = false
@@ -993,8 +911,7 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
             found = true
             guards = tr.guards.clone()
 
-    if not found:
-        return "transition '{from} -> {dst}' not allowed"
+    if not found: return "transition '{from} -> {dst}' not allowed"
 
     var missing = List[String]()
     for g in guards:
@@ -1002,17 +919,17 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
             missing.append(g.clone())
 
     if missing.length() > 0:
-        mtxt := join_with(missing, ", ")
+        let mtxt = join_with(missing, ", ")
         return "cannot move #{cur.id} to {dst}: missing {mtxt}"
 
-    id := cur.id
+    let id = cur.id
     t.clock += 1
 
     var nw = cur.clone()
     nw.state = dst.clone()
     nw.updated = t.clock
 
-    has_c := comment.trim() != ""
+    let has_c = comment.trim() != ""
     if has_c:
         nw.comments.append(
             Comment(
@@ -1027,23 +944,20 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
     return ""
 
 fn cmd_move(var t: Tracker, rest: String) String:
-    a := split_first(rest)
-    b := split_first(a.rest)
-    if a.first == "" or b.first == "":
-        return "usage: move ID STATE [comment...]"
+    let a = split_first(rest)
+    let b = split_first(a.rest)
+    if a.first == "" or b.first == "": return "usage: move ID STATE [comment...]"
 
     return move_common(var t, a.first, b.first, b.rest)
 
 fn cmd_comment(var t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "" or a.rest == "":
-        return "usage: comment ID TEXT"
+    let a = split_first(rest)
+    if a.first == "" or a.rest == "": return "usage: comment ID TEXT"
 
-    f := resolve(t, a.first)
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, a.first)
+    if f.err != "": return f.err.clone()
 
-    idx := f.idx
+    let idx = f.idx
     t.clock += 1
 
     var nw = t.issues[idx].clone()
@@ -1052,23 +966,21 @@ fn cmd_comment(var t: Tracker, rest: String) String:
     )
     nw.updated = t.clock
 
-    id := nw.id
+    let id = nw.id
     t.issues[idx] = nw
     t.log_add(id, "comment: {a.rest}")
     print("commented #{id}")
     return ""
 
 fn cmd_delete(var t: Tracker, rest: String) String:
-    w := rest.fields()
-    if w.length() != 1:
-        return "usage: delete ID"
+    let w = rest.fields()
+    if w.length() != 1: return "usage: delete ID"
 
-    f := resolve(t, w[0])
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, w[0])
+    if f.err != "": return f.err.clone()
 
-    idx := f.idx
-    id := t.issues[idx].id
+    let idx = f.idx
+    let id = t.issues[idx].id
     t.clock += 1
     t.log_add(id, "deleted")
 
@@ -1085,15 +997,13 @@ fn cmd_delete(var t: Tracker, rest: String) String:
     return ""
 
 fn cmd_show(t: Tracker, rest: String) String:
-    w := rest.fields()
-    if w.length() != 1:
-        return "usage: show ID"
+    let w = rest.fields()
+    if w.length() != 1: return "usage: show ID"
 
-    f := resolve(t, w[0])
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, w[0])
+    if f.err != "": return f.err.clone()
 
-    iss := t.issues[f.idx].clone()
+    let iss = t.issues[f.idx].clone()
     print("#{iss.id} {iss.title}")
     print("  state: {iss.state}")
     print("  priority: {iss.priority}")
@@ -1117,30 +1027,26 @@ fn qtok_simple(kind: String, text: String) QTok:
     return QTok(kind: kind, text: text, field: "", op: "", value: "", quoted: false)
 
 fn read_op(cs: List[String], j: Int) String:
-    n := cs.length()
-    c := cs[j]
+    let n = cs.length()
+    let c = cs[j]
     var nx = ""
     if j + 1 < n:
         nx = cs[j + 1].clone()
-    if c == "!" and nx == "=":
-        return "!="
-    if c == "<" and nx == "=":
-        return "<="
-    if c == ">" and nx == "=":
-        return ">="
-    if c == ":" or c == "<" or c == ">" or c == "~":
-        return c.clone()
+    if c == "!" and nx == "=": return "!="
+    if c == "<" and nx == "=": return "<="
+    if c == ">" and nx == "=": return ">="
+    if c == ":" or c == "<" or c == ">" or c == "~": return c.clone()
 
     return ""
 
 fn tokenize_filter(text: String) QTokRes:
-    cs := text.chars()
-    n := cs.length()
+    let cs = text.chars()
+    let n = cs.length()
     var toks = List[QTok]()
     var i = 0
 
     while i < n:
-        c := cs[i]
+        let c = cs[i]
 
         if is_space(c):
             i += 1
@@ -1217,7 +1123,7 @@ fn tokenize_filter(text: String) QTokRes:
                 while k < n and not is_space(cs[k]) and cs[k] != "(" and cs[k] != ")":
                     k += 1
 
-                w := sub(cs, i, k)
+                let w = sub(cs, i, k)
                 var kind = "BARE"
                 if w == "AND" or w == "OR" or w == "NOT":
                     kind = w.clone()
@@ -1241,8 +1147,7 @@ fn pe_err(msg: String) PE:
     return PE(e: empty_expr(), err: msg)
 
 fn peek_kind(p: QP) String:
-    if p.pos >= p.toks.length():
-        return ""
+    if p.pos >= p.toks.length(): return ""
 
     return p.toks[p.pos].kind.clone()
 
@@ -1271,64 +1176,51 @@ fn op_allowed(f: String, op: String) Bool:
         or f == "labels"
     ):
         return op == ":" or op == "!=" or op == "~"
-    if f == "text":
-        return op == "~"
-    if f == "state":
-        return op == ":" or op == "!="
+    if f == "text": return op == "~"
+    if f == "state": return op == ":" or op == "!="
 
     return op == ":"
 
 fn bad_value(f: String, op: String, a: String, states: List[String]) Bool:
-    if f == "id" or f == "created" or f == "updated":
-        return canon_int(a) < 0
+    if f == "id" or f == "created" or f == "updated": return canon_int(a) < 0
 
     if f == "points":
-        if (op == ":" or op == "!=") and a == "none":
-            return false
+        if (op == ":" or op == "!=") and a == "none": return false
 
         return canon_int(a) < 0
 
     if f == "due":
-        if (op == ":" or op == "!=") and a == "none":
-            return false
+        if (op == ":" or op == "!=") and a == "none": return false
 
         return not valid_date(a)
 
-    if f == "priority":
-        return find_str(PRIORITIES, a) < 0
-    if f == "state":
-        return find_str(states, a) < 0
-    if f == "is":
-        return find_str(IS_VALUES, a) < 0
-    if f == "has":
-        return find_str(HAS_VALUES, a) < 0
+    if f == "priority": return find_str(PRIORITIES, a) < 0
+    if f == "state": return find_str(states, a) < 0
+    if f == "is": return find_str(IS_VALUES, a) < 0
+    if f == "has": return find_str(HAS_VALUES, a) < 0
 
     return false
 
 fn parse_stored(stored: String, states: List[String], views: Map[String, String]) PE:
-    q := split_query(stored)
-    if q.err != "":
-        return pe_err(q.err)
+    let q = split_query(stored)
+    if q.err != "": return pe_err(q.err)
 
     return parse_filter(q.filter, states, views)
 
 fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
-    f := tok.field.clone()
-    op := tok.op.clone()
-    if find_str(QUERY_FIELDS, f) < 0:
-        return pe_err("query: unknown field '{f}'")
+    let f = tok.field.clone()
+    let op = tok.op.clone()
+    if find_str(QUERY_FIELDS, f) < 0: return pe_err("query: unknown field '{f}'")
     if not op_allowed(f, op):
         return pe_err("query: bad operator '{op}' for field '{f}'")
 
     if f == "view":
-        name := tok.value.clone()
-        if not views.contains(name):
-            return pe_err("query: unknown view '{name}'")
+        let name = tok.value.clone()
+        if not views.contains(name): return pe_err("query: unknown view '{name}'")
 
-        stored := views.get(name).get("")
-        inner := parse_stored(stored, states, views)
-        if inner.err != "":
-            return inner
+        let stored = views.get(name).get("")
+        let inner = parse_stored(stored, states, views)
+        if inner.err != "": return inner
 
         var kids = List[Expr]()
         kids.append(inner.e.clone())
@@ -1340,8 +1232,8 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
             err: ""
         )
 
-    ordered := op != ":" and op != "!=" and op != "~"
-    multi := (not tok.quoted) and tok.value.contains("|")
+    let ordered = op != ":" and op != "!=" and op != "~"
+    let multi = (not tok.quoted) and tok.value.contains("|")
     if multi and ordered:
         return pe_err("query: bad value '{tok.value}' for field '{f}'")
 
@@ -1363,18 +1255,16 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
     )
 
 fn parse_expr(var p: QP, states: List[String], views: Map[String, String]) PE:
-    first := parse_and(var p, states, views)
-    if first.err != "":
-        return first
+    let first = parse_and(var p, states, views)
+    if first.err != "": return first
 
     var left = first.e.clone()
 
     while peek_kind(p) == "OR":
         p.pos += 1
 
-        r := parse_and(var p, states, views)
-        if r.err != "":
-            return r
+        let r = parse_and(var p, states, views)
+        if r.err != "": return r
 
         var kids = List[Expr]()
         kids.append(left.clone())
@@ -1384,23 +1274,21 @@ fn parse_expr(var p: QP, states: List[String], views: Map[String, String]) PE:
     return PE(e: left, err: "")
 
 fn parse_and(var p: QP, states: List[String], views: Map[String, String]) PE:
-    first := parse_not(var p, states, views)
-    if first.err != "":
-        return first
+    let first = parse_not(var p, states, views)
+    if first.err != "": return first
 
     var left = first.e.clone()
 
     while true:
-        k := peek_kind(p)
+        let k = peek_kind(p)
 
         if k == "AND":
             p.pos += 1
         else if not (k == "TERM" or k == "(" or k == "NOT"):
             break
 
-        r := parse_not(var p, states, views)
-        if r.err != "":
-            return r
+        let r = parse_not(var p, states, views)
+        if r.err != "": return r
 
         var kids = List[Expr]()
         kids.append(left.clone())
@@ -1413,9 +1301,8 @@ fn parse_not(var p: QP, states: List[String], views: Map[String, String]) PE:
     if peek_kind(p) == "NOT":
         p.pos += 1
 
-        c := parse_not(var p, states, views)
-        if c.err != "":
-            return c
+        let c = parse_not(var p, states, views)
+        if c.err != "": return c
 
         var kids = List[Expr]()
         kids.append(c.e.clone())
@@ -1424,23 +1311,19 @@ fn parse_not(var p: QP, states: List[String], views: Map[String, String]) PE:
     return parse_primary(var p, states, views)
 
 fn parse_primary(var p: QP, states: List[String], views: Map[String, String]) PE:
-    if p.pos >= p.toks.length():
-        return pe_err("query: unexpected end of query")
+    if p.pos >= p.toks.length(): return pe_err("query: unexpected end of query")
 
-    tok := p.toks[p.pos].clone()
+    let tok = p.toks[p.pos].clone()
 
     if tok.kind == "(":
         p.pos += 1
 
-        inner := parse_expr(var p, states, views)
-        if inner.err != "":
-            return inner
-        if p.pos >= p.toks.length():
-            return pe_err("query: unexpected end of query")
+        let inner = parse_expr(var p, states, views)
+        if inner.err != "": return inner
+        if p.pos >= p.toks.length(): return pe_err("query: unexpected end of query")
 
-        nxt := p.toks[p.pos].text.clone()
-        if p.toks[p.pos].kind != ")":
-            return pe_err("query: unexpected token '{nxt}'")
+        let nxt = p.toks[p.pos].text.clone()
+        if p.toks[p.pos].kind != ")": return pe_err("query: unexpected token '{nxt}'")
 
         p.pos += 1
         return inner
@@ -1452,28 +1335,25 @@ fn parse_primary(var p: QP, states: List[String], views: Map[String, String]) PE
     return pe_err("query: unexpected token '{tok.text}'")
 
 fn parse_filter(text: String, states: List[String], views: Map[String, String]) PE:
-    qt := tokenize_filter(text)
-    if qt.err != "":
-        return pe_err(qt.err)
-    if qt.toks.length() == 0:
-        return PE(e: empty_expr(), err: "")
+    let qt = tokenize_filter(text)
+    if qt.err != "": return pe_err(qt.err)
+    if qt.toks.length() == 0: return PE(e: empty_expr(), err: "")
 
     var p = QP(toks: qt.toks.clone(), pos: 0)
-    r := parse_expr(var p, states, views)
-    if r.err != "":
-        return r
+    let r = parse_expr(var p, states, views)
+    if r.err != "": return r
 
     if p.pos < p.toks.length():
-        tx := p.toks[p.pos].text.clone()
+        let tx = p.toks[p.pos].text.clone()
         return pe_err("query: unexpected token '{tx}'")
 
     return r
 
 // limit, then the first ` sort ` clause, then the filter text
 fn split_query(text: String) QParts:
-    t0 := text.trim()
-    cs := t0.chars()
-    n := cs.length()
+    let t0 = text.trim()
+    let cs = t0.chars()
+    let n = cs.length()
     var filt_end = n
     var limit = -1
     var ws_pos = -1
@@ -1487,7 +1367,7 @@ fn split_query(text: String) QParts:
         q -= 1
 
     if ws_pos >= 0:
-        arg := sub(cs, ws_pos + 1, n)
+        let arg = sub(cs, ws_pos + 1, n)
         var e = ws_pos
         while e > 0 and is_space(cs[e - 1]):
             e -= 1
@@ -1497,7 +1377,7 @@ fn split_query(text: String) QParts:
             s -= 1
 
         if sub(cs, s, e) == "limit":
-            v := canon_int(arg)
+            let v = canon_int(arg)
             if v < 0:
                 return QParts(
                     filter: "", has_sort: false, sort_text: "", limit: -1,
@@ -1507,8 +1387,8 @@ fn split_query(text: String) QParts:
             limit = v
             filt_end = s
 
-    bc := sub(cs, 0, filt_end).chars()
-    bn := bc.length()
+    let bc = sub(cs, 0, filt_end).chars()
+    let bn = bc.length()
     var sort_at = -1
     var k = 0
 
@@ -1536,10 +1416,10 @@ fn split_query(text: String) QParts:
 
 fn parse_sort(text: String) SortRes:
     var keys = List[SortKey]()
-    pieces := text.replace(",", " ").fields()
+    let pieces = text.replace(",", " ").fields()
 
     for p in pieces:
-        desc := p.starts_with("-")
+        let desc = p.starts_with("-")
         var name = p.clone()
         if desc:
             name = sub(p.chars(), 1, p.length())
@@ -1551,106 +1431,80 @@ fn parse_sort(text: String) SortRes:
     return SortRes(keys: keys, err: "")
 
 fn uses_view(e: Expr, name: String) Bool:
-    if e.kind == "view" and e.name == name:
-        return true
+    if e.kind == "view" and e.name == name: return true
 
     for k in e.kids:
-        if uses_view(k, name):
-            return true
+        if uses_view(k, name): return true
     return false
 
 // ---------------------------------------------------------------- evaluation
 
 fn sgn_int(a: Int, b: Int) Int:
-    if a < b:
-        return -1
-    if a > b:
-        return 1
+    if a < b: return -1
+    if a > b: return 1
 
     return 0
 
 fn sgn_str(a: String, b: String) Int:
-    if a < b:
-        return -1
-    if a > b:
-        return 1
+    if a < b: return -1
+    if a > b: return 1
 
     return 0
 
 fn op_match(c: Int, op: String) Bool:
-    if op == ":":
-        return c == 0
-    if op == "!=":
-        return c != 0
-    if op == "<":
-        return c < 0
-    if op == "<=":
-        return c <= 0
-    if op == ">":
-        return c > 0
-    if op == ">=":
-        return c >= 0
+    if op == ":": return c == 0
+    if op == "!=": return c != 0
+    if op == "<": return c < 0
+    if op == "<=": return c <= 0
+    if op == ">": return c > 0
+    if op == ">=": return c >= 0
 
     return false
 
 fn text_match(s: String, a: String, op: String) Bool:
-    if op == "~":
-        return s.lower().contains(a.lower())
+    if op == "~": return s.lower().contains(a.lower())
 
     return s.lower() == a.lower()
 
 fn match_opt_text(v: String?, a: String, op: String) Bool:
-    if x := v:
-        return text_match(x, a, op)
+    if let x = v: return text_match(x, a, op)
 
     return a == "none" and op == ":"
 
 fn match_one(f: String, op: String, a: String, iss: Issue, ctx: EvalCtx) Bool:
-    if f == "id":
-        return op_match(sgn_int(iss.id, canon_int(a)), op)
-    if f == "created":
-        return op_match(sgn_int(iss.created, canon_int(a)), op)
-    if f == "updated":
-        return op_match(sgn_int(iss.updated, canon_int(a)), op)
+    if f == "id": return op_match(sgn_int(iss.id, canon_int(a)), op)
+    if f == "created": return op_match(sgn_int(iss.created, canon_int(a)), op)
+    if f == "updated": return op_match(sgn_int(iss.updated, canon_int(a)), op)
 
     if f == "points":
-        if p := iss.points:
-            if a == "none":
-                return false
+        if let p = iss.points:
+            if a == "none": return false
 
             return op_match(sgn_int(p, canon_int(a)), op)
 
         return a == "none" and op == ":"
 
-    if f == "title":
-        return text_match(iss.title, a, op)
-    if f == "assignee":
-        return match_opt_text(iss.assignee, a, op)
-    if f == "reporter":
-        return match_opt_text(iss.reporter, a, op)
+    if f == "title": return text_match(iss.title, a, op)
+    if f == "assignee": return match_opt_text(iss.assignee, a, op)
+    if f == "reporter": return match_opt_text(iss.reporter, a, op)
 
     if f == "text":
-        if text_match(iss.title, a, op):
-            return true
+        if text_match(iss.title, a, op): return true
 
         for c in iss.comments:
-            if text_match(c.text, a, op):
-                return true
+            if text_match(c.text, a, op): return true
         return false
 
-    if f == "state":
-        return iss.state == a
+    if f == "state": return iss.state == a
 
     if f == "priority":
-        if op == ":":
-            return iss.priority == a
+        if op == ":": return iss.priority == a
 
         return op_match(sgn_int(rank(iss.priority), rank(a)), op)
 
     if f == "due":
-        if d := iss.due:
-            if a == "none":
-                return false
+        if let d = iss.due:
+            if a == "none": return false
 
             return op_match(sgn_str(d, a), op)
 
@@ -1658,48 +1512,36 @@ fn match_one(f: String, op: String, a: String, iss: Issue, ctx: EvalCtx) Bool:
 
     if f == "label" or f == "labels":
         if op == "~":
-            needle := a.lower()
+            let needle = a.lower()
             for l in iss.labels:
-                if l.contains(needle):
-                    return true
+                if l.contains(needle): return true
             return false
 
-        if a == "none":
-            return iss.labels.length() == 0
+        if a == "none": return iss.labels.length() == 0
 
         return find_str(iss.labels, a.lower()) >= 0
 
     if f == "is":
-        fin := is_final(ctx.finals, iss.state)
-        if a == "open":
-            return not fin
-        if a == "final":
-            return fin
+        let fin = is_final(ctx.finals, iss.state)
+        if a == "open": return not fin
+        if a == "final": return fin
 
         if a == "overdue":
-            if d := iss.due:
-                return not fin and sgn_str(d, ctx.today) < 0
+            if let d = iss.due: return not fin and sgn_str(d, ctx.today) < 0
 
             return false
 
-        if a == "unassigned":
-            return not present_s(iss.assignee)
+        if a == "unassigned": return not present_s(iss.assignee)
 
         return false
 
     if f == "has":
-        if a == "assignee":
-            return present_s(iss.assignee)
-        if a == "due":
-            return present_s(iss.due)
-        if a == "points":
-            return present_i(iss.points)
-        if a == "labels":
-            return iss.labels.length() > 0
-        if a == "comments":
-            return iss.comments.length() > 0
-        if a == "reporter":
-            return present_s(iss.reporter)
+        if a == "assignee": return present_s(iss.assignee)
+        if a == "due": return present_s(iss.due)
+        if a == "points": return present_i(iss.points)
+        if a == "labels": return iss.labels.length() > 0
+        if a == "comments": return iss.comments.length() > 0
+        if a == "reporter": return present_s(iss.reporter)
 
         return false
 
@@ -1708,85 +1550,65 @@ fn match_one(f: String, op: String, a: String, iss: Issue, ctx: EvalCtx) Bool:
 fn eval_term(e: Expr, iss: Issue, ctx: EvalCtx) Bool:
     if e.op == "!=":
         for a in e.values:
-            if match_one(e.field, ":", a, iss, ctx):
-                return false
+            if match_one(e.field, ":", a, iss, ctx): return false
         return true
 
     for a in e.values:
-        if match_one(e.field, e.op, a, iss, ctx):
-            return true
+        if match_one(e.field, e.op, a, iss, ctx): return true
     return false
 
 fn eval_expr(e: Expr, iss: Issue, ctx: EvalCtx) Bool:
-    if e.kind == "all":
-        return true
-    if e.kind == "term":
-        return eval_term(e, iss, ctx)
-    if e.kind == "view":
-        return eval_expr(e.kids[0], iss, ctx)
-    if e.kind == "not":
-        return not eval_expr(e.kids[0], iss, ctx)
+    if e.kind == "all": return true
+    if e.kind == "term": return eval_term(e, iss, ctx)
+    if e.kind == "view": return eval_expr(e.kids[0], iss, ctx)
+    if e.kind == "not": return not eval_expr(e.kids[0], iss, ctx)
 
     if e.kind == "and":
         for k in e.kids:
-            if not eval_expr(k, iss, ctx):
-                return false
+            if not eval_expr(k, iss, ctx): return false
         return true
 
     if e.kind == "or":
         for k in e.kids:
-            if eval_expr(k, iss, ctx):
-                return true
+            if eval_expr(k, iss, ctx): return true
         return false
 
     return false
 
 fn cmp_opt_int(a: Int?, b: Int?) Int:
-    if x := a:
-        if y := b:
-            return sgn_int(x, y)
+    if let x = a:
+        if let y = b: return sgn_int(x, y)
 
         return -1
 
-    if _y := b:
-        return 1
+    if let _y = b: return 1
 
     return 0
 
 fn cmp_opt_str(a: String?, b: String?, ci: Bool) Int:
-    if x := a:
-        if y := b:
-            if ci:
-                return sgn_str(x.lower(), y.lower())
+    if let x = a:
+        if let y = b:
+            if ci: return sgn_str(x.lower(), y.lower())
 
             return sgn_str(x, y)
 
         return -1
 
-    if _y := b:
-        return 1
+    if let _y = b: return 1
 
     return 0
 
 fn cmp_field(a: Issue, b: Issue, f: String, states: List[String]) Int:
-    if f == "id":
-        return sgn_int(a.id, b.id)
-    if f == "created":
-        return sgn_int(a.created, b.created)
-    if f == "updated":
-        return sgn_int(a.updated, b.updated)
-    if f == "priority":
-        return sgn_int(rank(a.priority), rank(b.priority))
-    if f == "points":
-        return cmp_opt_int(a.points, b.points)
+    if f == "id": return sgn_int(a.id, b.id)
+    if f == "created": return sgn_int(a.created, b.created)
+    if f == "updated": return sgn_int(a.updated, b.updated)
+    if f == "priority": return sgn_int(rank(a.priority), rank(b.priority))
+    if f == "points": return cmp_opt_int(a.points, b.points)
     if f == "state":
         return sgn_int(find_str(states, a.state), find_str(states, b.state))
-    if f == "title":
-        return sgn_str(a.title.lower(), b.title.lower())
-    if f == "assignee":
-        return cmp_opt_str(a.assignee, b.assignee, true)
-    if f == "reporter":
-        return cmp_opt_str(a.reporter, b.reporter, true)
+    if f == "title": return sgn_str(a.title.lower(), b.title.lower())
+    if f == "assignee": return cmp_opt_str(a.assignee, b.assignee, true)
+    if f == "reporter": return cmp_opt_str(a.reporter, b.reporter, true)
 
     return cmp_opt_str(a.due, b.due, false)
 
@@ -1795,8 +1617,7 @@ fn cmp_issues(a: Issue, b: Issue, keys: List[SortKey], states: List[String]) Int
         var c = cmp_field(a, b, k.field, states)
         if k.desc:
             c = -c
-        if c != 0:
-            return c
+        if c != 0: return c
 
     return sgn_int(a.id, b.id)
 
@@ -1823,7 +1644,7 @@ fn sort_issues(
     return out
 
 fn select_issues(t: Tracker, e: Expr, keys: List[SortKey], limit: Int) List[Issue]:
-    ctx := EvalCtx(
+    let ctx = EvalCtx(
         today: t.today.clone(), finals: t.finals.clone(), states: t.states.clone()
     )
     var hits = List[Issue]()
@@ -1837,8 +1658,7 @@ fn select_issues(t: Tracker, e: Expr, keys: List[SortKey], limit: Int) List[Issu
     var k = 0
 
     for h in hits:
-        if limit >= 0 and k >= limit:
-            break
+        if limit >= 0 and k >= limit: break
 
         out.append(h.clone())
         k += 1
@@ -1846,17 +1666,17 @@ fn select_issues(t: Tracker, e: Expr, keys: List[SortKey], limit: Int) List[Issu
     return out
 
 fn issue_line(iss: Issue) String:
-    a := show_s(iss.assignee)
-    p := show_i(iss.points)
-    d := show_s(iss.due)
-    l := show_labels(iss.labels)
+    let a = show_s(iss.assignee)
+    let p = show_i(iss.points)
+    let d = show_s(iss.due)
+    let l = show_labels(iss.labels)
     return "#{iss.id} | {iss.state} | {iss.priority} | {a} | {p} | {d} | {l} | {iss.title}"
 
 fn print_rows(rows: List[Issue]) Unit:
     for r in rows:
         print(issue_line(r))
 
-    n := rows.length()
+    let n = rows.length()
 
     if n == 1:
         print("(1 issue)")
@@ -1864,85 +1684,70 @@ fn print_rows(rows: List[Issue]) Unit:
         print("({n} issues)")
 
 fn cmd_list(t: Tracker, rest: String) String:
-    q := split_query(rest)
-    if q.err != "":
-        return q.err.clone()
+    let q = split_query(rest)
+    if q.err != "": return q.err.clone()
 
-    pe := parse_filter(q.filter, t.states, t.views)
-    if pe.err != "":
-        return pe.err.clone()
+    let pe = parse_filter(q.filter, t.states, t.views)
+    if pe.err != "": return pe.err.clone()
 
-    sr := parse_sort(q.sort_text)
-    if sr.err != "":
-        return sr.err.clone()
+    let sr = parse_sort(q.sort_text)
+    if sr.err != "": return sr.err.clone()
 
-    rows := select_issues(t, pe.e, sr.keys, q.limit)
+    let rows = select_issues(t, pe.e, sr.keys, q.limit)
     print_rows(rows)
     return ""
 
 // ---------------------------------------------------------------- views
 
 fn view_save(var t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "":
-        return "usage: view save NAME QUERY"
+    let a = split_first(rest)
+    if a.first == "": return "usage: view save NAME QUERY"
 
-    name := a.first.clone()
-    if not valid_view_name(name):
-        return "bad view name '{name}'"
+    let name = a.first.clone()
+    if not valid_view_name(name): return "bad view name '{name}'"
 
-    q := split_query(a.rest)
-    if q.err != "":
-        return q.err.clone()
+    let q = split_query(a.rest)
+    if q.err != "": return q.err.clone()
 
-    pe := parse_filter(q.filter, t.states, t.views)
-    if pe.err != "":
-        return pe.err.clone()
+    let pe = parse_filter(q.filter, t.states, t.views)
+    if pe.err != "": return pe.err.clone()
 
-    sr := parse_sort(q.sort_text)
-    if sr.err != "":
-        return sr.err.clone()
-    if uses_view(pe.e, name):
-        return "view '{name}' would reference itself"
+    let sr = parse_sort(q.sort_text)
+    if sr.err != "": return sr.err.clone()
+    if uses_view(pe.e, name): return "view '{name}' would reference itself"
 
     t.views[name.clone()] = a.rest.trim()
     print("saved view {name}")
     return ""
 
 fn view_run(t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "":
-        return "usage: view run NAME [sort FIELDS] [limit N]"
+    let a = split_first(rest)
+    if a.first == "": return "usage: view run NAME [sort FIELDS] [limit N]"
 
-    name := a.first.clone()
-    if not t.views.contains(name):
-        return "unknown view '{name}'"
+    let name = a.first.clone()
+    if not t.views.contains(name): return "unknown view '{name}'"
 
-    extra := split_query(a.rest)
-    if extra.err != "":
-        return extra.err.clone()
-    if extra.filter != "":
-        return "unexpected '{extra.filter}'"
+    let extra = split_query(a.rest)
+    if extra.err != "": return extra.err.clone()
+    if extra.filter != "": return "unexpected '{extra.filter}'"
 
-    stored := t.views.get(name).get("")
-    st := split_query(stored)
-    pe := parse_filter(st.filter, t.states, t.views)
-    if pe.err != "":
-        return pe.err.clone()
+    let stored = t.views.get(name).get("")
+    let st = split_query(stored)
+    let pe = parse_filter(st.filter, t.states, t.views)
+    if pe.err != "": return pe.err.clone()
 
     var keys_text = st.sort_text.clone()
     if extra.has_sort:
         keys_text = extra.sort_text.clone()
 
-    sr := parse_sort(keys_text)
-    if sr.err != "":
-        return sr.err.clone()
+    let sr = parse_sort(keys_text)
+    if sr.err != "": return sr.err.clone()
 
     var lim = st.limit
     if extra.limit >= 0:
         lim = extra.limit
 
-    rows := select_issues(t, pe.e, sr.keys, lim)
+    let rows = select_issues(t, pe.e, sr.keys, lim)
     print_rows(rows)
     return ""
 
@@ -1956,40 +1761,36 @@ fn view_list(t: Tracker) String:
     names.sort()
 
     for n in names:
-        q := t.views.get(n).get("")
+        let q = t.views.get(n).get("")
         print("{n}: {q}")
 
     return ""
 
 fn view_show(t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "":
-        return "usage: view show NAME"
+    let a = split_first(rest)
+    if a.first == "": return "usage: view show NAME"
 
-    name := a.first.clone()
-    if not t.views.contains(name):
-        return "unknown view '{name}'"
+    let name = a.first.clone()
+    if not t.views.contains(name): return "unknown view '{name}'"
 
-    q := t.views.get(name).get("")
+    let q = t.views.get(name).get("")
     print("{name}: {q}")
     return ""
 
 fn view_delete(var t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "":
-        return "usage: view delete NAME"
+    let a = split_first(rest)
+    if a.first == "": return "usage: view delete NAME"
 
-    name := a.first.clone()
-    if not t.views.contains(name):
-        return "unknown view '{name}'"
+    let name = a.first.clone()
+    if not t.views.contains(name): return "unknown view '{name}'"
 
     var names = t.views.keys()
     names.sort()
 
     for other in names:
         if other != name:
-            stored := t.views.get(other).get("")
-            pe := parse_stored(stored, t.states, t.views)
+            let stored = t.views.get(other).get("")
+            let pe = parse_stored(stored, t.states, t.views)
             if pe.err == "" and uses_view(pe.e, name):
                 return "view '{name}' is used by '{other}'"
 
@@ -1998,25 +1799,20 @@ fn view_delete(var t: Tracker, rest: String) String:
     return ""
 
 fn cmd_view(var t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "save":
-        return view_save(var t, a.rest)
-    if a.first == "run":
-        return view_run(t, a.rest)
-    if a.first == "list":
-        return view_list(t)
-    if a.first == "show":
-        return view_show(t, a.rest)
-    if a.first == "delete":
-        return view_delete(var t, a.rest)
+    let a = split_first(rest)
+    if a.first == "save": return view_save(var t, a.rest)
+    if a.first == "run": return view_run(t, a.rest)
+    if a.first == "list": return view_list(t)
+    if a.first == "show": return view_show(t, a.rest)
+    if a.first == "delete": return view_delete(var t, a.rest)
 
     return "usage: view save|run|list|show|delete"
 
 // ---------------------------------------------------------------- bulk
 
 fn split_where(text: String) Where:
-    cs := text.chars()
-    n := cs.length()
+    let cs = text.chars()
+    let n = cs.length()
     var i = 0
 
     while i + 5 <= n:
@@ -2044,42 +1840,34 @@ fn tail_list(toks: List[String], start: Int) List[String]:
     return out
 
 fn cmd_bulk(var t: Tracker, rest: String) String:
-    usage := "usage: bulk ACTION... where QUERY"
-    wh := split_where(rest)
-    if not wh.has or wh.action == "":
-        return usage.clone()
+    let usage = "usage: bulk ACTION... where QUERY"
+    let wh = split_where(rest)
+    if not wh.has or wh.action == "": return usage.clone()
 
-    tk := tokenize(wh.action)
-    if tk.err != "":
-        return tk.err.clone()
+    let tk = tokenize(wh.action)
+    if tk.err != "": return tk.err.clone()
 
-    toks := tk.items
-    if toks.length() == 0:
-        return usage.clone()
+    let toks = tk.items
+    if toks.length() == 0: return usage.clone()
 
-    kind := toks[0].clone()
-    n := toks.length()
+    let kind = toks[0].clone()
+    let n = toks.length()
 
     if kind == "move":
-        if n != 2:
-            return "usage: bulk move STATE where QUERY"
+        if n != 2: return "usage: bulk move STATE where QUERY"
     else if kind == "assign":
-        if n != 2:
-            return "usage: bulk assign NAME where QUERY"
+        if n != 2: return "usage: bulk assign NAME where QUERY"
     else if kind == "label":
-        if n < 2:
-            return "usage: bulk label +label... where QUERY"
+        if n < 2: return "usage: bulk label +label... where QUERY"
     else if kind == "set":
-        if n < 2:
-            return "usage: bulk set field=value... where QUERY"
+        if n < 2: return "usage: bulk set field=value... where QUERY"
     else:
         return "unknown bulk action '{kind}'"
 
-    pe := parse_filter(wh.query, t.states, t.views)
-    if pe.err != "":
-        return pe.err.clone()
+    let pe = parse_filter(wh.query, t.states, t.views)
+    if pe.err != "": return pe.err.clone()
 
-    ctx := EvalCtx(
+    let ctx = EvalCtx(
         today: t.today.clone(), finals: t.finals.clone(), states: t.states.clone()
     )
     var ids = List[Int]()
@@ -2091,7 +1879,7 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
     var bad = 0
 
     for id in ids:
-        arg := "{id}"
+        let arg = "{id}"
         var err = ""
 
         if kind == "move":
@@ -2124,44 +1912,37 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
 // ---------------------------------------------------------------- log and reports
 
 fn log_id_check(t: Tracker, arg: String) String:
-    v := id_value(arg)
-    if v < 1:
-        return "bad issue id '{arg}'"
-    if v >= t.next_id:
-        return "no such issue #{v}"
+    let v = id_value(arg)
+    if v < 1: return "bad issue id '{arg}'"
+    if v >= t.next_id: return "no such issue #{v}"
 
     return ""
 
 fn cmd_log(t: Tracker, rest: String) String:
-    w := rest.fields()
-    n := w.length()
-    usage := "usage: log [ID] [tail N]"
+    let w = rest.fields()
+    let n = w.length()
+    let usage = "usage: log [ID] [tail N]"
     var id = -1
     var tail = -1
 
     if n == 0:
         id = -1
     else if w[0] == "tail":
-        if n != 2:
-            return usage.clone()
+        if n != 2: return usage.clone()
 
         tail = canon_int(w[1])
-        if tail < 0:
-            return "bad tail '{w[1]}'"
+        if tail < 0: return "bad tail '{w[1]}'"
     else if n == 1:
-        e := log_id_check(t, w[0])
-        if e != "":
-            return e
+        let e = log_id_check(t, w[0])
+        if e != "": return e
 
         id = id_value(w[0])
     else if n == 3 and w[1] == "tail":
-        e := log_id_check(t, w[0])
-        if e != "":
-            return e
+        let e = log_id_check(t, w[0])
+        if e != "": return e
 
         tail = canon_int(w[2])
-        if tail < 0:
-            return "bad tail '{w[2]}'"
+        if tail < 0: return "bad tail '{w[2]}'"
 
         id = id_value(w[0])
     else:
@@ -2192,13 +1973,12 @@ fn cmd_log(t: Tracker, rest: String) String:
     return ""
 
 fn plural_issue(n: Int) String:
-    if n == 1:
-        return "issue"
+    if n == 1: return "issue"
 
     return "issues"
 
 fn report_summary(t: Tracker) String:
-    total := t.issues.length()
+    let total = t.issues.length()
     var open = 0
     var openpts = 0
     var unassigned = 0
@@ -2210,11 +1990,11 @@ fn report_summary(t: Tracker) String:
             openpts += points_or_zero(iss.points)
             if not present_s(iss.assignee):
                 unassigned += 1
-            if d := iss.due:
+            if let d = iss.due:
                 if d < t.today:
                     overdue += 1
 
-    fin := total - open
+    let fin = total - open
     print("issues: {total} (open {open}, final {fin})")
     print("by state:")
 
@@ -2240,10 +2020,8 @@ fn report_summary(t: Tracker) String:
     return ""
 
 fn wl_before(a: WL, b: WL) Bool:
-    if a.pts != b.pts:
-        return a.pts > b.pts
-    if a.count != b.count:
-        return a.count > b.count
+    if a.pts != b.pts: return a.pts > b.pts
+    if a.count != b.count: return a.count > b.count
 
     return a.key < b.key
 
@@ -2251,8 +2029,7 @@ fn find_wl(rows: List[WL], key: String) Int:
     var i = 0
 
     for r in rows:
-        if r.key == key:
-            return i
+        if r.key == key: return i
 
         i += 1
 
@@ -2265,30 +2042,28 @@ fn report_workload(t: Tracker) String:
     var any_open = false
 
     for iss in t.issues:
-        if is_final(t.finals, iss.state):
-            continue
+        if is_final(t.finals, iss.state): continue
 
         any_open = true
 
-        pts := points_or_zero(iss.points)
+        let pts = points_or_zero(iss.points)
 
-        if a := iss.assignee:
-            key := a.lower()
-            k := find_wl(rows, key)
+        if let a = iss.assignee:
+            let key = a.lower()
+            let k = find_wl(rows, key)
 
             if k < 0:
                 rows.append(WL(name: a.clone(), key: key, count: 1, pts: pts))
             else:
-                rows[k].count = rows[k].count + 1
-                rows[k].pts = rows[k].pts + pts
+                rows[k].count += 1
+                rows[k].pts += pts
         else:
             un_count += 1
             un_pts += pts
 
-    if not any_open:
-        return "(no open issues)"
+    if not any_open: return "(no open issues)"
 
-    m := rows.length()
+    let m = rows.length()
     var i = 0
 
     while i < m:
@@ -2296,7 +2071,7 @@ fn report_workload(t: Tracker) String:
 
         while j + 1 < m - i:
             if wl_before(rows[j + 1], rows[j]):
-                tmp := rows[j].clone()
+                let tmp = rows[j].clone()
                 rows[j] = rows[j + 1].clone()
                 rows[j + 1] = tmp
 
@@ -2311,11 +2086,10 @@ fn report_workload(t: Tracker) String:
     return ""
 
 fn report_labels(t: Tracker, rest: String) String:
-    pe := parse_filter(rest.trim(), t.states, t.views)
-    if pe.err != "":
-        return pe.err.clone()
+    let pe = parse_filter(rest.trim(), t.states, t.views)
+    if pe.err != "": return pe.err.clone()
 
-    ctx := EvalCtx(
+    let ctx = EvalCtx(
         today: t.today.clone(), finals: t.finals.clone(), states: t.states.clone()
     )
     var rows = List[WL]()
@@ -2323,25 +2097,24 @@ fn report_labels(t: Tracker, rest: String) String:
     for iss in t.issues:
         if eval_expr(pe.e, iss, ctx):
             for l in iss.labels:
-                k := find_wl(rows, l)
+                let k = find_wl(rows, l)
 
                 if k < 0:
                     rows.append(WL(name: l.clone(), key: l.clone(), count: 1, pts: 0))
                 else:
-                    rows[k].count = rows[k].count + 1
+                    rows[k].count += 1
 
-    if rows.length() == 0:
-        return "(no labels)"
+    if rows.length() == 0: return "(no labels)"
 
-    m := rows.length()
+    let m = rows.length()
     var i = 0
 
     while i < m:
         var j = 0
 
         while j + 1 < m - i:
-            a := rows[j + 1].clone()
-            b := rows[j].clone()
+            let a = rows[j + 1].clone()
+            let b = rows[j].clone()
 
             if a.count > b.count or (a.count == b.count and a.key < b.key):
                 rows[j] = a.clone()
@@ -2356,22 +2129,20 @@ fn report_labels(t: Tracker, rest: String) String:
     return ""
 
 fn report_timeline(t: Tracker, rest: String) String:
-    w := rest.fields()
-    if w.length() != 1:
-        return "usage: report timeline ID"
+    let w = rest.fields()
+    if w.length() != 1: return "usage: report timeline ID"
 
-    f := resolve(t, w[0])
-    if f.err != "":
-        return f.err.clone()
+    let f = resolve(t, w[0])
+    if f.err != "": return f.err.clone()
 
-    iss := t.issues[f.idx].clone()
+    let iss = t.issues[f.idx].clone()
     var cur = t.initial.clone()
     var from = iss.created
 
     for e in t.log:
         if e.id == iss.id and e.detail.starts_with("state: "):
-            parts := e.detail.split(" -> ")
-            target := parts[1].clone()
+            let parts = e.detail.split(" -> ")
+            let target = parts[1].clone()
             print("{cur}: t={from}..{e.t} ({e.t - from})")
             cur = target
             from = e.t
@@ -2380,51 +2151,32 @@ fn report_timeline(t: Tracker, rest: String) String:
     return ""
 
 fn cmd_report(t: Tracker, rest: String) String:
-    a := split_first(rest)
-    if a.first == "summary":
-        return report_summary(t)
-    if a.first == "workload":
-        return report_workload(t)
-    if a.first == "labels":
-        return report_labels(t, a.rest)
-    if a.first == "timeline":
-        return report_timeline(t, a.rest)
+    let a = split_first(rest)
+    if a.first == "summary": return report_summary(t)
+    if a.first == "workload": return report_workload(t)
+    if a.first == "labels": return report_labels(t, a.rest)
+    if a.first == "timeline": return report_timeline(t, a.rest)
 
     return "usage: report summary|workload|labels|timeline"
 
 // ---------------------------------------------------------------- driver
 
 fn dispatch(var t: Tracker, cmd: String, rest: String) String:
-    if cmd == "actor":
-        return cmd_actor(var t, rest)
-    if cmd == "today":
-        return cmd_today(var t, rest)
-    if cmd == "create":
-        return cmd_create(var t, rest)
-    if cmd == "edit":
-        return cmd_edit(var t, rest)
-    if cmd == "label":
-        return cmd_label(var t, rest)
-    if cmd == "assign":
-        return cmd_assign(var t, rest)
-    if cmd == "move":
-        return cmd_move(var t, rest)
-    if cmd == "comment":
-        return cmd_comment(var t, rest)
-    if cmd == "delete":
-        return cmd_delete(var t, rest)
-    if cmd == "show":
-        return cmd_show(t, rest)
-    if cmd == "list":
-        return cmd_list(t, rest)
-    if cmd == "view":
-        return cmd_view(var t, rest)
-    if cmd == "bulk":
-        return cmd_bulk(var t, rest)
-    if cmd == "log":
-        return cmd_log(t, rest)
-    if cmd == "report":
-        return cmd_report(t, rest)
+    if cmd == "actor": return cmd_actor(var t, rest)
+    if cmd == "today": return cmd_today(var t, rest)
+    if cmd == "create": return cmd_create(var t, rest)
+    if cmd == "edit": return cmd_edit(var t, rest)
+    if cmd == "label": return cmd_label(var t, rest)
+    if cmd == "assign": return cmd_assign(var t, rest)
+    if cmd == "move": return cmd_move(var t, rest)
+    if cmd == "comment": return cmd_comment(var t, rest)
+    if cmd == "delete": return cmd_delete(var t, rest)
+    if cmd == "show": return cmd_show(t, rest)
+    if cmd == "list": return cmd_list(t, rest)
+    if cmd == "view": return cmd_view(var t, rest)
+    if cmd == "bulk": return cmd_bulk(var t, rest)
+    if cmd == "log": return cmd_log(t, rest)
+    if cmd == "report": return cmd_report(t, rest)
 
     return "unknown command '{cmd}'"
 
@@ -2433,9 +2185,9 @@ fn read_all() List[String]!Error:
     var s = lines(stdin())
 
     while true:
-        item := try s.next()
+        let item = try s.next()
 
-        if line := item:
+        if let line = item:
             out.append(line)
         else:
             break
@@ -2443,34 +2195,33 @@ fn read_all() List[String]!Error:
     return ok(out)
 
 export fn main() Int:
-    all := read_all().get(List[String]())
+    let all = read_all().get(List[String]())
     var t = Tracker(
         clock: 0, actor: "system", today: "1970-01-01", next_id: 1, ever_created: false,
         initial: "", states: List[String](), finals: List[String](),
         transitions: List[Transition](), issues: List[Issue](), log: List[LogEntry](),
         views: Map[String, String]()
     )
-    n := all.length()
+    let n = all.length()
     var i = 0
 
     while i < n:
-        line := all[i].trim_end()
+        let line = all[i].trim_end()
         i += 1
 
-        s := line.trim_start()
-        if s == "" or s.starts_with("#"):
-            continue
+        let s = line.trim_start()
+        if s == "" or s.starts_with("#"): continue
 
         print("> {line}")
 
-        sp := split_first(line)
+        let sp = split_first(line)
 
         if sp.first == "workflow":
             var block = List[String]()
             var more = true
 
             while more and i < n:
-                b := all[i].clone()
+                let b = all[i].clone()
                 i += 1
 
                 if b.trim() == "end":
@@ -2478,12 +2229,12 @@ export fn main() Int:
                 else:
                     block.append(b)
 
-            e := cmd_workflow(var t, block)
+            let e = cmd_workflow(var t, block)
             if e != "":
                 print("error: {e}")
             continue
 
-        e := dispatch(var t, sp.first, sp.rest)
+        let e = dispatch(var t, sp.first, sp.rest)
         if e != "":
             print("error: {e}")
 

@@ -1,5 +1,7 @@
-import read_lines from "@std/streams.ms"
-import stdin, stdout from "@std/io.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdin, stdout from "@std/io.ms",
+)
 
 // Parsed START: year is -1 when invalid.
 type Start:

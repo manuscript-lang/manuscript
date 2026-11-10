@@ -1,29 +1,31 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import parse_int from "@std/math/math.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    parse_int from "@std/math/math.ms",
+)
 
-export fn main() Int:
-    args := arguments()
-    operation := args[0]
-    dataset := args[1]
-    digits := args[2].parse_int().get()
-    count := args[3].parse_int().get()
-    expected_checksum := args[4].parse_int().get()
-    expected_last := args[5]
+fn main() Int:
+    let args = arguments()
+    let operation = args[0]
+    let dataset = args[1]
+    let digits = args[2].parse_int().get()
+    let count = args[3].parse_int().get()
+    let expected_checksum = args[4].parse_int().get()
+    let expected_last = args[5]
 
     if operation == "parse_zero":
-        zeros := "0".repeat(4096).get()
-        text := "{zeros}1"
+        let zeros = "0".repeat(4096).get()
+        let text = "{zeros}1"
         var checksum = 0
         var last = 0
-        start := monotonic()
+        let start = monotonic()
 
         for unused in 0..count:
             last = parse_int(text, digits).get()
             checksum += last
 
-        elapsed := monotonic().difference(start).to_nanoseconds()
-        final_text := last.to_string()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
+        let final_text = last.to_string()
         print("ns={elapsed} checksum={checksum} last={final_text}")
         if checksum != expected_checksum or final_text != expected_last: return 1
 
@@ -43,13 +45,13 @@ export fn main() Int:
 
         var checksum = 0
         var last = ""
-        start := monotonic()
+        let start = monotonic()
 
         for unused in 0..count:
             last = parse_int(text, digits).err().message
             checksum += last.byte_length()
 
-        elapsed := monotonic().difference(start).to_nanoseconds()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
         print("ns={elapsed} checksum={checksum} last={last}")
         if checksum != expected_checksum or last != expected_last: return 1
 
@@ -71,14 +73,14 @@ export fn main() Int:
 
         var checksum = 0
         var last = 0
-        start := monotonic()
+        let start = monotonic()
 
         for i in 0..count:
             last = parse_int(texts[i % 1000], digits).get()
             checksum += last % 997
 
-        elapsed := monotonic().difference(start).to_nanoseconds()
-        final_text := last.to_string()
+        let elapsed = monotonic().difference(start).to_nanoseconds()
+        let final_text = last.to_string()
         print("ns={elapsed} checksum={checksum} last={final_text}")
         if checksum != expected_checksum or final_text != expected_last: return 1
 
@@ -86,7 +88,7 @@ export fn main() Int:
 
     var last = ""
     var checksum = 0
-    start := monotonic()
+    let start = monotonic()
 
     for i in 0..count:
         var value = (i % 1000).to_float() / 8.0
@@ -113,7 +115,7 @@ export fn main() Int:
 
         checksum += last.byte_length()
 
-    elapsed := monotonic().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     print("ns={elapsed} checksum={checksum} last={last}")
     if checksum != expected_checksum or last != expected_last: return 1
 

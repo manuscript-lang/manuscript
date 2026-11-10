@@ -18,13 +18,12 @@ import arguments from "@std/os/env.ms"
 fn count_words(text: String) Int:
     return text.split(" ").length()
 
-export fn main() Int:
-    repeats := arguments().get(0, default: "1000000").parse_int().get(1000000)
+fn main() Unit:
+    let repeats = arguments().get(0, default: "1000000").parse_int().get(1000000)
     var total = 0
     for index in 0..repeats:
         total += count_words("small programs are easy to review")
     print(total)
-    return 0
 ```
 
 ```sh

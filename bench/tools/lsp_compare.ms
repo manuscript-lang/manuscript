@@ -2,9 +2,11 @@
 // Usage: ms run bench/tools/lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N]
 // Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
 // Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
-import (absolute, fail, invalid, median, options, sample, write_text) from "./lib.ms"
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    absolute, fail, invalid, median, options, sample, write_text from "./lib.ms",
+    arguments from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 type Case:
     mode: String
@@ -92,8 +94,8 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
         args = ["--cpu-list", cpu.clone(), binary.clone()].concat(args)
         program = "taskset"
 
-    out := try sample(program, args)
-    fields := out.trim().split(",")
+    let out = try sample(program, args)
+    let fields = out.trim().split(",")
     if fields.length() != 8: return invalid("malformed harness row: {out.trim()}")
     if (
         fields[0] != c.mode
@@ -106,7 +108,7 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
     var n = List[Int]()
 
     for i in 4..8:
-        v := fields[i].parse_int()
+        let v = fields[i].parse_int()
         if v.is_none(): return invalid("not an integer: {fields[i]}")
 
         n.append(v.get(0))
@@ -121,7 +123,7 @@ fn compare(
     samples: Int,
     cpu: String
 ) Result[Unit, Error]:
-    cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
+    let cases = if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
     var paths = Map[String, String]()
     paths.add("before", before.clone())
     paths.add("after", after.clone())
@@ -136,7 +138,7 @@ fn compare(
         var seen = false
 
         for name in ["before", "after"]:
-            first := try run_harness(paths.get_or(name, ""), c, 1, cpu)
+            let first = try run_harness(paths.get_or(name, ""), c, 1, cpu)
 
             if not seen:
                 expected = Run(0, first.checksum, first.size, 0)
@@ -147,7 +149,7 @@ fn compare(
                     "{c.mode} {c.count} {c.shape}: before and after disagree"
                 )
 
-            want := (30000000 + first.elapsed - 1) / first.elapsed
+            let want = (30000000 + first.elapsed - 1) / first.elapsed
             rounds.add(
                 name.clone(),
                 if want < 1: 1 else: (
@@ -161,8 +163,8 @@ fn compare(
 
         for s in 0..samples:
             for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
-                r := rounds.get_or(name, 1)
-                got := try run_harness(paths.get_or(name, ""), c, r, cpu)
+                let r = rounds.get_or(name, 1)
+                let got = try run_harness(paths.get_or(name, ""), c, r, cpu)
                 if got.checksum != expected.checksum or got.size != expected.size:
                     return invalid("{c.mode} {c.count} {c.shape}: output changed")
 
@@ -173,8 +175,8 @@ fn compare(
                     "{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
                 )
 
-        old := median(observed.get_or("before", []))
-        new := median(observed.get_or("after", []))
+        let old = median(observed.get_or("before", []))
+        let new = median(observed.get_or("after", []))
         (
             stdout()
             .write(
@@ -186,24 +188,24 @@ fn compare(
     write_text(out, rows.join("\n") + "\n")
     return ok(unit)
 
-export fn main() Int:
-    args := arguments()
+fn main() Int:
+    let args = arguments()
     if args.length() < 3 or not ["hover", "outline", "semantic"].contains(args[0]):
         return fail(
             "usage: lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE [--samples N] [--cpu N]"
         )
 
-    parsed := options(
+    let parsed = options(
         args.slice(3, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    opts := parsed.get(Map[String, String]())
-    default_samples := if args[0] == "hover": 9 else: 10
-    samples := opts.get_or("samples", "{default_samples}").parse_int().get(0)
+    let opts = parsed.get(Map[String, String]())
+    let default_samples = if args[0] == "hover": 9 else: 10
+    let samples = opts.get_or("samples", "{default_samples}").parse_int().get(0)
     if samples < 5: return fail("--samples must be at least 5")
 
-    result := compare(
+    let result = compare(
         args[0], absolute(args[1].clone()), absolute(args[2].clone()),
         opts.get_or("out", ""), samples, opts.get_or("cpu", "")
     )

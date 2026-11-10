@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 test "index_of_byte finds a byte at or after start":
     data := Bytes([1, 2, 3, 2, 255])

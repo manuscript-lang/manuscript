@@ -13,6 +13,7 @@ mod common;
 mod count_check;
 mod deep_input;
 mod default_frames;
+mod descriptor_errors;
 mod doc_examples;
 mod engine;
 mod extern_link;

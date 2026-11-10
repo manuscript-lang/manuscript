@@ -1,6 +1,8 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import compile, Regex from "@std/string.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    compile, Regex from "@std/string.ms",
+)
 
 interface ListMutation:
     var fn reverse() Unit

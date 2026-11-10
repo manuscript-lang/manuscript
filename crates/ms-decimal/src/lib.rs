@@ -379,12 +379,29 @@ impl Dec {
     /// The coefficient of `self` rounded to a multiple of `10^-places`.
     fn scaled_coefficient(&self, places: i64, mode: Mode) -> BigInt {
         let coef = self.coefficient();
+        if coef.is_zero() {
+            return coef;
+        }
         let shift = self.exp + places;
         if shift >= 0 {
             return coef * pow10(shift);
         }
-        let denominator = pow10(-shift).into_parts().1;
         let negative = coef.is_negative();
+        if -shift > DIGITS {
+            // The coefficient has at most DIGITS digits, so twice it is below the divisor: nearest
+            // rounding and truncation give zero and only a directed mode moves one unit away.
+            let away = match mode {
+                Mode::Floor => negative,
+                Mode::Ceil => !negative,
+                _ => false,
+            };
+            return match (away, negative) {
+                (false, _) => BigInt::from(0),
+                (true, false) => BigInt::from(1),
+                (true, true) => BigInt::from(-1),
+            };
+        }
+        let denominator = pow10(-shift).into_parts().1;
         let (mut c, rem) = div_rem(coef.magnitude(), &denominator);
         if !rem.is_zero() {
             let twice = &rem << 1usize;
@@ -487,6 +504,53 @@ mod tests {
         assert_eq!(Dec::parse("12345678901234567890123456789012345d"), None);
         assert_eq!(d("1e6144d").multiply(&d("10d")), Err(Overflow::Magnitude));
         assert_eq!(d("5d").subtract(&d("5d")), Ok(Dec::ZERO));
+    }
+
+    #[test]
+    fn rounding_far_below_the_coefficient_matches_exact_scaling() {
+        // Each exponent is checked against the same scaling done at full width.
+        for exp in [-6176i64, -3000, -100, -36, -35, -34, -33] {
+            for sign in ["", "-"] {
+                for digits in ["1", "5", "9999999999999999999999999999999999"] {
+                    let value = d(&format!("{sign}{digits}e{exp}d"));
+                    let exact = |mode| {
+                        let coef = value.coefficient();
+                        let denominator = pow10(-(value.exp)).into_parts().1;
+                        let negative = coef.is_negative();
+                        let (mut c, rem) = div_rem(coef.magnitude(), &denominator);
+                        if !rem.is_zero() {
+                            let cmp = (&rem << 1usize).cmp(&denominator);
+                            let up = match mode {
+                                Mode::HalfEven => cmp.is_gt() || (cmp.is_eq() && c.bit(0)),
+                                Mode::HalfAwayFromZero => cmp.is_ge(),
+                                Mode::TowardZero => false,
+                                Mode::Floor => negative,
+                                Mode::Ceil => !negative,
+                            };
+                            if up {
+                                c += 1u32;
+                            }
+                        }
+                        BigInt::from_biguint(sign_of(negative), c)
+                    };
+                    for mode in [
+                        Mode::HalfEven,
+                        Mode::HalfAwayFromZero,
+                        Mode::TowardZero,
+                        Mode::Floor,
+                        Mode::Ceil,
+                    ] {
+                        assert_eq!(
+                            value.scaled_coefficient(0, mode),
+                            exact(mode),
+                            "{value:?} {mode:?}"
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(d("1e-6176d").to_fixed(0, Mode::HalfEven).unwrap(), "0");
+        assert_eq!(d("0d").to_fixed(3, Mode::Floor).unwrap(), "0.000");
     }
 
     #[test]

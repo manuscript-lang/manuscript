@@ -3,9 +3,7 @@ import (
     expect_error,
     expect_false,
     expect_ok,
-    expect_true
-) from "@std/test/test.ms"
-import (
+    expect_true from "@std/test/test.ms",
     Logger,
     Transport,
     LogLevel,
@@ -14,20 +12,18 @@ import (
     handle_transport,
     stdout_transport,
     file_transport,
-    rotating_file_transport
-) from "@std/log.ms"
-import promise from "@std/concurrency/promise.ms"
-import JsonValue from "@std/data/json.ms"
-import (
+    rotating_file_transport from "@std/log.ms",
+    promise from "@std/concurrency/promise.ms",
+    JsonValue from "@std/data/json.ms",
     OpenMode,
     OpenOptions,
     append_file,
     open,
     read_file,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 type Items:
     items: List[Int?]
@@ -233,8 +229,6 @@ impl Transport for CaptureTransport:
             Error("logging: resource is closed", kind: "EBADF")
         )
 
-        return ok(unit)
-
     fn duplicate() Transport!:
         return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
 
@@ -293,7 +287,6 @@ test "unencodable fields are rejected and fields keep their shape under data":
 fn chatter(logger: Logger, name: String) Unit!:
     for n in 0..3:
         try logger.info("m", name)
-    return ok(unit)
 
 test "loggers on several threads never interleave a record":
     directory := try temporary("manuscript-log-threads-")

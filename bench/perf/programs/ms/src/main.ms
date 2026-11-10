@@ -1,7 +1,9 @@
-import stdout, stdin, ReadStream from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import Instant, monotonic from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    stdout, stdin, ReadStream from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    Instant, monotonic from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 interface Counter:
     var fn bump(by: Int) Int
@@ -20,12 +22,12 @@ enum Shape:
     Tri(b: Int)
 
 fn got_line(var input: ReadStream[String]) Bool:
-    if line := input.next(): return line.is_some()
+    if let line = input.next(): return line.is_some()
 
     return false
 
 fn say(text: String) Unit:
-    _ignored := stdout().write(text)
+    let _ignored = stdout().write(text)
 
 fn since(started: Instant) Int:
     return monotonic().difference(started).to_nanoseconds()
@@ -42,7 +44,7 @@ fn checked(n: Int) Result[Int, Error]:
     return ok(n + 1)
 
 fn chain(n: Int) Result[Int, Error]:
-    v := try checked(n)
+    let v = try checked(n)
     return ok(v)
 
 fn area(s: Shape) Int:
@@ -59,7 +61,7 @@ fn area(s: Shape) Int:
     return out
 
 fn bench_string() Int:
-    t := monotonic()
+    let t = monotonic()
     var sb = StringBuilder()
     var i = 0
 
@@ -67,12 +69,12 @@ fn bench_string() Int:
         sb.append("x")
         i += 1
 
-    built := sb.build()
+    let built = sb.build()
     report("string_append_50k", 50000, t)
     return built.byte_length()
 
 fn bench_read_line() Unit:
-    t := monotonic()
+    let t = monotonic()
     var input = lines(stdin())
     var count = 0
     var more = true
@@ -86,7 +88,7 @@ fn bench_read_line() Unit:
     report("read_line", count, t)
 
 fn bench_map() Int:
-    t := monotonic()
+    let t = monotonic()
     var m = Map[Int, Int]()
     var i = 0
 
@@ -105,7 +107,7 @@ fn bench_map() Int:
     return sum
 
 fn bench_int_eq() Int:
-    t := monotonic()
+    let t = monotonic()
     var hits = 0
     var i = 0
 
@@ -118,7 +120,7 @@ fn bench_int_eq() Int:
     return hits
 
 fn bench_generic() Int:
-    t := monotonic()
+    let t = monotonic()
     var i = 0
     var g = 0
 
@@ -130,7 +132,7 @@ fn bench_generic() Int:
     return g
 
 fn bench_method() Int:
-    t := monotonic()
+    let t = monotonic()
     var acc = Acc(0)
     var i = 0
 
@@ -142,12 +144,12 @@ fn bench_method() Int:
     return acc.total
 
 fn bench_try() Int:
-    t := monotonic()
+    let t = monotonic()
     var i = 0
     var tr = 0
 
     while i < 100000000:
-        if v := chain(i):
+        if let v = chain(i):
             tr += v
         else:
             tr -= 1
@@ -158,8 +160,8 @@ fn bench_try() Int:
     return tr
 
 fn bench_match() Int:
-    t := monotonic()
-    shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
+    let t = monotonic()
+    let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
     var i = 0
     var ma = 0
 
@@ -178,7 +180,7 @@ fn bench_length() Int:
         xs.append(i)
         i += 1
 
-    t := monotonic()
+    let t = monotonic()
     i = 0
 
     var ln = 0
@@ -198,7 +200,7 @@ fn bench_for_list() Int:
         big.append(i)
         i += 1
 
-    t := monotonic()
+    let t = monotonic()
     var fs = 0
     var rep = 0
 
@@ -210,17 +212,16 @@ fn bench_for_list() Int:
     report("for_list", 100000000, t)
     return fs
 
-export fn main() Int:
-    built := bench_string()
+fn main() Unit:
+    let built = bench_string()
     bench_read_line()
 
-    sum := bench_map()
-    hits := bench_int_eq()
-    g := bench_generic()
-    total := bench_method()
-    tr := bench_try()
-    ma := bench_match()
-    ln := bench_length()
-    fs := bench_for_list()
+    let sum = bench_map()
+    let hits = bench_int_eq()
+    let g = bench_generic()
+    let total = bench_method()
+    let tr = bench_try()
+    let ma = bench_match()
+    let ln = bench_length()
+    let fs = bench_for_list()
     say("# sink {built} {sum} {hits} {g} {total} {tr} {ma} {ln} {fs}\n")
-    return 0

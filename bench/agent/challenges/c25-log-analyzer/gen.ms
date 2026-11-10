@@ -1,10 +1,12 @@
 // Generator for c25-log-analyzer. Deterministic; run: ms run bench/agent/gen.ms -- c25
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+)
 
-LEVELS := ["DEBUG", "INFO", "WARN", "ERROR"]
-METHODS := ["DELETE", "GET", "POST", "PUT"]
+let LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"]
+let METHODS = ["DELETE", "GET", "POST", "PUT"]
 
 fn digits(s: String) Bool: (
     not s.is_empty()
@@ -20,7 +22,7 @@ type Entry:
     ts: String
 
 fn parse(line: String) Entry?:
-    f := line.split(" ")
+    let f = line.split(" ")
     if f.length() != 6: return none
     if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return none
     if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])): return none
@@ -44,19 +46,19 @@ fn solve(s: String) String:
     for line in s.split("\n"):
         if line.trim().is_empty(): continue
 
-        r := parse(line)
+        let r = parse(line)
 
         if r.is_none():
             bad += 1
             continue
 
-        e := r.get(Entry("", "", 0, 0, "", ""))
+        let e = r.get(Entry("", "", 0, 0, "", ""))
         valid += 1
         levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 
-        first := "{e.status}".take(1)
-        class := if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
-        classes[class] = classes[class] + 1
+        let first = "{e.status}".take(1)
+        let class = if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
+        classes[class] += 1
         lats.append(e.latency)
         if slow.is_none() or e.latency > slow.get(e).latency: slow = e.clone()
         counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
@@ -68,14 +70,14 @@ fn solve(s: String) String:
         "status: 2xx={classes[0]} 3xx={classes[1]} 4xx={classes[2]} 5xx={classes[3]} other={classes[4]}"
     )
 
-    sorted_lats := lats.sorted()
+    let sorted_lats = lats.sorted()
     out.append(
         "p95: {if lats.is_empty(): 0 else: sorted_lats[(95 * lats.length() + 99) / 100 - 1]}"
     )
-    if e := slow: out.append("slowest: {e.latency} {e.method} {e.path} {e.ts}")
+    if let e = slow: out.append("slowest: {e.latency} {e.method} {e.path} {e.ts}")
     out.append("top:")
 
-    order := counts.keys().sorted(
+    let order = counts.keys().sorted(
         fn a,
         b: if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
             b, 0
@@ -90,29 +92,29 @@ fn solve(s: String) String:
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 fn good(var rnd: Random, i: Int) String:
-    level := rnd.choice(LEVELS)
-    method := rnd.choice(METHODS)
-    path := rnd.choice(
+    let level = rnd.choice(LEVELS)
+    let method = rnd.choice(METHODS)
+    let path = rnd.choice(
         [
             "/", "/api/users", "/api/orders", "/health", "/static/app.js", "/login",
             "/a", "/b", "/c"
         ]
     )
-    statuses := [200, 200, 201, 301, 404, 500, 503]
-    pick := rnd.below(statuses.length())
-    lat := rnd.randint(0, 900)
+    let statuses = [200, 200, 201, 301, 404, 500, 503]
+    let pick = rnd.below(statuses.length())
+    let lat = rnd.randint(0, 900)
     return "2024-05-01T10:{"{i / 60 % 60}".pad_start(2, "0")}:{"{i % 60}".pad_start(2, "0")} {level} {method} {path} {statuses[pick]} {lat}"
 
 fn mangle(var rnd: Random, l: String) String:
     var f = l.split(" ")
-    k := rnd.randrange(0, 9)
+    let k = rnd.randrange(0, 9)
 
     if k == 0:
         f[1] = f[1].lower()
     else if k == 1:
         f[2] = "PATCH"
     else if k == 2:
-        rest := f[3].slice(1, f[3].length()).get("")
+        let rest = f[3].slice(1, f[3].length()).get("")
         f[3] = if rest.is_empty(): "x" else: rest
     else if k == 3:
         f[4] = "20"
@@ -133,7 +135,7 @@ fn rand_log(var rnd: Random, n: Int, bad: Float) String:
     var ls = List[String]()
 
     for i in 0..n:
-        l := good(var rnd, i)
+        let l = good(var rnd, i)
         ls.append(if rnd.random() < bad: mangle(var rnd, l) else: l)
         if rnd.random() < 0.03: ls.append(rnd.choice(["", "   "]))
 
@@ -141,7 +143,7 @@ fn rand_log(var rnd: Random, n: Int, bad: Float) String:
 
 export fn gen_c25() Unit:
     var rnd = seeded(25)
-    examples := [
+    let examples = [
         mk(
             "basic",
             "2024-05-01T10:00:00 INFO GET /api/users 200 12\n2024-05-01T10:00:01 ERROR POST /api/orders 503 250\nthis line is broken\n2024-05-01T10:00:02 INFO GET /api/users 200 15\n2024-05-01T10:00:03 WARN GET /health 404 1\n"
@@ -151,10 +153,10 @@ export fn gen_c25() Unit:
     var p95 = ""
     for i in 0..40: p95 += "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
 
-    small := rand_log(var rnd, 40, 0.1)
-    mid := rand_log(var rnd, 600, 0.2)
-    large := rand_log(var rnd, 5000, 0.05)
-    hidden := examples.concat(
+    let small = rand_log(var rnd, 40, 0.1)
+    let mid = rand_log(var rnd, 600, 0.2)
+    let large = rand_log(var rnd, 5000, 0.05)
+    let hidden = examples.concat(
         [
             mk("empty", ""),
             mk("only-blank", "\n  \n\n"),

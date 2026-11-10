@@ -1,5 +1,5 @@
 // conform: tags=functions,tier-core
 // conform: phase=run
 // conform: origin=pkg/build/compiler_test.go:210 TestParameterlessEntrySignature
-export fn main() Unit:
-    return
+export fn main() Float:
+    return 0.0

@@ -1,7 +1,7 @@
-import expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import within from "./support/conn.ms"
 import (
+    expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    within from "./support/conn.ms",
     DnsOptions,
     bind_datagram,
     connect,
@@ -14,10 +14,10 @@ import (
     Datagram,
     DatagramSocket,
     Listener,
-    Connection
-) from "@std/net/net.ms"
-import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
-import promise from "@std/concurrency/promise.ms"
+    Connection from "@std/net/net.ms",
+    parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -39,7 +39,7 @@ test "IP parsing CIDR normalization and containment":
     try expect_ip_error("999.1.1.1")
 
 test "TCP loopback writes reads half close and EOF":
-    listener := try listen("127.0.0.1:0")
+    let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), timeout: 2.seconds()).wait()
     var server = try listener.accept(2.seconds()).wait()
     try client.output.write("hello".to_bytes())
@@ -52,9 +52,9 @@ test "TCP loopback writes reads half close and EOF":
     try expect_true((try within(var server.input, 2.seconds())).is_none())
 
 test "a read cancelled by its timeout leaves the stream closable":
-    listener := try listen("127.0.0.1:0")
+    let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), timeout: 2.seconds()).wait()
-    _server := try listener.accept(2.seconds()).wait()
+    let _server = try listener.accept(2.seconds()).wait()
 
     // The peer is silent, so the limit cancels the read mid-park. The borrowed stream still
     // belongs to the caller: closing it afterwards frees the socket once.
@@ -63,13 +63,12 @@ test "a read cancelled by its timeout leaves the stream closable":
 
 fn accept_all(listener: Listener) Unit!:
     while true:
-        _connection := try listener.accept().wait()
-    return ok(unit)
+        let _connection = try listener.accept().wait()
 
 test "a promise that accepts on a listener runs where the listener lives":
-    listener := try listen("127.0.0.1:0")
-    address := listener.address()
-    _accepting := promise(fn: accept_all(listener))
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    let _accepting = promise(fn: accept_all(listener))
 
     // Accepts and connects register their connections with one network, which is not thread
     // safe: running the accepts on another thread raced these connects and panicked.
@@ -78,7 +77,7 @@ test "a promise that accepts on a listener runs where the listener lives":
         try client.close()
 
 test "closing the input leaves the output open and closing both ends the connection":
-    listener := try listen("127.0.0.1:0")
+    let listener = try listen("127.0.0.1:0")
     var client = try connect(listener.address(), timeout: 2.seconds()).wait()
     var server = try listener.accept(2.seconds()).wait()
 
@@ -95,10 +94,10 @@ test "closing the input leaves the output open and closing both ends the connect
     try expect_true((try within(var server.input, 2.seconds())).is_none())
 
 test "host names resolve whatever their case":
-    listener := try listen("127.0.0.1:0")
-    port := listener.address().split(":").last().get("")
-    client := try connect("LocalHost:{port}", timeout: 2.seconds()).wait()
-    server := try listener.accept(2.seconds()).wait()
+    let listener = try listen("127.0.0.1:0")
+    let port = listener.address().split(":").last().get("")
+    let client = try connect("LocalHost:{port}", timeout: 2.seconds()).wait()
+    let server = try listener.accept(2.seconds()).wait()
     try expect_equal(server.info.peer_address, client.info.local_address)
 
 test "an empty Unix socket path is invalid input":
@@ -116,13 +115,13 @@ test "UDP loopback preserves datagram data and sender":
     var sender = try bind_datagram("127.0.0.1:0")
     try sender.output.write(Datagram("packet".to_bytes(), receiver.address.clone()))
 
-    packet := (try within(var receiver.input, 2.seconds())).get()
+    let packet = (try within(var receiver.input, 2.seconds())).get()
     try expect_false(
         (packet.data != "packet".to_bytes() or packet.address != sender.address)
     )
 
 test "network restriction denies admission and close rejects acquisitions":
-    restricted := try restrict([], [], allow_listen: false)
+    let restricted = try restrict([], [], allow_listen: false)
     var closing = try restrict([], [], allow_listen: false)
     var scoped = restricted
     try expect_false(
@@ -147,7 +146,7 @@ test "network restriction denies admission and close rejects acquisitions":
     )
 
 test "typed addresses preserve normalization and reject zones":
-    ip := try parse_ip("::ffff:192.0.2.1")
+    let ip = try parse_ip("::ffff:192.0.2.1")
     try expect_false(ip.text() != "192.0.2.1" or ip.family() != IpFamily.IPv4)
     try expect_equal((try parse_ip("2001:db8::1")).family(), IpFamily.IPv6)
     try expect_ip_error("fe80::1%eth0")
@@ -158,10 +157,9 @@ fn expect_ip_error(input: String) Unit!:
         (try expect_error(parse_ip(input))),
         Error("network: invalid data", kind: "EBADMSG")
     )
-    return ok(unit)
 
 fn accept_one(l: Listener) Int:
-    r := l.accept(2.seconds()).wait()
+    let r = l.accept(2.seconds()).wait()
 
     if r.is_ok():
         r.get().close().get(none)
@@ -170,9 +168,9 @@ fn accept_one(l: Listener) Int:
     return 0
 
 test "a promise accepts on a listener it owns":
-    listener := try listen("127.0.0.1:0")
-    address := listener.address()
-    a := promise(fn: ok(accept_one(listener)))
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    let a = promise(fn: ok(accept_one(listener)))
     var client = try connect(address, timeout: 2.seconds()).wait()
     try expect_equal(try a.wait(), 1)
     try client.close()
@@ -180,15 +178,15 @@ test "a promise accepts on a listener it owns":
 // Accepts one connection and reads from it, all inside the promise that owns the connection.
 fn accept_and_read(listener: Listener) Int:
     var conn = listener.accept(2.seconds()).wait().get()
-    r := within(var conn.input, 2.seconds())
+    let r = within(var conn.input, 2.seconds())
     if r.is_ok() and r.get().is_some(): return 1
 
     return 0
 
 test "a promise reads a connection it owns":
-    listener := try listen("127.0.0.1:0")
-    address := listener.address()
-    a := promise(fn: ok(accept_and_read(listener)))
+    let listener = try listen("127.0.0.1:0")
+    let address = listener.address()
+    let a = promise(fn: ok(accept_and_read(listener)))
     var client = try connect(address, timeout: 2.seconds()).wait()
     try client.output.write("xy".to_bytes())
     try client.output.flush()
@@ -197,13 +195,13 @@ test "a promise reads a connection it owns":
 
 // Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
-    query := (try within(var served.input, 2.seconds())).get()
-    question := (query.data.slice(12, query.data.length())).get(Bytes([]))
-    header := Bytes(
+    let query = (try within(var served.input, 2.seconds())).get()
+    let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
+    let header = Bytes(
         [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
     )
-    record := Bytes([192, 12, 0, 15, 0, 1, 0, 0, 0, 0, 0, 21, 0, 10])
-    name := Bytes(
+    let record = Bytes([192, 12, 0, 15, 0, 1, 0, 0, 0, 0, 0, 21, 0, 10])
+    let name = Bytes(
         [
             4, 109, 97, 105, 108, 7, 101, 120, 97, 109, 112, 108, 101, 4, 116, 101, 115,
             116, 0
@@ -218,21 +216,21 @@ fn answer_mx(var served: DatagramSocket) Int!:
     return ok(1)
 
 test "resolve returns typed DNS records from the configured resolver":
-    one := try resolve_dns("127.0.0.1", DnsKind.A, DnsOptions(timeout: 2.seconds()))
+    let one = try resolve_dns("127.0.0.1", DnsKind.A, DnsOptions(timeout: 2.seconds()))
     try expect_equal(one.length(), 1)
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    server := try bind_datagram("127.0.0.1:0")
-    derived := try with_resolver(server.address.clone())
-    asking := promise(
+    let server = try bind_datagram("127.0.0.1:0")
+    let derived = try with_resolver(server.address.clone())
+    let asking = promise(
         fn: derived.resolve(
             "example.test", DnsKind.MX, DnsOptions(timeout: 2.seconds())
         )
     )
     var answering = server
-    answered := try answer_mx(var answering)
-    mx := try asking.wait()
+    let answered = try answer_mx(var answering)
+    let mx = try asking.wait()
     try expect_equal(mx.length(), 1)
     try expect_equal(mx[0].kind.text(), "MX")
     try expect_equal(mx[0].priority, 10)
@@ -241,8 +239,8 @@ test "resolve returns typed DNS records from the configured resolver":
 
 test "an empty host listens on every interface, with or without IPv6":
     var listener = try listen(":0")
-    parts := listener.address().split(":")
-    port := parts[parts.length() - 1]
+    let parts = listener.address().split(":")
+    let port = parts[parts.length() - 1]
     var client = try connect("127.0.0.1:{port}", timeout: 2.seconds()).wait()
     var server = try listener.accept(2.seconds()).wait()
     try client.output.write("hi".to_bytes())
@@ -250,5 +248,5 @@ test "an empty host listens on every interface, with or without IPv6":
     try expect_equal((try within(var server.input, 2.seconds())).get(), "hi".to_bytes())
     try listener.close()
 
-    socket := try bind_datagram(":0")
+    let socket = try bind_datagram(":0")
     try expect_false(socket.address.is_empty())

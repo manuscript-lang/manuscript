@@ -6,14 +6,16 @@
 // files to sweep (default: tests/e2e/testdata/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
 // test (default 64); MS names the ms to run (default target/release/ms).
 // Usage: ms run tools/cancel-sweep.ms [-- files]
-import env, tool_ms, use_stats_runtime from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import RunOptions, run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import system_info from "@std/os/system.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
-import seconds from "@std/time.ms"
-import stdout from "@std/io/io.ms"
+import (
+    env, tool_ms, use_stats_runtime from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    RunOptions, run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    system_info from "@std/os/system.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
+    seconds from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // One test's counts as the runtime printed them.
 type Counted:
@@ -42,7 +44,7 @@ fn counted(text: String) List[Counted]:
                 32, line.length()
             ).get("").split(" ")[0].parse_int().get(0)
         else if line.starts_with("ms-rt live blocks at exit: "):
-            live := line.slice(27, line.length()).get("").trim().parse_int().get(0)
+            let live = line.slice(27, line.length()).get("").trim().parse_int().get(0)
             found.append(
                 Counted(
                     name: name.clone(), parks: parks, heap: heap, live: live
@@ -61,7 +63,7 @@ fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Count
 
     var arguments = ["test", file.clone()]
     if filter != "": arguments = arguments.concat(["--test", filter.clone()])
-    if out := run(
+    if let out = run(
         ms.clone(), arguments, RunOptions(timeout: seconds(120), env: settings)
     ).wait(): return counted(
         out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
@@ -75,12 +77,12 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
     var lines = List[String]()
 
     for f in files:
-        file := "{root}/{f}"
+        let file = "{root}/{f}"
 
         for base in test_run(ms.clone(), file.clone(), "", 0):
             if base.parks == 0: continue
 
-            last := if base.parks < most: base.parks else: most
+            let last = if base.parks < most: base.parks else: most
 
             // The reference is a filtered run too: the filter argument itself stays allocated,
             // so an unfiltered baseline would differ by that block.
@@ -138,33 +140,33 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 
     return lines
 
-export fn main() Int:
-    code := use_stats_runtime()
+fn main() Int:
+    let code = use_stats_runtime()
     if code != 0: return code
 
-    root := working_directory().get()
+    let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])).get(
             []
         ):
-            path := "tests/e2e/testdata/stdlib/{f.path}"
+            let path = "tests/e2e/testdata/stdlib/{f.path}"
             if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
                 path.clone()
             )
 
-    ms := tool_ms(root.clone())
-    scratch := temporary("ms-cancel-").get()
+    let ms = tool_ms(root.clone())
+    let scratch = temporary("ms-cancel-").get()
     change_directory(scratch.path()).get()
 
     var jobs = system_info().cpu_count
-    if n := env("LEAK_JOBS", "").parse_int(): jobs = n
+    if let n = env("LEAK_JOBS", "").parse_int(): jobs = n
     if jobs < 1: jobs = 1
 
     var most = 64
-    if n := env("SWEEP_MAX_PARKS", "").parse_int(): most = n
+    if let n = env("SWEEP_MAX_PARKS", "").parse_int(): most = n
 
     var chunks = List[List[String]]()
 

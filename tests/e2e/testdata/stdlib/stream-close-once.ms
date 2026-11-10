@@ -1,6 +1,8 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import Source, Sink, ReadStream, WriteStream from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    Source, Sink, ReadStream, WriteStream from "@std/io/io.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+)
 
 // A stream closes its source or sink once, whether the stream is closed by hand or dropped.
 type Counted:
@@ -11,8 +13,7 @@ impl Source[Int] for Counted:
         return ok(none)
 
     var fn close() Unit!:
-        _ := append_file(self.log, "r").wait()
-        return ok(unit)
+        let _ = append_file(self.log, "r").wait()
 
 impl Sink[Int] for Counted:
     var fn write(value: Int) Unit!:
@@ -22,26 +23,25 @@ impl Sink[Int] for Counted:
         return ok(unit)
 
     var fn close() Unit!:
-        _ := append_file(self.log, "w").wait()
-        return ok(unit)
+        let _ = append_file(self.log, "w").wait()
 
 fn closes(log: String) String:
-    if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
 test "a read stream closes its source once":
-    dir := temporary("stream-close-") | try expect_ok
-    log := "{dir.path()}/r.log"
-    _ := append_file(log, "").wait()
+    let dir = temporary("stream-close-") | try expect_ok
+    let log = "{dir.path()}/r.log"
+    let _ = append_file(log, "").wait()
     var by_hand = ReadStream[Int](Counted(log.clone()))
     try by_hand.close()
     try expect_equal(closes(log), "r")
 
 test "a write stream closes its sink once":
-    dir := temporary("stream-close-") | try expect_ok
-    log := "{dir.path()}/w.log"
-    _ := append_file(log, "").wait()
+    let dir = temporary("stream-close-") | try expect_ok
+    let log = "{dir.path()}/w.log"
+    let _ = append_file(log, "").wait()
     var out = WriteStream[Int](Counted(log.clone()))
     try out.close()
     try expect_equal(closes(log), "w")
@@ -58,6 +58,6 @@ impl Source[Int] for Failing:
 
 test "an explicit close returns the source's close error":
     var input = ReadStream[Int](Failing(0))
-    result := input.close()
+    let result = input.close()
     try expect_equal(result.is_error(), true)
     try expect_equal(result.err().message, "close failed")

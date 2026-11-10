@@ -3,12 +3,14 @@
 // Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs only,
 // so a cheap wrong answer never improves a language's numbers.
 // Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
-import parse from "@std/data/json.ms"
-import stdout, stderr from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import root from "./core/model.ms"
-import fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms"
-import nonblank_lines, read_text from "./lib/text.ms"
+import (
+    parse from "@std/data/json.ms",
+    stdout, stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    root from "./core/model.ms",
+    fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms",
+    nonblank_lines, read_text from "./lib/text.ms",
+)
 
 type Usage:
     tokens_in: Int = 0
@@ -48,11 +50,11 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
     out += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
 
     for k in runs.map(key).distinct().sorted():
-        rs := runs.filter(fn r: key(r) == k)
-        ok := rs.filter(fn r: r.pass)
-        n := rs.length().to_float()
-        first_ok := rs.filter(fn r: r.first_build_ok).length().to_float()
-        tokens := average(
+        let rs = runs.filter(fn r: key(r) == k)
+        let ok = rs.filter(fn r: r.pass)
+        let n = rs.length().to_float()
+        let first_ok = rs.filter(fn r: r.first_build_ok).length().to_float()
+        let tokens = average(
             ok,
             fn r: (
                 r.usage.tokens_in
@@ -72,9 +74,9 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 
     return out
 
-export fn main() Int:
-    args := arguments()
-    path := if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
+fn main() Int:
+    let args = arguments()
+    let path = if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
     var runs = List[Run]()
     for line in nonblank_lines(read_text(path)):
         runs.append(parse[Run](line).get())

@@ -1,13 +1,13 @@
-import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
-import sleep, milliseconds, now from "@std/time.ms"
 import (
+    expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
+    sleep, milliseconds, now from "@std/time.ms",
     uuid_v5,
     uuid_v7,
     uuid_version,
     namespace_dns,
-    namespace_url
-) from "@std/data/uuid.ms"
-import ulid, token from "@std/random.ms"
+    namespace_url from "@std/data/uuid.ms",
+    ulid, token from "@std/random.ms",
+)
 
 test "uuid_v5 matches reference vectors":
     (uuid_v5(namespace_dns, "python.org") | try expect_ok) | try expect_equal(

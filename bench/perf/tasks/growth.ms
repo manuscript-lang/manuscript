@@ -1,8 +1,10 @@
 // Stack growth cost: a loop that crosses the first slot boundary on every call, the same loop
 // without a crossing, both on the main task, then a 900k-frame recursion. See README.md.
-import owned_task from "@std/concurrency/promise.ms"
-import monotonic from "@std/time.ms"
-import read_file from "@std/os/fs.ms"
+import (
+    owned_task from "@std/concurrency/promise.ms",
+    monotonic from "@std/time.ms",
+    read_file from "@std/os/fs.ms",
+)
 
 fn depth(n: Int) Int:
     if n == 0: return 0
@@ -25,7 +27,7 @@ fn in_task(n: Int, rounds: Int) Int:
     p := owned_task[Int](fn: ok(loop_depth(n, rounds)))
     return p.wait().get()
 
-export fn main() Int:
+fn main() Int:
     // Crossing cost: the same loop just below and just above the first slot's boundary.
     rounds := 20000
     t0 := monotonic()

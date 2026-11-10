@@ -1,5 +1,5 @@
-import expect_equal, expect_fault from "@std/test/test.ms"
 import (
+    expect_equal, expect_fault from "@std/test/test.ms",
     accumulate,
     combinations,
     cycle,
@@ -7,8 +7,8 @@ import (
     pairwise,
     permutations,
     product,
-    zip_longest
-) from "@std/collections/itertools.ms"
+    zip_longest from "@std/collections/itertools.ms",
+)
 
 test "pairwise pairs neighbors":
     pairs := pairwise([1, 2, 3])

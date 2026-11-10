@@ -82,7 +82,7 @@ export extern fn msrt_streams_open(fd: Int, flags: Int) Int
 // A promise for the next chunk (take it with msrt_promise_take[Bytes]); no value at the end or after a failure.
 export extern fn msrt_streams_read(stream: Int) Int
 
-// Appends to the write buffer; 0 taken, 1 the stream is closed or not writable. Never waits.
+// Queues bytes; 0 admitted, 1 closed or not writable. Check msrt_streams_error for terminal write failures. Never waits.
 export extern fn msrt_streams_write(stream: Int, data: Bytes) Int
 
 // A promise that finishes when the write buffer has drained.
@@ -90,7 +90,7 @@ export extern fn msrt_streams_flush(stream: Int) Int
 
 export extern fn msrt_streams_buffered(stream: Int) Int
 
-// The message of the failure that ended the last operation, or an empty string.
+// The last read failure or the terminal write failure (retained until close), or an empty string.
 export extern fn msrt_streams_error(stream: Int) String
 
 export extern fn msrt_streams_close(stream: Int) Unit

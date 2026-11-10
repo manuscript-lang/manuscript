@@ -1,5 +1,7 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import JsonOptions from "@std/data/json.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    JsonOptions from "@std/data/json.ms",
+)
 
 type Counter:
     calls: Int

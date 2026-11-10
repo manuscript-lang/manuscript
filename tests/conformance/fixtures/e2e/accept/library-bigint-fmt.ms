@@ -14,7 +14,6 @@ fn verify_bigint() Unit!:
             ) == "340282366920938463463374607431768211456"
         )
     ) | try expect_false
-    return ok(unit)
 
 test "large integers are exact":
     try verify_bigint()

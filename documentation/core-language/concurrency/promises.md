@@ -14,16 +14,12 @@ Save this complete program as `read-config.ms` and run `ms run read-config.ms` i
 import read_file from "@std/os/fs.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
 
-export fn main() Int:
-    pending := read_file("config.json").with(
+fn main() Unit!:
+    let pending = read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
-    contents := pending.wait()
-    if contents.is_error():
-        print(contents.err().message)
-        return 1
-    print(contents.get().length())
-    return 0
+    let contents = try pending.wait()
+    print(contents.length())
 ```
 
 For a `config.json` containing exactly `{}` (two bytes), the program prints:
@@ -52,9 +48,9 @@ For a `config.json` containing exactly `{}` (two bytes), the program prints:
 For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
 
 ```manuscript
-stop := cancel_switch()
-options := PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
-reads := paths.map(fn path: read_file(path).with(options: options.clone()))
+let stop = cancel_switch()
+let options = PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
+let reads = paths.map(fn path: read_file(path).with(options: options.clone()))
 stop.cancel()
 ```
 

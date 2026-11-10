@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 SKU_CHARS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
 ID_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789-"

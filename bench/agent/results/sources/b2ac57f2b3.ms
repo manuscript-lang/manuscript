@@ -1,5 +1,7 @@
-import read_all from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    read_all from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,22 +47,20 @@ type Inline:
     can_close: Bool = false
     kids: List[Inline] = List[Inline]()
 
-PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
-DIGITS := "0123456789"
+let PUNCT = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
+let DIGITS = "0123456789"
 
 // ---------------------------------------------------------------------------
 // String helpers (input is ASCII; indexes are scalar indexes)
 // ---------------------------------------------------------------------------
 
 fn ch(s: String, k: Int) String:
-    if k < 0 or k >= s.length():
-        return ""
+    if k < 0 or k >= s.length(): return ""
 
     return s.get(k)
 
 fn cat(cs: List[String], k: Int) String:
-    if k < 0 or k >= cs.length():
-        return ""
+    if k < 0 or k >= cs.length(): return ""
 
     return cs[k].clone()
 
@@ -72,8 +72,7 @@ fn cut(s: String, a: Int, b: Int) String:
         x = 0
     if y > s.length():
         y = s.length()
-    if x >= y:
-        return ""
+    if x >= y: return ""
 
     return s.slice_scalars(x, y).get()
 
@@ -137,60 +136,50 @@ fn repeatStr(s: String, n: Int) String:
 
 // Run length of the fence if the line opens a fenced code block, else 0.
 fn fenceRun(s: String) Int:
-    ind := indentOf(s)
-    if ind > 3:
-        return 0
+    let ind = indentOf(s)
+    if ind > 3: return 0
 
-    c := ch(s, ind)
-    if c != "`" and c != "~":
-        return 0
+    let c = ch(s, ind)
+    if c != "`" and c != "~": return 0
 
     var k = ind
     while ch(s, k) == c:
         k += 1
 
-    run := k - ind
-    if run < 3:
-        return 0
+    let run = k - ind
+    if run < 3: return 0
 
-    info := strip(cut(s, k, s.length()))
-    if c == "`" and info.contains("`"):
-        return 0
+    let info = strip(cut(s, k, s.length()))
+    if c == "`" and info.contains("`"): return 0
 
     return run
 
 // ATX heading level, or 0.
 fn headingLevel(s: String) Int:
-    ind := indentOf(s)
-    if ind > 3:
-        return 0
+    let ind = indentOf(s)
+    if ind > 3: return 0
 
     var k = ind
     while ch(s, k) == "#":
         k += 1
 
-    h := k - ind
-    if h < 1 or h > 6:
-        return 0
+    let h = k - ind
+    if h < 1 or h > 6: return 0
 
-    c := ch(s, k)
-    if c != "" and c != " ":
-        return 0
+    let c = ch(s, k)
+    if c != "" and c != " ": return 0
 
     return h
 
 fn isHr(s: String) Bool:
-    if indentOf(s) > 3:
-        return false
+    if indentOf(s) > 3: return false
 
     var mark = ""
     var cnt = 0
 
     for x in s.split_after(""):
-        if x == " ":
-            continue
-        if x != "-" and x != "*" and x != "_":
-            return false
+        if x == " ": continue
+        if x != "-" and x != "*" and x != "_": return false
 
         if mark == "":
             mark = x
@@ -202,16 +191,14 @@ fn isHr(s: String) Bool:
     return cnt >= 3
 
 fn markerAt(s: String) Marker:
-    ind := indentOf(s)
-    if ind > 3:
-        return Marker(ok: false)
+    let ind = indentOf(s)
+    if ind > 3: return Marker(ok: false)
 
-    c := ch(s, ind)
+    let c = ch(s, ind)
 
     if c == "-" or c == "*" or c == "+":
-        after1 := ch(s, ind + 1)
-        if after1 != "" and after1 != " ":
-            return Marker(ok: false)
+        let after1 = ch(s, ind + 1)
+        if after1 != "" and after1 != " ": return Marker(ok: false)
 
         return Marker(ok: true, ordered: false, delim: c, num: 0, width: ind + 1)
 
@@ -219,13 +206,11 @@ fn markerAt(s: String) Marker:
     while isDigit(ch(s, ind + d)):
         d += 1
 
-    dl := ch(s, ind + d)
-    if d < 1 or d > 9 or (dl != "." and dl != ")"):
-        return Marker(ok: false)
+    let dl = ch(s, ind + d)
+    if d < 1 or d > 9 or (dl != "." and dl != ")"): return Marker(ok: false)
 
-    after2 := ch(s, ind + d + 1)
-    if after2 != "" and after2 != " ":
-        return Marker(ok: false)
+    let after2 = ch(s, ind + d + 1)
+    if after2 != "" and after2 != " ": return Marker(ok: false)
 
     var num = 0
     var k = 0
@@ -248,14 +233,11 @@ fn blockStops(s: String) Bool:
 
 // Lines that end a paragraph (a list interrupts only when it is non-empty and starts at 1).
 fn paraStops(s: String) Bool:
-    if blockStops(s):
-        return true
+    if blockStops(s): return true
 
-    m := markerAt(s)
-    if not m.ok:
-        return false
-    if isBlank(cut(s, m.width, s.length())):
-        return false
+    let m = markerAt(s)
+    if not m.ok: return false
+    if isBlank(cut(s, m.width, s.length())): return false
 
     return not m.ordered or m.num == 1
 
@@ -268,17 +250,17 @@ fn splitCells(line: String) List[String]:
     if ch(s, 0) == "|":
         s = cut(s, 1, s.length())
 
-    L := s.length()
+    let L = s.length()
     if L > 0 and ch(s, L - 1) == "|" and ch(s, L - 2) != "\\":
         s = cut(s, 0, L - 1)
 
     var cells = List[String]()
     var cur = ""
-    m := s.length()
+    let m = s.length()
     var k = 0
 
     while k < m:
-        c := ch(s, k)
+        let c = ch(s, k)
 
         if c == "|" and ch(s, k - 1) != "\\":
             cells.append(strip(cur))
@@ -298,48 +280,38 @@ fn isDelimCell(c: String) Bool:
         a = 1
     if b > a and ch(c, b - 1) == ":":
         b -= 1
-    if b <= a:
-        return false
+    if b <= a: return false
 
     var k = a
 
     while k < b:
-        if ch(c, k) != "-":
-            return false
+        if ch(c, k) != "-": return false
 
         k += 1
 
     return true
 
 fn isDelimRow(s: String) Bool:
-    if not s.contains("|"):
-        return false
+    if not s.contains("|"): return false
 
     for c in splitCells(s):
-        if not isDelimCell(c):
-            return false
+        if not isDelimCell(c): return false
     return true
 
 // 0 none, 1 left, 2 center, 3 right
 fn alignOf(c: String) Int:
-    l := ch(c, 0) == ":"
-    r := c.length() > 1 and ch(c, c.length() - 1) == ":"
-    if l and r:
-        return 2
-    if l:
-        return 1
-    if r:
-        return 3
+    let l = ch(c, 0) == ":"
+    let r = c.length() > 1 and ch(c, c.length() - 1) == ":"
+    if l and r: return 2
+    if l: return 1
+    if r: return 3
 
     return 0
 
 fn alignAttr(a: Int) String:
-    if a == 1:
-        return " align=\"left\""
-    if a == 2:
-        return " align=\"center\""
-    if a == 3:
-        return " align=\"right\""
+    if a == 1: return " align=\"left\""
+    if a == 2: return " align=\"center\""
+    if a == 3: return " align=\"right\""
 
     return ""
 
@@ -368,17 +340,17 @@ fn itemBody(kids: List[Block], tight: Bool) String:
     return body
 
 fn parseFence(lines: List[String], i: Int, run: Int) Step:
-    n := lines.length()
-    s := lines[i]
-    ind := indentOf(s)
-    c := ch(s, ind)
-    info := strip(cut(s, ind + run, s.length()))
+    let n = lines.length()
+    let s = lines[i]
+    let ind = indentOf(s)
+    let c = ch(s, ind)
+    let info = strip(cut(s, ind + run, s.length()))
     var close = n
     var j = i + 1
 
     while j < n:
-        l := lines[j]
-        li := indentOf(l)
+        let l = lines[j]
+        let li = indentOf(l)
 
         if li <= 3 and ch(l, li) == c:
             var r = li
@@ -395,7 +367,7 @@ fn parseFence(lines: List[String], i: Int, run: Int) Step:
     var k = i + 1
 
     while k < close:
-        l := lines[k]
+        let l = lines[k]
         var cutn = indentOf(l)
         if cutn > ind:
             cutn = ind
@@ -416,35 +388,33 @@ fn parseFence(lines: List[String], i: Int, run: Int) Step:
     return Step(node: Block(html: opening + body + "</code></pre>\n"), next: nxt)
 
 fn parseQuote(lines: List[String], i: Int) Step:
-    n := lines.length()
+    let n = lines.length()
     var inner = List[String]()
     var j = i
 
     while j < n:
-        if not isQuote(lines[j]):
-            break
+        if not isQuote(lines[j]): break
 
-        l := lines[j]
+        let l = lines[j]
         var rest = cut(l, indentOf(l) + 1, l.length())
         if ch(rest, 0) == " ":
             rest = cut(rest, 1, rest.length())
         inner.append(rest)
         j += 1
 
-    kids := parseBlocks(inner)
+    let kids = parseBlocks(inner)
     return Step(
         node: Block(html: "<blockquote>\n" + htmlOf(kids) + "</blockquote>\n"), next: j
     )
 
 fn parseIndented(lines: List[String], i: Int) Step:
-    n := lines.length()
+    let n = lines.length()
     var j = i
     var last = i
 
     while j < n:
-        l := lines[j]
-        if (not isBlank(l)) and indentOf(l) < 4:
-            break
+        let l = lines[j]
+        if (not isBlank(l)) and indentOf(l) < 4: break
 
         if not isBlank(l):
             last = j
@@ -454,7 +424,7 @@ fn parseIndented(lines: List[String], i: Int) Step:
     var k = i
 
     while k <= last:
-        l := lines[k]
+        let l = lines[k]
         var cutn = indentOf(l)
         if cutn > 4:
             cutn = 4
@@ -466,9 +436,9 @@ fn parseIndented(lines: List[String], i: Int) Step:
     )
 
 fn parseTable(lines: List[String], i: Int) Step:
-    n := lines.length()
-    head := splitCells(lines[i])
-    delim := splitCells(lines[i + 1])
+    let n = lines.length()
+    let head = splitCells(lines[i])
+    let delim = splitCells(lines[i + 1])
     var aligns = List[Int]()
     for c in delim:
         aligns.append(alignOf(c))
@@ -477,13 +447,12 @@ fn parseTable(lines: List[String], i: Int) Step:
     var j = i + 2
 
     while j < n:
-        if blockStops(lines[j]):
-            break
+        if blockStops(lines[j]): break
 
         rows.append(splitCells(lines[j]))
         j += 1
 
-    ncols := head.length()
+    let ncols = head.length()
     var out = "<table>\n<thead>\n<tr>\n"
     var k = 0
 
@@ -516,12 +485,11 @@ fn parseTable(lines: List[String], i: Int) Step:
     return Step(node: Block(html: out), next: j)
 
 fn parsePara(lines: List[String], i: Int) Step:
-    n := lines.length()
+    let n = lines.length()
     var j = i + 1
 
     while j < n:
-        if paraStops(lines[j]):
-            break
+        if paraStops(lines[j]): break
 
         j += 1
 
@@ -539,14 +507,14 @@ fn parsePara(lines: List[String], i: Int) Step:
 
         k += 1
 
-    inl := inlineHtml(text)
+    let inl = inlineHtml(text)
     return Step(
         node: Block(is_para: true, html: "<p>" + inl + "</p>\n", inl: inl), next: j
     )
 
 fn parseList(lines: List[String], i: Int) Step:
-    n := lines.length()
-    first := markerAt(lines[i])
+    let n = lines.length()
+    let first = markerAt(lines[i])
     var items = List[List[Block]]()
     var between = false
     var j = i
@@ -554,9 +522,9 @@ fn parseList(lines: List[String], i: Int) Step:
     var go = true
 
     while go:
-        s := lines[j]
-        m := markerAt(s)
-        mw := m.width
+        let s = lines[j]
+        let m = markerAt(s)
+        let mw = m.width
         var w = mw + 1
         var content = List[String]()
 
@@ -579,7 +547,7 @@ fn parseList(lines: List[String], i: Int) Step:
         var lastIdx = j
 
         while k < n:
-            l := lines[k]
+            let l = lines[k]
 
             if isBlank(l):
                 pending += 1
@@ -618,7 +586,7 @@ fn parseList(lines: List[String], i: Int) Step:
             if c.blank:
                 loose = true
 
-    tight := not loose
+    let tight = not loose
     var out = "<ul>\n"
 
     if first.ordered:
@@ -639,16 +607,15 @@ fn parseList(lines: List[String], i: Int) Step:
 
 // Parse the block starting at line i (which is not blank).
 fn blockAt(lines: List[String], i: Int) Step:
-    s := lines[i]
-    fr := fenceRun(s)
-    if fr > 0:
-        return parseFence(lines, i, fr)
+    let s = lines[i]
+    let fr = fenceRun(s)
+    if fr > 0: return parseFence(lines, i, fr)
 
-    hl := headingLevel(s)
+    let hl = headingLevel(s)
 
     if hl > 0:
         var content = strip(cut(s, indentOf(s) + hl, s.length()))
-        e := content.length()
+        let e = content.length()
         var r = e
         while r > 0 and ch(content, r - 1) == "#":
             r -= 1
@@ -661,14 +628,10 @@ fn blockAt(lines: List[String], i: Int) Step:
             next: i + 1
         )
 
-    if isHr(s):
-        return Step(node: Block(html: "<hr />\n"), next: i + 1)
-    if isQuote(s):
-        return parseQuote(lines, i)
-    if markerAt(s).ok:
-        return parseList(lines, i)
-    if indentOf(s) >= 4:
-        return parseIndented(lines, i)
+    if isHr(s): return Step(node: Block(html: "<hr />\n"), next: i + 1)
+    if isQuote(s): return parseQuote(lines, i)
+    if markerAt(s).ok: return parseList(lines, i)
+    if indentOf(s) >= 4: return parseIndented(lines, i)
 
     if i + 1 < lines.length() and s.contains("|") and isDelimRow(lines[i + 1]):
         if splitCells(s).length() == splitCells(lines[i + 1]).length():
@@ -677,7 +640,7 @@ fn blockAt(lines: List[String], i: Int) Step:
 
 fn parseBlocks(lines: List[String]) List[Block]:
     var out = List[Block]()
-    n := lines.length()
+    let n = lines.length()
     var i = 0
     var sawBlank = false
 
@@ -687,7 +650,7 @@ fn parseBlocks(lines: List[String]) List[Block]:
             i += 1
             continue
 
-        st := blockAt(lines, i)
+        let st = blockAt(lines, i)
         var nd = st.node.clone()
         nd.blank = sawBlank and out.length() > 0
         out.append(nd)
@@ -714,9 +677,8 @@ fn tailAt(cs: List[String], p: Int) Tail:
         var closed = false
 
         while not closed:
-            c := cat(cs, q)
-            if c == "" or c == "\n" or c == "<":
-                return Tail(ok: false)
+            let c = cat(cs, q)
+            if c == "" or c == "\n" or c == "<": return Tail(ok: false)
 
             if c == "\\" and isPunct(cat(cs, q + 1)):
                 dest += cat(cs, q + 1)
@@ -732,7 +694,7 @@ fn tailAt(cs: List[String], p: Int) Tail:
         var go = true
 
         while go:
-            c := cat(cs, q)
+            let c = cat(cs, q)
 
             if c == "" or isSpNl(c):
                 go = false
@@ -754,8 +716,7 @@ fn tailAt(cs: List[String], p: Int) Tail:
                 dest += c
                 q += 1
 
-        if depth != 0:
-            return Tail(ok: false)
+        if depth != 0: return Tail(ok: false)
 
     var ws = 0
 
@@ -772,9 +733,8 @@ fn tailAt(cs: List[String], p: Int) Tail:
         var closedT = false
 
         while not closedT:
-            c := cat(cs, q)
-            if c == "":
-                return Tail(ok: false)
+            let c = cat(cs, q)
+            if c == "": return Tail(ok: false)
 
             if c == "\\" and cat(cs, q + 1) == "\"":
                 title += "\""
@@ -790,22 +750,21 @@ fn tailAt(cs: List[String], p: Int) Tail:
         while isSpNl(cat(cs, q)):
             q += 1
 
-    if cat(cs, q) != ")":
-        return Tail(ok: false)
+    if cat(cs, q) != ")": return Tail(ok: false)
 
     return Tail(ok: true, dest: dest, title: title, has_title: has, after: q + 1)
 
 // Scan the paragraph/heading/cell text into a node list (emphasis not yet resolved).
 fn scan(cs: List[String]) List[Inline]:
     var nodes = List[Inline]()
-    n := cs.length()
+    let n = cs.length()
     var p = 0
 
     while p < n:
-        c := cat(cs, p)
+        let c = cat(cs, p)
 
         if c == "\\":
-            d := cat(cs, p + 1)
+            let d = cat(cs, p + 1)
 
             if d == "\n":
                 nodes.append(Inline(kind: 2))
@@ -824,7 +783,7 @@ fn scan(cs: List[String]) List[Inline]:
             while cat(cs, r) == "`":
                 r += 1
 
-            run := r - p
+            let run = r - p
             var j = r
             var found = -1
 
@@ -855,7 +814,7 @@ fn scan(cs: List[String]) List[Inline]:
                 var q = r
 
                 while q < found:
-                    x := cat(cs, q)
+                    let x = cat(cs, q)
 
                     if x == "\n":
                         content += " "
@@ -877,13 +836,13 @@ fn scan(cs: List[String]) List[Inline]:
             while cat(cs, r) == c:
                 r += 1
 
-            prev := cat(cs, p - 1)
-            nxt := cat(cs, r)
-            left := (
+            let prev = cat(cs, p - 1)
+            let nxt = cat(cs, r)
+            let left = (
                 (not isWs(nxt))
                 and ((not isPunct(nxt)) or isWs(prev) or isPunct(prev))
             )
-            right := (
+            let right = (
                 (not isWs(prev))
                 and ((not isPunct(prev)) or isWs(nxt) or isPunct(nxt))
             )
@@ -912,7 +871,7 @@ fn scan(cs: List[String]) List[Inline]:
             var k = nodes.length() - 1
 
             while k >= 0:
-                kd := nodes[k].kind
+                let kd = nodes[k].kind
 
                 if kd == 4 or kd == 9 or kd == 10:
                     m = k
@@ -933,7 +892,7 @@ fn scan(cs: List[String]) List[Inline]:
                     t = tailAt(cs, p + 1)
 
                 if t.ok:
-                    is_img := nodes[m].kind == 9
+                    let is_img = nodes[m].kind == 9
 
                     if not is_img:
                         var z = 0
@@ -977,8 +936,7 @@ fn scan(cs: List[String]) List[Inline]:
 
 // Delimiter runs become literal text; markers become literal text.
 fn literalize(nd: Inline) Inline:
-    if nd.kind == 3:
-        return Inline(kind: 0, text: repeatStr(nd.text, nd.cnt))
+    if nd.kind == 3: return Inline(kind: 0, text: repeatStr(nd.text, nd.cnt))
     if nd.kind == 4 or nd.kind == 9 or nd.kind == 10:
         return Inline(kind: 0, text: nd.text)
 
@@ -995,10 +953,9 @@ fn findOpener(nodes: List[Inline], i: Int) Int:
     var k = i - 1
 
     while k >= 0:
-        o := nodes[k]
+        let o = nodes[k]
         if o.kind == 3 and o.text == nodes[i].text and o.can_open and o.cnt > 0:
-            if multipleOk(o, nodes[i]):
-                return k
+            if multipleOk(o, nodes[i]): return k
         k -= 1
 
     return -1
@@ -1009,7 +966,7 @@ fn resolve(input: List[Inline]) List[Inline]:
 
     while i < nodes.length():
         if nodes[i].kind == 3 and nodes[i].can_close and nodes[i].cnt > 0:
-            j := findOpener(nodes, i)
+            let j = findOpener(nodes, i)
 
             if j < 0:
                 i += 1
@@ -1032,7 +989,7 @@ fn resolve(input: List[Inline]) List[Inline]:
                 var one = List[Inline]()
                 one.append(Inline(kind: em, kids: inner))
                 nodes.splice(j + 1, i - j - 1, one)
-                nodes[j].cnt = nodes[j].cnt - use
+                nodes[j].cnt -= use
                 nodes[j + 2].cnt = nodes[j + 2].cnt - use
 
                 var em_idx = j + 1
@@ -1113,8 +1070,7 @@ fn render(nodes: List[Inline]) String:
     return out
 
 fn inlineHtml(text: String) String:
-    if text.length() == 0:
-        return ""
+    if text.length() == 0: return ""
 
     return render(resolve(scan(text.split_after(""))))
 
@@ -1123,14 +1079,14 @@ fn inlineHtml(text: String) String:
 // ---------------------------------------------------------------------------
 
 export fn main() Int:
-    bytes := read_all(stdin()).get()
-    text := bytes.decode_utf8().get("")
+    let bytes = read_all(stdin()).get()
+    let text = bytes.decode_utf8().get("")
     var lines = List[String]()
 
     if text.length() > 0:
         lines = text.split("\n")
 
-        cnt := lines.length()
+        let cnt = lines.length()
         if lines[cnt - 1] == "":
             lines.splice(cnt - 1, 1, List[String]())
 

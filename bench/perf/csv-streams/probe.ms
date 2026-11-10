@@ -1,7 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import csv_rows from "@std/data/csv.ms"
-import monotonic from "@std/time.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    csv_rows from "@std/data/csv.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Chunks:
     data: Bytes
@@ -65,9 +67,7 @@ fn measure(item: Case) Unit!:
             "{item.name},{item.chunk},{item.data.length()},{item.operations},{sample},{ns},{checksum}"
         )
 
-    return ok(unit)
-
-export fn main() Int:
+fn main() Unit:
     for chunk in [1, 64, 1000000]:
         for length in [4096, 8192, 16384, 32768, 65536]:
             expected := "x".repeat(length).get()
@@ -97,5 +97,3 @@ export fn main() Int:
                 malformed: true
             )
         ).get()
-
-    return 0

@@ -11,5 +11,5 @@ fn compare() Int:
 
     return 0
 
-export fn main() Int:
+fn main() Int:
     return compare()

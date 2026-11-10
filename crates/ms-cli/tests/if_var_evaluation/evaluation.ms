@@ -1,7 +1,7 @@
 import stdout from "@std/io/io.ms"
 
 fn next(var count: Int) Int:
-    result := count
+    let result = count
     count += 1
     return result
 
@@ -14,7 +14,7 @@ fn early(var entries: Map[String, List[Int]], var count: Int) Unit:
         item.append(7)
         return
 
-export fn main() Int:
+fn main() Unit:
     var count = 0
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [1])
@@ -22,41 +22,39 @@ export fn main() Int:
     if var item = entries[key(var count)]?:
         item.append(9)
 
-    _ := stdout().write("{count} {entries}\n")
+    let _ = stdout().write("{count} {entries}\n")
     count = 2
 
     if var item = entries[key(var count)]?:
         item.append(99)
     else:
-        _ := stdout().write("missing {count}\n")
+        let _ = stdout().write("missing {count}\n")
 
     count = 0
     early(var entries, var count)
 
-    _ := stdout().write("early {count} {entries}\n")
+    let _ = stdout().write("early {count} {entries}\n")
     count = 0
     for value in [4, 5, 6]:
         if var item = entries[key(var count)]?:
             item.append(value)
 
-    _ := stdout().write("loop {count} {entries}\n")
+    let _ = stdout().write("loop {count} {entries}\n")
     var rows = [[[1]], [[2]]]
     count = 0
     if var item = rows[next(var count)][0]?:
         item.append(9)
 
-    _ := stdout().write("{count} {rows}\n")
+    let _ = stdout().write("{count} {rows}\n")
     count = 0
     if var item = rows[next(var count)][0]?:
         item.append(10)
 
-    _ := stdout().write("{count} {rows}\n")
+    let _ = stdout().write("{count} {rows}\n")
     var empty: List[List[List[Int]]] = [[], [[2]]]
     count = 0
 
     if var item = empty[next(var count)][0]?:
         item.append(99)
     else:
-        _ := stdout().write("empty {count} {empty}\n")
-
-    return 0
+        let _ = stdout().write("empty {count} {empty}\n")

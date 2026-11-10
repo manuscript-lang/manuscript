@@ -104,18 +104,14 @@ impl Closeable for Tracked:
         if not self.closed:
             self.closed = true
             print("close {self.name}")
-        return ok(unit)
 
 fn work() Unit!:
     _first := Tracked("first")
     _second := Tracked("second")
     print("work")
-    return ok(unit)
 
-export fn main() Int:
-    if work().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return work()
 ```
 
 ```text

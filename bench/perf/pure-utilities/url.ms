@@ -1,20 +1,22 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
-import parse, encode_component, decode_component from "@std/net/url.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+    parse, encode_component, decode_component from "@std/net/url.ms",
+)
 
-export fn main() Int:
-    args := arguments()
-    count := args[0].parse_int().get()
-    operation := args[1]
-    input := args[2]
-    expected_status := args[3]
-    expected_0 := args[4]
-    expected_1 := args[5]
-    expected_2 := args[6]
-    expected_3 := args[7]
-    expected_4 := args[8]
-    expected_5 := args[9]
+fn main() Int:
+    let args = arguments()
+    let count = args[0].parse_int().get()
+    let operation = args[1]
+    let input = args[2]
+    let expected_status = args[3]
+    let expected_0 = args[4]
+    let expected_1 = args[5]
+    let expected_2 = args[6]
+    let expected_3 = args[7]
+    let expected_4 = args[8]
+    let expected_5 = args[9]
     var checksum = 0
     var status = "OK"
     var f0 = ""
@@ -23,13 +25,13 @@ export fn main() Int:
     var f3 = ""
     var f4 = ""
     var f5 = ""
-    started := monotonic()
+    let started = monotonic()
 
     for i in 0..count:
         if operation == "encode":
             f0 = encode_component(input)
         else if operation == "decode":
-            result := decode_component(input)
+            let result = decode_component(input)
 
             if result.is_error():
                 if result.err().kind != "EBADMSG": return 1
@@ -38,18 +40,18 @@ export fn main() Int:
             else:
                 f0 = result.get()
         else if operation == "parse":
-            result := parse(input)
+            let result = parse(input)
 
             if result.is_error():
                 if result.err().kind != "EBADMSG": return 1
 
                 status = "InvalidData"
             else:
-                value := result.get()
+                let value = result.get()
                 f0 = value.scheme
                 f1 = value.host
 
-                port := value.port.get(-1)
+                let port = value.port.get(-1)
                 f2 = "{port}"
                 f3 = value.path
                 f4 = value.query
@@ -70,7 +72,7 @@ export fn main() Int:
         if status == "InvalidData":
             checksum += 1
 
-    ns := monotonic().difference(started).to_nanoseconds()
+    let ns = monotonic().difference(started).to_nanoseconds()
     (
         stdout().write(
             "{count}\t{ns}\t{checksum}\t{status}\t{f0}\t{f1}\t{f2}\t{f3}\t{f4}\t{f5}\n"

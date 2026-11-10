@@ -1,36 +1,38 @@
-import stdin from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // ---------------------------------------------------------------------------
 // Backtracking regex engine: parser -> node arena -> bytecode -> backtracking VM.
 // Instructions are stride-6 records: op, a, b, c, d, e.
 // ---------------------------------------------------------------------------
 
-OP_SET := 0  // a = set id: consume one byte that is in the set
-OP_SPLIT := 1  // try a first, backtrack to b
-OP_JMP := 2  // a = target
-OP_OPEN := 3  // slot a = pos (group start, undoable)
-OP_CLOSE := 4  // caps[a], caps[a+1] = slot b, pos
-OP_ASSERT := 5  // a = assertion kind
-OP_BREF := 6  // a = group, b = case-insensitive
-OP_SETPOS := 7  // slot a = pos
-OP_SETVAL := 8  // slot a = b
-OP_LOOPG := 9  // greedy loop head: a = count slot, b = min, c = max (-1 inf), d = exit
-OP_LOOPL := 10  // lazy loop head: same fields
-OP_LOOPTAIL := 11  // a = count slot, b = min, c = pos slot, d = exit, e = head
-OP_LOOK := 12  // a = negative flag, b = continuation pc; body follows
-OP_SUBEND := 13  // end of lookahead body
-OP_MATCH := 14  // end of whole pattern
-N_SET := 0
-N_ASSERT := 1
-N_GROUP := 2
-N_SEQ := 3
-N_ALT := 4
-N_REPEAT := 5
-N_LOOK := 6
-N_BREF := 7
-PRINTABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
-HEXD := "0123456789abcdef"
+let OP_SET = 0  // a = set id: consume one byte that is in the set
+let OP_SPLIT = 1  // try a first, backtrack to b
+let OP_JMP = 2  // a = target
+let OP_OPEN = 3  // slot a = pos (group start, undoable)
+let OP_CLOSE = 4  // caps[a], caps[a+1] = slot b, pos
+let OP_ASSERT = 5  // a = assertion kind
+let OP_BREF = 6  // a = group, b = case-insensitive
+let OP_SETPOS = 7  // slot a = pos
+let OP_SETVAL = 8  // slot a = b
+let OP_LOOPG = 9  // greedy loop head: a = count slot, b = min, c = max (-1 inf), d = exit
+let OP_LOOPL = 10  // lazy loop head: same fields
+let OP_LOOPTAIL = 11  // a = count slot, b = min, c = pos slot, d = exit, e = head
+let OP_LOOK = 12  // a = negative flag, b = continuation pc; body follows
+let OP_SUBEND = 13  // end of lookahead body
+let OP_MATCH = 14  // end of whole pattern
+let N_SET = 0
+let N_ASSERT = 1
+let N_GROUP = 2
+let N_SEQ = 3
+let N_ALT = 4
+let N_REPEAT = 5
+let N_LOOK = 6
+let N_BREF = 7
+let PRINTABLE = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+let HEXD = "0123456789abcdef"
 
 type Pat:
     pat: List[Int]
@@ -83,31 +85,25 @@ fn is_word(c: Int) Bool:
     return is_alnum(c) or c == 95
 
 fn lower(c: Int) Int:
-    if c >= 65 and c <= 90:
-        return c + 32
+    if c >= 65 and c <= 90: return c + 32
 
     return c
 
 fn hexval(c: Int) Int:
-    if c >= 48 and c <= 57:
-        return c - 48
-    if c >= 97 and c <= 102:
-        return c - 87
-    if c >= 65 and c <= 70:
-        return c - 55
+    if c >= 48 and c <= 57: return c - 48
+    if c >= 97 and c <= 102: return c - 87
+    if c >= 65 and c <= 70: return c - 55
 
     return -1
 
 fn peek(p: Pat) Int:
-    if p.pos < p.pat.length():
-        return p.pat[p.pos]
+    if p.pos < p.pat.length(): return p.pat[p.pos]
 
     return -1
 
 fn peek_at(p: Pat, k: Int) Int:
-    i := p.pos + k
-    if i < p.pat.length():
-        return p.pat[i]
+    let i = p.pos + k
+    if i < p.pat.length(): return p.pat[i]
 
     return -1
 
@@ -129,11 +125,11 @@ fn add_node(var p: Pat, kind: Int, a: Int, b: Int, c: Int, d: Int) Int:
 fn seq_node(var p: Pat, items: List[Int]) Int:
     p.kids.append(items)
 
-    idx := p.kids.length() - 1
+    let idx = p.kids.length() - 1
     return add_node(var p, N_SEQ, idx, 0, 0, 0)
 
 fn new_set(var p: Pat) Int:
-    id := p.bits.length() / 256
+    let id = p.bits.length() / 256
     for i in 0..256:
         p.bits.append(false)
     return id
@@ -143,41 +139,39 @@ fn set_put(var p: Pat, id: Int, c: Int) Unit:
 
 fn fold_case(var p: Pat, id: Int) Unit:
     for c in 65..91:
-        up := id * 256 + c
-        lo := up + 32
+        let up = id * 256 + c
+        let lo = up + 32
 
         if p.bits[up] or p.bits[lo]:
             p.bits[up] = true
             p.bits[lo] = true
 
 fn shorthand_has(k: Int, c: Int) Bool:
-    if k == 0:
-        return is_digit(c)
-    if k == 1:
-        return is_word(c)
+    if k == 0: return is_digit(c)
+    if k == 1: return is_word(c)
 
     return c == 32 or (c >= 9 and c <= 13)
 
 // code: 1000 + j, j: 0 d, 1 D, 2 w, 3 W, 4 s, 5 S
 fn add_short(var p: Pat, id: Int, code: Int) Unit:
-    j := code - 1000
-    k := j / 2
-    neg := j % 2 == 1
+    let j = code - 1000
+    let k = j / 2
+    let neg = j % 2 == 1
 
     for c in 0..256:
-        h := shorthand_has(k, c)
+        let h = shorthand_has(k, c)
         if (h and not neg) or (neg and not h):
             p.bits[id * 256 + c] = true
 
 fn lit_node(var p: Pat, c: Int) Int:
-    id := new_set(var p)
+    let id = new_set(var p)
     set_put(var p, id, c)
     if p.icase:
         fold_case(var p, id)
     return add_node(var p, N_SET, id, 0, 0, 0)
 
 fn bref_node(var p: Pat, g: Int, name: List[Int]) Int:
-    id := add_node(var p, N_BREF, g, 0, 0, 0)
+    let id = add_node(var p, N_BREF, g, 0, 0, 0)
     p.brefs.append(id)
     p.brefnames.append(name)
     return id
@@ -186,57 +180,43 @@ fn bref_node(var p: Pat, g: Int, name: List[Int]) Int:
 
 // p.pos is just after the backslash. Returns a byte, a shorthand code (>= 1000), or -1 (error set).
 fn escape_char(var p: Pat) Int:
-    c := peek(p)
-    if c < 0:
-        return perr(var p, "bad escape")
+    let c = peek(p)
+    if c < 0: return perr(var p, "bad escape")
 
     p.pos += 1
-    if c == 100:
-        return 1000
-    if c == 68:
-        return 1001
-    if c == 119:
-        return 1002
-    if c == 87:
-        return 1003
-    if c == 115:
-        return 1004
-    if c == 83:
-        return 1005
-    if c == 110:
-        return 10
-    if c == 116:
-        return 9
-    if c == 114:
-        return 13
+    if c == 100: return 1000
+    if c == 68: return 1001
+    if c == 119: return 1002
+    if c == 87: return 1003
+    if c == 115: return 1004
+    if c == 83: return 1005
+    if c == 110: return 10
+    if c == 116: return 9
+    if c == 114: return 13
 
     if c == 120:
-        h1 := hexval(peek(p))
-        h2 := hexval(peek_at(p, 1))
-        if h1 < 0 or h2 < 0:
-            return perr(var p, "bad escape")
+        let h1 = hexval(peek(p))
+        let h2 = hexval(peek_at(p, 1))
+        if h1 < 0 or h2 < 0: return perr(var p, "bad escape")
 
         p.pos += 2
         return h1 * 16 + h2
 
-    if is_alnum(c) or c >= 128:
-        return perr(var p, "bad escape")
+    if is_alnum(c) or c >= 128: return perr(var p, "bad escape")
 
     return c
 
 // Reads `name>` at p.pos. Returns the name, or an empty list when malformed.
 fn parse_name(var p: Pat) List[Int]:
     var name = List[Int]()
-    c0 := peek(p)
-    if not (is_alpha(c0) or c0 == 95):
-        return name
+    let c0 = peek(p)
+    if not (is_alpha(c0) or c0 == 95): return name
 
     while is_word(peek(p)):
         name.append(peek(p))
         p.pos += 1
 
-    if peek(p) != 62:
-        return List[Int]()
+    if peek(p) != 62: return List[Int]()
 
     p.pos += 1
     return name
@@ -244,7 +224,7 @@ fn parse_name(var p: Pat) List[Int]:
 fn parse_atom_escape(var p: Pat) Int:
     p.pos += 1
 
-    c := peek(p)
+    let c = peek(p)
 
     if c == 98:
         p.pos += 1
@@ -260,23 +240,20 @@ fn parse_atom_escape(var p: Pat) Int:
 
     if c == 107:
         p.pos += 1
-        if peek(p) != 60:
-            return perr(var p, "bad escape")
+        if peek(p) != 60: return perr(var p, "bad escape")
 
         p.pos += 1
 
-        name := parse_name(var p)
-        if name.length() == 0:
-            return perr(var p, "bad escape")
+        let name = parse_name(var p)
+        if name.length() == 0: return perr(var p, "bad escape")
 
         return bref_node(var p, -1, name)
 
-    e := escape_char(var p)
-    if p.err.length() > 0:
-        return -1
+    let e = escape_char(var p)
+    if p.err.length() > 0: return -1
 
     if e >= 1000:
-        id := new_set(var p)
+        let id = new_set(var p)
         add_short(var p, id, e)
         return add_node(var p, N_SET, id, 0, 0, 0)
 
@@ -293,14 +270,13 @@ fn parse_class(var p: Pat) Int:
         neg = true
         p.pos += 1
 
-    id := new_set(var p)
+    let id = new_set(var p)
     var first = true
     var after_range = false
 
     while true:
-        c := peek(p)
-        if c < 0:
-            return perr(var p, "unterminated class")
+        let c = peek(p)
+        if c < 0: return perr(var p, "unterminated class")
 
         if c == 93 and not first:
             p.pos += 1
@@ -313,9 +289,8 @@ fn parse_class(var p: Pat) Int:
         if c == 92:
             p.pos += 1
 
-            e := escape_char(var p)
-            if p.err.length() > 0:
-                return -1
+            let e = escape_char(var p)
+            if p.err.length() > 0: return -1
 
             if e >= 1000:
                 add_short(var p, id, e)
@@ -330,7 +305,7 @@ fn parse_class(var p: Pat) Int:
             p.pos += 1
             lo = c
 
-        can_range := not (after_range and c == 45)
+        let can_range = not (after_range and c == 45)
 
         if can_range and peek(p) == 45 and peek_at(p, 1) >= 0 and peek_at(p, 1) != 93:
             p.pos += 1
@@ -340,16 +315,13 @@ fn parse_class(var p: Pat) Int:
             if peek(p) == 92:
                 p.pos += 1
                 hi = escape_char(var p)
-                if p.err.length() > 0:
-                    return -1
-                if hi >= 1000:
-                    return perr(var p, "bad range")
+                if p.err.length() > 0: return -1
+                if hi >= 1000: return perr(var p, "bad range")
             else:
                 hi = peek(p)
                 p.pos += 1
 
-            if hi < lo:
-                return perr(var p, "bad range")
+            if hi < lo: return perr(var p, "bad range")
 
             for x in lo..hi + 1:
                 set_put(var p, id, x)
@@ -363,7 +335,7 @@ fn parse_class(var p: Pat) Int:
 
     if neg:
         for x in 0..256:
-            idx := id * 256 + x
+            let idx = id * 256 + x
             p.bits[idx] = not p.bits[idx]
 
     return add_node(var p, N_SET, id, 0, 0, 0)
@@ -382,16 +354,14 @@ fn parse_group(var p: Pat) Int:
     p.pos += 1
 
     if peek(p) == 63:
-        c2 := peek_at(p, 1)
+        let c2 = peek_at(p, 1)
 
         if c2 == 58:
             p.pos += 2
 
-            body := parse_alt(var p)
-            if p.err.length() > 0:
-                return -1
-            if not close_group(var p):
-                return -1
+            let body = parse_alt(var p)
+            if p.err.length() > 0: return -1
+            if not close_group(var p): return -1
 
             var one = List[Int]()
             one.append(body)
@@ -400,11 +370,9 @@ fn parse_group(var p: Pat) Int:
         if c2 == 61 or c2 == 33:
             p.pos += 2
 
-            lbody := parse_alt(var p)
-            if p.err.length() > 0:
-                return -1
-            if not close_group(var p):
-                return -1
+            let lbody = parse_alt(var p)
+            if p.err.length() > 0: return -1
+            if not close_group(var p): return -1
 
             var neg = 0
             if c2 == 33:
@@ -412,29 +380,25 @@ fn parse_group(var p: Pat) Int:
             return add_node(var p, N_LOOK, lbody, neg, 0, 0)
 
         if c2 == 60:
-            c3 := peek_at(p, 2)
-            if c3 == 61 or c3 == 33:
-                return perr(var p, "bad group")
+            let c3 = peek_at(p, 2)
+            if c3 == 61 or c3 == 33: return perr(var p, "bad group")
 
             p.pos += 2
 
-            name := parse_name(var p)
-            if name.length() == 0:
-                return perr(var p, "bad group")
+            let name = parse_name(var p)
+            if name.length() == 0: return perr(var p, "bad group")
 
             for g in 1..p.gnames.length():
                 if same_name(p.gnames[g], name, 0, name.length()):
                     return perr(var p, "duplicate group name")
             p.ngroups += 1
 
-            gi := p.ngroups
+            let gi = p.ngroups
             p.gnames.append(name)
 
-            nbody := parse_alt(var p)
-            if p.err.length() > 0:
-                return -1
-            if not close_group(var p):
-                return -1
+            let nbody = parse_alt(var p)
+            if p.err.length() > 0: return -1
+            if not close_group(var p): return -1
 
             return add_node(var p, N_GROUP, gi, nbody, 0, 0)
 
@@ -442,30 +406,26 @@ fn parse_group(var p: Pat) Int:
 
     p.ngroups += 1
 
-    g := p.ngroups
+    let g = p.ngroups
     p.gnames.append(List[Int]())
 
-    body := parse_alt(var p)
-    if p.err.length() > 0:
-        return -1
-    if not close_group(var p):
-        return -1
+    let body = parse_alt(var p)
+    if p.err.length() > 0: return -1
+    if not close_group(var p): return -1
 
     return add_node(var p, N_GROUP, g, body, 0, 0)
 
 fn dot_node(var p: Pat) Int:
-    id := new_set(var p)
+    let id = new_set(var p)
     for c in 0..256:
         if p.dotall or c != 10:
             p.bits[id * 256 + c] = true
     return add_node(var p, N_SET, id, 0, 0, 0)
 
 fn parse_atom(var p: Pat) Int:
-    c := peek(p)
-    if c == 40:
-        return parse_group(var p)
-    if c == 91:
-        return parse_class(var p)
+    let c = peek(p)
+    if c == 40: return parse_group(var p)
+    if c == 91: return parse_class(var p)
 
     if c == 46:
         p.pos += 1
@@ -487,10 +447,8 @@ fn parse_atom(var p: Pat) Int:
             kind = 3
         return add_node(var p, N_ASSERT, kind, 0, 0, 0)
 
-    if c == 92:
-        return parse_atom_escape(var p)
-    if c == 42 or c == 43 or c == 63:
-        return perr(var p, "nothing to repeat")
+    if c == 92: return parse_atom_escape(var p)
+    if c == 42 or c == 43 or c == 63: return perr(var p, "nothing to repeat")
 
     p.pos += 1
     return lit_node(var p, c)
@@ -499,7 +457,7 @@ fn parse_atom(var p: Pat) Int:
 
 // If `{` starts a valid quantifier shape, returns the index after `}`; otherwise -1.
 fn brace_end(p: Pat) Int:
-    n := p.pat.length()
+    let n = p.pat.length()
     var i = p.pos + 1
     var nd = 0
 
@@ -507,26 +465,21 @@ fn brace_end(p: Pat) Int:
         i += 1
         nd += 1
 
-    if nd == 0:
-        return -1
-    if i < n and p.pat[i] == 125:
-        return i + 1
+    if nd == 0: return -1
+    if i < n and p.pat[i] == 125: return i + 1
 
     if i < n and p.pat[i] == 44:
         i += 1
         while i < n and is_digit(p.pat[i]):
             i += 1
-        if i < n and p.pat[i] == 125:
-            return i + 1
+        if i < n and p.pat[i] == 125: return i + 1
 
     return -1
 
 fn quant_here(p: Pat) Bool:
-    c := peek(p)
-    if c == 42 or c == 43 or c == 63:
-        return true
-    if c == 123:
-        return brace_end(p) >= 0
+    let c = peek(p)
+    if c == 42 or c == 43 or c == 63: return true
+    if c == 123: return brace_end(p) >= 0
 
     return false
 
@@ -542,7 +495,7 @@ fn parse_number(var p: Pat) Int:
 
 // Reads one quantifier (and optional lazy `?`) into p.qmin, p.qmax, p.qgreedy.
 fn parse_quant(var p: Pat) Bool:
-    c := peek(p)
+    let c = peek(p)
 
     if c == 42:
         p.qmin = 0
@@ -559,7 +512,7 @@ fn parse_quant(var p: Pat) Bool:
     else:
         p.pos += 1
 
-        lo := parse_number(var p)
+        let lo = parse_number(var p)
         var hi = lo
 
         if peek(p) == 44:
@@ -587,40 +540,34 @@ fn parse_quant(var p: Pat) Bool:
     return true
 
 fn repeatable(p: Pat, node: Int) Bool:
-    k := p.nk[node]
+    let k = p.nk[node]
     return not (k == N_ASSERT or k == N_LOOK)
 
 fn parse_seq(var p: Pat) Int:
     var items = List[Int]()
 
     while true:
-        c := peek(p)
-        if c < 0 or c == 124 or c == 41:
-            break
+        let c = peek(p)
+        if c < 0 or c == 124 or c == 41: break
 
         var node = parse_atom(var p)
-        if p.err.length() > 0:
-            return -1
+        if p.err.length() > 0: return -1
 
         if quant_here(p):
-            if not repeatable(p, node):
-                return perr(var p, "nothing to repeat")
-            if not parse_quant(var p):
-                return -1
+            if not repeatable(p, node): return perr(var p, "nothing to repeat")
+            if not parse_quant(var p): return -1
 
-            mn := p.qmin
-            mx := p.qmax
+            let mn = p.qmin
+            let mx = p.qmax
             var gi = 0
             if p.qgreedy:
                 gi = 1
             node = add_node(var p, N_REPEAT, node, mn, mx, gi)
-            if quant_here(p):
-                return perr(var p, "nothing to repeat")
+            if quant_here(p): return perr(var p, "nothing to repeat")
 
         items.append(node)
 
-    if items.length() == 1:
-        return items[0]
+    if items.length() == 1: return items[0]
 
     return seq_node(var p, items)
 
@@ -628,9 +575,8 @@ fn parse_alt(var p: Pat) Int:
     var alts = List[Int]()
 
     while true:
-        s := parse_seq(var p)
-        if p.err.length() > 0:
-            return -1
+        let s = parse_seq(var p)
+        if p.err.length() > 0: return -1
 
         alts.append(s)
 
@@ -639,12 +585,11 @@ fn parse_alt(var p: Pat) Int:
         else:
             break
 
-    if alts.length() == 1:
-        return alts[0]
+    if alts.length() == 1: return alts[0]
 
     p.kids.append(alts)
 
-    idx := p.kids.length() - 1
+    let idx = p.kids.length() - 1
     return add_node(var p, N_ALT, idx, 0, 0, 0)
 
 // ---- pattern compilation to bytecode -------------------------------------
@@ -666,11 +611,11 @@ fn setf(var p: Pat, pc: Int, field: Int, value: Int) Unit:
     p.code[pc * 6 + field] = value
 
 fn compile_node(var p: Pat, node: Int) Unit:
-    k := p.nk[node]
-    a := p.na[node]
-    b := p.nb[node]
-    c := p.nc[node]
-    d := p.nd[node]
+    let k = p.nk[node]
+    let a = p.na[node]
+    let b = p.nb[node]
+    let c = p.nc[node]
+    let d = p.nd[node]
 
     if k == N_SET:
         emit(var p, OP_SET, a, 0, 0, 0, 0)
@@ -682,51 +627,51 @@ fn compile_node(var p: Pat, node: Int) Unit:
             ic = 1
         emit(var p, OP_BREF, a, ic, 0, 0, 0)
     else if k == N_SEQ:
-        m := p.kids[a].length()
+        let m = p.kids[a].length()
 
         for i in 0..m:
-            child := p.kids[a][i]
+            let child = p.kids[a][i]
             compile_node(var p, child)
     else if k == N_GROUP:
-        tb := p.tbase + a
+        let tb = p.tbase + a
         emit(var p, OP_OPEN, tb, 0, 0, 0, 0)
         compile_node(var p, b)
         emit(var p, OP_CLOSE, 2 * a, tb, 0, 0, 0)
     else if k == N_ALT:
-        m := p.kids[a].length()
+        let m = p.kids[a].length()
         var jumps = List[Int]()
 
         for i in 0..m:
-            child := p.kids[a][i]
+            let child = p.kids[a][i]
 
             if i < m - 1:
-                hp := here(p)
-                sp := emit(var p, OP_SPLIT, hp + 1, 0, 0, 0, 0)
+                let hp = here(p)
+                let sp = emit(var p, OP_SPLIT, hp + 1, 0, 0, 0, 0)
                 compile_node(var p, child)
 
-                j := emit(var p, OP_JMP, 0, 0, 0, 0, 0)
+                let j = emit(var p, OP_JMP, 0, 0, 0, 0, 0)
                 jumps.append(j)
 
-                nx := here(p)
+                let nx = here(p)
                 setf(var p, sp, 2, nx)
             else:
                 compile_node(var p, child)
 
-        endpc := here(p)
+        let endpc = here(p)
 
         for i in 0..jumps.length():
-            jp := jumps[i]
+            let jp = jumps[i]
             setf(var p, jp, 1, endpc)
     else if k == N_LOOK:
-        lk := emit(var p, OP_LOOK, b, 0, 0, 0, 0)
+        let lk = emit(var p, OP_LOOK, b, 0, 0, 0, 0)
         compile_node(var p, a)
         emit(var p, OP_SUBEND, 0, 0, 0, 0, 0)
 
-        cont := here(p)
+        let cont = here(p)
         setf(var p, lk, 2, cont)
     else if k == N_REPEAT:
-        cs := p.nslots
-        es := cs + 1
+        let cs = p.nslots
+        let es = cs + 1
         p.nslots = cs + 2
         emit(var p, OP_SETVAL, cs, 0, 0, 0, 0)
 
@@ -734,27 +679,25 @@ fn compile_node(var p: Pat, node: Int) Unit:
         if d == 1:
             hop = OP_LOOPG
 
-        h := emit(var p, hop, cs, b, c, 0, 0)
+        let h = emit(var p, hop, cs, b, c, 0, 0)
         emit(var p, OP_SETPOS, es, 0, 0, 0, 0)
         compile_node(var p, a)
 
-        t := emit(var p, OP_LOOPTAIL, cs, b, es, 0, h)
-        ex := here(p)
+        let t = emit(var p, OP_LOOPTAIL, cs, b, es, 0, h)
+        let ex = here(p)
         setf(var p, h, 4, ex)
         setf(var p, t, 4, ex)
 
 fn same_name(name: List[Int], src: List[Int], from: Int, to: Int) Bool:
-    if name.length() != to - from:
-        return false
+    if name.length() != to - from: return false
 
     for k in 0..name.length():
-        if name[k] != src[from + k]:
-            return false
+        if name[k] != src[from + k]: return false
     return true
 
 fn build_pattern(src: List[Int]) Pat:
     var p = new_pat(src.clone())
-    n := src.length()
+    let n = src.length()
 
     if n >= 3 and src[0] == 40 and src[1] == 63:
         var j = 2
@@ -771,16 +714,15 @@ fn build_pattern(src: List[Int]) Pat:
         if j > 2 and j < n and src[j] == 41:
             p.pos = j + 1
 
-    root := parse_alt(var p)
+    let root = parse_alt(var p)
     if p.err.length() == 0 and p.pos < n:
         perr(var p, "unmatched )")
-    if p.err.length() > 0:
-        return p
+    if p.err.length() > 0: return p
 
     var k = 0
 
     while k < p.brefs.length():
-        id := p.brefs[k]
+        let id = p.brefs[k]
 
         if p.brefnames[k].length() == 0:
             if p.na[id] > p.ngroups:
@@ -814,25 +756,21 @@ fn build_pattern(src: List[Int]) Pat:
 // ---- backtracking VM ------------------------------------------------------
 
 fn assert_ok(kind: Int, subj: List[Int], pos: Int) Bool:
-    n := subj.length()
+    let n = subj.length()
 
     if kind == 1:
-        if pos == 0:
-            return true
+        if pos == 0: return true
 
         return subj[pos - 1] == 10
 
-    if kind == 2:
-        return pos == n
+    if kind == 2: return pos == n
 
     if kind == 3:
-        if pos == n:
-            return true
+        if pos == n: return true
 
         return subj[pos] == 10
 
-    if kind == 0:
-        return pos == 0
+    if kind == 0: return pos == 0
 
     var before = false
     var after = false
@@ -840,8 +778,7 @@ fn assert_ok(kind: Int, subj: List[Int], pos: Int) Bool:
         before = is_word(subj[pos - 1])
     if pos < n:
         after = is_word(subj[pos])
-    if kind == 4:
-        return not (before == after)
+    if kind == 4: return not (before == after)
 
     return before == after
 
@@ -861,16 +798,16 @@ fn vm_run(
     var sy = List[Int]()
     var pc = start_pc
     var pos = start_pos
-    n := subj.length()
+    let n = subj.length()
 
     while true:
-        base := pc * 6
-        op := prog[base]
-        a := prog[base + 1]
-        b := prog[base + 2]
-        c := prog[base + 3]
-        d := prog[base + 4]
-        e := prog[base + 5]
+        let base = pc * 6
+        let op = prog[base]
+        let a = prog[base + 1]
+        let b = prog[base + 2]
+        let c = prog[base + 3]
+        let d = prog[base + 4]
+        let e = prog[base + 5]
         var ok = true
 
         if op == OP_SET:
@@ -896,7 +833,7 @@ fn vm_run(
             slots[a] = pos
             pc += 1
         else if op == OP_CLOSE:
-            st := slots[b]
+            let st = slots[b]
             sk.append(1)
             sx.append(a)
             sy.append(slots[a])
@@ -912,13 +849,13 @@ fn vm_run(
             else:
                 ok = false
         else if op == OP_BREF:
-            s := slots[2 * a]
-            en := slots[2 * a + 1]
+            let s = slots[2 * a]
+            let en = slots[2 * a + 1]
 
             if s < 0:
                 ok = false
             else:
-                ln := en - s
+                let ln = en - s
 
                 if pos + ln > n:
                     ok = false
@@ -933,8 +870,7 @@ fn vm_run(
                             x = lower(x)
                             y = lower(y)
 
-                        if x != y:
-                            break
+                        if x != y: break
 
                         i += 1
 
@@ -956,7 +892,7 @@ fn vm_run(
             slots[a] = b
             pc += 1
         else if op == OP_LOOPG or op == OP_LOOPL:
-            cnt := slots[a]
+            let cnt = slots[a]
 
             if cnt < b:
                 pc += 1
@@ -973,7 +909,7 @@ fn vm_run(
                 sy.append(pos)
                 pc = d
         else if op == OP_LOOPTAIL:
-            cnt := slots[a]
+            let cnt = slots[a]
 
             if cnt >= b and pos == slots[c]:
                 pc = d
@@ -984,8 +920,8 @@ fn vm_run(
                 slots[a] = cnt + 1
                 pc = e
         else if op == OP_LOOK:
-            snap := slots.clone()
-            r := vm_run(prog, bits, subj, var slots, pc + 1, pos, false)
+            let snap = slots.clone()
+            let r = vm_run(prog, bits, subj, var slots, pc + 1, pos, false)
 
             if r >= 0:
                 if a == 1:
@@ -1017,13 +953,12 @@ fn vm_run(
             var resumed = false
 
             while not resumed:
-                m := sk.length()
-                if m == 0:
-                    return -1
+                let m = sk.length()
+                if m == 0: return -1
 
-                kind := sk[m - 1]
-                x := sx[m - 1]
-                y := sy[m - 1]
+                let kind = sk[m - 1]
+                let x = sx[m - 1]
+                let y = sy[m - 1]
                 sk.pop()
                 sx.pop()
                 sy.pop()
@@ -1043,22 +978,21 @@ fn new_slots(p: Pat) List[Int]:
 
 // Leftmost match starting at or after `from`. Returns start or -1; slots 0 and 1 hold the whole match.
 fn find_from(p: Pat, subj: List[Int], from: Int, full: Bool, var slots: List[Int]) Int:
-    n := subj.length()
+    let n = subj.length()
     var st = from
 
     while st <= n:
         for i in 0..slots.length():
             slots[i] = -1
 
-        r := vm_run(p.code, p.bits, subj, var slots, 0, st, full)
+        let r = vm_run(p.code, p.bits, subj, var slots, 0, st, full)
 
         if r >= 0:
             slots[0] = st
             slots[1] = r
             return st
 
-        if full:
-            return -1
+        if full: return -1
 
         st += 1
 
@@ -1073,15 +1007,14 @@ fn collect(
     var me: List[Int],
     var mc: List[List[Int]]
 ) Unit:
-    n := subj.length()
+    let n = subj.length()
     var start = 0
 
     while start <= n:
-        st := find_from(p, subj, start, false, var slots)
-        if st < 0:
-            break
+        let st = find_from(p, subj, start, false, var slots)
+        if st < 0: break
 
-        en := slots[1]
+        let en = slots[1]
         ms.append(st)
         me.append(en)
         mc.append(slots.clone())
@@ -1094,18 +1027,12 @@ fn collect(
 // ---- output ---------------------------------------------------------------
 
 fn quote_char(c: Int) String:
-    if c == 34:
-        return "\\\""
-    if c == 92:
-        return "\\\\"
-    if c == 10:
-        return "\\n"
-    if c == 9:
-        return "\\t"
-    if c == 13:
-        return "\\r"
-    if c < 32 or c > 126:
-        return "\\x{HEXD.get(c / 16)}{HEXD.get(c % 16)}"
+    if c == 34: return "\\\""
+    if c == 92: return "\\\\"
+    if c == 10: return "\\n"
+    if c == 9: return "\\t"
+    if c == 13: return "\\r"
+    if c < 32 or c > 126: return "\\x{HEXD.get(c / 16)}{HEXD.get(c % 16)}"
 
     return PRINTABLE.get(c - 32)
 
@@ -1130,39 +1057,38 @@ fn print_groups(p: Pat, subj: List[Int], slots: List[Int]) Unit:
         if g > 0 and p.gnames[g].length() > 0:
             label = "{g} ({ascii_str(p.gnames[g])})"
 
-        s := slots[2 * g]
+        let s = slots[2 * g]
 
         if s < 0:
             print("{label}: unset")
         else:
-            en := slots[2 * g + 1]
+            let en = slots[2 * g + 1]
             print("{label}: {s}..{en} {quoted(subj, s, en)}")
 
 // ---- replacement ----------------------------------------------------------
 
 fn append_group(var res: List[Int], subj: List[Int], slots: List[Int], g: Int) Unit:
-    s := slots[2 * g]
+    let s = slots[2 * g]
 
     if s >= 0:
-        en := slots[2 * g + 1]
+        let en = slots[2 * g + 1]
         for j in s..en:
             res.append(subj[j])
 
 fn find_name(names: List[List[Int]], src: List[Int], from: Int, to: Int) Int:
     for g in 1..names.length():
-        if names[g].length() > 0 and same_name(names[g], src, from, to):
-            return g
+        if names[g].length() > 0 and same_name(names[g], src, from, to): return g
     return -1
 
 fn expand(
     var res: List[Int], repl: List[Int], subj: List[Int], slots: List[Int],
     ngroups: Int, names: List[List[Int]]
 ) Bool:
-    m := repl.length()
+    let m = repl.length()
     var i = 0
 
     while i < m:
-        c := repl[i]
+        let c = repl[i]
 
         if c != 36:
             res.append(c)
@@ -1171,12 +1097,11 @@ fn expand(
             res.append(36)
             i += 1
         else:
-            d := repl[i + 1]
+            let d = repl[i + 1]
 
             if is_digit(d):
-                g := d - 48
-                if g > ngroups:
-                    return false
+                let g = d - 48
+                if g > ngroups: return false
 
                 append_group(var res, subj, slots, g)
                 i += 2
@@ -1187,12 +1112,10 @@ fn expand(
                 var j = i + 2
                 while j < m and repl[j] != 125:
                     j += 1
-                if j >= m:
-                    return false
+                if j >= m: return false
 
-                g := find_name(names, repl, i + 2, j)
-                if g < 0:
-                    return false
+                let g = find_name(names, repl, i + 2, j)
+                if g < 0: return false
 
                 append_group(var res, subj, slots, g)
                 i = j + 1
@@ -1205,13 +1128,11 @@ fn expand(
 // ---- input decoding -------------------------------------------------------
 
 fn bytes_is(b: List[Int], s: String) Bool:
-    sb := s.to_bytes()
-    if sb.length() != b.length():
-        return false
+    let sb = s.to_bytes()
+    if sb.length() != b.length(): return false
 
     for k in 0..b.length():
-        if sb.get(k).to_int() != b[k]:
-            return false
+        if sb.get(k).to_int() != b[k]: return false
     return true
 
 fn split_tab(line: List[Int]) List[List[Int]]:
@@ -1230,20 +1151,19 @@ fn split_tab(line: List[Int]) List[List[Int]]:
 
 // Decodes \n \t \\ \xHH. Returns false on a bad sequence.
 fn unescape(src: List[Int], var out: List[Int]) Bool:
-    n := src.length()
+    let n = src.length()
     var i = 0
 
     while i < n:
-        c := src[i]
+        let c = src[i]
 
         if c != 92:
             out.append(c)
             i += 1
         else:
-            if i + 1 >= n:
-                return false
+            if i + 1 >= n: return false
 
-            d := src[i + 1]
+            let d = src[i + 1]
 
             if d == 110:
                 out.append(10)
@@ -1255,13 +1175,11 @@ fn unescape(src: List[Int], var out: List[Int]) Bool:
                 out.append(92)
                 i += 2
             else if d == 120:
-                if i + 3 >= n:
-                    return false
+                if i + 3 >= n: return false
 
-                h1 := hexval(src[i + 2])
-                h2 := hexval(src[i + 3])
-                if h1 < 0 or h2 < 0:
-                    return false
+                let h1 = hexval(src[i + 2])
+                let h2 = hexval(src[i + 3])
+                if h1 < 0 or h2 < 0: return false
 
                 out.append(h1 * 16 + h2)
                 i += 4
@@ -1274,8 +1192,8 @@ fn unescape(src: List[Int], var out: List[Int]) Bool:
 
 // ms: allow_effect std.console.write
 fn process_line(line: List[Int]) Unit:
-    fields := split_tab(line)
-    cmd := fields[0]
+    let fields = split_tab(line)
+    let cmd = fields[0]
     var kind = 0
 
     if bytes_is(cmd, "test"):
@@ -1316,7 +1234,7 @@ fn process_line(line: List[Int]) Unit:
             print("error: bad command")
             return
 
-    p := build_pattern(fields[1].clone())
+    let p = build_pattern(fields[1].clone())
 
     if p.err.length() > 0:
         print("error: {p.err}")
@@ -1325,14 +1243,14 @@ fn process_line(line: List[Int]) Unit:
     var slots = new_slots(p)
 
     if kind == 1:
-        st := find_from(p, subj, 0, false, var slots)
+        let st = find_from(p, subj, 0, false, var slots)
 
         if st >= 0:
             print("true")
         else:
             print("false")
     else if kind == 2 or kind == 3:
-        st := find_from(p, subj, 0, kind == 3, var slots)
+        let st = find_from(p, subj, 0, kind == 3, var slots)
 
         if st < 0:
             print("no match")
@@ -1390,12 +1308,12 @@ fn process_line(line: List[Int]) Unit:
             print("error: bad replacement")
 
 export fn main() Int:
-    data := read_all(stdin()).get()
+    let data = read_all(stdin()).get()
     var all = List[Int]()
     for i in 0..data.length():
         all.append(data.get(i).to_int())
 
-    total := all.length()
+    let total = all.length()
     var start = 0
     var i = 0
 

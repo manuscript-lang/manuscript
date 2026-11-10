@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import parse from "@std/data/json.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    parse from "@std/data/json.ms",
+)
 
 fn banner(name: String, count: Int) String:
     return """

@@ -1,6 +1,6 @@
-import send, recv, send_bytes, read_to_end from "./support/conn.ms"
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import (
+    send, recv, send_bytes, read_to_end from "./support/conn.ms",
+    expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
     buffered,
     headers,
     HttpHeaders,
@@ -10,10 +10,10 @@ import (
     HttpExchange,
     HttpClient,
     HttpClientOptions,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import RequestOptions, http_client, request, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
+    HttpServerOptions from "@std/net/http.ms",
+    RequestOptions, http_client, request, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn repeated_headers() HttpHeaders!:
     var fields = headers()

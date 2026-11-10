@@ -1,39 +1,41 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // AST node kinds
-K_CHR := 1
-K_CLS := 2
-K_BOL := 3
-K_EOL := 4
-K_WB := 5
-K_BREF := 6
-K_GROUP := 7
-K_LOOK := 8
-K_REP := 9
-K_SEQ := 10
-K_ALT := 11
+let K_CHR = 1
+let K_CLS = 2
+let K_BOL = 3
+let K_EOL = 4
+let K_WB = 5
+let K_BREF = 6
+let K_GROUP = 7
+let K_LOOK = 8
+let K_REP = 9
+let K_SEQ = 10
+let K_ALT = 11
 // VM opcodes
-O_CHR := 1
-O_CLS := 2
-O_SPLIT := 3
-O_JMP := 4
-O_SETPOS := 5
-O_SETCONST := 6
-O_OPEN := 7
-O_CLOSE := 8
-O_BOL := 9
-O_EOL := 10
-O_WB := 11
-O_BREF := 12
-O_LOOK := 13
-O_LOOKEND := 14
-O_MATCH := 15
-O_HEADG := 16
-O_HEADL := 17
-O_TAIL := 18
-TABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
-HEX := "0123456789abcdef"
+let O_CHR = 1
+let O_CLS = 2
+let O_SPLIT = 3
+let O_JMP = 4
+let O_SETPOS = 5
+let O_SETCONST = 6
+let O_OPEN = 7
+let O_CLOSE = 8
+let O_BOL = 9
+let O_EOL = 10
+let O_WB = 11
+let O_BREF = 12
+let O_LOOK = 13
+let O_LOOKEND = 14
+let O_MATCH = 15
+let O_HEADG = 16
+let O_HEADL = 17
+let O_TAIL = 18
+let TABLE = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+let HEX = "0123456789abcdef"
 
 fn is_digit(c: Int) Bool:
     return c >= 48 and c <= 57
@@ -52,7 +54,7 @@ fn is_short(e: Int) Bool:
 
 fn short_has(e: Int, c: Int) Bool:
     var r = false
-    l := lower_of(e)
+    let l = lower_of(e)
 
     if l == 100:
         r = is_digit(c)
@@ -61,35 +63,29 @@ fn short_has(e: Int, c: Int) Bool:
     else:
         r = c == 32 or c == 9 or c == 10 or c == 13 or c == 12 or c == 11
 
-    if e < 97:
-        return not r
+    if e < 97: return not r
 
     return r
 
 fn hexval(c: Int) Int:
-    if c >= 48 and c <= 57:
-        return c - 48
-    if c >= 97 and c <= 102:
-        return c - 87
-    if c >= 65 and c <= 70:
-        return c - 55
+    if c >= 48 and c <= 57: return c - 48
+    if c >= 97 and c <= 102: return c - 87
+    if c >= 65 and c <= 70: return c - 55
 
     return -1
 
 fn lower_of(c: Int) Int:
-    if c >= 65 and c <= 90:
-        return c + 32
+    if c >= 65 and c <= 90: return c + 32
 
     return c
 
 fn b01(x: Bool) Int:
-    if x:
-        return 1
+    if x: return 1
 
     return 0
 
 fn to_bytes_list(s: String) List[Int]:
-    b := s.to_bytes()
+    let b = s.to_bytes()
     var out = List[Int]()
     for i in 0..b.length():
         out.append(b.get(i).to_int())
@@ -102,18 +98,12 @@ fn name_string(p: List[Int], a: Int, b: Int) String:
     return s
 
 fn esc_byte(c: Int) String:
-    if c == 92:
-        return "\\\\"
-    if c == 34:
-        return "\\\""
-    if c == 10:
-        return "\\n"
-    if c == 9:
-        return "\\t"
-    if c == 13:
-        return "\\r"
-    if c < 32 or c > 126:
-        return "\\x".concat(HEX.get(c / 16)).concat(HEX.get(c % 16))
+    if c == 92: return "\\\\"
+    if c == 34: return "\\\""
+    if c == 10: return "\\n"
+    if c == 9: return "\\t"
+    if c == 13: return "\\r"
+    if c < 32 or c > 126: return "\\x".concat(HEX.get(c / 16)).concat(HEX.get(c % 16))
 
     return TABLE.get(c - 32)
 
@@ -135,19 +125,18 @@ fn is_bad(l: List[Int]) Bool:
 fn unescape(raw: List[Int]) List[Int]:
     var out = List[Int]()
     var i = 0
-    L := raw.length()
+    let L = raw.length()
 
     while i < L:
-        c := raw[i]
+        let c = raw[i]
 
         if c != 92:
             out.append(c)
             i += 1
         else:
-            if i + 1 >= L:
-                return bad_list()
+            if i + 1 >= L: return bad_list()
 
-            e := raw[i + 1]
+            let e = raw[i + 1]
 
             if e == 110:
                 out.append(10)
@@ -159,13 +148,11 @@ fn unescape(raw: List[Int]) List[Int]:
                 out.append(92)
                 i += 2
             else if e == 120:
-                if i + 3 >= L:
-                    return bad_list()
+                if i + 3 >= L: return bad_list()
 
-                h1 := hexval(raw[i + 2])
-                h2 := hexval(raw[i + 3])
-                if h1 < 0 or h2 < 0:
-                    return bad_list()
+                let h1 = hexval(raw[i + 2])
+                let h2 = hexval(raw[i + 3])
+                if h1 < 0 or h2 < 0: return bad_list()
 
                 out.append(h1 * 16 + h2)
                 i += 4
@@ -212,9 +199,8 @@ type Re:
 
 impl Re:
     fn peek(off: Int) Int:
-        i := self.pos + off
-        if i >= 0 and i < self.pat.length():
-            return self.pat[i]
+        let i = self.pos + off
+        if i >= 0 and i < self.pat.length(): return self.pat[i]
 
         return -1
 
@@ -235,31 +221,27 @@ impl Re:
 
     fn find_name(name: String) Int:
         for g in 0..self.ngroups:
-            if self.gnames[g] == name:
-                return g + 1
+            if self.gnames[g] == name: return g + 1
         return -1
 
     // Returns index of '>' if a valid group name starts at `start`, else -1.
     fn name_end(start: Int) Int:
-        L := self.pat.length()
-        if start >= L:
-            return -1
+        let L = self.pat.length()
+        if start >= L: return -1
 
-        f := self.pat[start]
-        if not (is_alpha(f) or f == 95):
-            return -1
+        let f = self.pat[start]
+        if not (is_alpha(f) or f == 95): return -1
 
         var i = start + 1
         while i < L and is_word(self.pat[i]):
             i += 1
-        if i < L and self.pat[i] == 62:
-            return i
+        if i < L and self.pat[i] == 62: return i
 
         return -1
 
     var fn hex2() Int:
-        h1 := hexval(self.peek(0))
-        h2 := hexval(self.peek(1))
+        let h1 = hexval(self.peek(0))
+        let h2 = hexval(self.peek(1))
 
         if h1 < 0 or h2 < 0:
             self.err = "bad escape"
@@ -280,16 +262,15 @@ impl Re:
         return self.node(K_CHR, c, d, 0)
 
     var fn class_item(cl: Int) Int:
-        c := self.pat[self.pos]
+        let c = self.pat[self.pos]
         self.pos += 1
-        if c != 92:
-            return c
+        if c != 92: return c
 
         if self.pos >= self.pat.length():
             self.err = "unterminated class"
             return -1
 
-        e := self.pat[self.pos]
+        let e = self.pat[self.pos]
         self.pos += 1
 
         if is_short(e):
@@ -298,22 +279,17 @@ impl Re:
                     self.cls[cl * 256 + x] = true
             return -1
 
-        if e == 110:
-            return 10
-        if e == 116:
-            return 9
-        if e == 114:
-            return 13
-        if e == 120:
-            return self.hex2()
-        if e < 128 and not is_alnum(e):
-            return e
+        if e == 110: return 10
+        if e == 116: return 9
+        if e == 114: return 13
+        if e == 120: return self.hex2()
+        if e < 128 and not is_alnum(e): return e
 
         self.err = "bad escape"
         return -1
 
     var fn parse_class() Int:
-        cl := self.new_class()
+        let cl = self.new_class()
         var negate = false
 
         if self.peek(0) == 94:
@@ -332,16 +308,14 @@ impl Re:
                 self.pos += 1
                 done = true
             else:
-                lo := self.class_item(cl)
-                if self.err != "":
-                    return -1
+                let lo = self.class_item(cl)
+                if self.err != "": return -1
 
                 if self.peek(0) == 45 and self.peek(1) != 93 and self.peek(1) != -1:
                     self.pos += 1
 
-                    hi := self.class_item(cl)
-                    if self.err != "":
-                        return -1
+                    let hi = self.class_item(cl)
+                    if self.err != "": return -1
 
                     if lo < 0 or hi < 0 or hi < lo:
                         self.err = "bad range"
@@ -356,8 +330,8 @@ impl Re:
 
         if self.icase:
             for x in 0..26:
-                up := cl * 256 + 65 + x
-                lw := cl * 256 + 97 + x
+                let up = cl * 256 + 65 + x
+                let lw = cl * 256 + 97 + x
 
                 if self.cls[up] or self.cls[lw]:
                     self.cls[up] = true
@@ -373,33 +347,26 @@ impl Re:
             self.err = "bad escape"
             return -1
 
-        e := self.pat[self.pos]
+        let e = self.pat[self.pos]
         self.pos += 1
 
         if is_short(e):
-            cl := self.new_class()
+            let cl = self.new_class()
             for x in 0..256:
                 if short_has(e, x):
                     self.cls[cl * 256 + x] = true
             return self.node(K_CLS, cl * 256, 0, 0)
 
-        if e == 98:
-            return self.node(K_WB, 0, 0, 0)
-        if e == 66:
-            return self.node(K_WB, 1, 0, 0)
-        if e >= 49 and e <= 57:
-            return self.node(K_BREF, e - 48, b01(self.icase), -1)
-        if e == 110:
-            return self.chr_node(10)
-        if e == 116:
-            return self.chr_node(9)
-        if e == 114:
-            return self.chr_node(13)
+        if e == 98: return self.node(K_WB, 0, 0, 0)
+        if e == 66: return self.node(K_WB, 1, 0, 0)
+        if e >= 49 and e <= 57: return self.node(K_BREF, e - 48, b01(self.icase), -1)
+        if e == 110: return self.chr_node(10)
+        if e == 116: return self.chr_node(9)
+        if e == 114: return self.chr_node(13)
 
         if e == 120:
-            v := self.hex2()
-            if self.err != "":
-                return -1
+            let v = self.hex2()
+            if self.err != "": return -1
 
             return self.chr_node(v)
 
@@ -408,8 +375,8 @@ impl Re:
                 self.err = "bad escape"
                 return -1
 
-            st := self.pos + 1
-            en := self.name_end(st)
+            let st = self.pos + 1
+            let en = self.name_end(st)
 
             if en < 0:
                 self.err = "bad escape"
@@ -419,14 +386,13 @@ impl Re:
             self.pos = en + 1
             return self.node(K_BREF, -1, b01(self.icase), self.bnames.length() - 1)
 
-        if e < 128 and not is_alnum(e):
-            return self.chr_node(e)
+        if e < 128 and not is_alnum(e): return self.chr_node(e)
 
         self.err = "bad escape"
         return -1
 
     var fn brace() Bool:
-        L := self.pat.length()
+        let L = self.pat.length()
         var i = self.pos + 1
         var n = 0
         var nd = 0
@@ -437,8 +403,7 @@ impl Re:
             i += 1
             nd += 1
 
-        if nd == 0 or i >= L:
-            return false
+        if nd == 0 or i >= L: return false
 
         if self.pat[i] == 125:
             self.qmin = n
@@ -446,8 +411,7 @@ impl Re:
             self.pos = i + 1
             return true
 
-        if self.pat[i] != 44:
-            return false
+        if self.pat[i] != 44: return false
 
         i += 1
 
@@ -460,8 +424,7 @@ impl Re:
             i += 1
             md += 1
 
-        if i >= L or self.pat[i] != 125:
-            return false
+        if i >= L or self.pat[i] != 125: return false
 
         self.qmin = n
 
@@ -474,7 +437,7 @@ impl Re:
         return true
 
     var fn quant(atom: Int) Int:
-        c := self.peek(0)
+        let c = self.peek(0)
         var mn = 0
         var mx = -1
         var found = false
@@ -497,10 +460,9 @@ impl Re:
                 mn = self.qmin
                 mx = self.qmax
 
-        if not found:
-            return atom
+        if not found: return atom
 
-        k := self.nk[atom]
+        let k = self.nk[atom]
 
         if k == K_BOL or k == K_EOL or k == K_WB or k == K_LOOK:
             self.err = "nothing to repeat"
@@ -516,22 +478,22 @@ impl Re:
             self.err = "bad repeat"
             return -1
 
-        c2 := self.peek(0)
+        let c2 = self.peek(0)
 
         if c2 == 42 or c2 == 43 or c2 == 63:
             self.err = "nothing to repeat"
             return -1
 
         if c2 == 123:
-            save := self.pos
-            isq := self.brace()
+            let save = self.pos
+            let isq = self.brace()
             self.pos = save
 
             if isq:
                 self.err = "nothing to repeat"
                 return -1
 
-        r := self.node(K_REP, mn, mx, greedy)
+        let r = self.node(K_REP, mn, mx, greedy)
         self.nch[r] = atom
         return r
 
@@ -541,7 +503,7 @@ impl Re:
         var kind = 0
 
         if self.peek(0) == 63:
-            c1 := self.peek(1)
+            let c1 = self.peek(1)
 
             if c1 == 58:
                 self.pos += 2
@@ -553,7 +515,7 @@ impl Re:
                 self.pos += 2
                 kind = 3
             else if c1 == 60:
-                en := self.name_end(self.pos + 2)
+                let en = self.name_end(self.pos + 2)
 
                 if en < 0:
                     self.err = "bad group"
@@ -574,9 +536,8 @@ impl Re:
             num = self.ngroups
             self.gnames.append(name)
 
-        body := self.parse_alt()
-        if self.err != "":
-            return -1
+        let body = self.parse_alt()
+        if self.err != "": return -1
 
         if self.peek(0) != 41:
             self.err = "unmatched ("
@@ -585,16 +546,16 @@ impl Re:
         self.pos += 1
 
         if kind == 2 or kind == 3:
-            ln := self.node(K_LOOK, b01(kind == 3), 0, 0)
+            let ln = self.node(K_LOOK, b01(kind == 3), 0, 0)
             self.nch[ln] = body
             return ln
 
-        gn := self.node(K_GROUP, num, 0, 0)
+        let gn = self.node(K_GROUP, num, 0, 0)
         self.nch[gn] = body
         return gn
 
     var fn parse_atom() Int:
-        c := self.pat[self.pos]
+        let c = self.pat[self.pos]
 
         if c == 42 or c == 43 or c == 63:
             self.err = "nothing to repeat"
@@ -607,16 +568,15 @@ impl Re:
         if c == 91:
             self.pos += 1
 
-            cl := self.parse_class()
-            if self.err != "":
-                return -1
+            let cl = self.parse_class()
+            if self.err != "": return -1
 
             return self.node(K_CLS, cl * 256, 0, 0)
 
         if c == 46:
             self.pos += 1
 
-            cl := self.new_class()
+            let cl = self.new_class()
             for x in 0..256:
                 self.cls[cl * 256 + x] = true
             if not self.dotall:
@@ -639,18 +599,16 @@ impl Re:
         return self.chr_node(c)
 
     var fn parse_seq() Int:
-        sn := self.node(K_SEQ, 0, 0, 0)
+        let sn = self.node(K_SEQ, 0, 0, 0)
         var last = -1
-        L := self.pat.length()
+        let L = self.pat.length()
 
         while self.pos < L and self.pat[self.pos] != 124 and self.pat[self.pos] != 41:
-            atom := self.parse_atom()
-            if self.err != "":
-                return -1
+            let atom = self.parse_atom()
+            if self.err != "": return -1
 
-            q := self.quant(atom)
-            if self.err != "":
-                return -1
+            let q = self.quant(atom)
+            if self.err != "": return -1
 
             if last < 0:
                 self.nch[sn] = q
@@ -662,13 +620,12 @@ impl Re:
         return sn
 
     var fn parse_alt() Int:
-        an := self.node(K_ALT, 0, 0, 0)
+        let an = self.node(K_ALT, 0, 0, 0)
         var last = -1
 
         while true:
-            s := self.parse_seq()
-            if self.err != "":
-                return -1
+            let s = self.parse_seq()
+            if self.err != "": return -1
 
             if last < 0:
                 self.nch[an] = s
@@ -685,7 +642,7 @@ impl Re:
         return an
 
     var fn parse_top() Unit:
-        L := self.pat.length()
+        let L = self.pat.length()
 
         if L >= 2 and self.pat[0] == 40 and self.pat[1] == 63:
             var i = 2
@@ -719,8 +676,7 @@ impl Re:
                 self.pos = i + 1
 
         self.root = self.parse_alt()
-        if self.err != "":
-            return
+        if self.err != "": return
 
         if self.pos < L:
             self.err = "unmatched )"
@@ -729,7 +685,7 @@ impl Re:
         for i in 0..self.nk.length():
             if self.nk[i] == K_BREF:
                 if self.nc[i] >= 0:
-                    g := self.find_name(self.bnames[self.nc[i]])
+                    let g = self.find_name(self.bnames[self.nc[i]])
 
                     if g < 0:
                         self.err = "bad backreference"
@@ -743,7 +699,7 @@ impl Re:
     // ---- code generation ----
 
     var fn newslot() Int:
-        s := self.nslots
+        let s = self.nslots
         self.nslots += 1
         return s
 
@@ -759,7 +715,7 @@ impl Re:
         return self.op.length() - 1
 
     var fn gen(n: Int) Unit:
-        k := self.nk[n]
+        let k = self.nk[n]
 
         if k == K_CHR:
             self.emit(O_CHR, self.na[n], self.nb[n], 0, 0)
@@ -774,17 +730,17 @@ impl Re:
         else if k == K_BREF:
             self.emit(O_BREF, self.na[n], self.nb[n], 0, 0)
         else if k == K_GROUP:
-            g := self.na[n]
+            let g = self.na[n]
 
             if g < 0:
                 self.gen(self.nch[n])
             else:
-                gs := self.gslot(g)
+                let gs = self.gslot(g)
                 self.emit(O_OPEN, 2 * g, gs, 0, 0)
                 self.gen(self.nch[n])
                 self.emit(O_CLOSE, 2 * g, gs, 0, 0)
         else if k == K_LOOK:
-            p := self.emit(O_LOOK, self.na[n], 0, 0, 0)
+            let p = self.emit(O_LOOK, self.na[n], 0, 0, 0)
             self.gen(self.nch[n])
             self.emit(O_LOOKEND, 0, 0, 0, 0)
             self.ob[p] = self.op.length()
@@ -799,13 +755,13 @@ impl Re:
             var alt = self.nch[n] + 0
 
             while alt >= 0:
-                has_next := self.nnx[alt] >= 0
+                let has_next = self.nnx[alt] >= 0
 
                 if has_next:
-                    sp := self.emit(O_SPLIT, self.op.length() + 1, 0, 0, 0)
+                    let sp = self.emit(O_SPLIT, self.op.length() + 1, 0, 0, 0)
                     self.gen(alt)
 
-                    j := self.emit(O_JMP, 0, 0, 0, 0)
+                    let j = self.emit(O_JMP, 0, 0, 0, 0)
                     jumps.append(j)
                     self.ob[sp] = self.op.length()
                 else:
@@ -816,18 +772,18 @@ impl Re:
             for j in jumps:
                 self.oa[j] = self.op.length()
         else if k == K_REP:
-            mn := self.na[n]
-            mx := self.nb[n]
-            greedy := self.nc[n] == 1
-            cnt := self.newslot()
-            ss := self.newslot()
+            let mn = self.na[n]
+            let mx = self.nb[n]
+            let greedy = self.nc[n] == 1
+            let cnt = self.newslot()
+            let ss = self.newslot()
             self.emit(O_SETCONST, cnt, 0, 0, 0)
 
             var head_op = O_HEADL
             if greedy:
                 head_op = O_HEADG
 
-            head := self.emit(head_op, cnt, mn, mx, 0)
+            let head = self.emit(head_op, cnt, mn, mx, 0)
             self.emit(O_SETPOS, ss, 0, 0, 0)
             self.gen(self.nch[n])
             self.emit(O_TAIL, cnt, ss, mn, head)
@@ -879,17 +835,17 @@ impl Re:
         self.sp = w
 
     var fn run(start_pc: Int, start_pos: Int) Bool:
-        base := self.sp
+        let base = self.sp
         var pc = start_pc
         var pos = start_pos
-        n := self.subj.length()
+        let n = self.subj.length()
 
         while true:
-            o := self.op[pc]
-            a := self.oa[pc]
-            b := self.ob[pc]
-            c := self.oc[pc]
-            d := self.od[pc]
+            let o = self.op[pc]
+            let a = self.oa[pc]
+            let b = self.ob[pc]
+            let c = self.oc[pc]
+            let d = self.od[pc]
             var ok = true
 
             if o == O_CHR:
@@ -935,22 +891,22 @@ impl Re:
                 else:
                     ok = false
             else if o == O_WB:
-                before := pos > 0 and is_word(self.subj[pos - 1])
-                after := pos < n and is_word(self.subj[pos])
-                boundary := before != after
+                let before = pos > 0 and is_word(self.subj[pos - 1])
+                let after = pos < n and is_word(self.subj[pos])
+                let boundary = before != after
 
                 if boundary == (a == 0):
                     pc += 1
                 else:
                     ok = false
             else if o == O_BREF:
-                s := self.st[2 * a]
-                e := self.st[2 * a + 1]
+                let s = self.st[2 * a]
+                let e = self.st[2 * a + 1]
 
                 if s < 0 or e < 0:
                     ok = false
                 else:
-                    ln := e - s
+                    let ln = e - s
 
                     if pos + ln > n:
                         ok = false
@@ -958,8 +914,8 @@ impl Re:
                         var same = true
 
                         for i in 0..ln:
-                            x := self.subj[s + i]
-                            y := self.subj[pos + i]
+                            let x = self.subj[s + i]
+                            let y = self.subj[pos + i]
 
                             if x != y:
                                 if b == 0:
@@ -973,8 +929,8 @@ impl Re:
                         else:
                             ok = false
             else if o == O_LOOK:
-                mark := self.sp
-                r := self.run(pc + 1, pos)
+                let mark = self.sp
+                let r = self.run(pc + 1, pos)
 
                 if a == 0:
                     if r:
@@ -998,7 +954,7 @@ impl Re:
                     self.endpos = pos
                     return true
             else if o == O_HEADG:
-                cnt := self.st[a]
+                let cnt = self.st[a]
 
                 if cnt < b:
                     pc += 1
@@ -1008,7 +964,7 @@ impl Re:
                     self.push(0, d, pos)
                     pc += 1
             else if o == O_HEADL:
-                cnt := self.st[a]
+                let cnt = self.st[a]
 
                 if cnt < b:
                     pc += 1
@@ -1018,7 +974,7 @@ impl Re:
                     self.push(0, pc + 1, pos)
                     pc = d
             else if o == O_TAIL:
-                cnt := self.st[a]
+                let cnt = self.st[a]
 
                 if cnt >= c and pos == self.st[b]:
                     pc += 1
@@ -1030,8 +986,7 @@ impl Re:
                 var resumed = false
 
                 while not resumed:
-                    if self.sp == base:
-                        return false
+                    if self.sp == base: return false
 
                     self.sp -= 1
 
@@ -1046,7 +1001,7 @@ impl Re:
 
     // Leftmost match starting at or after begin. Fills st on success.
     var fn search(begin: Int) Bool:
-        L := self.subj.length()
+        let L = self.subj.length()
         var s = begin
 
         while s <= L:
@@ -1059,8 +1014,7 @@ impl Re:
                 self.st[1] = self.endpos
                 return true
 
-            if self.anchored_end:
-                return false
+            if self.anchored_end: return false
 
             s += 1
 
@@ -1069,12 +1023,11 @@ impl Re:
     var fn all_matches() List[List[Int]]:
         var res = List[List[Int]]()
         var start0 = 0
-        L := self.subj.length()
-        width := 2 * (self.ngroups + 1)
+        let L = self.subj.length()
+        let width = 2 * (self.ngroups + 1)
 
         while start0 <= L:
-            if not self.search(start0):
-                break
+            if not self.search(start0): break
 
             var snap = List[Int]()
             for i in 0..width:
@@ -1089,26 +1042,24 @@ impl Re:
         return res
 
     fn group_by_name(s: List[Int], a: Int, b: Int) Int:
-        if b <= a:
-            return -1
+        if b <= a: return -1
 
         for g in 1..self.ngroups + 1:
-            nm := to_bytes_list(self.gnames[g - 1])
+            let nm = to_bytes_list(self.gnames[g - 1])
 
             if nm.length() == b - a:
                 var same = true
                 for k in 0..nm.length():
                     if nm[k] != s[a + k]:
                         same = false
-                if same:
-                    return g
+                if same: return g
 
         return -1
 
     fn append_group(out: List[Int], m: List[Int], g: Int) List[Int]:
         var r = out
-        s := m[2 * g]
-        e := m[2 * g + 1]
+        let s = m[2 * g]
+        let e = m[2 * g + 1]
         if s >= 0 and e >= 0:
             for k in s..e:
                 r.append(self.subj[k])
@@ -1116,17 +1067,17 @@ impl Re:
 
     var fn expand(repl: List[Int], m: List[Int]) List[Int]:
         var out = List[Int]()
-        L := repl.length()
+        let L = repl.length()
         var i = 0
 
         while i < L:
-            c := repl[i]
+            let c = repl[i]
 
             if c == 36 and i + 1 < L:
-                d := repl[i + 1]
+                let d = repl[i + 1]
 
                 if is_digit(d):
-                    g := d - 48
+                    let g = d - 48
 
                     if g > self.ngroups:
                         self.err = "bad replacement"
@@ -1146,7 +1097,7 @@ impl Re:
                         self.err = "bad replacement"
                         return out
 
-                    g := self.group_by_name(repl, i + 2, j)
+                    let g = self.group_by_name(repl, i + 2, j)
 
                     if g < 0:
                         self.err = "bad replacement"
@@ -1170,12 +1121,12 @@ impl Re:
             var label = "{g}"
 
             if g > 0:
-                nm := self.gnames[g - 1]
+                let nm = self.gnames[g - 1]
                 if nm != "":
                     label = "{g} ({nm})"
 
-            s := snap[2 * g]
-            e := snap[2 * g + 1]
+            let s = snap[2 * g]
+            let e = snap[2 * g + 1]
 
             if s >= 0 and e >= 0:
                 lines.append("{label}: {s}..{e} ".concat(quoted(self.subj, s, e)))
@@ -1199,9 +1150,9 @@ fn span_line(s: Int, e: Int, subj: List[Int]) String:
     return "{s}..{e} ".concat(quoted(subj, s, e))
 
 fn run_cmd(f: List[String]) String:
-    cmd := f[0]
-    is_replace := cmd == "replace"
-    known := (
+    let cmd = f[0]
+    let is_replace = cmd == "replace"
+    let known = (
         is_replace
         or cmd == "test"
         or cmd == "match"
@@ -1209,42 +1160,34 @@ fn run_cmd(f: List[String]) String:
         or cmd == "find-all"
         or cmd == "split"
     )
-    if not known:
-        return "error: bad command"
-    if is_replace and f.length() != 4:
-        return "error: bad command"
-    if not is_replace and f.length() != 3:
-        return "error: bad command"
+    if not known: return "error: bad command"
+    if is_replace and f.length() != 4: return "error: bad command"
+    if not is_replace and f.length() != 3: return "error: bad command"
 
-    subj := unescape(to_bytes_list(f[2]))
-    if is_bad(subj):
-        return "error: bad command"
+    let subj = unescape(to_bytes_list(f[2]))
+    if is_bad(subj): return "error: bad command"
 
     var repl = List[Int]()
 
     if is_replace:
         repl = unescape(to_bytes_list(f[3]))
-        if is_bad(repl):
-            return "error: bad command"
+        if is_bad(repl): return "error: bad command"
 
     var re = new_re(to_bytes_list(f[1]))
     re.parse_top()
-    if re.err != "":
-        return "error: " + re.err
+    if re.err != "": return "error: " + re.err
 
     re.compile()
     re.subj = subj
 
     if cmd == "test":
-        if re.search(0):
-            return "true"
+        if re.search(0): return "true"
 
         return "false"
 
     if cmd == "match" or cmd == "full":
         re.anchored_end = cmd == "full"
-        if not re.search(0):
-            return "no match"
+        if not re.search(0): return "no match"
 
         var snap = List[Int]()
         for i in 0..2 * (re.ngroups + 1):
@@ -1252,7 +1195,7 @@ fn run_cmd(f: List[String]) String:
         return re.group_lines(snap).join("\n")
 
     if cmd == "find-all":
-        ms := re.all_matches()
+        let ms = re.all_matches()
         var lines = List[String]()
         for m in ms:
             lines.append(span_line(m[0], m[1], re.subj))
@@ -1260,7 +1203,7 @@ fn run_cmd(f: List[String]) String:
         return lines.join("\n")
 
     if cmd == "split":
-        ms := re.all_matches()
+        let ms = re.all_matches()
         var pieces = List[String]()
         var last = 0
 
@@ -1274,18 +1217,17 @@ fn run_cmd(f: List[String]) String:
         return pieces.join("\n")
 
     // replace
-    ms := re.all_matches()
+    let ms = re.all_matches()
     var res = List[Int]()
     var last = 0
-    L := re.subj.length()
+    let L = re.subj.length()
 
     for m in ms:
         for i in last..m[0]:
             res.append(re.subj[i])
 
-        piece := re.expand(repl, m)
-        if re.err != "":
-            return "error: " + re.err
+        let piece = re.expand(repl, m)
+        if re.err != "": return "error: " + re.err
 
         for x in piece:
             res.append(x)
@@ -1296,7 +1238,7 @@ fn run_cmd(f: List[String]) String:
     return quoted(res, 0, res.length())
 
 export fn main() Int:
-    lines := read_lines(stdin()).get()
+    let lines = read_lines(stdin()).get()
     var out = List[String]()
     for line in lines:
         if line.length() > 0:

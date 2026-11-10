@@ -376,7 +376,8 @@ fn may_contain_symbol(
             // An import can contribute declarations not written here. A standard module or a
             // relative file the scan already visits contributes none the scan would miss; any
             // other spelling (an alias, an escaped string, a file outside the scan) stays in.
-            let path = lexed.tokens[i + 1..]
+            // A grouped import names several paths; every one must qualify.
+            let mut paths = lexed.tokens[i + 1..]
                 .iter()
                 .take_while(|t| {
                     !matches!(
@@ -384,9 +385,12 @@ fn may_contain_symbol(
                         ms_syntax::token::Tok::Newline | ms_syntax::token::Tok::Eof
                     )
                 })
-                .find(|t| t.kind == ms_syntax::token::Tok::String)
-                .map(|path| &lexed.source[path.lo as usize..path.hi as usize]);
-            if !path.is_some_and(|text| scanned_import(&file, text, scanned)) {
+                .filter(|t| t.kind == ms_syntax::token::Tok::String)
+                .map(|path| &lexed.source[path.lo as usize..path.hi as usize])
+                .peekable();
+            let all_scanned =
+                paths.peek().is_some() && paths.all(|text| scanned_import(&file, text, scanned));
+            if !all_scanned {
                 return true;
             }
         }

@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+)
 
 type Rec:
     cat: String
@@ -7,19 +9,17 @@ type Rec:
 
 fn all_digits(s: String) Bool:
     for i in 0..s.length():
-        if not "0123456789".contains(s.get(i)):
-            return false
+        if not "0123456789".contains(s.get(i)): return false
     return true
 
 // Accepts digits, optionally followed by '.' and one or two digits.
 fn valid_amount(s: String) Bool:
-    parts := s.split(".")
-    if parts.length() == 1:
-        return parts[0].length() > 0 and all_digits(parts[0])
+    let parts = s.split(".")
+    if parts.length() == 1: return parts[0].length() > 0 and all_digits(parts[0])
 
     if parts.length() == 2:
-        ip := parts[0]
-        fp := parts[1]
+        let ip = parts[0]
+        let fp = parts[1]
         return (
             ip.length() > 0
             and all_digits(ip)
@@ -34,28 +34,25 @@ fn parse_line(line: String) Rec?:
     var amt = ""
 
     if line.starts_with("\""):
-        rest := line.slice(1, line.length()).get()
+        let rest = line.slice(1, line.length()).get()
 
-        if close := rest.find_char(fn(c: String) Bool: c == "\""):
+        if let close = rest.find_char(fn(c: String) Bool: c == "\""):
             cat = rest.slice(0, close).get()
 
-            after := rest.slice(close + 1, rest.length()).get()
-            if not after.starts_with(","):
-                return none
+            let after = rest.slice(close + 1, rest.length()).get()
+            if not after.starts_with(","): return none
 
             amt = after.slice(1, after.length()).get()
         else:
             return none
     else:
-        parts := line.split(",")
-        if parts.length() != 2:
-            return none
+        let parts = line.split(",")
+        if parts.length() != 2: return none
 
         cat = parts[0].clone()
         amt = parts[1].clone()
 
-    if cat.length() == 0 or not valid_amount(amt):
-        return none
+    if cat.length() == 0 or not valid_amount(amt): return none
 
     return Rec(cat: cat, amt: amt)
 
@@ -68,14 +65,12 @@ fn strip_zeros(s: String) String:
 
 // Converts a valid amount to a digit string of hundredths.
 fn to_cents(amt: String) String:
-    parts := amt.split(".")
-    ip := parts[0]
-    if parts.length() == 1:
-        return strip_zeros("{ip}00")
+    let parts = amt.split(".")
+    let ip = parts[0]
+    if parts.length() == 1: return strip_zeros("{ip}00")
 
-    fp := parts[1]
-    if fp.length() == 1:
-        return strip_zeros("{ip}{fp}0")
+    let fp = parts[1]
+    if fp.length() == 1: return strip_zeros("{ip}{fp}0")
 
     return strip_zeros("{ip}{fp}")
 
@@ -103,25 +98,24 @@ fn add_digits(a: String, b: String) String:
     return strip_zeros(out)
 
 export fn main() Int:
-    rows := collect(lines(stdin())).get()
+    let rows = collect(lines(stdin())).get()
     var totals = Map[String, String]()
     var cats = List[String]()
     var skipped = 0
 
     for row in rows:
-        if row.trim().length() == 0:
-            continue
+        if row.trim().length() == 0: continue
 
-        if r := parse_line(row):
-            c := to_cents(r.amt)
-            key := r.cat.clone()
-            old := totals.get(key).get("").clone()
+        if let r = parse_line(row):
+            let c = to_cents(r.amt)
+            let key = r.cat.clone()
+            let old = totals.get(key).get("").clone()
 
             if old.length() == 0:
                 cats.append(key.clone())
                 totals.add(key, c)
             else:
-                sum := add_digits(old, c)
+                let sum = add_digits(old, c)
                 totals.add(key, sum)
         else:
             skipped += 1
@@ -131,11 +125,11 @@ export fn main() Int:
     var out = stdout()
 
     for cat in cats:
-        t := totals.get(cat).get("0")
-        padded := t.pad_start(3, "0")
-        n := padded.length()
-        ip := padded.slice(0, n - 2).get()
-        fp := padded.slice(n - 2, n).get()
+        let t = totals.get(cat).get("0")
+        let padded = t.pad_start(3, "0")
+        let n = padded.length()
+        let ip = padded.slice(0, n - 2).get()
+        let fp = padded.slice(n - 2, n).get()
         out.write("{cat}: {ip}.{fp}\n").get()
 
     if skipped > 0:

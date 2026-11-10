@@ -1,6 +1,8 @@
-import expect_equal from "@std/test/test.ms"
-import first from "./first.ms"
-import second from "./second.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    first from "./first.ms",
+    second from "./second.ms",
+)
 
 test "shared bound native thunks use each invocation file and line":
     absent: Int? = none

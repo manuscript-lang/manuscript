@@ -1,15 +1,15 @@
-import Closeable from "@std/core.ms"
-import chmod, create_directory, temporary, write_file from "@std/os/fs.ms"
-import join from "@std/os/path.ms"
 import (
+    Closeable from "@std/core.ms",
+    chmod, create_directory, temporary, write_file from "@std/os/fs.ms",
+    join from "@std/os/path.ms",
     change_directory,
     environment,
     set_environment,
     which,
-    working_directory
-) from "@std/os/env.ms"
-import (os, Os) from "@std/os/system.ms"
-import expect_equal from "@std/test/test.ms"
+    working_directory from "@std/os/env.ms",
+    os, Os from "@std/os/system.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 type SearchEnvironment:
     path: String?
@@ -21,7 +21,6 @@ impl Closeable for SearchEnvironment:
         try set_environment("PATH", self.path.clone())
         try set_environment("PATHEXT", self.extensions.clone())
         try change_directory(self.directory)
-        return ok(unit)
 
 fn saved_variable(values: Map[String, String], name: String) String?:
     windows := os() == Os.Windows
@@ -44,7 +43,6 @@ fn save_search_environment() SearchEnvironment!:
 fn make_program(path: String) Unit!:
     try write_file(path, "#!/bin/sh\nexit 0\n", false).wait()
     try chmod(path, 493)
-    return ok(unit)
 
 test "which preserves PATH order and rejects directories and nonexecutable files":
     directory := try temporary("manuscript-which-order-")

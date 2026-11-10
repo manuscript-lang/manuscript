@@ -1,22 +1,24 @@
-import Deque from "@std/collections/deque.ms"
-import Queue, PriorityQueue from "@std/collections/queue.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import keep from "@std/test/bench.ms"
+import (
+    Deque from "@std/collections/deque.ms",
+    Queue, PriorityQueue from "@std/collections/queue.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    keep from "@std/test/bench.ms",
+)
 
-export fn main() Int:
-    args := arguments()
-    operation := args[0]
-    size := args[1].parse_int().get()
-    shape := args[2]
-    repeats := args[3].parse_int().get()
+fn main() Unit:
+    let args = arguments()
+    let operation = args[0]
+    let size = args[1].parse_int().get()
+    let shape = args[2]
+    let repeats = args[3].parse_int().get()
     var values: List[Int] = []
     var random = 1
 
     for i in 0..size:
         random = (random * 1103515245 + 12345) % 2147483648
 
-        value := if shape == "ascending": i else: (
+        let value = if shape == "ascending": i else: (
             if shape == "descending": size - i else: (
                 if shape == "duplicate": i % 7 else: random % 100003
             )
@@ -27,7 +29,7 @@ export fn main() Int:
     var priority = PriorityQueue[Int]()
     var queue = Queue[Int]()
     var deque = Deque[Int]()
-    started := monotonic()
+    let started = monotonic()
 
     for unused in 0..repeats:
         if operation == "priority":
@@ -52,6 +54,5 @@ export fn main() Int:
 
         keep(checksum).get()
 
-    elapsed := monotonic().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     print("{elapsed} {checksum}")
-    return 0

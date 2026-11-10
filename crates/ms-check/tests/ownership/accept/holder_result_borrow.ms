@@ -6,19 +6,17 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 type Holder:
     gate: Gate
 
 fn relay[T](source: T!) T!:
-    gate := Gate(1)
-    _holder := Holder(gate)
+    let gate = Gate(1)
+    let _holder = Holder(gate)
     return source
 
-export fn main() Int:
-    original: String! = error(Error("body", kind: "EBODY"))
-    returned := relay(original)
+fn main() Unit:
+    let original: String! = error(Error("body", kind: "EBODY"))
+    let returned = relay(original)
     print(returned.err().kind.get(""))
     print(original.err().kind.get(""))
-    return 0

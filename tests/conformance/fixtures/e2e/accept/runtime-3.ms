@@ -21,8 +21,6 @@ fn probe() Unit!:
         error(_):
             return fail(message: "Unexpected case")
 
-    return ok(unit)
-
 test "typed callback helper":
     match probe():
         ok(_):

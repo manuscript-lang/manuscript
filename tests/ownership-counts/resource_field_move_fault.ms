@@ -2,10 +2,12 @@
 // expect-stdout: close two
 // expect-stdout: waited: true
 // A guarded task faults after moving a resource field: the cleanup stack closes the moved door through its new owner and the other one through the record, once each.
-import stdout from "@std/io/io.ms"
-import Closeable from "@std/core.ms"
-import panic from "@std/core.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    stdout from "@std/io/io.ms",
+    Closeable from "@std/core.ms",
+    panic from "@std/core.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 type Door:
     name: String
@@ -13,20 +15,18 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         stdout().write("close {self.name}\n").get()
-        return ok(unit)
 
 type Room:
     first: Door
     second: Door
 
 fn faulting() Unit:
-    r := Room(Door("one"), Door("two"))
+    let r = Room(Door("one"), Door("two"))
     var xs: List[Door] = []
     xs.append(r.first)
     panic("fault after the move")
 
-export fn main() Int:
-    work := promise(fn: ok(faulting()))
-    waited := work.wait()
+fn main() Unit:
+    let work = promise(fn: ok(faulting()))
+    let waited = work.wait()
     stdout().write("waited: {waited.is_error()}\n").get()
-    return 0

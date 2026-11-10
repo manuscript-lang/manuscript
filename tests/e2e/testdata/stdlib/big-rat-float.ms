@@ -1,5 +1,5 @@
-import expect_equal, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_true from "@std/test/test.ms",
     BigRat,
     BigFloat,
     parse_rat,
@@ -10,9 +10,9 @@ import (
     big_float_of_rat,
     rat_of_binary,
     big_float_of_float,
-    parse_big_float
-) from "@std/math/big.ms"
-import from_int from "@std/math/math.ms"
+    parse_big_float from "@std/math/big.ms",
+    from_int from "@std/math/math.ms",
+)
 
 test "rationals stay in lowest terms and compare with ==":
     half := try parse_rat("1/2")

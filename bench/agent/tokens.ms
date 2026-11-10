@@ -3,26 +3,28 @@
 // Usage (from the repository root): ms run bench/agent/tokens.ms   # needs `pip install tiktoken`
 // The reference table shows how verbose each language is when the same program is written by hand;
 // agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
-import glob, GlobOptions from "@std/os/fs.ms"
-import stdout, stderr from "@std/io/io.ms"
-import load_challenges from "./core/model.ms"
-import bash from "./lib/text.ms"
+import (
+    glob, GlobOptions from "@std/os/fs.ms",
+    stdout, stderr from "@std/io/io.ms",
+    load_challenges from "./core/model.ms",
+    bash from "./lib/text.ms",
+)
 
-LANGS := ["ts", "rust", "go", "ms"]
+let LANGS = ["ts", "rust", "go", "ms"]
 
 // Token counts of `paths` from one tiktoken process; none when tiktoken is unavailable.
 fn count_tokens(paths: List[String]) List[Int]?:
-    program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
-    quoted := paths.map(fn p: "'{p}'").join(" ")
-    ran := bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
+    let program = "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
+    let quoted = paths.map(fn p: "'{p}'").join(" ")
+    let ran = bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
     if ran.code != 0: return none
 
-    counts := ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
+    let counts = ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
     return counts
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
 
-export fn main() Int:
+fn main() Int:
     // Each challenge with a reference solution in every language, as a row of file paths in LANGS order.
     var names = List[String]()
     var paths = List[String]()
@@ -31,7 +33,7 @@ export fn main() Int:
         var row = List[String]()
 
         for lang in LANGS:
-            refs := glob(
+            let refs = glob(
                 "{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])
             ).get([])
             if not refs.is_empty(): row.append(
@@ -42,7 +44,7 @@ export fn main() Int:
             names.append(ch.id.clone())
             paths = paths.concat(row)
 
-    counts := count_tokens(paths)
+    let counts = count_tokens(paths)
 
     if counts.is_none():
         (
@@ -54,7 +56,7 @@ export fn main() Int:
         )
         return 1
 
-    all := counts.get([])
+    let all = counts.get([])
     var totals = [0, 0, 0, 0]
     var out = (
         "challenge".pad_end(26, " ")
@@ -63,8 +65,8 @@ export fn main() Int:
     )
 
     for i in 0..names.length():
-        row := all.slice(i * 4, i * 4 + 4).get([])
-        for j in 0..4: totals[j] = totals[j] + row[j]
+        let row = all.slice(i * 4, i * 4 + 4).get([])
+        for j in 0..4: totals[j] += row[j]
         out = (
             out
             + names[i].pad_end(26, " ")

@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
+import (
+    expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+)
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
     cause := parse(text) | try expect_error
@@ -7,7 +9,6 @@ fn error_at(text: String, line: Int, column: Int) Unit!Error:
 
     try expect_equal(cause.details["line"], line.to_string())
     try expect_equal(cause.details["column"], column.to_string())
-    return ok(unit)
 
 test "YAML root EOF location control":
     try error_at("[one", 1, 5)
@@ -50,7 +51,6 @@ fn unsupported_at(text: String, line: Int) Unit!Error:
     if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
-    return ok(unit)
 
 test "YAML flow merge failures retain their source origin":
     try error_at("key: \{<<: 1\}", 1, 12)

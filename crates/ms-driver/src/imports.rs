@@ -82,6 +82,31 @@ pub fn exported_declarations(syms: ms_syntax::Names, source: &str) -> Vec<Export
     names
 }
 
+/// Whether the file at `path` names `name` in one of its `import` declarations.
+fn imports_name(path: &str, name: &str) -> bool {
+    let Ok(source) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    let file = Arc::from("<import-hints>");
+    let Ok(lexed) = lexer::lex(&file, &source) else {
+        return false;
+    };
+    let mut in_import = false;
+    for token in &lexed.tokens {
+        match token.kind {
+            Tok::Import => in_import = true,
+            Tok::Newline | Tok::Eof => in_import = false,
+            Tok::Name
+                if in_import && source.get(token.lo as usize..token.hi as usize) == Some(name) =>
+            {
+                return true;
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
 /// The lines where a real `export` token starts in column one.
 fn export_headers(source: &str) -> Option<BTreeSet<u32>> {
     let file = Arc::from("<import-hints>");
@@ -254,6 +279,11 @@ pub fn suggest_project_imports(
         } else {
             pathops::join(&[source_root, &d.file])
         };
+        // A name the file already imports failed to resolve at that import; a second
+        // import of the same name would not fix it.
+        if imports_name(&here, &name) {
+            continue;
+        }
         let dir = pathops::dir(&here);
         let types_only = d.message.starts_with("unknown type ");
         let paths: Vec<String> = candidates

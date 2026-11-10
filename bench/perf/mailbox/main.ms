@@ -3,23 +3,25 @@
 // back, so the run is dominated by cross-thread mail and wake-ups. A small window keeps the stacks of
 // finished tasks in the pool, so stack setup does not hide the mail cost.
 // `ms run bench/perf/mailbox/main.ms -- 100000 5 [window]`: promises per round, rounds, window (default 64).
-import promise, Promise from "@std/concurrency/promise.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    promise, Promise from "@std/concurrency/promise.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn work(a: Int) Int!:
     return ok(a * 2 + 1)
 
-export fn main() Int:
-    args := arguments()
-    n := args[0].parse_int().get()
-    rounds := args[1].parse_int().get()
+fn main() Unit:
+    let args = arguments()
+    let n = args[0].parse_int().get()
+    let rounds = args[1].parse_int().get()
     var window = 64
     if args.length() > 2:
         window = args[2].parse_int().get()
 
     var total = 0
-    t0 := monotonic()
+    let t0 = monotonic()
 
     for r in 0..rounds:
         var done = 0
@@ -32,7 +34,7 @@ export fn main() Int:
                 total += p.wait().get()
             done += window
 
-    t1 := monotonic()
+    let t1 = monotonic()
     print("total " + total.to_string())
     print(
         "ns/promise " + (
@@ -40,4 +42,3 @@ export fn main() Int:
             / (n * rounds)
         ).to_string()
     )
-    return 0

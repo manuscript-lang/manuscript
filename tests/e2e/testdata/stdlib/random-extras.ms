@@ -5,16 +5,9 @@ import (
     expect_none,
     expect_ok,
     expect_some,
-    expect_true
-) from "@std/test/test.ms"
-import (
-    choice,
-    secure_int,
-    sample,
-    seeded,
-    shuffle,
-    weighted_choice
-) from "@std/random.ms"
+    expect_true from "@std/test/test.ms",
+    choice, secure_int, sample, seeded, shuffle, weighted_choice from "@std/random.ms",
+)
 
 test "seeded sample picks distinct items":
     var rng = seeded(7)

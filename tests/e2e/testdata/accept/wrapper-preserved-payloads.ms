@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Marker:
     id: Int
@@ -43,21 +45,18 @@ fn transformed_success(log: String) Unit!:
     mapped := value.map(fn item: Marker(item.id + 1, log.clone()))
     try expect_equal(value.get().id, 8)
     try expect_equal(mapped.get().id, 9)
-    return ok(unit)
 
 fn transformed_error(log: String) Unit!:
     value: Int!Marker = error(Marker(10, log.clone()))
     mapped := value.map_error(fn item: Marker(item.id + 1, log.clone()))
     try expect_equal(value.is_error(), true)
     try expect_equal(mapped.is_error(), true)
-    return ok(unit)
 
 fn transformed_then(log: String) Unit!:
     value: Marker!Int = ok(Marker(12, log.clone()))
     mapped: Marker!Int = value.and_then(fn item: ok(Marker(item.id + 1, log.clone())))
     try expect_equal(value.get().id, 12)
     try expect_equal(mapped.get().id, 13)
-    return ok(unit)
 
 test "preserved resource payloads transfer exactly once":
     tmp := temporary("wrapper-preserved-") | try expect_ok
@@ -89,7 +88,6 @@ fn bound_transform(log: String) Unit!:
     try expect_equal(first.get().id, 21)
     try expect_equal(second.get().id, 22)
     try expect_equal(value.get().id, 20)
-    return ok(unit)
 
 test "callbacks borrow resource inputs while reusable methods copy only retained data":
     tmp := temporary("wrapper-callback-") | try expect_ok
@@ -123,7 +121,6 @@ fn borrowed_error(log: String) Unit!:
     try expect_equal(absent.is_none(), true)
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "30,")
     try expect_equal(value.is_error(), true)
-    return ok(unit)
 
 test "discarded owned errors close while borrowed errors stay alive":
     tmp := temporary("wrapper-errors-") | try expect_ok

@@ -25,8 +25,6 @@ fn check_services() Unit!:
         error(_):
             return fail("entropy unavailable")
 
-    return ok(unit)
-
 test "host accessors work in callbacks":
     check := check_services
     try check()

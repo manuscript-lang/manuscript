@@ -1,6 +1,8 @@
-import base64_encode, base64_decode from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    base64_encode, base64_decode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "empty Base64 accepts default and explicit alphabets":
     empty := Bytes([])

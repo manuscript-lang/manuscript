@@ -1,5 +1,7 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import PriorityQueue, Queue from "@std/collections/queue.ms"
+import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
+    PriorityQueue, Queue from "@std/collections/queue.ms",
+)
 
 test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)

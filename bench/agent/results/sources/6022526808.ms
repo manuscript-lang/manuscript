@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // Order status codes.
 PLACED := 0

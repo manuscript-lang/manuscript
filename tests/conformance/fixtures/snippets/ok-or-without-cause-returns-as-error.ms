@@ -9,8 +9,7 @@ fn a(s: String) Int!:
 fn b(s: String) Result[Int, Error]:
     return s.parse_int().ok_or()
 
-export fn main() Int:
+fn main() Unit:
     stdout().write("{a("4").get(0)} {b("x").is_ok()}\n").get()
     if e := a("x"):
         stdout().write("ok {e}\n").get()
-    return 0

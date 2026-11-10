@@ -79,14 +79,14 @@ Save as `port.ms` and run `ms run port.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
 ```manuscript
 fn port_number(text: String) Int!:
-    port := text.trim()
+    let port = text.trim()
         | .parse_int()
         | .ok_or(Error("expected a port number"))
         | try
     return ok(port)
 
-export fn main() Int:
-    if port := port_number(" 8080 "):
+fn main() Int:
+    if let port = port_number(" 8080 "):
         print(port)
         return 0
     return 1
@@ -139,7 +139,7 @@ The operand types, not the expected result type, select the operator row.
 - Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `try` need an independently known operand.
 - `not`, `and`, and `or` take Bool, so Never is fine.
 
-The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `x: Int = -panic(message: "stop")`.
+The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `let x: Int = -panic(message: "stop")`.
 
 See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `try`.
 
@@ -148,9 +148,8 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 `__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` instead.
 
 ```ms
-export fn main() Int:
+fn main() Unit:
     print("{__FILE__}:{__LINE__}")
-    return 0
 ```
 
 ## Evaluation
@@ -167,8 +166,8 @@ export fn main() Int:
 
 ```manuscript
 fn calculated(value: Int, active: Bool) Int:
-    product := 1 + 2 * 3             // 7
-    same := not value == product     // not (value == product)
+    let product = 1 + 2 * 3             // 7
+    let same = not value == product     // not (value == product)
     if active and same:
         return product
     return value
@@ -176,7 +175,7 @@ fn calculated(value: Int, active: Bool) Int:
 
 ```manuscript
 fn invalid(value: Int, ratio: Float) Bool:
-    mixed := value + ratio           // Type error: exact numeric types differ.
+    let mixed = value + ratio           // Type error: exact numeric types differ.
     return 0 < value < 10               // Syntax error: comparison chain.
 ```
 

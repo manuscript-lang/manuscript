@@ -1,17 +1,17 @@
-import Pair from "@std/collections/collections.ms"
-import panic from "@std/core.ms"
-import stderr from "@std/io/io.ms"
 import (
+    Pair from "@std/collections/collections.ms",
+    panic from "@std/core.ms",
+    stderr from "@std/io/io.ms",
     bit_xor,
     shift_right_unsigned,
     wrapping_add,
     wrapping_multiply,
-    max_int
-) from "@std/math/math.ms"
-import environment from "@std/os/env.ms"
-import secure_int from "@std/random.ms"
-import expect_fault, fail from "@std/test/test.ms"
-import milliseconds, monotonic from "@std/time.ms"
+    max_int from "@std/math/math.ms",
+    environment from "@std/os/env.ms",
+    secure_int from "@std/random.ms",
+    expect_fault, fail from "@std/test/test.ms",
+    milliseconds, monotonic from "@std/time.ms",
+)
 
 /*
 Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.

@@ -44,6 +44,5 @@ fn main2() Unit:
         if m := nn.next:
             stdout().write("{m.v}\n").get()
 
-export fn main() Int:
+fn main() Unit:
     main2()
-    return 0

@@ -4,11 +4,11 @@ import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 fn read_pipe(path: String) Int:
-    _data := read_file(path).wait()
+    let _data = read_file(path).wait()
     return 1
 
 fn cancel_read(path: String) Int:
-    task := promise(fn: ok(read_pipe(path.clone())))
+    let task = promise(fn: ok(read_pipe(path.clone())))
     if task.with(options: PromiseOptions(timeout: milliseconds(10))).wait().is_error():
         return 1
 
@@ -23,8 +23,8 @@ fn open_on(path: String) Int:
         if read_symlink("/proc/self/fd/{entry.name}").get("") == path: count += 1
     return count
 
-export fn main() Int:
-    path := arguments()[0].clone()
+fn main() Unit:
+    let path = arguments()[0].clone()
     var cancelled = 0
     for i in 0..10:
         cancelled += cancel_read(path.clone())
@@ -34,9 +34,8 @@ export fn main() Int:
     var waited = 0
 
     while open > 0 and waited < 200:
-        _slept := sleep(milliseconds(10)).wait()
+        let _slept = sleep(milliseconds(10)).wait()
         waited += 1
         open = open_on(path.clone())
 
     print("{cancelled} {open}")
-    return 0

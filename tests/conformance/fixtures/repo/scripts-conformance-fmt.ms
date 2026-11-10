@@ -68,7 +68,6 @@ fn validate(report: Report) Result[Unit, Error]:
 
     passed | try expect_equal(expected: report.summary.passed)
     skipped | try expect_equal(expected: report.summary.skipped)
-    return ok(unit)
 
 fn inventory(suite: String) Result[List[String], Error]:
     var files: List[String] = []
@@ -142,7 +141,6 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
 
     try emit("{ran} files, {failed} failed")
     failed | try expect_equal(expected: 0)
-    return ok(unit)
 
 fn run_file(ms: String, file: String) Result[Unit, Error]:
     output := try run(
@@ -207,7 +205,6 @@ test "shards cover every inventory entry exactly once":
 
 fn emit(text: String) Result[Unit, Error]:
     try stdout().write("{text}\n")
-    return ok(unit)
 
 test "invalid suite and shard arguments fail before running children":
     run_conformance([]).is_error() | try expect_true

@@ -35,6 +35,11 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - Preserve declared error types/cases/causes and checked binding identities.
 - Filesystem prechecks must keep the same error kind as the equivalent host failure. `Directory::open` used a generic `EIO` for a regular file while `open_directory` promises `EINVAL`; `fs-kinds-and-sources.ms` checks file, missing-path, non-directory ancestor and valid-directory controls through the public API.
 - Rational powers must propagate fallible integer powers: numeric defaults turn a size-limit error into a successful but wrong fraction. `big-rat-power-limits.ms` checks oversized numerator/denominator powers with either exponent sign and retains zero/unit controls (#3334).
+- Modular square-root nonresidue searches cannot use a fixed attempt cutoff:
+  valid primes can have no nonresidue among the first thousand candidates.
+  Continue on Euler result +1, stop on -1, and reject other results as composite
+  witnesses. `bigint-number-theory.ms` certifies a prime whose least nonresidue
+  is 1013 and checks signed squares and composite-search exits (#3391).
 - Interpolation of finite endpoints must not overflow solely in their difference. Use a weighted blend when the finite endpoint span overflows, retaining the existing finite-span formula for tiny/subnormal rounding and existing nonfinite-input behavior; For median, halve finite neighbors only when their sum overflows; always halving loses subnormal precision. `statistics.ms` tests these boundaries (#2955, #2956).
 - A finite-input mean can overflow in its sum although the average is representable. Preserve the ordinary finite-sum path and nonfinite-input behavior; an exact rational overflow fallback keeps cancellation residuals that rescaling or per-term division can lose. `statistics.ms` exercises exact binary64 boundary cases (#2957).
 - Subnormal histogram bin widths can underflow or round enough to move interior values. For finite inputs, use exact rational positions and floor before converting the index; keep ordinary widths and nonfinite behavior unchanged. `statistics.ms` covers signed/shifted integer-grid boundaries (#2967).
@@ -46,6 +51,7 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
 - MIME multipart receivers accept only ASCII SP/HT transport padding before a delimiter line CRLF (RFC 2046); do not trim headers or payloads. Keep the streaming raw-section budget unchanged and test delimiter padding across chunk splits (`mime.ms`, `multipart-stream.ms`, #2975).
 - WebSocket compression permits RSV1 only on a message's first Text/Binary frame, never a continuation or control frame. Validate minimal payload-length encodings and distinguish empty Close payloads from malformed one-byte status codes. Keep both-role incremental decoder and socket close-1002 regressions in `ws/frame.rs` and `ws/socket.rs` (#3269–#3271).
 - JWT claim validation first requires an object after verifying its signature. `JsonValue.get` returns none for nonobjects, so member checks alone accept signed scalars and arrays as claim-free JWTs. Match the root case without cloning its map and cover raw and typed result paths (`jwt.ms`, #3341).
+- JWT protected headers must reject every present `crit` while no critical extensions are supported, including explicit null and malformed lists. Reject `b64:false` and non-Boolean encoding flags; unknown noncritical fields and the default encoded payload remain accepted. Independently signed headers in `jwt.ms` pin presence checks and algorithm-error ordering (#3417).
 - Float interval validation must reject NaN explicitly or use positive interval membership (`not (p >= low and p <= high)`), not only `p < low or p > high`. Check invalid inputs before empty-container shortcuts; `metrics-histogram.ms` covers NaN, infinities, finite bounds, and empty/populated controls (#2953).
 - Pure-`.ms` standard modules: `@std/internal/*` holds natives only (helpers there are not importable), imports cannot be renamed and exported names collide across modules, so give each type's constructors distinct names (`rat_of_int`, `parse_big_float`); avoid `from_` in new names, which floods the LSP `from_` completion snapshot. A built-in `to_string` on every value wins over a user method of that name; use `format`. Shared private helpers belong in the one public module that needs them (`math/big.ms` holds BigRat and BigFloat).
 - A native parameter named `d` is read by lowering (`rtcall.rs`) as a type descriptor and gets one injected instead of your argument; name handle parameters `decoder`, `encoder`, `handle`. The symptom is a segfault inside the native on its first argument.
@@ -99,6 +105,8 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
 - CSV streams retain unfinished chunks and join only at completion/EOF (#3362).
   Update buffered fragments and quote state together before returning a record
   budget error: callers can continue reading, so stale fragments would corrupt
-  later rows. Keep the continued-read regression alongside exact-limit tests.
+  later rows. Recheck nonempty EOF tails before parsing: a previously rejected
+  oversized tail must not become a successful row on a continued read. Keep the
+  continued-read regression alongside exact-limit tests.
 
 - Weighted selection normalizes finite nonnegative weights by their largest entry when the raw total overflows or is subnormal. Reuse the validated normal total and preserve its direct selection loop. Raw sums can overflow, and raw subnormal draw points round equal weights into unequal bins. Keep secure and seeded selection on the same scale, exclude zero weights, and use fixed-seed comparisons across huge/subnormal and ordinary equivalent ratios (`random-weight-ranges.ms`, #3348). Do not multiply by a reciprocal: a minimum-subnormal scale has an infinite reciprocal.

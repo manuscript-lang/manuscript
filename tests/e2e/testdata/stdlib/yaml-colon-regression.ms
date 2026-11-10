@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
+import (
+    expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+)
 
 fn object(keys: List[String], values: List[YamlValue]) YamlValue:
     var result = Map[String, YamlValue]()
@@ -41,7 +43,6 @@ fn invalid(source: String) Unit!:
     if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
     cause.details["reason"] | try expect_equal("unexpected mapping colon")
-    return ok(unit)
 
 test "YAML flow scalar rejects a colon before tab":
     try invalid("\{a: x:\tb\}")

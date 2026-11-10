@@ -1,30 +1,23 @@
 import (
-    expect_equal,
-    expect_false,
-    expect_not_equal,
-    expect_true
-) from "@std/test/test.ms"
-import arguments from "@std/os/env.ms"
-import (
+    expect_equal, expect_false, expect_not_equal, expect_true from "@std/test/test.ms",
+    arguments from "@std/os/env.ms",
     endianness,
     end_of_line,
     os,
     dev_null,
     system_info,
     Endianness,
-    Os
-) from "@std/os/system.ms"
-import (
+    Os from "@std/os/system.ms",
     CommandOutput,
     RunOptions,
     SpawnOptions,
     Stdio,
     process_info,
     run,
-    spawn
-) from "@std/os/process.ms"
-import (environment, set_environment) from "@std/os/env.ms"
-import lines from "@std/io/streams.ms"
+    spawn from "@std/os/process.ms",
+    environment, set_environment from "@std/os/env.ms",
+    lines from "@std/io/streams.ms",
+)
 
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())

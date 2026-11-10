@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Pattern:
     name: String
@@ -27,14 +29,14 @@ fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     if status == 0:
         if result.is_error(): return -1
 
-        output := result.get()
+        let output = result.get()
         if output != expected: return -1
 
         return output.byte_length() + 17
 
     if not result.is_error(): return -1
 
-    actual_error := result.err()
+    let actual_error = result.err()
     if (
         status == 1
         and actual_error != Error("string: limit exceeded", kind: "EOVERFLOW")
@@ -72,20 +74,20 @@ fn measure(
     if normalize_sum(text, form, has_max, max, expected, status) != expected_sum: return 1
 
     var checksum = 0
-    started := monotonic()
+    let started = monotonic()
     for iteration in 0..iterations:
         checksum += normalize_sum(text, form, has_max, max, expected, status)
 
-    elapsed := monotonic().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
-    _written := stdout().write(
+    let _written = stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
-export fn main() Int:
-    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+fn main() Int:
+    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
     if measure("empty_NFC_full", "", "NFC", false, 0, "", 0, 1000000) != 0: return 1
     if measure("empty_NFD_full", "", "NFD", false, 0, "", 0, 1000000) != 0: return 1
     if measure("empty_NFKC_full", "", "NFKC", false, 0, "", 0, 1000000) != 0: return 1

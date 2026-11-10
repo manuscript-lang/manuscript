@@ -1,7 +1,9 @@
-import keep, measure from "@std/test/bench.ms"
-import words from "./src/harness.ms"
-import compile from "@std/string.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    words from "./src/harness.ms",
+    compile from "@std/string.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn captures_bench(count: Int) Result[Unit, Error]:
     re := try compile("(word)([0-9]+)")

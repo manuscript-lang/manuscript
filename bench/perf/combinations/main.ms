@@ -1,21 +1,23 @@
-import combinations from "@std/collections/itertools.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    combinations from "@std/collections/itertools.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
-    args := arguments()
-    n := args[0].parse_int().get()
-    k := args[1].parse_int().get()
-    repeats := args[2].parse_int().get()
-    expected := args[3].parse_int().get()
+fn main() Int:
+    let args = arguments()
+    let n = args[0].parse_int().get()
+    let k = args[1].parse_int().get()
+    let repeats = args[2].parse_int().get()
+    let expected = args[3].parse_int().get()
     var input: List[Int] = []
     for i in 0..n: input.append(i)
 
-    start := monotonic()
+    let start = monotonic()
     var checksum = 0
 
     for unused in 0..repeats:
-        output := combinations(input, k)
+        let output = combinations(input, k)
         if output.length() != expected: return 1
 
         checksum += output.length()

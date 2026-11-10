@@ -1,6 +1,6 @@
-import expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
 import (
+    expect_false, expect_ok, expect_true from "@std/test/test.ms",
+    PromiseOptions from "@std/concurrency/promise.ms",
     cpu_usage,
     groups,
     process_info,
@@ -8,30 +8,26 @@ import (
     resource_usage,
     set_groups,
     IdentityKind,
-    set_identity
-) from "@std/os/process.ms"
-import (memory_usage) from "@std/os/system.ms"
-import (
+    set_identity from "@std/os/process.ms",
+    memory_usage from "@std/os/system.ms",
     FileEvent,
     WatchOptions,
     create_directory,
     stat_filesystem,
     temporary,
     watch,
-    write_file
-) from "@std/os/fs.ms"
-import join from "@std/os/path.ms"
-import milliseconds from "@std/time.ms"
-import ReadStream from "@std/io/io.ms"
-import within from "./support/conn.ms"
+    write_file from "@std/os/fs.ms",
+    join from "@std/os/path.ms",
+    milliseconds from "@std/time.ms",
+    ReadStream from "@std/io/io.ms",
+    within from "./support/conn.ms",
+)
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
         ok(_): return error(Error("process misuse succeeded"))
         error(cause):
             if cause.kind != expected.kind: return error(Error("wrong process error"))
-
-    return ok(unit)
 
 fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
@@ -40,8 +36,6 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
             if cause.kind != expected.kind: return error(
                 Error("wrong filesystem error")
             )
-
-    return ok(unit)
 
 test "process usage records report this process":
     cpu := try cpu_usage()

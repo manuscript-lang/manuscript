@@ -1,9 +1,11 @@
-import Bytes from "@std/bytes.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
-    checked := data.index_of_byte(255, start)
+    let checked = data.index_of_byte(255, start)
 
     if expected == data.length():
         if checked.is_some(): return 1
@@ -11,20 +13,20 @@ fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int
         if checked.get(-1) != expected: return 1
 
     var checksum = 0
-    started := monotonic()
+    let started = monotonic()
     for unused in 0..iterations:
         checksum += data.index_of_byte(255, start).get(data.length())
 
-    elapsed := monotonic().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected * iterations: return 1
 
-    _written := stdout().write(
+    let _written = stdout().write(
         "{name},{data.length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
-export fn main() Int:
-    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+fn main() Int:
+    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for n in [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]:
         for kind in [

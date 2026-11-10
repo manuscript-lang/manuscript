@@ -1,5 +1,7 @@
-import posix from "@std/os/path.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    posix from "@std/os/path.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "POSIX extensions preserve basename and dotfile rules":
     paths := posix()

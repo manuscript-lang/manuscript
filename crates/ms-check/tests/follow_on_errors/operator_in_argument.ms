@@ -1,4 +1,3 @@
-fn main() Int:
-    n := 1
+fn main() Unit:
+    let n = 1
     print(n + "x")
-    return 0

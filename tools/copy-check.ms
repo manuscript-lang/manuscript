@@ -6,12 +6,13 @@
 // Arguments name the files to sweep instead.
 // MS names the ms that builds the programs (default target/release/ms).
 // Usage: ms run tools/copy-check.ms [-- files]
-import tool_ms from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import RunOptions, run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import seconds from "@std/time.ms"
-import stdout from "@std/io/io.ms"
+import (
+    tool_ms from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    RunOptions, run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    seconds from "@std/time.ms",
+)
 
 // The probe lines the compiler printed on standard error, without their prefix.
 fn copies(text: String) List[String]:
@@ -22,11 +23,11 @@ fn copies(text: String) List[String]:
         )
     return sites
 
-export fn main() Int:
-    root := working_directory().get()
+fn main() Int:
+    let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
-    if files.length() == 0:
+    if files.is_empty():
         for dir in [
             "tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
             "tests/e2e/testdata/accept", "tests/e2e/testdata/stdlib",
@@ -35,9 +36,9 @@ export fn main() Int:
             for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
                 files.append("{dir}/{f.path}")
 
-    ms := tool_ms(root.clone())
-    scratch := temporary("ms-copy-").get()
-    binary := "{scratch.path()}/program"
+    let ms = tool_ms(root.clone())
+    let scratch = temporary("ms-copy-").get()
+    let binary = "{scratch.path()}/program"
     var env = Map[String, String]()
     env.add("MS_COPY_PROBE", "1")
     env.add("MS_CACHE", "off")
@@ -47,8 +48,8 @@ export fn main() Int:
     var failing = 0
 
     for f in files:
-        absolute := "{root}/{f}"
-        source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
+        let absolute = "{root}/{f}"
+        let source = read_file(absolute.clone()).wait().get().decode_utf8().get("")
         var command = List[String]()
 
         if source.contains("export fn main"):
@@ -58,17 +59,17 @@ export fn main() Int:
         else:
             continue
 
-        if out := run(
+        if let out = run(
             ms.clone(), command, RunOptions(timeout: seconds(120), env: env.clone())
         ).wait():
             swept += 1
 
-            sites := copies(out.stderr.decode_utf8().get(""))
-            if sites.length() == 0: continue
+            let sites = copies(out.stderr.decode_utf8().get(""))
+            if sites.is_empty(): continue
 
             failing += 1
             total += sites.length()
-            for site in sites: stdout().write("copy: {f}\t{site}\n").get()
+            for site in sites: print("copy: {f}\t{site}")
 
     change_directory(root).get()
     print("swept {swept} programs, {total} object copies in {failing}")

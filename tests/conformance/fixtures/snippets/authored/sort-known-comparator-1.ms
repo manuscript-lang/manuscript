@@ -40,11 +40,11 @@ fn main_run() Int:
             f.append((seed % 17).to_float())
             i += 1
 
-        a := v.sorted(up)
-        b := v.sorted(down)
-        c := f.sorted(fup)
-        d := v.sorted(bad)
-        e := v.sorted(mod3)
+        let a = v.sorted(up)
+        let b = v.sorted(down)
+        let c = f.sorted(fup)
+        let d = v.sorted(bad)
+        let e = v.sorted(mod3)
         var k = 0
 
         while k < n:
@@ -65,6 +65,5 @@ fn main_run() Int:
 
     return sum
 
-export fn main() Int:
-    _w := stdout().write("{main_run()}\n")
-    return 0
+fn main() Unit:
+    let _w = stdout().write("{main_run()}\n")

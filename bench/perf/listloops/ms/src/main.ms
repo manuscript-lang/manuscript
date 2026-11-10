@@ -1,8 +1,10 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn say(text: String) Unit:
-    _ignored := stdout().write(text)
+    let _ignored = stdout().write(text)
 
 fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
@@ -32,7 +34,7 @@ fn k_base(
 
 fn k_clamp(a: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
-        v := a[i]
+        let v = a[i]
         out[i] = if v < 0.0: 0.0 else: (if v > 1.0: 1.0 else: v)
 
 fn k_conv(a: List[Int], var out: List[Float], n: Int) Unit:
@@ -48,8 +50,8 @@ fn k_dot(a: List[Float32], b: List[Float32], n: Int) Float32:
 fn report(name: String, flops: Int, reps: Int, t: Int) Unit:
     say("{name} {(flops * reps).to_float() / t.to_float()}\n")
 
-export fn main() Int:
-    n := 4096
+fn main() Unit:
+    let n = 4096
     var f1 = List[Float32]()
     var f2 = List[Float32]()
     var fo = List[Float32]()
@@ -69,7 +71,7 @@ export fn main() Int:
         i2.append(k % 13)
         io.append(0)
 
-    reps := 100000
+    let reps = 100000
     var t = monotonic()
     for _r in 0..reps:
         k_fma(f1, f2, var fo, n)
@@ -105,4 +107,3 @@ export fn main() Int:
         s += k_dot(f1, f2, n)
     report("dot32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())
     say("check {fo[5]} {d2[5]} {io[5]} {s}\n")
-    return 0

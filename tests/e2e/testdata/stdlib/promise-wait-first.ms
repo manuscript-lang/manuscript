@@ -3,10 +3,10 @@ import (
     complete,
     promise,
     wait_first,
-    PromiseOptions
-) from "@std/concurrency/promise.ms"
-import milliseconds, sleep, monotonic from "@std/time.ms"
-import expect_equal, expect_error, expect_true from "@std/test/test.ms"
+    PromiseOptions from "@std/concurrency/promise.ms",
+    milliseconds, sleep, monotonic from "@std/time.ms",
+    expect_equal, expect_error, expect_true from "@std/test/test.ms",
+)
 
 fn immediate(id: Int) Unit:
     complete[Int](id, ok(1))

@@ -1,6 +1,8 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ascii85_encode, ascii85_decode from "@std/data/encoding.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ascii85_encode, ascii85_decode from "@std/data/encoding.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "ASCII85 unframed vectors cover tails zero shorthand and maximum words":
     for text in ["", "f", "fo", "foo", "foob", "fooba", "foobar", "hello", "Man sure."]:

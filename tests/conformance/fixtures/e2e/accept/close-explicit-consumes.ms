@@ -13,30 +13,26 @@ impl Closeable for Gate:
 
 fn handled() Unit!:
     var g = Gate(0)
-    r := g.close()
-    if _ok := r:
+    let r = g.close()
+    if let _ok = r:
         return error(Error("close should have failed"))
-
-    return ok(unit)
 
 fn branchy(explicit: Bool) Unit!:
     var g = Gate(0)
     if explicit:
-        _ := g.close()
-    return ok(unit)
+        let _ = g.close()
 
 fn relocked(second_fails: Bool) Unit!:
     var g = Gate(0)
-    _ := g.close()
+    let _ = g.close()
     g = Gate(0)
     if second_fails:
         return ok(unit)
 
-    _ := g.close()
-    return ok(unit)
+    let _ = g.close()
 
 fn ok_of(r: Unit!) Bool:
-    if _ok := r:
+    if let _ok = r:
         return true
 
     return false

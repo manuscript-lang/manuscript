@@ -1,7 +1,9 @@
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
+import (
+    stdin from "@std/io.ms",
+    stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    range from "@std/collections.ms",
+)
 
 // Formats a hunk range: `start`, `start,length`, or `start,0`.
 fn span(start: Int, length: Int) String:
@@ -76,8 +78,7 @@ export fn main() Int:
     for k in range(0, total):
         if kinds[k] != 0:
             changes.append(k)
-    if changes.length() == 0:
-        return 0
+    if changes.length() == 0: return 0
 
     // Number of A and B lines consumed before each script position.
     var a_before = List[Int]()

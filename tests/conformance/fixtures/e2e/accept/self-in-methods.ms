@@ -18,18 +18,17 @@ impl Box[T]:
         var xs = self.items.clone()
         xs.append(item)
 
-        b: Self = Box[T](items: xs)
+        let b: Self = Box[T](items: xs)
         return b
 
     fn pair(other: Self) List[Self]:
         return [self.clone(), other.clone()]
 
-export fn main() Int:
-    p := Point(x: 1, y: 2).with_x(5)
-    b := Box[Int](items: [1]).added(2)
-    _ := stdout().write(
+fn main() Unit:
+    let p = Point(x: 1, y: 2).with_x(5)
+    let b = Box[Int](items: [1]).added(2)
+    let _ = stdout().write(
         p.x.to_string() + " " + b.items.length().to_string() + " " + b.pair(
             b
         ).length().to_string() + "\n"
     )
-    return 0

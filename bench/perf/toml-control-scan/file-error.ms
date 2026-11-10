@@ -1,20 +1,22 @@
-import parse from "@std/data/toml.ms"
-import arguments from "@std/os/env.ms"
-import read_file, write_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse from "@std/data/toml.ms",
+    arguments from "@std/os/env.ms",
+    read_file, write_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn diagnostic(text: String) String:
     match parse(text):
         ok(_): return "accepted"
         error(cause): return cause.message
 
-export fn main() Int:
-    args := arguments()
-    path := args.get(0)
-    text := read_file(path).wait().get().decode_utf8().get()
-    count := args.get(1).parse_int().get()
-    expected := diagnostic(text)
+fn main() Int:
+    let args = arguments()
+    let path = args[0]
+    let text = read_file(path).wait().get().decode_utf8().get()
+    let count = args[1].parse_int().get()
+    let expected = diagnostic(text)
 
     if count == 0:
         stdout().write(expected).get()
@@ -22,18 +24,18 @@ export fn main() Int:
 
     // Optional readiness marker for the external-input observability probe, outside timing.
     if args.length() > 2:
-        write_file(args.get(2), "ready").wait().get()
+        write_file(args[2], "ready").wait().get()
 
     var checksum = 0
-    start := monotonic()
+    let start = monotonic()
 
     for unused in 0..count:
-        current := read_file(path).wait().get().decode_utf8().get()
-        output := diagnostic(current)
+        let current = read_file(path).wait().get().decode_utf8().get()
+        let output = diagnostic(current)
         if output != expected: return 1
 
         checksum += output.byte_length()
 
-    elapsed := monotonic().difference(start).to_nanoseconds()
+    let elapsed = monotonic().difference(start).to_nanoseconds()
     print("{elapsed}\t{checksum}\t{expected.byte_length()}")
     return 0

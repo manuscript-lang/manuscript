@@ -17,7 +17,7 @@ Accept source per the [normative grammar](../../../core-language/basics/grammar.
 | Names and scopes | Collect module signatures, reject duplicates, resolve locals in order, fix mutable binding types |
 | Operators | Closed precedence and operand table; Bool conditions, short-circuiting, no implicit numeric conversion |
 | Function values | Keep parameter order, mutability and exact types; require explicit generic specialization and contextual anonymous types |
-| Return completeness | Allow Unit fallthrough and bare returns; reject reachable non-Unit fallthrough; track Never and loop/return boundaries |
+| Return completeness | Allow Unit and `Unit!` fallthrough (the end returns `unit` or `ok(unit)`) and bare returns; reject reachable non-Unit fallthrough; track Never and loop/return boundaries |
 | Argument labels | Bind labels and positional arguments left to right to unfilled parameters, never by spelling; same rule for constructors, methods, function values; reject unknown labels, duplicates, excess positional, missing required |
 | List literals | Canonical prelude List; homogeneous elements; annotations or expected type for empty lists |
 | Destructuring bindings | Check arity, fields, renaming, nesting, duplicates; infer each local; see [destructuring bindings](../../../core-language/types/destructuring.md) |

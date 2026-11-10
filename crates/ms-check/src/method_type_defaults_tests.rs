@@ -128,6 +128,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
         name: cause,
         ty: primitive("Int"),
         mutable: false,
+        positional: false,
     }];
     let plain = function_with(
         syms,
@@ -169,6 +170,7 @@ fn invocation_default_metadata_survives_substitution_and_erases_recursively() {
             name: n("callback"),
             ty: marked.clone(),
             mutable: false,
+            positional: false,
         }],
         std::rc::Rc::new(wrapper),
     );

@@ -369,11 +369,10 @@ fn checker_diagnostics_stop_before_lowering() {
 }
 
 #[test]
-fn entry_must_be_an_exported_main() {
+fn entry_must_be_a_parameterless_main() {
     let dir = scratch("entry");
     let backend = Engine::new(Fixed(EXIT_SEVEN));
     for (text, expected) in [
-        ("fn main() Int:\n    return 0\n", "main is not exported"),
         (
             "export fn other() Int:\n    return 0\n",
             "no main function is declared",
@@ -386,7 +385,7 @@ fn entry_must_be_an_exported_main() {
         let source = write(&dir, "main.ms", text);
         let (status, _, err) = ms(&backend, &["run", &source]);
         assert_eq!(status, 1, "{text}");
-        assert!(err.contains("entry must export fn main() Int; "), "{err}");
+        assert!(err.contains("entry must declare fn main; "), "{err}");
         assert!(err.contains(expected), "{expected} missing in {err}");
     }
 }

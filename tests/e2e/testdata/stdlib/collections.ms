@@ -1,11 +1,11 @@
-import expect_equal, expect_false from "@std/test/test.ms"
 import (
+    expect_equal, expect_false from "@std/test/test.ms",
     range_by,
     RangeOptions,
     filled,
     map_from_entries,
-    flatten
-) from "@std/collections/collections.ms"
+    flatten from "@std/collections/collections.ms",
+)
 
 fn positive(value: Int) Bool: value > 0
 

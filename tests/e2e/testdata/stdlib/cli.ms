@@ -1,12 +1,12 @@
-import Arg, Command, Flag, FlagKind, Matches, command from "@std/cli/command.ms"
 import (
+    Arg, Command, Flag, FlagKind, Matches, command from "@std/cli/command.ms",
     expect_contains,
     expect_equal,
     expect_error,
     expect_ok,
     expect_some,
-    fail
-) from "@std/test/test.ms"
+    fail from "@std/test/test.ms",
+)
 
 type ServeOptions:
     port: Int

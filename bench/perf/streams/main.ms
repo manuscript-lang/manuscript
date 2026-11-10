@@ -1,5 +1,5 @@
-import stdout, Source from "@std/io/io.ms"
 import (
+    stdout, Source from "@std/io/io.ms",
     from_list,
     from_bytes,
     map,
@@ -7,18 +7,18 @@ import (
     collect,
     filter,
     take,
-    fold
-) from "@std/io/streams.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import monotonic, Instant from "@std/time.ms"
+    fold from "@std/io/streams.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    monotonic, Instant from "@std/time.ms",
+)
 
 // ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
 
 fn say(text: String) Unit:
-    _ignored := stdout().write(text)
+    let _ignored = stdout().write(text)
 
 fn report(name: String, n: Int, start: Instant, sum: Int) Unit:
-    ns := monotonic().difference(start).to_nanoseconds()
+    let ns = monotonic().difference(start).to_nanoseconds()
     say("{name} {ns.to_float() / n.to_float()} {sum}\n")
 
 // A list as a `Source`, read by index.
@@ -30,7 +30,7 @@ impl Source[Int] for ListSource:
     var fn next() Int?!:
         if self.at >= self.items.length(): return ok(none)
 
-        v := self.items[self.at]
+        let v = self.items[self.at]
         self.at += 1
         return ok(v)
 
@@ -44,8 +44,8 @@ type MapSource:
 
 impl Source[Int] for MapSource:
     var fn next() Int?!:
-        step := try self.up.next()
-        if v := step: return ok(self.f(v))
+        let step = try self.up.next()
+        if let v = step: return ok(self.f(v))
 
         return ok(none)
 
@@ -63,9 +63,9 @@ fn drain(source: Source[Int]) Int!:
     var total = 0
 
     while true:
-        step := try s.next()
+        let step = try s.next()
 
-        if v := step:
+        if let v = step:
             total += v
         else:
             break
@@ -85,7 +85,7 @@ fn stdlib_map3(xs: List[Int]) Int!:
     return ok(total)
 
 fn stdlib_collect(xs: List[Int]) Int!:
-    all := try collect(from_list(xs) | map(fn x: x + 1), none)
+    let all = try collect(from_list(xs) | map(fn x: x + 1), none)
     return ok(all.length())
 
 fn plain_filter(xs: List[Int]) Int:
@@ -127,11 +127,11 @@ fn hand_lines(data: Bytes) Int!:
     var at = 0
 
     while true:
-        end := data.index_of_byte(10, at)
+        let end = data.index_of_byte(10, at)
 
-        if stop := end:
-            line := try data.slice(at, stop)
-            if text := line.decode_utf8():
+        if let stop = end:
+            let line = try data.slice(at, stop)
+            if let text = line.decode_utf8():
                 count += text.length()
             at = stop + 1
         else:
@@ -145,8 +145,8 @@ fn stdlib_lines(data: Bytes) Int!:
         count += line.length()
     return ok(count)
 
-export fn main() Int:
-    n := 5000000
+fn main() Unit:
+    let n = 5000000
     var xs = List[Int]()
     for i in 0..n:
         xs.append(i)
@@ -154,52 +154,51 @@ export fn main() Int:
     var t = monotonic()
     report("for-list", n, t, plain(xs))
 
-    a := xs.clone()
+    let a = xs.clone()
     t = monotonic()
     report("source-list", n, t, drain(ListSource(a, 0)).get(-1))
 
-    b := xs.clone()
+    let b = xs.clone()
     t = monotonic()
     report("source-map", n, t, drain(MapSource(ListSource(b, 0), fn x: x + 1)).get(-1))
 
-    c := xs.clone()
+    let c = xs.clone()
     t = monotonic()
     report("stream-map", n, t, stdlib_map(c).get(-1))
 
-    d := xs.clone()
+    let d = xs.clone()
     t = monotonic()
     report("stream-map3", n, t, stdlib_map3(d).get(-1))
 
-    e := xs.clone()
+    let e = xs.clone()
     t = monotonic()
     report("stream-collect", n, t, stdlib_collect(e).get(-1))
     t = monotonic()
     report("for-filter", n, t, plain_filter(xs))
 
-    g := xs.clone()
+    let g = xs.clone()
     t = monotonic()
     report("stream-filter", n, t, stdlib_filter(g).get(-1))
     t = monotonic()
     report("for-take", n, t, plain_take(xs, n / 2))
 
-    h := xs.clone()
+    let h = xs.clone()
     t = monotonic()
     report("stream-take", n / 2, t, stdlib_take(h, n / 2).get(-1))
 
-    k := xs.clone()
+    let k = xs.clone()
     t = monotonic()
     report("stream-fold", n, t, stdlib_fold(k).get(-1))
 
     var builder = BytesBuilder()
-    rows := 1000000
+    let rows = 1000000
     for i in 0..rows:
         builder.append_bytes("line number {i} of the log\n".to_bytes())
 
-    data := builder.build()
+    let data = builder.build()
     t = monotonic()
     report("hand-lines", rows, t, hand_lines(data).get(-1))
 
-    f := data.clone()
+    let f = data.clone()
     t = monotonic()
     report("stream-lines", rows, t, stdlib_lines(f).get(-1))
-    return 0

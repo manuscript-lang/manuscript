@@ -1,6 +1,5 @@
-export fn main() Int:
-    xs := ["a"]
+fn main() Unit:
+    let xs = ["a"]
     var out = ["b"]
-    first := xs[0]
+    let first = xs[0]
     out.append(first)
-    return 0

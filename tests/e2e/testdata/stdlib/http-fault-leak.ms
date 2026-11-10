@@ -1,20 +1,20 @@
-import send, recv from "./support/conn.ms"
-import expect_ok from "@std/test/test.ms"
-import HttpExchange from "@std/net/http.ms"
-import connect, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
-import memory_usage from "@std/os/system.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
-import fetch from "@std/net/fetch.ms"
-import sleep from "@std/time.ms"
+import (
+    send, recv from "./support/conn.ms",
+    expect_ok from "@std/test/test.ms",
+    HttpExchange from "@std/net/http.ms",
+    connect, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+    memory_usage from "@std/os/system.ms",
+    PromiseOptions from "@std/concurrency/promise.ms",
+    fetch from "@std/net/fetch.ms",
+    sleep from "@std/time.ms",
+)
 
 fn faulting(var exchange: HttpExchange) Unit!:
     big := "x".repeat(1000000).get("")
     xs: List[Int] = []
     n := xs[big.length()]
     if big.length() + n > 5: return ok(unit)
-
-    return ok(unit)
 
 test "a faulting handler releases the values its frames own":
     server := serve(address: "127.0.0.1:0", handler: faulting) | try expect_ok
@@ -34,7 +34,6 @@ test "a faulting handler releases the values its frames own":
 
 fn hanging(var exchange: HttpExchange) Unit!:
     try sleep(30.seconds()).wait()
-    return ok(unit)
 
 test "a fetch cancelled by its timeout releases its read buffer":
     server := serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok

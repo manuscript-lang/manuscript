@@ -18,29 +18,31 @@ Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"80
 */
 export fn parse_dotenv(text: String) Map[String, String]!:
     var out = Map[String, String]()
-    lines := text.cut_prefix("\u{feff}").get(text).lines()
+
+    // Split on LF alone: a CR before it stays until the parser knows it is outside a quoted value.
+    let lines = text.cut_prefix("\u{feff}").get(text).split("\n")
     var index = 0
 
     while index < lines.length():
-        number := index + 1
+        let number = index + 1
 
         // Text inside an opening quote is literal, so only the front of the line is trimmed here.
-        entry := lines[index].trim_start()
+        let entry = lines[index].trim_start()
         index += 1
         if entry.trim().is_empty() or entry.starts_with("#"): continue
 
-        assignment := entry.cut_prefix("export ").get(entry)
-        found := assignment.index_of("=")
+        let assignment = entry.cut_prefix("export ").get(entry)
+        let found = assignment.index_of("=")
         if found.is_none(): return error(config_error(number, "expected NAME=value"))
 
-        at := found.get(0)
-        name := assignment.take(at).trim()
+        let at = found.get(0)
+        let name = assignment.take(at).trim()
         if not valid_name(name): return error(
             config_error(number, "invalid variable name")
         )
 
-        value := assignment.drop(at + 1).trim_start()
-        quote := value.take(1)
+        let value = assignment.drop(at + 1).trim_start()
+        let quote = value.take(1)
 
         if quote != "'" and quote != "\"" and quote != "`":
             out.add(name, bare_value(value.trim()))
@@ -59,10 +61,10 @@ export fn parse_dotenv(text: String) Map[String, String]!:
             closing = lines[index].index_of(quote)
             index += 1
 
-        last := parts.length() - 1
-        body := parts.join("\n")
-        end := body.scalar_length() - parts[last].scalar_length() + closing.get(0)
-        trailing := body.drop(end + 1).trim()
+        let last = parts.length() - 1
+        let body = parts.join("\n")
+        let end = body.scalar_length() - parts[last].scalar_length() + closing.get(0)
+        let trailing = body.drop(end + 1).trim()
         if not trailing.is_empty() and not trailing.starts_with("#"): return error(
             config_error(number, "unexpected text after quoted value")
         )
@@ -91,7 +93,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
     for raw in text.cut_prefix("\u{feff}").get(text).lines():
         number += 1
 
-        entry := raw.trim()
+        let entry = raw.trim()
         if entry.is_empty() or entry.starts_with("#") or entry.starts_with(";"): continue
 
         if entry.starts_with("["):
@@ -103,11 +105,11 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
             sections.add_default(current.clone(), Map[String, String]())
             continue
 
-        split := first_assignment(entry)
+        let split = first_assignment(entry)
         if split.is_none(): return error(config_error(number, "expected key = value"))
 
-        at := split.get(0)
-        key := entry.take(at).trim()
+        let at = split.get(0)
+        let key = entry.take(at).trim()
         if key.is_empty(): return error(config_error(number, "empty key"))
 
         if var section = sections.get(current):
@@ -117,7 +119,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 
 // The text before an inline comment: a `#` at the start or after a space or tab. Other `#` characters belong to the value.
 fn bare_value(value: String) String:
-    chars := value.chars()
+    let chars = value.chars()
     var previous = " "
 
     for index in 0..chars.length():
@@ -134,8 +136,8 @@ fn valid_name(name: String) Bool:
     var position = 0
 
     for code in name.scalar_values():
-        letter := (code >= 97 and code <= 122) or (code >= 65 and code <= 90)
-        digit := code >= 48 and code <= 57
+        let letter = (code >= 97 and code <= 122) or (code >= 65 and code <= 90)
+        let digit = code >= 48 and code <= 57
         if not (letter or code == 95 or (digit and position > 0)): return false
 
         position += 1
@@ -143,25 +145,36 @@ fn valid_name(name: String) Bool:
     return true
 
 fn first_assignment(entry: String) Int?:
-    eq := entry.index_of("=")
-    colon := entry.index_of(":")
+    let eq = entry.index_of("=")
+    let colon = entry.index_of(":")
     if eq.is_none(): return colon
     if colon.is_none(): return eq
 
     return eq.get(0).min(colon.get(0))
 
 fn ini_value(value: String) String:
-    trimmed := value.trim()
-    quote := trimmed.take(1)
-    if (
-        trimmed.length() >= 2
-        and (quote == "\"" or quote == "'")
-        and trimmed.ends_with(quote)
-    ):
+    let trimmed = value.trim()
+    let quote = trimmed.take(1)
+    let quoted = quote == "\"" or quote == "'"
+
+    // A closing quote followed only by whitespace and a ` #` or ` ;` comment ends the value; the
+    // comment may itself contain or end with the quote, so this precedes the whole-suffix rule.
+    if quoted:
+        if let closing = trimmed.drop(1).index_of(quote):
+            let tail = trimmed.drop(closing + 2)
+            for marker in [" #", " ;"]:
+                if let at = tail.index_of(marker):
+                    if tail.take(at).trim().is_empty(): return (
+                        trimmed
+                        .drop(1)
+                        .take(closing)
+                    )
+
+    if trimmed.length() >= 2 and quoted and trimmed.ends_with(quote):
         return trimmed.drop(1).take(trimmed.length() - 2)
 
     var cut = value.length()
     for marker in [" #", " ;"]:
-        if at := value.index_of(marker):
+        if let at = value.index_of(marker):
             cut = cut.min(at)
     return value.take(cut).trim()

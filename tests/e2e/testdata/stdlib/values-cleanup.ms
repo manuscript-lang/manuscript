@@ -3,11 +3,11 @@ import (
     expect_false,
     expect_not_equal,
     expect_ok,
-    fail
-) from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    fail from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 type Key:
     id: Int
@@ -28,44 +28,43 @@ type Resource:
 // resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
     var fn close() Unit!:
-        inner_closed := read_file("{self.dir}/2").wait().is_ok()
-        _ := write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
-        return ok(unit)
+        let inner_closed = read_file("{self.dir}/2").wait().is_ok()
+        let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
 
 fn leave(dir: String) Int:
-    _outer := Resource(dir.clone(), 1)
-    _inner := Resource(dir, 2)
+    let _outer = Resource(dir.clone(), 1)
+    let _inner = Resource(dir, 2)
     return 42
 
 fn propagate(result: Int!) Int!:
-    found := try result
+    let found = try result
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    create := fn() Int?: 42
-    present: Int? = 0
-    missing: Int? = none
+    let create = fn() Int?: 42
+    let present: Int? = 0
+    let missing: Int? = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
-    nested: Int?? = missing
+    let nested: Int?? = missing
     try expect_false(nested.is_none() or nested.get().is_some())
 
 test "Result propagation and Error views preserve concrete causes":
-    failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+    let failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(propagate(failed), failed)
 
-    success: Int! = ok(3)
-    expected: Int! = ok(4)
+    let success: Int! = ok(3)
+    let expected: Int! = ok(4)
     try expect_equal(propagate(success), expected)
 
-    view: Error = Error("JSON: invalid data", kind: "EBADMSG")
+    let view: Error = Error("JSON: invalid data", kind: "EBADMSG")
     try expect_not_equal(view.message.byte_length(), 0)
     try expect_equal(view.kind, "EBADMSG")
 
 test "custom equality and hashing define map key identity":
-    first := Key(1, "first")
-    second := Key(1, "second")
+    let first = Key(1, "first")
+    let second = Key(1, "second")
     try expect_false(first != second or first.hash() != second.hash())
 
     var map = Map[Key, String]()
@@ -74,8 +73,8 @@ test "custom equality and hashing define map key identity":
     try expect_false(map.length() != 1 or map.get(first) != "b")
 
 test "Closeable cleanup runs in reverse order before return delivery":
-    temporary := temporary("manuscript-cleanup-") | try expect_ok
-    dir := temporary.path()
+    let temporary = temporary("manuscript-cleanup-") | try expect_ok
+    let dir = temporary.path()
     try expect_equal(leave(dir.clone()), 42)
     try expect_equal((try read_file("{dir}/1").wait()), Bytes([116, 114, 117, 101]))
     try expect_equal((try read_file("{dir}/2").wait()), Bytes([102, 97, 108, 115, 101]))

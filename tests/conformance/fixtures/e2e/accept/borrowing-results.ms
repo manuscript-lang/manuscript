@@ -21,7 +21,7 @@ fn pick(a: Person, b: Person, left: Bool) String:
     return b.name
 
 fn head(rows: List[List[Int]]) List[Int]:
-    h := rows[0]
+    let h = rows[0]
     return h
 
 fn deep(t: Team) String:
@@ -38,22 +38,22 @@ fn recurse(value: String, count: Int) String:
 fn make_team() Team:
     return Team(members: [Person(name: "ann", tags: ["x", "y"])], label: "L")
 
-export fn main() Int:
-    p := Person(name: "bob", tags: ["t1", "t2"])
-    q := Person(name: "cat", tags: ["u1"])
-    t := first_tag(p)
+fn main() Unit:
+    let p = Person(name: "bob", tags: ["t1", "t2"])
+    let q = Person(name: "cat", tags: ["u1"])
+    let t = first_tag(p)
     print("{t} {pick(p, q, false)} {pick(p, q, true)}")
 
-    rows := [[1, 2], [3]]
-    h := head(rows)
+    let rows = [[1, 2], [3]]
+    let h = head(rows)
     print("{h.length()} {h[1]}")
 
     var team = Team(members: [p, q], label: "team")
     print("{deep(team)} {members(team).length()}")
 
     // A lend from a temporary is owned by the caller.
-    fresh := first_tag(Person(name: "tmp", tags: ["owned"]))
-    also := deep(make_team())
+    let fresh = first_tag(Person(name: "tmp", tags: ["owned"]))
+    let also = deep(make_team())
     print("{fresh} {also}")
 
     // `var` of a lent part changes the origin.
@@ -69,4 +69,3 @@ export fn main() Int:
     var names: List[String] = []
     names.append(first_tag(team.members[0]).clone())
     print("{names.length()} {names[0]}")
-    return 0

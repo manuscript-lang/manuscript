@@ -20,27 +20,26 @@ impl Closeable for Token:
         return error(Error("close failed", kind: "ECLOSE"))
 
 fn owned() Int!:
-    _first := Token(1)
-    _second := Token(2)
+    let _first = Token(1)
+    let _second = Token(2)
     return error(Error("original body", kind: "EBODY", details: {"id": "body"}))
 
 fn borrowed(cause: Error) Int!:
-    _resource := Token(3)
+    let _resource = Token(3)
     return error(cause)
 
-export fn main() Int:
-    first := owned()
-    cause := first.err()
+fn main() Unit:
+    let first = owned()
+    let cause = first.err()
     print(cause.message)
     print(cause.kind.get(""))
     print(cause.details["id"])
 
-    original := Error("caller error", kind: "ECALLER", details: {"id": "caller"})
-    second := borrowed(original)
-    returned := second.err()
+    let original = Error("caller error", kind: "ECALLER", details: {"id": "caller"})
+    let second = borrowed(original)
+    let returned = second.err()
     print(returned.message)
     print(returned.kind.get(""))
     print(returned.details["id"])
     print(original.message)
     print(original.details["id"])
-    return 0

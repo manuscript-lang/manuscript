@@ -1,9 +1,11 @@
 // Build an agent workspace and score a finished one against hidden tests.
-import chmod, copy, CopyOptions, create_directory from "@std/os/fs.ms"
-import parse from "@std/data/json.ms"
-import Challenge, Lang, root, repo from "./model.ms"
-import count_workspace from "./codetokens.ms"
-import bash, norm, read_text, write_text from "../lib/text.ms"
+import (
+    chmod, copy, CopyOptions, create_directory from "@std/os/fs.ms",
+    parse from "@std/data/json.ms",
+    Challenge, Lang, root, repo from "./model.ms",
+    count_workspace from "./codetokens.ms",
+    bash, norm, read_text, write_text from "../lib/text.ms",
+)
 
 // The benchmark's verdict on one finished workspace.
 export type Grade:

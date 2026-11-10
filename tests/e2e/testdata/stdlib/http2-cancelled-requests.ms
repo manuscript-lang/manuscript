@@ -1,12 +1,14 @@
-import certificate, private_key from "./support/certificates.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
-import HttpExchange, HttpServerOptions, reply, text from "@std/net/http.ms"
-import serve from "@std/net/net.ms"
-import memory_usage from "@std/os/system.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
-import fetcher, FetcherOptions, FetchOptions from "@std/net/fetch.ms"
-import sleep from "@std/time.ms"
-import TlsOptions from "@std/net/tls.ms"
+import (
+    certificate, private_key from "./support/certificates.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+    HttpExchange, HttpServerOptions, reply, text from "@std/net/http.ms",
+    serve from "@std/net/net.ms",
+    memory_usage from "@std/os/system.ms",
+    PromiseOptions from "@std/concurrency/promise.ms",
+    fetcher, FetcherOptions, FetchOptions from "@std/net/fetch.ms",
+    sleep from "@std/time.ms",
+    TlsOptions from "@std/net/tls.ms",
+)
 
 fn handler(var exchange: HttpExchange) Unit!:
     if exchange.path() == "/hang":

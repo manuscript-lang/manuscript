@@ -43,8 +43,7 @@ fn args() Unit:
     var d: C? = C(5)
     show(d?.get())
 
-export fn main() Int:
+fn main() Unit:
     clos()
     twice()
     args()
-    return 0

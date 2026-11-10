@@ -7,12 +7,12 @@ import (
     ImageFormat,
     JpegOptions,
     Chroma,
-    Rgba
-) from "@std/image/image.ms"
-import hex_decode from "@std/data/encoding.ms"
-import vectors from "./image-png-vectors.ms"
-import jpeg_vectors from "./image-jpeg-vectors.ms"
-import expect_equal, fail from "@std/test/test.ms"
+    Rgba from "@std/image/image.ms",
+    hex_decode from "@std/data/encoding.ms",
+    vectors from "./image-png-vectors.ms",
+    jpeg_vectors from "./image-jpeg-vectors.ms",
+    expect_equal, fail from "@std/test/test.ms",
+)
 
 test "ppm round trip":
     var img = new_image(3, 2, ColorMode.Rgb).get()

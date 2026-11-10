@@ -1,5 +1,5 @@
-import panic from "@std/core.ms"
 import (
+    panic from "@std/core.ms",
     caller_site,
     catch_fault,
     expect_equal,
@@ -10,8 +10,8 @@ import (
     expect_some,
     expect_true,
     fail,
-    repr
-) from "@std/test/test.ms"
+    repr from "@std/test/test.ms",
+)
 
 fn site_of(failure: Error) String:
     return failure.details.get_or("site", "")

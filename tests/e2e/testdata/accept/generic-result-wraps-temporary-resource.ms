@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
-import expect_equal, expect_some from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+    expect_equal, expect_some from "@std/test/test.ms",
+)
 
 type Resource:
     id: Int
@@ -9,7 +11,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
-        return ok(unit)
 
 fn wrapped[T](value: T) Result[T, String]:
     return ok(value)
@@ -25,20 +26,17 @@ fn use_temporary(path: String) Unit!:
     result := wrapped(Resource(1, path.clone()))
     try expect_equal(result.is_ok(), true)
     try expect_equal(try log_text(path), "")
-    return ok(unit)
 
 fn use_error_case(path: String) Unit!:
     result := rejected(Resource(2, path.clone()))
     try expect_equal(result.is_error(), true)
     try expect_equal(try log_text(path), "")
-    return ok(unit)
 
 fn use_named(path: String) Unit!:
     named := Resource(3, path.clone())
     result := wrapped(named)
     try expect_equal(result.is_ok(), true)
     try expect_equal(try log_text(path), "")
-    return ok(unit)
 
 test "a Result built around a temporary resource owns it and closes it once":
     directory := try temporary("wrapped-ok-")

@@ -11,15 +11,13 @@ type Resource:
 
 impl Closeable for Resource:
     fn close() Unit!:
-        _ignored := self.output.write("close {self.label}\n")
-        return ok(unit)
+        let _ignored = self.output.write("close {self.label}\n")
 
-export fn main() Int:
-    output := stdout()
+fn main() Unit:
+    let output = stdout()
     var _resource = Resource("parent", output)
-    _child := Resource("child", output)
-    _ignored := output.write("ready\n")
+    let _child = Resource("child", output)
+    let _ignored = output.write("ready\n")
     while true:
         continue
     _resource.close()
-    return 0

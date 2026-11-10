@@ -8,13 +8,15 @@
 // that exceeds TIMEOUT seconds fails.
 // MS names the ms to measure (default target/release/ms); SCALING_BOUND and SCALING_TIMEOUT override the limits.
 // Usage: ms run tools/scaling-check.ms [-- shape...]
-import tool_ms, env from "./lib.ms"
-import temporary, write_file from "@std/os/fs.ms"
-import run, RunOptions from "@std/os/process.ms"
-import arguments, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import monotonic, seconds from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    tool_ms, env from "./lib.ms",
+    temporary, write_file from "@std/os/fs.ms",
+    run, RunOptions from "@std/os/process.ms",
+    arguments, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+    monotonic, seconds from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 // Source of `shape` with `n` units.
 fn generate(shape: String, n: Int) String:
@@ -25,11 +27,11 @@ fn generate(shape: String, n: Int) String:
         for i in 0..n: out.append("    t += {i}\n")
         out.append("    return t % 256\n")
     else if shape == "many_locals":
-        out.append("export fn main() Int:\n    a0 := 0\n")
+        out.append("export fn main() Int:\n    let a0 = 0\n")
         for i in 1..n: out.append("    let a{i} = a{i - 1} + 1\n")
         out.append("    return a{n - 1} % 256\n")
     else if shape == "long_interpolation":
-        out.append("export fn main() Int:\n    x := 1\n    s := \"")
+        out.append("export fn main() Int:\n    let x = 1\n    let s = \"")
         for i in 0..n: out.append("\{x\}a")
         out.append("\"\n    return s.length() % 256\n")
     else if shape == "many_impls":
@@ -48,15 +50,15 @@ fn generate(shape: String, n: Int) String:
         )
         out.append("    return t % 256\n")
     else if shape == "big_literal":
-        out.append("export fn main() Int:\n    xs := [0")
+        out.append("export fn main() Int:\n    let xs = [0")
         for i in 1..n: out.append(", {i}")
         out.append("]\n    return xs.length() % 256\n")
 
     return out.build()
 
 // Extra measurements of a shape whose ratio is over the bound.
-RETRIES := 2
-SHAPES := [
+let RETRIES = 2
+let SHAPES = [
     "long_function", "many_locals", "long_interpolation", "many_impls",
     "many_functions", "many_branches", "big_literal"
 ]
@@ -72,9 +74,12 @@ fn measure(
     var args = [command.clone(), file.clone()]
     for e in extra: args.append(e.clone())
 
-    started := monotonic()
-    ran := run(ms.clone(), args, RunOptions(timeout: seconds(limit))).wait()
-    took := (monotonic().difference(started).to_nanoseconds().to_float() / 1000000000.0)
+    let started = monotonic()
+    let ran = run(ms.clone(), args, RunOptions(timeout: seconds(limit))).wait()
+    let took = (
+        monotonic().difference(started).to_nanoseconds().to_float()
+        / 1000000000.0
+    )
     if ran.is_error(): return -1.0
     if ran.get().exit_code != 0: return -1.0
 
@@ -90,21 +95,21 @@ fn say(text: String) Unit:
     stdout().write(text).get()
 
 fn show(ratio: Float) String:
-    tenths := (ratio * 10.0).truncate_to_int().get(0)
+    let tenths = (ratio * 10.0).truncate_to_int().get(0)
     return "{tenths / 10}.{tenths % 10}x"
 
-export fn main() Int:
-    root := working_directory().get()
-    ms := tool_ms(root.clone())
-    bound := env("SCALING_BOUND", "30").parse_float().get(30.0)
-    limit := env("SCALING_TIMEOUT", "300").parse_int().get(300)
+fn main() Int:
+    let root = working_directory().get()
+    let ms = tool_ms(root.clone())
+    let bound = env("SCALING_BOUND", "30").parse_float().get(30.0)
+    let limit = env("SCALING_TIMEOUT", "300").parse_int().get(300)
     var shapes = List[String]()
     for a in arguments(): shapes.append(a.clone())
 
-    compile_only := shapes.length() > 0
-    if shapes.length() == 0: shapes = SHAPES.clone()
+    let compile_only = shapes.length() > 0
+    if shapes.is_empty(): shapes = SHAPES.clone()
 
-    scratch := temporary("ms-scaling-").get()
+    let scratch = temporary("ms-scaling-").get()
     var failures = 0
     var checked = 0
 
@@ -112,14 +117,16 @@ export fn main() Int:
         var files = List[String]()
 
         for n in [1000, 10000, 100000]:
-            file := "{scratch.path()}/{shape}_{n}.ms"
+            let file = "{scratch.path()}/{shape}_{n}.ms"
             write_file(file, generate(shape, n)).wait().get()
             files.append(file)
 
         for command in ["check", "emit"]:
-            small := measure(ms.clone(), command.clone(), files[0].clone(), [], limit)
-            mid := measure(ms.clone(), command.clone(), files[1].clone(), [], limit)
-            big := measure(ms.clone(), command.clone(), files[2].clone(), [], limit)
+            let small = measure(
+                ms.clone(), command.clone(), files[0].clone(), [], limit
+            )
+            let mid = measure(ms.clone(), command.clone(), files[1].clone(), [], limit)
+            let big = measure(ms.clone(), command.clone(), files[2].clone(), [], limit)
             checked += 1
 
             if small < 0.0 or mid < 0.0 or big < 0.0:
@@ -136,12 +143,18 @@ export fn main() Int:
             for attempt in 0..RETRIES:
                 if ratio <= bound: break
 
-                s2 := measure(ms.clone(), command.clone(), files[0].clone(), [], limit)
-                m2 := measure(ms.clone(), command.clone(), files[1].clone(), [], limit)
-                b2 := measure(ms.clone(), command.clone(), files[2].clone(), [], limit)
+                let s2 = measure(
+                    ms.clone(), command.clone(), files[0].clone(), [], limit
+                )
+                let m2 = measure(
+                    ms.clone(), command.clone(), files[1].clone(), [], limit
+                )
+                let b2 = measure(
+                    ms.clone(), command.clone(), files[2].clone(), [], limit
+                )
                 if s2 < 0.0 or m2 < 0.0 or b2 < 0.0: continue
 
-                again := growth(s2, m2, b2, 0.05)
+                let again = growth(s2, m2, b2, 0.05)
                 if again < ratio: ratio = again
 
             say(
@@ -155,22 +168,22 @@ export fn main() Int:
                 )
 
     if not compile_only:
-        program := "{root}/tests/scaling/containers.ms"
-        mid := run_phases(ms.clone(), program.clone(), 10000, limit)
-        big := run_phases(ms.clone(), program.clone(), 100000, limit)
+        let program = "{root}/tests/scaling/containers.ms"
+        let mid = run_phases(ms.clone(), program.clone(), 10000, limit)
+        let big = run_phases(ms.clone(), program.clone(), 100000, limit)
         checked += 1
 
-        if mid.length() == 0 or big.length() == 0:
+        if mid.is_empty() or big.is_empty():
             failures += 1
             say(
                 "fail: tests/scaling/containers.ms did not run; run it with ms run --build-type Debug\n"
             )
 
         for entry in mid.entries():
-            name := entry.key.clone()
+            let name = entry.key.clone()
             if not big.contains(name.clone()): continue
 
-            ratio := growth(
+            let ratio = growth(
                 0.0, mid[name.clone()].to_float(), big[name.clone()].to_float(),
                 1000000.0
             )
@@ -194,7 +207,7 @@ export fn main() Int:
 // Phase name to nanoseconds from one run of the container program at size `n`; empty when it failed.
 fn run_phases(ms: String, program: String, n: Int, limit: Int) Map[String, Int]:
     var phases = Map[String, Int]()
-    ran := run(
+    let ran = run(
         ms.clone(), ["run", program.clone(), "--build-type", "Debug", "--", "{n}"],
         RunOptions(timeout: seconds(limit * 4))
     ).wait()
@@ -202,7 +215,7 @@ fn run_phases(ms: String, program: String, n: Int, limit: Int) Map[String, Int]:
     if ran.get().exit_code != 0: return phases
 
     for line in ran.get().stdout.decode_utf8().get("").split("\n"):
-        parts := line.split(" ")
+        let parts = line.split(" ")
         if parts.length() != 2: continue
 
         phases[parts[0].clone()] = parts[1].parse_int().get(0)

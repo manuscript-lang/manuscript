@@ -323,10 +323,22 @@ fn analysis_once(
 /// Each fixable diagnostic of `checked` with the path of the file it edits.
 fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
     let mut fixes = Vec::new();
+    // A failed import leaves its names unbound, so every other diagnostic in that file may
+    // only follow from it; only the import's own fix is trustworthy.
+    let failed_import = |issue: &ms_driver::Diagnostic| {
+        issue.message.starts_with("module does not export")
+            || issue.message.starts_with("unknown standard module")
+    };
+    let broken: BTreeSet<&str> = checked
+        .diagnostics
+        .iter()
+        .filter(|issue| failed_import(issue))
+        .map(|issue| issue.file.as_ref())
+        .collect();
     for issue in &checked.diagnostics {
         let Some(fix) = &issue.fix else { continue };
         let file = issue.file.as_ref();
-        if file.starts_with("@std/") {
+        if file.starts_with("@std/") || (broken.contains(file) && !failed_import(issue)) {
             continue;
         }
         let path = if pathops::is_abs(file) || checked.source_root.is_empty() {
@@ -881,9 +893,23 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
             continue;
         }
         input.sources += 1;
-        if file.old.is_empty() {
-            input.added.insert(relative.clone());
-        } else if file.new.is_empty() {
+        if file.new.is_empty() {
+            match std::fs::symlink_metadata(&absolute) {
+                Ok(_) => {
+                    return Err(format!(
+                        "{}: deleted source still exists in the working tree",
+                        file.path()
+                    ));
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(format!(
+                        "{}: {}",
+                        file.path(),
+                        file_error(&ProjectError::path("inspect", &absolute, &error))
+                    ));
+                }
+            }
             overlay.insert(absolute, removed_content(&file.hunks));
         } else {
             let head = std::fs::read(&absolute).map_err(|error| {
@@ -895,7 +921,17 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
             })?;
             let base = reverse_apply(&String::from_utf8_lossy(&head), &file.hunks)
                 .map_err(|message| format!("{}: {message}", file.path()))?;
-            overlay.insert(absolute, base);
+            if file.old.is_empty() {
+                if !base.is_empty() {
+                    return Err(format!(
+                        "{}: added source diff does not cover the whole file",
+                        file.path()
+                    ));
+                }
+                input.added.insert(relative.clone());
+            } else {
+                overlay.insert(absolute, base);
+            }
         }
         if !file.new.is_empty() {
             input.touched.insert(relative, file.touched_lines());

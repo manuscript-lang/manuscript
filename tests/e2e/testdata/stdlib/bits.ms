@@ -1,5 +1,5 @@
-import expect_equal, expect_fault from "@std/test/test.ms"
 import (
+    expect_equal, expect_fault from "@std/test/test.ms",
     bit_and,
     bit_or,
     bit_xor,
@@ -14,9 +14,9 @@ import (
     trailing_zeros,
     wrapping_add,
     wrapping_subtract,
-    wrapping_multiply
-) from "@std/math/math.ms"
-import max_int, min_int from "@std/math/math.ms"
+    wrapping_multiply from "@std/math/math.ms",
+    max_int, min_int from "@std/math/math.ms",
+)
 
 fn shift_too_far() Unit:
     _value := shift_left(1, 64)

@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import is_digit, is_mark, is_punctuation, is_symbol from "@std/unicode.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    is_digit, is_mark, is_punctuation, is_symbol from "@std/unicode.ms",
+)
 
 test "general category predicates":
     is_digit(53) | try expect_equal(true)

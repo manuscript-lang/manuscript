@@ -1,5 +1,7 @@
-import Pipe, pipe, stdout, ReadStream, WriteStream from "@std/io/io.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
+import (
+    pipe, stdout, ReadStream, WriteStream from "@std/io/io.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 fn fill(var out: WriteStream[Int], from: Int, count: Int) Unit!:
     for i in from..from + count:
@@ -38,8 +40,6 @@ fn run() Unit!:
     try b.wait()
     try st.wait()
     try stdout().write("{n} {sum}\n")
-    return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     run().get()
-    return 0

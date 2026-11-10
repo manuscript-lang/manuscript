@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 // Token: kind is "n" (number, value in val), an operator or parenthesis
 // ("+", "-", "*", "/", "(", ")"), or "?" for an unknown character.
@@ -23,8 +25,7 @@ fn digit_value(c: String) Int:
     var i = 0
 
     for d in "0123456789".chars():
-        if d == c:
-            return i
+        if d == c: return i
 
         i += 1
 
@@ -36,7 +37,7 @@ fn tokenize(line: String) List[Tok]:
     var cur = 0
 
     for c in line.chars():
-        d := digit_value(c)
+        let d = digit_value(c)
 
         if d >= 0:
             if in_num:
@@ -60,17 +61,14 @@ fn tokenize(line: String) List[Tok]:
     return out
 
 fn parse_primary(toks: List[Tok], pos: Int) R:
-    if pos >= toks.length():
-        return bad()
+    if pos >= toks.length(): return bad()
 
-    t := toks[pos]
-    if t.kind == "n":
-        return R(v: t.val, pos: pos + 1, ok: true, dz: false)
+    let t = toks[pos]
+    if t.kind == "n": return R(v: t.val, pos: pos + 1, ok: true, dz: false)
 
     if t.kind == "(":
-        r := parse_expr(toks, pos + 1)
-        if not r.ok:
-            return r
+        let r = parse_expr(toks, pos + 1)
+        if not r.ok: return r
         if r.pos < toks.length() and toks[r.pos].kind == ")":
             return R(v: r.v, pos: r.pos + 1, ok: true, dz: r.dz)
 
@@ -80,79 +78,71 @@ fn parse_primary(toks: List[Tok], pos: Int) R:
 
 fn parse_unary(toks: List[Tok], pos: Int) R:
     if pos < toks.length() and toks[pos].kind == "-":
-        r := parse_unary(toks, pos + 1)
-        if not r.ok:
-            return r
+        let r = parse_unary(toks, pos + 1)
+        if not r.ok: return r
 
         return R(v: 0 - r.v, pos: r.pos, ok: true, dz: r.dz)
 
     return parse_primary(toks, pos)
 
 fn parse_term(toks: List[Tok], pos: Int) R:
-    first := parse_unary(toks, pos)
-    if not first.ok:
-        return first
+    let first = parse_unary(toks, pos)
+    if not first.ok: return first
 
     var v = first.v
     var p = first.pos
     var dz = first.dz
 
     while p < toks.length() and (toks[p].kind == "*" or toks[p].kind == "/"):
-        is_mul := toks[p].kind == "*"
-        r := parse_unary(toks, p + 1)
-        if not r.ok:
-            return r
+        let is_mul = toks[p].kind == "*"
+        let r = parse_unary(toks, p + 1)
+        if not r.ok: return r
 
         dz = dz or r.dz
 
         if is_mul:
-            v = v * r.v
+            v *= r.v
         else if r.v == 0:
             dz = true
             v = 0
         else:
-            v = v / r.v
+            v /= r.v
 
         p = r.pos
 
     return R(v: v, pos: p, ok: true, dz: dz)
 
 fn parse_expr(toks: List[Tok], pos: Int) R:
-    first := parse_term(toks, pos)
-    if not first.ok:
-        return first
+    let first = parse_term(toks, pos)
+    if not first.ok: return first
 
     var v = first.v
     var p = first.pos
     var dz = first.dz
 
     while p < toks.length() and (toks[p].kind == "+" or toks[p].kind == "-"):
-        is_add := toks[p].kind == "+"
-        r := parse_term(toks, p + 1)
-        if not r.ok:
-            return r
+        let is_add = toks[p].kind == "+"
+        let r = parse_term(toks, p + 1)
+        if not r.ok: return r
 
         dz = dz or r.dz
 
         if is_add:
-            v = v + r.v
+            v += r.v
         else:
-            v = v - r.v
+            v -= r.v
 
         p = r.pos
 
     return R(v: v, pos: p, ok: true, dz: dz)
 
 fn evaluate(line: String) String:
-    toks := tokenize(line)
-    if toks.length() == 0:
-        return ""
+    let toks = tokenize(line)
+    if toks.length() == 0: return ""
 
-    r := parse_expr(toks, 0)
-    if not r.ok or r.pos != toks.length():
-        return "error: syntax"
-    if r.dz:
-        return "error: division by zero"
+    let r = parse_expr(toks, 0)
+    if not r.ok or r.pos != toks.length(): return "error: syntax"
+    if r.dz: return "error: division by zero"
 
     return "{r.v}"
 
@@ -162,7 +152,7 @@ fn process() Int!:
     var out = stdout()
 
     for line in lines(stdin()):
-        s := evaluate(line)
+        let s = evaluate(line)
         if s != "":
             try out.write("{s}\n")
 

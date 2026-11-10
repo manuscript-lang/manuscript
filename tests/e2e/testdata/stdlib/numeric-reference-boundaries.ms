@@ -1,10 +1,8 @@
-import expect_equal, expect_error, expect_true, fail from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_true, fail from "@std/test/test.ms",
     float_boundaries,
     finite_float_boundaries,
-    int_boundaries
-) from "@std/test/boundary.ms"
-import (
+    int_boundaries from "@std/test/boundary.ms",
     BigRat,
     rat,
     parse_rat,
@@ -12,9 +10,7 @@ import (
     big_float_of_rat,
     rat_of_float,
     rat_of_int,
-    rat_of_big_int
-) from "@std/math/big.ms"
-import (
+    rat_of_big_int from "@std/math/big.ms",
     BigInt,
     from_int,
     floor,
@@ -54,8 +50,8 @@ import (
     count_ones,
     leading_zeros,
     trailing_zeros,
-    parse_int
-) from "@std/math/math.ms"
+    parse_int from "@std/math/math.ms",
+)
 
 // The two's-complement 64-bit wrap of an exact integer.
 fn wrap64(value: BigInt) BigInt!:

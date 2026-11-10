@@ -10,8 +10,6 @@ impl Closeable for Res:
             self.open = false
             print("close {self.id}")
 
-        return ok(unit)
-
 fn borrowed(values: List[Int]) Int:
     a := values
     b := a
@@ -41,7 +39,7 @@ fn conditional_move(flag: Bool) Unit:
 
     _last := Res(4)
 
-export fn main() Int:
+fn main() Unit:
     var values = [1, 2]
     count := borrowed(values)
     var holder = Holder(values)
@@ -51,4 +49,3 @@ export fn main() Int:
     conditional(false)
     conditional_move(true)
     conditional_move(false)
-    return 0

@@ -1,12 +1,14 @@
-import read_all from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    read_all from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 fn out(s: String) Unit:
     stdout().write(s).get()
 
 export fn main() Int:
-    raw := read_all(stdin()).get()
-    text := raw.decode_utf8().get("")
+    let raw = read_all(stdin()).get()
+    let text = raw.decode_utf8().get("")
     var rows = text.split("\n")
 
     // Trailing empty lines are ignored; interior empty lines are rows of width 0.
@@ -20,17 +22,17 @@ export fn main() Int:
 
     // 1. Bad characters, first in reading order (columns counted in scalars).
     for r in 0..n:
-        cs := rows[r].chars()
+        let cs = rows[r].chars()
 
         for c in 0..cs.length():
-            ch := cs[c]
+            let ch = cs[c]
 
             if not (ch == "#" or ch == "." or ch == "S" or ch == "E"):
                 out("error: bad character at {r + 1},{c + 1}\n")
                 return 0
 
     // 2. Ragged rows. Every character is now ASCII, so byte length equals scalar length.
-    width := rows[0].length()
+    let width = rows[0].length()
 
     for r in 0..n:
         if rows[r].length() != width:
@@ -45,11 +47,11 @@ export fn main() Int:
     var e = 0
 
     for r in 0..n:
-        cs := rows[r].chars()
+        let cs = rows[r].chars()
 
         for c in 0..width:
-            ch := cs[c]
-            idx := r * width + c
+            let ch = cs[c]
+            let idx = r * width + c
             walls.append(ch == "#")
 
             if ch == "S":
@@ -76,7 +78,7 @@ export fn main() Int:
         return 0
 
     // Breadth-first search over non-wall cells, 4-directional.
-    total := n * width
+    let total = n * width
     var dist = List[Int]()
     for i in 0..total:
         dist.append(-1)
@@ -88,13 +90,12 @@ export fn main() Int:
     var head = 0
 
     while head < queue.length():
-        cur := queue[head]
+        let cur = queue[head]
         head += 1
-        if cur == e:
-            break
+        if cur == e: break
 
-        r := cur / width
-        c := cur % width
+        let r = cur / width
+        let c = cur % width
 
         for d in 0..4:
             var nr = r
@@ -109,12 +110,10 @@ export fn main() Int:
             else:
                 nc = c + 1
 
-            if nr < 0 or nr >= n or nc < 0 or nc >= width:
-                continue
+            if nr < 0 or nr >= n or nc < 0 or nc >= width: continue
 
-            nb := nr * width + nc
-            if walls[nb] or dist[nb] >= 0:
-                continue
+            let nb = nr * width + nc
+            if walls[nb] or dist[nb] >= 0: continue
 
             dist[nb] = dist[cur] + 1
             queue.append(nb)

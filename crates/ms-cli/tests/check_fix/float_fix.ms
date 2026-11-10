@@ -1,4 +1,3 @@
-export fn main() Int:
-    n := 3
-    _a: Float = n
-    return 0
+fn main() Unit:
+    let n = 3
+    let _a: Float = n

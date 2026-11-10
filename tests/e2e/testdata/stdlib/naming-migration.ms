@@ -1,6 +1,8 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 type Counter:
     calls: Int

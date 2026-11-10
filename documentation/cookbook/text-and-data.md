@@ -20,9 +20,9 @@ fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n")
     return stdout().flush()
 
-export fn main() Int:
-    number := arguments().get(0, default: "42").parse_int()
-    if value := number:
+fn main() Int:
+    let number = arguments().get(0, default: "42").parse_int()
+    if let value = number:
         if show(value).is_ok():
             return 0
     return 1
@@ -36,7 +36,7 @@ ms run number.ms -- 42
 42
 ```
 
-Use `get(default)` for a default, or `if v := x` with a failure path ([Optional values](../core-language/types/optionals.md)).
+Use `get(default)` for a default, or `if let` with a failure path ([Optional values](../core-language/types/optionals.md)).
 
 ## Parse JSON
 
@@ -49,14 +49,12 @@ import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    text := try parse[String](arguments().get(0, default: "\"hello\""))
+    let text = try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
     return stdout().flush()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return run()
 ```
 
 ```sh
@@ -86,16 +84,14 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Unit, Error]:
-    text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
-    config := try parse[Config](text)
-    encoded := try stringify(config, StringifyOptions(strict: true))
+    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+    let config = try parse[Config](text)
+    let encoded = try stringify(config, StringifyOptions(strict: true))
     try stdout().write("{encoded}\n")
     return stdout().flush()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return run()
 ```
 
 ```sh

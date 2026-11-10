@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Pattern:
     name: String
@@ -14,7 +16,7 @@ fn iterations_for(size: Int) Int:
     return 100000
 
 fn reverse_sum(text: String, expected: String) Int:
-    output := text.reverse()
+    let output = text.reverse()
     if output != expected: return -1
 
     return output.byte_length() + 17
@@ -41,38 +43,38 @@ fn measure(name: String, text: String, expected: String) Int:
         and name != "early_unicode_1048576"
     ): return 0
 
-    expected_sum := expected.byte_length() + 17
+    let expected_sum = expected.byte_length() + 17
     if reverse_sum(text, expected) != expected_sum: return 1
 
-    iterations := iterations_for(text.byte_length())
+    let iterations = iterations_for(text.byte_length())
     var checksum = 0
-    started := monotonic()
+    let started = monotonic()
     for iteration in 0..iterations:
         checksum += reverse_sum(text, expected)
 
-    elapsed := monotonic().difference(started).to_nanoseconds()
+    let elapsed = monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
-    _written := stdout().write(
+    let _written = stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
-export fn main() Int:
-    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+fn main() Int:
+    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for pattern in [
         Pattern("ascii_mixed", "abcDE09_", "_90EDcba"),
         Pattern("ascii_controls", "a\u{0}b\tc\nd!", "!d\nc\tb\u{0}a")
     ]:
         for length in [0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 63, 64, 128, 4096, 1048576]:
-            copies := length / 8
-            tail := length % 8
-            text := (
+            let copies = length / 8
+            let tail = length % 8
+            let text = (
                 pattern.forward.repeat(copies).get()
                 + pattern.forward.slice_scalars(0, tail).get()
             )
-            expected := (
+            let expected = (
                 pattern.backward.slice_scalars(8 - tail, 8).get()
                 + pattern.backward.repeat(copies).get()
             )
@@ -90,12 +92,12 @@ export fn main() Int:
         Pattern("replacement", "\u{fffd}", "\u{fffd}")
     ]:
         for copies in [1, 2, 8, 32, 256, 4096, 65536]:
-            text := pattern.forward.repeat(copies).get()
-            expected := pattern.backward.repeat(copies).get()
+            let text = pattern.forward.repeat(copies).get()
+            let expected = pattern.backward.repeat(copies).get()
             if measure("{pattern.name}_copies{copies}", text, expected) != 0: return 1
 
     for length in [4096, 1048576]:
-        ascii := "x".repeat(length).get()
+        let ascii = "x".repeat(length).get()
         if measure("late_unicode_{length}", ascii + "é日😀", "😀日é" + ascii) != 0: return 1
         if measure("early_unicode_{length}", "é日😀" + ascii, ascii + "😀日é") != 0: return 1
 

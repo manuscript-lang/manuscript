@@ -21,13 +21,13 @@ fn pick(b: Bool) Shape?:
     return none
 
 fn take(x: Shape?) Int:
-    if s := x: return s.area()
+    if let s = x: return s.area()
 
     return -1
 
-export fn main() Int:
-    h := Holder(Sq(4))
-    t: Shape? = Sq(5)
+fn main() Unit:
+    let h = Holder(Sq(4))
+    let t: Shape? = Sq(5)
     var v: Shape? = none
     v = Sq(6)
     (
@@ -37,4 +37,3 @@ export fn main() Int:
         )
         .get()
     )
-    return 0

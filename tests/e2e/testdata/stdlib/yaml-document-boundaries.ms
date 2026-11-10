@@ -1,5 +1,7 @@
-import parse, YamlValue from "@std/data/yaml.ms"
-import expect_equal, expect_error from "@std/test/test.ms"
+import (
+    parse, YamlValue from "@std/data/yaml.ms",
+    expect_equal, expect_error from "@std/test/test.ms",
+)
 
 test "same-line document content cannot be a block collection":
     for body in [

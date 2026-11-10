@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import parse_int from "@std/math/math.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    parse_int from "@std/math/math.ms",
+)
 
 test "integer radix parsing preserves signed boundaries in every base":
     for radix in 2..37:

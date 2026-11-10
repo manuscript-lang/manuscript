@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
+)
 
 type Item:
     id: Int
@@ -11,8 +13,6 @@ impl Closeable for Item:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
         if self.fail: return error(Error("close failed"))
-
-        return ok(unit)
 
 fn events(log: String) String!:
     bytes := try read_file(log).wait()

@@ -1,6 +1,8 @@
 // ms: allow_effect std.console.read
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 type Op:
     kind: Int  // 0 unchanged, 1 deletion, 2 insertion
@@ -14,9 +16,9 @@ fn read_all() List[String]:
     var more = true
 
     while more:
-        item := s.next().get()
+        let item = s.next().get()
 
-        if line := item:
+        if let line = item:
             out.append(line.clone())
         else:
             more = false
@@ -24,32 +26,30 @@ fn read_all() List[String]:
     return out
 
 fn next_change(ops: List[Op], begin: Int) Int:
-    total := ops.length()
+    let total = ops.length()
     var p = begin
     while p < total and ops[p].kind == 0:
         p += 1
     return p
 
 fn span(start: Int, len: Int) String:
-    if len == 1:
-        return "{start}"
+    if len == 1: return "{start}"
 
     return "{start},{len}"
 
 export fn main() Int:
-    all := read_all()
-    if all.length() == 0:
-        return 0
+    let all = read_all()
+    if all.length() == 0: return 0
 
-    header := all[0].split(" ")
-    name_a := header[0]
-    name_b := header[1]
-    ctx := header[2].parse_int().get(0)
-    n := header[3].parse_int().get(0)
-    m := header[4].parse_int().get(0)
+    let header = all[0].split(" ")
+    let name_a = header[0]
+    let name_b = header[1]
+    let ctx = header[2].parse_int().get(0)
+    let n = header[3].parse_int().get(0)
+    let m = header[4].parse_int().get(0)
 
     // Full LCS table: tbl[i * w + j] = LCS length of a[i..] and b[j..].
-    w := m + 1
+    let w = m + 1
     var tbl = List[Int]()
     for k in 0..(n + 1) * w:
         tbl.append(0)
@@ -64,8 +64,8 @@ export fn main() Int:
                 if all[1 + i] == all[1 + n + j]:
                     tbl[i * w + j] = tbl[(i + 1) * w + j + 1] + 1
                 else:
-                    down := tbl[(i + 1) * w + j]
-                    right := tbl[i * w + j + 1]
+                    let down = tbl[(i + 1) * w + j]
+                    let right = tbl[i * w + j + 1]
                     tbl[i * w + j] = if down >= right: down else: right
 
             j -= 1
@@ -90,8 +90,8 @@ export fn main() Int:
             cj += 1
 
     // Group changes into hunks and print them.
-    total := ops.length()
-    ctx2 := 2 * ctx
+    let total = ops.length()
+    let ctx2 = 2 * ctx
     var sink = stdout()
     var printed = false
     var k = 0
@@ -100,7 +100,7 @@ export fn main() Int:
         if ops[k].kind == 0:
             k += 1
         else:
-            start := k
+            let start = k
             var last = k
             var nxt = next_change(ops, last + 1)
 
@@ -140,7 +140,7 @@ export fn main() Int:
             sink.write("@@ -{span(sa, la)} +{span(sb, lb)} @@\n").get()
 
             for q in s..e + 1:
-                op := ops[q]
+                let op = ops[q]
                 var prefix = " "
                 if op.kind == 1:
                     prefix = "-"

@@ -1,7 +1,9 @@
-import expect_equal from "@std/test/test.ms"
-import stderr from "@std/io/io.ms"
-import RunOptions, run from "@std/os/process.ms"
-import stdout_bytes from "@std/io/io.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    stderr from "@std/io/io.ms",
+    RunOptions, run from "@std/os/process.ms",
+    stdout_bytes from "@std/io/io.ms",
+)
 
 fn exercise() Int!:
     match run(

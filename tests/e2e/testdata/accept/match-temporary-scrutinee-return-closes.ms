@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -8,12 +10,11 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        _ := append_file(self.log, "{self.id},").wait()
-        return ok(unit)
+        let _ = append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
-    read := read_file(path).wait()
-    if bytes := read: return bytes.decode_utf8().get("")
+    let read = read_file(path).wait()
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -30,7 +31,7 @@ fn early(log: String) Int:
             return 0
 
 fn late(log: String) Int:
-    n := match open(2, log.clone()):
+    let n = match open(2, log.clone()):
         d: d.id
         none: 0
 
@@ -42,21 +43,21 @@ fn hand_on(log: String) Door?:
         none: return none
 
 test "a payload moved out of the arm is not closed by the match":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
-    kept := hand_on(log.clone())
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
+    let kept = hand_on(log.clone())
     logged(log.clone()) | try expect_equal("")
     if kept.is_some():
         logged(log.clone()) | try expect_equal("")
 
 test "return from an arm closes the temporary scrutinee once":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     early(log.clone()) | try expect_equal(10)
     logged(log.clone()) | try expect_equal("1,")
 
 test "falling out of the match closes it once":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     late(log.clone()) | try expect_equal(2)
     logged(log.clone()) | try expect_equal("2,")

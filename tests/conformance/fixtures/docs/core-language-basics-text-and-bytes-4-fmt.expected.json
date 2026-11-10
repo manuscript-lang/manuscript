@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\ntest \"explicit byte conversion\":\n    if not (\"é\".byte_length() == 2): return panic(\"check failed\")\n    if not (\"é\".to_bytes().decode_utf8() == \"é\"): return panic(\"check failed\")\n\n    invalid: String? = none\n    if not (Bytes([255]).decode_utf8() == invalid): return panic(\"check failed\")\n    if not (\"-007\".parse_int() == -7): return panic(\"check failed\")\n"
+    "fmt": "import (\n    panic from \"@std/core.ms\",\n    Bytes from \"@std/bytes.ms\",\n)\n\ntest \"explicit byte conversion\":\n    if not (\"é\".byte_length() == 2): return panic(\"check failed\")\n    if not (\"é\".to_bytes().decode_utf8() == \"é\"): return panic(\"check failed\")\n\n    let invalid: String? = none\n    if not (Bytes([255]).decode_utf8() == invalid): return panic(\"check failed\")\n    if not (\"-007\".parse_int() == -7): return panic(\"check failed\")\n"
   }
 }

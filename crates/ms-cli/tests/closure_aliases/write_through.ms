@@ -19,7 +19,7 @@ fn add(var values: List[Int]) Unit:
     values.append(12)
 
 fn next(var count: Int) Int:
-    result := count
+    let result = count
     count += 1
     return result
 
@@ -31,31 +31,31 @@ fn branch(var box: Box, take: Bool) Unit:
 
     box.count += 1
 
-export fn main() Int:
+fn main() Unit:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
-    append := fn: first.append(9)
+    let append = fn: first.append(9)
     append()
     append()
 
-    _ := stdout().write("{calls} {rows}\n")
+    let _ = stdout().write("{calls} {rows}\n")
     var box = Box(count: 1, items: [[3], [4]])
     branch(var box, false)
     branch(var box, true)
 
-    _ := stdout().write("{box.count}\n")
+    let _ = stdout().write("{box.count}\n")
     var items = box.items
     var inner = items[1]
     invoke(fn: invoke(fn: inner.append(8)))
 
-    _ := stdout().write("{box.items}\n")
+    let _ = stdout().write("{box.items}\n")
     var entries = Map[String, List[Int]]()
     entries.add("dynamic-1", [5])
     if var value = entries["dynamic-{calls}"]?:
         invoke(fn: value.append(value.length()))
 
-    _ := stdout().write("{entries}\n")
+    let _ = stdout().write("{entries}\n")
     var pair = Pair(left: [1], right: [2])
     var left = pair.left
     var right = pair.right
@@ -66,7 +66,7 @@ export fn main() Int:
             right.append(4)
     )
 
-    _ := stdout().write("{pair}\n")
+    let _ = stdout().write("{pair}\n")
     var local_rows = [[10]]
 
     invoke(
@@ -75,14 +75,13 @@ export fn main() Int:
             invoke(fn: local.append(11))
     )
 
-    _ := stdout().write("{local_rows}\n")
+    let _ = stdout().write("{local_rows}\n")
     var boxes = [Box(count: 20, items: [])]
     var stored = boxes[0]
     invoke(fn: stored.bump())
 
-    _ := stdout().write("{boxes}\n")
+    let _ = stdout().write("{boxes}\n")
     var target = rows[1]
     invoke(fn: add(var target))
 
-    _ := stdout().write("{rows}\n")
-    return 0
+    let _ = stdout().write("{rows}\n")

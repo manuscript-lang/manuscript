@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import NormalizationForm from "@std/string.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    NormalizationForm from "@std/string.ms",
+)
 
 type BudgetCase:
     form: String

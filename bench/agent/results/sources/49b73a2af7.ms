@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    range from "@std/collections.ms",
+)
 
 // One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from B.
 type Op:
@@ -42,8 +44,7 @@ fn edit_script(a: List[String], b: List[String], t: List[Int]) List[Op]:
     var j = 0
 
     for k in range(0, n + m):
-        if i == n and j == m:
-            return ops
+        if i == n and j == m: return ops
 
         if i == n:
             ops.append(Op(2, b[j]))
@@ -127,8 +128,7 @@ export fn main() Int:
         starts.append(first)
         ends.append(last)
 
-    if starts.length() == 0:
-        return 0
+    if starts.length() == 0: return 0
 
     var out: List[String] = []
     out.append("--- {name_a}\n+++ {name_b}\n")

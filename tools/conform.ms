@@ -2,11 +2,13 @@
 // Known failures: tests/conformance/expect-fail.txt plus expect-fail.<os>.txt when present.
 // CONFORM_SHARD=i/n splits the run. CONFORM_LEAKS=1 also checks for leaked heap blocks. Arguments after `--` go to `ms-conform run`.
 // Usage: ms run tools/conform.ms [-- extra ms-conform run arguments]
-import env, exe, host, run_program, use_stats_runtime from "./lib.ms"
-import access, create_directory, read_file, write_file from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+import (
+    env, exe, host, run_program, use_stats_runtime from "./lib.ms",
+    access, create_directory, read_file, write_file from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 

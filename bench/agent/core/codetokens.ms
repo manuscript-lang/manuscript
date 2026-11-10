@@ -2,9 +2,11 @@
 //
 // A token is an identifier or keyword, a number, a string literal, or one punctuation/operator character.
 // Comments are excluded. This is a size measure of the final program, not any model's tokenizer count.
-import compile from "@std/string.ms"
-import glob, GlobOptions from "@std/os/fs.ms"
-import read_text from "../lib/text.ms"
+import (
+    compile from "@std/string.ms",
+    glob, GlobOptions from "@std/os/fs.ms",
+    read_text from "../lib/text.ms",
+)
 
 SKIP_DIRS := [
     "target", "node_modules", ".bench", "docs", "examples", ".git", "vendor",

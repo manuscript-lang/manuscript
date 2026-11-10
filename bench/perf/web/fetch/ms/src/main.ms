@@ -1,16 +1,18 @@
-import fetcher from "@std/net/fetch.ms"
-import stdout from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import nanoseconds, monotonic from "@std/time.ms"
+import (
+    fetcher from "@std/net/fetch.ms",
+    stdout from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    nanoseconds, monotonic from "@std/time.ms",
+)
 
 fn worker(url: String, nanos: Int) Int:
     var f = fetcher().get()
-    started := monotonic()
+    let started = monotonic()
     var n = 0
 
     while monotonic().difference(started).compare(nanoseconds(nanos)) < 0:
-        if r := f.fetch(url).wait():
+        if let r = f.fetch(url).wait():
             n += r.body.length()
             n -= r.body.length() - 1
         else:
@@ -20,11 +22,11 @@ fn worker(url: String, nanos: Int) Int:
     return n
 
 // Runs `conns` fetching promises; the runtime spreads them over its threads.
-export fn main() Int:
-    args := arguments()
-    url := args.get(0)
-    conns := args.get(1).parse_int().get()
-    secs := args.get(2).parse_int().get()
+fn main() Unit:
+    let args = arguments()
+    let url = args.get(0)
+    let conns = args.get(1).parse_int().get()
+    let secs = args.get(2).parse_int().get()
     var total = 0
     var running: List[Promise[Int]] = []
     for i in 0..conns:
@@ -32,5 +34,4 @@ export fn main() Int:
     for r in wait_all(running).get():
         total += r
 
-    _ := stdout().write("req/s {total / secs}\n")
-    return 0
+    let _ = stdout().write("req/s {total / secs}\n")

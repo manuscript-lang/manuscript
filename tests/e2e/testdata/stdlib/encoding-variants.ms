@@ -1,12 +1,12 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
     base64_encode,
     base64_decode,
     base32_encode,
     base32_decode,
-    Base32Options
-) from "@std/data/encoding.ms"
-import expect_equal from "@std/test/test.ms"
+    Base32Options from "@std/data/encoding.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "unpadded Base64 covers both alphabets and every tail":
     texts := ["", "f", "fo", "foo", "foob", "fooba", "foobar"]

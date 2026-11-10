@@ -9,11 +9,11 @@ import (
     fail,
     finish,
     repeats,
-    sample
-) from "./lib.ms"
-import summarize from "./programs_table.ms"
-import copy, CopyOptions, create_directory, temporary, write_file from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+    sample from "./lib.ms",
+    summarize from "./programs_table.ms",
+    copy, CopyOptions, create_directory, temporary, write_file from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn orders() List[List[String]]:
     return [
@@ -53,7 +53,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 
     return summarize(raw, n)
 
-export fn main() Int:
+fn main() Int:
     var n = 7
     args := arguments()
 

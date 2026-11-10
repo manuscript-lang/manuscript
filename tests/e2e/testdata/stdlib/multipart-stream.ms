@@ -1,14 +1,14 @@
-import expect_equal, fail from "@std/test/test.ms"
 import (
+    expect_equal, fail from "@std/test/test.ms",
     multipart_parts,
     parse_multipart,
     encode_multipart,
     form_part,
-    Part
-) from "@std/net/mime.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import from_list from "@std/io/streams.ms"
+    Part from "@std/net/mime.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    from_list from "@std/io/streams.ms",
+)
 
 // Hands out the chunks in order, then ends.
 type Chunks:

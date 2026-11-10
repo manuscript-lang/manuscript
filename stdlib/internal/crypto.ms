@@ -1,5 +1,7 @@
-import Bytes from "@std/bytes.ms"
-import Curve, HashAlgorithm, NativeHasher from "@std/crypto.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    Curve, HashAlgorithm, NativeHasher from "@std/crypto.ms",
+)
 
 export extern fn msstd_crypto_constant_time_equal(left: Bytes, right: Bytes) Bool
 

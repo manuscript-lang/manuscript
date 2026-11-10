@@ -1,6 +1,8 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import from_scalars, StringBuilder from "@std/string.ms"
-import Bytes, BytesBuilder, values from "@std/bytes.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    from_scalars, StringBuilder from "@std/string.ms",
+    Bytes, BytesBuilder, values from "@std/bytes.ms",
+)
 
 test "Unicode scalar indexing differs from byte length":
     text := "aé🙂"
@@ -193,3 +195,16 @@ test "builder appends variable text of every length across growth":
     built := sb.build()
     try expect_equal(built.byte_length(), want)
     try expect_equal((try built.slice(0, 10)), "0010120123")
+
+test "search indexes count scalars for ascii, inline and unicode text":
+    let long = "a".repeat(100).get().concat("!").concat("é").concat("!")
+    try expect_equal(long.index_of("!").get(-1), 100)
+    try expect_equal(long.last_index_of("!").get(-1), 102)
+
+    let ascii = "a".repeat(100).get().concat("!")
+    try expect_equal(ascii.index_of("!").get(-1), 100)
+    try expect_equal(ascii.last_index_of("!").get(-1), 100)
+    try expect_equal(ascii.last_index_of("a").get(-1), 99)
+    try expect_equal("ab!".last_index_of("!").get(-1), 2)
+    try expect_equal("é!".last_index_of("!").get(-1), 1)
+    try expect_equal(ascii.last_index_of("?").get(-1), -1)

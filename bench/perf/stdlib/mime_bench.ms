@@ -1,7 +1,9 @@
-import encode_multipart, form_part, multipart_parts, Part from "@std/net/mime.ms"
-import from_bytes from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
-import keep, measure from "@std/test/bench.ms"
+import (
+    encode_multipart, form_part, multipart_parts, Part from "@std/net/mime.ms",
+    from_bytes from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    keep, measure from "@std/test/bench.ms",
+)
 
 // Input construction is outside measure; each operation includes the source's owned body copy.
 fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Unit!:

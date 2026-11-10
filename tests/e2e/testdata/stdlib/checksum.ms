@@ -1,7 +1,9 @@
-import crc32 from "@std/data/checksum.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import bit_xor, shift_right_unsigned from "@std/math/math.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    crc32 from "@std/data/checksum.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    bit_xor, shift_right_unsigned from "@std/math/math.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 // A bit-at-a-time oracle deliberately independent of the production byte table.
 fn reference(data: Bytes) UInt32:

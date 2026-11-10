@@ -1,9 +1,11 @@
-import Data from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import WriteStream from "@std/io/io.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import escape from "@std/data/html.ms"
+import (
+    Data from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    WriteStream from "@std/io/io.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    escape from "@std/data/html.ms",
+)
 
 /*
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
@@ -707,7 +709,6 @@ impl Run:
         )
 
         self.out.append(text)
-        return ok(unit)
 
     fn lookup(parts: List[String]) JsonValue?:
         var current: JsonValue? = none
@@ -784,7 +785,6 @@ impl Run:
     var fn nodes(items: List[TemplateNode], depth: Int) Unit!Error:
         for node in items:
             try self.node(node, depth)
-        return ok(unit)
 
     var fn node(node: TemplateNode, depth: Int) Unit!Error:
         match node:

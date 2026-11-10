@@ -21,7 +21,7 @@ fn kind(t: Tok) Int:
         Word(text, k): return text.length() + k.to_int64()
         End: return 0
 
-export fn main() Int:
+fn main() Unit:
     var l: List[Int32] = []
     for i in 0..1000:
         l.append((1000 - i).to_int32().get(0))
@@ -62,4 +62,3 @@ export fn main() Int:
     _ := stdout().write(
         "{ints.sorted(fn a, b: a.compare(b))} {ints.map(fn x: x + 1)} {ints.fold(0, fn a, x: a + x.to_int64())}\n"
     )
-    return 0

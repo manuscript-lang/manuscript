@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import promise, wait_all from "@std/concurrency/promise.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    promise, wait_all from "@std/concurrency/promise.ms",
+)
 
 fn total(xs: List[Int]) Int!:
     return ok(xs.length())

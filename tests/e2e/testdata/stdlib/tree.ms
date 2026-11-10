@@ -4,11 +4,11 @@ import (
     memory_tree,
     host_tree,
     walk,
-    WalkEntry
-) from "@std/os/tree.ms"
-import create_directory, write_file, temporary from "@std/os/fs.ms"
-import panic from "@std/core.ms"
-import expect_ok from "@std/test/test.ms"
+    WalkEntry from "@std/os/tree.ms",
+    create_directory, write_file, temporary from "@std/os/fs.ms",
+    panic from "@std/core.ms",
+    expect_ok from "@std/test/test.ms",
+)
 
 fn paths(found: List[WalkEntry]) List[String]:
     return found.map(fn e: if e.directory: "{e.path}/" else: e.path.clone())

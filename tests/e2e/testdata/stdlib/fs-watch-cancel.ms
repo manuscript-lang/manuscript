@@ -1,7 +1,9 @@
-import expect_true, expect_ok from "@std/test/test.ms"
-import pipe, WriteStream from "@std/io/io.ms"
-import promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms"
-import create_directory, temporary, watch from "@std/os/fs.ms"
+import (
+    expect_true, expect_ok from "@std/test/test.ms",
+    pipe, WriteStream from "@std/io/io.ms",
+    promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms",
+    create_directory, temporary, watch from "@std/os/fs.ms",
+)
 
 // Tells the test the watch is registered, reads events until `last` shows up, tells the test again, then waits for more inside the native watcher.
 fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
@@ -17,8 +19,6 @@ fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
                 try out.write(1)
         else:
             break
-
-    return ok(unit)
 
 // A cancelled read inside the native watcher must leave the watcher to the stream that owns it. The
 // frame of `WatchSource.next` held the source it took out of the stream, refilled after `pending.pop()`,

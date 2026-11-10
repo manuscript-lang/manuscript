@@ -130,7 +130,6 @@ fn failed_value() Int!:
 
 fn add_failed_value(var values: Map[String, Int], key: String) Unit!:
     values.add(key.clone(), try failed_value())
-    return ok(unit)
 
 test "an owned native argument transfers after a later try succeeds":
     key := "long-dynamic-map-key-{1}"

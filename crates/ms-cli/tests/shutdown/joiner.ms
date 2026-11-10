@@ -4,14 +4,13 @@ import promise from "@std/concurrency/promise.ms"
 
 fn long() Int:
     for i in 0..600:
-        _ := sleep(nanoseconds(100000000)).wait()
+        let _ = sleep(nanoseconds(100000000)).wait()
     return 0
 
-export fn main() Int:
-    w := promise(fn: ok(long()))
+fn main() Unit:
+    let w = promise(fn: ok(long()))
     print("joining")
 
-    _flushed := stdout().flush()
-    outcome := w.wait()
+    let _flushed = stdout().flush()
+    let outcome = w.wait()
     print("joined {outcome.is_ok()}")
-    return 0

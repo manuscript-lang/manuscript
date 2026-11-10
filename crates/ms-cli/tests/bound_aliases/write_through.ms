@@ -25,7 +25,7 @@ type Counters:
     right: Counter
 
 fn next(var calls: Int) Int:
-    old := calls
+    let old = calls
     calls += 1
     return old
 
@@ -33,55 +33,54 @@ fn key(var calls: Int) String:
     calls += 1
     return "key-{calls}"
 
-export fn main() Int:
+fn main() Unit:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
-    append := first.append
+    let append = first.append
     append(9)
     append(10)
 
-    _ := stdout().write("{calls} {rows}\n")
+    let _ = stdout().write("{calls} {rows}\n")
     var lists = Lists(left: [1], right: [2])
     var left = lists.left
     var right = lists.right
-    add_left := left.append
-    add_right := right.append
+    let add_left = left.append
+    let add_right = right.append
     add_right(4)
     add_left(3)
 
-    _ := stdout().write("{lists}\n")
+    let _ = stdout().write("{lists}\n")
     var counts = [Counter(count: 5)]
     var count = counts[0]
-    bump := count.bump
+    let bump = count.bump
     bump()
     bump(3)
 
-    _ := stdout().write("{counts}\n")
+    let _ = stdout().write("{counts}\n")
     var pair = Counters(left: Counter(count: 1), right: Counter(count: 2))
     var first_count = pair.left
     var second_count = pair.right
-    around := first_count.around
+    let around = first_count.around
     around(fn: second_count.count += 10)
 
-    _ := stdout().write("{pair}\n")
+    let _ = stdout().write("{pair}\n")
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [7])
     calls = 0
 
     if var value = entries[key(var calls)]?:
-        add := value.append
+        let add = value.append
         add(8)
         add(9)
 
-    _ := stdout().write("{calls} {entries}\n")
+    let _ = stdout().write("{calls} {entries}\n")
     var texts = [["first", "second"]]
     var text = texts[0]
-    pop := text.pop
-    popped := pop()
-    _ := stdout().write("{popped} {texts}\n")
+    let pop = text.pop
+    let popped = pop()
+    let _ = stdout().write("{popped} {texts}\n")
     var final_count = counts[0]
-    label := final_count.label
-    labeled := label()
-    _ := stdout().write("{labeled} {counts}\n")
-    return 0
+    let label = final_count.label
+    let labeled = label()
+    let _ = stdout().write("{labeled} {counts}\n")

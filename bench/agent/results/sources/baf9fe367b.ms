@@ -1,13 +1,15 @@
-import stdout, stdin, read_line from "@std/io.ms"
-import range from "@std/collections.ms"
-import bit_xor, bit_and, wrapping_multiply, shift_right_unsigned from "@std/bits.ms"
+import (
+    stdout, stdin, read_line from "@std/io.ms",
+    range from "@std/collections.ms",
+    bit_xor, bit_and, wrapping_multiply, shift_right_unsigned from "@std/bits.ms",
+)
 
-DIGITS := "0123456789"
-HEX := "0123456789abcdef"
-NAME_START := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/"
-NAME_REST := NAME_START + "-"
-FNV_OFFSET := -3750763034362895579
-FNV_PRIME := 1099511628211
+let DIGITS = "0123456789"
+let HEX = "0123456789abcdef"
+let NAME_START = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/"
+let NAME_REST = NAME_START + "-"
+let FNV_OFFSET = -3750763034362895579
+let FNV_PRIME = 1099511628211
 
 type Fail:
     msg: String
@@ -67,7 +69,7 @@ fn fnv(text: String) Int:
 fn hex16(h: Int) String:
     var out = ""
     for i in range(0, 16):
-        out = out + HEX.get(bit_and(shift_right_unsigned(h, (15 - i) * 4), 15))
+        out += HEX.get(bit_and(shift_right_unsigned(h, (15 - i) * 4), 15))
     return out
 
 fn short(id: String) String:
@@ -86,23 +88,19 @@ fn text_of(lines: List[String]) String:
     return text
 
 fn lines_of(content: String) List[String]:
-    if content == "":
-        return []
+    if content == "": return []
 
     return content.slice(0, -1).get().split("\n")
 
 fn same_lines(left: List[String], right: List[String]) Bool:
-    if left.length() != right.length():
-        return false
+    if left.length() != right.length(): return false
 
     for k in range(0, left.length()):
-        if left.get(k) != right.get(k):
-            return false
+        if left.get(k) != right.get(k): return false
     return true
 
 fn same_tree(left: Map[String, String], right: Map[String, String]) Bool:
-    if left.length() != right.length():
-        return false
+    if left.length() != right.length(): return false
 
     for name in left.keys():
         if not right.contains(name) or left.get_or(name, "") != right.get_or(name, ""):
@@ -112,13 +110,13 @@ fn same_tree(left: Map[String, String], right: Map[String, String]) Bool:
 fn tree_hash(tree: Map[String, String]) String:
     var text = ""
     for name in sorted_keys(tree):
-        text = text + "{name} {hex16(fnv(tree.get_or(name, "")))}\n"
+        text += "{name} {hex16(fnv(tree.get_or(name, "")))}\n"
     return hex16(fnv(text))
 
 fn commit_id(tree: Map[String, String], parents: List[String], message: String) String:
     var text = "tree {tree_hash(tree)}\n"
     for parent in parents:
-        text = text + "parent {parent}\n"
+        text += "parent {parent}\n"
     return hex16(fnv(text + "\n" + message + "\n"))
 
 fn new_repo() Repo:
@@ -132,20 +130,17 @@ fn new_repo() Repo:
     )
 
 fn head_commit(repo: Repo) String:
-    if repo.head_branch == "":
-        return repo.detached
+    if repo.head_branch == "": return repo.detached
 
     return repo.branches.get_or(repo.head_branch, "")
 
 fn label(repo: Repo) String:
-    if repo.head_branch == "":
-        return "detached"
+    if repo.head_branch == "": return "detached"
 
     return repo.head_branch
 
 fn tree_of(repo: Repo, id: String) Map[String, String]:
-    if id == "":
-        return Map[String, String]()
+    if id == "": return Map[String, String]()
 
     return repo.commits.get(id).get().tree.clone()
 
@@ -161,11 +156,11 @@ fn move_head(var repo: Repo, id: String) Unit:
 fn make_commit(
     var repo: Repo, tree: Map[String, String], parents: List[String], message: String
 ) String:
-    id := commit_id(tree.clone(), parents.clone(), message)
+    let id = commit_id(tree.clone(), parents.clone(), message)
 
     if not repo.commits.contains(id):
-        number := repo.commits.length() + 1
-        commit := Commit(
+        let number = repo.commits.length() + 1
+        let commit = Commit(
             id: id, number: number, tree: tree.clone(), parents: parents.clone(),
             message: message
         )
@@ -179,7 +174,7 @@ fn ancestors(repo: Repo, id: String) Set[String]:
     var k = 0
 
     while k < todo.length():
-        current := todo.get(k)
+        let current = todo.get(k)
         k += 1
 
         if not seen.contains(current):
@@ -193,13 +188,13 @@ fn is_ancestor(repo: Repo, ancestor: String, descendant: String) Bool:
     return ancestors(repo, descendant).contains(ancestor)
 
 fn merge_base(repo: Repo, left: String, right: String) String:
-    right_set := ancestors(repo, right)
+    let right_set = ancestors(repo, right)
     var best = ""
     var best_number = 0
 
     for id in ancestors(repo, left).values():
         if right_set.contains(id):
-            number := repo.commits.get(id).get().number
+            let number = repo.commits.get(id).get().number
 
             if number > best_number:
                 best = id
@@ -208,34 +203,27 @@ fn merge_base(repo: Repo, left: String, right: String) String:
     return best
 
 fn parse_count(text: String) Int:
-    if text == "":
-        return -1
+    if text == "": return -1
 
     for c in text.chars():
-        if not DIGITS.contains(c):
-            return -1
+        if not DIGITS.contains(c): return -1
     return text.parse_int().get(-1)
 
 fn valid_name(name: String) Bool:
-    chars := name.chars()
-    if chars.length() == 0:
-        return false
-    if not NAME_START.contains(chars.get(0)):
-        return false
+    let chars = name.chars()
+    if chars.length() == 0: return false
+    if not NAME_START.contains(chars.get(0)): return false
 
     for k in range(1, chars.length()):
-        if not NAME_REST.contains(chars.get(k)):
-            return false
+        if not NAME_REST.contains(chars.get(k)): return false
     return true
 
 fn resolve_prefix(repo: Repo, base: String, text: String) Result[String, Fail]:
-    chars := base.chars()
-    if chars.length() < 4:
-        return fail("unknown revision '{text}'")
+    let chars = base.chars()
+    if chars.length() < 4: return fail("unknown revision '{text}'")
 
     for c in chars:
-        if not HEX.contains(c):
-            return fail("unknown revision '{text}'")
+        if not HEX.contains(c): return fail("unknown revision '{text}'")
 
     var found = ""
     var count = 0
@@ -245,17 +233,14 @@ fn resolve_prefix(repo: Repo, base: String, text: String) Result[String, Fail]:
             found = id
             count += 1
 
-    if count == 0:
-        return fail("unknown revision '{text}'")
-    if count > 1:
-        return fail("ambiguous revision '{text}'")
+    if count == 0: return fail("unknown revision '{text}'")
+    if count > 1: return fail("ambiguous revision '{text}'")
 
     return ok(found)
 
 fn resolve(repo: Repo, text: String) Result[String, Fail]:
-    parts := text.split("~")
-    if parts.length() > 2:
-        return fail("unknown revision '{text}'")
+    let parts = text.split("~")
+    if parts.length() > 2: return fail("unknown revision '{text}'")
 
     var base = text
     var steps = 0
@@ -263,8 +248,7 @@ fn resolve(repo: Repo, text: String) Result[String, Fail]:
     if parts.length() == 2:
         base = parts.get(0)
         steps = parse_count(parts.get(1))
-        if steps < 0:
-            return fail("unknown revision '{text}'")
+        if steps < 0: return fail("unknown revision '{text}'")
 
     var id = ""
 
@@ -274,24 +258,20 @@ fn resolve(repo: Repo, text: String) Result[String, Fail]:
         id = repo.branches.get_or(base, "")
         if id == "":
             id = repo.tags.get_or(base, "")
-        if id == "":
-            return resolve_prefix(repo, base, text)
+        if id == "": return resolve_prefix(repo, base, text)
 
-    if id == "":
-        return fail("unknown revision '{text}'")
+    if id == "": return fail("unknown revision '{text}'")
 
     for k in range(0, steps):
-        parents := repo.commits.get(id).get().parents
-        if parents.length() == 0:
-            return fail("unknown revision '{text}'")
+        let parents = repo.commits.get(id).get().parents
+        if parents.length() == 0: return fail("unknown revision '{text}'")
 
         id = parents.get(0)
 
     return ok(id)
 
 fn is_dirty(repo: Repo) Bool:
-    if not same_tree(repo.index, head_tree(repo)):
-        return true
+    if not same_tree(repo.index, head_tree(repo)): return true
 
     for name in repo.index.keys():
         if (
@@ -308,8 +288,7 @@ fn untracked_check(repo: Repo, names: List[String]) Result[Unit, Fail]:
     return ok(nop())
 
 fn check_switch(repo: Repo, target: Map[String, String]) Result[Unit, Fail]:
-    if is_dirty(repo):
-        return fail("local changes would be overwritten")
+    if is_dirty(repo): return fail("local changes would be overwritten")
 
     return untracked_check(repo, sorted_keys(target))
 
@@ -334,8 +313,8 @@ fn apply_state(
     repo.index = index.clone()
 
 fn reset_hard(var repo: Repo, id: String) Unit:
-    old_head := head_tree(repo)
-    target := tree_of(repo, id)
+    let old_head = head_tree(repo)
+    let target = tree_of(repo, id)
     apply_state(var repo, target, target.clone(), old_head)
     repo.conflicts.clear()
     repo.merging = false
@@ -347,9 +326,9 @@ fn message_of(repo: Repo, id: String) String:
     return repo.commits.get(id).get().message
 
 fn matching(left: List[String], right: List[String]) Pairs:
-    n := left.length()
-    m := right.length()
-    width := m + 1
+    let n = left.length()
+    let m = right.length()
+    let width = m + 1
     var table: List[Int] = []
     for k in range(0, (n + 1) * width):
         table.append(0)
@@ -363,8 +342,8 @@ fn matching(left: List[String], right: List[String]) Pairs:
             if left.get(i) == right.get(j):
                 table.set(i * width + j, 1 + table.get((i + 1) * width + j + 1))
             else:
-                down := table.get((i + 1) * width + j)
-                across := table.get(i * width + j + 1)
+                let down = table.get((i + 1) * width + j)
+                let across = table.get(i * width + j + 1)
 
                 if down >= across:
                     table.set(i * width + j, down)
@@ -394,14 +373,14 @@ fn matching(left: List[String], right: List[String]) Pairs:
     return pairs
 
 fn line_diff(left: List[String], right: List[String]) List[String]:
-    pairs := matching(left, right)
+    let pairs = matching(left, right)
     var out: List[String] = []
     var li = 0
     var ri = 0
 
     for k in range(0, pairs.left.length()):
-        pl := pairs.left.get(k)
-        pr := pairs.right.get(k)
+        let pl = pairs.left.get(k)
+        let pr = pairs.right.get(k)
 
         while li < pl:
             out.append("- " + left.get(li))
@@ -438,8 +417,8 @@ fn merge_lines(
     theirs: List[String],
     branch: String
 ) Merged:
-    po := matching(base, ours)
-    pt := matching(base, theirs)
+    let po = matching(base, ours)
+    let pt = matching(base, theirs)
     var ours_of: List[Int] = []
     var theirs_of: List[Int] = []
 
@@ -473,12 +452,12 @@ fn merge_lines(
     var prev_theirs = -1
 
     for k in range(0, stable_base.length()):
-        bi := stable_base.get(k)
-        oi := stable_ours.get(k)
-        ti := stable_theirs.get(k)
-        base_chunk := sub_lines(base, prev_base + 1, bi)
-        ours_chunk := sub_lines(ours, prev_ours + 1, oi)
-        theirs_chunk := sub_lines(theirs, prev_theirs + 1, ti)
+        let bi = stable_base.get(k)
+        let oi = stable_ours.get(k)
+        let ti = stable_theirs.get(k)
+        let base_chunk = sub_lines(base, prev_base + 1, bi)
+        let ours_chunk = sub_lines(ours, prev_ours + 1, oi)
+        let theirs_chunk = sub_lines(theirs, prev_theirs + 1, ti)
 
         if same_lines(ours_chunk, base_chunk):
             append_all(var out, theirs_chunk)
@@ -527,13 +506,13 @@ fn plan_merge(
     var kinds = Map[String, String]()
 
     for name in names.values().sorted(compare_text):
-        in_base := base.contains(name)
-        base_text := base.get_or(name, "")
-        in_ours := ours.contains(name)
-        ours_text := ours.get_or(name, "")
-        in_theirs := theirs.contains(name)
-        theirs_text := theirs.get_or(name, "")
-        choice := choose(
+        let in_base = base.contains(name)
+        let base_text = base.get_or(name, "")
+        let in_ours = ours.contains(name)
+        let ours_text = ours.get_or(name, "")
+        let in_theirs = theirs.contains(name)
+        let theirs_text = theirs.get_or(name, "")
+        let choice = choose(
             in_base, base_text, in_ours, ours_text, in_theirs, theirs_text
         )
 
@@ -556,11 +535,11 @@ fn plan_merge(
 
                 put(var index, name, in_ours, ours_text)
             else:
-                merged := merge_lines(
+                let merged = merge_lines(
                     lines_of(base_text), lines_of(ours_text), lines_of(theirs_text),
                     branch
                 )
-                merged_text := text_of(merged.lines.clone())
+                let merged_text = text_of(merged.lines.clone())
                 put(var work, name, true, merged_text)
 
                 if merged.clean:
@@ -583,12 +562,9 @@ fn choose(
     in_theirs: Bool,
     theirs_text: String
 ) Int:
-    if in_ours == in_theirs and ours_text == theirs_text:
-        return 0
-    if in_ours == in_base and ours_text == base_text:
-        return 1
-    if in_theirs == in_base and theirs_text == base_text:
-        return 0
+    if in_ours == in_theirs and ours_text == theirs_text: return 0
+    if in_ours == in_base and ours_text == base_text: return 1
+    if in_theirs == in_base and theirs_text == base_text: return 0
 
     return 2
 
@@ -596,12 +572,11 @@ fn cmd_write(var repo: Repo, args: List[String], block: List[String], append: Bo
     Unit, Fail
 ]:
     if args.length() != 1:
-        if append:
-            return fail("usage: append FILE")
+        if append: return fail("usage: append FILE")
 
         return fail("usage: write FILE")
 
-    name := args.get(0)
+    let name = args.get(0)
     var content = text_of(block)
     if append:
         content = repo.files.get_or(name, "") + content
@@ -609,38 +584,32 @@ fn cmd_write(var repo: Repo, args: List[String], block: List[String], append: Bo
     return ok(nop())
 
 fn cmd_rm(var repo: Repo, args: List[String]) Result[Unit, Fail]:
-    if args.length() == 0:
-        return fail("usage: rm FILE...")
+    if args.length() == 0: return fail("usage: rm FILE...")
 
     for name in args:
-        if not repo.files.contains(name):
-            return fail("no such file: {name}")
+        if not repo.files.contains(name): return fail("no such file: {name}")
 
         repo.files.remove(name)
 
     return ok(nop())
 
 fn cmd_mv(var repo: Repo, args: List[String]) Result[Unit, Fail]:
-    if args.length() != 2:
-        return fail("usage: mv OLD NEW")
+    if args.length() != 2: return fail("usage: mv OLD NEW")
 
-    old_name := args.get(0)
-    new_name := args.get(1)
-    if not repo.files.contains(old_name):
-        return fail("no such file: {old_name}")
+    let old_name = args.get(0)
+    let new_name = args.get(1)
+    if not repo.files.contains(old_name): return fail("no such file: {old_name}")
 
-    content := repo.files.get_or(old_name, "")
+    let content = repo.files.get_or(old_name, "")
     repo.files.remove(old_name)
     repo.files.add(new_name, content)
     return ok(nop())
 
 fn cmd_cat(repo: Repo, args: List[String]) Result[Unit, Fail]:
-    if args.length() != 1:
-        return fail("usage: cat FILE")
+    if args.length() != 1: return fail("usage: cat FILE")
 
-    name := args.get(0)
-    if not repo.files.contains(name):
-        return fail("no such file: {name}")
+    let name = args.get(0)
+    if not repo.files.contains(name): return fail("no such file: {name}")
 
     for line in lines_of(repo.files.get_or(name, "")):
         say(line)
@@ -654,8 +623,7 @@ fn cmd_ls(repo: Repo) Result[Unit, Fail]:
     return ok(nop())
 
 fn cmd_add(var repo: Repo, args: List[String]) Result[Unit, Fail]:
-    if args.length() == 0:
-        return fail("usage: add PATH...")
+    if args.length() == 0: return fail("usage: add PATH...")
 
     for path in args:
         if path == ".":
@@ -688,8 +656,7 @@ fn cmd_add(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     return ok(nop())
 
 fn print_section(title: String, items: List[String]) Unit:
-    if items.length() == 0:
-        return
+    if items.length() == 0: return
 
     say(title)
     for item in items:
@@ -704,7 +671,7 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
     if repo.merging:
         say("merging: {repo.merge_branch}")
 
-    head := head_tree(repo)
+    let head = head_tree(repo)
     var names = Set[String]()
     for name in head.keys():
         names.add(name)
@@ -715,8 +682,8 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
 
     for name in names.values().sorted(compare_text):
         if not repo.conflicts.contains(name):
-            in_index := repo.index.contains(name)
-            in_head := head.contains(name)
+            let in_index = repo.index.contains(name)
+            let in_head = head.contains(name)
 
             if in_index and not in_head:
                 staged.append("new file: {name}")
@@ -759,7 +726,7 @@ fn cmd_status(repo: Repo) Result[Unit, Fail]:
     return ok(nop())
 
 fn text_after_word(raw: String) String:
-    chars := raw.trim_start().chars()
+    let chars = raw.trim_start().chars()
     var k = 0
     while k < chars.length() and not is_space(chars.get(k)):
         k += 1
@@ -778,15 +745,14 @@ fn split_words(text: String) List[String]:
                 words.append(current)
                 current = ""
         else:
-            current = current + c
+            current += c
 
     if current != "":
         words.append(current)
     return words
 
 fn cmd_commit(var repo: Repo, message: String) Result[Unit, Fail]:
-    if message == "":
-        return fail("empty commit message")
+    if message == "": return fail("empty commit message")
     if repo.conflicts.length() > 0:
         return fail(
             "unresolved conflicts: " + repo.conflicts.values().sorted(
@@ -794,21 +760,20 @@ fn cmd_commit(var repo: Repo, message: String) Result[Unit, Fail]:
             ).join(" ")
         )
 
-    head := head_commit(repo)
+    let head = head_commit(repo)
     var parents: List[String] = []
 
     if repo.merging:
         parents.append(head)
         parents.append(repo.merge_other)
     else:
-        if same_tree(repo.index, head_tree(repo)):
-            return fail("nothing to commit")
+        if same_tree(repo.index, head_tree(repo)): return fail("nothing to commit")
 
         if head != "":
             parents.append(head)
 
-    root_note := if_root(parents.length())
-    id := make_commit(var repo, repo.index.clone(), parents, message)
+    let root_note = if_root(parents.length())
+    let id = make_commit(var repo, repo.index.clone(), parents, message)
     move_head(var repo, id)
 
     if repo.merging:
@@ -820,8 +785,7 @@ fn cmd_commit(var repo: Repo, message: String) Result[Unit, Fail]:
     return ok(nop())
 
 fn if_root(parent_count: Int) String:
-    if parent_count == 0:
-        return " (root-commit)"
+    if parent_count == 0: return " (root-commit)"
 
     return ""
 
@@ -832,18 +796,16 @@ fn cmd_log(repo: Repo, args: List[String]) Result[Unit, Fail]:
     var limit = -1
 
     if args.length() == 2 and args.get(0) == "-n":
-        parsed := parse_count(args.get(1))
-        if parsed < 0:
-            return fail("usage: log [-n N]")
+        let parsed = parse_count(args.get(1))
+        if parsed < 0: return fail("usage: log [-n N]")
 
         limit = parsed
     else:
         if args.length() != 0:
             return fail("usage: log [-n N]")
 
-    head := head_commit(repo)
-    if head == "":
-        return fail("no commits yet")
+    let head = head_commit(repo)
+    if head == "": return fail("no commits yet")
 
     var listed: List[Commit] = []
     for id in ancestors(repo, head).values():
@@ -852,8 +814,7 @@ fn cmd_log(repo: Repo, args: List[String]) Result[Unit, Fail]:
     var shown = 0
 
     for c in listed.sorted(by_number_desc):
-        if limit >= 0 and shown >= limit:
-            break
+        if limit >= 0 and shown >= limit: break
 
         var line = "{short(c.id)} {c.message}"
         if c.parents.length() == 2:
@@ -867,18 +828,17 @@ fn cmd_log(repo: Repo, args: List[String]) Result[Unit, Fail]:
     return ok(nop())
 
 fn cmd_diff(repo: Repo, args: List[String]) Result[Unit, Fail]:
-    if args.length() > 2:
-        return fail("usage: diff [REF [REF]]")
+    if args.length() > 2: return fail("usage: diff [REF [REF]]")
 
     var left = repo.index.clone()
     var right = repo.files.clone()
 
     if args.length() >= 1:
-        left_id := try resolve(repo, args.get(0))
+        let left_id = try resolve(repo, args.get(0))
         left = tree_of(repo, left_id)
 
     if args.length() == 2:
-        right_id := try resolve(repo, args.get(1))
+        let right_id = try resolve(repo, args.get(1))
         right = tree_of(repo, right_id)
 
     var names = Set[String]()
@@ -890,10 +850,10 @@ fn cmd_diff(repo: Repo, args: List[String]) Result[Unit, Fail]:
     var any = false
 
     for name in names.values().sorted(compare_text):
-        in_left := left.contains(name)
-        in_right := right.contains(name)
-        left_text := left.get_or(name, "")
-        right_text := right.get_or(name, "")
+        let in_left = left.contains(name)
+        let in_right = right.contains(name)
+        let left_text = left.get_or(name, "")
+        let right_text = right.get_or(name, "")
 
         if in_left != in_right or left_text != right_text:
             any = true
@@ -910,14 +870,11 @@ fn cmd_diff(repo: Repo, args: List[String]) Result[Unit, Fail]:
     return ok(nop())
 
 fn create_branch(var repo: Repo, name: String) Result[Unit, Fail]:
-    if not valid_name(name):
-        return fail("invalid branch name '{name}'")
-    if repo.branches.contains(name):
-        return fail("branch '{name}' already exists")
+    if not valid_name(name): return fail("invalid branch name '{name}'")
+    if repo.branches.contains(name): return fail("branch '{name}' already exists")
 
-    head := head_commit(repo)
-    if head == "":
-        return fail("no commits yet")
+    let head = head_commit(repo)
+    if head == "": return fail("no commits yet")
 
     repo.branches.add(name, head)
     return ok(nop())
@@ -936,13 +893,12 @@ fn cmd_branch(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         return ok(nop())
 
     if args.length() == 2 and args.get(0) == "-d":
-        name := args.get(1)
-        if not repo.branches.contains(name):
-            return fail("branch '{name}' not found")
+        let name = args.get(1)
+        if not repo.branches.contains(name): return fail("branch '{name}' not found")
         if repo.head_branch == name:
             return fail("cannot delete the current branch '{name}'")
 
-        target := repo.branches.get_or(name, "")
+        let target = repo.branches.get_or(name, "")
         if target != "" and not is_ancestor(repo, target, head_commit(repo)):
             return fail("branch '{name}' is not fully merged")
 
@@ -955,8 +911,7 @@ fn cmd_branch(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
         return ok(nop())
 
-    if args.length() == 1:
-        return create_branch(var repo, args.get(0))
+    if args.length() == 1: return create_branch(var repo, args.get(0))
 
     return fail("usage: branch [NAME | -d NAME]")
 
@@ -966,31 +921,26 @@ fn cmd_tag(var repo: Repo, args: List[String]) Result[Unit, Fail]:
             say(name)
         return ok(nop())
 
-    if args.length() > 2:
-        return fail("usage: tag [NAME [REF]]")
+    if args.length() > 2: return fail("usage: tag [NAME [REF]]")
 
-    name := args.get(0)
-    if not valid_name(name):
-        return fail("invalid tag name '{name}'")
-    if repo.tags.contains(name):
-        return fail("tag '{name}' already exists")
+    let name = args.get(0)
+    if not valid_name(name): return fail("invalid tag name '{name}'")
+    if repo.tags.contains(name): return fail("tag '{name}' already exists")
 
     var target_ref = "HEAD"
     if args.length() == 2:
         target_ref = args.get(1)
-    if target_ref == "HEAD" and head_commit(repo) == "":
-        return fail("no commits yet")
+    if target_ref == "HEAD" and head_commit(repo) == "": return fail("no commits yet")
 
-    id := try resolve(repo, target_ref)
+    let id = try resolve(repo, target_ref)
     repo.tags.add(name, id)
     return ok(nop())
 
 fn cmd_show(repo: Repo, args: List[String]) Result[Unit, Fail]:
-    if args.length() != 1:
-        return fail("usage: show REF")
+    if args.length() != 1: return fail("usage: show REF")
 
-    id := try resolve(repo, args.get(0))
-    c := repo.commits.get(id).get()
+    let id = try resolve(repo, args.get(0))
+    let c = repo.commits.get(id).get()
     say("commit {id}")
     say("tree {tree_hash(c.tree)}")
     for parent in c.parents:
@@ -1003,7 +953,7 @@ fn cmd_show(repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     if args.length() == 2 and args.get(0) == "-b":
-        name := args.get(1)
+        let name = args.get(1)
         try create_branch(var repo, name)
         try check_switch(repo, head_tree(repo))
         repo.head_branch = name
@@ -1011,33 +961,31 @@ fn cmd_checkout(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         say("Switched to a new branch '{name}'")
         return ok(nop())
 
-    if args.length() != 1:
-        return fail("usage: checkout REF | checkout -b NAME")
+    if args.length() != 1: return fail("usage: checkout REF | checkout -b NAME")
 
-    target := args.get(0)
-    if repo.merging:
-        return fail("merge in progress")
+    let target = args.get(0)
+    if repo.merging: return fail("merge in progress")
 
     if repo.branches.contains(target):
         if repo.head_branch == target:
             say("Already on '{target}'")
             return ok(nop())
 
-        target_tree := tree_of(repo, repo.branches.get_or(target, ""))
+        let target_tree = tree_of(repo, repo.branches.get_or(target, ""))
         try check_switch(repo, target_tree)
 
-        old_head := head_tree(repo)
+        let old_head = head_tree(repo)
         apply_state(var repo, target_tree, target_tree.clone(), old_head)
         repo.head_branch = target
         repo.detached = ""
         say("Switched to branch '{target}'")
         return ok(nop())
 
-    id := try resolve(repo, target)
-    target_tree := tree_of(repo, id)
+    let id = try resolve(repo, target)
+    let target_tree = tree_of(repo, id)
     try check_switch(repo, target_tree)
 
-    old_head := head_tree(repo)
+    let old_head = head_tree(repo)
     apply_state(var repo, target_tree, target_tree.clone(), old_head)
     repo.head_branch = ""
     repo.detached = id
@@ -1051,8 +999,7 @@ fn cmd_reset(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     var id = head_commit(repo)
     if args.length() == 2:
         id = try resolve(repo, args.get(1))
-    if id == "":
-        return fail("no commits yet")
+    if id == "": return fail("no commits yet")
 
     reset_hard(var repo, id)
     say("HEAD is now at {short(id)} {message_of(repo, id)}")
@@ -1060,36 +1007,31 @@ fn cmd_reset(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 
 fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     if args.length() == 1 and args.get(0) == "--abort":
-        if not repo.merging:
-            return fail("no merge in progress")
+        if not repo.merging: return fail("no merge in progress")
 
         reset_hard(var repo, head_commit(repo))
         say("Merge aborted.")
         return ok(nop())
 
-    if args.length() != 1:
-        return fail("usage: merge BRANCH")
-    if repo.merging:
-        return fail("merge in progress")
+    if args.length() != 1: return fail("usage: merge BRANCH")
+    if repo.merging: return fail("merge in progress")
 
-    head := head_commit(repo)
-    if head == "":
-        return fail("no commits yet")
+    let head = head_commit(repo)
+    if head == "": return fail("no commits yet")
 
-    name := args.get(0)
+    let name = args.get(0)
     if not repo.branches.contains(name) or repo.branches.get_or(name, "") == "":
         return fail("unknown branch '{name}'")
 
-    other := repo.branches.get_or(name, "")
-    if is_dirty(repo):
-        return fail("local changes would be overwritten")
+    let other = repo.branches.get_or(name, "")
+    if is_dirty(repo): return fail("local changes would be overwritten")
 
     if is_ancestor(repo, other, head):
         say("Already up to date.")
         return ok(nop())
 
-    other_tree := tree_of(repo, other)
-    old_head := head_tree(repo)
+    let other_tree = tree_of(repo, other)
+    let old_head = head_tree(repo)
 
     if is_ancestor(repo, head, other):
         try untracked_check(repo, sorted_keys(other_tree))
@@ -1098,8 +1040,8 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         say("Fast-forward")
         return ok(nop())
 
-    base_tree := tree_of(repo, merge_base(repo, head, other))
-    plan := plan_merge(base_tree, old_head, other_tree, name)
+    let base_tree = tree_of(repo, merge_base(repo, head, other))
+    let plan = plan_merge(base_tree, old_head, other_tree, name)
     var names: List[String] = plan.work.keys()
     for key in plan.index.keys():
         names.append(key)
@@ -1107,7 +1049,7 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
     apply_state(var repo, plan.work, plan.index, old_head)
 
     if plan.kinds.length() == 0:
-        id := make_commit(
+        let id = make_commit(
             var repo, plan.index.clone(), [head, other], "Merge branch '{name}'"
         )
         move_head(var repo, id)
@@ -1123,7 +1065,7 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
         repo.conflicts.add(path)
 
     for path in sorted_keys(plan.kinds):
-        kind := plan.kinds.get_or(path, "")
+        let kind = plan.kinds.get_or(path, "")
 
         if kind == "modify/delete":
             say("CONFLICT (modify/delete): {path}")
@@ -1136,40 +1078,25 @@ fn cmd_merge(var repo: Repo, args: List[String]) Result[Unit, Fail]:
 fn run_command(var repo: Repo, words: List[String], raw: String, block: List[String]) Result[
     Unit, Fail
 ]:
-    command := words.get(0)
-    args := words.slice(1, words.length()).get()
+    let command = words.get(0)
+    let args = words.slice(1, words.length()).get()
     if command == "write" or command == "append":
         return cmd_write(var repo, args, block, command == "append")
-    if command == "rm":
-        return cmd_rm(var repo, args)
-    if command == "mv":
-        return cmd_mv(var repo, args)
-    if command == "cat":
-        return cmd_cat(repo, args)
-    if command == "ls":
-        return cmd_ls(repo)
-    if command == "add":
-        return cmd_add(var repo, args)
-    if command == "status":
-        return cmd_status(repo)
-    if command == "commit":
-        return cmd_commit(var repo, text_after_word(raw))
-    if command == "log":
-        return cmd_log(repo, args)
-    if command == "diff":
-        return cmd_diff(repo, args)
-    if command == "branch":
-        return cmd_branch(var repo, args)
-    if command == "tag":
-        return cmd_tag(var repo, args)
-    if command == "show":
-        return cmd_show(repo, args)
-    if command == "checkout":
-        return cmd_checkout(var repo, args)
-    if command == "reset":
-        return cmd_reset(var repo, args)
-    if command == "merge":
-        return cmd_merge(var repo, args)
+    if command == "rm": return cmd_rm(var repo, args)
+    if command == "mv": return cmd_mv(var repo, args)
+    if command == "cat": return cmd_cat(repo, args)
+    if command == "ls": return cmd_ls(repo)
+    if command == "add": return cmd_add(var repo, args)
+    if command == "status": return cmd_status(repo)
+    if command == "commit": return cmd_commit(var repo, text_after_word(raw))
+    if command == "log": return cmd_log(repo, args)
+    if command == "diff": return cmd_diff(repo, args)
+    if command == "branch": return cmd_branch(var repo, args)
+    if command == "tag": return cmd_tag(var repo, args)
+    if command == "show": return cmd_show(repo, args)
+    if command == "checkout": return cmd_checkout(var repo, args)
+    if command == "reset": return cmd_reset(var repo, args)
+    if command == "merge": return cmd_merge(var repo, args)
 
     return fail("unknown command '{command}'")
 
@@ -1178,9 +1105,9 @@ fn read_all_lines() List[String]:
     var more = true
 
     while more:
-        next := read_line(stdin()).get()
+        let next = read_line(stdin()).get()
 
-        if line := next:
+        if let line = next:
             lines.append(line)
         else:
             more = false
@@ -1188,18 +1115,18 @@ fn read_all_lines() List[String]:
     return lines
 
 export fn main() Int:
-    lines := read_all_lines()
+    let lines = read_all_lines()
     var repo = new_repo()
     var pos = 0
 
     while pos < lines.length():
-        raw := lines.get(pos)
+        let raw = lines.get(pos)
         pos += 1
 
-        text := raw.trim()
+        let text = raw.trim()
 
         if text != "" and not text.starts_with("#"):
-            words := split_words(raw)
+            let words = split_words(raw)
             say("> {raw.trim_end()}")
 
             var block: List[String] = []

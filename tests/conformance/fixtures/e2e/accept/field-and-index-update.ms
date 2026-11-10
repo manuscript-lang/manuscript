@@ -21,7 +21,7 @@ fn grow(var holder: Holder, name: String) Unit:
 fn put_list(var maps: List[Map[String, Int]], id: Int) Unit:
     maps[id].add("k", 1)
 
-export fn main() Int:
+fn main() Unit:
     var reader = Reader(
         entries: [Map[String, Int](), Map[String, Int]()], names: ["a", "b"], depth: 0
     )
@@ -44,11 +44,10 @@ export fn main() Int:
         reader.names.append("n")
         total += 1
 
-    _ := stdout().write(
+    let _ = stdout().write(
         "{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
     )
-    _ := stdout().write(
+    let _ = stdout().write(
         "{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
     )
-    _ := stdout().write("{maps[1].length()} {maps[0].length()}\n")
-    return 0
+    let _ = stdout().write("{maps[1].length()} {maps[0].length()}\n")

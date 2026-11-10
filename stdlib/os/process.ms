@@ -1,15 +1,13 @@
-import Closeable from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
-import Duration from "@std/time.ms"
-import Promise, owned_task from "@std/concurrency/promise.ms"
 import (
+    Closeable from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    Duration from "@std/time.ms",
+    Promise, owned_task from "@std/concurrency/promise.ms",
     ReadStream,
     WriteStream,
     Source,
     DescriptorSource,
-    DescriptorSink
-) from "@std/io/io.ms"
-import (
+    DescriptorSink from "@std/io/io.ms",
     msstd_process_command_run,
     msstd_process_command_spawn,
     msstd_process_subprocess_stream_id,
@@ -34,8 +32,8 @@ import (
     msstd_process_umask,
     msstd_process_watch_signals,
     msstd_system_get_priority,
-    msstd_system_set_priority
-) from "@std/internal/process.ms"
+    msstd_system_set_priority from "@std/internal/process.ms",
+)
 
 // Captured exit status and standard output/error from a completed command.
 export type CommandOutput:
@@ -118,7 +116,6 @@ impl Closeable for Subprocess:
     // Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; scope exit calls it.
     var fn close() Unit!:
         msstd_process_subprocess_close(self.native)
-        return ok(unit)
 
 impl Subprocess:
     // The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
@@ -237,7 +234,6 @@ impl Source[Int] for SignalSource:
     // Stops observing signals and wakes a pending read with EBADF.
     var fn close() Unit!:
         msstd_process_signal_close(self.signals)
-        return ok(unit)
 
 // The names of an environment map, in the order of its values.
 fn environment_names(environment: Map[String, String]) List[String]:
@@ -252,7 +248,7 @@ fn environment_values(environment: Map[String, String]) List[String]:
 // The work of `run`: a returned closure owns the program, arguments and options.
 fn run_job(
     program: String,
-    arguments: List[String],
+    arguments: List[String] = [],
     options: RunOptions
 ) fn() CommandOutput!:
     return fn: msstd_process_command_run(
@@ -268,7 +264,7 @@ Output beyond `options.max_output_bytes` in total across both streams returns EO
 // ms: effect std.process.run
 export fn run(
     program: String,
-    arguments: List[String],
+    arguments: List[String] = [],
     options: RunOptions = RunOptions()
 ) Promise[CommandOutput]:
     return owned_task[CommandOutput](
@@ -280,7 +276,7 @@ export fn run(
 // ms: effect std.process.run
 export fn spawn(
     program: String,
-    arguments: List[String],
+    arguments: List[String] = [],
     options: SpawnOptions = SpawnOptions()
 ) Subprocess!:
     return msstd_process_command_spawn(

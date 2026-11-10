@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 type Ledger:
     balances: Map[String, Int]
@@ -11,12 +13,10 @@ type Ledger:
     total_fees: Int
 
 fn is_digits(s: String) Bool:
-    if s.length() == 0:
-        return false
+    if s.length() == 0: return false
 
     for c in s.chars():
-        if not "0123456789".contains(c):
-            return false
+        if not "0123456789".contains(c): return false
     return true
 
 fn parse_num(s: String) Int:
@@ -41,19 +41,17 @@ impl Ledger:
         return self.frozen.get(id).get(false)
 
     var fn count_op(id: String) Unit:
-        n := self.ops.get(id.clone()).get(0) + 1
+        let n = self.ops.get(id.clone()).get(0) + 1
         self.ops[id] = n
 
     var fn blame(id: String, msg: String) String:
-        n := self.rejected.get(id.clone()).get(0) + 1
+        let n = self.rejected.get(id.clone()).get(0) + 1
         self.rejected[id] = n
         return msg
 
     var fn open_acct(id: String, limit_text: String) String:
-        if not is_digits(limit_text):
-            return "error: invalid limit"
-        if self.balances.contains(id.clone()):
-            return "error: account exists {id}"
+        if not is_digits(limit_text): return "error: invalid limit"
+        if self.balances.contains(id.clone()): return "error: account exists {id}"
 
         self.limits[id.clone()] = parse_num(limit_text)
         self.balances[id.clone()] = 0
@@ -64,40 +62,37 @@ impl Ledger:
         return "ok"
 
     var fn set_frozen(id: String, value: Bool) String:
-        if not self.balances.contains(id.clone()):
-            return "error: unknown account {id}"
+        if not self.balances.contains(id.clone()): return "error: unknown account {id}"
 
         self.frozen[id] = value
         return "ok"
 
     var fn deposit(id: String, text: String) String:
-        if not self.balances.contains(id.clone()):
-            return "error: unknown account {id}"
+        if not self.balances.contains(id.clone()): return "error: unknown account {id}"
         if not valid_amount(text.clone()):
             return self.blame(id.clone(), "error: invalid amount")
         if self.is_frozen(id.clone()):
             return self.blame(id.clone(), "error: account frozen {id}")
 
-        amt := parse_num(text)
-        nb := self.bal(id.clone()) + amt
+        let amt = parse_num(text)
+        let nb = self.bal(id.clone()) + amt
         self.balances[id.clone()] = nb
         self.count_op(id)
         return "ok {nb}"
 
     var fn withdraw(id: String, text: String) String:
-        if not self.balances.contains(id.clone()):
-            return "error: unknown account {id}"
+        if not self.balances.contains(id.clone()): return "error: unknown account {id}"
         if not valid_amount(text.clone()):
             return self.blame(id.clone(), "error: invalid amount")
         if self.is_frozen(id.clone()):
             return self.blame(id.clone(), "error: account frozen {id}")
 
-        amt := parse_num(text)
-        b := self.bal(id.clone())
+        let amt = parse_num(text)
+        let b = self.bal(id.clone())
         var nb = b - amt
-        fee := charged(b, amt)
+        let fee = charged(b, amt)
         if fee:
-            nb = nb - 5
+            nb -= 5
         if nb < -self.lim(id.clone()):
             return self.blame(id.clone(), "error: overdraft limit exceeded {id}")
 
@@ -105,18 +100,15 @@ impl Ledger:
         if fee:
             self.total_fees += 5
         self.count_op(id)
-        if fee:
-            return "ok {nb} fee=5"
+        if fee: return "ok {nb} fee=5"
 
         return "ok {nb}"
 
     var fn transfer(from: String, to: String, text: String) String:
         if not self.balances.contains(from.clone()):
             return "error: unknown account {from}"
-        if not self.balances.contains(to.clone()):
-            return "error: unknown account {to}"
-        if from == to:
-            return self.blame(from.clone(), "error: same account")
+        if not self.balances.contains(to.clone()): return "error: unknown account {to}"
+        if from == to: return self.blame(from.clone(), "error: same account")
         if not valid_amount(text.clone()):
             return self.blame(from.clone(), "error: invalid amount")
         if self.is_frozen(from.clone()):
@@ -124,25 +116,24 @@ impl Ledger:
         if self.is_frozen(to.clone()):
             return self.blame(to.clone(), "error: account frozen {to}")
 
-        amt := parse_num(text)
-        b := self.bal(from.clone())
+        let amt = parse_num(text)
+        let b = self.bal(from.clone())
         var nb = b - amt
-        fee := charged(b, amt)
+        let fee = charged(b, amt)
         if fee:
-            nb = nb - 5
+            nb -= 5
         if nb < -self.lim(from.clone()):
             return self.blame(from.clone(), "error: overdraft limit exceeded {from}")
 
         self.balances[from.clone()] = nb
 
-        nt := self.bal(to.clone()) + amt
+        let nt = self.bal(to.clone()) + amt
         self.balances[to.clone()] = nt
         if fee:
             self.total_fees += 5
         self.count_op(from)
         self.count_op(to)
-        if fee:
-            return "ok {nb} {nt} fee=5"
+        if fee: return "ok {nb} {nt} fee=5"
 
         return "ok {nb} {nt}"
 
@@ -152,10 +143,10 @@ impl Ledger:
         for id in self.ids:
             total += self.bal(id.clone())
 
-        sorted_ids := self.ids.sorted()
+        let sorted_ids = self.ids.sorted()
 
         for id in sorted_ids:
-            fz := if self.is_frozen(id.clone()): "yes" else: "no"
+            let fz = if self.is_frozen(id.clone()): "yes" else: "no"
             rows.append(
                 "{id} balance={self.bal(id.clone())} limit={self.lim(id.clone())} ops={self.ops.get(id.clone()).get(0)} rejected={self.rejected.get(id.clone()).get(0)} frozen={fz}"
             )
@@ -164,22 +155,16 @@ impl Ledger:
         return rows.join("\n")
 
     var fn run_cmd(t: List[String]) String:
-        c := t[0].clone()
-        n := t.length()
-        if c == "open" and n == 3:
-            return self.open_acct(t[1].clone(), t[2].clone())
-        if c == "deposit" and n == 3:
-            return self.deposit(t[1].clone(), t[2].clone())
-        if c == "withdraw" and n == 3:
-            return self.withdraw(t[1].clone(), t[2].clone())
+        let c = t[0].clone()
+        let n = t.length()
+        if c == "open" and n == 3: return self.open_acct(t[1].clone(), t[2].clone())
+        if c == "deposit" and n == 3: return self.deposit(t[1].clone(), t[2].clone())
+        if c == "withdraw" and n == 3: return self.withdraw(t[1].clone(), t[2].clone())
         if c == "transfer" and n == 4:
             return self.transfer(t[1].clone(), t[2].clone(), t[3].clone())
-        if c == "freeze" and n == 2:
-            return self.set_frozen(t[1].clone(), true)
-        if c == "unfreeze" and n == 2:
-            return self.set_frozen(t[1].clone(), false)
-        if c == "report" and n == 1:
-            return self.report()
+        if c == "freeze" and n == 2: return self.set_frozen(t[1].clone(), true)
+        if c == "unfreeze" and n == 2: return self.set_frozen(t[1].clone(), false)
+        if c == "report" and n == 1: return self.report()
 
         return "error: bad command"
 
@@ -193,9 +178,8 @@ fn process() Unit!:
     )
 
     for raw in lines(stdin()):
-        t := raw.replace("\t", " ").split(" ").filter(fn s: s.length() > 0)
-        if t.length() == 0:
-            continue
+        let t = raw.replace("\t", " ").split(" ").filter(fn s: s.length() > 0)
+        if t.length() == 0: continue
 
         print(led.run_cmd(t))
 

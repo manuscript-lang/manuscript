@@ -14,5 +14,5 @@ fn run[T: Sink](s: T) Unit:
 fn caller() Unit:
     run(Out(1))
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

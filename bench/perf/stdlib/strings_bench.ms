@@ -1,6 +1,8 @@
-import keep, measure from "@std/test/bench.ms"
-import words from "./src/harness.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    words from "./src/harness.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 bench "string.append_builder":
     fn work() Result[Unit, Error]:

@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Item:
     id: Int
@@ -8,12 +10,11 @@ type Item:
 
 impl Closeable for Item:
     var fn close() Unit!:
-        _ := append_file(self.log, "{self.id},").wait()
-        return ok(unit)
+        let _ = append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
-    read := read_file(path).wait()
-    if bytes := read: return bytes.decode_utf8().get("")
+    let read = read_file(path).wait()
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -26,7 +27,7 @@ fn fill(log: String) Unit:
     items.remove("b")  // the removed value closes at once
 
 test "a map of resources closes the values it holds newest entry first at scope end":
-    tmp := temporary("ms-log-") | try expect_ok
-    log := "{tmp.path()}/log"
+    let tmp = temporary("ms-log-") | try expect_ok
+    let log = "{tmp.path()}/log"
     fill(log.clone())
     logged(log.clone()) | try expect_equal("2,4,3,1,")

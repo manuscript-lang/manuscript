@@ -13,8 +13,8 @@ fn mirror(a: List[Int]) Int:
     var b = a.clone()
 
     for i in 0..b.length() / 2:
-        j := b.length() - 1 - i
-        t := b[i]
+        let j = b.length() - 1 - i
+        let t = b[i]
         b[i] = b[j]
         b[j] = t
 
@@ -31,7 +31,7 @@ fn search(a: List[Int], want: Int) Int:
     var hi = a.length() - 1
 
     while lo <= hi:
-        mid := lo + (hi - lo) / 2
+        let mid = lo + (hi - lo) / 2
         if a[mid] == want:
             return mid
 
@@ -52,16 +52,15 @@ fn nested(g: List[List[Int]]) Int:
 fn checked(a: List[Int], i: Int) Int:
     return a.get(index: i, default: -1)
 
-export fn main() Int:
-    a := [3, 1, 4, 1, 5, 9, 2, 6]
-    _ := stdout().write(
+fn main() Unit:
+    let a = [3, 1, 4, 1, 5, 9, 2, 6]
+    let _ = stdout().write(
         "{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
     )
-    _ := stdout().write(
+    let _ = stdout().write(
         "{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
     )
-    _ := stdout().write("{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
-    _ := stdout().write(
+    let _ = stdout().write("{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
+    let _ = stdout().write(
         "{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
     )
-    return 0

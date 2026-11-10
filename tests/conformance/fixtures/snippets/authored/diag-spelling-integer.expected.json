@@ -14,20 +14,20 @@
           "file": "diag-spelling-integer.ms",
           "line": 5,
           "column": 12,
-          "offset": 148
+          "offset": 142
         },
         "fix": {
           "position": {
             "file": "diag-spelling-integer.ms",
             "line": 5,
             "column": 12,
-            "offset": 148
+            "offset": 142
           },
           "end": {
             "file": "diag-spelling-integer.ms",
             "line": 5,
             "column": 19,
-            "offset": 155
+            "offset": 149
           },
           "replacement": "Int"
         }

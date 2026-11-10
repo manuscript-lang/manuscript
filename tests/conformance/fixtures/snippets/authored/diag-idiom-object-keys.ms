@@ -1,6 +1,5 @@
 // conform: tags=diagnostics,types,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-export fn main() Int:
-    a := Object.keys(1)
-    return 0
+fn main() Unit:
+    let a = Object.keys(1)

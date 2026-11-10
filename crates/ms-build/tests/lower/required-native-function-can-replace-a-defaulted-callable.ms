@@ -3,9 +3,8 @@ import floor from "@std/math/math.ms"
 
 fn original(value: Float = 7.0) Float: value
 
-export fn main() Int:
+fn main() Unit:
     var callback = original
     callback = floor
 
-    _result := callback(3.5)
-    return 0
+    let _result = callback(3.5)

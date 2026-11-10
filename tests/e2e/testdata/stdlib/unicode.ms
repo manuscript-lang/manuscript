@@ -6,9 +6,9 @@ import (
     is_uppercase,
     is_whitespace,
     is_control,
-    is_ascii
-) from "@std/unicode.ms"
-import expect_equal, expect_true, expect_false from "@std/test/test.ms"
+    is_ascii from "@std/unicode.ms",
+    expect_equal, expect_true, expect_false from "@std/test/test.ms",
+)
 
 test "Unicode properties distinguish letters numbers marks and symbols":
     for text in ["A", "é", "中", "\u{345}"]:

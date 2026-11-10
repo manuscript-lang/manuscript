@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
     copy,
     CopyOptions,
     create_directory,
@@ -8,17 +8,15 @@ import (
     remove,
     stat,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn expect_limit(outcome: Unit!) Unit!:
     cause := try expect_error(outcome)
     try expect_equal(cause.kind, "EOVERFLOW")
     if not cause.message.starts_with("filesystem: limit exceeded"):
         return error(Error("wrong limit message: {cause.message}"))
-
-    return ok(unit)
 
 fn generic_write(path: String, data: String) Unit!:
     return write_file(path, data).wait()
@@ -39,8 +37,6 @@ fn rejected(result: Unit!) Unit!:
     match result:
         error(_): return ok(unit)
         ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
-
-    return ok(unit)
 
 fn text(path: String) String!:
     return ok((read_file(path).wait() | try expect_ok).decode_utf8().get())
@@ -138,6 +134,35 @@ test "filesystem tree copies default to no replacement with distinct budgets":
             CopyOptions(recursive: true, max_entries: 2, max_bytes: 3)
         ) | try expect_ok
     )
+
+test "filesystem tree copies reject empty and disjoint existing directories":
+    let directory = try temporary("manuscript-existing-tree-")
+    let source = "{directory.path()}/source"
+    let destination = "{directory.path()}/destination"
+    try create_directory(source)
+    try create_directory(destination)
+
+    let tree = CopyOptions(recursive: true)
+    let empty = try expect_error(copy(source, destination, tree))
+    try expect_equal(empty.kind, "EEXIST")
+    try write_file("{source}/new", "new").wait()
+    try write_file("{destination}/keep", "keep").wait()
+
+    let disjoint = try expect_error(generic_tree(source, destination))
+    try expect_equal(disjoint.kind, "EEXIST")
+    try expect_equal((try list(destination)).length(), 1)
+    try expect_equal(try text("{destination}/keep"), "keep")
+    try copy(
+        source,
+        destination,
+        CopyOptions(
+            recursive: true, filter: fn(s: String, d: String) Bool: false
+        )
+    )
+    try expect_equal((try list(destination)).length(), 1)
+    try copy(source, destination, CopyOptions(recursive: true, replace: true))
+    try expect_equal(try text("{destination}/new"), "new")
+    try expect_equal(try text("{destination}/keep"), "keep")
 
 test "filesystem directory creation defaults to requiring an existing parent":
     temporary := temporary("manuscript-default-directory-") | try expect_ok

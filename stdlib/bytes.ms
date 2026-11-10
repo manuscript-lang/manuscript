@@ -1,5 +1,5 @@
-import Data, Writable from "@std/core.ms"
 import (
+    Data, Writable from "@std/core.ms",
     msrt_bytes_join,
     msrt_bytes_values,
     msrt_bytes_read_word,
@@ -8,9 +8,9 @@ import (
     msrt_float32_from_bits,
     msrt_float32_to_bits,
     msrt_bits_bit_and,
-    msrt_bits_shift_right
-) from "@std/internal/bytes.ms"
-import msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms"
+    msrt_bits_shift_right from "@std/internal/bytes.ms",
+    msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms",
+)
 
 // An immutable sequence of bytes, such as `"hello".to_bytes()`. Use `decode_utf8()` to read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from zero.
 export extern type Bytes

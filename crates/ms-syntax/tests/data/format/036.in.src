@@ -32,7 +32,5 @@ fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
         "seed {seed}: changed\n{rendered}"
     )
 
-    return ok(unit)
-
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
     again := try str

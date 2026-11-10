@@ -3,6 +3,7 @@
 
 mod call_chains;
 mod callable_identity;
+mod callback_identity;
 mod constant_index;
 mod diagnostic_wording;
 mod error_values;

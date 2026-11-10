@@ -22,8 +22,6 @@ fn check(n: Int) Unit!Error:
     if n < 0:
         return error(Error("neg"))
 
-    return ok(unit)
-
 fn discarded(n: Int) Int!Error:
     try check(n)
     return ok(7)

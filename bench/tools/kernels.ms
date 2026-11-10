@@ -2,8 +2,8 @@
 // Usage: ms run bench/tools/kernels.ms -- <kernels|competence> [repeats]
 // kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
 // MS, GO, RUSTC and CC pick the tools.
-import ablations, base_versions, c_versions, summarize from "./kernels_table.ms"
 import (
+    ablations, base_versions, c_versions, summarize from "./kernels_table.ms",
     build_go,
     build_ms,
     build_rust,
@@ -14,20 +14,19 @@ import (
     must,
     repeats,
     rotate,
-    sample
-) from "./lib.ms"
-import copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+    sample from "./lib.ms",
+    copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]:
     var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
     args = args.concat([source.clone(), "-o", out.clone()])
 
-    _ := try must("cc {source}", capture(env("CC", "cc"), args))
-    return ok(unit)
+    let _ = try must("cc {source}", capture(env("CC", "cc"), args))
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
-    here := "bench/perf/{suite}"
+    let here = "bench/perf/{suite}"
     for dir in ["go", "ms", "rust"]:
         try copy(
             "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
@@ -49,7 +48,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
         versions = versions.concat(c_versions())
 
         if env("ABLATE", "0") == "1":
-            flags := [
+            let flags = [
                 ["c-ms-no-poll", "-DMS_NO_POLL"],
                 ["c-ms-no-overflow", "-DMS_NO_OVERFLOW"],
                 ["c-ms-no-bounds", "-DMS_NO_BOUNDS"],
@@ -71,25 +70,25 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
     for i in 0..n:
         // Rotate the order each round so no version always runs first.
         for v in rotate(versions, i):
-            out := try sample("{work}/{v}/bench", [])
+            let out = try sample("{work}/{v}/bench", [])
             for line in out.split("\n"):
                 if line != "": raw.append("{v} {line}")
             raw.append("{v} # end")
 
     return summarize(raw, suite, n, versions)
 
-export fn main() Int:
-    args := arguments()
+fn main() Int:
+    let args = arguments()
     if args.is_empty() or (args[0] != "kernels" and args[0] != "competence"):
         return fail("usage: kernels.ms -- <kernels|competence> [repeats]")
 
     var n = 5
 
     if args.length() > 1:
-        if parsed := repeats(args[1]):
+        if let parsed = repeats(args[1]):
             n = parsed
         else:
             return fail("repeats must be a positive integer")
 
-    tmp := temporary("{args[0]}-").get()
+    let tmp = temporary("{args[0]}-").get()
     return finish(run(args[0], n, tmp.path()))

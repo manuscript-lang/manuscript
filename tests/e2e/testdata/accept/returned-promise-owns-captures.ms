@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
+)
 
 type Target:
     host: String

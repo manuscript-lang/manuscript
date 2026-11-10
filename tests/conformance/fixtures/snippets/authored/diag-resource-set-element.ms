@@ -8,6 +8,5 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!: return ok(unit)
 
-export fn main() Int:
-    s := Set[Door]()
-    return 0
+fn main() Unit:
+    let s = Set[Door]()

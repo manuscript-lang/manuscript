@@ -7,11 +7,13 @@
 // A change may not raise a count without a stated reason; update the header in the same change.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/count-check.ms [-- files]
-import tool_ms, use_stats_runtime from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    tool_ms, use_stats_runtime from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The text after `prefix` on every line that starts with it.
 fn after(text: String, prefix: String) List[String]:
@@ -22,36 +24,38 @@ fn after(text: String, prefix: String) List[String]:
         )
     return found
 
-export fn main() Int:
-    code := use_stats_runtime()
+fn main() Int:
+    let code = use_stats_runtime()
     if code != 0: return code
 
-    root := working_directory().get()
+    let root = working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
             files.append("tests/ownership-counts/{f.path}")
 
-    ms := tool_ms(root.clone())
-    scratch := temporary("ms-counts-").get()
+    let ms = tool_ms(root.clone())
+    let scratch = temporary("ms-counts-").get()
     change_directory(scratch.path()).get()
 
     var failures = 0
     var checked = 0
 
     for f in files:
-        source := read_file("{root}/{f}").wait().get().decode_utf8().get("")
-        expected_out := after(source, "// expect-stdout: ")
+        let source = read_file("{root}/{f}").wait().get().decode_utf8().get("")
+        let expected_out = after(source, "// expect-stdout: ")
 
         for build in ["debug", "release"]:
-            ran := run(ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]).wait()
+            let ran = run(
+                ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]
+            ).wait()
             checked += 1
 
             if ran.is_error():
                 failures += 1
 
-                cause := ran.err().message.clone()
+                let cause = ran.err().message.clone()
                 (
                     stdout()
                     .write(
@@ -61,9 +65,9 @@ export fn main() Int:
                 )
                 continue
 
-            child := ran.get()
-            out := child.stdout.decode_utf8().get("")
-            err := child.stderr.decode_utf8().get("")
+            let child = ran.get()
+            let out = child.stdout.decode_utf8().get("")
+            let err = child.stderr.decode_utf8().get("")
 
             if child.exit_code != 0:
                 failures += 1
@@ -76,18 +80,18 @@ export fn main() Int:
                 )
                 continue
 
-            counts := after(err, "ms-rt counts: ")
-            live := after(err, "ms-rt live blocks at exit: ")
+            let counts = after(err, "ms-rt counts: ")
+            let live = after(err, "ms-rt live blocks at exit: ")
 
-            if live.length() == 0 or live[0] != "0":
+            if live.is_empty() or live[0] != "0":
                 failures += 1
 
                 var shown = "an unreported number of"
-                if live.length() > 0: shown = live[0].clone()
+                if not live.is_empty(): shown = live[0].clone()
                 print("leak: {f} ({build}) left {shown} live blocks")
 
             var have = List[String]()
-            if counts.length() > 0: have = counts[0].split(" ")
+            if not counts.is_empty(): have = counts[0].split(" ")
 
             for header in after(source, "// expect-{build}: "):
                 for pair in header.split(" "):
@@ -95,7 +99,7 @@ export fn main() Int:
 
                     checked += 1
 
-                    want := pair.clone()
+                    let want = pair.clone()
 
                     if not have.contains(want):
                         failures += 1
@@ -107,7 +111,7 @@ export fn main() Int:
                             .get()
                         )
 
-            if expected_out.length() > 0:
+            if not expected_out.is_empty():
                 checked += 1
 
                 if out.trim_end() != expected_out.join("\n"):

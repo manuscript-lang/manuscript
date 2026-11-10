@@ -1,5 +1,7 @@
-import SortedMap from "@std/collections/sorted.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    SortedMap from "@std/collections/sorted.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn filled(count: Int) SortedMap[Int, String]:
     var map = SortedMap[Int, String]()

@@ -1,5 +1,7 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import compile from "@std/string.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    compile from "@std/string.ms",
+)
 
 test "regex receivers execute matching replacement and empty results":
     regex := try compile("[0-9]+")

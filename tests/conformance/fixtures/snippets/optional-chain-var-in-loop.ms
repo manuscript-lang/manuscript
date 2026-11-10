@@ -17,6 +17,5 @@ fn main2() Unit:
         v := o?.bump()
         stdout().write("{v.get(0)}\n").get()
 
-export fn main() Int:
+fn main() Unit:
     main2()
-    return 0

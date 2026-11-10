@@ -6,6 +6,5 @@ interface Named:
 
 fn describe[E: Named](item: E) String: item.name()
 
-export fn main() Int:
-    _message := describe("missing")
-    return 0
+fn main() Unit:
+    let _message = describe("missing")

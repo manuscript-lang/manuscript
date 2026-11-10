@@ -24,9 +24,8 @@ impl Increment for Offset:
 fn adjusted(value: Int, operation: Increment) Int:
     return operation.apply(value)
 
-export fn main() Int:
+fn main() Unit:
     print(adjusted(10, Offset(2)))
-    return 0
 ```
 
 ```text

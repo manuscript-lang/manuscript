@@ -1,6 +1,8 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
-import parse from "@std/data/csv.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+    parse from "@std/data/csv.ms",
+)
 
 // Parses 5000 rows 200 times and prints the best run in microseconds.
 // The "quoted" shape has quoted and escaped cells; "plain" has none.
@@ -15,7 +17,7 @@ fn rows_of(shape: String) String:
 
     return text
 
-export fn main() Int:
+fn main() Unit:
     for shape in ["quoted", "plain"]:
         text := rows_of(shape)
         var best = 9223372036854775807
@@ -31,5 +33,3 @@ export fn main() Int:
         _written := stdout().write(
             "manuscript {shape} rows={count} best_us={best / 1000}\n"
         )
-
-    return 0

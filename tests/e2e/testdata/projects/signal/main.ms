@@ -1,6 +1,8 @@
-import stdout from "@std/io/io.ms"
-import WriteStream from "@std/io/io.ms"
-import Closeable from "@std/core.ms"
+import (
+    stdout from "@std/io/io.ms",
+    WriteStream from "@std/io/io.ms",
+    Closeable from "@std/core.ms",
+)
 
 type Resource:
     label: String
@@ -8,15 +10,13 @@ type Resource:
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        _ignored := self.output.write("close {self.label}\n")
-        return ok(unit)
+        let _ignored = self.output.write("close {self.label}\n")
 
-export fn main() Int:
+fn main() Unit:
     var output = stdout()
     var _resource = Resource("parent", stdout())
-    _child := Resource("child", stdout())
-    _ignored := output.write("ready\n")
+    let _child = Resource("child", stdout())
+    let _ignored = output.write("ready\n")
     while true:
         continue
     _resource.close().get(none)
-    return 0

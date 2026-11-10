@@ -1,9 +1,11 @@
 // Shared pieces of the challenge generators: the case record, the committed file layout and the Go oracle.
-import panic from "@std/core.ms"
-import copy, CopyOptions, temporary_directory, write_file from "@std/os/fs.ms"
-import dumps_data from "./pyjson.ms"
-import bash, write_text from "./text.ms"
-import root from "../core/model.ms"
+import (
+    panic from "@std/core.ms",
+    copy, CopyOptions, temporary_directory, write_file from "@std/os/fs.ms",
+    dumps_data from "./pyjson.ms",
+    bash, write_text from "./text.ms",
+    root from "../core/model.ms",
+)
 
 // One input and the exact output expected for it.
 export type GenCase:

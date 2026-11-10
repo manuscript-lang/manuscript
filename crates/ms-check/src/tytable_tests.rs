@@ -16,6 +16,7 @@ fn var_param(ty: Ty, mutable: bool) -> Param {
         name: n("p"),
         ty,
         mutable,
+        positional: false,
     }
 }
 

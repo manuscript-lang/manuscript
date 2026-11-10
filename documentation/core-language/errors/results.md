@@ -27,10 +27,9 @@ fn show(value: Int) Unit:
         return
     print("Quantity: {outcome.get()}")
 
-export fn main() Int:
+fn main() Unit:
     show(3)
     show(0)
-    return 0
 ```
 
 ```text

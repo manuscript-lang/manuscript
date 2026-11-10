@@ -18,13 +18,13 @@ fn defaulted(value: Int = 17) Int:
 fn required(amount: Int) Int:
     return amount + 2
 
-export fn main() Int:
-    a := Pair(7, "a string that lives on the heap")
-    b := Pair("another string that lives on the heap", 9)
-    c := Choice[Pair[Int, String]].Value(Pair(13, "payload"))
+fn main() Unit:
+    let a = Pair(7, "a string that lives on the heap")
+    let b = Pair("another string that lives on the heap", 9)
+    let c = Choice[Pair[Int, String]].Value(Pair(13, "payload"))
     var total = first(a) + first(b).length()
 
-    payload := match c:
+    let payload = match c:
         Empty: 0
         Value(value): value.first
 
@@ -34,8 +34,7 @@ export fn main() Int:
     f = required
     total += f(3)
 
-    held := optional(Pair(5, "retained"))
-    if x := held:
+    let held = optional(Pair(5, "retained"))
+    if let x = held:
         total += first(x)
     print("{total}")
-    return 0

@@ -170,7 +170,7 @@ impl SortedMap[K, V]:
         self.value_chunks[c].remove(at)
         self.size -= 1
 
-        if self.key_chunks[c].length() == 0:
+        if self.key_chunks[c].is_empty():
             self.key_chunks.remove(c)
             self.value_chunks.remove(c)
             self.maxes.remove(c)
@@ -268,11 +268,11 @@ impl SortedMap[K, V]:
             keys := self.key_chunks[c]
 
             while at < keys.length():
-                if order(keys.get(at), high) >= 0: return out
+                if order(keys[at], high) >= 0: return out
 
                 out.append(
                     SortedEntry(
-                        keys.get(at).clone(), self.value_chunks[c].get(at).clone()
+                        keys[at].clone(), self.value_chunks[c].get(at).clone()
                     )
                 )
                 at += 1
@@ -299,7 +299,7 @@ impl SortedMap[K, V]:
             for at in 0..keys.length():
                 out.append(
                     SortedEntry(
-                        keys.get(at).clone(), self.value_chunks[c].get(at).clone()
+                        keys[at].clone(), self.value_chunks[c].get(at).clone()
                     )
                 )
 

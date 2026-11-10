@@ -1,6 +1,8 @@
-import lines from "@std/io/streams.ms"
-import stdin from "@std/io/io.ms"
-import from_scalars from "@std/string.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin from "@std/io/io.ms",
+    from_scalars from "@std/string.ms",
+)
 
 // A parsed record: the category text and the amount as little-endian cent digits.
 type Record:
@@ -52,8 +54,8 @@ fn amount_cents(cs: List[Int]) List[Int]?:
 
 // Splits one line into category and amount; none if invalid.
 fn parse_line(line: String) Record?:
-    cs := line.scalar_values()
-    n := cs.length()
+    let cs = line.scalar_values()
+    let n = cs.length()
     var cat = List[Int]()
     var amt_start = 0
 
@@ -98,9 +100,8 @@ fn parse_line(line: String) Record?:
         amt.append(cs[k])
         k += 1
 
-    if cents := amount_cents(amt):
-        if name := from_scalars(cat):
-            return Record(category: name, cents: cents)
+    if let cents = amount_cents(amt):
+        if let name = from_scalars(cat): return Record(category: name, cents: cents)
     return none
 
 // Adds two little-endian digit lists.
@@ -149,8 +150,8 @@ fn run() Int!:
     for line in lines(stdin()):
         if line.trim().is_empty(): continue
 
-        if rec := parse_line(line):
-            if idx := index.get(rec.category):
+        if let rec = parse_line(line):
+            if let idx = index.get(rec.category):
                 totals[idx] = add_cents(totals[idx], rec.cents)
             else:
                 index[rec.category.clone()] = names.length()
@@ -163,7 +164,7 @@ fn run() Int!:
     order.sort()
 
     for name in order:
-        idx := index.get(name).get(0)
+        let idx = index.get(name).get(0)
         print("{name}: {render(totals[idx])}")
 
     if skipped > 0:
@@ -171,7 +172,6 @@ fn run() Int!:
     return ok(0)
 
 export fn main() Int:
-    if code := run():
-        return code
+    if let code = run(): return code
 
     return 1

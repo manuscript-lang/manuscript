@@ -1,6 +1,8 @@
-import Key from "./domain.ms"
-import insert, insert_bound from "./helper.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Key from "./domain.ms",
+    insert, insert_bound from "./helper.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 impl Equal for Key:
     fn equals(other: Key) Bool:

@@ -1,5 +1,7 @@
-import timestamp from "@std/time.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    timestamp from "@std/time.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "calendar format keeps token boundaries and literal text":
     moment := timestamp(1710073815, 250999999).get()

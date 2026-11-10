@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 type Rec:
     ts: String
@@ -11,51 +13,42 @@ type Rec:
     lat: Int
 
 fn is_digits(s: String) Bool:
-    if s.is_empty():
-        return false
+    if s.is_empty(): return false
 
     for i in 0..s.scalar_length():
-        if not "0123456789".contains(s.get(i)):
-            return false
+        if not "0123456789".contains(s.get(i)): return false
     return true
 
 fn parse(line: String) Rec?:
-    f := line.split(" ")
-    if f.length() != 6:
-        return none
-    if f[0].is_empty():
-        return none
+    let f = line.split(" ")
+    if f.length() != 6: return none
+    if f[0].is_empty(): return none
 
-    lvl := f[1]
+    let lvl = f[1]
     if not (lvl == "DEBUG" or lvl == "INFO" or lvl == "WARN" or lvl == "ERROR"):
         return none
 
-    m := f[2]
-    if not (m == "GET" or m == "POST" or m == "PUT" or m == "DELETE"):
-        return none
-    if f[3].is_empty() or not f[3].starts_with("/"):
-        return none
-    if f[4].scalar_length() != 3 or not is_digits(f[4]):
-        return none
-    if f[5].scalar_length() > 9 or not is_digits(f[5]):
-        return none
+    let m = f[2]
+    if not (m == "GET" or m == "POST" or m == "PUT" or m == "DELETE"): return none
+    if f[3].is_empty() or not f[3].starts_with("/"): return none
+    if f[4].scalar_length() != 3 or not is_digits(f[4]): return none
+    if f[5].scalar_length() > 9 or not is_digits(f[5]): return none
 
-    lat := f[5].parse_int().get(0)
+    let lat = f[5].parse_int().get(0)
     return Rec(
         ts: f[0].clone(), level: lvl.clone(), method: m.clone(), path: f[3].clone(),
         status: f[4].clone(), lat_text: f[5].clone(), lat: lat
     )
 
 export fn main() Int:
-    lines := read_lines(stdin()).get()
+    let lines = read_lines(stdin()).get()
     var recs = List[Rec]()
     var malformed = 0
 
     for line in lines:
-        if line.trim().is_empty():
-            continue
+        if line.trim().is_empty(): continue
 
-        if r := parse(line):
+        if let r = parse(line):
             recs.append(r)
         else:
             malformed += 1
@@ -80,7 +73,7 @@ export fn main() Int:
         else:
             error += 1
 
-        c := r.status.get(0)
+        let c = r.status.get(0)
 
         if c == "2":
             s2 += 1
@@ -98,7 +91,7 @@ export fn main() Int:
         lats.append(r.lat)
     lats.sort()
 
-    n := lats.length()
+    let n = lats.length()
     var p95 = 0
     if n > 0:
         p95 = lats[(95 * n + 99) / 100 - 1]
@@ -125,12 +118,12 @@ export fn main() Int:
     stdout().write("p95: {p95}\n").get()
 
     if best >= 0:
-        r := recs[best]
+        let r = recs[best]
         stdout().write("slowest: {r.lat_text} {r.method} {r.path} {r.ts}\n").get()
 
     stdout().write("top:\n").get()
 
-    paths := counts.keys()
+    let paths = counts.keys()
     var used = List[Bool]()
     for i in 0..paths.length():
         used.append(false)
@@ -141,22 +134,21 @@ export fn main() Int:
         var pick = -1
 
         for i in 0..paths.length():
-            if used[i]:
-                continue
+            if used[i]: continue
 
             if pick < 0:
                 pick = i
             else:
-                ci := counts.get_or(paths[i], 0)
-                cp := counts.get_or(paths[pick], 0)
+                let ci = counts.get_or(paths[i], 0)
+                let cp = counts.get_or(paths[pick], 0)
                 if ci > cp or (ci == cp and paths[i].compare(paths[pick]) < 0):
                     pick = i
 
         used[pick] = true
 
-        p := paths[pick]
-        c := counts.get_or(p, 0)
-        avg := totals.get_or(p, 0) / c
+        let p = paths[pick]
+        let c = counts.get_or(p, 0)
+        let avg = totals.get_or(p, 0) / c
         stdout().write("{p} {c} avg={avg}\n").get()
         k += 1
 

@@ -1,9 +1,11 @@
-import expect_equal from "@std/test/test.ms"
-import ReadStream from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
-import Iterator from "@std/core.ms"
-import memory, closed_reader from "./support/streams.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    ReadStream from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    Iterator from "@std/core.ms",
+    memory, closed_reader from "./support/streams.ms",
+)
 
 fn gather(input: ReadStream[Bytes], max_bytes: Int? = none) List[String]!:
     return collect(lines(input, max_bytes), none)

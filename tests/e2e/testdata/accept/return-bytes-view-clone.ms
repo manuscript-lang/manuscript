@@ -1,5 +1,7 @@
-import Bytes from "@std/bytes.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn middle(bytes: Bytes) Bytes:
     return bytes.view(1, 3).clone()

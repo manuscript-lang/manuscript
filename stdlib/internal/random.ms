@@ -1,5 +1,5 @@
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     bit_and,
     bit_or,
     bit_xor,
@@ -8,8 +8,8 @@ import (
     wrapping_add,
     wrapping_subtract,
     max_int,
-    min_int
-) from "@std/math/math.ms"
+    min_int from "@std/math/math.ms",
+)
 
 // The operating system's entropy: exactly `count` bytes, `count` from 0 through 16 MiB.
 export extern fn msstd_random_os_bytes(count: Int) Bytes!

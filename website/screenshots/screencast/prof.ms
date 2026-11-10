@@ -3,6 +3,5 @@ fn fib(n: Int) Int:
 
     return fib(n - 1) + fib(n - 2)
 
-export fn main() Int:
+fn main() Unit:
     print(fib(38))
-    return 0

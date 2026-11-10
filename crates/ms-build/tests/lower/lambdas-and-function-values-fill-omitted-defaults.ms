@@ -5,8 +5,7 @@ import stdout from "@std/io/io.ms"
 
 fn scale(value: Int, by: Int = 2) Int: value * by
 
-export fn main() Int:
-    f := scale
-    g := fn(value: Int = 4): value
-    _r := stdout().write("{f(3)} {f(3, 3)} {g()}\n")
-    return 0
+fn main() Unit:
+    let f = scale
+    let g = fn(value: Int = 4): value
+    let _r = stdout().write("{f(3)} {f(3, 3)} {g()}\n")

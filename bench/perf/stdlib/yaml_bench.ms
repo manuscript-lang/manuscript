@@ -1,6 +1,8 @@
-import keep, measure from "@std/test/bench.ms"
-import StringBuilder from "@std/string.ms"
-import parse, stringify, YamlValue from "@std/data/yaml.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    StringBuilder from "@std/string.ms",
+    parse, stringify, YamlValue from "@std/data/yaml.ms",
+)
 
 fn yaml_doc(count: Int) String:
     var sb = StringBuilder()

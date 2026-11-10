@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_fault from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
+import (
+    expect_equal, expect_error, expect_fault from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+)
 
 type Gate:
     name: String
@@ -8,8 +10,6 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         if self.fails: return error(Error("close {self.name}"))
-
-        return ok(unit)
 
 fn use_gate(fails: Bool) Result[Int, Error]:
     _gate := Gate("a", fails)

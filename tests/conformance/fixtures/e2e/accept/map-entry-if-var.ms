@@ -3,7 +3,7 @@
 // conform: origin=issues 2164 and 2168
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     var m = Map[String, List[Int]]()
     m.add("a", List[Int]())
 
@@ -27,4 +27,3 @@ export fn main() Int:
     p := [7, 8]
     alias := p
     print("{alias.length()} {p.length()}")
-    return 0

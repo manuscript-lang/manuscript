@@ -17,12 +17,12 @@ import (
     output_of,
     right,
     run_in,
-    write_text
-) from "./lib.ms"
-import create_directory from "@std/os/fs.ms"
-import JsonValue, stringify from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    create_directory from "@std/os/fs.ms",
+    JsonValue, stringify from "@std/data/json.ms",
+)
 
-DATA := "bench/perf/json/data"
+let DATA = "bench/perf/json/data"
 
 // The small-message document, built as a value because a JSON literal needs every quote and brace escaped.
 fn small() String:
@@ -48,19 +48,18 @@ fn small() String:
     return stringify(jobject(doc)).get("") + "\n"
 
 fn fetch_corpora() Unit!:
-    _dir := create_directory(DATA, recursive: true)
+    let _dir = create_directory(DATA, recursive: true)
 
     for f in ["twitter", "canada", "citm_catalog"]:
         if exists("{DATA}/{f}.json"): continue
 
-        url := "https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
-        _ := try must(
+        let url = "https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
+        let _ = try must(
             "curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url])
         )
 
     // Small messages: the shape worker threads and RPC exchange.
     if not exists("{DATA}/small.json"): write_text("{DATA}/small.json", small())
-    return ok(unit)
 
 type Rate:
     nanos: Int
@@ -71,7 +70,7 @@ fn load(text: String) Map[String, Rate]:
     var rows = Map[String, Rate]()
 
     for line in text.split("\n"):
-        f := line.split("\t")
+        let f = line.split("\t")
         if f.length() != 4: continue
 
         rows.add(
@@ -86,27 +85,27 @@ fn mbps(r: Rate) Float:
 fn run(names: List[String]) Result[String, Error]:
     try fetch_corpora()
 
-    node := try must(
+    let node = try must(
         "node", capture("node", ["bench/perf/json/node.js"].concat(names))
     )
-    ms := try must(
+    let ms = try must(
         "ms run",
         capture(
             ms_binary(), ["run", "bench/perf/json/ms.toml", "--"].concat(names)
         )
     )
-    rust := try must(
+    let rust = try must(
         "cargo run",
         run_in(
             "bench/perf/json/rust", "cargo",
             ["run", "--release", "--quiet", "--"].concat(names)
         )
     )
-    n := load(node)
-    r := load(rust)
-    m := load(ms)
-    revision := output_of("git", ["rev-parse", "--short", "HEAD"]).trim()
-    host := output_of("uname", ["-sm"]).trim()
+    let n = load(node)
+    let r = load(rust)
+    let m = load(ms)
+    let revision = output_of("git", ["rev-parse", "--short", "HEAD"]).trim()
+    let host = output_of("uname", ["-sm"]).trim()
     var rows = [
         "node {output_of("node", ["--version"]).trim()}, {revision}, {host}",
         left("doc", 14) + left("op", 11) + right("node MB/s", 10) + right(
@@ -117,10 +116,10 @@ fn run(names: List[String]) Result[String, Error]:
     for key in n.keys():
         if not (m.contains(key) and r.contains(key)): continue
 
-        f := key.split("\t")
-        nr := n.get_or(key, Rate(1, 0))
-        rr := r.get_or(key, Rate(1, 0))
-        mr := m.get_or(key, Rate(1, 0))
+        let f = key.split("\t")
+        let nr = n.get_or(key, Rate(1, 0))
+        let rr = r.get_or(key, Rate(1, 0))
+        let mr = m.get_or(key, Rate(1, 0))
         rows.append(
             left(f[0], 14) + left(f[1], 11) + right(
                 mbps(nr).to_fixed(0), 10
@@ -135,8 +134,8 @@ fn run(names: List[String]) Result[String, Error]:
 
     return ok(rows.join("\n"))
 
-export fn main() Int:
-    names := env("NAMES", "small twitter canada citm_catalog records").split(
+fn main() Int:
+    let names = env("NAMES", "small twitter canada citm_catalog records").split(
         " "
     ).filter(fn s: (s != ""))
     return finish(run(names))
