@@ -1,12 +1,13 @@
-import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
-import SearchResult from "@std/collections/collections.ms"
-import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok, expect_true from "@std/test/test.ms",
+    SearchResult from "@std/collections/collections.ms",
+    append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+)
 
 fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:
     for i in 0..values.length():
         let order = values[i].compare(target)
-        if order >= 0:
-            return SearchResult(i, order == 0)
+        if order >= 0: return SearchResult(i, order == 0)
 
     return SearchResult(values.length(), false)
 
@@ -15,7 +16,6 @@ fn check_search[T: Comparable](values: List[T], target: T) Unit!:
     let actual = values.binary_search(target)
     try expect_equal(actual.index, expected.index)
     try expect_equal(actual.found, expected.found)
-    return ok(unit)
 
 // Equality is by key, so equal keys can have different payloads.
 type Key:
@@ -106,8 +106,7 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
 
 fn count(path: String) Int:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.length()
+    if let bytes = read: return bytes.length()
 
     return 0
 

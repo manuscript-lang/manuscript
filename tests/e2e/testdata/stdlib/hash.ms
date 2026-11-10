@@ -6,10 +6,10 @@ import (
     fnv1_32,
     fnv1_64,
     fnv1a32,
-    fnv1a64
-) from "@std/crypto/hash.ms"
-import Bytes from "@std/bytes.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
+    fnv1a64 from "@std/crypto/hash.ms",
+    Bytes from "@std/bytes.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+)
 
 test "FNV known vectors for both variants and widths":
     try expect_equal(fnv1a32(Bytes([])).to_int(), 2166136261)

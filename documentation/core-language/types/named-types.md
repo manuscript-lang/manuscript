@@ -58,13 +58,12 @@ type Customer:
     name: String
     email: String?
 
-export fn main() Int:
+fn main() Unit:
     let original = Customer("Ada")
     var updated = original.clone()
     updated.name = "Grace"
     print(original.name)
     print(updated.name)
-    return 0
 ```
 
 ```text
@@ -104,12 +103,11 @@ type Report:
     title: String
     rows: List[Int]
 
-export fn main() Int:
+fn main() Unit:
     let report = Report("scores", [3, 4])
     let batches = [report.rows]
     print(report.title)
     print(batches[0])
-    return 0
 ```
 
 ```text

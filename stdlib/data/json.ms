@@ -1,9 +1,11 @@
-import Data from "@std/core.ms"
-import parse_float from "@std/math/math.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms"
-import Promise from "@std/concurrency/promise.ms"
-import JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms"
+import (
+    Data from "@std/core.ms",
+    parse_float from "@std/math/math.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms",
+    Promise from "@std/concurrency/promise.ms",
+    JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms",
+)
 
 // Settings for `parse` and `json_reader`: optional bounds on input bytes, nesting depth and parsed
 // values, and how object members that are not fields are treated.
@@ -275,8 +277,7 @@ export fn stringify[T: Data](
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
     if from >= keys.length(): return none
     if from == keys.length() - 1: return value.get(keys[from])
-    if let next = value.get(keys[from]):
-        return member_path(next, keys, from + 1)
+    if let next = value.get(keys[from]): return member_path(next, keys, from + 1)
 
     return none
 
@@ -328,8 +329,7 @@ impl JsonReading[T]:
     var fn complete() T!:
         let bytes = self.pending.drain()
         self.reset()
-        if let text = bytes.decode_utf8():
-            return parse[T](text, self.options)
+        if let text = bytes.decode_utf8(): return parse[T](text, self.options)
 
         return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
@@ -406,8 +406,6 @@ impl Transform[Bytes, T] for JsonReading[T]:
 
             if let found = stepped.get(none): out.append(found)
 
-        return ok(unit)
-
     var fn finish(var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
@@ -422,7 +420,6 @@ impl Transform[Bytes, T] for JsonReading[T]:
         if completed.is_error(): return self.fail(completed.err())
 
         out.append(try completed)
-        return ok(unit)
 
 // The error a negative limit reports on the first read, or none.
 fn invalid_limits(options: JsonOptions) Error?:

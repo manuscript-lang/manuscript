@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 type Rec:
     ts: String
@@ -11,34 +13,26 @@ type Rec:
     lat: Int
 
 fn is_digits(s: String) Bool:
-    if s.is_empty():
-        return false
+    if s.is_empty(): return false
 
     for i in 0..s.scalar_length():
-        if not "0123456789".contains(s.get(i)):
-            return false
+        if not "0123456789".contains(s.get(i)): return false
     return true
 
 fn parse(line: String) Rec?:
     let f = line.split(" ")
-    if f.length() != 6:
-        return none
-    if f[0].is_empty():
-        return none
+    if f.length() != 6: return none
+    if f[0].is_empty(): return none
 
     let lvl = f[1]
     if not (lvl == "DEBUG" or lvl == "INFO" or lvl == "WARN" or lvl == "ERROR"):
         return none
 
     let m = f[2]
-    if not (m == "GET" or m == "POST" or m == "PUT" or m == "DELETE"):
-        return none
-    if f[3].is_empty() or not f[3].starts_with("/"):
-        return none
-    if f[4].scalar_length() != 3 or not is_digits(f[4]):
-        return none
-    if f[5].scalar_length() > 9 or not is_digits(f[5]):
-        return none
+    if not (m == "GET" or m == "POST" or m == "PUT" or m == "DELETE"): return none
+    if f[3].is_empty() or not f[3].starts_with("/"): return none
+    if f[4].scalar_length() != 3 or not is_digits(f[4]): return none
+    if f[5].scalar_length() > 9 or not is_digits(f[5]): return none
 
     let lat = f[5].parse_int().get(0)
     return Rec(
@@ -52,8 +46,7 @@ export fn main() Int:
     var malformed = 0
 
     for line in lines:
-        if line.trim().is_empty():
-            continue
+        if line.trim().is_empty(): continue
 
         if let r = parse(line):
             recs.append(r)
@@ -141,8 +134,7 @@ export fn main() Int:
         var pick = -1
 
         for i in 0..paths.length():
-            if used[i]:
-                continue
+            if used[i]: continue
 
             if pick < 0:
                 pick = i

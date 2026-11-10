@@ -1,7 +1,9 @@
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
-import from_scalars from "@std/string.ms"
-import parse_int from "@std/math/math.ms"
-import (parse_bool, quote, quote_ascii, unquote) from "@std/text.ms"
+import (
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+    from_scalars from "@std/string.ms",
+    parse_int from "@std/math/math.ms",
+    parse_bool, quote, quote_ascii, unquote from "@std/text.ms",
+)
 
 test "text conversions and quoting":
     parse_bool("YES") | try expect_equal(true)

@@ -1,5 +1,7 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn ints(size: Int, unique: Int, repeats: Int) Int:
     var data = List[Int](reserve: size)
@@ -57,14 +59,12 @@ fn sets(kind: String, size: Int, shift: Int, repeats: Int) Int:
     print("{elapsed} {checksum}")
     return 0
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let size = args[1].parse_int().get()
     let unique = args[2].parse_int().get()
     let repeats = args[3].parse_int().get()
-    if args[0] == "int":
-        return ints(size, unique, repeats)
-    if args[0] == "string":
-        return strings(size, unique, repeats)
+    if args[0] == "int": return ints(size, unique, repeats)
+    if args[0] == "string": return strings(size, unique, repeats)
 
     return sets(args[0], size, unique, repeats)

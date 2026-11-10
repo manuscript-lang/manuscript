@@ -1,6 +1,6 @@
-import Data from "@std/core.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
+    Data from "@std/core.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
     HashAlgorithm,
     constant_time_equal,
     ecdsa_sign,
@@ -8,11 +8,11 @@ import (
     rsa_sign,
     rsa_verify,
     sign,
-    verify
-) from "@std/crypto.ms"
-import base64_encode, base64_decode from "@std/data/encoding.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/time.ms"
+    verify from "@std/crypto.ms",
+    base64_encode, base64_decode from "@std/data/encoding.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    now from "@std/time.ms",
+)
 
 fn jwt_invalid_key() Error:
     return Error("jwt: invalid key", kind: "EINVAL")
@@ -144,8 +144,7 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
     if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let value = parse[T](text.get(""))
-    if let decoded = value:
-        return ok(decoded)
+    if let decoded = value: return ok(decoded)
 
     return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
@@ -253,7 +252,6 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
         if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
             Error("jwt: wrong audience", kind: "EBADMSG")
         )
-    return ok(unit)
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
 fn numeric_date(claim: JsonValue, name: String) Float!:
@@ -262,8 +260,7 @@ fn numeric_date(claim: JsonValue, name: String) Float!:
     return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
-    if let single = claim.as_string():
-        return single == audience
+    if let single = claim.as_string(): return single == audience
     if let many = claim.as_list():
         return many.any(fn item: item.as_string().get("") == audience)
 

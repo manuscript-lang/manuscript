@@ -62,7 +62,7 @@ MS_STATIC_ASSERT(sizeof(ms_bytes) == 24, "ms_bytes is three words");
 /* The top two bits of `tagged` are 1 for a string whose bytes are inside the value. */
 static inline int ms_str_is_inline(const ms_str *s) { return (s->tagged >> 62) == 1; }
 static inline size_t ms_str_len(const ms_str *s) {
-    return ms_str_is_inline(s) ? (s->tagged >> 56) & 15 : s->tagged & (((size_t)1 << 62) - 1);
+    return ms_str_is_inline(s) ? (s->tagged >> 56) & 15 : s->tagged & (size_t)0x1fffffffffffffff;
 }
 /* The bytes: UTF-8, not NUL-terminated. */
 static inline const uint8_t *ms_str_data(const ms_str *s) {

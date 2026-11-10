@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
+import (
+    expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+)
 
 // Regressions: block key.
 
@@ -76,11 +78,9 @@ test "YAML flow colon separators retain quoted and empty values":
 
 fn invalid_colon(source: String) Unit!:
     let cause = parse(source) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected malformed YAML, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
     cause.details["reason"] | try expect_equal("unexpected mapping colon")
-    return ok(unit)
 
 test "YAML flow scalar rejects a colon before tab":
     try invalid_colon("\{a: x:\tb\}")
@@ -110,8 +110,7 @@ test "YAML block scalar rejects a separator before a folded paragraph break":
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected InvalidData, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     return expect_equal(
         cause.details["reason"], "unexpected indentation or additional document"
@@ -190,8 +189,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected InvalidData, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     return expect_equal(cause.details["reason"], reason)
 
@@ -293,12 +291,10 @@ test "YAML flow mappings retain existing empty-key forms":
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected InvalidData, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
     try expect_equal(cause.details["column"], column.to_string())
-    return ok(unit)
 
 test "YAML root EOF location control":
     try error_at("[one", 1, 5)
@@ -338,11 +334,9 @@ test "YAML compact tab rewrites retain original scalar columns":
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != "ENOTSUP":
-        return fail("expected UnsupportedFeature, got {cause}")
+    if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
-    return ok(unit)
 
 test "YAML flow merge failures retain their source origin":
     try error_at("key: \{<<: 1\}", 1, 12)
@@ -388,7 +382,6 @@ fn invalid_key_line(source: String) Unit!:
     cause.details["reason"] | try expect_equal(
         "an implicit mapping key must stay on one line"
     )
-    return ok(unit)
 
 test "YAML plain implicit keys cannot span physical lines":
     for source in ["\{key\n next: value\}", "\{key\n: value\}"]:

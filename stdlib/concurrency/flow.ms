@@ -1,8 +1,10 @@
-import panic from "@std/core.ms"
-import Deque from "@std/collections/deque.ms"
-import Promise, promise, wait_all from "@std/concurrency/promise.ms"
-import Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms"
-import float from "@std/random.ms"
+import (
+    panic from "@std/core.ms",
+    Deque from "@std/collections/deque.ms",
+    Promise, promise, wait_all from "@std/concurrency/promise.ms",
+    Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
+    float from "@std/random.ms",
+)
 
 /*
 How `retry` spaces and bounds its attempts. The wait before attempt `n + 1` is `delay` doubled `n - 1` times, never more than `max_delay`;
@@ -30,8 +32,7 @@ impl RetryPolicy:
         var wait = Duration(nanos: self.delay.nanos)
 
         for round in 1..attempt:
-            if wait.compare(self.max_delay) >= 0:
-                break
+            if wait.compare(self.max_delay) >= 0: break
 
             // Doubling would reach the cap: stop before the product can overflow.
             if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2:
@@ -59,13 +60,11 @@ export fn retry[T, E: Clonable](
 
     while true:
         let result = operation(attempt)
-        if attempt >= policy.attempts:
-            return result
+        if attempt >= policy.attempts: return result
 
         if result.is_error():
             if let accepts = retryable:
-                if not accepts(result.err()):
-                    return result
+                if not accepts(result.err()): return result
             sleep(jittered(policy, attempt)).wait().get(unit)
             attempt += 1
         else:
@@ -73,8 +72,7 @@ export fn retry[T, E: Clonable](
 
 fn jittered(policy: RetryPolicy, attempt: Int) Duration:
     let wait = policy.wait_after(attempt)
-    if not policy.jitter:
-        return wait
+    if not policy.jitter: return wait
 
     let share = float().get(1.0)
     return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get(0))
@@ -116,8 +114,7 @@ impl RateLimiter:
     var fn refill() Unit:
         let now = monotonic()
         let earned = now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-        if earned <= 0:
-            return unit
+        if earned <= 0: return unit
 
         // Compare with remaining room before adding: a valid large burst can overflow the sum.
         if earned >= self.burst - self.tokens:
@@ -130,8 +127,7 @@ impl RateLimiter:
     // Takes a token if one is available and reports whether it did. Never waits.
     var fn try_acquire() Bool:
         self.refill()
-        if self.tokens < 1:
-            return false
+        if self.tokens < 1: return false
 
         self.tokens -= 1
         return true
@@ -184,8 +180,7 @@ impl CircuitBreaker:
 
     // Runs `operation` unless the circuit is open, and records the outcome.
     var fn call[T: Clonable, E: Clonable](operation: fn() T!E) T!CircuitError[E]:
-        if self.is_open():
-            return error(CircuitError.Open)
+        if self.is_open(): return error(CircuitError.Open)
 
         let result = operation()
 
@@ -260,8 +255,7 @@ impl Throttle:
     var fn allow() Bool:
         let now = monotonic()
         if let previous = self.last:
-            if now.difference(previous).compare(self.interval) < 0:
-                return false
+            if now.difference(previous).compare(self.interval) < 0: return false
         self.last = now
         return true
 

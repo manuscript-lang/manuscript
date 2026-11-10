@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import bit_xor, bit_and, shift_right, wrapping_multiply from "@std/math.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    bit_xor, bit_and, shift_right, wrapping_multiply from "@std/math.ms",
+)
 
 let ALNUM = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 let HEXCH = "0123456789abcdef"
@@ -74,8 +76,7 @@ fn commit_id(tree_h: String, parent_ids: List[String], message: String) String:
 
 fn lines_of(content: String) List[String]:
     var res = List[String]()
-    if content.length() == 0:
-        return res
+    if content.length() == 0: return res
 
     let parts = content.split("\n")
     let cnt = parts.length() - 1
@@ -101,15 +102,12 @@ fn sub(lines: List[String], from: Int, to: Int) List[String]:
 
 fn all_in(s: String, allowed: String) Bool:
     for c in s.chars():
-        if not allowed.contains(c):
-            return false
+        if not allowed.contains(c): return false
     return true
 
 fn valid_name(s: String) Bool:
-    if s.length() == 0:
-        return false
-    if not FIRSTCH.contains(s.take(1)):
-        return false
+    if s.length() == 0: return false
+    if not FIRSTCH.contains(s.take(1)): return false
 
     return all_in(s.drop(1), NAMECH)
 
@@ -117,14 +115,11 @@ fn is_hex_prefix(s: String) Bool:
     return s.length() >= 4 and all_in(s, HEXCH)
 
 fn maps_equal(a: Map[String, String], b: Map[String, String]) Bool:
-    if a.length() != b.length():
-        return false
+    if a.length() != b.length(): return false
 
     for name in a.keys():
-        if not b.contains(name):
-            return false
-        if a.get_or(name, "") != b.get_or(name, ""):
-            return false
+        if not b.contains(name): return false
+        if a.get_or(name, "") != b.get_or(name, ""): return false
 
     return true
 
@@ -202,12 +197,9 @@ fn chunk_merge(
     let bc = content_of(base)
     let oc = content_of(ours)
     let tc = content_of(theirs)
-    if oc == bc:
-        return Merged(text: tc, clean: true)
-    if tc == bc:
-        return Merged(text: oc, clean: true)
-    if oc == tc:
-        return Merged(text: oc, clean: true)
+    if oc == bc: return Merged(text: tc, clean: true)
+    if tc == bc: return Merged(text: oc, clean: true)
+    if oc == tc: return Merged(text: oc, clean: true)
 
     let text = "<<<<<<< HEAD\n{oc}=======\n{tc}>>>>>>> {branch}\n"
     return Merged(text: text, clean: false)
@@ -287,14 +279,12 @@ impl Repo:
         return self.head_seq
 
     fn label() String:
-        if self.head_branch.length() > 0:
-            return self.head_branch.clone()
+        if self.head_branch.length() > 0: return self.head_branch.clone()
 
         return "detached"
 
     fn tree_of(s: Int) Map[String, String]:
-        if s == 0:
-            return Map[String, String]()
+        if s == 0: return Map[String, String]()
 
         return self.clist[s - 1].tree.clone()
 
@@ -315,8 +305,7 @@ impl Repo:
 
     fn ancestors(s: Int) Set[Int]:
         var seen = Set[Int]()
-        if s == 0:
-            return seen
+        if s == 0: return seen
 
         var q = List[Int]()
         q.append(s)
@@ -345,8 +334,7 @@ impl Repo:
 
         let th = tree_hash(tree)
         let id = commit_id(th, pids, message)
-        if self.ids.contains(id):
-            return self.ids.get_or(id, 0)
+        if self.ids.contains(id): return self.ids.get_or(id, 0)
 
         self.clist.append(
             Commit(
@@ -423,14 +411,11 @@ impl Repo:
 
     fn dirty() Bool:
         let ht = self.tree_of(self.cur_seq())
-        if not maps_equal(self.index, ht):
-            return true
+        if not maps_equal(self.index, ht): return true
 
         for name in self.index.keys():
-            if not self.files.contains(name):
-                return true
-            if self.files.get_or(name, "") != self.index.get_or(name, ""):
-                return true
+            if not self.files.contains(name): return true
+            if self.files.get_or(name, "") != self.index.get_or(name, ""): return true
 
         return false
 
@@ -492,8 +477,7 @@ impl Repo:
             say("error: no such file: {old}")
             return
 
-        if old == nw:
-            return
+        if old == nw: return
 
         let content = self.files.get_or(old, "")
         self.files.remove(old)
@@ -573,8 +557,7 @@ impl Repo:
         var staged = List[String]()
 
         for name in names:
-            if self.conflicts.contains(name):
-                continue
+            if self.conflicts.contains(name): continue
 
             let in_h = ht.contains(name)
             let in_i = self.index.contains(name)
@@ -589,8 +572,7 @@ impl Repo:
         var unstaged = List[String]()
 
         for name in self.index.keys().sorted():
-            if self.conflicts.contains(name):
-                continue
+            if self.conflicts.contains(name): continue
 
             if not self.files.contains(name):
                 unstaged.append("deleted: {name}")
@@ -630,19 +612,16 @@ impl Repo:
             right = self.files.clone()
         else if args.length() == 1:
             let s = self.resolve(args[0])
-            if s == 0:
-                return
+            if s == 0: return
 
             left = self.tree_of(s)
             right = self.files.clone()
         else:
             let s1 = self.resolve(args[0])
-            if s1 == 0:
-                return
+            if s1 == 0: return
 
             let s2 = self.resolve(args[1])
-            if s2 == 0:
-                return
+            if s2 == 0: return
 
             left = self.tree_of(s1)
             right = self.tree_of(s2)
@@ -660,8 +639,7 @@ impl Repo:
             let rp = right.contains(name)
             let lv = left.get_or(name, "")
             let rv = right.get_or(name, "")
-            if lp == rp and lv == rv:
-                continue
+            if lp == rp and lv == rv: continue
 
             any = true
             say("diff {name}")
@@ -804,8 +782,7 @@ impl Repo:
             return
 
         let s = self.resolve(refname)
-        if s == 0:
-            return
+        if s == 0: return
 
         self.tags.add(name, s)
 
@@ -815,8 +792,7 @@ impl Repo:
             return
 
         let s = self.resolve(args[0])
-        if s == 0:
-            return
+        if s == 0: return
 
         let c = self.clist[s - 1].clone()
         say("commit {c.id}")
@@ -874,8 +850,7 @@ impl Repo:
                 say("error: local changes would be overwritten")
                 return
 
-            if self.untracked(tree.keys()):
-                return
+            if self.untracked(tree.keys()): return
 
             self.apply_tree(tree)
             self.head_branch = tgt.clone()
@@ -883,8 +858,7 @@ impl Repo:
             return
 
         let s = self.resolve(tgt)
-        if s == 0:
-            return
+        if s == 0: return
 
         let tree = self.tree_of(s)
 
@@ -892,8 +866,7 @@ impl Repo:
             say("error: local changes would be overwritten")
             return
 
-        if self.untracked(tree.keys()):
-            return
+        if self.untracked(tree.keys()): return
 
         self.apply_tree(tree)
         self.head_branch = ""
@@ -915,8 +888,7 @@ impl Repo:
                 return
         else:
             s = self.resolve(args[1])
-            if s == 0:
-                return
+            if s == 0: return
 
         self.reset_to(s)
         say("HEAD is now at {self.short_of(s)} {self.msg_of(s)}")
@@ -933,8 +905,7 @@ impl Repo:
 
         if anc_other.contains(cur):
             let target = self.tree_of(other)
-            if self.untracked(target.keys()):
-                return
+            if self.untracked(target.keys()): return
 
             self.apply_tree(target)
             self.move_head(other)
@@ -1005,8 +976,7 @@ impl Repo:
                     work.add(path.clone(), mr.text)
 
         let check = result.keys().concat(work.keys())
-        if self.untracked(check):
-            return
+        if self.untracked(check): return
 
         for path in self.index.keys():
             if not result.contains(path):
@@ -1140,8 +1110,7 @@ export fn main() Int:
 
         let line = raw.trim_end()
         let t = line.trim_start()
-        if t.length() == 0 or t.starts_with("#"):
-            continue
+        if t.length() == 0 or t.starts_with("#"): continue
 
         say("> {line}")
 

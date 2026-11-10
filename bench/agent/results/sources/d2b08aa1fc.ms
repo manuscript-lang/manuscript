@@ -1,7 +1,9 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import floor, pow, sqrt, truncate from "@std/math/math.ms"
-import rat_of_float from "@std/math/big.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    floor, pow, sqrt, truncate from "@std/math/math.ms",
+    rat_of_float from "@std/math/big.ms",
+)
 
 // ---------------------------------------------------------------- constants
 
@@ -89,8 +91,7 @@ fn txt_val(v: Value) String:
             return ""
 
 fn finite(x: Float) Value:
-    if x.is_finite():
-        return Value.Num(x)
+    if x.is_finite(): return Value.Num(x)
 
     return Value.Errv("#NUM!")
 
@@ -117,8 +118,7 @@ fn display(v: Value) String:
         Txt(s):
             return s.clone()
         Flag(b):
-            if b:
-                return "TRUE"
+            if b: return "TRUE"
 
             return "FALSE"
         Errv(c):
@@ -130,8 +130,7 @@ fn fmt_num(n: Float) String:
         var t = r.to_fixed(10).get("0")
         if t.contains("."):
             t = t.trim_end_chars("0").trim_end_chars(".")
-        if t == "-0":
-            return "0"
+        if t == "-0": return "0"
 
         return t
 
@@ -163,8 +162,7 @@ fn parse_number_text(t: String) Float?:
             i += 1
         fp = slice_chars(cs, f0, i)
 
-    if ip == "" and fp == "":
-        return none
+    if ip == "" and fp == "": return none
 
     var ex = "0"
     var eneg = false
@@ -179,13 +177,11 @@ fn parse_number_text(t: String) Float?:
         let e0 = i
         while isdig(ch(cs, i)):
             i += 1
-        if i == e0:
-            return none
+        if i == e0: return none
 
         ex = slice_chars(cs, e0, i)
 
-    if i != n:
-        return none
+    if i != n: return none
 
     var a = ip
     if a == "":
@@ -210,16 +206,12 @@ fn parse_number_text(t: String) Float?:
 
 // Value of constant text (already trimmed, non-empty, not starting with "=").
 fn classify(raw: String) Value:
-    if raw.starts_with("'"):
-        return Value.Txt(raw.drop(1))
-    if let f = parse_number_text(raw):
-        return Value.Num(f)
+    if raw.starts_with("'"): return Value.Txt(raw.drop(1))
+    if let f = parse_number_text(raw): return Value.Num(f)
 
     let up = raw.upper()
-    if up == "TRUE":
-        return Value.Flag(true)
-    if up == "FALSE":
-        return Value.Flag(false)
+    if up == "TRUE": return Value.Flag(true)
+    if up == "FALSE": return Value.Flag(false)
 
     return Value.Txt(raw.clone())
 
@@ -229,15 +221,13 @@ fn as_num(v: Value) Value:
         Num(n):
             return Value.Num(n)
         Flag(b):
-            if b:
-                return Value.Num(1.0)
+            if b: return Value.Num(1.0)
 
             return Value.Num(0.0)
         Empty:
             return Value.Num(0.0)
         Txt(s):
-            if let f = parse_number_text(s.trim()):
-                return Value.Num(f)
+            if let f = parse_number_text(s.trim()): return Value.Num(f)
 
             return Value.Errv("#VALUE!")
         Errv(c):
@@ -254,10 +244,8 @@ fn as_flag(v: Value) Value:
             return Value.Flag(false)
         Txt(s):
             let up = s.upper()
-            if up == "TRUE":
-                return Value.Flag(true)
-            if up == "FALSE":
-                return Value.Flag(false)
+            if up == "TRUE": return Value.Flag(true)
+            if up == "FALSE": return Value.Flag(false)
 
             return Value.Errv("#VALUE!")
         Errv(c):
@@ -280,8 +268,7 @@ fn cmp_vals(a: Value, b: Value) Int:
     let rb = rank(b)
 
     if ra != rb:
-        if ra < rb:
-            return -1
+        if ra < rb: return -1
 
         return 1
 
@@ -292,28 +279,20 @@ fn cmp_vals(a: Value, b: Value) Int:
             return s.compare(txt_val(b))
         Flag(p):
             let q = flag_val(b)
-            if p == q:
-                return 0
-            if q:
-                return -1
+            if p == q: return 0
+            if q: return -1
 
             return 1
         _:
             return 0
 
 fn op_holds(op: String, c: Int) Bool:
-    if op == "=":
-        return c == 0
-    if op == "<>":
-        return c != 0
-    if op == "<":
-        return c < 0
-    if op == "<=":
-        return c <= 0
-    if op == ">":
-        return c > 0
-    if op == ">=":
-        return c >= 0
+    if op == "=": return c == 0
+    if op == "<>": return c != 0
+    if op == "<": return c < 0
+    if op == "<=": return c <= 0
+    if op == ">": return c > 0
+    if op == ">=": return c >= 0
 
     return false
 
@@ -321,10 +300,8 @@ fn is_cmp_op(op: String) Bool:
     return op == "=" or op == "<>" or op == "<" or op == "<=" or op == ">" or op == ">="
 
 fn compare_op(op: String, va: Value, vb: Value) Value:
-    if is_err(va):
-        return va.clone()
-    if is_err(vb):
-        return vb.clone()
+    if is_err(va): return va.clone()
+    if is_err(vb): return vb.clone()
 
     var c = 0
 
@@ -341,12 +318,10 @@ fn compare_op(op: String, va: Value, vb: Value) Value:
 
 fn arith(op: String, va: Value, vb: Value) Value:
     let a = as_num(va)
-    if is_err(a):
-        return a
+    if is_err(a): return a
 
     let b = as_num(vb)
-    if is_err(b):
-        return b
+    if is_err(b): return b
 
     let x = num_val(a)
     let y = num_val(b)
@@ -359,8 +334,7 @@ fn arith(op: String, va: Value, vb: Value) Value:
     else if op == "*":
         r = x * y
     else if op == "/":
-        if y == 0.0:
-            return Value.Errv("#DIV/0!")
+        if y == 0.0: return Value.Errv("#DIV/0!")
 
         r = x / y
     else:
@@ -371,8 +345,7 @@ fn arith(op: String, va: Value, vb: Value) Value:
 // ---------------------------------------------------------------- characters
 
 fn ch(cs: List[String], j: Int) Int:
-    if j < 0 or j >= cs.length():
-        return 0
+    if j < 0 or j >= cs.length(): return 0
 
     return cs[j].scalar_at(0, 0)
 
@@ -403,8 +376,7 @@ fn is_ws(c: Int) Bool:
 
 // Column index 0..25 of an ASCII letter.
 fn letter_col(c: Int) Int:
-    if c >= 97:
-        return c - 97
+    if c >= 97: return c - 97
 
     return c - 65
 
@@ -438,8 +410,7 @@ fn ref_of(cs: List[String], a: Int, b: Int) Ref?:
         i += 1
 
     let nl = i - l0
-    if nl == 0:
-        return none
+    if nl == 0: return none
 
     var abs_r = false
 
@@ -455,8 +426,7 @@ fn ref_of(cs: List[String], a: Int, b: Int) Ref?:
         i += 1
 
     let nd = i - d0
-    if nd == 0 or i != b:
-        return none
+    if nd == 0 or i != b: return none
 
     let valid = nl == 1 and nd <= 3 and ch(cs, d0) != 48
     var col = 0
@@ -484,13 +454,11 @@ fn name_of(k: Int) String:
 fn cell_arg(t: String) Int?:
     let cs = t.chars()
     if let r = ref_of(cs, 0, cs.length()):
-        if r.valid and not r.abs_col and not r.abs_row:
-            return key_of(r.col, r.row)
+        if r.valid and not r.abs_col and not r.abs_row: return key_of(r.col, r.row)
     return none
 
 fn cell_or_neg(t: String) Int:
-    if let k = cell_arg(t):
-        return k
+    if let k = cell_arg(t): return k
 
     return -1
 
@@ -547,8 +515,7 @@ fn rect_has(rc: Rect, k: Int) Bool:
 
 fn any_rect_has(rs: List[Rect], k: Int) Bool:
     for rc in rs:
-        if rect_has(rc, k):
-            return true
+        if rect_has(rc, k): return true
     return false
 
 // ---------------------------------------------------------------- lexer
@@ -595,18 +562,15 @@ fn scan_number(cs: List[String], i: Int) Int:
 
 // Identifier shape: letter or underscore, then letters, digits, underscores or dots.
 fn ident_shape(cs: List[String], a: Int, b: Int) Bool:
-    if b <= a:
-        return false
+    if b <= a: return false
 
     let first = ch(cs, a)
-    if not (isalpha(first) or first == 95):
-        return false
+    if not (isalpha(first) or first == 95): return false
 
     var i = a
 
     while i < b:
-        if not isident(ch(cs, i)):
-            return false
+        if not isident(ch(cs, i)): return false
 
         i += 1
 
@@ -645,8 +609,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
                 j += 1
 
             if ch(cs, j) == 40:
-                if not ident_shape(cs, i, j):
-                    return error("bad formula")
+                if not ident_shape(cs, i, j): return error("bad formula")
 
                 toks.append(tok(T_IDENT, slice_chars(cs, i, j), i, j))
                 i = j
@@ -705,8 +668,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
                     buf = buf.concat(cs[j])
                     j += 1
 
-            if not closed:
-                return error("bad formula")
+            if not closed: return error("bad formula")
 
             toks.append(tok(T_STR, buf, i, j))
             i = j
@@ -904,8 +866,7 @@ impl Parser:
         return self.parse_power()
 
     var fn parse_primary() Node:
-        if self.bad:
-            return leaf(N_ERR, "#PARSE!")
+        if self.bad: return leaf(N_ERR, "#PARSE!")
 
         let k = self.kind_now()
 
@@ -967,8 +928,7 @@ impl Parser:
 
                 while more:
                     args.append(self.parse_expr())
-                    if self.bad:
-                        return leaf(N_ERR, "#PARSE!")
+                    if self.bad: return leaf(N_ERR, "#PARSE!")
 
                     if self.kind_now() == T_COMMA:
                         self.step()
@@ -1030,8 +990,7 @@ fn collect_refs(n: Node, var cells: List[Int], var rects: List[Rect]) Unit:
             rects.append(rect_of_refs(n.r1, n.r2))
         return
 
-    if n.kind == N_CALL and (n.text == "ROW" or n.text == "COLUMN"):
-        return
+    if n.kind == N_CALL and (n.text == "ROW" or n.text == "COLUMN"): return
 
     for a in n.args:
         collect_refs(a, var cells, var rects)
@@ -1060,42 +1019,31 @@ fn eval(s: Sheet, n: Node) Value:
     let k = n.kind
 
     if k == N_NUM:
-        if n.flag:
-            return Value.Num(n.num)
+        if n.flag: return Value.Num(n.num)
 
         return Value.Errv("#NUM!")
 
-    if k == N_STR:
-        return Value.Txt(n.text.clone())
-    if k == N_BOOL:
-        return Value.Flag(n.flag)
-    if k == N_ERR:
-        return Value.Errv(n.text.clone())
+    if k == N_STR: return Value.Txt(n.text.clone())
+    if k == N_BOOL: return Value.Flag(n.flag)
+    if k == N_ERR: return Value.Errv(n.text.clone())
 
     if k == N_REF:
-        if not n.r1.valid:
-            return Value.Errv("#REF!")
+        if not n.r1.valid: return Value.Errv("#REF!")
 
         return s.vals[key_of(n.r1.col, n.r1.row)].clone()
 
-    if k == N_RANGE:
-        return Value.Errv("#VALUE!")
-    if k == N_NAME:
-        return Value.Errv("#NAME?")
+    if k == N_RANGE: return Value.Errv("#VALUE!")
+    if k == N_NAME: return Value.Errv("#NAME?")
 
     if k == N_UNARY:
         let v = as_num(eval(s, n.args[0]))
-        if is_err(v):
-            return v
-        if n.text == "-":
-            return Value.Num(-num_val(v))
+        if is_err(v): return v
+        if n.text == "-": return Value.Num(-num_val(v))
 
         return v
 
-    if k == N_BIN:
-        return eval_bin(s, n)
-    if k == N_CALL:
-        return call_fn(s, n)
+    if k == N_BIN: return eval_bin(s, n)
+    if k == N_CALL: return call_fn(s, n)
 
     return Value.Errv("#PARSE!")
 
@@ -1105,15 +1053,12 @@ fn eval_bin(s: Sheet, n: Node) Value:
     let op = n.text.clone()
 
     if op == "&":
-        if is_err(va):
-            return va
-        if is_err(vb):
-            return vb
+        if is_err(va): return va
+        if is_err(vb): return vb
 
         return Value.Txt(display(va).concat(display(vb)))
 
-    if is_cmp_op(op):
-        return compare_op(op, va, vb)
+    if is_cmp_op(op): return compare_op(op, va, vb)
 
     return arith(op, va, vb)
 
@@ -1121,20 +1066,17 @@ fn eval_bin(s: Sheet, n: Node) Value:
 fn gather_nums(s: Sheet, args: List[Node], var out: List[Float]) Value:
     for a in args:
         if a.kind == N_RANGE:
-            if not (a.r1.valid and a.r2.valid):
-                return Value.Errv("#REF!")
+            if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
             for k in range_keys(rect_of_refs(a.r1, a.r2)):
                 let v = s.vals[k].clone()
-                if is_err(v):
-                    return v
+                if is_err(v): return v
 
                 if is_num(v):
                     out.append(num_val(v))
         else:
             let c = as_num(eval(s, a))
-            if is_err(c):
-                return c
+            if is_err(c): return c
 
             out.append(num_val(c))
 
@@ -1142,13 +1084,11 @@ fn gather_nums(s: Sheet, args: List[Node], var out: List[Float]) Value:
 
 // which: 0 SUM, 1 AVERAGE, 2 MIN, 3 MAX, 4 PRODUCT, 5 MEDIAN
 fn agg(s: Sheet, args: List[Node], which: Int) Value:
-    if args.length() == 0:
-        return Value.Errv("#VALUE!")
+    if args.length() == 0: return Value.Errv("#VALUE!")
 
     var xs = List[Float]()
     let g = gather_nums(s, args, var xs)
-    if is_err(g):
-        return g
+    if is_err(g): return g
 
     let n = xs.length()
 
@@ -1159,8 +1099,7 @@ fn agg(s: Sheet, args: List[Node], which: Int) Value:
         return finite(t)
 
     if which == 1:
-        if n == 0:
-            return Value.Errv("#DIV/0!")
+        if n == 0: return Value.Errv("#DIV/0!")
 
         var t = 0.0
         for x in xs:
@@ -1168,8 +1107,7 @@ fn agg(s: Sheet, args: List[Node], which: Int) Value:
         return finite(t / n.to_float())
 
     if which == 2 or which == 3:
-        if n == 0:
-            return Value.Num(0.0)
+        if n == 0: return Value.Num(0.0)
 
         var m = xs[0]
 
@@ -1182,34 +1120,29 @@ fn agg(s: Sheet, args: List[Node], which: Int) Value:
         return Value.Num(m)
 
     if which == 4:
-        if n == 0:
-            return Value.Num(0.0)
+        if n == 0: return Value.Num(0.0)
 
         var p = 1.0
         for x in xs:
             p *= x
         return finite(p)
 
-    if n == 0:
-        return Value.Errv("#NUM!")
+    if n == 0: return Value.Errv("#NUM!")
 
     xs.sort()
-    if n % 2 == 1:
-        return finite(xs[n / 2])
+    if n % 2 == 1: return finite(xs[n / 2])
 
     return finite((xs[n / 2 - 1] + xs[n / 2]) / 2.0)
 
 // COUNT (nonempty_mode false) and COUNTA (true).
 fn count_fn(s: Sheet, args: List[Node], nonempty_mode: Bool) Value:
-    if args.length() == 0:
-        return Value.Errv("#VALUE!")
+    if args.length() == 0: return Value.Errv("#VALUE!")
 
     var c = 0
 
     for a in args:
         if a.kind == N_RANGE:
-            if not (a.r1.valid and a.r2.valid):
-                return Value.Errv("#REF!")
+            if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
             for k in range_keys(rect_of_refs(a.r1, a.r2)):
                 let v = s.vals[k].clone()
@@ -1232,55 +1165,43 @@ fn count_fn(s: Sheet, args: List[Node], nonempty_mode: Bool) Value:
 
 fn f_if(s: Sheet, args: List[Node]) Value:
     let na = args.length()
-    if na < 2 or na > 3:
-        return Value.Errv("#VALUE!")
+    if na < 2 or na > 3: return Value.Errv("#VALUE!")
 
     let c = as_flag(eval(s, args[0]))
-    if is_err(c):
-        return c
-    if flag_val(c):
-        return eval(s, args[1])
-    if na == 3:
-        return eval(s, args[2])
+    if is_err(c): return c
+    if flag_val(c): return eval(s, args[1])
+    if na == 3: return eval(s, args[2])
 
     return Value.Flag(false)
 
 fn f_iferror(s: Sheet, args: List[Node]) Value:
-    if args.length() != 2:
-        return Value.Errv("#VALUE!")
+    if args.length() != 2: return Value.Errv("#VALUE!")
 
     let a = eval(s, args[0])
-    if is_err(a):
-        return eval(s, args[1])
+    if is_err(a): return eval(s, args[1])
 
     return a
 
 fn to_int(f: Float) Int:
-    if f > 1000000000.0:
-        return 1000000000
-    if f < -1000000000.0:
-        return -1000000000
+    if f > 1000000000.0: return 1000000000
+    if f < -1000000000.0: return -1000000000
 
     return f.truncate_to_int().get(0)
 
 fn f_choose(s: Sheet, args: List[Node]) Value:
     let na = args.length()
-    if na < 2:
-        return Value.Errv("#VALUE!")
+    if na < 2: return Value.Errv("#VALUE!")
 
     let iv = as_num(eval(s, args[0]))
-    if is_err(iv):
-        return iv
+    if is_err(iv): return iv
 
     let idx = to_int(floor(num_val(iv)))
-    if idx < 1 or idx > na - 1:
-        return Value.Errv("#VALUE!")
+    if idx < 1 or idx > na - 1: return Value.Errv("#VALUE!")
 
     return eval(s, args[idx])
 
 fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
-    if args.length() == 0:
-        return Value.Errv("#VALUE!")
+    if args.length() == 0: return Value.Errv("#VALUE!")
 
     var any_part = false
     var all_true = true
@@ -1288,15 +1209,12 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
 
     for a in args:
         if a.kind == N_RANGE:
-            if not (a.r1.valid and a.r2.valid):
-                return Value.Errv("#REF!")
+            if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
             for k in range_keys(rect_of_refs(a.r1, a.r2)):
                 let v = s.vals[k].clone()
-                if is_err(v):
-                    return v
-                if is_empty(v) or is_txt(v):
-                    continue
+                if is_err(v): return v
+                if is_empty(v) or is_txt(v): continue
 
                 let t = flag_val(as_flag(v))
                 any_part = true
@@ -1307,8 +1225,7 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
                     any_true = true
         else:
             let v = as_flag(eval(s, a))
-            if is_err(v):
-                return v
+            if is_err(v): return v
 
             let t = flag_val(v)
             any_part = true
@@ -1318,10 +1235,8 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
             else:
                 any_true = true
 
-    if not any_part:
-        return Value.Errv("#VALUE!")
-    if is_and:
-        return Value.Flag(all_true)
+    if not any_part: return Value.Errv("#VALUE!")
+    if is_and: return Value.Flag(all_true)
 
     return Value.Flag(any_true)
 
@@ -1331,8 +1246,7 @@ fn round_half_away(y: Float) Float:
     var r = t
     if a - t >= 0.5:
         r = t + 1.0
-    if y < 0.0:
-        return -r
+    if y < 0.0: return -r
 
     return r
 
@@ -1352,37 +1266,31 @@ fn ascii_case(t: String, upper: Bool) String:
 // Returns the string form of a scalar argument, or the error it produced.
 fn text_arg(s: Sheet, n: Node) Value:
     let v = eval(s, n)
-    if is_err(v):
-        return v
+    if is_err(v): return v
 
     return Value.Txt(display(v))
 
 fn f_mid_like(s: Sheet, args: List[Node], which: Int) Value:
     // which: 0 LEFT, 1 RIGHT
     let na = args.length()
-    if na < 1 or na > 2:
-        return Value.Errv("#VALUE!")
+    if na < 1 or na > 2: return Value.Errv("#VALUE!")
 
     let tv = text_arg(s, args[0])
-    if is_err(tv):
-        return tv
+    if is_err(tv): return tv
 
     let t = txt_val(tv)
     var cnt = 1
 
     if na == 2:
         let nv = as_num(eval(s, args[1]))
-        if is_err(nv):
-            return nv
+        if is_err(nv): return nv
 
         let x = floor(num_val(nv))
-        if x < 0.0:
-            return Value.Errv("#VALUE!")
+        if x < 0.0: return Value.Errv("#VALUE!")
 
         cnt = to_int(x)
 
-    if which == 0:
-        return Value.Txt(t.take(cnt))
+    if which == 0: return Value.Txt(t.take(cnt))
 
     let len = t.scalar_length()
     var k = cnt
@@ -1391,24 +1299,19 @@ fn f_mid_like(s: Sheet, args: List[Node], which: Int) Value:
     return Value.Txt(t.drop(len - k))
 
 fn f_rowcol(s: Sheet, args: List[Node], want_row: Bool) Value:
-    if args.length() != 1:
-        return Value.Errv("#VALUE!")
+    if args.length() != 1: return Value.Errv("#VALUE!")
 
     let a = args[0]
 
     if a.kind == N_REF:
-        if not a.r1.valid:
-            return Value.Errv("#REF!")
-        if want_row:
-            return Value.Num(a.r1.row.to_float())
+        if not a.r1.valid: return Value.Errv("#REF!")
+        if want_row: return Value.Num(a.r1.row.to_float())
 
         return Value.Num((a.r1.col + 1).to_float())
 
     if a.kind == N_RANGE:
-        if not (a.r1.valid and a.r2.valid):
-            return Value.Errv("#REF!")
-        if want_row:
-            return Value.Num(a.r1.row.to_float())
+        if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
+        if want_row: return Value.Num(a.r1.row.to_float())
 
         return Value.Num((a.r1.col + 1).to_float())
 
@@ -1416,21 +1319,17 @@ fn f_rowcol(s: Sheet, args: List[Node], want_row: Bool) Value:
 
 fn f_index(s: Sheet, args: List[Node]) Value:
     let na = args.length()
-    if na < 2 or na > 3:
-        return Value.Errv("#VALUE!")
+    if na < 2 or na > 3: return Value.Errv("#VALUE!")
 
     let a = args[0]
-    if a.kind != N_RANGE:
-        return Value.Errv("#VALUE!")
-    if not (a.r1.valid and a.r2.valid):
-        return Value.Errv("#REF!")
+    if a.kind != N_RANGE: return Value.Errv("#VALUE!")
+    if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
     let rc = rect_of_refs(a.r1, a.r2)
     let h = rc.r2 - rc.r1 + 1
     let w = rc.c2 - rc.c1 + 1
     let rv = as_num(eval(s, args[1]))
-    if is_err(rv):
-        return rv
+    if is_err(rv): return rv
 
     var row = 1
     var col = 1
@@ -1444,30 +1343,24 @@ fn f_index(s: Sheet, args: List[Node]) Value:
             row = idx
     else:
         let cv = as_num(eval(s, args[2]))
-        if is_err(cv):
-            return cv
+        if is_err(cv): return cv
 
         row = to_int(floor(num_val(rv)))
         col = to_int(floor(num_val(cv)))
 
-    if row < 1 or row > h or col < 1 or col > w:
-        return Value.Errv("#REF!")
+    if row < 1 or row > h or col < 1 or col > w: return Value.Errv("#REF!")
 
     return s.vals[key_of(rc.c1 + col - 1, rc.r1 + row - 1)].clone()
 
 fn f_countif(s: Sheet, args: List[Node]) Value:
-    if args.length() != 2:
-        return Value.Errv("#VALUE!")
+    if args.length() != 2: return Value.Errv("#VALUE!")
 
     let a = args[0]
-    if a.kind != N_RANGE:
-        return Value.Errv("#VALUE!")
-    if not (a.r1.valid and a.r2.valid):
-        return Value.Errv("#REF!")
+    if a.kind != N_RANGE: return Value.Errv("#VALUE!")
+    if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
     let cv = eval(s, args[1])
-    if is_err(cv):
-        return cv
+    if is_err(cv): return cv
 
     var op = "="
     var operand = cv.clone()
@@ -1518,253 +1411,191 @@ fn f_countif(s: Sheet, args: List[Node]) Value:
 fn call_fn(s: Sheet, n: Node) Value:
     let name = n.text.clone()
     let args = n.args
-    if name == "SUM":
-        return agg(s, args, 0)
-    if name == "AVERAGE":
-        return agg(s, args, 1)
-    if name == "MIN":
-        return agg(s, args, 2)
-    if name == "MAX":
-        return agg(s, args, 3)
-    if name == "PRODUCT":
-        return agg(s, args, 4)
-    if name == "MEDIAN":
-        return agg(s, args, 5)
-    if name == "COUNT":
-        return count_fn(s, args, false)
-    if name == "COUNTA":
-        return count_fn(s, args, true)
-    if name == "IF":
-        return f_if(s, args)
-    if name == "IFERROR":
-        return f_iferror(s, args)
-    if name == "CHOOSE":
-        return f_choose(s, args)
-    if name == "AND":
-        return f_andor(s, args, true)
-    if name == "OR":
-        return f_andor(s, args, false)
+    if name == "SUM": return agg(s, args, 0)
+    if name == "AVERAGE": return agg(s, args, 1)
+    if name == "MIN": return agg(s, args, 2)
+    if name == "MAX": return agg(s, args, 3)
+    if name == "PRODUCT": return agg(s, args, 4)
+    if name == "MEDIAN": return agg(s, args, 5)
+    if name == "COUNT": return count_fn(s, args, false)
+    if name == "COUNTA": return count_fn(s, args, true)
+    if name == "IF": return f_if(s, args)
+    if name == "IFERROR": return f_iferror(s, args)
+    if name == "CHOOSE": return f_choose(s, args)
+    if name == "AND": return f_andor(s, args, true)
+    if name == "OR": return f_andor(s, args, false)
 
     if name == "NOT":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         let t = as_flag(eval(s, args[0]))
-        if is_err(t):
-            return t
+        if is_err(t): return t
 
         return Value.Flag(not flag_val(t))
 
     if name == "ABS" or name == "INT" or name == "SQRT":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         let a = as_num(eval(s, args[0]))
-        if is_err(a):
-            return a
+        if is_err(a): return a
 
         let x = num_val(a)
-        if name == "ABS":
-            return Value.Num(x.abs())
-        if name == "INT":
-            return finite(floor(x))
-        if x < 0.0:
-            return Value.Errv("#NUM!")
+        if name == "ABS": return Value.Num(x.abs())
+        if name == "INT": return finite(floor(x))
+        if x < 0.0: return Value.Errv("#NUM!")
 
         return finite(sqrt(x))
 
     if name == "POW" or name == "MOD":
-        if args.length() != 2:
-            return Value.Errv("#VALUE!")
+        if args.length() != 2: return Value.Errv("#VALUE!")
 
         let a = as_num(eval(s, args[0]))
-        if is_err(a):
-            return a
+        if is_err(a): return a
 
         let b = as_num(eval(s, args[1]))
-        if is_err(b):
-            return b
+        if is_err(b): return b
 
         let x = num_val(a)
         let y = num_val(b)
-        if name == "POW":
-            return finite(pow(x, y))
-        if y == 0.0:
-            return Value.Errv("#DIV/0!")
+        if name == "POW": return finite(pow(x, y))
+        if y == 0.0: return Value.Errv("#DIV/0!")
 
         return finite(x - y * floor(x / y))
 
     if name == "ROUND":
         let na = args.length()
-        if na < 1 or na > 2:
-            return Value.Errv("#VALUE!")
+        if na < 1 or na > 2: return Value.Errv("#VALUE!")
 
         let x = as_num(eval(s, args[0]))
-        if is_err(x):
-            return x
+        if is_err(x): return x
 
         var d = 0.0
 
         if na == 2:
             let dv = as_num(eval(s, args[1]))
-            if is_err(dv):
-                return dv
+            if is_err(dv): return dv
 
             d = truncate(num_val(dv))
 
-        if d.abs() > 15.0:
-            return Value.Errv("#NUM!")
+        if d.abs() > 15.0: return Value.Errv("#NUM!")
 
         let p = pow(10.0, d)
         let y = num_val(x) * p
         return finite(round_half_away(y) / p)
 
     if name == "LEN":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         let tv = text_arg(s, args[0])
-        if is_err(tv):
-            return tv
+        if is_err(tv): return tv
 
         return Value.Num(txt_val(tv).scalar_length().to_float())
 
     if name == "UPPER" or name == "LOWER":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         let tv = text_arg(s, args[0])
-        if is_err(tv):
-            return tv
+        if is_err(tv): return tv
 
         return Value.Txt(ascii_case(txt_val(tv), name == "UPPER"))
 
     if name == "TRIM":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         let tv = text_arg(s, args[0])
-        if is_err(tv):
-            return tv
+        if is_err(tv): return tv
 
         return Value.Txt(txt_val(tv).fields().join(" "))
 
-    if name == "LEFT":
-        return f_mid_like(s, args, 0)
-    if name == "RIGHT":
-        return f_mid_like(s, args, 1)
+    if name == "LEFT": return f_mid_like(s, args, 0)
+    if name == "RIGHT": return f_mid_like(s, args, 1)
 
     if name == "MID":
-        if args.length() != 3:
-            return Value.Errv("#VALUE!")
+        if args.length() != 3: return Value.Errv("#VALUE!")
 
         let tv = text_arg(s, args[0])
-        if is_err(tv):
-            return tv
+        if is_err(tv): return tv
 
         let sv = as_num(eval(s, args[1]))
-        if is_err(sv):
-            return sv
+        if is_err(sv): return sv
 
         let lv = as_num(eval(s, args[2]))
-        if is_err(lv):
-            return lv
+        if is_err(lv): return lv
 
         let st = floor(num_val(sv))
         let ln = floor(num_val(lv))
-        if st < 1.0 or ln < 0.0:
-            return Value.Errv("#VALUE!")
+        if st < 1.0 or ln < 0.0: return Value.Errv("#VALUE!")
 
         return Value.Txt(txt_val(tv).drop(to_int(st) - 1).take(to_int(ln)))
 
     if name == "CONCAT":
-        if args.length() == 0:
-            return Value.Errv("#VALUE!")
+        if args.length() == 0: return Value.Errv("#VALUE!")
 
         var buf = ""
 
         for a in args:
             if a.kind == N_RANGE:
-                if not (a.r1.valid and a.r2.valid):
-                    return Value.Errv("#REF!")
+                if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
                 for k in range_keys(rect_of_refs(a.r1, a.r2)):
                     let v = s.vals[k].clone()
-                    if is_err(v):
-                        return v
+                    if is_err(v): return v
 
                     buf = buf.concat(display(v))
             else:
                 let v = eval(s, a)
-                if is_err(v):
-                    return v
+                if is_err(v): return v
 
                 buf = buf.concat(display(v))
 
         return Value.Txt(buf)
 
     if name == "SUBSTITUTE":
-        if args.length() != 3:
-            return Value.Errv("#VALUE!")
+        if args.length() != 3: return Value.Errv("#VALUE!")
 
         let sv = text_arg(s, args[0])
-        if is_err(sv):
-            return sv
+        if is_err(sv): return sv
 
         let ov = text_arg(s, args[1])
-        if is_err(ov):
-            return ov
+        if is_err(ov): return ov
 
         let nv = text_arg(s, args[2])
-        if is_err(nv):
-            return nv
+        if is_err(nv): return nv
 
         let old = txt_val(ov)
-        if old == "":
-            return sv
+        if old == "": return sv
 
         return Value.Txt(txt_val(sv).replace(old, txt_val(nv)))
 
     if name == "VALUE":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         return as_num(eval(s, args[0]))
 
     if name == "ISERROR" or name == "ISBLANK" or name == "ISNUMBER" or name == "ISTEXT":
-        if args.length() != 1:
-            return Value.Errv("#VALUE!")
+        if args.length() != 1: return Value.Errv("#VALUE!")
 
         let v = eval(s, args[0])
-        if name == "ISERROR":
-            return Value.Flag(is_err(v))
-        if name == "ISBLANK":
-            return Value.Flag(is_empty(v))
-        if name == "ISNUMBER":
-            return Value.Flag(is_num(v))
+        if name == "ISERROR": return Value.Flag(is_err(v))
+        if name == "ISBLANK": return Value.Flag(is_empty(v))
+        if name == "ISNUMBER": return Value.Flag(is_num(v))
 
         return Value.Flag(is_txt(v))
 
-    if name == "ROW":
-        return f_rowcol(s, args, true)
-    if name == "COLUMN":
-        return f_rowcol(s, args, false)
-    if name == "INDEX":
-        return f_index(s, args)
-    if name == "COUNTIF":
-        return f_countif(s, args)
+    if name == "ROW": return f_rowcol(s, args, true)
+    if name == "COLUMN": return f_rowcol(s, args, false)
+    if name == "INDEX": return f_index(s, args)
+    if name == "COUNTIF": return f_countif(s, args)
 
     return Value.Errv("#NAME?")
 
 // Value a formula cell settles to: a formula result that is empty becomes 0.
 fn compute(s: Sheet, k: Int) Value:
     if let f = s.forms.get(k):
-        if not f.good:
-            return Value.Errv("#PARSE!")
+        if not f.good: return Value.Errv("#PARSE!")
 
         let v = eval(s, f.root)
-        if is_empty(v):
-            return Value.Num(0.0)
+        if is_empty(v): return Value.Num(0.0)
 
         return v
 
@@ -1874,8 +1705,7 @@ impl Sheet:
         let idx = build_index(self)
         let aff = closure(idx, changed, true)
         let m = aff.length()
-        if m == 0:
-            return 0
+        if m == 0: return 0
 
         var pos = filled_int(GRID, -1)
         for i in 0..m:
@@ -2071,8 +1901,7 @@ fn dependents_of(sh: Sheet, k: Int) List[Int]:
     return out
 
 fn names_line(ks: List[Int]) String:
-    if ks.length() == 0:
-        return "(none)"
+    if ks.length() == 0: return "(none)"
 
     var out = ""
 
@@ -2092,8 +1921,7 @@ fn shifted_ref(r: Ref, dc: Int, dr: Int) Ref?:
         c = r.col + dc
     if not r.abs_row:
         w = r.row + dr
-    if c < 0 or c > 25 or w < 1 or w > 999:
-        return none
+    if c < 0 or c > 25 or w < 1 or w > 999: return none
 
     return Ref(col: c, row: w, valid: true, abs_col: r.abs_col, abs_row: r.abs_row)
 
@@ -2108,19 +1936,15 @@ fn ref_text(r: Ref) String:
 
 fn shift_token(t: Tok, cs: List[String], dc: Int, dr: Int) String:
     if t.kind == T_REF:
-        if not t.r1.valid:
-            return slice_chars(cs, t.start, t.stop)
-        if let nr = shifted_ref(t.r1, dc, dr):
-            return ref_text(nr)
+        if not t.r1.valid: return slice_chars(cs, t.start, t.stop)
+        if let nr = shifted_ref(t.r1, dc, dr): return ref_text(nr)
 
         return "#REF!"
 
-    if not (t.r1.valid and t.r2.valid):
-        return slice_chars(cs, t.start, t.stop)
+    if not (t.r1.valid and t.r2.valid): return slice_chars(cs, t.start, t.stop)
 
     if let a = shifted_ref(t.r1, dc, dr):
-        if let b = shifted_ref(t.r2, dc, dr):
-            return "{ref_text(a)}:{ref_text(b)}"
+        if let b = shifted_ref(t.r2, dc, dr): return "{ref_text(a)}:{ref_text(b)}"
     return "#REF!"
 
 // Shifts the references of a formula source by (dc, dr); unchanged if it cannot be tokenized.
@@ -2264,8 +2088,7 @@ fn used_rect(sh: Sheet) Rect?:
             if key_row(k) > maxr:
                 maxr = key_row(k)
 
-    if not any:
-        return none
+    if not any: return none
 
     return Rect(c1: 0, r1: 1, c2: maxc, r2: maxr)
 
@@ -2286,8 +2109,7 @@ fn words(line: String) List[String]:
     while i < cs.length():
         while i < cs.length() and is_ws(ch(cs, i)):
             i += 1
-        if i >= cs.length():
-            break
+        if i >= cs.length(): break
 
         var j = i
         while j < cs.length() and not is_ws(ch(cs, j)):
@@ -2595,8 +2417,7 @@ export fn main() Int:
         i += 1
 
         let t = line.trim()
-        if t == "" or t.starts_with("#"):
-            continue
+        if t == "" or t.starts_with("#"): continue
 
         print("> {line.trim_end()}")
 

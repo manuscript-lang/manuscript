@@ -1,6 +1,8 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+)
 
 /*
 MIME building blocks: media types, header blocks, and multipart bodies.
@@ -408,8 +410,6 @@ impl Transform[Bytes, Part] for MultipartParts:
                 end + self.delimiter.length(), self.buffer.length()
             )
             self.in_part = true
-
-        return ok(unit)
 
     var fn finish(var out: List[Part]) Unit!:
         if self.done: return ok(unit)

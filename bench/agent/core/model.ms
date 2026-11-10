@@ -1,9 +1,11 @@
 // Data loading shared by the runner: challenges, languages, pricing. Paths are relative to the repository
 // root, where every command in README.md runs.
-import JsonValue, parse from "@std/data/json.ms"
-import panic from "@std/core.ms"
-import access, list, read_file from "@std/os/fs.ms"
-import env from "../lib/text.ms"
+import (
+    JsonValue, parse from "@std/data/json.ms",
+    panic from "@std/core.ms",
+    access, list, read_file from "@std/os/fs.ms",
+    env from "../lib/text.ms",
+)
 
 // `bench/agent` when the command runs from the repository root, `.` when it runs inside this directory (as `ms test` does).
 export fn root() String:
@@ -78,8 +80,7 @@ fn text_of(file: String) String:
     return read_file(file).wait().get().decode_utf8().get("")
 
 fn field(doc: JsonValue, key: String) String:
-    if let value = doc.get(key):
-        return value.as_string().get("")
+    if let value = doc.get(key): return value.as_string().get("")
 
     return ""
 

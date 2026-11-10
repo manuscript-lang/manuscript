@@ -1,7 +1,9 @@
-import ascii_decode from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import from_scalars from "@std/string.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    ascii_decode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    from_scalars from "@std/string.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "ASCII decoding preserves every seven-bit byte including NUL":
     var raw = BytesBuilder()

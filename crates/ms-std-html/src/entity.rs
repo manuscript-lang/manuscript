@@ -1,5 +1,5 @@
 //! Named character references, generated from `golang.org/x/net/html/entity.go` (sorted by name,
-//! bytewise, for binary search). Do not edit.
+//! bytewise, for binary search), plus `nGt;` and `nLt;`, which HTML5 defines and that table omits.
 
 /// Entities with one code point.
 pub static SINGLE: &[(&str, u32)] = &[
@@ -2179,8 +2179,10 @@ pub static DOUBLE: &[(&str, [u32; 2])] = &[
     ("lvertneqq;", [0x2268, 0xFE00]),
     ("lvnE;", [0x2268, 0xFE00]),
     ("nGg;", [0x22D9, 0x338]),
+    ("nGt;", [0x226B, 0x20D2]),
     ("nGtv;", [0x226B, 0x338]),
     ("nLl;", [0x22D8, 0x338]),
+    ("nLt;", [0x226A, 0x20D2]),
     ("nLtv;", [0x226A, 0x338]),
     ("nang;", [0x2220, 0x20D2]),
     ("napE;", [0x2A70, 0x338]),

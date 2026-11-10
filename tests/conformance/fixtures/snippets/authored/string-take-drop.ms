@@ -3,7 +3,7 @@
 // conform: origin=agent token study: String.take and String.drop
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     var out = stdout()
     let s = "héllo"
     out.write(
@@ -11,4 +11,3 @@ export fn main() Int:
             99
         ) + "|" + s.drop(0) + "\n"
     ).get()
-    return 0

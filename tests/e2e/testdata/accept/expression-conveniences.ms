@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
+import (
+    expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+)
 
 type Counter:
     count: Int
@@ -12,7 +14,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true).wait()
-        return ok(unit)
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
 
@@ -43,11 +44,11 @@ fn all_return(value: Int?) Int:
 
 fn tick(var counter: Counter) Int!:
     counter.count | try expect_equal(1)
-    counter.count = counter.count + 1
+    counter.count += 1
     return ok(0)
 
 fn values(var counter: Counter) List[Int]:
-    counter.count = counter.count + 1
+    counter.count += 1
     return [7, 8]
 
 test "indexing and generic applications coexist":
@@ -162,7 +163,7 @@ test "match blocks produce their final value":
     var count = 0
 
     while true:
-        count = count + 1
+        count += 1
 
         match present:
             value:
@@ -219,7 +220,7 @@ fn returned_loop(value: Int?) Int:
 
         match value:
             _number:
-                index = index + 1
+                index += 1
                 continue
             none: break
 
@@ -243,7 +244,7 @@ test "expression exits preserve caller boundaries and evaluation order":
         let value = match present:
             number:
                 while iterations < 3:
-                    iterations = iterations + 1
+                    iterations += 1
                     if iterations == 2: continue
                     if iterations == 3: break
                 number
@@ -276,7 +277,7 @@ test "indexing preserves zero and nested optionals":
     (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
 fn observed_optional(var counter: Counter) Int?:
-    counter.count = counter.count + 1
+    counter.count += 1
     return 5
 
 test "match evaluates its input once and only the selected arm":
@@ -284,10 +285,10 @@ test "match evaluates its input once and only the selected arm":
 
     let result = match observed_optional(var counter):
         value:
-            counter.count = counter.count + 10
+            counter.count += 10
             value + 1
         none:
-            counter.count = counter.count + 100
+            counter.count += 100
             0
 
     (result != 6 or counter.count != 11) | try expect_false

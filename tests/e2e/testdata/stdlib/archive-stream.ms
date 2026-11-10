@@ -1,5 +1,5 @@
-import expect_equal, fail from "@std/test/test.ms"
 import (
+    expect_equal, fail from "@std/test/test.ms",
     compressed,
     decompressed,
     tar_entries,
@@ -10,11 +10,11 @@ import (
     ArchiveEntry,
     ArchiveFormat,
     ArchiveOptions,
-    CompressionFormat
-) from "@std/io/archive.ms"
-import Bytes, BytesBuilder, join from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+    CompressionFormat from "@std/io/archive.ms",
+    Bytes, BytesBuilder, join from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -286,7 +286,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
     for index in 0..11:
         block[134 - index] = 48 + left % 8
-        left = left / 8
+        left /= 8
 
     block[156] = flag
 
@@ -303,7 +303,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
     for index in 0..6:
         block[153 - index] = 48 + rest % 8
-        rest = rest / 8
+        rest /= 8
 
     block[154] = 0
     block[155] = 32

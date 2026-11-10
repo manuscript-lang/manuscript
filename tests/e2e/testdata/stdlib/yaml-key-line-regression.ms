@@ -1,5 +1,7 @@
-import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
+import (
+    expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+)
 
 fn invalid(source: String) Unit!:
     let cause = parse(source) | try expect_error
@@ -9,7 +11,6 @@ fn invalid(source: String) Unit!:
     cause.details["reason"] | try expect_equal(
         "an implicit mapping key must stay on one line"
     )
-    return ok(unit)
 
 test "YAML plain implicit keys cannot span physical lines":
     for source in ["\{key\n next: value\}", "\{key\n: value\}"]:

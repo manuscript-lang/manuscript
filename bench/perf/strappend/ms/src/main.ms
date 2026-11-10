@@ -1,6 +1,8 @@
-import stdout from "@std/io/io.ms"
-import StringBuilder from "@std/string.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    StringBuilder from "@std/string.ms",
+    monotonic from "@std/time.ms",
+)
 
 // Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
 fn run(piece: String, count: Int) Int:
@@ -20,7 +22,7 @@ fn fill(count: Int) Int:
 
     return items.length()
 
-export fn main() Int:
+fn main() Unit:
     var piece = "x"
 
     for size in [4, 16, 64, 256, 1024, 8192]:
@@ -53,5 +55,3 @@ export fn main() Int:
                 best = elapsed
 
         let _ignored = stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
-
-    return 0

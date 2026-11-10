@@ -1,24 +1,17 @@
-import ReadStream from "@std/io/io.ms"
-import Bytes from "@std/bytes.ms"
-import from_bytes, read_all from "@std/io/streams.ms"
 import (
-    OpenMode,
-    OpenOptions,
-    open,
-    read_file,
-    temporary,
-    write_file
-) from "@std/os/fs.ms"
-import join from "@std/os/path.ms"
-import (
+    ReadStream from "@std/io/io.ms",
+    Bytes from "@std/bytes.ms",
+    from_bytes, read_all from "@std/io/streams.ms",
+    OpenMode, OpenOptions, open, read_file, temporary, write_file from "@std/os/fs.ms",
+    join from "@std/os/path.ms",
     expect_equal,
     expect_error,
     expect_contains,
     expect_ok,
-    expect_true
-) from "@std/test/test.ms"
-import check_reader, fail_after, fail_writer_after, one_byte from "@std/test/iotest.ms"
-import expect_golden, expect_golden_bytes from "@std/test/golden.ms"
+    expect_true from "@std/test/test.ms",
+    check_reader, fail_after, fail_writer_after, one_byte from "@std/test/iotest.ms",
+    expect_golden, expect_golden_bytes from "@std/test/golden.ms",
+)
 
 fn source() ReadStream[Bytes]:
     return from_bytes("hello, world".to_bytes(), 5)

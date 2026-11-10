@@ -72,6 +72,10 @@ fn unescape(text: &str) -> Option<String> {
     while at < bytes.len() {
         if bytes[at] == b'%' {
             let digits = text.get(at + 1..at + 3)?;
+            // Integer parsing also accepts a leading '+', which is not a URI hex digit.
+            if !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+                return None;
+            }
             out.push(u8::from_str_radix(digits, 16).ok()?);
             at += 3;
         } else {
@@ -225,6 +229,27 @@ mod tests {
         assert!(!is_malformed_file("file:///tmp/%25FF.ms"));
         assert!(!is_malformed_file("untitled:%FF"));
         assert_eq!(filename("file:///tmp/%EF%BF%BD.ms"), "/tmp/\u{FFFD}.ms");
+    }
+
+    #[test]
+    fn percent_escapes_require_two_hex_digits() {
+        for first in 0..=127u8 {
+            for second in 0..=127u8 {
+                let escaped = format!("%{}{}", char::from(first), char::from(second));
+                let expected = if first.is_ascii_hexdigit() && second.is_ascii_hexdigit() {
+                    let byte = u8::from_str_radix(&escaped[1..], 16).unwrap();
+                    String::from_utf8(vec![byte]).ok()
+                } else {
+                    None
+                };
+                assert_eq!(unescape(&escaped), expected, "{escaped:?}");
+            }
+        }
+        for escaped in ["%", "%A", "%é", "%1é", "%+1", "%+A"] {
+            assert!(unescape(escaped).is_none(), "{escaped}");
+        }
+        assert_eq!(unescape("a+b%2B%2b"), Some("a+b++".into()));
+        assert_eq!(unescape("%C3%A9"), Some("é".into()));
     }
 
     #[test]

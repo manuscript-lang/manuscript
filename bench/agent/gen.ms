@@ -1,30 +1,32 @@
 // Regenerates a challenge's examples/cases.json and hidden/cases.json deterministically.
 // Usage (from the repository root): ms run bench/agent/gen.ms -- <c03|c05|...|all>
 // Large challenges (c51 to c60) need `go` on PATH: their expected outputs come from the Go oracle in oracle/*.ref.
-import stderr from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import gen_c03 from "./challenges/c03-csv-group-sum/gen.ms"
-import gen_c05 from "./challenges/c05-calculator/gen.ms"
-import gen_c09 from "./challenges/c09-ciphers/gen.ms"
-import gen_c13 from "./challenges/c13-inventory-orders/gen.ms"
-import gen_c14 from "./challenges/c14-dp-suite/gen.ms"
-import gen_c16 from "./challenges/c16-maze-bfs/gen.ms"
-import gen_c18 from "./challenges/c18-cron-next-runs/gen.ms"
-import gen_c25 from "./challenges/c25-log-analyzer/gen.ms"
-import gen_c36 from "./challenges/c36-bank-ledger/gen.ms"
-import gen_c44 from "./challenges/c44-unified-diff/gen.ms"
-import gen_c51 from "./challenges/c51-lisp-interpreter/gen.ms"
-import gen_c52 from "./challenges/c52-sql-engine/gen.ms"
-import gen_c53 from "./challenges/c53-markdown-html/gen.ms"
-import gen_c54 from "./challenges/c54-regex-engine/gen.ms"
-import gen_c55 from "./challenges/c55-jq-lite/gen.ms"
-import gen_c56 from "./challenges/c56-make-lite/gen.ms"
-import gen_c57 from "./challenges/c57-assembler-vm/gen.ms"
-import gen_c58 from "./challenges/c58-mini-vcs/gen.ms"
-import gen_c59 from "./challenges/c59-spreadsheet/gen.ms"
-import gen_c60 from "./challenges/c60-issue-tracker/gen.ms"
+import (
+    stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    gen_c03 from "./challenges/c03-csv-group-sum/gen.ms",
+    gen_c05 from "./challenges/c05-calculator/gen.ms",
+    gen_c09 from "./challenges/c09-ciphers/gen.ms",
+    gen_c13 from "./challenges/c13-inventory-orders/gen.ms",
+    gen_c14 from "./challenges/c14-dp-suite/gen.ms",
+    gen_c16 from "./challenges/c16-maze-bfs/gen.ms",
+    gen_c18 from "./challenges/c18-cron-next-runs/gen.ms",
+    gen_c25 from "./challenges/c25-log-analyzer/gen.ms",
+    gen_c36 from "./challenges/c36-bank-ledger/gen.ms",
+    gen_c44 from "./challenges/c44-unified-diff/gen.ms",
+    gen_c51 from "./challenges/c51-lisp-interpreter/gen.ms",
+    gen_c52 from "./challenges/c52-sql-engine/gen.ms",
+    gen_c53 from "./challenges/c53-markdown-html/gen.ms",
+    gen_c54 from "./challenges/c54-regex-engine/gen.ms",
+    gen_c55 from "./challenges/c55-jq-lite/gen.ms",
+    gen_c56 from "./challenges/c56-make-lite/gen.ms",
+    gen_c57 from "./challenges/c57-assembler-vm/gen.ms",
+    gen_c58 from "./challenges/c58-mini-vcs/gen.ms",
+    gen_c59 from "./challenges/c59-spreadsheet/gen.ms",
+    gen_c60 from "./challenges/c60-issue-tracker/gen.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
 
     if args.length() != 1:

@@ -13,7 +13,7 @@ import read_file from "@std/os/fs.ms"
 import wait_all from "@std/concurrency/promise.ms"
 
 fn count_rows(text: String) Int:
-    return text.split("\n").filter(fn line: line.length() > 0).length()
+    return text.split("\n").filter(fn line: not line.is_empty()).length()
 
 fn run(paths: List[String]) Int!:
     let reads = paths.map(fn path: read_file(path))
@@ -24,13 +24,9 @@ fn run(paths: List[String]) Int!:
         rows += count_rows(text)
     return ok(rows)
 
-export fn main() Int:
-    let rows = run(["a.csv", "b.csv"])
-    if rows.is_error():
-        print(rows.err().message)
-        return 1
-    print("{rows.get()} rows from 2 files")
-    return 0
+fn main() Unit!:
+    let rows = try run(["a.csv", "b.csv"])
+    print("{rows} rows from 2 files")
 ```
 
 ```text

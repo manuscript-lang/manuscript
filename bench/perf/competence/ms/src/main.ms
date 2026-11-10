@@ -1,7 +1,9 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
-import parse_int from "@std/math/math.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+    parse_int from "@std/math/math.ms",
+)
 
 interface Shape:
     fn area() Int
@@ -46,8 +48,7 @@ fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 fn fib(n: Int) Int:
-    if n < 2:
-        return n
+    if n < 2: return n
 
     return fib(n - 1) + fib(n - 2)
 
@@ -125,8 +126,7 @@ fn word_map(n: Int) Int:
     return m.length() + m.get_or("word7", 0)
 
 fn check(i: Int) Result[Int, Fail]:
-    if i % 1000 == 999:
-        return error(Fail(i))
+    if i % 1000 == 999: return error(Fail(i))
 
     return ok(i)
 
@@ -283,7 +283,7 @@ fn timed(name: String, run: fn() Int) Unit:
     let r = run()
     say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
-export fn main() Int:
+fn main() Int:
     timed("call_fib_36", fn() Int: return fib(36))
     timed("dispatch_100M", fn() Int: return dispatch(100000000))
     timed("closure_100M", fn() Int: return closures(100000000))

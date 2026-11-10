@@ -10,7 +10,6 @@ type Resource:
 impl Closeable for Resource:
     fn close() Unit!:
         self.state.dequeue()
-        return ok(unit)
 
 fn pure() Int:
     return 1

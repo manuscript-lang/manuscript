@@ -1,7 +1,9 @@
-import Bytes from "@std/bytes.ms"
-import panic from "@std/core.ms"
-import min from "@std/math/math.ms"
-import msstd_utf8_is_valid from "@std/internal/utf8.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    panic from "@std/core.ms",
+    min from "@std/math/math.ms",
+    msstd_utf8_is_valid from "@std/internal/utf8.ms",
+)
 
 /*
 Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.
@@ -89,8 +91,7 @@ fn decode_ending(data: Bytes, stop: Int) Int:
         let value = decode_at(data, stop - width, stop)
         if value == INCOMPLETE:
             incomplete = true
-        if value >= 0 and scalar_width(value) == width:
-            return value
+        if value >= 0 and scalar_width(value) == width: return value
 
     return if incomplete: INCOMPLETE else: INVALID
 

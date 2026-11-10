@@ -1,6 +1,8 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import Deque from "@std/collections/deque.ms"
-import PriorityQueue, Queue from "@std/collections/queue.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    Deque from "@std/collections/deque.ms",
+    PriorityQueue, Queue from "@std/collections/queue.ms",
+)
 
 // `for item in container` over an `Iterable` container borrows each item: the lambdas below are
 // never cloned.
@@ -48,10 +50,8 @@ test "break and continue work in a borrowing loop":
     var seen: List[Int] = []
 
     for item in d:
-        if item == 1:
-            continue
-        if item == 4:
-            break
+        if item == 1: continue
+        if item == 4: break
 
         seen.append(item)
 

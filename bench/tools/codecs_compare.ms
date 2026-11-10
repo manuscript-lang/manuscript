@@ -14,20 +14,18 @@ import (
     jbool,
     median,
     options,
-    write_text
-) from "./lib.ms"
-import (
+    write_text from "./lib.ms",
     all_ints,
     append_json_line,
     binaries_json,
     fresh_directory,
     labeled,
     run_pinned,
-    write_json
-) from "./study.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+    write_json from "./study.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+)
 
 type Decode:
     size: Int
@@ -137,8 +135,6 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
             .get()
         )
 
-    return ok(unit)
-
 fn json_failure(
     before: String,
     after: String,
@@ -228,10 +224,10 @@ fn json_failure(
     manifest.add("complete", jbool(true))
     manifest.add("producer_executions", jint(cases.length() * 2 * (pairs + 1)))
     write_json("{out}/manifest.json", jobject(manifest))
-    stdout().write(summary.join("\n") + "\n").get()
+    print(summary.join("\n"))
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 4 or not ["decode", "json-failure"].contains(args[0]):
         return fail(

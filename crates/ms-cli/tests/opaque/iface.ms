@@ -7,5 +7,5 @@ impl Named for Approved:
     fn name() String:
         return "x"
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

@@ -5,7 +5,7 @@ import Deque from "@std/collections/deque.ms"
 fn say(s: String) Unit:
     print("{s}")
 
-export fn main() Int:
+fn main() Unit:
     var a = "hello"
     var b = a.clone()
     var m = Map[String, String]()
@@ -24,4 +24,3 @@ export fn main() Int:
     b += "!"
     m.add(a, b)
     say("{cnt.get("a")} {d.length()} {m.get("hello")}")
-    return 0

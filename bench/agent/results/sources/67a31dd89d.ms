@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // A parsed input line. `ok` is false when the line is invalid.
 type Record:
@@ -19,37 +21,31 @@ fn digit_value(c: String) Int:
 // Returns the amount as a string of cents digits ("12.5" -> "1250"), or "" when invalid.
 fn amount_cents(s: String) String:
     let n = s.length()
-    if n == 0:
-        return ""
+    if n == 0: return ""
 
     var int_len = 0
     while int_len < n and s.get(int_len) != ".":
         int_len += 1
-    if int_len == 0:
-        return ""
+    if int_len == 0: return ""
 
     var k = 0
 
     while k < int_len:
-        if not is_digit(s.get(k)):
-            return ""
+        if not is_digit(s.get(k)): return ""
 
         k += 1
 
-    if int_len == n:
-        return "{s}00"
+    if int_len == n: return "{s}00"
 
     // there is a dot at int_len
     let frac = s.slice(int_len + 1, n).get()
     let fl = frac.length()
-    if fl == 0 or fl > 2:
-        return ""
+    if fl == 0 or fl > 2: return ""
 
     var m = 0
 
     while m < fl:
-        if not is_digit(frac.get(m)):
-            return ""
+        if not is_digit(frac.get(m)): return ""
 
         m += 1
 
@@ -61,8 +57,7 @@ fn amount_cents(s: String) String:
 // Parses one non-blank line into a record.
 fn parse_line(line: String) Record:
     let n = line.length()
-    if n == 0:
-        return bad()
+    if n == 0: return bad()
 
     var category = ""
     var amount = ""
@@ -71,12 +66,10 @@ fn parse_line(line: String) Record:
         var i = 1
         while i < n and line.get(i) != "\"":
             i += 1
-        if i >= n:
-            return bad()
+        if i >= n: return bad()
 
         // closing quote at i; must be followed by a comma
-        if i + 1 >= n or line.get(i + 1) != ",":
-            return bad()
+        if i + 1 >= n or line.get(i + 1) != ",": return bad()
 
         category = line.slice(1, i).get()
         amount = line.slice(i + 2, n).get()
@@ -84,18 +77,15 @@ fn parse_line(line: String) Record:
         var j = 0
         while j < n and line.get(j) != ",":
             j += 1
-        if j >= n:
-            return bad()
+        if j >= n: return bad()
 
         category = line.slice(0, j).get()
         amount = line.slice(j + 1, n).get()
 
-    if category.length() == 0:
-        return bad()
+    if category.length() == 0: return bad()
 
     let cents = amount_cents(amount)
-    if cents.length() == 0:
-        return bad()
+    if cents.length() == 0: return bad()
 
     return Record(ok: true, category: category, amount: cents)
 
@@ -139,8 +129,7 @@ export fn main() Int:
     let text = read_all(stdin()).get().decode_utf8().get()
 
     for line in text.lines():
-        if line.trim_chars(" \t") == "":
-            continue
+        if line.trim_chars(" \t") == "": continue
 
         let rec = parse_line(line)
 

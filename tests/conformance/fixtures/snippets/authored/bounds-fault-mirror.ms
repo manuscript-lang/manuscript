@@ -9,6 +9,5 @@ fn mirror(a: List[Int]) Int:
         t = t + a[a.length() - i]
     return t
 
-export fn main() Int:
+fn main() Unit:
     let _ = stdout().write("{mirror([1, 2, 3, 4])}\n")
-    return 0

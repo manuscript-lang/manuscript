@@ -1,7 +1,7 @@
-import expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import within from "./support/conn.ms"
 import (
+    expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    within from "./support/conn.ms",
     DnsOptions,
     bind_datagram,
     connect,
@@ -14,10 +14,10 @@ import (
     Datagram,
     DatagramSocket,
     Listener,
-    Connection
-) from "@std/net/net.ms"
-import parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms"
-import promise from "@std/concurrency/promise.ms"
+    Connection from "@std/net/net.ms",
+    parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -64,7 +64,6 @@ test "a read cancelled by its timeout leaves the stream closable":
 fn accept_all(listener: Listener) Unit!:
     while true:
         let _connection = try listener.accept().wait()
-    return ok(unit)
 
 test "a promise that accepts on a listener runs where the listener lives":
     let listener = try listen("127.0.0.1:0")
@@ -158,7 +157,6 @@ fn expect_ip_error(input: String) Unit!:
         (try expect_error(parse_ip(input))),
         Error("network: invalid data", kind: "EBADMSG")
     )
-    return ok(unit)
 
 fn accept_one(l: Listener) Int:
     let r = l.accept(2.seconds()).wait()
@@ -181,8 +179,7 @@ test "a promise accepts on a listener it owns":
 fn accept_and_read(listener: Listener) Int:
     var conn = listener.accept(2.seconds()).wait().get()
     let r = within(var conn.input, 2.seconds())
-    if r.is_ok() and r.get().is_some():
-        return 1
+    if r.is_ok() and r.get().is_some(): return 1
 
     return 0
 

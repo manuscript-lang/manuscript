@@ -11,11 +11,9 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         print("closed {self.name}")
-        return ok(unit)
 
 fn opt[T](v: T) T?: v
 
-export fn main() Int:
+fn main() Unit:
     let _a = opt(Door("temp"))
     print("end")
-    return 0

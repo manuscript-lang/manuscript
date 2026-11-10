@@ -1,10 +1,12 @@
 // Small helpers shared by the benchmark tools: environment, files, shell commands.
-import create_directory, read_file, write_file from "@std/os/fs.ms"
-import dirname from "@std/os/path.ms"
-import compile from "@std/string.ms"
-import monotonic, seconds from "@std/time.ms"
-import RunOptions, run from "@std/os/process.ms"
-import environment from "@std/os/env.ms"
+import (
+    create_directory, read_file, write_file from "@std/os/fs.ms",
+    dirname from "@std/os/path.ms",
+    compile from "@std/string.ms",
+    monotonic, seconds from "@std/time.ms",
+    RunOptions, run from "@std/os/process.ms",
+    environment from "@std/os/env.ms",
+)
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
@@ -117,7 +119,7 @@ export fn words(text: String) List[String]:
             if current != "": out.append(current.clone())
             current = ""
         else:
-            current = current + ch
+            current += ch
 
     if current != "": out.append(current.clone())
     return out

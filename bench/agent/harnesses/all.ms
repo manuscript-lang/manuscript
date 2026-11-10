@@ -1,8 +1,10 @@
-import Harness from "./harness.ms"
-import ClaudeCode from "./claude_code.ms"
-import Codex from "./codex.ms"
-import Oracle from "./oracle.ms"
-import Pi from "./pi.ms"
+import (
+    Harness from "./harness.ms",
+    ClaudeCode from "./claude_code.ms",
+    Codex from "./codex.ms",
+    Oracle from "./oracle.ms",
+    Pi from "./pi.ms",
+)
 
 export fn names() List[String]: ["claude_code", "codex", "oracle", "pi"]
 

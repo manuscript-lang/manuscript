@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import Bytes, join from "@std/bytes.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Bytes, join from "@std/bytes.ms",
+)
 
 test "join concatenates parts in order":
     try expect_equal(

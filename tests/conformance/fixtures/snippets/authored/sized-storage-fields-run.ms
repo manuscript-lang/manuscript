@@ -22,7 +22,7 @@ fn area(s: Shape) Int:
         Box(w, h, c): return (w.to_int64() + c.to_int64() + h.truncate_to_int().get(0))
         Big(v): return v
 
-export fn main() Int:
+fn main() Unit:
     var l: List[Int8] = []
     for i in 0..10:
         l.append((i * 3 - 12).to_int8().get(0))
@@ -46,4 +46,3 @@ export fn main() Int:
     )
     let ps = [p, q]
     let _ = stdout().write("{ps.length()} {ps[1].w}\n")
-    return 0

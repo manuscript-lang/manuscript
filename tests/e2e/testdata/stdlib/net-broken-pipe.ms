@@ -1,7 +1,9 @@
-import send from "./support/conn.ms"
-import expect_ok from "@std/test/test.ms"
-import connect, listen from "@std/net/net.ms"
-import sleep from "@std/time.ms"
+import (
+    send from "./support/conn.ms",
+    expect_ok from "@std/test/test.ms",
+    connect, listen from "@std/net/net.ms",
+    sleep from "@std/time.ms",
+)
 
 // A write to a peer that has gone away must return an error. Without SIGPIPE ignored the
 // whole process dies with the signal instead.

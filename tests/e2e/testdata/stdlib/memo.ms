@@ -1,5 +1,7 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import Memo from "@std/collections/memo.ms"
+import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
+    Memo from "@std/collections/memo.ms",
+)
 
 fn square(n: Int) Int:
     return n * n

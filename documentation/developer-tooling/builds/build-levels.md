@@ -9,10 +9,10 @@ weight = 2
 
 Save this entrypoint as `main.ms`:
 
-<!-- manuscript-example: {"mode":"run","stdout":""} -->
+<!-- manuscript-example: {"mode":"run","stdout":"ready\n"} -->
 ```manuscript
-export fn main() Int:
-    return 0
+fn main() Unit:
+    print("ready")
 ```
 
 Choose a level when building or running it:
@@ -23,7 +23,7 @@ ms build main.ms --build-type MinSizeRel -o small-program
 ms run main.ms --build-type Debug
 ```
 
-The two builds report `Built program` and `Built small-program`. The debug run exits successfully without printing anything, because this entrypoint only returns an exit status.
+The two builds report `Built program` and `Built small-program`. The debug run prints `ready`.
 
 Use `Debug` for unoptimized code and source attribution, `Release` for optimized code and profiles, and `MinSizeRel` for the smallest executable.
 

@@ -3,7 +3,7 @@
 use crate::Error;
 use crate::text::runtime_fn;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param};
+use ms_mir::ir::{Cc, Func, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param};
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// Marks a skip: the fault message of `skip(reason)`, which the report turns into a skipped test.
@@ -130,4 +130,66 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
     f.linkage = Linkage::Export;
     f.compact_blocks();
     Ok(m.add_func(f))
+}
+
+/// Wraps a `main` that returns `Unit`, `Result[Unit, Error]` or `Result[Int?, Error]` in the `Int`
+/// entry the runtime expects: success exits 0 (or the `Int?` payload), and an error prints `error: <message>` to standard error and exits 1.
+pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, Error> {
+    let ret = m.funcs[user.index()].ret;
+    let mut b = FuncBuilder::new(m, "main", Vec::new(), MTy::INT);
+    let r = b.call(user, &[]);
+    let TyKind::Alt(a) = b.m.types.kind(ret).clone() else {
+        let z = b.iconst(0);
+        b.ret(Some(z));
+        return Ok(finish_entry(b));
+    };
+    let err = b.m.alts[a.index()]
+        .error_case()
+        .ok_or_else(|| Error::new("main must return Unit, Unit!, or Int"))?;
+    let tag = b.alt_tag(r);
+    let k = b.iconst(err as i64);
+    let failed = b.icmp(Cc::Eq, tag, k);
+    let (bad, good) = (b.new_block(), b.new_block());
+    b.br_if(failed, bad, &[], good, &[]);
+    b.seal_block(bad);
+    b.seal_block(good);
+    b.switch_to(bad);
+    let payload = b.alt_get(a, err as u32, 0, r);
+    let TyKind::Rec(er) = b.m.types.kind(b.ty(payload)).clone() else {
+        return Err(Error::new("main's error must be an Error"));
+    };
+    let message = b.rec_get(er, 0, payload);
+    let write = runtime_fn(b.m, "msrt_io_write_stderr", &[MTy::STR], MTy::UNIT);
+    for text in ["error: ", "\n"] {
+        let lit = b.str_lit(text);
+        b.call_rt(write, &[lit]);
+        if text == "error: " {
+            b.call_rt(write, &[message]);
+        }
+    }
+    b.emit(Op::Drop, &[r], Imm::None, None);
+    let one = b.iconst(1);
+    b.ret(Some(one));
+    b.switch_to(good);
+    let ok = b.m.alts[a.index()].ok_case().expect("result") as u32;
+    let payload = b.alt_get(a, ok, 0, r);
+    let status = if matches!(b.m.types.kind(b.ty(payload)), TyKind::Opt(_)) {
+        // `Int?!`: some(n) exits n and none exits 0.
+        let present = b.opt_is_some(payload);
+        let n = b.opt_get(payload);
+        let zero = b.iconst(0);
+        b.select(present, n, zero)
+    } else {
+        b.iconst(0)
+    };
+    b.emit(Op::Drop, &[r], Imm::None, None);
+    b.ret(Some(status));
+    Ok(finish_entry(b))
+}
+
+fn finish_entry(b: FuncBuilder<'_>) -> Func {
+    let mut f = b.into_func();
+    f.linkage = Linkage::Export;
+    f.compact_blocks();
+    f
 }

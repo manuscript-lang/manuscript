@@ -9,10 +9,10 @@ import (
     permutations,
     read_text,
     sample,
-    write_text
-) from "./lib.ms"
-import summarize from "./programs_table.ms"
-import arguments from "@std/os/env.ms"
+    write_text from "./lib.ms",
+    summarize from "./programs_table.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn lines_of(version: String, content: String) List[String]:
     return content.split("\n").filter(fn l: l != "").map(fn l: "{version} {l}")
@@ -57,7 +57,7 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 
     return ok(report.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let parsed = options(
         arguments(), ["before", "after", "go", "input", "output", "repeats"],
         ["before", "after", "go", "input", "output"]

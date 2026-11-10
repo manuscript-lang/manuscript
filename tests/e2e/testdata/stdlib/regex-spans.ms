@@ -1,11 +1,11 @@
-import compile, RegexSpan from "@std/string.ms"
 import (
+    compile, RegexSpan from "@std/string.ms",
     expect_equal,
     expect_ok,
     expect_error,
     expect_some,
-    expect_none
-) from "@std/test/test.ms"
+    expect_none from "@std/test/test.ms",
+)
 
 fn pairs(spans: List[RegexSpan]) List[List[Int]]:
     var out = List[List[Int]](reserve: spans.length())

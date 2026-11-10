@@ -6,16 +6,18 @@
 // Run from the repository root. Pass rate counts every trial. Cost, tokens, turns and time average over PASSING
 // trials only, so a cheap wrong answer never improves a ranking. Tokens are input (cache reads included) plus
 // output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
-import JsonValue, parse from "@std/data/json.ms"
-import access, glob, GlobOptions, stat from "@std/os/fs.ms"
-import stdout, stderr from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import parse_timestamp, now from "@std/time.ms"
-import round from "@std/math/math.ms"
-import root from "./core/model.ms"
-import dumps, dumps_data from "./lib/pyjson.ms"
-import fixed, mean_scaled, pct0 from "./lib/pyfmt.ms"
-import must_read, nonblank_lines, read_text, write_text from "./lib/text.ms"
+import (
+    JsonValue, parse from "@std/data/json.ms",
+    access, glob, GlobOptions, stat from "@std/os/fs.ms",
+    stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    parse_timestamp, now from "@std/time.ms",
+    round from "@std/math/math.ms",
+    root from "./core/model.ms",
+    dumps, dumps_data from "./lib/pyjson.ms",
+    fixed, mean_scaled, pct0 from "./lib/pyfmt.ms",
+    must_read, nonblank_lines, read_text, write_text from "./lib/text.ms",
+)
 
 let MIN_RUNS = 3
 let CATEGORIES = ["base", "docs", "reads", "build", "writes", "model output"]
@@ -117,7 +119,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 
         if let before = prev:
             let done = metric(before, "completion_tokens")
-            comp[5] = comp[5] + done
+            comp[5] += done
 
             let at = CATEGORIES.index_of(categorize(before)).get(0)
             let grown = prompt - prev_prompt - done
@@ -127,7 +129,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 
         var total = comp.sum()
         if total == 0.0: total = 1.0
-        for i in 0..CATEGORIES.length(): out[i] = out[i] + prompt * comp[i] / total
+        for i in 0..CATEGORIES.length(): out[i] += prompt * comp[i] / total
         prev_prompt = prompt
         prev = st.clone()
 
@@ -242,7 +244,7 @@ fn collect(dirs: List[String]) Int:
 
     let kept = latest.sorted(fn a, b: a.trial.compare(b.trial))
     write_text(trials_file(), kept.map(fn t: dumps_data(t, 0) + "\n").join(""))
-    stdout().write("{kept.length()} trials in {trials_file()}\n").get()
+    print("{kept.length()} trials in {trials_file()}")
     return 0
 
 // Aggregates of one group of trials; passing trials only for the averages.
@@ -430,10 +432,10 @@ fn render(src_arg: String?) Int:
             )
         )
     write_text(board, out.join("\n"))
-    stdout().write("wrote {board}\n").get()
+    print("wrote {board}")
     return 0
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() >= 2 and args[0] == "collect": return collect(
         args.slice(1, args.length()).get([])

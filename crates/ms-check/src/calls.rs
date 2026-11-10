@@ -94,12 +94,28 @@ fn slots(args: &[Arg]) -> Option<Vec<crate::syntax::ArgSlot>> {
     )
 }
 
+/// The parser names the parameters of a function type `_0`, `_1`, ...; they are not source labels.
+fn synthetic_parameter(name: &str) -> bool {
+    name.strip_prefix('_')
+        .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()))
+}
+
 fn unknown_argument_hint(
     syms: ms_syntax::Names,
     name: &str,
     callee: &str,
     params: &[Param],
 ) -> String {
+    if !params.is_empty() && params.iter().all(|p| synthetic_parameter(syms.str(p.name))) {
+        let types: Vec<String> = params
+            .iter()
+            .map(|p| p.ty.display(syms).to_string())
+            .collect();
+        return format!(
+            "; function values take positional arguments ({}), so pass them without labels",
+            types.join(", ")
+        );
+    }
     let hint = did_you_mean(name, &names_of(syms, params));
     if !hint.is_empty() {
         return hint;
@@ -118,14 +134,26 @@ fn unknown_argument_hint(
     )
 }
 
-fn missing_argument_hint(syms: ms_syntax::Names, param: &Param, callee: &str) -> String {
+fn missing_argument_hint(
+    syms: ms_syntax::Names,
+    param: &Param,
+    position: usize,
+    callee: &str,
+) -> String {
     let in_callee = if callee.is_empty() {
         String::new()
     } else {
         format!(" in call to {callee}")
     };
+    if synthetic_parameter(syms.str(param.name)) {
+        return format!(
+            "{position}: {}{in_callee}; pass it positionally, without a label",
+            param.ty.display(syms)
+        );
+    }
     format!(
-        ": {}{in_callee}; add '{}: <{}>'",
+        "{}: {}{in_callee}; add '{}: <{}>'",
+        syms.str(param.name),
         param.ty.display(syms),
         syms.str(param.name),
         param.ty.display(syms)
@@ -642,7 +670,7 @@ impl Checker {
             no_return = no_return || v.no_return;
             seen.insert(arg.name);
         }
-        for param in params {
+        for (index, param) in params.iter().enumerate() {
             // An invalid parameter type means an earlier diagnostic already explained this call.
             if param.ty.is_invalid() {
                 continue;
@@ -655,9 +683,8 @@ impl Checker {
                 self.type_error(
                     pos,
                     format!(
-                        "missing argument {}{}",
-                        self.syms.str(param.name),
-                        missing_argument_hint(self.syms, param, &call_name)
+                        "missing argument {}",
+                        missing_argument_hint(self.syms, param, index + 1, &call_name)
                     ),
                 );
             }

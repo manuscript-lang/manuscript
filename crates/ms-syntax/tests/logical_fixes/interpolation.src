@@ -1,0 +1,2 @@
+fn compare(left: Bool, right: Bool) String:
+    return "é {"value: {EXPRESSION}"}"

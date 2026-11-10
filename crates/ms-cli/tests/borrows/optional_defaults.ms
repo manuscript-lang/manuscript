@@ -7,7 +7,7 @@ fn fallback(var calls: Int) List[Int]?:
 fn choose[T](value: List[T]?, default: List[T]?) List[T]:
     return value.get(default).clone()
 
-export fn main() Int:
+fn main() Unit:
     let missing: List[Int]? = none
     let present: List[Int]? = [1]
     let failure: Result[List[Int], Error] = error(Error("bad"))
@@ -42,4 +42,3 @@ export fn main() Int:
         "{no_text.get(text)} {text_failure.get(text)} {words.get(5, text)} {text}\n"
     )
     let _ = stdout().write("{choose(none, [4])} {choose([5], [6])}\n")
-    return 0

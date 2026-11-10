@@ -502,3 +502,46 @@ fn lint_fix_removes_unused_imports() {
     assert!(list.starts_with("import (\n    used,\n) from"), "{list}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn fix_separates_logical_operator_words_from_operands() {
+    for command in ["check", "lint"] {
+        for crlf in [false, true] {
+            let dir = crate::common::scratch(&format!("fix-logical-{command}-{crlf}"));
+            let source = include_str!("check_fix/logical_operators.ms");
+            let source = if crlf {
+                source.replace('\n', "\r\n")
+            } else {
+                source.to_string()
+            };
+            std::fs::write(dir.join("a.ms"), &source).unwrap();
+            let (status, text) = ms(&[command, "a.ms", "--fix"], &dir);
+            assert_eq!(status, Some(0), "{text}");
+            let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+            assert!(fixed.contains("return left and right"), "{fixed}");
+            assert!(fixed.contains("return left or right"), "{fixed}");
+            let (status, text) = ms(&["check", "a.ms"], &dir);
+            assert_eq!(status, Some(0), "{text}");
+            let (status, text) = ms(&[command, "a.ms", "--fix"], &dir);
+            assert_eq!(status, Some(0), "{text}");
+            assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), fixed);
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+}
+
+#[test]
+fn fix_trusts_only_the_import_when_an_import_fails() {
+    let dir = crate::common::scratch("fix-failed-import");
+    // `sumn` is only a typo of `sum` here; the unresolved import is the real error, so its
+    // follow-on diagnostics must not rewrite the file.
+    let source = "import thing from \"@std/missing/nothing.ms\"\n\
+        \n\
+        fn total() Int:\n\
+        \x20   let sum = thing()\n\
+        \x20   return sumn\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+}

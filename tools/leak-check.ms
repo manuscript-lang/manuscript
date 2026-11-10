@@ -5,13 +5,15 @@
 // the files to sweep instead; a file with test blocks is run with `ms test`.
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/leak-check.ms [-- files]
-import env, tool_ms, use_stats_runtime from "./lib.ms"
-import glob, GlobOptions, read_file, temporary from "@std/os/fs.ms"
-import RunOptions, run from "@std/os/process.ms"
-import arguments, change_directory, working_directory from "@std/os/env.ms"
-import system_info from "@std/os/system.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
-import seconds from "@std/time.ms"
+import (
+    env, tool_ms, use_stats_runtime from "./lib.ms",
+    glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
+    RunOptions, run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    system_info from "@std/os/system.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
+    seconds from "@std/time.ms",
+)
 
 // The live block counts the runtime printed on standard error; a program that starts child
 // processes prints one per process, and their sum is what leaked. Empty when none was printed.
@@ -57,7 +59,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
             ).wait():
                 let found = leaking_tests(out.stderr.decode_utf8().get(""))
                 lines.append("swept")
-                if found.length() > 0: lines.append(
+                if not found.is_empty(): lines.append(
                     "leak: {absolute}\n  {found.join("\n  ")}"
                 )
 
@@ -67,7 +69,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
             ms.clone(), ["run", absolute.clone()], RunOptions(timeout: seconds(60))
         ).wait():
             let counts = live_blocks(out.stderr.decode_utf8().get(""))
-            if counts.length() == 0: continue
+            if counts.is_empty(): continue
 
             lines.append("swept")
 
@@ -76,7 +78,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
     return lines
 
-export fn main() Int:
+fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 
@@ -84,7 +86,7 @@ export fn main() Int:
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
-    if files.length() == 0:
+    if files.is_empty():
         for dir in [
             "tests/conformance/fixtures/fuzz/run", "tests/conformance/fixtures/e2e",
             "tests/conformance/fixtures/examples"
@@ -95,7 +97,7 @@ export fn main() Int:
                     ""
                 ).contains("fn main"): files.append(path.clone())
 
-    if files.length() == 0:
+    if files.is_empty():
         for f in glob("tests/e2e/testdata", GlobOptions(patterns: ["**/*.ms"])).get([]):
             let path = "tests/e2e/testdata/{f.path}"
             if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(

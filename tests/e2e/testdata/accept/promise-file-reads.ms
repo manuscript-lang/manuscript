@@ -1,6 +1,8 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import promise, wait_all from "@std/concurrency/promise.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    promise, wait_all from "@std/concurrency/promise.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+)
 
 fn size(path: String) Int!:
     let data = try read_file(path).wait()

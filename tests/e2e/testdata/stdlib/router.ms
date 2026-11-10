@@ -1,5 +1,5 @@
-import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_ok, expect_true from "@std/test/test.ms",
     headers,
     json,
     redirect,
@@ -10,20 +10,18 @@ import (
     HttpRequest,
     HttpResponse,
     HttpClientOptions,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import read_to_end from "./support/conn.ms"
-import http_client, serve from "@std/net/net.ms"
-import create, LoggerOptions, Transport from "@std/log.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
-import (
+    HttpServerOptions from "@std/net/http.ms",
+    read_to_end from "./support/conn.ms",
+    http_client, serve from "@std/net/net.ms",
+    create, LoggerOptions, Transport from "@std/log.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
     access_log,
     request_id,
     RouteParams,
     Router,
-    with_request_headers
-) from "@std/net/router.ms"
+    with_request_headers from "@std/net/router.ms",
+)
 
 fn get(path: String) HttpRequest:
     return request(HttpMethod.Get, path)
@@ -100,7 +98,6 @@ fn stream_parts(var exchange: HttpExchange, params: RouteParams) Unit!:
     try exchange.send_headers(200, headers())
     try exchange.write("one")
     try exchange.write("two")
-    return ok(unit)
 
 test "a streaming GET route answers HEAD, dropping the body writes":
     var r = Router()
@@ -218,8 +215,6 @@ fn whole_response(var exchange: HttpExchange, params: RouteParams) Unit!:
         if written.err().kind != "EINVAL": return error(
             Error("wrong write error", kind: "EIO")
         )
-
-    return ok(unit)
 
 test "a whole in-process response rejects subsequent writes":
     var r = Router()
@@ -438,8 +433,7 @@ impl Transport for Sink:
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 

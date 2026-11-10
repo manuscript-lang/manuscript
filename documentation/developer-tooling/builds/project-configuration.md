@@ -106,7 +106,7 @@ name = "graph"
 source = "src"
 ```
 
-`check`, `lint`, and `test` include every source module and discovered test. `run`, `build`, `emit`, and `profile` need an executable entry: add `entry = "src/main.ms"` and export `fn main() Int`.
+`check`, `lint`, and `test` include every source module and discovered test. `run`, `build`, `emit`, and `profile` need an executable entry: add `entry = "src/main.ms"` and declare `fn main()`.
 
 To share library code today, copy its sources into each consuming project, for example `src/graph/`, and use relative imports or an alias:
 

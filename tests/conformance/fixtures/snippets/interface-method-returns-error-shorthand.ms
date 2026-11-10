@@ -28,7 +28,7 @@ type Cb:
 fn apply(c: Cb, x: Int) Int!:
     return c.f(x)
 
-export fn main() Int:
+fn main() Unit:
     let p = IntP()
     let r = run[Int](p, "42")
     stdout().write("{r.get(0)}\n").get()
@@ -41,4 +41,3 @@ export fn main() Int:
 
     let c = Cb(fn x: ok(x + 1))
     stdout().write("{apply(c, 1).get(0)}\n").get()
-    return 0

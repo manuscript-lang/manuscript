@@ -1,8 +1,8 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import base64_encode from "@std/data/encoding.ms"
-import now from "@std/time.ms"
-import panic from "@std/core.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    base64_encode from "@std/data/encoding.ms",
+    now from "@std/time.ms",
+    panic from "@std/core.ms",
     bit_and,
     bit_xor,
     shift_left,
@@ -12,16 +12,14 @@ import (
     cos,
     log,
     max_int,
-    sqrt
-) from "@std/math/math.ms"
-import (
+    sqrt from "@std/math/math.ms",
     msstd_random_os_bytes,
     draw_int,
     draw_float,
     draw_shuffle,
     draw_choice,
-    invalid_input
-) from "@std/internal/random.ms"
+    invalid_input from "@std/internal/random.ms",
+)
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
 // ms: effect std.random.read
@@ -112,12 +110,10 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 // `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this returns EINVAL.
 // ms: effect std.random.read
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
-    if values.is_empty() and weights.is_empty():
-        return ok(none)
+    if values.is_empty() and weights.is_empty(): return ok(none)
 
     let total = weight_total(values.length(), weights)
-    if total == 0.0:
-        return error(Error("random: invalid input", kind: "EINVAL"))
+    if total == 0.0: return error(Error("random: invalid input", kind: "EINVAL"))
 
     let point = try float()
     return ok(values[weighted_position(weights, point, total)].clone())
@@ -134,14 +130,12 @@ valid when all individual weights are finite; selection scales it before use. A 
 `List.sum`, because the collection extensions cannot be used by modules `math.ms` imports.
 */
 fn weight_total(count: Int, weights: List[Float]) Float:
-    if weights.length() != count:
-        return 0.0
+    if weights.length() != count: return 0.0
 
     var total = 0.0
 
     for weight in weights:
-        if not (weight >= 0.0) or not weight.is_finite():
-            return 0.0
+        if not (weight >= 0.0) or not weight.is_finite(): return 0.0
 
         total += weight
 
@@ -160,8 +154,7 @@ fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
         if weights[i] > 0.0:
             running += weights[i]
             last = i
-            if point < running:
-                return i
+            if point < running: return i
 
     return last
 
@@ -184,8 +177,7 @@ fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
         if weights[i] > 0.0:
             running += weights[i] / scale
             last = i
-            if point < running:
-                return i
+            if point < running: return i
 
     return last
 
@@ -238,8 +230,7 @@ impl SeededRandom:
             let rest = bits % span
 
             // Redraw the few values past the last whole multiple of `span`, so none is likelier.
-            if bits - rest <= max_int - (span - 1):
-                return min + rest
+            if bits - rest <= max_int - (span - 1): return min + rest
 
         return min
 
@@ -261,8 +252,7 @@ impl SeededRandom:
 
     // Returns a uniformly chosen item, or none for an empty list.
     var fn choice[T](values: List[T]) T?:
-        if values.is_empty():
-            return none
+        if values.is_empty(): return none
 
         return values.get(self.int(0, values.length()))
 
@@ -284,8 +274,7 @@ impl SeededRandom:
     // Returns an item chosen with probability proportional to its weight, or none for an empty list.
     // `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
     var fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?:
-        if values.is_empty() and weights.is_empty():
-            return none
+        if values.is_empty() and weights.is_empty(): return none
 
         let total = weight_total(values.length(), weights)
         if total == 0.0:

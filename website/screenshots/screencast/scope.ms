@@ -5,6 +5,5 @@ fn first_line(path: String) String!:
     let lines = try file.read_lines(max_lines: 100)
     return ok(lines[0].clone())
 
-export fn main() Int:
+fn main() Unit:
     print(first_line("scope.ms").get("unreadable"))
-    return 0
