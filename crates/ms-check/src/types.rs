@@ -1533,6 +1533,18 @@ pub fn variable_set(types: &[Ty]) -> VarSet {
 
 /// One-way unification of `pattern` against `actual`, binding `vars`.
 pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> bool {
+    unify_at(pattern, actual, vars, bindings, true)
+}
+
+/// Reader adaptation belongs to a callable value's outer boundary. Nominal arguments and
+/// a callable's parameter/result types keep their invariant identity during matching.
+fn unify_at(
+    pattern: &Ty,
+    actual: &Ty,
+    vars: &VarSet,
+    bindings: &mut Subst,
+    adapt_reader: bool,
+) -> bool {
     if vars.contains(&pattern.id) {
         if let Some(previous) = bindings.get(&pattern.id) {
             return same(previous, actual);
@@ -1547,19 +1559,20 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
         return false;
     }
     for (p, a) in pattern.args.iter().zip(&actual.args) {
-        if !unify(p, a, vars, bindings) {
+        if !unify_at(p, a, vars, bindings, false) {
             return false;
         }
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
             // A function that only reads a parameter stands in for one that may change it.
-            if (q.mutable && !p.mutable) || !unify(&p.ty, &q.ty, vars, bindings) {
+            let mode_matches = p.mutable == q.mutable || (adapt_reader && p.mutable);
+            if !mode_matches || !unify_at(&p.ty, &q.ty, vars, bindings, false) {
                 return false;
             }
         }
         return match (&pattern.result, &actual.result) {
-            (Some(p), Some(a)) => unify(p, a, vars, bindings),
+            (Some(p), Some(a)) => unify_at(p, a, vars, bindings, false),
             _ => false,
         };
     }

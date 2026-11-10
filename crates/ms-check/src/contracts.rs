@@ -134,7 +134,7 @@ fn overlap(a: &Ty, b: &Ty, x: &Ty, y: &Ty, vars: &[Ty]) -> bool {
                     return false;
                 }
                 for (p, q) in a.params.iter().zip(&b.params) {
-                    if p.name != q.name || !self.matches(&p.ty, &q.ty) {
+                    if p.mutable != q.mutable || !self.matches(&p.ty, &q.ty) {
                         return false;
                     }
                 }
