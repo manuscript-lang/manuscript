@@ -553,7 +553,8 @@ fn apply(event: Event) {
         } => {
             let t = table();
             match index(t, id) {
-                Some(i) if t.state[i] == State::Pending => {
+                // A held result is already accepted: a later completion is a duplicate.
+                Some(i) if t.state[i] == State::Pending && t.flags[i] & HELD == 0 => {
                     if ptr != 0 {
                         t.result[i] = Result {
                             ptr: ptr as *mut u8,
@@ -2809,5 +2810,31 @@ mod tests {
         assert_eq!(got % 100, 11, "result {got}");
         sched::shutdown();
         task::teardown();
+    }
+
+    unsafe extern "C-unwind" fn duplicate_answer(_: *mut Closure) {
+        // SAFETY: the test holds the runtime lock and hands over two live Int values.
+        unsafe {
+            let id = *ID.ptr();
+            let mut first = 42i64;
+            msrt_promise_put(id, (&raw mut first).cast(), &msrt_desc_int, 0);
+            let mut second = 99i64;
+            msrt_promise_put(id, (&raw mut second).cast(), &msrt_desc_int, 1);
+        }
+    }
+
+    #[test]
+    fn duplicate_completion_preserves_first_value() {
+        let _g = lock();
+        let previous = sched::msrt_runtime_limit();
+        sched::msrt_runtime_set_threads(1);
+        let id = msrt_promise_new();
+        start(id, duplicate_answer);
+        assert_eq!(msrt_promise_wait(id, -1), OK);
+        let value = take_int(id);
+        msrt_promise_drop(id);
+        task::teardown();
+        sched::msrt_runtime_set_threads(previous);
+        assert_eq!(value, 42);
     }
 }

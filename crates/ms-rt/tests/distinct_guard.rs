@@ -118,13 +118,21 @@ fn distinct_guard_releases_unpublished_result_and_set() {
     // The first guarded call allocates the task's cleanup stack once.
     run(1, false, usize::MAX, false);
     for (n, hashed) in [(5, false), (5, true), (20, true)] {
-        for cancel in [false, true] {
-            #[cfg(feature = "stats")]
-            let before = alloc::live_blocks();
-            let status = run(n, hashed, 3, cancel);
-            assert_eq!(status, if cancel { 2 } else { 1 });
-            #[cfg(feature = "stats")]
-            assert_eq!(alloc::live_blocks(), before, "n={n} hashed={hashed}");
+        // Every callback position: the lookup hash, the insertion hash (after the key was copied)
+        // and the equality calls.
+        for exit_at in 1..=6 {
+            for cancel in [false, true] {
+                #[cfg(feature = "stats")]
+                let before = alloc::live_blocks();
+                let status = run(n, hashed, exit_at, cancel);
+                assert_eq!(status, if cancel { 2 } else { 1 });
+                #[cfg(feature = "stats")]
+                assert_eq!(
+                    alloc::live_blocks(),
+                    before,
+                    "n={n} hashed={hashed} exit_at={exit_at}"
+                );
+            }
         }
         #[cfg(feature = "stats")]
         let before = alloc::live_blocks();
