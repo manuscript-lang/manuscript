@@ -44,8 +44,7 @@ fn read(item: Case) Int!:
     if found.is_none(): return error(Error("missing row"))
 
     let row = found.get()
-    if row.length() != 1 or row[0] != item.expected:
-        return error(Error("wrong row"))
+    if row.length() != 1 or row[0] != item.expected: return error(Error("wrong row"))
     if (try rows.next()).is_some(): return error(Error("extra row"))
 
     return ok(row[0].byte_length())
