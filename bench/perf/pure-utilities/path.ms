@@ -1,9 +1,11 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
-import extension, normalize, parse from "@std/os/path.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+    extension, normalize, parse from "@std/os/path.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let count = args[0].parse_int().get()
     let operation = args[1]
@@ -40,20 +42,13 @@ export fn main() Int:
         else:
             return 1
 
-        if status != expected_status:
-            return 1
-        if f0 != expected_0:
-            return 1
-        if f1 != expected_1:
-            return 1
-        if f2 != expected_2:
-            return 1
-        if f3 != expected_3:
-            return 1
-        if f4 != expected_4:
-            return 1
-        if f5 != expected_5:
-            return 1
+        if status != expected_status: return 1
+        if f0 != expected_0: return 1
+        if f1 != expected_1: return 1
+        if f2 != expected_2: return 1
+        if f3 != expected_3: return 1
+        if f4 != expected_4: return 1
+        if f5 != expected_5: return 1
 
         checksum += f0.byte_length() + f1.byte_length() + f2.byte_length()
         checksum += f3.byte_length() + f4.byte_length() + f5.byte_length()

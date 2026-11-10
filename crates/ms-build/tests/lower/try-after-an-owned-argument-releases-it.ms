@@ -12,5 +12,5 @@ fn join(a: String, b: String) String:
 fn both(n: Int) Result[String, Error]:
     return ok(join(a: try make(n), b: try make(n - 1)))
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

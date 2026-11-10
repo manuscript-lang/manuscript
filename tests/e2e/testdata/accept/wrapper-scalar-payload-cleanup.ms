@@ -1,5 +1,7 @@
-import Closeable from "@std/core.ms"
-import expect_contains, expect_fault from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    expect_contains, expect_fault from "@std/test/test.ms",
+)
 
 type Marker:
     id: Int

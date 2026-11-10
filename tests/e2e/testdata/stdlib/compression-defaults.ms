@@ -1,11 +1,8 @@
-import expect_equal from "@std/test/test.ms"
 import (
-    compress,
-    decompress,
-    CompressionFormat,
-    CompressOptions
-) from "@std/io/archive.ms"
-import Bytes from "@std/bytes.ms"
+    expect_equal from "@std/test/test.ms",
+    compress, decompress, CompressionFormat, CompressOptions from "@std/io/archive.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn supplied(var log: List[String], data: Bytes) Bytes:
     log.append("data")

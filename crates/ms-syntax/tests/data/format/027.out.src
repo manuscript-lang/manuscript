@@ -37,9 +37,9 @@ test "three receiver types alternate at one site":
         var i = 0
 
         while i < 3:
-            total = total + measure(shape: shapes[i], scale: 2)
-            i = i + 1
+            total += measure(shape: shapes[i], scale: 2)
+            i += 1
 
-        round = round + 1
+        round += 1
 
     try expect_true((total == 4 * (18 + 20 + 20)))

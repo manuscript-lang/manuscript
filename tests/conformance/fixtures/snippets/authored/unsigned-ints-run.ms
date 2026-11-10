@@ -14,7 +14,7 @@ fn total(values: List[UInt8]) UInt8:
         sum = sum + v
     return sum
 
-export fn main() Int:
+fn main() Unit:
     let low: UInt8 = 0
     let high: UInt8 = 255
     let mid: UInt16 = 65535
@@ -34,4 +34,3 @@ export fn main() Int:
         "{high.to_int()} {mid.to_uint8()} {wide.to_string_radix(16)} {high.compare(low)}\n"
     )
     let _ = stdout().write("{wide.to_float()} {high.to_float32()}\n")
-    return 0

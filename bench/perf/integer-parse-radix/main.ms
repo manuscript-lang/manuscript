@@ -1,8 +1,10 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import parse_int from "@std/math/math.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    parse_int from "@std/math/math.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let operation = args[0]
     let dataset = args[1]
@@ -25,8 +27,7 @@ export fn main() Int:
         let elapsed = monotonic().difference(start).to_nanoseconds()
         let final_text = last.to_string()
         print("ns={elapsed} checksum={checksum} last={final_text}")
-        if checksum != expected_checksum or final_text != expected_last:
-            return 1
+        if checksum != expected_checksum or final_text != expected_last: return 1
 
         return 0
 
@@ -52,8 +53,7 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         print("ns={elapsed} checksum={checksum} last={last}")
-        if checksum != expected_checksum or last != expected_last:
-            return 1
+        if checksum != expected_checksum or last != expected_last: return 1
 
         return 0
 
@@ -69,8 +69,7 @@ export fn main() Int:
                 value = -9223372036854775808 + i
 
             texts.append(value.to_string_radix(digits))
-            if parse_int(texts[i], digits).get() != value:
-                return 1
+            if parse_int(texts[i], digits).get() != value: return 1
 
         var checksum = 0
         var last = 0
@@ -83,8 +82,7 @@ export fn main() Int:
         let elapsed = monotonic().difference(start).to_nanoseconds()
         let final_text = last.to_string()
         print("ns={elapsed} checksum={checksum} last={final_text}")
-        if checksum != expected_checksum or final_text != expected_last:
-            return 1
+        if checksum != expected_checksum or final_text != expected_last: return 1
 
         return 0
 
@@ -119,7 +117,6 @@ export fn main() Int:
 
     let elapsed = monotonic().difference(start).to_nanoseconds()
     print("ns={elapsed} checksum={checksum} last={last}")
-    if checksum != expected_checksum or last != expected_last:
-        return 1
+    if checksum != expected_checksum or last != expected_last: return 1
 
     return 0

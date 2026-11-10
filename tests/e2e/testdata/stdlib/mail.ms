@@ -1,11 +1,11 @@
-import expect_equal, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_true from "@std/test/test.ms",
     parse_address,
     parse_address_list,
     parse_message,
     decode_words,
-    Address
-) from "@std/net/mail.ms"
+    Address from "@std/net/mail.ms",
+)
 
 test "addresses parse in each form":
     let bare = parse_address("ada@example.com").get()

@@ -1,5 +1,7 @@
-import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
-import parse, encode_all, PemBlock from "@std/data/pem.ms"
+import (
+    expect_equal, expect_ok, expect_true from "@std/test/test.ms",
+    parse, encode_all, PemBlock from "@std/data/pem.ms",
+)
 
 let SAMPLE = "noise\n-----BEGIN NOTE-----\naGVsbG8gd29ybGQ=\n-----END NOTE-----\n-----BEGIN EMPTY-----\n-----END EMPTY-----\n"
 

@@ -1,7 +1,9 @@
 // Generator for c25-log-analyzer. Deterministic; run: ms run bench/agent/gen.ms -- c25
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+)
 
 let LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"]
 let METHODS = ["DELETE", "GET", "POST", "PUT"]
@@ -56,7 +58,7 @@ fn solve(s: String) String:
 
         let first = "{e.status}".take(1)
         let class = if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
-        classes[class] = classes[class] + 1
+        classes[class] += 1
         lats.append(e.latency)
         if slow.is_none() or e.latency > slow.get(e).latency: slow = e.clone()
         counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
@@ -149,7 +151,7 @@ export fn gen_c25() Unit:
         mk("all-malformed", "x\n\nINFO GET / 200 1\n")
     ]
     var p95 = ""
-    for i in 0..40: p95 = p95 + "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
+    for i in 0..40: p95 += "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
 
     let small = rand_log(var rnd, 40, 0.1)
     let mid = rand_log(var rnd, 600, 0.2)

@@ -1,5 +1,5 @@
-import expect_equal, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_true from "@std/test/test.ms",
     parse_media_type,
     format_media_type,
     media_type_for_extension,
@@ -9,8 +9,8 @@ import (
     encode_multipart,
     form_part,
     multipart_boundary,
-    MediaType
-) from "@std/net/mime.ms"
+    MediaType from "@std/net/mime.ms",
+)
 
 test "media types parse and format":
     let media = parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()

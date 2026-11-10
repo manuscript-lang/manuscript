@@ -28,8 +28,7 @@ test "callable identity uses ordered types rather than parameter names":
     try expect_equal(callback(3), 5)
 
     let factory = fn(flag: Bool):
-        if flag:
-            return first
+        if flag: return first
 
         return second
 

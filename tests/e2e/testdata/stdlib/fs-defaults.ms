@@ -1,5 +1,5 @@
-import expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
     copy,
     CopyOptions,
     create_directory,
@@ -8,17 +8,15 @@ import (
     remove,
     stat,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn expect_limit(outcome: Unit!) Unit!:
     let cause = try expect_error(outcome)
     try expect_equal(cause.kind, "EOVERFLOW")
     if not cause.message.starts_with("filesystem: limit exceeded"):
         return error(Error("wrong limit message: {cause.message}"))
-
-    return ok(unit)
 
 fn generic_write(path: String, data: String) Unit!:
     return write_file(path, data).wait()
@@ -39,8 +37,6 @@ fn rejected(result: Unit!) Unit!:
     match result:
         error(_): return ok(unit)
         ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
-
-    return ok(unit)
 
 fn text(path: String) String!:
     return ok((read_file(path).wait() | try expect_ok).decode_utf8().get())

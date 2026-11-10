@@ -85,7 +85,7 @@ fn port_number(text: String) Int!:
         | try
     return ok(port)
 
-export fn main() Int:
+fn main() Int:
     if let port = port_number(" 8080 "):
         print(port)
         return 0
@@ -148,9 +148,8 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 `__LINE__` is the `Int` line number of the token and `__FILE__` is the `String` name of the file being compiled; both are constants filled in at the use site, so inside a function they name where it is written, not where it is called. A local binding or declaration with either name shadows the constant. To report a caller's position, use a parameter default of `caller_site()` from `@std/test/test.ms` instead.
 
 ```ms
-export fn main() Int:
+fn main() Unit:
     print("{__FILE__}:{__LINE__}")
-    return 0
 ```
 
 ## Evaluation

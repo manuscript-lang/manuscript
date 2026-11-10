@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
-import expect_equal, expect_some from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+    expect_equal, expect_some from "@std/test/test.ms",
+)
 
 type Marker:
     id: Int
@@ -10,7 +12,6 @@ impl Closeable for Marker:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
         self.path = "closed"
-        return ok(unit)
 
 type Held:
     id: Int
@@ -21,7 +22,6 @@ impl Closeable for Held:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
         self.path = "closed"
-        return ok(unit)
 
 fn log_text(path: String) String!:
     let bytes = try read_file(path).wait()

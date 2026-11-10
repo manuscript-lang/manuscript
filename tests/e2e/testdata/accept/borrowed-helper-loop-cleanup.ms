@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -9,14 +11,12 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn first[T](rows: List[List[T]]) List[T]:
     return rows.get(0)
 
 fn logged(path: String) String:
-    if let bytes = read_file(path).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(path).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -29,7 +29,6 @@ fn break_borrowed(log: String) Unit!:
 
     logged(log.clone()) | try expect_equal("")
     rows.get(0).get(1).id | try expect_equal(2)
-    return ok(unit)
 
 fn return_borrowed(rows: List[List[Door]]) Int:
     for door in first(rows):
@@ -41,7 +40,6 @@ fn use_after_return(log: String) Unit!:
     return_borrowed(rows) | try expect_equal(1)
     logged(log.clone()) | try expect_equal("")
     rows.get(0).get(1).id | try expect_equal(2)
-    return ok(unit)
 
 test "break from a borrowed helper loop leaves resources with their owner":
     let tmp = temporary("ms-borrow-loop-") | try expect_ok
@@ -69,14 +67,11 @@ fn try_borrowed(rows: List[List[Door]]) Unit!:
         door.id | try expect_equal(1)
         try fail()
 
-    return ok(unit)
-
 fn use_after_try(log: String) Unit!:
     let rows = [[Door(1, log.clone()), Door(2, log.clone())]]
     try_borrowed(rows).is_error() | try expect_equal(true)
     logged(log.clone()) | try expect_equal("")
     rows.get(0).get(1).id | try expect_equal(2)
-    return ok(unit)
 
 test "try out of a borrowed helper loop leaves resources with their owner":
     let tmp = temporary("ms-borrow-loop-") | try expect_ok

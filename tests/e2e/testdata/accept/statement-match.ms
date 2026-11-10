@@ -23,8 +23,7 @@ fn first_positive(values: List[Int?]) Int:
         match item:
             none: continue
             value:
-                if value > 0:
-                    return value
+                if value > 0: return value
 
     return -1
 

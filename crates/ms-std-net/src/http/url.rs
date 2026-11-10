@@ -197,7 +197,7 @@ fn split_authority(authority: &str) -> Option<(&str, &str)> {
         Some(i) => (&authority[..i], &authority[i + 1..]),
         None => (authority, ""),
     };
-    if host.contains(':') || !valid_host_text(host) {
+    if host.is_empty() || host.contains(':') || !valid_host_text(host) {
         return None;
     }
     Some((host, port))
@@ -349,6 +349,26 @@ mod tests {
             "",
         ] {
             assert!(parse(bad).is_none(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn rejects_empty_hosts_even_when_authority_contains_a_port() {
+        for bad in [
+            "http://:80/",
+            "https://:443/",
+            "http://:/",
+            "https://:/",
+            "http://:0?query",
+        ] {
+            assert!(parse(bad).is_none(), "{bad}");
+        }
+        let base = parse("http://example.com/base").unwrap();
+        for bad in ["//:80/", "//:/", "http://:80/", "https://:443/"] {
+            assert!(base.resolve(bad).is_none(), "{bad}");
+        }
+        for good in ["http://example.com:/", "https://[::1]:/"] {
+            assert!(parse(good).is_some(), "{good}");
         }
     }
 

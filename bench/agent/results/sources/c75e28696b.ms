@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // ---------------------------------------------------------------- records
 
@@ -125,18 +127,14 @@ fn is_sp(c: String) Bool:
     return c == " " or c == "\t"
 
 fn prefix(s: String, n: Int) String:
-    if n <= 0:
-        return ""
-    if n >= s.length():
-        return s.clone()
+    if n <= 0: return ""
+    if n >= s.length(): return s.clone()
 
     return s.slice_scalars(0, n).get()
 
 fn after(s: String, n: Int) String:
-    if n >= s.length():
-        return ""
-    if n <= 0:
-        return s.clone()
+    if n >= s.length(): return ""
+    if n <= 0: return s.clone()
 
     return s.slice_scalars(n, s.length()).get()
 
@@ -195,14 +193,12 @@ fn tail(xs: List[String], from: Int) List[String]:
     return out
 
 fn dash(s: String) String:
-    if s.length() == 0:
-        return "-"
+    if s.length() == 0: return "-"
 
     return s.clone()
 
 fn pts_text(p: Int) String:
-    if p < 0:
-        return "-"
+    if p < 0: return "-"
 
     return "{p}"
 
@@ -210,48 +206,38 @@ fn labels_text(xs: List[String]) String:
     return xs.join(",")
 
 fn labels_dash(xs: List[String]) String:
-    if xs.length() == 0:
-        return "-"
+    if xs.length() == 0: return "-"
 
     return xs.join(",")
 
 fn labels_sp(xs: List[String]) String:
-    if xs.length() == 0:
-        return "-"
+    if xs.length() == 0: return "-"
 
     return xs.join(", ")
 
 fn cmp_int(a: Int, b: Int) Int:
-    if a < b:
-        return -1
-    if a > b:
-        return 1
+    if a < b: return -1
+    if a > b: return 1
 
     return 0
 
 fn cmp_str(a: String, b: String) Int:
-    if a < b:
-        return -1
-    if a > b:
-        return 1
+    if a < b: return -1
+    if a > b: return 1
 
     return 0
 
 // Integer rule: digits only, no leading zeros unless "0", at most 1000000. -1 when invalid.
 fn rule_int(s: String) Int:
     let n = s.length()
-    if n == 0 or n > 7:
-        return -1
-    if n > 1 and s.starts_with("0"):
-        return -1
+    if n == 0 or n > 7: return -1
+    if n > 1 and s.starts_with("0"): return -1
 
     for c in s.chars():
-        if c < "0" or c > "9":
-            return -1
+        if c < "0" or c > "9": return -1
 
     let v = s.parse_int().get(-1)
-    if v > 1000000:
-        return -1
+    if v > 1000000: return -1
 
     return v
 
@@ -260,47 +246,40 @@ fn parse_id(arg: String) Int:
     var body = arg.clone()
     if arg.starts_with("#"):
         body = after(arg, 1)
-    if body.length() == 0:
-        return 0
+    if body.length() == 0: return 0
 
     var v = 0
 
     for c in body.chars():
         let d = "0123456789".index_of(c)
-        if d.is_none():
-            return 0
+        if d.is_none(): return 0
 
         if v < 1000000000000:
             v = v * 10 + d.get(0)
 
-    if v == 0:
-        return 0
+    if v == 0: return 0
 
     return v
 
 fn days_in(y: Int, m: Int) Int:
     if m == 2:
-        if (y % 4 == 0 and y % 100 != 0) or y % 400 == 0:
-            return 29
+        if (y % 4 == 0 and y % 100 != 0) or y % 400 == 0: return 29
 
         return 28
 
-    if m == 4 or m == 6 or m == 9 or m == 11:
-        return 30
+    if m == 4 or m == 6 or m == 9 or m == 11: return 30
 
     return 31
 
 fn valid_date(s: String) Bool:
-    if s.length() != 10:
-        return false
+    if s.length() != 10: return false
 
     let cs = s.chars()
     var i = 0
 
     while i < 10:
         if i == 4 or i == 7:
-            if cs[i] != "-":
-                return false
+            if cs[i] != "-": return false
         else if cs[i] < "0" or cs[i] > "9":
             return false
 
@@ -309,14 +288,12 @@ fn valid_date(s: String) Bool:
     let y = s.slice_scalars(0, 4).get().parse_int().get(0)
     let mo = s.slice_scalars(5, 7).get().parse_int().get(0)
     let d = s.slice_scalars(8, 10).get().parse_int().get(0)
-    if y < 1 or mo < 1 or mo > 12:
-        return false
+    if y < 1 or mo < 1 or mo > 12: return false
 
     return d >= 1 and d <= days_in(y, mo)
 
 fn valid_name(s: String, dash_ok: Bool) Bool:
-    if s.length() == 0:
-        return false
+    if s.length() == 0: return false
 
     var i = 0
 
@@ -327,8 +304,7 @@ fn valid_name(s: String, dash_ok: Bool) Bool:
         let dsh = dash_ok and c == "-"
 
         if i == 0:
-            if not lower_c:
-                return false
+            if not lower_c: return false
         else if not (lower_c or digit_c or under or dsh):
             return false
 
@@ -340,36 +316,27 @@ fn valid_state(s: String) Bool:
     return valid_name(s, false)
 
 fn valid_label(s: String) Bool:
-    if s.length() == 0:
-        return false
+    if s.length() == 0: return false
 
     for c in s.chars():
         let lower_c = c >= "a" and c <= "z"
         let digit_c = c >= "0" and c <= "9"
-        if not (lower_c or digit_c or c == "_" or c == "-"):
-            return false
+        if not (lower_c or digit_c or c == "_" or c == "-"): return false
 
     return true
 
 fn prio_rank(s: String) Int:
-    if s == "low":
-        return 0
-    if s == "medium":
-        return 1
-    if s == "high":
-        return 2
-    if s == "critical":
-        return 3
+    if s == "low": return 0
+    if s == "medium": return 1
+    if s == "high": return 2
+    if s == "critical": return 3
 
     return -1
 
 fn prio_name(r: Int) String:
-    if r == 0:
-        return "low"
-    if r == 2:
-        return "high"
-    if r == 3:
-        return "critical"
+    if r == 0: return "low"
+    if r == 2: return "high"
+    if r == 3: return "critical"
 
     return "medium"
 
@@ -397,8 +364,7 @@ fn parse_labels(val: String) Result[List[String], String]:
 
     for part in val.split(","):
         let l = part.lower()
-        if not valid_label(l):
-            return error("bad label '{l}'")
+        if not valid_label(l): return error("bad label '{l}'")
 
         add_label(var out, l)
 
@@ -468,8 +434,7 @@ fn tokenize(s: String) Result[List[String], String]:
                     cur += d
                     i += 1
 
-            if not closed:
-                return error("unterminated quote")
+            if not closed: return error("unterminated quote")
         else:
             in_tok = true
             cur += c
@@ -482,21 +447,17 @@ fn tokenize(s: String) Result[List[String], String]:
 // Applies one field=value token to an update. Returns the error text, or "".
 fn token_upd(var up: Upd, tok: String) String:
     let eq = tok.index_of("=")
-    if eq.is_none():
-        return "expected field=value, got '{tok}'"
+    if eq.is_none(): return "expected field=value, got '{tok}'"
 
     let k = eq.get(0)
-    if k == 0:
-        return "expected field=value, got '{tok}'"
+    if k == 0: return "expected field=value, got '{tok}'"
 
     let field = prefix(tok, k)
     let val = after(tok, k + 1)
-    if field == "state":
-        return "use move to change state"
+    if field == "state": return "use move to change state"
 
     if field == "title":
-        if val.trim().length() == 0:
-            return "empty title"
+        if val.trim().length() == 0: return "empty title"
 
         up.has_title = true
         up.title = val.clone()
@@ -504,8 +465,7 @@ fn token_upd(var up: Upd, tok: String) String:
 
     if field == "priority":
         let r = prio_rank(val)
-        if r < 0:
-            return "bad priority '{val}'"
+        if r < 0: return "bad priority '{val}'"
 
         up.has_priority = true
         up.priority = r
@@ -517,8 +477,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.assignee = ""
             return ""
 
-        if val.trim().length() == 0:
-            return "empty assignee"
+        if val.trim().length() == 0: return "empty assignee"
 
         up.has_assignee = true
         up.assignee = val.clone()
@@ -530,8 +489,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.reporter = ""
             return ""
 
-        if val.trim().length() == 0:
-            return "empty reporter"
+        if val.trim().length() == 0: return "empty reporter"
 
         up.has_reporter = true
         up.reporter = val.clone()
@@ -544,8 +502,7 @@ fn token_upd(var up: Upd, tok: String) String:
             return ""
 
         let p = rule_int(val)
-        if p < 0:
-            return "bad points '{val}'"
+        if p < 0: return "bad points '{val}'"
 
         up.has_points = true
         up.points = p
@@ -557,8 +514,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.due = ""
             return ""
 
-        if not valid_date(val):
-            return "bad date '{val}'"
+        if not valid_date(val): return "bad date '{val}'"
 
         up.has_due = true
         up.due = val.clone()
@@ -571,8 +527,7 @@ fn token_upd(var up: Upd, tok: String) String:
             return ""
 
         let pr = parse_labels(val)
-        if pr.is_error():
-            return pr.err()
+        if pr.is_error(): return pr.err()
 
         up.has_labels = true
         up.labels = pr.get()
@@ -670,8 +625,7 @@ fn tokenize_filter(s: String) Result[List[FTok], String]:
                             w += cs[i]
                             i += 1
 
-                    if not closed:
-                        return error("query: unterminated quote")
+                    if not closed: return error("query: unterminated quote")
                 else:
                     w += cs[i]
                     i += 1
@@ -706,10 +660,8 @@ fn op_ok(field: String, op: String) Bool:
         or field == "label"
     ):
         return eqop or op == "~"
-    if field == "text":
-        return op == "~"
-    if field == "state":
-        return eqop
+    if field == "text": return op == "~"
+    if field == "state": return eqop
 
     return op == ":"
 
@@ -747,8 +699,7 @@ fn check_values(app: App, field: String, op: String, alts: List[String]) String:
                 v
             )
 
-        if bad:
-            return "query: bad value '{v}' for field '{field}'"
+        if bad: return "query: bad value '{v}' for field '{field}'"
 
     return ""
 
@@ -758,23 +709,20 @@ fn make_term(
     op: String,
     alts: List[String]
 ) Result[Node, String]:
-    if not known_field(field):
-        return error("query: unknown field '{field}'")
+    if not known_field(field): return error("query: unknown field '{field}'")
     if not op_ok(field, op):
         return error("query: bad operator '{op}' for field '{field}'")
 
     if field == "view":
         let name = alts.join("|")
-        if app.find_view(name) < 0:
-            return error("query: unknown view '{name}'")
+        if app.find_view(name) < 0: return error("query: unknown view '{name}'")
 
         var one = List[String]()
         one.append(name.clone())
         return ok(Node(kind: 0, kids: List[Node](), field: field, op: op, alts: one))
 
     let msg = check_values(app, field, op, alts)
-    if msg.length() > 0:
-        return error(msg)
+    if msg.length() > 0: return error(msg)
 
     return ok(Node(kind: 0, kids: List[Node](), field: field, op: op, alts: alts))
 
@@ -784,8 +732,7 @@ fn parse_term(app: App, w: String) Result[Node, String]:
     var i = 0
     while i < n and ((cs[i] >= "a" and cs[i] <= "z") or cs[i] == "_"):
         i += 1
-    if i == 0:
-        return error("query: unexpected token '{w}'")
+    if i == 0: return error("query: unexpected token '{w}'")
 
     let field = prefix(w, i)
     let r = after(w, i)
@@ -806,43 +753,36 @@ fn parse_term(app: App, w: String) Result[Node, String]:
     else if r.starts_with("~"):
         op = "~"
 
-    if op.length() == 0:
-        return error("query: unexpected token '{w}'")
+    if op.length() == 0: return error("query: unexpected token '{w}'")
 
     let alts = parse_alts(after(r, op.length()))
     return make_term(app, field, op, alts)
 
 fn is_word(ps: FParser, w: String) Bool:
-    if ps.pos >= ps.toks.length():
-        return false
+    if ps.pos >= ps.toks.length(): return false
 
     return ps.toks[ps.pos].kind == 0 and ps.toks[ps.pos].text == w
 
 fn starts_operand(ps: FParser) Bool:
-    if ps.pos >= ps.toks.length():
-        return false
+    if ps.pos >= ps.toks.length(): return false
 
     let t = ps.toks[ps.pos]
-    if t.kind == 1:
-        return true
+    if t.kind == 1: return true
 
     return t.kind == 0 and t.text != "AND" and t.text != "OR"
 
 fn p_primary(app: App, var ps: FParser) Result[Node, String]:
-    if ps.pos >= ps.toks.length():
-        return error("query: unexpected end of query")
+    if ps.pos >= ps.toks.length(): return error("query: unexpected end of query")
 
     let kind = ps.toks[ps.pos].kind
     let text = ps.toks[ps.pos].text.clone()
-    if kind == 2:
-        return error("query: unexpected token ')'")
+    if kind == 2: return error("query: unexpected token ')'")
 
     if kind == 1:
         ps.pos += 1
 
         let inner = try p_or(app, var ps)
-        if ps.pos >= ps.toks.length():
-            return error("query: unexpected end of query")
+        if ps.pos >= ps.toks.length(): return error("query: unexpected end of query")
 
         if ps.toks[ps.pos].kind != 2:
             let bad = ps.toks[ps.pos].text.clone()
@@ -858,8 +798,7 @@ fn p_primary(app: App, var ps: FParser) Result[Node, String]:
     return parse_term(app, text)
 
 fn p_unary(app: App, var ps: FParser) Result[Node, String]:
-    if ps.pos >= ps.toks.length():
-        return error("query: unexpected end of query")
+    if ps.pos >= ps.toks.length(): return error("query: unexpected end of query")
 
     if is_word(ps, "NOT"):
         ps.pos += 1
@@ -903,8 +842,7 @@ fn p_or(app: App, var ps: FParser) Result[Node, String]:
 // Parses a plain filter (no sort/limit). Empty text matches everything.
 fn parse_filter(app: App, text: String) Result[Node, String]:
     let tr = tokenize_filter(text)
-    if tr.is_error():
-        return error(tr.err())
+    if tr.is_error(): return error(tr.err())
 
     let toks = tr.get()
     if toks.length() == 0:
@@ -948,8 +886,7 @@ fn split_query(raw: String) Result[QParts, String]:
             lim = arg.clone()
             filt = prefix(rest, m + 1).trim_end()
 
-    if has_limit and rule_int(lim) < 0:
-        return error("bad limit '{lim}'")
+    if has_limit and rule_int(lim) < 0: return error("bad limit '{lim}'")
 
     let fc = filt.chars()
     let fnn = fc.length()
@@ -1002,8 +939,7 @@ fn parse_sort(text: String) Result[List[SortKey], String]:
                 desc = true
                 name = after(piece, 1)
 
-            if not sort_field_ok(name):
-                return error("bad sort field '{name}'")
+            if not sort_field_ok(name): return error("bad sort field '{name}'")
 
             keys.append(SortKey(field: name.clone(), desc: desc))
 
@@ -1037,77 +973,56 @@ fn view_filter(app: App, name: String) Node:
 
 fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
     let it = app.issues[idx]
-    if f == "id":
-        return it.id == rule_int(v)
-    if f == "created":
-        return it.created == rule_int(v)
-    if f == "updated":
-        return it.updated == rule_int(v)
+    if f == "id": return it.id == rule_int(v)
+    if f == "created": return it.created == rule_int(v)
+    if f == "updated": return it.updated == rule_int(v)
 
     if f == "points":
-        if v == "none":
-            return it.points < 0
+        if v == "none": return it.points < 0
 
         return it.points == rule_int(v)
 
-    if f == "title":
-        return it.title.lower() == v.lower()
+    if f == "title": return it.title.lower() == v.lower()
 
     if f == "assignee":
-        if v == "none":
-            return it.assignee.length() == 0
+        if v == "none": return it.assignee.length() == 0
 
         return it.assignee.length() > 0 and it.assignee.lower() == v.lower()
 
     if f == "reporter":
-        if v == "none":
-            return it.reporter.length() == 0
+        if v == "none": return it.reporter.length() == 0
 
         return it.reporter.length() > 0 and it.reporter.lower() == v.lower()
 
-    if f == "state":
-        return it.state == v
-    if f == "priority":
-        return it.priority == prio_rank(v)
+    if f == "state": return it.state == v
+    if f == "priority": return it.priority == prio_rank(v)
 
     if f == "due":
-        if v == "none":
-            return it.due.length() == 0
+        if v == "none": return it.due.length() == 0
 
         return it.due.length() > 0 and it.due == v
 
     if f == "labels" or f == "label":
-        if v == "none":
-            return it.labels.length() == 0
+        if v == "none": return it.labels.length() == 0
 
         return it.labels.contains(v.lower())
 
     if f == "is":
         let fin = app.is_final(it.state)
-        if v == "open":
-            return not fin
-        if v == "final":
-            return fin
-        if v == "overdue":
-            return not fin and it.due.length() > 0 and it.due < app.today
-        if v == "unassigned":
-            return it.assignee.length() == 0
+        if v == "open": return not fin
+        if v == "final": return fin
+        if v == "overdue": return not fin and it.due.length() > 0 and it.due < app.today
+        if v == "unassigned": return it.assignee.length() == 0
 
         return false
 
     if f == "has":
-        if v == "assignee":
-            return it.assignee.length() > 0
-        if v == "due":
-            return it.due.length() > 0
-        if v == "points":
-            return it.points >= 0
-        if v == "labels":
-            return it.labels.length() > 0
-        if v == "comments":
-            return it.comments.length() > 0
-        if v == "reporter":
-            return it.reporter.length() > 0
+        if v == "assignee": return it.assignee.length() > 0
+        if v == "due": return it.due.length() > 0
+        if v == "points": return it.points >= 0
+        if v == "labels": return it.labels.length() > 0
+        if v == "comments": return it.comments.length() > 0
+        if v == "reporter": return it.reporter.length() > 0
 
         return false
 
@@ -1116,26 +1031,22 @@ fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
 fn sub_match(app: App, idx: Int, f: String, v: String) Bool:
     let it = app.issues[idx]
     let lv = v.lower()
-    if f == "title":
-        return it.title.lower().contains(lv)
+    if f == "title": return it.title.lower().contains(lv)
     if f == "assignee":
         return it.assignee.length() > 0 and it.assignee.lower().contains(lv)
     if f == "reporter":
         return it.reporter.length() > 0 and it.reporter.lower().contains(lv)
 
     if f == "text":
-        if it.title.lower().contains(lv):
-            return true
+        if it.title.lower().contains(lv): return true
 
         for c in it.comments:
-            if c.text.lower().contains(lv):
-                return true
+            if c.text.lower().contains(lv): return true
         return false
 
     if f == "labels" or f == "label":
         for l in it.labels:
-            if l.contains(lv):
-                return true
+            if l.contains(lv): return true
         return false
 
     return false
@@ -1151,33 +1062,27 @@ fn ord_match(app: App, idx: Int, f: String, op: String, v: String) Bool:
     else if f == "updated":
         c = cmp_int(it.updated, rule_int(v))
     else if f == "points":
-        if it.points < 0:
-            return false
+        if it.points < 0: return false
 
         c = cmp_int(it.points, rule_int(v))
     else if f == "priority":
         c = cmp_int(it.priority, prio_rank(v))
     else if f == "due":
-        if it.due.length() == 0:
-            return false
+        if it.due.length() == 0: return false
 
         c = cmp_str(it.due, v)
     else:
         return false
 
-    if op == "<":
-        return c < 0
-    if op == "<=":
-        return c <= 0
-    if op == ">":
-        return c > 0
+    if op == "<": return c < 0
+    if op == "<=": return c <= 0
+    if op == ">": return c > 0
 
     return c >= 0
 
 fn eval_term(app: App, n: Node, idx: Int) Bool:
     let f = n.field.clone()
-    if f == "view":
-        return eval(app, view_filter(app, n.alts[0]), idx)
+    if f == "view": return eval(app, view_filter(app, n.alts[0]), idx)
 
     let op = n.op.clone()
     if op == "<" or op == "<=" or op == ">" or op == ">=":
@@ -1193,26 +1098,22 @@ fn eval_term(app: App, n: Node, idx: Int) Bool:
             if eq_match(app, idx, f, v):
                 pos = true
 
-    if op == "!=":
-        return not pos
+    if op == "!=": return not pos
 
     return pos
 
 fn eval(app: App, n: Node, idx: Int) Bool:
     if n.kind == 1:
         for k in n.kids:
-            if not eval(app, k, idx):
-                return false
+            if not eval(app, k, idx): return false
         return true
 
     if n.kind == 2:
         for k in n.kids:
-            if eval(app, k, idx):
-                return true
+            if eval(app, k, idx): return true
         return false
 
-    if n.kind == 3:
-        return not eval(app, n.kids[0], idx)
+    if n.kind == 3: return not eval(app, n.kids[0], idx)
 
     return eval_term(app, n, idx)
 
@@ -1228,46 +1129,30 @@ fn matching(app: App, node: Node) List[Int]:
     return out
 
 fn cmp_absent_int(x: Int, y: Int) Int:
-    if x < 0 and y < 0:
-        return 0
-    if x < 0:
-        return 1
-    if y < 0:
-        return -1
+    if x < 0 and y < 0: return 0
+    if x < 0: return 1
+    if y < 0: return -1
 
     return cmp_int(x, y)
 
 fn cmp_absent_str(x: String, y: String) Int:
-    if x.length() == 0 and y.length() == 0:
-        return 0
-    if x.length() == 0:
-        return 1
-    if y.length() == 0:
-        return -1
+    if x.length() == 0 and y.length() == 0: return 0
+    if x.length() == 0: return 1
+    if y.length() == 0: return -1
 
     return cmp_str(x.lower(), y.lower())
 
 fn cmp_field(app: App, a: Issue, b: Issue, f: String) Int:
-    if f == "id":
-        return cmp_int(a.id, b.id)
-    if f == "created":
-        return cmp_int(a.created, b.created)
-    if f == "updated":
-        return cmp_int(a.updated, b.updated)
-    if f == "priority":
-        return cmp_int(a.priority, b.priority)
-    if f == "points":
-        return cmp_absent_int(a.points, b.points)
-    if f == "state":
-        return cmp_int(app.state_pos(a.state), app.state_pos(b.state))
-    if f == "title":
-        return cmp_str(a.title.lower(), b.title.lower())
-    if f == "assignee":
-        return cmp_absent_str(a.assignee, b.assignee)
-    if f == "reporter":
-        return cmp_absent_str(a.reporter, b.reporter)
-    if f == "due":
-        return cmp_absent_str(a.due, b.due)
+    if f == "id": return cmp_int(a.id, b.id)
+    if f == "created": return cmp_int(a.created, b.created)
+    if f == "updated": return cmp_int(a.updated, b.updated)
+    if f == "priority": return cmp_int(a.priority, b.priority)
+    if f == "points": return cmp_absent_int(a.points, b.points)
+    if f == "state": return cmp_int(app.state_pos(a.state), app.state_pos(b.state))
+    if f == "title": return cmp_str(a.title.lower(), b.title.lower())
+    if f == "assignee": return cmp_absent_str(a.assignee, b.assignee)
+    if f == "reporter": return cmp_absent_str(a.reporter, b.reporter)
+    if f == "due": return cmp_absent_str(a.due, b.due)
 
     return 0
 
@@ -1276,8 +1161,7 @@ fn cmp_issue(app: App, a: Issue, b: Issue, keys: List[SortKey]) Int:
         let c = cmp_field(app, a, b, k.field)
 
         if c != 0:
-            if k.desc:
-                return -c
+            if k.desc: return -c
 
             return c
 
@@ -1304,22 +1188,18 @@ fn issue_line(it: Issue) String:
     return "#{it.id} | {it.state} | {prio_name(it.priority)} | {dash(it.assignee)} | {pts_text(it.points)} | {dash(it.due)} | {labels_dash(it.labels)} | {it.title}"
 
 fn reaches(app: App, from: String, target: String, depth: Int) Bool:
-    if depth > 64:
-        return false
+    if depth > 64: return false
 
     let vi = app.find_view(from)
-    if vi < 0:
-        return false
+    if vi < 0: return false
 
     let node = view_filter(app, from)
     var refs = List[String]()
     collect_views(node, var refs)
 
     for r in refs:
-        if r == target:
-            return true
-        if reaches(app, r, target, depth + 1):
-            return true
+        if r == target: return true
+        if reaches(app, r, target, depth + 1): return true
 
     return false
 
@@ -1332,12 +1212,9 @@ fn add_state(var wf: WF, name: String) Unit:
 fn wf_line(var wf: WF, l: String) String:
     if l.starts_with("initial:"):
         let rest = after(l, 8).trim()
-        if split_ws(rest).length() > 1:
-            return "workflow: bad line '{l}'"
-        if not valid_state(rest):
-            return "workflow: bad state name '{rest}'"
-        if wf.has_initial:
-            return "workflow: initial state defined twice"
+        if split_ws(rest).length() > 1: return "workflow: bad line '{l}'"
+        if not valid_state(rest): return "workflow: bad state name '{rest}'"
+        if wf.has_initial: return "workflow: initial state defined twice"
 
         wf.has_initial = true
         wf.initial = rest.clone()
@@ -1349,8 +1226,7 @@ fn wf_line(var wf: WF, l: String) String:
 
         for part in rest.split(","):
             let nm = part.trim()
-            if not valid_state(nm):
-                return "workflow: bad state name '{nm}'"
+            if not valid_state(nm): return "workflow: bad state name '{nm}'"
 
             add_state(var wf, nm)
             if not wf.finals.contains(nm):
@@ -1359,17 +1235,14 @@ fn wf_line(var wf: WF, l: String) String:
         return ""
 
     let arrow = l.index_of("->")
-    if arrow.is_none():
-        return "workflow: bad line '{l}'"
+    if arrow.is_none(): return "workflow: bad line '{l}'"
 
     let k = arrow.get(0)
     let left = prefix(l, k).trim()
     let right = after(l, k + 2)
     let lw = split_ws(left)
-    if lw.length() != 1:
-        return "workflow: bad line '{l}'"
-    if not valid_state(lw[0]):
-        return "workflow: bad state name '{lw[0]}'"
+    if lw.length() != 1: return "workflow: bad line '{l}'"
+    if not valid_state(lw[0]): return "workflow: bad state name '{lw[0]}'"
 
     let src = lw[0].clone()
     add_state(var wf, src)
@@ -1387,12 +1260,10 @@ fn wf_line(var wf: WF, l: String) String:
         else:
             return "workflow: bad line '{l}'"
 
-        if not valid_state(dst):
-            return "workflow: bad state name '{dst}'"
+        if not valid_state(dst): return "workflow: bad state name '{dst}'"
 
         for g in guards:
-            if not is_guard(g):
-                return "workflow: bad guard field '{g}'"
+            if not is_guard(g): return "workflow: bad guard field '{g}'"
         add_state(var wf, dst)
         wf.edges.append(Edge(src: src.clone(), dst: dst.clone(), guards: guards))
         wf.ntrans += 1
@@ -1407,17 +1278,14 @@ fn build_workflow(lines: List[String], start: Int, stop: Int) Result[WF, String]
     while j < stop:
         let l = lines[j].trim()
         j += 1
-        if l.length() == 0 or l.starts_with("#"):
-            continue
+        if l.length() == 0 or l.starts_with("#"): continue
 
         let e = wf_line(var wf, l)
         if err.length() == 0 and e.length() > 0:
             err = e
 
-    if err.length() > 0:
-        return error(err)
-    if not wf.has_initial:
-        return error("workflow: initial state missing")
+    if err.length() > 0: return error(err)
+    if not wf.has_initial: return error("workflow: initial state missing")
 
     for e in wf.edges:
         if wf.finals.contains(e.src):
@@ -1431,8 +1299,7 @@ impl App:
         var i = 0
 
         while i < self.issues.length():
-            if self.issues[i].id == id:
-                return i
+            if self.issues[i].id == id: return i
 
             i += 1
 
@@ -1454,8 +1321,7 @@ impl App:
         var i = 0
 
         while i < self.wf.states.length():
-            if self.wf.states[i] == name:
-                return i
+            if self.wf.states[i] == name: return i
 
             i += 1
 
@@ -1468,8 +1334,7 @@ impl App:
         var i = 0
 
         while i < self.views.length():
-            if self.views[i].name == name:
-                return i
+            if self.views[i].name == name: return i
 
             i += 1
 
@@ -1477,16 +1342,11 @@ impl App:
 
     fn unmet(idx: Int, g: String) Bool:
         let it = self.issues[idx]
-        if g == "assignee":
-            return it.assignee.length() == 0
-        if g == "points":
-            return it.points < 0
-        if g == "due":
-            return it.due.length() == 0
-        if g == "labels":
-            return it.labels.length() == 0
-        if g == "reporter":
-            return it.reporter.length() == 0
+        if g == "assignee": return it.assignee.length() == 0
+        if g == "points": return it.points < 0
+        if g == "due": return it.due.length() == 0
+        if g == "labels": return it.labels.length() == 0
+        if g == "reporter": return it.reporter.length() == 0
 
         return false
 
@@ -1541,8 +1401,7 @@ impl App:
             details.append("reporter: {dash(cur.reporter)} -> {dash(up.reporter)}")
             nr = up.reporter.clone()
 
-        if details.length() == 0:
-            return false
+        if details.length() == 0: return false
 
         self.clock += 1
 
@@ -1845,8 +1704,7 @@ impl App:
             return
 
         let idx = self.resolve(toks[0])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let _ok = self.do_edit(idx, tail(toks, 1), false)
 
@@ -1864,8 +1722,7 @@ impl App:
             return
 
         let idx = self.resolve(toks[0])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let tok = "assignee={toks[1]}"
         var one = List[String]()
@@ -1887,8 +1744,7 @@ impl App:
             return
 
         let idx = self.resolve(toks[0])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let _ok = self.do_label(idx, tail(toks, 1), false)
 
@@ -1898,8 +1754,7 @@ impl App:
             return
 
         let idx = self.resolve(args[1])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let comment = rest_after(line, 3)
         let _ok = self.do_move(idx, args[2].clone(), comment, false)
@@ -1910,8 +1765,7 @@ impl App:
             return
 
         let idx = self.resolve(args[1])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let text = rest_after(line, 2)
         self.clock += 1
@@ -1931,8 +1785,7 @@ impl App:
             return
 
         let idx = self.resolve(args[1])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let id = self.issues[idx].id
         self.clock += 1
@@ -1946,8 +1799,7 @@ impl App:
             return
 
         let idx = self.resolve(args[1])
-        if idx < 0:
-            return
+        if idx < 0: return
 
         let it = self.issues[idx]
         print("#{it.id} {it.title}")
@@ -2302,8 +2154,7 @@ impl App:
                 return
 
             let idx = self.resolve(args[2])
-            if idx < 0:
-                return
+            if idx < 0: return
 
             self.report_timeline(idx)
         else:
@@ -2359,8 +2210,7 @@ impl App:
         var any_open = false
 
         for it in self.issues:
-            if self.is_final(it.state):
-                continue
+            if self.is_final(it.state): continue
 
             any_open = true
 
@@ -2390,8 +2240,8 @@ impl App:
                     )
                     g = groups.length() - 1
 
-                groups[g].count = groups[g].count + 1
-                groups[g].points = groups[g].points + p
+                groups[g].count += 1
+                groups[g].points += p
 
         if not any_open:
             print("(no open issues)")
@@ -2433,7 +2283,7 @@ impl App:
                 if p < 0:
                     lcs.append(LC(name: l.clone(), count: 1))
                 else:
-                    lcs[p].count = lcs[p].count + 1
+                    lcs[p].count += 1
 
         if lcs.length() == 0:
             print("(no labels)")
@@ -2469,8 +2319,7 @@ impl App:
     var fn exec(line: String, lines: List[String], next: Int) Int:
         let args = split_ws(line)
         let cmd = args[0].clone()
-        if cmd == "workflow":
-            return self.cmd_workflow(lines, next)
+        if cmd == "workflow": return self.cmd_workflow(lines, next)
 
         if cmd == "actor":
             self.cmd_actor(args)
@@ -2510,16 +2359,13 @@ impl App:
 // ---------------------------------------------------------------- report comparators
 
 fn wg_cmp(a: WG, b: WG) Int:
-    if a.points != b.points:
-        return cmp_int(b.points, a.points)
-    if a.count != b.count:
-        return cmp_int(b.count, a.count)
+    if a.points != b.points: return cmp_int(b.points, a.points)
+    if a.count != b.count: return cmp_int(b.count, a.count)
 
     return cmp_str(a.key, b.key)
 
 fn lc_cmp(a: LC, b: LC) Int:
-    if a.count != b.count:
-        return cmp_int(b.count, a.count)
+    if a.count != b.count: return cmp_int(b.count, a.count)
 
     return cmp_str(a.name, b.name)
 
@@ -2567,8 +2413,7 @@ export fn main() Int:
         i += 1
 
         let st = line.trim_start()
-        if st.length() == 0 or st.starts_with("#"):
-            continue
+        if st.length() == 0 or st.starts_with("#"): continue
 
         print("> {line}")
         i = app.exec(line, lines, i)

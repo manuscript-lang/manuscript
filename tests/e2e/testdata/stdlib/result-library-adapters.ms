@@ -1,6 +1,8 @@
-import Bytes from "@std/bytes.ms"
-import Duration, parse_duration from "@std/time.ms"
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    Duration, parse_duration from "@std/time.ms",
+    expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+)
 
 enum InputFailure:
     Binary(cause: Error)
@@ -22,8 +24,7 @@ fn read_prefixed(text: String) String!InputFailure:
 
 fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
     let position = values.binary_search(target)
-    if not position.found:
-        return error(InputFailure.MissingKey(target))
+    if not position.found: return error(InputFailure.MissingKey(target))
 
     return ok(position.index)
 

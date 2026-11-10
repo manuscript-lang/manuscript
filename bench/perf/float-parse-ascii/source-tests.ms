@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import parse_float from "@std/math/math.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    parse_float from "@std/math/math.ms",
+)
 
 test "float parsing keeps ASCII signs decimals and exponents":
     for text in ["1.25", "+1.25", "125e-2", "0.125E+1"]:

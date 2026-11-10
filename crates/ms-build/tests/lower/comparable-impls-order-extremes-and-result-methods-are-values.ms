@@ -11,10 +11,9 @@ impl Comparable for Version:
     fn compare(other: Version) Int:
         return self.major - other.major
 
-export fn main() Int:
+fn main() Unit:
     let a = Version(1)
     let b = Version(2)
     let c: Result[Int, Error] = ok(1)
     let e = c.is_ok
     let _r = stdout().write("{max(a, b).major} {e}\n")
-    return 0

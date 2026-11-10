@@ -1,9 +1,11 @@
-import expect_equal, expect_false, expect_ok from "@std/test/test.ms"
-import first_view, first_method, first_generic, first_resource from "./first.ms"
-import second_view, second_method, second_generic, second_resource from "./second.ms"
-import Item, Resource from "./domain.ms"
-import read_view from "./contracts.ms"
-import read_file, temporary from "@std/os/fs.ms"
+import (
+    expect_equal, expect_false, expect_ok from "@std/test/test.ms",
+    first_view, first_method, first_generic, first_resource from "./first.ms",
+    second_view, second_method, second_generic, second_resource from "./second.ms",
+    Item, Resource from "./domain.ms",
+    read_view from "./contracts.ms",
+    read_file, temporary from "@std/os/fs.ms",
+)
 
 fn close_first(resource: Resource) Unit:
     let _held = first_resource(resource)

@@ -41,6 +41,58 @@ fn imports_are_loaded_before_their_importers() {
 }
 
 #[test]
+fn embedded_and_imported_inputs_keep_first_seen_order_without_duplicates() {
+    let syms = ms_syntax::Names::global();
+    let dir = crate::common::TempDir::new();
+    let manifest = crate::common::write(
+        dir.path(),
+        "ms.toml",
+        include_str!("fixtures/input_order/ms.toml"),
+    );
+    let main = crate::common::write(
+        dir.path(),
+        "main.ms",
+        include_str!("fixtures/input_order/main.ms"),
+    );
+    let dep = crate::common::write(
+        dir.path(),
+        "assets/dep.ms",
+        include_str!("fixtures/input_order/assets/dep.ms"),
+    );
+    let generated = crate::common::join(dir.path(), ".ms-embed/assets.ms");
+    // The embedded project root includes the manifest, entry and imported file too.
+    // Each must keep the position of its first encounter across all input sources.
+    let mut expected = vec![manifest.clone(), main.clone(), generated, dir.path().into()];
+    let native = Path::new(dir.path());
+    // Embedded entries keep native PathBuf spellings; imported modules use canonical `/`
+    // paths. Preserve the existing exact-string deduplication contract on every host.
+    for input in [
+        native.join("assets").to_string_lossy().into_owned(),
+        native
+            .join("assets")
+            .join("dep.ms")
+            .to_string_lossy()
+            .into_owned(),
+        native.join("main.ms").to_string_lossy().into_owned(),
+        native.join("ms.toml").to_string_lossy().into_owned(),
+        dep,
+    ] {
+        if !expected.contains(&input) {
+            expected.push(input);
+        }
+    }
+    for entry in [&manifest, &main] {
+        let graph = load_file(syms, entry, LoadOptions::default());
+        assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
+        assert_eq!(graph.modules.len(), 3);
+        assert_eq!(graph.inputs, expected);
+        let checked = check_graph(syms, graph, CheckRequest { entry: true });
+        assert!(checked.success(), "{:?}", checked.diagnostics);
+        assert_eq!(checked.inputs, expected);
+    }
+}
+
+#[test]
 fn cycles_are_reported_at_the_closing_import() {
     let syms = ms_syntax::Names::global();
     let dir = scratch("cycle");
@@ -147,7 +199,7 @@ fn entry_diagnostics_name_the_required_signature() {
     let issue = &checked.diagnostics[0];
     assert_eq!(
         issue.message,
-        "entry must export fn main() Int; main returns String, so declare its result type Int and return an exit status, e.g. 'return 0'"
+        "entry must declare fn main; main returns String, so return Unit, Unit! (an error prints and exits 1), Int?!, or an Int exit status"
     );
     // Without the entry requirement the same file checks.
     let fine = check_graph(

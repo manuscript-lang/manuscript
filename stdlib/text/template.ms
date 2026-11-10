@@ -1,9 +1,11 @@
-import Data from "@std/core.ms"
-import Bytes from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import WriteStream from "@std/io/io.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import escape from "@std/data/html.ms"
+import (
+    Data from "@std/core.ms",
+    Bytes from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    WriteStream from "@std/io/io.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    escape from "@std/data/html.ms",
+)
 
 /*
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
@@ -707,7 +709,6 @@ impl Run:
         )
 
         self.out.append(text)
-        return ok(unit)
 
     fn lookup(parts: List[String]) JsonValue?:
         var current: JsonValue? = none
@@ -784,7 +785,6 @@ impl Run:
     var fn nodes(items: List[TemplateNode], depth: Int) Unit!Error:
         for node in items:
             try self.node(node, depth)
-        return ok(unit)
 
     var fn node(node: TemplateNode, depth: Int) Unit!Error:
         match node:
@@ -855,8 +855,7 @@ impl Run:
 
 fn member(value: JsonValue, key: String) JsonValue?:
     if let found = value.get(key): return found
-    if let index = key.parse_int():
-        return value.at(index).clone()
+    if let index = key.parse_int(): return value.at(index).clone()
 
     return none
 
@@ -1057,8 +1056,7 @@ fn number_compare(a: ExactNumber, b: ExactNumber) Int:
 
     let az = a.first == a.end
     let bz = b.first == b.end
-    if az or bz:
-        return if az == bz: 0 else if az: -1 else: 1
+    if az or bz: return if az == bz: 0 else if az: -1 else: 1
 
     var order = 0
 

@@ -1,5 +1,7 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import panic from "@std/core.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    panic from "@std/core.ms",
+)
 
 type Counter:
     calls: Int
@@ -17,8 +19,7 @@ fn tick(var counter: Counter) Int:
 fn widen(cause: Error) Wrapped: Wrapped(cause.message)
 
 fn parse(ok_value: Bool) Int!Error:
-    if ok_value:
-        return ok(5)
+    if ok_value: return ok(5)
 
     return error(Error("bad"))
 

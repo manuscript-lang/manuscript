@@ -23,7 +23,7 @@ export fn welcome(customer: Customer) String:
 
 ## Blocks and layout
 
-Indentation defines blocks: exactly four extra spaces per level. Tabs and semicolons are rejected. Blank and comment-only lines do not affect blocks.
+Indentation defines blocks: one level is four spaces or one tab; a tab may not follow spaces in indentation. Semicolons and tabs between tokens are rejected. Blank and comment-only lines do not affect blocks.
 
 Calls take positional arguments, optional labels, or both; an unlabeled argument is always positional. See [declarations and calls](../functions/declarations-and-calls.md).
 
@@ -42,6 +42,31 @@ Comments start with `//` and run to the end of the line (a trailing comment foll
 // A local binding can infer its type from the value.
 let count = 3
 ```
+
+## Idiomatic Manuscript
+
+Manuscript is written tersely: one idea per line, the standard form for each task, and nothing longer.
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+fn check(rows: List[String], limit: Int) String:
+    if rows.is_empty(): return "empty"
+    if rows.any(fn r: r.length() > limit): return "too long"
+    let blanks = rows.count(fn r: r.is_empty())
+    let kind = if blanks == 0: "dense" else: "sparse"
+    for i in 0..rows.length():
+        if rows[i] == "stop": return "stopped at {i}"
+    print("{kind} {blanks}")
+    return kind
+```
+
+- Output is `print(x)`: a line, no import, never fails. `stdout().write` is for output whose failure the program handles.
+- A guard is one line: `if c: return x`, `if c: continue`. Nothing follows a `return` in an `else`.
+- Read with `xs[i]`; count with `for i in 0..n:`; walk with `for x in xs:`; use `for _i in 0..n:` when the counter is unused.
+- Collections are built and tested with `any`, `all`, `count`, `sum`, `map`, `filter`, `fold`, `[0].repeated(n)`, `a.extend(b)` and `(0..n)`, not loops.
+- Conditions are `x`, `not x`, `xs.is_empty()`, `a.max(b)`.
+- A value chosen by a condition is `let x = if c: a else: b`.
+- An absent value is `o.get(d)`, `m.get_or(k, d)` or `if let v = o:`; a `Result` is unwrapped with `try`.
 
 ## Module boundaries
 

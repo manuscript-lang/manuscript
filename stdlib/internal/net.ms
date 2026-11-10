@@ -1,28 +1,19 @@
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     Datagram,
     NativeConnection,
     NativeDatagramSocket,
     NativeListener,
     NativeNetwork,
     Listener,
-    Network
-) from "@std/net/net.ms"
-import Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms"
-import CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms"
-import QueryEntry, Url from "@std/net/url.ms"
-import (
-    NativeWebSocket,
-    RawWebSocketMessage,
-    WebSocketWire
-) from "@std/net/websocket.ms"
-import (
-    ClientResponse,
-    HttpClient,
-    HttpClientOptions,
-    HttpHeaders
-) from "@std/net/http.ms"
-import Duration, Timestamp from "@std/time.ms"
+    Network from "@std/net/net.ms",
+    Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
+    CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
+    QueryEntry, Url from "@std/net/url.ms",
+    NativeWebSocket, RawWebSocketMessage, WebSocketWire from "@std/net/websocket.ms",
+    ClientResponse, HttpClient, HttpClientOptions, HttpHeaders from "@std/net/http.ms",
+    Duration, Timestamp from "@std/time.ms",
+)
 
 export extern fn msstd_url_encode_component(text: String) String
 

@@ -36,7 +36,7 @@ fn compare(left: Int, right: Int) Int:
 
     return 0
 
-export fn main() Int: return 0
+fn main() Int: return 0
 
 fn callback_write(var values: List[Int]) Int:
     var total = Total(0)

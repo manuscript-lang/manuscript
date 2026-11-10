@@ -16,6 +16,5 @@ fn go(n: Int) Result[Int, Error]:
     let _s = "abc {n}".replace("a", (try one()))
     return ok(0)
 
-export fn main() Int:
+fn main() Unit:
     let _r = go(1)
-    return 0

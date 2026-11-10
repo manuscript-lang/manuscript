@@ -22,7 +22,7 @@ fn step[T](
     seen.append(value)
     if visits.count == 0:
         mutate(values: var values, mode: mode, fill: fill)
-    visits.count = visits.count + 1
+    visits.count += 1
 
 fn observe[T: Clonable](
     var values: List[T], mode: String, fill: List[T], callback: Bool
@@ -72,8 +72,8 @@ test "Int consumers see the full snapshot while the live list shrinks":
             let seen = (try observe(var values, mode, [9], callback))
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value
-            for value in clone: wanted = wanted + value
+            for value in seen: total += value
+            for value in clone: wanted += value
             (
                 not (
                     total == wanted
@@ -92,8 +92,8 @@ test "Float consumers see the full snapshot while the live list shrinks":
             let seen = (try observe(var values, mode, [9.5], callback))
             var total = 0.0
             var wanted = 0.0
-            for value in seen: total = total + value
-            for value in clone: wanted = wanted + value
+            for value in seen: total += value
+            for value in clone: wanted += value
             (
                 not (
                     total == wanted
@@ -111,7 +111,7 @@ test "String consumers see the full snapshot while the live list shrinks":
             let want = remaining(mode, values.clone(), ["replacement"])
             let seen = (try observe(var values, mode, ["replacement"], callback))
             var text = ""
-            for value in seen: text = text + value
+            for value in seen: text += value
             (
                 not (
                     text == clone.join("")
@@ -134,8 +134,8 @@ test "record consumers keep independent copies after shrink":
             let seen = (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.value
-            for value in clone: wanted = wanted + value.value
+            for value in seen: total += value.value
+            for value in clone: wanted += value.value
             (not (total == wanted and seen == clone and values == want)) | try expect_false
             last.value = 11
             (not (seen.last().get().value == 3 and clone.last().get().value == 3)) | try expect_false
@@ -162,8 +162,8 @@ test "alternative consumers retain tags and payloads after shrink":
             let snapshot = [first, second, last]
             var total = 0
             var wanted = 0
-            for value in seen: total = total + score(value.clone())
-            for value in snapshot.clone(): wanted = wanted + score(value)
+            for value in seen: total += score(value.clone())
+            for value in snapshot.clone(): wanted += score(value)
             (not (total == wanted and seen == snapshot and values == want)) | try expect_false
 
 test "nested list consumers keep independent inner lists after shrink":
@@ -176,8 +176,8 @@ test "nested list consumers keep independent inner lists after shrink":
             let seen = (try observe(var values, mode, [[9]], callback))
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.first().get()
-            for value in clone: wanted = wanted + value.first().get()
+            for value in seen: total += value.first().get()
+            for value in clone: wanted += value.first().get()
             (not (total == wanted and seen == clone and values == want)) | try expect_false
             last.append(11)
             try expect_true((seen.last().get() == [3] and clone.last().get() == [3]))
@@ -192,7 +192,7 @@ test "map and folds consume snapshots of the live list":
         .map(
             fn value:
                 if visits.count == 0: mapped.remove(0)
-                visits.count = visits.count + 1
+                visits.count += 1
                 return value + 10
         )
     )
@@ -212,7 +212,7 @@ test "map and folds consume snapshots of the live list":
                 if visits.count == 0: folded.splice(
                     start: 0, delete_count: 3, replacement: []
                 )
-                visits.count = visits.count + 1
+                visits.count += 1
                 return accumulator + value
         )
     )
@@ -230,7 +230,7 @@ test "map and folds consume snapshots of the live list":
             fn accumulator,
             value:
                 if visits.count == 0: reversed.remove(0)
-                visits.count = visits.count + 1
+                visits.count += 1
                 return accumulator * 10 + value
         )
     )
@@ -253,8 +253,8 @@ test "interface view consumers dispatch after shrink":
             let seen = (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
-            for value in seen: total = total + value.read()
-            for value in clone.clone(): wanted = wanted + value.read()
+            for value in seen: total += value.read()
+            for value in clone.clone(): wanted += value.read()
             (not (total == wanted and values.length() == want.length())) | try expect_false
             last_record.value = 11
             (not (seen.last().get().read() == 3 and clone.last().get().read() == 3)) | try expect_false

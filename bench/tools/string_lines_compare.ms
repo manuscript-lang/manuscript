@@ -10,11 +10,11 @@ import (
     median,
     options,
     read_text,
-    write_text
-) from "./lib.ms"
-import all_ints, run_pinned from "./study.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue, parse from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    all_ints, run_pinned from "./study.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue, parse from "@std/data/json.ms",
+)
 
 export type Identity:
     input_bytes: Int
@@ -166,7 +166,7 @@ fn compare(
 
     return ok(out.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 3: return fail(
         "usage: string_lines_compare.ms -- BEFORE AFTER OUTPUT [--pairs N] [--identity-file FILE]"

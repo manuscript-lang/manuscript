@@ -1,10 +1,12 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import hex_encode, hex_decode from "@std/data/encoding.ms"
-import HashAlgorithm from "@std/crypto.ms"
-import bit_and, bit_or, shift_right_unsigned from "@std/math/math.ms"
-import random_bytes from "@std/random.ms"
-import now from "@std/time.ms"
-import draw_uuid from "@std/internal/random.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    hex_encode, hex_decode from "@std/data/encoding.ms",
+    HashAlgorithm from "@std/crypto.ms",
+    bit_and, bit_or, shift_right_unsigned from "@std/math/math.ms",
+    random_bytes from "@std/random.ms",
+    now from "@std/time.ms",
+    draw_uuid from "@std/internal/random.ms",
+)
 
 // The namespace for fully qualified domain names, for `uuid_v5`.
 export let namespace_dns = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
@@ -78,8 +80,7 @@ fn uuid_to_bytes(text: String) Bytes!:
         return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
     let decoded = hex_decode(text.replace("-", ""), 16)
-    if let bytes = decoded:
-        return ok(bytes)
+    if let bytes = decoded: return ok(bytes)
 
     return error(Error("uuid: invalid data", kind: "EBADMSG"))
 

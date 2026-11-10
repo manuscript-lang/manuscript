@@ -1,8 +1,10 @@
 // Source locations for the fixed intrinsic receiver operations.
 
-import Bytes from "@std/bytes.ms"
-import Decimal from "@std/math/decimal.ms"
-import Duration from "@std/time.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    Decimal from "@std/math/decimal.ms",
+    Duration from "@std/time.ms",
+)
 
 // Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:

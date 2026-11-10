@@ -4,10 +4,10 @@ import (
     c_versions,
     omitted,
     suite_names,
-    summarize
-) from "./kernels_table.ms"
-import must, Ran from "./lib.ms"
-import expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms"
+    summarize from "./kernels_table.ms",
+    must, Ran from "./lib.ms",
+    expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+)
 
 fn trial(version: String, suite: String, micros: Int) List[String]:
     let names = suite_names(suite).filter(fn n: not omitted(version).contains(n))

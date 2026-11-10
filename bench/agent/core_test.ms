@@ -1,21 +1,21 @@
 // Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
-import access, glob, GlobOptions from "@std/os/fs.ms"
-import JsonValue, parse from "@std/data/json.ms"
 import (
+    access, glob, GlobOptions from "@std/os/fs.ms",
+    JsonValue, parse from "@std/data/json.ms",
     expect_close,
     expect_equal,
     expect_false,
     expect_true,
-    fail
-) from "@std/test/test.ms"
-import cost_from_tokens, load_challenges, load_languages from "./core/model.ms"
-import count_text from "./core/codetokens.ms"
-import ClaudeCode from "./harnesses/claude_code.ms"
-import Codex from "./harnesses/codex.ms"
-import dumps from "./lib/pyjson.ms"
-import fmt_g, fixed, pct0 from "./lib/pyfmt.ms"
-import seeded from "./lib/pyrandom.ms"
-import norm from "./lib/text.ms"
+    fail from "@std/test/test.ms",
+    cost_from_tokens, load_challenges, load_languages from "./core/model.ms",
+    count_text from "./core/codetokens.ms",
+    ClaudeCode from "./harnesses/claude_code.ms",
+    Codex from "./harnesses/codex.ms",
+    dumps from "./lib/pyjson.ms",
+    fmt_g, fixed, pct0 from "./lib/pyfmt.ms",
+    seeded from "./lib/pyrandom.ms",
+    norm from "./lib/text.ms",
+)
 
 test "norm ignores trailing whitespace only":
     try expect_equal(norm("a  \nb\n\n"), norm("a\nb"))

@@ -1,7 +1,9 @@
-import expect_equal from "@std/test/test.ms"
-import promise from "@std/concurrency/promise.ms"
-import Closeable from "@std/core.ms"
-import append_file, remove, temporary_directory, read_file from "@std/os/fs.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    promise from "@std/concurrency/promise.ms",
+    Closeable from "@std/core.ms",
+    append_file, remove, temporary_directory, read_file from "@std/os/fs.ms",
+)
 
 type Door:
     name: String
@@ -10,7 +12,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         try append_file(self.log, "closed " + self.name + ";").wait()
-        return ok(unit)
 
 fn size(door: Door) Int!:
     return ok(door.name.length())

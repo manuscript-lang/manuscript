@@ -31,7 +31,7 @@ fn total(lines: List[String]) Int!:
         sum += line.quantity * line.cents
     return ok(sum)
 
-export fn main() Int:
+fn main() Unit:
     let good = total(["pen,2,150", "ink,1,899"])
     print("good: {good.get(0)}")
     let bad = total(["pen,2,150", "ink,0,899"])
@@ -40,7 +40,6 @@ export fn main() Int:
     let broken = total(["pen,two,150"])
     if broken.is_error():
         print("broken: {broken.err().message}")
-    return 0
 ```
 
 ```text

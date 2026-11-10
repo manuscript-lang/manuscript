@@ -33,7 +33,7 @@ fn tags(items: List[Item]) String:
         out = "{out}{item.key}{item.tag} "
     return out
 
-export fn main() Int:
+fn main() Unit:
     let v = [5, 3, 9, 1, 3, 8, -2, 7, 7, 0, 100, -50, 4, 6, 2, 11, 13, 12, 10, 15, 14]
     let _a = stdout().write("{v.sorted(ascending)}\n")
     let _b = stdout().write("{v.sorted(descending)}\n")
@@ -46,4 +46,3 @@ export fn main() Int:
         Item(key: 1, tag: "d")
     ]
     let _f = stdout().write("{tags(items.sorted(by_key))}\n")
-    return 0

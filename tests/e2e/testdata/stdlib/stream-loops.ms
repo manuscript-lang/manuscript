@@ -1,6 +1,8 @@
-import expect_equal from "@std/test/test.ms"
-import ReadStream, Source, WriteStream, pipe from "@std/io/io.ms"
-import from_list, map, collect, copy from "@std/io/streams.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    ReadStream, Source, WriteStream, pipe from "@std/io/io.ms",
+    from_list, map, collect, copy from "@std/io/streams.ms",
+)
 
 // Counts up to `stop`, fails once at `fail_at`, and reports where it was when closed.
 type Counter:
@@ -15,15 +17,13 @@ impl Source[Int] for Counter:
             self.at += 1
             return error(Error("boom", kind: "EIO"))
 
-        if self.at >= self.stop:
-            return ok(none)
+        if self.at >= self.stop: return ok(none)
 
         self.at += 1
         return ok(self.at)
 
     var fn close() Unit!:
         try self.closes.write(self.at)
-        return ok(unit)
 
 test "a loop that breaks hands the source back to its stream":
     var closes = pipe[Int](capacity: 8)
@@ -32,8 +32,7 @@ test "a loop that breaks hands the source back to its stream":
 
     for x in s:
         seen.append(x)
-        if seen.length() == 2:
-            break
+        if seen.length() == 2: break
 
     let next = try s.next()
     try expect_equal(next.get(-1), 3)
@@ -55,8 +54,7 @@ test "an error ends the loop and the stream reads on":
             failures += 1
             break
 
-        if item.get().is_none():
-            break
+        if item.get().is_none(): break
 
     try expect_equal(failures, 1)
 

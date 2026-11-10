@@ -1,10 +1,8 @@
-import expect_equal, expect_error, expect_true, fail from "@std/test/test.ms"
 import (
+    expect_equal, expect_error, expect_true, fail from "@std/test/test.ms",
     float_boundaries,
     finite_float_boundaries,
-    int_boundaries
-) from "@std/test/boundary.ms"
-import (
+    int_boundaries from "@std/test/boundary.ms",
     BigRat,
     rat,
     parse_rat,
@@ -12,9 +10,7 @@ import (
     big_float_of_rat,
     rat_of_float,
     rat_of_int,
-    rat_of_big_int
-) from "@std/math/big.ms"
-import (
+    rat_of_big_int from "@std/math/big.ms",
     BigInt,
     from_int,
     floor,
@@ -54,19 +50,19 @@ import (
     count_ones,
     leading_zeros,
     trailing_zeros,
-    parse_int
-) from "@std/math/math.ms"
+    parse_int from "@std/math/math.ms",
+)
 
 // The two's-complement 64-bit wrap of an exact integer.
 fn wrap64(value: BigInt) BigInt!:
     let modulus = try (from_int(1).shift_left(64))
     var reduced = try value.remainder(modulus)
     if reduced.sign() < 0:
-        reduced = reduced + modulus
+        reduced += modulus
 
     let half = try (from_int(1).shift_left(63))
     if reduced.compare(half) >= 0:
-        reduced = reduced - modulus
+        reduced -= modulus
     return ok(reduced)
 
 fn same_float(actual: Float, expected: Float) Bool:
@@ -89,8 +85,7 @@ test "wrapping arithmetic matches exact arithmetic reduced mod 2^64":
             try expect_equal(from_int(wrapping_multiply(a, b)), product)
 
 fn big_of_word(word: UInt64) BigInt:
-    if let small = word.to_int():
-        return from_int(small)
+    if let small = word.to_int(): return from_int(small)
 
     let low = (word - 9223372036854775808).to_int().get(0)
     return from_int(low) + from_int(max_int) + from_int(1)
@@ -508,8 +503,7 @@ fn ten_pow(exponent: Int) BigRat:
         power = power.multiply(rat_of_int(10))
         step += 1
 
-    if exponent < 0:
-        return power.invert().get(rat_of_int(1))
+    if exponent < 0: return power.invert().get(rat_of_int(1))
 
     return power
 

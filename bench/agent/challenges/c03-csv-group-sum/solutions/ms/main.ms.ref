@@ -1,132 +1,39 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import stdin from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
 
-// True when s is a non-empty run of ASCII digits.
-fn all_digits(s: String) Bool:
-    if s.is_empty():
-        return false
+fn digits(s: String) Bool: return not s.is_empty() and s.scalar_values().all(fn c: c >= 48 and c <= 57)
 
-    for c in s.scalar_values():
-        if c < 48 or c > 57:
-            return false
-    return true
-
-// Parses digits with an optional one- or two-digit fraction into cents.
 fn parse_amount(s: String) Int?:
     let parts = s.split(".")
-    if parts.length() > 2:
-        return none
+    if parts.length() > 2 or not digits(parts[0]): return none
+    let whole = parts[0].parse_int().get() * 100
+    if parts.length() == 1: return whole
+    if not digits(parts[1]) or parts[1].length() > 2: return none
+    return whole + parts[1].parse_int().get() * (if parts[1].length() == 1: 10 else: 1)
 
-    let whole = parts.get(0)
-    if not all_digits(whole):
-        return none
-
-    var cents = whole.parse_int().get() * 100
-
-    if parts.length() == 2:
-        let frac = parts.get(1)
-        if not all_digits(frac) or frac.length() > 2:
-            return none
-
-        let digits = frac.parse_int().get()
-
-        if frac.length() == 1:
-            cents = cents + digits * 10
-        else:
-            cents = cents + digits
-
-    return cents
-
-type Record:
-    category: String
+type Rec:
+    cat: String
     cents: Int
 
-fn parse_line(line: String) Record?:
-    var category = ""
-    var amount = ""
+// A quoted category may contain commas.
+fn parse_line(line: String) Rec?:
+    let q = line.starts_with("\"")
+    let rest = if q: line.slice(1, line.length()).get() else: line
+    let at = if q: rest.index_of("\"") else: rest.index_of(",")
+    if let i = at:
+        if q and not rest.slice(i + 1, rest.length()).get().starts_with(","): return none
+        let cat = rest.slice(0, i).get()
+        let amount = rest.slice(i + (if q: 2 else: 1), rest.length()).get()
+        if cat.is_empty() or cat.contains("\"") or amount.contains(","): return none
+        if let cents = parse_amount(amount): return Rec(cat, cents)
+    return none
 
-    if line.starts_with("\""):
-        let rest = line.slice(1, line.length()).get()
-        let close = rest.index_of("\"")
-        if close.is_none():
-            return none
-
-        let at = close.get()
-        category = rest.slice(0, at).get()
-
-        let after = rest.slice(at + 1, rest.length()).get()
-        if not after.starts_with(","):
-            return none
-
-        amount = after.slice(1, after.length()).get()
-    else:
-        let parts = line.split(",")
-        if parts.length() != 2:
-            return none
-
-        category = parts.get(0).clone()
-        amount = parts.get(1).clone()
-
-    if category.is_empty() or category.contains("\"") or amount.contains(","):
-        return none
-
-    let cents = parse_amount(amount)
-    if cents.is_none():
-        return none
-
-    return Record(category: category, cents: cents.get())
-
-fn two_digits(n: Int) String:
-    if n < 10:
-        return "0{n}"
-
-    return "{n}"
-
-fn run() Result[Unit, Error]:
-    var input = lines(stdin(), 1048576)
+fn main() Unit:
     var totals = Map[String, Int]()
     var bad = 0
-
-    while true:
-        let next = try input.next()
-        if next.is_none():
-            break
-
-        let line = next.get().replace(old: "\r", new: "")
-        if line.trim().is_empty():
-            continue
-
-        let rec = parse_line(line)
-
-        if rec.is_none():
-            bad = bad + 1
-        else:
-            let r = rec.get()
-            totals.add(
-                key: r.category.clone(),
-                value: (
-                    totals.get_or(key: r.category, fallback: 0)
-                    + r.cents
-                )
-            )
-
-    let rows = (
-        totals
-        .entries()
-        .sorted(
-            compare: fn(
-                left: MapEntry[String, Int],
-                right: MapEntry[String, Int]
-            ) Int: return left.key.compare(right.key)
-        )
-    )
-    for e in rows:
-        try stdout().write("{e.key}: {e.value / 100}.{two_digits(e.value % 100)}\n")
-    if bad > 0:
-        try stdout().write("skipped: {bad}\n")
-    return stdout().flush()
-
-export fn main() Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if let ls = stdin() | lines | collect(none):
+        for l in ls.map(fn l: l.replace("\r", "")).filter(fn l: not l.trim().is_empty()):
+            if let r = parse_line(l): totals[r.cat.clone()] = totals.get_or(r.cat, 0) + r.cents
+            else: bad += 1
+    for e in totals.entries().sorted(fn a, b: a.key.compare(b.key)): print("{e.key}: {e.value / 100}.{if e.value % 100 < 10: "0" else: ""}{e.value % 100}")
+    if bad > 0: print("skipped: {bad}")

@@ -1,5 +1,7 @@
-import parse_rat, rat_of_int from "@std/math/big.ms"
-import expect_equal, expect_error from "@std/test/test.ms"
+import (
+    parse_rat, rat_of_int from "@std/math/big.ms",
+    expect_equal, expect_error from "@std/test/test.ms",
+)
 
 // 2^16777216 has 16777217 bits. BigInt rejects it from its lower size
 // bound without computing the oversized power.

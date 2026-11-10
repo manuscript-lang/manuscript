@@ -23,7 +23,7 @@ fn open_on(path: String) Int:
         if read_symlink("/proc/self/fd/{entry.name}").get("") == path: count += 1
     return count
 
-export fn main() Int:
+fn main() Unit:
     let path = arguments()[0].clone()
     var cancelled = 0
     for i in 0..10:
@@ -39,4 +39,3 @@ export fn main() Int:
         open = open_on(path.clone())
 
     print("{cancelled} {open}")
-    return 0

@@ -1,8 +1,10 @@
-import Bytes from "@std/bytes.ms"
-import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
-import Promise from "@std/concurrency/promise.ms"
-import read_all, from_bytes from "@std/io/streams.ms"
-import fail from "@std/test/test.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
+    Promise from "@std/concurrency/promise.ms",
+    read_all, from_bytes from "@std/io/streams.ms",
+    fail from "@std/test/test.ms",
+)
 
 /*
 Misbehaving streams for testing code that reads and writes. Each wrapper takes its input first, like the
@@ -21,8 +23,7 @@ impl Source[Bytes] for OneByte:
             data = held.clone()
         else:
             let fresh = try self.input.next()
-            if fresh.is_none():
-                return ok(none)
+            if fresh.is_none(): return ok(none)
 
             data = fresh.get().clone()
 
@@ -47,8 +48,7 @@ type FailAfter:
 
 impl Source[Bytes] for FailAfter:
     var fn next() Bytes?!:
-        if self.remaining <= 0:
-            return error(self.cause.clone())
+        if self.remaining <= 0: return error(self.cause.clone())
 
         let chunk = try self.input.next()
 
@@ -113,16 +113,14 @@ export fn fail_writer_after(
 // an end of input that stays ended. `make` is called once per check so each starts from the beginning.
 export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
     let all = read_all(make())
-    if all.is_error():
-        return fail("check_reader: reading everything failed")
+    if all.is_error(): return fail("check_reader: reading everything failed")
     if all.get() != expected:
         return fail(
             "check_reader: read {all.get().length()} bytes, expected {expected.length()}; content differs"
         )
 
     let slow = read_all(one_byte(make()))
-    if slow.is_error():
-        return fail("check_reader: one-byte reads failed")
+    if slow.is_error(): return fail("check_reader: one-byte reads failed")
     if slow.get() != expected:
         return fail("check_reader: one-byte reads returned different content")
 
@@ -131,12 +129,10 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
 
     while true:
         let chunk = again.next()
-        if chunk.is_error():
-            return fail("check_reader: a read failed")
+        if chunk.is_error(): return fail("check_reader: a read failed")
 
         let piece = chunk.get()
-        if piece.is_none():
-            break
+        if piece.is_none(): break
 
         total += piece.get().length()
 
@@ -147,5 +143,3 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
         return fail(
             "check_reader: chunked reads returned {total} bytes, expected {expected.length()}"
         )
-
-    return ok(unit)

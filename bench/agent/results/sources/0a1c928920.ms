@@ -1,5 +1,7 @@
-import read_lines from "@std/streams.ms"
-import stdout, stdin from "@std/io.ms"
+import (
+    read_lines from "@std/streams.ms",
+    stdout, stdin from "@std/io.ms",
+)
 
 let PRIORITIES = ["low", "medium", "high", "critical"]
 let ISSUE_FIELDS = [
@@ -148,78 +150,63 @@ fn is_lower(c: String) Bool:
 
 fn valid_int(s: String) Bool:
     let n = s.length()
-    if n == 0 or n > 7:
-        return false
+    if n == 0 or n > 7: return false
 
     for c in s.chars():
-        if not is_digit(c):
-            return false
-    if n > 1 and s.slice(0, 1).get() == "0":
-        return false
+        if not is_digit(c): return false
+    if n > 1 and s.slice(0, 1).get() == "0": return false
 
     return s.parse_int().get(0) <= 1000000
 
 fn valid_label(s: String) Bool:
-    if s.length() == 0:
-        return false
+    if s.length() == 0: return false
 
     for c in s.chars():
-        if not (is_lower(c) or is_digit(c) or c == "_" or c == "-"):
-            return false
+        if not (is_lower(c) or is_digit(c) or c == "_" or c == "-"): return false
     return true
 
 fn valid_state(s: String) Bool:
     let cs = s.chars()
-    if cs.length() == 0 or not is_lower(cs[0]):
-        return false
+    if cs.length() == 0 or not is_lower(cs[0]): return false
 
     for k in 1..cs.length():
         let c = cs[k]
-        if not (is_lower(c) or is_digit(c) or c == "_"):
-            return false
+        if not (is_lower(c) or is_digit(c) or c == "_"): return false
 
     return true
 
 fn valid_view(s: String) Bool:
     let cs = s.chars()
-    if cs.length() == 0 or not is_lower(cs[0]):
-        return false
+    if cs.length() == 0 or not is_lower(cs[0]): return false
 
     for k in 1..cs.length():
         let c = cs[k]
-        if not (is_lower(c) or is_digit(c) or c == "_" or c == "-"):
-            return false
+        if not (is_lower(c) or is_digit(c) or c == "_" or c == "-"): return false
 
     return true
 
 fn days_in(m: Int, y: Int) Int:
     if m == 2:
-        if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0):
-            return 29
+        if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): return 29
 
         return 28
 
-    if m == 4 or m == 6 or m == 9 or m == 11:
-        return 30
+    if m == 4 or m == 6 or m == 9 or m == 11: return 30
 
     return 31
 
 fn valid_date(s: String) Bool:
-    if s.length() != 10:
-        return false
+    if s.length() != 10: return false
 
     let cs = s.chars()
     for k in [0, 1, 2, 3, 5, 6, 8, 9]:
-        if not is_digit(cs[k]):
-            return false
-    if cs[4] != "-" or cs[7] != "-":
-        return false
+        if not is_digit(cs[k]): return false
+    if cs[4] != "-" or cs[7] != "-": return false
 
     let y = s.slice(0, 4).get().parse_int().get(0)
     let m = s.slice(5, 7).get().parse_int().get(0)
     let d = s.slice(8, 10).get().parse_int().get(0)
-    if y < 1 or m < 1 or m > 12:
-        return false
+    if y < 1 or m < 1 or m > 12: return false
 
     return d >= 1 and d <= days_in(m, y)
 
@@ -227,68 +214,54 @@ fn parse_id_arg(arg0: String) Int:
     var arg = arg0.clone()
     if arg.starts_with("#"):
         arg = arg.slice(1, arg.scalar_length()).get()
-    if arg.length() == 0:
-        return -1
+    if arg.length() == 0: return -1
 
     for c in arg.chars():
-        if not is_digit(c):
-            return -1
+        if not is_digit(c): return -1
 
     let v = arg.parse_int().get(-1)
-    if v < 1:
-        return -1
+    if v < 1: return -1
 
     return v
 
 fn cmp_int(x: Int, y: Int) Int:
-    if x < y:
-        return -1
-    if x > y:
-        return 1
+    if x < y: return -1
+    if x > y: return 1
 
     return 0
 
 fn cmp_str(x: String, y: String) Int:
-    if x < y:
-        return -1
-    if x > y:
-        return 1
+    if x < y: return -1
+    if x > y: return 1
 
     return 0
 
 // absent is the empty string; absent sorts after present values
 fn absent_cmp(x: String, y: String) Int:
-    if x == "" and y == "":
-        return 0
-    if x == "":
-        return 1
-    if y == "":
-        return -1
+    if x == "" and y == "": return 0
+    if x == "": return 1
+    if y == "": return -1
 
     return cmp_str(x, y)
 
 fn dash(s: String) String:
-    if s == "":
-        return "-"
+    if s == "": return "-"
 
     return s
 
 fn pts_text(x: Int?) String:
     let v = x.get(-1)
-    if v < 0:
-        return "-"
+    if v < 0: return "-"
 
     return "{v}"
 
 fn labels_text(xs: List[String]) String:
-    if xs.length() == 0:
-        return "-"
+    if xs.length() == 0: return "-"
 
     return xs.join(",")
 
 fn labels_show(xs: List[String]) String:
-    if xs.length() == 0:
-        return "-"
+    if xs.length() == 0: return "-"
 
     return xs.join(", ")
 
@@ -305,8 +278,7 @@ fn norm_labels(xs: List[String]) List[String]:
     return out
 
 fn plural_issues(n: Int) String:
-    if n == 1:
-        return "1 issue"
+    if n == 1: return "1 issue"
 
     return "{n} issues"
 
@@ -318,14 +290,10 @@ fn blank_issue() Issue:
     )
 
 fn unmet(iss: Issue, g: String) Bool:
-    if g == "assignee":
-        return iss.assignee.get("") == ""
-    if g == "reporter":
-        return iss.reporter.get("") == ""
-    if g == "due":
-        return iss.due.get("") == ""
-    if g == "points":
-        return iss.points.get(-1) < 0
+    if g == "assignee": return iss.assignee.get("") == ""
+    if g == "reporter": return iss.reporter.get("") == ""
+    if g == "due": return iss.due.get("") == ""
+    if g == "points": return iss.points.get(-1) < 0
 
     return iss.labels.length() == 0
 
@@ -341,7 +309,7 @@ fn words(s: String) List[String]:
                 out.append(cur)
                 cur = ""
         else:
-            cur = cur + c
+            cur += c
 
     if cur.length() > 0:
         out.append(cur)
@@ -350,7 +318,7 @@ fn words(s: String) List[String]:
 fn join_cs(cs: List[String], a: Int, b: Int) String:
     var s = ""
     for k in a..b:
-        s = s + cs[k]
+        s += cs[k]
     return s
 
 // text after skipping k whitespace-separated words, leading blanks removed
@@ -393,10 +361,10 @@ fn tokens(s: String) Toks:
                 and i + 1 < n
                 and (cs[i + 1] == "\"" or cs[i + 1] == "\\")
             ):
-                cur = cur + cs[i + 1]
+                cur += cs[i + 1]
                 i += 2
             else:
-                cur = cur + c
+                cur += c
                 i += 1
         else if is_ws(c):
             if started:
@@ -410,12 +378,11 @@ fn tokens(s: String) Toks:
             started = true
             i += 1
         else:
-            cur = cur + c
+            cur += c
             started = true
             i += 1
 
-    if inq:
-        return Toks(items: items, err: true)
+    if inq: return Toks(items: items, err: true)
 
     if started:
         items.append(cur)
@@ -434,13 +401,11 @@ fn split_limit(s: String) Split:
     var j = n - 1
 
     while j >= 0:
-        if is_ws(cs[j]):
-            break
+        if is_ws(cs[j]): break
 
         j -= 1
 
-    if j < 0:
-        return Split(text: t, has: false, limit: 0, err: "")
+    if j < 0: return Split(text: t, has: false, limit: 0, err: "")
 
     let arg = t.slice(j + 1, n).get()
     let head = t.slice(0, j).get().trim()
@@ -449,14 +414,12 @@ fn split_limit(s: String) Split:
     var k = hn - 1
 
     while k >= 0:
-        if is_ws(hc[k]):
-            break
+        if is_ws(hc[k]): break
 
         k -= 1
 
     let word = head.slice(k + 1, hn).get()
-    if word != "limit":
-        return Split(text: t, has: false, limit: 0, err: "")
+    if word != "limit": return Split(text: t, has: false, limit: 0, err: "")
 
     var rest = ""
     if k >= 0:
@@ -566,12 +529,9 @@ fn op_allowed(field: String, op: String) Bool:
         or field == "label"
     ):
         return EQ_OPS.contains(op)
-    if field == "text":
-        return op == "~"
-    if field == "state":
-        return op == ":" or op == "!="
-    if field == "is" or field == "has" or field == "view":
-        return op == ":"
+    if field == "text": return op == "~"
+    if field == "state": return op == ":" or op == "!="
+    if field == "is" or field == "has" or field == "view": return op == ":"
 
     return false
 
@@ -585,54 +545,44 @@ fn value_error(
     let bad = "query: bad value '" + a + "' for field '" + field + "'"
 
     if field == "id" or field == "created" or field == "updated":
-        if valid_int(a):
-            return ""
+        if valid_int(a): return ""
 
         return bad
 
     if field == "points":
-        if a == "none" and (op == ":" or op == "!="):
-            return ""
-        if valid_int(a):
-            return ""
+        if a == "none" and (op == ":" or op == "!="): return ""
+        if valid_int(a): return ""
 
         return bad
 
     if field == "state":
-        if states.contains(a):
-            return ""
+        if states.contains(a): return ""
 
         return bad
 
     if field == "priority":
-        if PRIORITIES.contains(a):
-            return ""
+        if PRIORITIES.contains(a): return ""
 
         return bad
 
     if field == "due":
-        if a == "none" and (op == ":" or op == "!="):
-            return ""
-        if valid_date(a):
-            return ""
+        if a == "none" and (op == ":" or op == "!="): return ""
+        if valid_date(a): return ""
 
         return bad
 
     if field == "is":
-        if IS_VALUES.contains(a):
-            return ""
+        if IS_VALUES.contains(a): return ""
 
         return bad
 
     if field == "has":
-        if HAS_VALUES.contains(a):
-            return ""
+        if HAS_VALUES.contains(a): return ""
 
         return bad
 
     if field == "view":
-        if views.contains(a):
-            return ""
+        if views.contains(a): return ""
 
         return "query: unknown view '" + a + "'"
 
@@ -641,8 +591,7 @@ fn value_error(
 impl QP:
     var fn skip_ws() Unit:
         while self.pos < self.cs.length():
-            if not is_ws(self.cs[self.pos]):
-                break
+            if not is_ws(self.cs[self.pos]): break
 
             self.pos += 1
 
@@ -652,10 +601,9 @@ impl QP:
 
         while k < self.cs.length():
             let c = self.cs[k]
-            if is_ws(c) or c == "(" or c == ")":
-                break
+            if is_ws(c) or c == "(" or c == ")": break
 
-            w = w + c
+            w += c
             k += 1
 
         return w
@@ -666,8 +614,7 @@ impl QP:
 
     var fn parse_or() Int:
         var left = self.parse_and()
-        if self.err != "":
-            return -1
+        if self.err != "": return -1
 
         self.skip_ws()
 
@@ -675,8 +622,7 @@ impl QP:
             self.pos += 2
 
             let right = self.parse_and()
-            if self.err != "":
-                return -1
+            if self.err != "": return -1
 
             left = self.push(
                 QNode(
@@ -690,22 +636,18 @@ impl QP:
 
     var fn parse_and() Int:
         var left = self.parse_not()
-        if self.err != "":
-            return -1
+        if self.err != "": return -1
 
         while true:
             self.skip_ws()
-            if self.pos >= self.cs.length():
-                break
-            if self.cs[self.pos] == ")" or self.word_at(self.pos) == "OR":
-                break
+            if self.pos >= self.cs.length(): break
+            if self.cs[self.pos] == ")" or self.word_at(self.pos) == "OR": break
 
             if self.word_at(self.pos) == "AND":
                 self.pos += 3
 
             let right = self.parse_not()
-            if self.err != "":
-                return -1
+            if self.err != "": return -1
 
             left = self.push(
                 QNode(
@@ -723,8 +665,7 @@ impl QP:
             self.pos += 3
 
             let c = self.parse_not()
-            if self.err != "":
-                return -1
+            if self.err != "": return -1
 
             return self.push(
                 QNode(
@@ -749,8 +690,7 @@ impl QP:
             self.pos += 1
 
             let e = self.parse_or()
-            if self.err != "":
-                return -1
+            if self.err != "": return -1
 
             self.skip_ws()
 
@@ -775,8 +715,7 @@ impl QP:
 
         while k < n:
             let ch = self.cs[k]
-            if not is_lower(ch) and ch != "_":
-                break
+            if not is_lower(ch) and ch != "_": break
 
             k += 1
 
@@ -805,8 +744,7 @@ impl QP:
             var m = k
 
             while m < n:
-                if not OPCHARS.contains(self.cs[m]):
-                    break
+                if not OPCHARS.contains(self.cs[m]): break
 
                 m += 1
 
@@ -847,14 +785,14 @@ impl QP:
                             or self.cs[q + 1] == "\\"
                         )
                     ):
-                        val = val + self.cs[q + 1]
+                        val += self.cs[q + 1]
                         q += 2
                     else if ch == "\"":
                         closed = true
                         q += 1
                         break
                     else:
-                        val = val + ch
+                        val += ch
                         q += 1
 
                 if not closed:
@@ -868,10 +806,9 @@ impl QP:
 
             while q < n:
                 let ch = self.cs[q]
-                if is_ws(ch) or ch == "(" or ch == ")":
-                    break
+                if is_ws(ch) or ch == "(" or ch == ")": break
 
-                val = val + ch
+                val += ch
                 q += 1
 
             self.pos = q
@@ -908,12 +845,10 @@ fn compile_query(text: String, views: List[String], states: List[String]) QP:
         root: -1, views: views.clone(), states: states.clone()
     )
     p.skip_ws()
-    if p.pos >= p.cs.length():
-        return p
+    if p.pos >= p.cs.length(): return p
 
     p.root = p.parse_or()
-    if p.err != "":
-        return p
+    if p.err != "": return p
 
     p.skip_ws()
     if p.pos < p.cs.length():
@@ -982,10 +917,8 @@ fn parse_wf(body: List[String]) WfParse:
     var err = ""
 
     for ln in body:
-        if err != "":
-            break
-        if ln == "" or ln.starts_with("#"):
-            continue
+        if err != "": break
+        if ln == "" or ln.starts_with("#"): continue
 
         if ln.starts_with("initial:"):
             let name = ln.slice(8, ln.scalar_length()).get().trim()
@@ -1072,15 +1005,13 @@ fn parse_wf(body: List[String]) WfParse:
 
 fn set_field(var iss: Issue, key: String, val: String) String:
     if key == "title":
-        if val.trim() == "":
-            return "empty title"
+        if val.trim() == "": return "empty title"
 
         iss.title = val
         return ""
 
     if key == "priority":
-        if not PRIORITIES.contains(val):
-            return "bad priority '" + val + "'"
+        if not PRIORITIES.contains(val): return "bad priority '" + val + "'"
 
         iss.priority = val
         return ""
@@ -1090,8 +1021,7 @@ fn set_field(var iss: Issue, key: String, val: String) String:
             iss.assignee = none
             return ""
 
-        if val == "":
-            return "empty assignee"
+        if val == "": return "empty assignee"
 
         iss.assignee = val
         return ""
@@ -1101,8 +1031,7 @@ fn set_field(var iss: Issue, key: String, val: String) String:
             iss.points = none
             return ""
 
-        if not valid_int(val):
-            return "bad points '" + val + "'"
+        if not valid_int(val): return "bad points '" + val + "'"
 
         iss.points = val.parse_int().get(0)
         return ""
@@ -1112,8 +1041,7 @@ fn set_field(var iss: Issue, key: String, val: String) String:
             iss.due = none
             return ""
 
-        if not valid_date(val):
-            return "bad date '" + val + "'"
+        if not valid_date(val): return "bad date '" + val + "'"
 
         iss.due = val
         return ""
@@ -1127,8 +1055,7 @@ fn set_field(var iss: Issue, key: String, val: String) String:
 
         for part in val.split(","):
             let l = part.lower()
-            if not valid_label(l):
-                return "bad label '" + l + "'"
+            if not valid_label(l): return "bad label '" + l + "'"
 
             ls.append(l)
 
@@ -1140,8 +1067,7 @@ fn set_field(var iss: Issue, key: String, val: String) String:
             iss.reporter = none
             return ""
 
-        if val == "":
-            return "empty reporter"
+        if val == "": return "empty reporter"
 
         iss.reporter = val
         return ""
@@ -1150,15 +1076,12 @@ fn set_field(var iss: Issue, key: String, val: String) String:
 
 fn apply_token(var iss: Issue, tok: String) String:
     let k = tok.index_of("=").get(-1)
-    if k <= 0:
-        return "expected field=value, got '" + tok + "'"
+    if k <= 0: return "expected field=value, got '" + tok + "'"
 
     let key = tok.slice(0, k).get()
     let val = tok.slice(k + 1, tok.scalar_length()).get()
-    if key == "state":
-        return "use move to change state"
-    if not ISSUE_FIELDS.contains(key):
-        return "unknown field '" + key + "'"
+    if key == "state": return "use move to change state"
+    if not ISSUE_FIELDS.contains(key): return "unknown field '" + key + "'"
 
     return set_field(var iss, key, val)
 
@@ -1203,16 +1126,13 @@ fn group_before(
     counts: List[Int],
     keys: List[String]
 ) Bool:
-    if pts[a] != pts[b]:
-        return pts[a] > pts[b]
-    if counts[a] != counts[b]:
-        return counts[a] > counts[b]
+    if pts[a] != pts[b]: return pts[a] > pts[b]
+    if counts[a] != counts[b]: return counts[a] > counts[b]
 
     return keys[a] < keys[b]
 
 fn label_before(a: Int, b: Int, names: List[String], counts: List[Int]) Bool:
-    if counts[a] != counts[b]:
-        return counts[a] > counts[b]
+    if counts[a] != counts[b]: return counts[a] > counts[b]
 
     return names[a].lower() < names[b].lower()
 
@@ -1254,90 +1174,68 @@ impl App:
     // live issue id from an argument, or an error
     fn resolve(arg: String) Ref:
         let v = parse_id_arg(arg)
-        if v < 0:
-            return Ref(id: 0, err: "bad issue id '" + arg + "'")
-        if self.load(v).id != v:
-            return Ref(id: 0, err: "no such issue #{v}")
+        if v < 0: return Ref(id: 0, err: "bad issue id '" + arg + "'")
+        if self.load(v).id != v: return Ref(id: 0, err: "no such issue #{v}")
 
         return Ref(id: v, err: "")
 
     fn person(field: String, iss: Issue) String:
-        if field == "assignee":
-            return iss.assignee.get("")
+        if field == "assignee": return iss.assignee.get("")
 
         return iss.reporter.get("")
 
     fn eq_match(field: String, a: String, iss: Issue) Bool:
-        if field == "id":
-            return iss.id == a.parse_int().get(-1)
-        if field == "created":
-            return iss.created == a.parse_int().get(-1)
-        if field == "updated":
-            return iss.updated == a.parse_int().get(-1)
+        if field == "id": return iss.id == a.parse_int().get(-1)
+        if field == "created": return iss.created == a.parse_int().get(-1)
+        if field == "updated": return iss.updated == a.parse_int().get(-1)
 
         if field == "points":
-            if a == "none":
-                return iss.points.get(-1) < 0
+            if a == "none": return iss.points.get(-1) < 0
 
             return iss.points.get(-1) == a.parse_int().get(-1)
 
-        if field == "title":
-            return a != "none" and iss.title.lower() == a.lower()
+        if field == "title": return a != "none" and iss.title.lower() == a.lower()
 
         if field == "assignee" or field == "reporter":
             let v = self.person(field, iss)
-            if a == "none":
-                return v == ""
+            if a == "none": return v == ""
 
             return v != "" and v.lower() == a.lower()
 
-        if field == "state":
-            return iss.state == a
-        if field == "priority":
-            return iss.priority == a
+        if field == "state": return iss.state == a
+        if field == "priority": return iss.priority == a
 
         if field == "due":
             let d = iss.due.get("")
-            if a == "none":
-                return d == ""
+            if a == "none": return d == ""
 
             return d != "" and d == a
 
         if field == "label" or field == "labels":
             let al = a.lower()
-            if al == "none":
-                return iss.labels.length() == 0
+            if al == "none": return iss.labels.length() == 0
 
             return iss.labels.contains(al)
 
         if field == "is":
-            if a == "open":
-                return not self.is_final(iss.state)
-            if a == "final":
-                return self.is_final(iss.state)
+            if a == "open": return not self.is_final(iss.state)
+            if a == "final": return self.is_final(iss.state)
 
             if a == "overdue":
                 let d = iss.due.get("")
                 return not self.is_final(iss.state) and d != "" and d < self.today
 
-            if a == "unassigned":
-                return self.person("assignee", iss) == ""
+            if a == "unassigned": return self.person("assignee", iss) == ""
 
             return false
 
         if field == "has":
-            if a == "assignee":
-                return iss.assignee.get("") != ""
-            if a == "due":
-                return iss.due.get("") != ""
-            if a == "points":
-                return iss.points.get(-1) >= 0
-            if a == "labels":
-                return iss.labels.length() > 0
-            if a == "comments":
-                return iss.comments.length() > 0
-            if a == "reporter":
-                return iss.reporter.get("") != ""
+            if a == "assignee": return iss.assignee.get("") != ""
+            if a == "due": return iss.due.get("") != ""
+            if a == "points": return iss.points.get(-1) >= 0
+            if a == "labels": return iss.labels.length() > 0
+            if a == "comments": return iss.comments.length() > 0
+            if a == "reporter": return iss.reporter.get("") != ""
 
             return false
 
@@ -1345,26 +1243,22 @@ impl App:
 
     fn contains_match(field: String, a: String, iss: Issue) Bool:
         let al = a.lower()
-        if field == "title":
-            return iss.title.lower().contains(al)
+        if field == "title": return iss.title.lower().contains(al)
 
         if field == "assignee" or field == "reporter":
             let v = self.person(field, iss)
             return v != "" and v.lower().contains(al)
 
         if field == "text":
-            if iss.title.lower().contains(al):
-                return true
+            if iss.title.lower().contains(al): return true
 
             for c in iss.comments:
-                if c.text.lower().contains(al):
-                    return true
+                if c.text.lower().contains(al): return true
             return false
 
         if field == "label" or field == "labels":
             for l in iss.labels:
-                if l.contains(al):
-                    return true
+                if l.contains(al): return true
             return false
 
         return false
@@ -1380,25 +1274,20 @@ impl App:
             c = cmp_int(iss.updated, a.parse_int().get(0))
         else if field == "points":
             let p = iss.points.get(-1)
-            if p < 0:
-                return false
+            if p < 0: return false
 
             c = cmp_int(p, a.parse_int().get(0))
         else if field == "priority":
             c = cmp_int(prio_rank(iss.priority), prio_rank(a))
         else if field == "due":
             let d = iss.due.get("")
-            if d == "":
-                return false
+            if d == "": return false
 
             c = cmp_str(d, a)
 
-        if op == "<":
-            return c < 0
-        if op == "<=":
-            return c <= 0
-        if op == ">":
-            return c > 0
+        if op == "<": return c < 0
+        if op == "<=": return c <= 0
+        if op == ">": return c > 0
 
         return c >= 0
 
@@ -1411,10 +1300,8 @@ impl App:
             )
         if nd.kind == 2:
             return self.qmatch(nodes, nd.left, iss) or self.qmatch(nodes, nd.right, iss)
-        if nd.kind == 3:
-            return not self.qmatch(nodes, nd.left, iss)
-        if nd.field == "view":
-            return self.view_match(nd.alts[0], iss)
+        if nd.kind == 3: return not self.qmatch(nodes, nd.left, iss)
+        if nd.field == "view": return self.view_match(nd.alts[0], iss)
 
         var hit = false
 
@@ -1441,35 +1328,28 @@ impl App:
     fn view_match(name: String, iss: Issue) Bool:
         let text = self.views.get(name).get("")
         let q = compile_query(filter_part(text), self.view_names(), self.wf.states)
-        if q.err != "":
-            return false
-        if q.root < 0:
-            return true
+        if q.err != "": return false
+        if q.root < 0: return true
 
         return self.qmatch(q.nodes, q.root, iss)
 
     // does any of refs (transitively through views) reach target
     fn reaches(refs: List[String], target: String) Bool:
         for r in refs:
-            if r == target:
-                return true
+            if r == target: return true
 
             let sub = compile_query(
                 filter_part(self.views.get(r).get("")), self.view_names(),
                 self.wf.states
             )
-            if self.reaches(sub.refs, target):
-                return true
+            if self.reaches(sub.refs, target): return true
 
         return false
 
     fn key_cmp(field: String, a: Issue, b: Issue) Int:
-        if field == "id":
-            return cmp_int(a.id, b.id)
-        if field == "created":
-            return cmp_int(a.created, b.created)
-        if field == "updated":
-            return cmp_int(a.updated, b.updated)
+        if field == "id": return cmp_int(a.id, b.id)
+        if field == "created": return cmp_int(a.created, b.created)
+        if field == "updated": return cmp_int(a.updated, b.updated)
         if field == "priority":
             return cmp_int(prio_rank(a.priority), prio_rank(b.priority))
         if field == "state":
@@ -1478,17 +1358,13 @@ impl App:
         if field == "points":
             let pa = a.points.get(-1)
             let pb = b.points.get(-1)
-            if pa < 0 and pb < 0:
-                return 0
-            if pa < 0:
-                return 1
-            if pb < 0:
-                return -1
+            if pa < 0 and pb < 0: return 0
+            if pa < 0: return 1
+            if pb < 0: return -1
 
             return cmp_int(pa, pb)
 
-        if field == "title":
-            return cmp_str(a.title.lower(), b.title.lower())
+        if field == "title": return cmp_str(a.title.lower(), b.title.lower())
         if field == "assignee":
             return absent_cmp(a.assignee.get("").lower(), b.assignee.get("").lower())
         if field == "reporter":
@@ -1501,8 +1377,7 @@ impl App:
             var c = self.key_cmp(k.field, a, b)
             if k.desc:
                 c = 0 - c
-            if c != 0:
-                return c
+            if c != 0: return c
 
         return cmp_int(a.id, b.id)
 
@@ -1515,15 +1390,13 @@ impl App:
         has_limit: Bool
     ) String:
         let q = compile_query(filter, self.view_names(), self.wf.states)
-        if q.err != "":
-            return q.err
+        if q.err != "": return q.err
 
         var keys = List[SortKey]()
 
         if has_sort:
             let k = parse_sort(sort_text)
-            if k.err != "":
-                return k.err
+            if k.err != "": return k.err
 
             keys = k.keys
 
@@ -1569,8 +1442,7 @@ impl App:
             return Out(ok: false, text: "#{id} is in final state '" + iss.state + "'")
         if not self.wf.states.contains(to):
             return Out(ok: false, text: "unknown state '" + to + "'")
-        if iss.state == to:
-            return Out(ok: false, text: "already in state '" + to + "'")
+        if iss.state == to: return Out(ok: false, text: "already in state '" + to + "'")
 
         let entries = self.wf.trans.get(iss.state).get(List[Trans]())
         var guards = List[String]()
@@ -1627,12 +1499,10 @@ impl App:
 
         for tok in fields:
             let e = apply_token(var iss, tok)
-            if e != "":
-                return Out(ok: false, text: e)
+            if e != "": return Out(ok: false, text: e)
 
         let changes = diff(old, iss)
-        if changes.length() == 0:
-            return Out(ok: true, text: "#{id} unchanged")
+        if changes.length() == 0: return Out(ok: true, text: "#{id} unchanged")
 
         self.clock += 1
         iss.updated = self.clock
@@ -1659,8 +1529,7 @@ impl App:
                 name = tok.slice(1, tok.scalar_length()).get()
 
             let l = name.lower()
-            if not valid_label(l):
-                return Out(ok: false, text: "bad label '" + l + "'")
+            if not valid_label(l): return Out(ok: false, text: "bad label '" + l + "'")
 
             if add:
                 labels.append(l.clone())
@@ -1674,8 +1543,7 @@ impl App:
         let nl = norm_labels(labels)
         let before = labels_text(iss.labels)
         let after = labels_text(nl)
-        if before == after:
-            return Out(ok: true, text: "#{id} unchanged")
+        if before == after: return Out(ok: true, text: "#{id} unchanged")
 
         iss.labels = nl
         self.clock += 1
@@ -1704,12 +1572,9 @@ impl App:
         return Out(ok: true, text: "deleted #{id}")
 
     var fn run_action(kind: String, it: List[String], id: Int) Out:
-        if kind == "move":
-            return self.core_move(id, it[1].clone(), "")
-        if kind == "assign":
-            return self.core_edit(id, ["assignee=" + it[1]])
-        if kind == "label":
-            return self.core_label(id, rest_items(it))
+        if kind == "move": return self.core_move(id, it[1].clone(), "")
+        if kind == "assign": return self.core_edit(id, ["assignee=" + it[1]])
+        if kind == "label": return self.core_label(id, rest_items(it))
 
         return self.core_edit(id, rest_items(it))
 
@@ -2469,13 +2334,11 @@ impl App:
 fn prio_rank(s: String) Int:
     let ps = PRIORITIES
     for k in 0..ps.length():
-        if ps[k] == s:
-            return k
+        if ps[k] == s: return k
     return -1
 
 fn out_line(o: Out) String:
-    if o.ok:
-        return o.text
+    if o.ok: return o.text
 
     return "error: " + o.text
 
@@ -2529,8 +2392,7 @@ export fn main() Int:
         let line = lines[i].clone()
         let s = line.trim()
         i += 1
-        if s == "" or s.starts_with("#"):
-            continue
+        if s == "" or s.starts_with("#"): continue
 
         app.emit("> " + line)
 
@@ -2542,8 +2404,7 @@ export fn main() Int:
             while i < n:
                 let b = lines[i].trim()
                 i += 1
-                if b == "end":
-                    break
+                if b == "end": break
 
                 body.append(b)
 

@@ -15,15 +15,15 @@ try write_file("notes.txt", "hello").wait()
 let data = try read_file("notes.txt").wait()
 ```
 */
-import BigInt from "@std/math/math.ms"
-import Bytes from "@std/bytes.ms"
-import Duration, milliseconds, monotonic, now, sleep from "@std/time.ms"
-import ReadStream, WriteStream, Source, Sink from "@std/io/io.ms"
-import Promise, adopt, owned_task from "@std/concurrency/promise.ms"
-import msrt_promise_finished from "@std/internal/promises.ms"
-import Timestamp from "@std/time.ms"
-import Closeable, Writable from "@std/core.ms"
 import (
+    BigInt from "@std/math/math.ms",
+    Bytes from "@std/bytes.ms",
+    Duration, milliseconds, monotonic, now, sleep from "@std/time.ms",
+    ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
+    Promise, adopt, owned_task from "@std/concurrency/promise.ms",
+    msrt_promise_finished from "@std/internal/promises.ms",
+    Timestamp from "@std/time.ms",
+    Closeable, Writable from "@std/core.ms",
     msstd_fs_filesystem,
     msstd_fs_canonicalize,
     msstd_fs_create_directory,
@@ -79,8 +79,8 @@ import (
     msstd_fs_watch_next,
     msstd_fs_watch_close,
     msstd_fs_temporary_path,
-    msstd_fs_temporary_close
-) from "@std/internal/fs.ms"
+    msstd_fs_temporary_close from "@std/internal/fs.ms",
+)
 
 // The name and kind flags for one child returned by a directory listing.
 export type DirectoryEntry:
@@ -383,7 +383,6 @@ impl Closeable for Directory:
     // Closes the directory; further reads fail with a closed error.
     var fn close() Unit!:
         msstd_fs_directory_close(self.native)
-        return ok(unit)
 
 impl Directory:
     // Returns the path this cursor was opened with.
@@ -405,7 +404,6 @@ impl Source[DirectoryEntry] for Directory:
     // Closes the directory; further reads fail with a closed error.
     var fn close() Unit!:
         msstd_fs_directory_close(self.native)
-        return ok(unit)
 
 // The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
@@ -424,8 +422,7 @@ impl Source[FileEvent] for WatchSource:
     // Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
     var fn next() FileEvent?!:
         while true:
-            if let event = self.pending.pop():
-                return ok(event)
+            if let event = self.pending.pop(): return ok(event)
 
             var batch = try msstd_fs_watch_next(self.watcher.native)
             batch.reverse()
@@ -436,7 +433,6 @@ impl Source[FileEvent] for WatchSource:
     // Stops the watcher and waits for its worker to stop.
     var fn close() Unit!:
         msstd_fs_watch_close(self.watcher.native)
-        return ok(unit)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
     return ReadStream[FileEvent](WatchSource(watcher, []))
@@ -454,7 +450,6 @@ impl Closeable for TemporaryDirectory:
     // Safe to call repeatedly.
     var fn close() Unit!:
         let _ = msstd_fs_temporary_close(self.native)
-        return ok(unit)
 
 impl TemporaryDirectory:
     // Returns the absolute path of the directory, created under the host's temporary root.
@@ -649,8 +644,6 @@ impl Closeable for WritePermit:
         if self.held:
             self.held = false
             msstd_fs_release()
-
-        return ok(unit)
 
 fn already_exists() Error:
     return Error("filesystem: already exists", kind: "EEXIST")

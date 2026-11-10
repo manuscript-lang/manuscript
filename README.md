@@ -22,15 +22,10 @@ Here's a simple HTTP server:
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
-fn listen() Unit!:
+fn main() Unit!:
     let server = try serve("127.0.0.1:0", buffered(handle))
     print("{server.address()}")
     try server.wait()
-    return ok(unit)
-
-export fn main() Int:
-    if listen().is_ok(): return 0
-    return 1
 ```
 
 HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this easy to hand to an agent.
@@ -38,12 +33,11 @@ HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise a
 ## Ownership without annotations
 
 ```rust
-export fn main() Int:
+fn main() Unit:
     var names = List[String]()
     let first = "ada"
     names.append(first)
     print(first)
-    return 0
 ```
 
 ```text
@@ -61,10 +55,9 @@ import promise, wait_all from "@std/concurrency/promise.ms"
 fn fib(n: Int) Int:
     return if n < 2: n else: fib(n - 1) + fib(n - 2)
 
-export fn main() Int:
+fn main() Unit:
     let tasks = [36, 36, 36, 36].map(fn n: promise(fn: ok(fib(n))))
     print(wait_all(tasks).get(List[Int]()).length())
-    return 0
 ```
 
 No async, no await, no function coloring: wrap a call in `promise(fn: ...)` and it runs on another core. The lambda borrows its captures read-only, so the checker rules out data races. A parked promise costs about 5 KB on Linux, and idle stacks hibernate, so millions fit in memory.

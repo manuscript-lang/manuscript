@@ -1,5 +1,7 @@
-import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
-import parse, Version from "@std/data/semver.ms"
+import (
+    expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
+    parse, Version from "@std/data/semver.ms",
+)
 
 fn failure(result: Version!) Error!:
     match result:
@@ -55,9 +57,9 @@ test "semver orders by precedence":
                 ) != expected
             ): return fail("order {left} {right}")
 
-            j = j + 1
+            j += 1
 
-        i = i + 1
+        i += 1
 
 test "semver ignores build metadata and compares huge numeric identifiers":
     let a = (parse(text: "1.0.0+a") | try expect_ok)

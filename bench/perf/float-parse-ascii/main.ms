@@ -1,8 +1,10 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import infinity, nan from "@std/math/math.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    infinity, nan from "@std/math/math.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let operation = args[0]
     let dataset = args[1]
@@ -26,8 +28,7 @@ export fn main() Int:
 
             values.append(value)
             texts.append(value.to_string())
-            if texts[i].parse_int().get() != value:
-                return 1
+            if texts[i].parse_int().get() != value: return 1
 
         if operation == "signed":
             let start = monotonic()
@@ -117,8 +118,7 @@ export fn main() Int:
         else if dataset == "unicode":
             text = "١"
 
-        if not text.parse_float().is_none():
-            return 1
+        if not text.parse_float().is_none(): return 1
 
         let start = monotonic()
         for unused in 0..count:
@@ -131,7 +131,6 @@ export fn main() Int:
     else:
         return 2
 
-    if checksum != expected_checksum or last != expected_last:
-        return 1
+    if checksum != expected_checksum or last != expected_last: return 1
 
     return 0

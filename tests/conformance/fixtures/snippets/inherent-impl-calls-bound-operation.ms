@@ -20,6 +20,5 @@ impl Wrap[T]:
 
 fn via_param[T: Scorer](w: Wrap[T]) Int: w.inner.score(1)
 
-export fn main() Int:
+fn main() Unit:
     stdout().write("{Wrap(Dbl(3)).run(2)} {via_param(Wrap(Dbl(1)))}\n").get()
-    return 0

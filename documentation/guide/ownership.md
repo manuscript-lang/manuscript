@@ -22,7 +22,7 @@ fn add_gift(var cart: Cart) Unit:
 fn archive(cart: Cart, var history: List[Cart]) Unit:
     history.append(cart)
 
-export fn main() Int:
+fn main() Unit:
     var cart = Cart("Sam", ["pen", "ink"])
     print(summary(cart))
     add_gift(var cart)
@@ -32,7 +32,6 @@ export fn main() Int:
     archive(cart.clone(), var history)
     cart.items.append("notebook")
     print("{summary(cart)}; archived: {history[0].items.length()}")
-    return 0
 ```
 
 ```text

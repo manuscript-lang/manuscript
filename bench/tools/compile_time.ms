@@ -11,12 +11,11 @@ import (
     now_ns,
     run_in,
     usage,
-    write_text
-) from "./lib.ms"
-import create_directory, remove, temporary from "@std/os/fs.ms"
-import arguments, set_environment from "@std/os/env.ms"
-import SeededRandom, seeded from "@std/random.ms"
-import stdout from "@std/io/io.ms"
+    write_text from "./lib.ms",
+    create_directory, remove, temporary from "@std/os/fs.ms",
+    arguments, set_environment from "@std/os/env.ms",
+    SeededRandom, seeded from "@std/random.ms",
+)
 
 fn q(text: String) String:
     return text.replace("‹", "\{").replace("›", "\}")
@@ -349,8 +348,6 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
         try rust_timed("rust debug:  ", out, cargo, ["build"])
         try rust_timed("rust release:", out, cargo, ["build", "--release"])
 
-    return ok(unit)
-
 // Times one cargo build from a cold target directory.
 fn rust_timed(
     label: String,
@@ -361,7 +358,7 @@ fn rust_timed(
     remove("{out}/rs/target", recursive: true).get(unit)
     return timed(label, "{out}/rs", cargo, args)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     var dims = [40, 25, 10]
 

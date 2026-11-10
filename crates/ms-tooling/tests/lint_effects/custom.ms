@@ -14,5 +14,5 @@ fn bad(o: String) Unit:
 fn leaky(o: String) Unit:
     print(o)
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

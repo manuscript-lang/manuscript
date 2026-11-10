@@ -23,15 +23,15 @@ import (
     run_in,
     sample,
     usage,
-    write_text
-) from "./lib.ms"
-import Measured, header, measure, row, versions from "./workloads_measure.ms"
-import hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto.ms"
-import JsonValue from "@std/data/json.ms"
-import copy, create_directory, list, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
-import parse from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    Measured, header, measure, row, versions from "./workloads_measure.ms",
+    hex_encode from "@std/data/encoding.ms",
+    sha256 from "@std/crypto.ms",
+    JsonValue from "@std/data/json.ms",
+    copy, create_directory, list, temporary from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+    parse from "@std/data/json.ms",
+)
 
 type Case:
     name: String
@@ -123,7 +123,7 @@ fn run(work: String, n: Int) Result[String, Error]:
     write_text("{work}/table.txt", rows.join("\n") + "\n")
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     var n = 3
     let args = arguments()
 

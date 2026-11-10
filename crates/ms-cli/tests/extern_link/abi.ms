@@ -47,6 +47,8 @@ extern fn abi_reverse(data: Bytes) Bytes
 
 extern fn abi_cstring_length(text: String) Int
 
+extern fn abi_string_length(text: String) Int
+
 extern fn abi_double(values: List[Int32]) List[Int32]
 
 extern fn abi_sum(values: List[UInt8]) UInt64
@@ -130,6 +132,21 @@ fn counters() Unit:
 export fn main() Int:
     var out = stdout()
     let mode = arguments().get(index: 0, default: "")
+
+    if mode == "string-length":
+        for text in ["", "x", "123456789012345", "1234567890123456", "é🙂\u{0}é"]:
+            if abi_string_length(text) != text.byte_length(): return 1
+
+        let owned = "ab".repeat(20).get()
+        if abi_string_length(owned) != 40: return 2
+        if abi_string_length(owned.clone()) != 40: return 3
+        if abi_string_length(owned.view(1, 39)) != 38: return 4
+        if abi_string_length(owned + "\u{0}") != 41: return 5
+
+        let unicode = "é🙂".repeat(20).get()
+        if abi_string_length(unicode) != 120: return 6
+
+        return 0
 
     if mode == "overflow":
         let _ = abi_overflow()

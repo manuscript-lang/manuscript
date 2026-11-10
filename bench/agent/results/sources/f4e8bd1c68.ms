@@ -1,34 +1,31 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines, collect from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines, collect from "@std/io/streams.ms",
+)
 
 fn is_leap(y: Int) Bool:
     return ((y % 4) == 0 and (y % 100) != 0) or (y % 400) == 0
 
 fn dim(y: Int, m: Int) Int:
     if m == 2:
-        if is_leap(y):
-            return 29
+        if is_leap(y): return 29
 
         return 28
 
-    if m == 4 or m == 6 or m == 9 or m == 11:
-        return 30
+    if m == 4 or m == 6 or m == 9 or m == 11: return 30
 
     return 31
 
 fn all_digits(s: String) Bool:
     for i in 0..s.length():
-        if not "0123456789".contains(s.get(i)):
-            return false
+        if not "0123456789".contains(s.get(i)): return false
     return true
 
 // Returns the value of a run of ASCII digits whose length is within [minlen, maxlen], or -1.
 fn digits_value(s: String, minlen: Int, maxlen: Int) Int:
     let n = s.length()
-    if n < minlen or n > maxlen:
-        return -1
-    if not all_digits(s):
-        return -1
+    if n < minlen or n > maxlen: return -1
+    if not all_digits(s): return -1
 
     return s.parse_int().get(-1)
 
@@ -36,31 +33,23 @@ fn digits_value(s: String, minlen: Int, maxlen: Int) Int:
 fn parse_start(s: String) List[Int]:
     var r = List[Int]()
     let dt = s.split("T")
-    if dt.length() != 2:
-        return r
+    if dt.length() != 2: return r
 
     let dp = dt[0].split("-")
     let tp = dt[1].split(":")
-    if dp.length() != 3 or tp.length() != 2:
-        return r
-    if dp[0].length() != 4 or dp[1].length() != 2 or dp[2].length() != 2:
-        return r
-    if tp[0].length() != 2 or tp[1].length() != 2:
-        return r
+    if dp.length() != 3 or tp.length() != 2: return r
+    if dp[0].length() != 4 or dp[1].length() != 2 or dp[2].length() != 2: return r
+    if tp[0].length() != 2 or tp[1].length() != 2: return r
 
     let y = digits_value(dp[0], 4, 4)
     let mo = digits_value(dp[1], 2, 2)
     let d = digits_value(dp[2], 2, 2)
     let h = digits_value(tp[0], 2, 2)
     let mi = digits_value(tp[1], 2, 2)
-    if y < 1970 or y > 2099:
-        return r
-    if mo < 1 or mo > 12:
-        return r
-    if d < 1 or d > dim(y, mo):
-        return r
-    if h < 0 or h > 23 or mi < 0 or mi > 59:
-        return r
+    if y < 1970 or y > 2099: return r
+    if mo < 1 or mo > 12: return r
+    if d < 1 or d > dim(y, mo): return r
+    if h < 0 or h > 23 or mi < 0 or mi > 59: return r
 
     r.append(y)
     r.append(mo)
@@ -72,15 +61,13 @@ fn parse_start(s: String) List[Int]:
 // One cron item: *, */S, A, A-B, A-B/S. Marks matching values in set (index = value).
 fn parse_item(item: String, lo: Int, hi: Int, var set: List[Bool]) Bool:
     let sl = item.split("/")
-    if sl.length() < 1 or sl.length() > 2:
-        return false
+    if sl.length() < 1 or sl.length() > 2: return false
 
     var step = 1
 
     if sl.length() == 2:
         step = digits_value(sl[1], 1, 2)
-        if step < 1:
-            return false
+        if step < 1: return false
 
     let base = sl[0]
     var a = lo
@@ -93,19 +80,16 @@ fn parse_item(item: String, lo: Int, hi: Int, var set: List[Bool]) Bool:
         let r = base.split("-")
 
         if r.length() == 1:
-            if sl.length() == 2:
-                return false
+            if sl.length() == 2: return false
 
             a = digits_value(r[0], 1, 2)
-            if a < lo or a > hi:
-                return false
+            if a < lo or a > hi: return false
 
             b = a
         else if r.length() == 2:
             a = digits_value(r[0], 1, 2)
             b = digits_value(r[1], 1, 2)
-            if a < lo or a > hi or b < lo or b > hi or a > b:
-                return false
+            if a < lo or a > hi or b < lo or b > hi or a > b: return false
         else:
             return false
 
@@ -123,13 +107,11 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
     for i in 0..hi + 1:
         set.append(false)
     for item in text.split(","):
-        if not parse_item(item, lo, hi, var set):
-            return List[Bool]()
+        if not parse_item(item, lo, hi, var set): return List[Bool]()
     return set
 
 fn pad2(n: Int) String:
-    if n < 10:
-        return "0{n}"
+    if n < 10: return "0{n}"
 
     return "{n}"
 
@@ -203,8 +185,7 @@ fn search(
     return res
 
 fn process(line: String, n: Int, var out: List[String]) Unit:
-    if line.trim_chars(" ").is_empty():
-        return unit
+    if line.trim_chars(" ").is_empty(): return unit
 
     let toks = line.split(" ")
 

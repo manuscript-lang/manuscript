@@ -45,6 +45,7 @@ pub fn prelude_function_import(path: &str, name: &str) -> Import {
     Import {
         id: ms_syntax::NodeId(0),
         pos: ms_syntax::Pos::default(),
+        clause: ms_syntax::Pos::default(),
         name_pos: ms_syntax::Pos::default(),
         name: n(name),
         path: path.into(),
@@ -577,6 +578,7 @@ fn split_mixed(
         own_imports.push(Import {
             id: NodeId(ids - 1),
             pos: d.pos,
+            clause: d.pos,
             name_pos: d.pos,
             name,
             path: parsed.file.as_ref().into(),

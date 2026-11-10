@@ -1,13 +1,15 @@
-import parse, stringify from "@std/data/toml.ms"
-import arguments from "@std/os/env.ms"
-import read_file from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    parse, stringify from "@std/data/toml.ms",
+    arguments from "@std/os/env.ms",
+    read_file from "@std/os/fs.ms",
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
-    let text = read_file(args.get(0)).wait().get().decode_utf8().get()
-    let count = args.get(1).parse_int().get()
+    let text = read_file(args[0]).wait().get().decode_utf8().get()
+    let count = args[1].parse_int().get()
     let expected = stringify(parse(text).get()).get()
 
     if count == 0:

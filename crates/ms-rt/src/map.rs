@@ -1440,11 +1440,12 @@ pub unsafe extern "C-unwind" fn msrt_set_intersection(
     kd: KeyDesc,
     out: *mut MapVal,
 ) {
+    let right_kd = key_desc(b, kd);
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
-        filter_into(&*a, kd, out, |k| contains_key(&*b, kd, None, k));
+        filter_into(&*a, kd, out, |k| contains_key(&*b, &*right_kd, None, k));
     }
 }
 
@@ -1456,11 +1457,12 @@ pub unsafe extern "C-unwind" fn msrt_set_difference(
     kd: KeyDesc,
     out: *mut MapVal,
 ) {
+    let right_kd = key_desc(b, kd);
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
-        filter_into(&*a, kd, out, |k| !contains_key(&*b, kd, None, k));
+        filter_into(&*a, kd, out, |k| !contains_key(&*b, &*right_kd, None, k));
     }
 }
 
@@ -1472,11 +1474,12 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
     kd: KeyDesc,
     out: *mut MapVal,
 ) {
+    let right_kd = key_desc(b, kd);
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
-        filter_into(&*a, kd, out, |k| !contains_key(&*b, kd, None, k));
+        filter_into(&*a, kd, out, |k| !contains_key(&*b, &*right_kd, None, k));
         each_key(&*b, kd, |k| {
             if !contains_key(&*a, kd, None, k) {
                 add_copy::<true>(&mut *out, kd, k);
@@ -1492,11 +1495,12 @@ pub unsafe extern "C-unwind" fn msrt_set_is_subset_of(
     b: *const MapVal,
     kd: KeyDesc,
 ) -> u8 {
+    let right_kd = key_desc(b, kd);
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
         let kd = &*kd;
-        each_key_while(&*a, kd, |k| contains_key(&*b, kd, None, k)) as u8
+        each_key_while(&*a, kd, |k| contains_key(&*b, &*right_kd, None, k)) as u8
     }
 }
 
@@ -1519,6 +1523,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
     b: *const MapVal,
     kd: KeyDesc,
 ) -> u8 {
+    let right_kd = key_desc(b, kd);
     let kd = key_desc(a, kd);
     // SAFETY: caller contract.
     unsafe {
@@ -1526,7 +1531,7 @@ pub unsafe extern "C-unwind" fn msrt_set_is_disjoint_from(
             return 1;
         }
         let kd = &*kd;
-        each_key_while(&*a, kd, |k| !contains_key(&*b, kd, None, k)) as u8
+        each_key_while(&*a, kd, |k| !contains_key(&*b, &*right_kd, None, k)) as u8
     }
 }
 
@@ -1763,6 +1768,86 @@ mod tests {
         eq: Some(modulo_eq),
         hash: Some(modulo_hash),
     };
+
+    unsafe extern "C" fn shifted_modulo_hash(a: *const u8) -> i64 {
+        // SAFETY: the test descriptor describes an i64 slot.
+        unsafe { modulo_hash(a) + 1000 }
+    }
+
+    static SHIFTED_MODULO_KEY: TypeDesc = TypeDesc {
+        hash: Some(shifted_modulo_hash),
+        ..MODULO_KEY
+    };
+
+    #[test]
+    fn set_operations_probe_each_operands_creator_hash() {
+        let _g = testutil::lock();
+        let before = alloc::live_blocks();
+        for stamped in [false, true] {
+            let caller = if stamped {
+                &msrt_desc_int
+            } else {
+                &SHIFTED_MODULO_KEY
+            };
+            // SAFETY: all descriptors describe live i64 key slots, with the same equality
+            // but different valid hashes. Stamped creators outlive the sets and their copies.
+            unsafe {
+                let mut a = empty();
+                let mut b = empty();
+                msrt_map_stamp(&mut a, &MODULO_KEY);
+                if stamped {
+                    msrt_map_stamp(&mut b, &SHIFTED_MODULO_KEY);
+                }
+                for (m, kd, values) in [
+                    (&mut a, &MODULO_KEY, [1i64, 2]),
+                    (&mut b, &SHIFTED_MODULO_KEY, [11i64, 3]),
+                ] {
+                    for mut value in values {
+                        insert(m, kd, None, (&raw mut value).cast(), core::ptr::null_mut());
+                    }
+                }
+                let mut actual = Vec::new();
+                for operation in [
+                    msrt_set_union,
+                    msrt_set_intersection,
+                    msrt_set_difference,
+                    msrt_set_symmetric_difference,
+                ] {
+                    let mut out = empty();
+                    operation(&a, &b, caller, &mut out);
+                    let mut values = Vec::new();
+                    each_key(&out, &MODULO_KEY, |p| values.push(*p.cast::<i64>()));
+                    actual.push(values);
+                    assert_eq!(out.desc, &raw const MODULO_KEY);
+                    drop_map(&mut out, &MODULO_KEY, None);
+                }
+                let mut shared = empty();
+                if stamped {
+                    msrt_map_stamp(&mut shared, &SHIFTED_MODULO_KEY);
+                }
+                let mut value = 11i64;
+                insert(
+                    &mut shared,
+                    &SHIFTED_MODULO_KEY,
+                    None,
+                    (&raw mut value).cast(),
+                    core::ptr::null_mut(),
+                );
+                let relations = [
+                    msrt_set_is_subset_of(&shared, &a, caller),
+                    msrt_set_is_superset_of(&a, &shared, caller),
+                    msrt_set_is_disjoint_from(&a, &shared, caller),
+                    msrt_set_is_disjoint_from(&shared, &a, caller),
+                ];
+                drop_map(&mut shared, &SHIFTED_MODULO_KEY, None);
+                drop_map(&mut a, &MODULO_KEY, None);
+                drop_map(&mut b, &SHIFTED_MODULO_KEY, None);
+                assert_eq!(alloc::live_blocks(), before);
+                assert_eq!(actual, [vec![1, 2, 3], vec![1], vec![2], vec![2, 3]]);
+                assert_eq!(relations, [1, 1, 0, 0]);
+            }
+        }
+    }
 
     static HASH_CALLS: AtomicUsize = AtomicUsize::new(0);
 

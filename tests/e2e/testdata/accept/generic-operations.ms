@@ -9,8 +9,7 @@ interface Picker[T]:
 
 impl Picker[Int] for Bag:
     fn pick[K: Comparable](key: fn(Int) K) Int?:
-        if self.items.is_empty():
-            return none
+        if self.items.is_empty(): return none
 
         var at = 0
         var best = key(self.items[0])
@@ -54,5 +53,5 @@ test "List max_by and min_by are source methods":
     words.max_by(fn(w: String) Int: w.length()) | try expect_equal("ccc")
     words.min_by(fn(w: String) Int: w.length()) | try expect_equal("a")
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

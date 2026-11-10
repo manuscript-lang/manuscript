@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import Decimal, RoundingMode from "@std/math/decimal.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    Decimal, RoundingMode from "@std/math/decimal.ms",
+)
 
 test "decimal cents stay exact and fixed places retain zeros":
     let total = 19.99d * 3d

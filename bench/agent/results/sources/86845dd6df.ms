@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // Returns line `index`, or "" when the input ended early (a final empty line may lack its terminator).
 fn line_at(lines: List[String], index: Int) String:
@@ -113,8 +115,7 @@ export fn main() Int:
     var last = -1
 
     for k in 0..total:
-        if kinds[k] == 0:
-            continue
+        if kinds[k] == 0: continue
 
         if first < 0:
             first = k
@@ -127,8 +128,7 @@ export fn main() Int:
             first = k
             last = k
 
-    if first < 0:
-        return 0
+    if first < 0: return 0
 
     hunk_lo.append(max_of(first - context, 0))
     hunk_hi.append(min_of(last + context, total - 1))

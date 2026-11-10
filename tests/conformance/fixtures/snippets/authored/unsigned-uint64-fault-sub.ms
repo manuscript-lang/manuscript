@@ -4,10 +4,9 @@
 
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     let top: UInt64 = 18446744073709551615
     let one: UInt64 = 1
     let _ = stdout().write("before\n")
     let c = one - top
     let _ = stdout().write("{c}\n")
-    return 0

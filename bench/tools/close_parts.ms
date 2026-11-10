@@ -2,17 +2,17 @@
 // bench/perf is lowered by a compiler from before the change (BASE) and one with it (HEAD), and the lowered MIR (`ms emit`) and
 // the linked binaries must be byte for byte the same. Prints one line per project and exits 1 on a difference.
 // Usage: ms run bench/tools/close_parts.ms -- BASE_MS HEAD_MS
-import absolute, run_in, usage from "./lib.ms"
 import (
+    absolute, run_in, usage from "./lib.ms",
     copy,
     CopyOptions,
     glob,
     GlobOptions,
     read_file,
     remove,
-    temporary
-) from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+    temporary from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn same_bytes(a: String, b: String) Bool:
     let left = read_file(a).wait()
@@ -25,7 +25,7 @@ fn ok_status(program: String, args: List[String], dir: String) Bool:
     let ran = run_in(dir, program, args)
     return ran.ok and ran.code == 0
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() != 2: return usage("usage: close_parts.ms -- BASE_MS HEAD_MS")
 
