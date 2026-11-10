@@ -1,5 +1,7 @@
-import posix, win32 from "@std/os/path.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    posix, win32 from "@std/os/path.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 test "path suffix scans preserve Unicode component boundaries":
     let paths = posix()
