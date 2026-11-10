@@ -26,6 +26,83 @@ fn json(output: &Output) -> Json {
 }
 
 #[test]
+fn review_and_diagram_accept_metadata_only_git_sections() {
+    let dir = scratch("metadata-only-diff");
+    std::fs::write(dir.join("empty.ms"), "").unwrap();
+    for path in ["main.ms", "name with spaces.ms", "café.ms"] {
+        std::fs::write(dir.join(path), include_str!("review_quoted/head.ms")).unwrap();
+        let patch = format!(
+            "diff --git a/{path} b/{path}\nold mode 100644\nnew mode 100755\ndiff --git a/empty.ms b/empty.ms\nnew file mode 100644\nindex 0000000..e69de29\ndiff --git a/gone.ms b/gone.ms\ndeleted file mode 100644\nindex e69de29..0000000\n"
+        );
+        std::fs::write(dir.join("change.patch"), patch).unwrap();
+        let report = json(&ms(
+            &dir,
+            &["review", path, "--diff", "change.patch", "--json"],
+        ));
+        assert_eq!(report.get("base_checked"), Some(&Json::Bool(true)));
+        assert_eq!(
+            report.get("input").and_then(Json::as_str),
+            Some("diff (3 files, 3 source, +0 -0)")
+        );
+        assert!(
+            report
+                .get("findings")
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        let _ = json(&ms(
+            &dir,
+            &[
+                "diagram",
+                path,
+                "--view",
+                "calls",
+                "--diff",
+                "change.patch",
+                "--json",
+            ],
+        ));
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn review_and_diagram_reject_binary_source_diffs() {
+    let dir = scratch("binary-source-diff");
+    std::fs::write(dir.join("main.ms"), include_str!("review_quoted/head.ms")).unwrap();
+    for metadata in [
+        "Binary files a/main.ms and b/main.ms differ",
+        "GIT binary patch",
+    ] {
+        std::fs::write(
+            dir.join("change.patch"),
+            format!("diff --git a/main.ms b/main.ms\nindex 1234567..7654321 100644\n{metadata}\n"),
+        )
+        .unwrap();
+        for command in ["review", "diagram"] {
+            let mut args = vec![command, "main.ms", "--diff", "change.patch", "--json"];
+            if command == "diagram" {
+                args.extend(["--view", "calls"]);
+            }
+            let output = ms(&dir, &args);
+            assert_eq!(output.status.code(), Some(2), "{output:?}");
+            assert!(output.stdout.is_empty());
+            assert!(String::from_utf8_lossy(&output.stderr).contains("binary diff"));
+        }
+    }
+    std::fs::write(dir.join("change.patch"), "diff --git a/image.png b/image.png\nindex 1234567..7654321 100644\nBinary files a/image.png and b/image.png differ\n").unwrap();
+    let output = ms(
+        &dir,
+        &["review", "main.ms", "--diff", "change.patch", "--json"],
+    );
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(output.stdout.is_empty());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn review_and_diagram_reject_truncated_context_at_eof() {
     let dir = scratch("truncated-diff-context");
     std::fs::write(
