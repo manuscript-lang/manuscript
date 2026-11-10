@@ -8,7 +8,7 @@ type Failure:
 
 fn erase[T, E](r: Result[T, E]) Result[T, E]: r
 
-fn optional[T](r: T!?) T!: r.get().clone()
+fn optional[T: Clonable](r: T!?) T!: r.get().clone()
 
 fn same[T, E](r: T!E) T!E: r
 

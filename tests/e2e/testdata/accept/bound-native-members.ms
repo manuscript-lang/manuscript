@@ -15,7 +15,7 @@ impl Hashable for Folded:
 	fn hash() Int:
 		return 1
 
-fn replace_first[T](var xs: List[T], value: T) List[T]:
+fn replace_first[T: Clonable](var xs: List[T], value: T) List[T]:
 	xs.set(index: 0, value: value)
 	return xs.clone()
 

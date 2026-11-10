@@ -6,7 +6,7 @@ type Point:
     x: Int
     y: Int
 
-type Box[T]:
+type Box[T: Clonable]:
     items: List[T]
 
 impl Point:
