@@ -938,6 +938,7 @@ impl FnLower<'_> {
                         name: p.name,
                         ty: ct::sub(&p.ty, &subst),
                         mutable: p.mutable,
+                        positional: p.positional,
                     })
                     .collect();
                 self.cx.queue.push(Job {

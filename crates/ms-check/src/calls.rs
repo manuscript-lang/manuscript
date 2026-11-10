@@ -94,19 +94,13 @@ fn slots(args: &[Arg]) -> Option<Vec<crate::syntax::ArgSlot>> {
     )
 }
 
-/// The parser names the parameters of a function type `_0`, `_1`, ...; they are not source labels.
-fn synthetic_parameter(name: &str) -> bool {
-    name.strip_prefix('_')
-        .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()))
-}
-
 fn unknown_argument_hint(
     syms: ms_syntax::Names,
     name: &str,
     callee: &str,
     params: &[Param],
 ) -> String {
-    if !params.is_empty() && params.iter().all(|p| synthetic_parameter(syms.str(p.name))) {
+    if !params.is_empty() && params.iter().all(|p| p.positional) {
         let types: Vec<String> = params
             .iter()
             .map(|p| p.ty.display(syms).to_string())
@@ -145,7 +139,7 @@ fn missing_argument_hint(
     } else {
         format!(" in call to {callee}")
     };
-    if synthetic_parameter(syms.str(param.name)) {
+    if param.positional {
         return format!(
             "{position}: {}{in_callee}; pass it positionally, without a label",
             param.ty.display(syms)
