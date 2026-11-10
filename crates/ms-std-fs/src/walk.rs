@@ -284,6 +284,9 @@ impl Copier<'_, '_> {
         if previous.is_some_and(|p| !is_dir(p)) {
             return Err(Fail::invalid());
         }
+        if previous.is_some() && !self.o.replace && self.o.error_on_exists {
+            return Err(Fail::status(STATUS_ALREADY_EXISTS));
+        }
         let canonical = ops::eval_symlinks(source).map_err(|e| Fail::errno(e, "lstat", source))?;
         if self.ancestors.contains(&canonical) {
             return Err(Fail::invalid());
@@ -1004,6 +1007,77 @@ mod tests {
             entries: UNLIMITED,
             bytes: UNLIMITED,
         }
+    }
+
+    #[test]
+    fn copy_rejects_existing_directories_before_copying_children() {
+        let root = ops::temporary_directory(b"msfs-copy-existing-").unwrap();
+        let source = path::join(&root, b"source");
+        let dest = path::join(&root, b"dest");
+        ops::create_directory(&source, false).unwrap();
+        ops::create_directory(&dest, false).unwrap();
+
+        let exclusive = || CopyOptions {
+            error_on_exists: true,
+            ..options()
+        };
+        assert_eq!(
+            copy(&source, &dest, exclusive(), None).unwrap_err().status,
+            STATUS_ALREADY_EXISTS
+        );
+
+        ops::write_file(&path::join(&source, b"new"), b"new", false).unwrap();
+        ops::write_file(&path::join(&dest, b"keep"), b"keep", false).unwrap();
+        assert_eq!(
+            copy(&source, &dest, exclusive(), None).unwrap_err().status,
+            STATUS_ALREADY_EXISTS
+        );
+        assert!(
+            ops::list(&dest, UNLIMITED)
+                .unwrap()
+                .iter()
+                .all(|e| e.name == b"keep")
+        );
+        assert_eq!(
+            ops::read_file(&path::join(&dest, b"keep"), UNLIMITED).unwrap(),
+            b"keep"
+        );
+
+        let mut filter_calls = 0;
+        let mut skip_root = |_: &[u8], _: &[u8]| {
+            filter_calls += 1;
+            false
+        };
+        copy(&source, &dest, exclusive(), Some(&mut skip_root)).unwrap();
+        assert_eq!(filter_calls, 1);
+
+        let mut nonrecursive = exclusive();
+        nonrecursive.recursive = false;
+        assert_eq!(
+            copy(&source, &dest, nonrecursive, None).unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+
+        let mut replacing = exclusive();
+        replacing.replace = true;
+        copy(&source, &dest, replacing, None).unwrap();
+        assert_eq!(
+            ops::read_file(&path::join(&dest, b"new"), UNLIMITED).unwrap(),
+            b"new"
+        );
+        assert_eq!(
+            ops::read_file(&path::join(&dest, b"keep"), UNLIMITED).unwrap(),
+            b"keep"
+        );
+        copy(&source, &path::join(&root, b"fresh"), exclusive(), None).unwrap();
+
+        ops::write_file(&path::join(&source, b"new"), b"changed", true).unwrap();
+        copy(&source, &dest, options(), None).unwrap();
+        assert_eq!(
+            ops::read_file(&path::join(&dest, b"new"), UNLIMITED).unwrap(),
+            b"new"
+        );
+        ops::remove(&root, true).unwrap();
     }
 
     #[test]
