@@ -746,7 +746,7 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
                 let ExprKind::Lambda(l) = &arg.value.kind else {
                     continue;
                 };
-                let [body] = l.body.as_slice() else { continue };
+                let [body] = l.written_body() else { continue };
                 let StmtKind::Return(Some(value)) = &body.kind else {
                     continue;
                 };
@@ -803,7 +803,7 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
 /// A lambda whose body is a suite of several statements; a one-expression
 /// lambda stays inline when the call fits the line.
 fn block_lambda(e: &Expr) -> bool {
-    matches!(&e.kind, ExprKind::Lambda(l) if l.body.len() > 1)
+    matches!(&e.kind, ExprKind::Lambda(l) if l.written_body().len() > 1)
 }
 
 fn suite_expression(mut e: &Expr) -> bool {
@@ -1690,6 +1690,9 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
     }
     impl Visitor for G<'_> {
         fn stmt(&mut self, s: &Stmt) {
+            if s.is_destructure_head() {
+                return;
+            }
             let Some(value) = statement_value(s) else {
                 return;
             };
