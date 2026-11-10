@@ -11,6 +11,10 @@ A violated precondition (a percentile outside 0 to 100, mismatched list lengths,
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
+// The smallest mean square deviation, as a fraction of the squared mean, for which plain centering keeps the spread: regression 2^-20, correlation 2^-48 (its relative error stays below about 1e-8).
+REGRESSION_FLOOR := 9.5367431640625e-7
+CORRELATION_FLOOR := 3.552713678800501e-15
+
 // Equal-width counts over a range of values, from `bin_counts`. (`@std/data/histogram.ms` has the recording `Histogram`.)
 export type BinCounts:
     // The least value counted, which is the lower edge of the first bin.
@@ -450,9 +454,17 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 
     // Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
     if s := spread(unit_scaled(xs), unit_scaled(ys)):
+        // A constant list has exactly zero deviations around its rounded mean; any other finite list has some.
+        flat := s.xx == 0.0 or s.yy == 0.0
+        if flat and s.mean_x.is_finite() and s.mean_y.is_finite(): return none
         if (
-            well_conditioned(s.mean_x, s.xx, xs.length(), false)
-            and well_conditioned(s.mean_y, s.yy, ys.length(), false)
+            not flat
+            and well_conditioned(
+                s.mean_x, s.xx, xs.length(), false, CORRELATION_FLOOR
+            )
+            and well_conditioned(
+                s.mean_y, s.yy, ys.length(), false, CORRELATION_FLOOR
+            )
         ):
             return s.xy / (sqrt(s.xx) * sqrt(s.yy))
 
@@ -493,8 +505,12 @@ Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` a
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
     if s := spread(xs, ys):
         if (
-            well_conditioned(s.mean_x, s.xx, xs.length(), false)
-            and well_conditioned(s.mean_y, s.yy, ys.length(), true)
+            well_conditioned(
+                s.mean_x, s.xx, xs.length(), false, REGRESSION_FLOOR
+            )
+            and well_conditioned(
+                s.mean_y, s.yy, ys.length(), true, REGRESSION_FLOOR
+            )
         ):
             slope := s.xy / s.xx
             return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
@@ -513,14 +529,20 @@ export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
 
 /*
 Whether the plain sum of squared deviations `squares` around `mean` is trustworthy: it neither overflowed nor lost precision to
-underflow, and the spread is not lost against a large common offset (mean square deviation above 2^-20 of the squared mean).
+underflow, and the spread is not lost against a large common offset (mean square deviation above `floor` of the squared mean).
 A flat list (`allow_flat`) has no spread to lose. Anything else, including nonfinite input, takes the scaled path or plain Float rules.
 */
-fn well_conditioned(mean: Float, squares: Float, count: Int, allow_flat: Bool) Bool:
+fn well_conditioned(
+    mean: Float,
+    squares: Float,
+    count: Int,
+    allow_flat: Bool,
+    floor: Float
+) Bool:
     if squares == 0.0: return allow_flat and mean.is_finite()
     if not (squares >= 1e-250 and squares <= 1e250): return false
 
-    return squares > mean * mean * count.to_float() * 9.5367431640625e-7
+    return squares > mean * mean * count.to_float() * floor
 
 // The exponent that brings the greatest magnitude into [0.5, 1), or none when a value is not finite; zeros give 0.
 fn unit_exponent(values: List[Float]) Int?:
