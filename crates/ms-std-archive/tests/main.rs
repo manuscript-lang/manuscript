@@ -4,3 +4,4 @@
 mod compress_oracle;
 mod compress_stream;
 mod oracle;
+mod zip64;
