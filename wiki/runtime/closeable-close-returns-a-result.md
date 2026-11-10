@@ -8,3 +8,5 @@ Decision (Chinmay): there is one `Closeable` interface and `close()` returns `Un
 Apply when: implementing `Closeable`, writing cleanup, or changing scope-end drops.
 Evidence: [stdlib/core.ms](../../stdlib/core.ms), [fallible-close proposal](../../proposals/fallible-close.md), [closeable guide](../../documentation/core-language/cleanup/closeable.md).
 Verify: a `close()` error in a `Result` function propagates; in a non-`Result` function it faults rather than being ignored.
+
+Atomic writes must finish a successful close before renaming the temporary file over the destination. Preserve an earlier write, chmod, or sync error, otherwise return the close error and remove the temporary file. The CLI `atomic_write` test extracts the production helpers and supplies deterministic release failures, so the check does not depend on provoking a rare host close error.
