@@ -1,5 +1,7 @@
 # JSON float writer controls, 2026-10-31
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 **All production experiments are rejected; production JSON, active tests and root
 dependencies are unchanged.** Zmij1.0.23 plus exact midpoint arithmetic preserved
 all sampled bytes and improved hard-float arrays about1.84x, but the actual
@@ -55,9 +57,9 @@ are not attempted because the duplicate/error policies differ.
 Twelve interleaved trials use all six orders twice, with baseline calibration to
 at least 50ms (up to one million operations). Longer A/A controls target about 700ms
 per baseline process. Keep all samples and outliers. Full source/binary/toolchain
-identities are in [the final environment](results/2026-10-31/final-precision/environment.json),
-[edge environment](results/2026-10-31/final-precision-edges/environment.json),
-[artifact/oracle hashes](results/2026-10-31/artifacts.json) and focused provenance.
+identities are in `the final environment`,
+`edge environment`,
+`artifact/oracle hashes` and focused provenance.
 
 ## Final measurements
 
@@ -88,20 +90,20 @@ include median, MAD, min and max.
 | halfway | write | 285947.9 | 37284.5 | 16555.8 | 7.669× | 2.252× |
 | thresholds | write | 72949.5 | 39513.9 | 15490.3 | 1.846× | 2.551× |
 
-[Long writer controls](results/2026-10-31/review-focused/summary.json) measure
+`Long writer controls` measure
 integer baseline A/B at 7944/7770ns and candidate 7806ns; Unicode 5071/5107→5074ns;
 hard floats 50123/50008→27522ns. These do not establish a meaningful protected-writer
 regression. They supplement rather than replace the full matrix.
 
 A small uncertainty remains visible: empty parsing is 45.49→47.52ns in the short
-run. The [long confirmation](results/2026-10-31/review-empty-parse/summary.json)
+run. The `long confirmation`
 is 46.39/45.96→47.43ns, a possible 1–1.5ns marginal cost. Candidate MAD is 2.83ns;
 paired candidate-minus-mean(A,B) differences change sign (slower in 5/12 trials,
 paired median −1.14ns). These observations do not establish a consistent material
 regression, and do not justify saying every control is flat. Both long runs record
 the exact driver hash, invocation, binary hashes and input-summary hash.
 
-[Separate RSS](results/2026-10-31/final-precision-memory/samples.json) includes setup,
+`Separate RSS` includes setup,
 semantic validation and 1,000 guarded writes in fresh processes: six cases × six
 balanced trials × three labels = 108 records. Typical whole-process peaks are
 roughly 1.2–1.7 MiB, with no material increase. This is not allocation counts or a
@@ -109,7 +111,7 @@ claim about arbitrary input sizes. The conversion Buffer and normalization array
 are on the stack; the Writer's existing output allocation remains.
 
 The actual native change also passes all eight compiled-Manuscript TOML regression
-controls on main 09e0: [full cross-control](results/2026-10-31/toml-json-impact/summary.json),
+controls on main 09e0: `full cross-control`,
 288 balanced observations, medians within 1.3%. A separate helper-toggle experiment
 found a TOML common-path regression already on untouched main, leading to
 [revert PR #2124](https://github.com/manuscript-lang/manuscript/pull/2124).
@@ -123,7 +125,7 @@ A direct Ryu 1.0.23 substitution initially changed 160 of one million spellings,
 although every changed value read back as the same float. For the exact float
 1658206780088562.25, the existing decimal is 1658206780088562.3; Ryu selected
 1658206780088562.2. Negative cases differ correspondingly. The
-[recorded examples](variants/naive-ryu-differences.json) are exploratory: the full
+`recorded examples` are exploratory: the full
 naive stream and binary were overwritten before archival, so this is not a
 complete reproducibility artifact or the retained correctness proof.
 
@@ -146,9 +148,9 @@ This is sampled and algebraic evidence, not exhaustive enumeration of all f64.
 A corrected Ryu candidate retained the standard formatter only for exact midpoints.
 It improved hard floats 1.888× but regressed Unicode writes about 9.1% in long A/A
 controls: 4849/4873→5294ns, so it was rejected. The
-[unapplied patch](variants/rejected-ryu.patch), manifest, lockfile,
-[full records](results/2026-10-31/rejected-ryu-full/summary.json) and
-[long records](results/2026-10-31/rejected-ryu-focused/summary.json) are retained.
+`unapplied patch`, manifest, lockfile,
+`full records` and
+`long records` are retained.
 The archive patch uses zero context (apply with `git apply --unidiff-zero` against
 the pinned original library); reconstruction matches the rejected source exactly.
 No backend or placement tuning was attempted. The Zmij replacement changes the
@@ -232,9 +234,9 @@ The conflict-resolution head `34697faf851073b330443f6d86b6dbfdadcd6b20` integrat
 main `d439d4e4b`, including the TOML revert and shared byte-search changes. Both
 native controls were rebuilt on this combined tree, restoring only current main's
 original JSON library source for before. The full 720 observations and 108 RSS records
-are retained under [updated-main](results/2026-10-31/updated-main/summary.json),
-[edges](results/2026-10-31/updated-main-edges/summary.json) and
-[memory](results/2026-10-31/updated-main-memory/samples.json).
+are retained under `updated-main`,
+`edges` and
+`memory`.
 Hard floats improve 1.844×; extra float cases improve 1.852–7.861×.
 The million-value byte oracle still matches the original hash.
 
@@ -242,8 +244,8 @@ A short tiny-parse shift prompted another long A/A check:
 89.56/86.54→87.01 ns, with overlapping distributions and baseline A/A variation
 larger than the candidate/B shift. Empty writes measure 29.38/29.47→29.64 ns in the
 long replay; this possible 0.17–0.26 ns cost remains within their observed variation.
-See [tiny parse](results/2026-10-31/updated-main-tiny-parse/summary.json) and
-[empty writes](results/2026-10-31/updated-main-empty-write/summary.json).
+See `tiny parse` and
+`empty writes`.
 All 22 scoped Rust tests, source float regression, affected Clippy, workspace
 formatting, repository and license checks pass on the conflict-resolution head.
 The wiki now preserves both independent lessons and correctly records the TOML
@@ -255,8 +257,8 @@ remain identical; the native binaries are unchanged and their hashes are recorde
 The normal native/CLI build, all 22 scoped Rust tests, three source float/scalar
 controls, Clippy, formatting, repository and license checks pass again.
 A fresh 720-observation balanced replay is retained under
-[snapshot-replay](results/2026-10-31/snapshot-replay/summary.json) and
-[snapshot-edges](results/2026-10-31/snapshot-edges/summary.json): hard floats 1.820×,
+`snapshot-replay` and
+`snapshot-edges`: hard floats 1.820×,
 additional float cases 1.834–7.585×. The tiny-parse marginal variation persists
 (about 3.5% in this short run); the longer identical-binary controls above remain
 important context and do not establish a material regression. No Rust parser
@@ -270,8 +272,8 @@ lessons were preserved during wiki conflict resolution. Both component controls
 were rebuilt on this tree and are byte-identical to the earlier reviewed binaries
 (before SHA256 `1e9aff4b43d124362184f88966097b7c214ca6d475fc90575fbc2f2c8d78e3ed`,
 after `519584d9194280815925c6b4488d70f98d165e5ca832369a4df2d794b9747e49`).
-Fresh balanced [full](results/2026-10-31/main-024-replay/summary.json) and
-[edge](results/2026-10-31/main-024-edges/summary.json) replays retain all720 observations:
+Fresh balanced `full` and
+`edge` replays retain all720 observations:
 hard floats improve1.842x; additional float cases1.852–7.557x. Short common write
 medians show no new material regression; earlier long controls apply to these
 exact same binaries. All22 scoped JSON Rust tests and the normal native/CLI build
@@ -282,15 +284,15 @@ post-merge combined-main replay remains required.
 ## Expanded compiled TOML controls on main024
 
 A separate-worktree comparison on024 exposed possible large-Unicode timing costs.
-Its [complete1,224 observations](results/2026-10-31/toml-main-024-separate/summary.json)
+Its `complete1,224 observations`
 remain retained as discovery; checkout differences confound candidate attribution.
 We therefore repeated normal runtime/CLI builds in **one worktree**, with the same
 manifests, exact dependency graph, target and source paths. The baseline restores
 only current-main JSON lib.rs; the candidate uses the reviewed replacement.
 This is an isolated algorithm toggle, not a pristine-main dependency graph.
 
-[Source/runtime/build identities](results/2026-10-31/toml-main-024-identical/build-identities.json)
-and fresh [full results](results/2026-10-31/toml-main-024-identical/summary.json)
+`Source/runtime/build identities`
+and fresh `full results`
 cover1,224 observations over11 parse/stringify,6 error,8 writer and11 read cases,
 including1MiB inputs. All four corresponding before/after TOML, error, writer and
 read executable pairs are **byte-identical**. These produced-executable results
@@ -305,7 +307,7 @@ Rust toml0.9.8 values validate every complete valid output; MS before/after byte
 agree. Six errors compare exact MS diagnostics only. All observations, actual
 counts, outputs and payload hashes remain retained, including the unfavorable
 separate-worktree cohort. The compressed
-[harness snapshot](variants/toml-control-scan-harness.json.gz) maps exact original
+`harness snapshot` maps exact original
 relative filenames to UTF-8 source and SHA256; its manifest hashes every file and
 both packed/unpacked bundles. Restore it under bench/perf/toml-control-scan for the
 recorded commands. No temporary source copy is added to the active benchmark tree.
@@ -322,8 +324,8 @@ Candidate validation passes22 scoped JSON Rust tests,3 source JSON controls,
 case) and41 YAML source tests. The baseline scalar_tests filter selected zero and
 is explicitly not counted as candidate coverage; its18 existing JSON tests passed.
 
-Fresh [component](results/2026-10-31/main72-component/summary.json) and
-[edges](results/2026-10-31/main72-edges/summary.json) retain720 observations:
+Fresh `component` and
+`edges` retain720 observations:
 hard floats1.837x, additional floats1.817–7.490x. These are real component gains,
 with hard arrays still about4x the Rust writer on this host. They do not establish
 a safe overall change.
@@ -332,13 +334,13 @@ The actual pristine-main comparison restores the **original** root manifests and
 locked graph for before, then applies the actual source/dependency change for after,
 in the same worktree and source/target paths. This differs from the earlier
 candidate-manifest-only A/A cohort. All four generated TOML/error/writer/read pairs
-now differ. [Build identities](results/2026-10-31/main72-actual-graph/build-identities.json)
+now differ. `Build identities`
 match pristine main72 and the exact integration tree. No concrete source/build
 confound was found by independent review.
 
-The [complete1,224-observation matrix](results/2026-10-31/main72-actual-graph/summary.json)
+The `complete1,224-observation matrix`
 passes all full-value/byte/error checks. Tiny-file reads lose about1.47%. Longer
-[read controls](results/2026-10-31/main72-read-long/summary.json),144 observations,
+`read controls`,144 observations,
 give A/B/candidate medians2235.64/2231.20/2267.93ns: **+1.545%** versus mean baseline
 medians, paired median+37.72ns, slower in9/12 trials. Baseline MADs7.56/10.58ns,
 candidate MAD29.15ns; the effect is modest and its ranges overlap. The paired cost
@@ -346,7 +348,7 @@ exceeds the17.22ns median absolute A/A difference and reproduces the full-matrix
 signal. Fields32 reads have a smaller/noisier+1.19% signal (8/12 slower), while
 empty/comment controls are close. No mechanism is inferred from these observations.
 
-[Long roundtrips](results/2026-10-31/main72-roundtrip-long/summary.json),72 observations,
+`Long roundtrips`,72 observations,
 show a possible tiny+0.68%/48ns marginal cost (10/12), and do not retain the short
 Unicode slowdown. These mixed controls are all preserved. Earlier identical-binary
 A/A results cannot clear this actual-graph comparison. Given the protected-path
@@ -354,11 +356,11 @@ rule, the converter is rejected conservatively; this is not proof of a universal
 1.5% slowdown or of its cause. No backend/cache/lifetime investigation or placement
 variant was attempted to explain or tune it away.
 
-Fresh [component RSS](results/2026-10-31/main72-memory/samples.json) has108 unique
+Fresh `component RSS` has108 unique
 records and no material increase. Setup and complete semantic checks are included;
 these are whole-process peaks, not allocation counts. They do not overturn rejection.
 All production, active test, root lockfile and license inventory changes are restored.
-The exact [converter patch](variants/rejected-zmij-main72.patch) preserves those
+The exact `converter patch` preserves those
 unshipped changes, including tests and dependencies. The original benchmark lockfile
 and four-case edge sources/drivers are archived alongside it for exact historical
 replay; the active harness adds precision-class controls for future work.
@@ -369,8 +371,8 @@ A distinct simplification removed short_digits and its power table, using Zmij
 right after the existing integer and short_fraction paths. Independent pretrial
 review required its intended success classes: small decimals and5–15-digit
 fractions. No dependency/ABI change was added by this trial. The complete
-[matrix](results/2026-10-31/short-digits-full/summary.json),576 observations, and
-[seven edge classes](results/2026-10-31/short-digits-edges/summary.json),252 observations,
+`matrix`,576 observations, and
+`seven edge classes`,252 observations,
 retain every result. Some other float classes gain3–7%, but fraction5,
 fraction15 and small-decimals before/candidate ratios are0.756/0.801/0.659:
 about32%/25%/52% slower. The extra success-class controls establish that the old
@@ -379,10 +381,10 @@ scaling path still earns its code. No further variant was attempted.
 All22 scoped Rust tests pass. Complete before/after one-million-value streams are
 byte-identical,36,563,797 bytes, SHA256
 5bcd38bdba0747ea6a073f899cf3360d0283eacb90987ed1eb1aba255c00f860;
-[oracle identities](variants/short-digits-oracle.json) retain the result. Streams
+`oracle identities` retain the result. Streams
 remain in local campaign artifacts and are reproducible from the pinned generator;
 they are not duplicated in this Git payload. The
-[unapplied removal patch](variants/rejected-short-digits.patch) applies on top of
+`unapplied removal patch` applies on top of
 the archived converter. The active seven-case harness reconstructs its inputs.
 Production and all performance experiment edits are restored. These bounded passes
 found no further verified safe optimization; known Rust gaps and untested paths

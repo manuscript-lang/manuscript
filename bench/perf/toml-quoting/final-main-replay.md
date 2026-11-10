@@ -22,13 +22,13 @@ separate JSON conversion work. No backend or layout cause is asserted or
 investigated. main 98854115f contains no intervening TOML, JSON-native, runtime or
 root-lock changes; later merged-main replay remains necessary.
 
-The [full matrix](results/2026-10-31/final-main/full/summary.json) repeats all eight
+The `full matrix` repeats all eight
 controls with twelve balanced interleaved trials. Whole outputs decode to the
 same single-string TOML table and before/after Manuscript bytes are identical.
 Labels retain the experiment's chronology: `before` is the original helper,
 `after` is the helper being reverted. The source tests also pass with the original.
 
-The [long A/A confirmation](results/2026-10-31/final-main/focused/summary.json)
+The `long A/A confirmation`
 uses two labels for the same original binary, plus the merged helper, about 700ms
 per baseline process, twelve trials and all six orders twice:
 
@@ -61,7 +61,7 @@ formatting, Python syntax and whitespace checks pass. Repository checks initiall
 rejected raw benchmark inputs containing CR; they are now preserved as escaped
 `.input.json` records with decoded-byte SHA-256, rather than weakening that rule.
 
-[Whole-process RSS](results/2026-10-31/final-main/memory/samples.json) repeats five
+`Whole-process RSS` repeats five
 large cases six times per label (90 records). Original/merged median KiB:
 ASCII 4944/4940, Unicode 5712/5708, sparse 4944/4940, dense 8272/8268,
 mixed 5584/5580. RSS is flat and does not overturn the timing rejection; it is

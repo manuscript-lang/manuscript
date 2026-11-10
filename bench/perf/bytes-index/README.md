@@ -1,5 +1,7 @@
 # Byte search: 2026-10-31
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 `Bytes.index_of_byte` scanned every byte individually. The final candidate checks
 the first byte directly, scans the next 16 bytes with the existing word-at-a-time
 helper, then uses the already locked memchr 2.8.3 dependency for the suffix. It
@@ -22,9 +24,9 @@ reversal reference exposes a separate gap; it is not a reversal optimization.
 
 Base main: `3cfde58b6216ae4db54aeb3ae4e22ee7d527e323`; native sources match the
 original baseline `d4a94aa92` through that main revision. Rust 1.99.1; Linux x86_64
-host details are in [host.txt](results-2026-10-31/host.txt).
-[Environment and exact patch](results-2026-10-31/word-prefix-final/environment.json)
-and [producer record](results-2026-10-31/word-prefix-final/byte220/record.json)
+host details are in `host.txt`.
+`Environment and exact patch`
+and `producer record`
 retain compiler, native archive, program, source, validator and input hashes.
 Manuscript uses the normal Release command; its companion metadata reports
 `cranelift`. No backend investigation was performed. Rust uses Cargo release,
@@ -34,8 +36,8 @@ tiny calls, so tiny numbers alone do not establish language parity.
 
 One checked warmup per side precedes all six permutations of before/after/Rust,
 pinned to CPU 0, after builds finish. Each side appears twice in each position.
-[All 3,960 raw rows](results-2026-10-31/word-prefix-final/byte220/samples.csv) and
-[all 220 distributions/paired deltas](results-2026-10-31/word-prefix-final/byte220/summary.csv)
+`All 3,960 raw rows` and
+`all 220 distributions/paired deltas`
 are retained. The independent Python bytearray.find oracle validates each case's
 input bytes, iteration count and checksum; missing/duplicate cases or failed
 producers reject. Untimed preflights check exact Optional presence and offsets;
@@ -64,14 +66,14 @@ introduces no allocating call; allocation counts and RSS were not measured.
 
 ## Broader controls and checks
 
-[Final broader controls](results-2026-10-31/word-prefix-final/controls/record.json)
+`Final broader controls`
 run six alternating pairs on CPU 0: line splitting 16 cases/192 rows,
 normalization 100/1,200, reversal 83/996. All output/status/checksum guards pass.
 No case exceeds both 5% slower median and 1 ns median paired cost with at least
 five of six slower pairs. This is a descriptive screen, not a CI threshold or a
 claim that every case improves. All distributions, including adverse medians,
 remain. Sources, executables, compiler, native archives and build selections are
-recorded for every suite. The [200-case word-prefix exploration](results-2026-10-31/word-prefix-final/exploratory200/record.json)
+recorded for every suite. The `200-case word-prefix exploration`
 stays separate from the final phase adding word-boundary offsets 8/9. Its exact
 Manuscript/Rust source snapshots were not fully retained; original hashes and
 reconstruction checks remain. The complete final 220-case inputs are provided.
@@ -90,23 +92,23 @@ integrated current-main branch replay.
 
 ## Retained rejected and earlier phases
 
-- [First scalar prefix](results-2026-10-31/rejected-empty-end/record.json):
+- `First scalar prefix`:
   empty/end-start searches added roughly 1–1.6 ns in every pair by reaching vector
   search on an empty suffix. Exact patch and raw data remain.
-- [Second scalar candidate](results-2026-10-31/rejected-short-miss/record.json):
+- `Second scalar candidate`:
   fixing empty ranges still regressed a one-byte miss 1.64→2.65 ns, paired +0.97 ns,
-  slower in six of six rounds. Its [broader controls](results-2026-10-31/rejected-short-miss-controls/record.json)
+  slower in six of six rounds. Its `broader controls`
   remain separate.
-- [Subsequent scalar phase](results-2026-10-31/accepted/record.json), historically
+- `Subsequent scalar phase`, historically
   named accepted: the empty suffix fix initially left only fractional-nanosecond
-  costs; it was not final integration evidence. Its [199 broader controls](results-2026-10-31/controls/record.json)
+  costs; it was not final integration evidence. Its `199 broader controls`
   remain intact.
-- [Scalar integration with main 3cf](results-2026-10-31/integration-main-3cf/environment.json):
+- `Scalar integration with main 3cf`:
   the final exact-preflight phase exposed +1.1–1.3 ns at several offsets 16–17,
   with five/six or six/six slower pairs. This candidate was held and replaced by
   the shared word-prefix algorithm. Both byte phases and all broader controls
   remain; no compiler/placement cause is claimed.
-- [Initial 80-case exploration](results-2026-10-31/exploratory-80/): predated the
+- `Initial 80-case exploration`: predated the
   added near-hit controls. None of these historical phases are pooled with the
   final 220-case comparison. The original native/compiler result metadata stays
   attached to its own phase; absolute times and speed ratios vary between phases.
