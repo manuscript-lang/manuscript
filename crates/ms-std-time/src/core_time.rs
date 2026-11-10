@@ -262,17 +262,7 @@ pub fn from_calendar(
         return Err(out_of_range);
     }
     let local = local_seconds(year, month, day, hour, minute, second);
-    // A repeated local time resolves to the earlier instant; a skipped one takes the offset in
-    // force before the transition. Candidate offsets come from a day on either side.
-    let before = z.offset_at(local - 86_400);
-    let after = z.offset_at(local + 86_400);
-    let valid = |offset: i64| z.offset_at(local - offset) == offset;
-    let offset = match (valid(before), valid(after)) {
-        (true, true) => before.max(after),
-        (true, false) => before,
-        (false, true) => after,
-        (false, false) => before,
-    };
+    let offset = z.offset_for_local(local, nanosecond);
     let unix = local - offset;
     if !in_range(unix) {
         return Err(out_of_range);
@@ -610,6 +600,63 @@ mod tests {
                 assert_eq!(parse_timestamp(previous.as_bytes()), Ok(value));
             }
         }
+    }
+
+    #[test]
+    fn calendar_resolution_preserves_range_and_historical_jumps() {
+        for zone in [
+            "UTC",
+            "+23:59",
+            "-23:59",
+            "Europe/Berlin",
+            "America/New_York",
+        ] {
+            for text in ["0001-01-02T12:00:00Z", "9999-12-30T12:00:00Z"] {
+                let original = ts(text);
+                let c = calendar(original, zone).unwrap().civil;
+                assert_eq!(
+                    from_calendar(
+                        c.year,
+                        c.month,
+                        c.day,
+                        c.hour,
+                        c.minute,
+                        c.second,
+                        c.nanosecond,
+                        zone
+                    ),
+                    Ok(original)
+                );
+            }
+        }
+        assert_eq!(
+            from_calendar(9999, 12, 31, 23, 59, 59, 999_999_999, "Europe/London"),
+            Ok(Ts {
+                seconds: MAX_SECONDS,
+                nanos: 999_999_999
+            })
+        );
+        assert_eq!(
+            from_calendar(1, 1, 1, 0, 0, 0, 0, "UTC"),
+            Ok(Ts {
+                seconds: MIN_SECONDS,
+                nanos: 0
+            })
+        );
+        assert_eq!(
+            from_calendar(9999, 12, 31, 23, 59, 59, 0, "-00:01"),
+            Err(STATUS_OUT_OF_RANGE)
+        );
+        // Apia skipped an entire date when it crossed the date line.
+        assert_eq!(
+            from_calendar(2011, 12, 30, 12, 0, 0, 0, "Pacific/Apia"),
+            Ok(ts("2011-12-30T22:00:00Z"))
+        );
+        // Lord Howe's overlap is half an hour, not an hour.
+        assert_eq!(
+            from_calendar(2024, 4, 7, 1, 45, 0, 0, "Australia/Lord_Howe"),
+            Ok(ts("2024-04-06T14:45:00Z"))
+        );
     }
 
     #[test]
