@@ -529,3 +529,19 @@ fn fix_separates_logical_operator_words_from_operands() {
         }
     }
 }
+
+#[test]
+fn fix_trusts_only_the_import_when_an_import_fails() {
+    let dir = crate::common::scratch("fix-failed-import");
+    // `sumn` is only a typo of `sum` here; the unresolved import is the real error, so its
+    // follow-on diagnostics must not rewrite the file.
+    let source = "import thing from \"@std/missing/nothing.ms\"\n\
+        \n\
+        fn total() Int:\n\
+        \x20   let sum = thing()\n\
+        \x20   return sumn\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+}

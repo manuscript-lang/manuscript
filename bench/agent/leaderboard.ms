@@ -117,7 +117,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 
         if let before = prev:
             let done = metric(before, "completion_tokens")
-            comp[5] = comp[5] + done
+            comp[5] += done
 
             let at = CATEGORIES.index_of(categorize(before)).get(0)
             let grown = prompt - prev_prompt - done
@@ -127,7 +127,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 
         var total = comp.sum()
         if total == 0.0: total = 1.0
-        for i in 0..CATEGORIES.length(): out[i] = out[i] + prompt * comp[i] / total
+        for i in 0..CATEGORIES.length(): out[i] += prompt * comp[i] / total
         prev_prompt = prompt
         prev = st.clone()
 

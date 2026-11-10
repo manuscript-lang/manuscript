@@ -17,7 +17,12 @@ fn findings(source: &str) -> Vec<(String, String)> {
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
     lint_program(syms, &program)
         .into_iter()
-        .filter(|f| ["MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126"].contains(&f.code))
+        .filter(|f| {
+            [
+                "MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126", "MSL127",
+            ]
+            .contains(&f.code)
+        })
         .map(|f| {
             let fix = f.fix.expect("carries a fix");
             let replaced = &source[fix.pos.offset as usize..fix.end.offset as usize];
@@ -74,4 +79,16 @@ fn a_binding_returned_next_is_inlined() {
             "return xs.sum()".to_string()
         )]
     );
+}
+
+#[test]
+fn generic_bodies_keep_get_even_when_instantiated_with_a_copy_type() {
+    assert!(findings(include_str!("lint_terse/generic.ms")).is_empty());
+}
+
+#[test]
+fn a_map_entry_rebuilt_from_its_lookup_is_updated_in_place() {
+    let got = findings(include_str!("lint_terse/entries.ms"));
+    let got: Vec<&str> = got.iter().map(|(_, b)| b.as_str()).collect();
+    assert_eq!(got, ["stock[item.sku] -= item.qty"]);
 }

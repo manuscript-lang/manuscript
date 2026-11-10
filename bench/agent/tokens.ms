@@ -64,7 +64,7 @@ fn main() Int:
 
     for i in 0..names.length():
         let row = all.slice(i * 4, i * 4 + 4).get([])
-        for j in 0..4: totals[j] = totals[j] + row[j]
+        for j in 0..4: totals[j] += row[j]
         out = (
             out
             + names[i].pad_end(26, " ")

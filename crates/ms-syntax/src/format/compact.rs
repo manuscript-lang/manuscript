@@ -7,6 +7,7 @@
 use super::{WIDTH, layout_token};
 use crate::ast::*;
 use crate::lexer::lex;
+use crate::parser::{INDEX_SET, plain_index_target};
 use crate::pos::Pos;
 use crate::token::{Tok, Token};
 use crate::visit::{self, Visitor};
@@ -77,6 +78,26 @@ impl Compact<'_> {
             return;
         }
         self.edits.push((from, to, format!("{target} {symbol}= ")));
+    }
+
+    /// `xs[i] = xs[i] op rest` as `xs[i] op= rest`. An index store is the call of `[]=`.
+    fn index_compound(&mut self, s: &Stmt, call: &Expr) {
+        let ExprKind::Call { callee, args } = &call.kind else {
+            return;
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return;
+        };
+        let [index, value] = args.as_slice() else {
+            return;
+        };
+        if crate::Names::global().str(name) != INDEX_SET
+            || !plain_index_target(left, &index.value)
+            || !matches!(&value.value.kind, ExprKind::Binary { .. })
+        {
+            return;
+        }
+        self.compound(s, &value.value);
     }
 
     /// `if c:` over a single `return`, `break` or `continue` line becomes one line.
@@ -160,6 +181,7 @@ impl Visitor for Compact<'_> {
                 value,
                 ..
             } => self.compound(s, value),
+            StmtKind::Call(call) => self.index_compound(s, call),
             StmtKind::If {
                 body, else_body, ..
             } => {

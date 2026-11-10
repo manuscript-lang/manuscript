@@ -217,6 +217,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `return <expression>`",
     },
+    Rule {
+        code: "MSL127",
+        family: "Map entry rebuilt from its own lookup",
+        severity: Severity::Warning,
+        repair: "write `m[k] -= v` (or `+=`, `*=`, `/=`, `%=`)",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
