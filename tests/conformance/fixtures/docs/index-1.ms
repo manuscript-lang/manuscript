@@ -8,4 +8,3 @@ fn main() Unit!:
     let name = arguments().get(0, default: "world")
     let message = "Hello, {name}!\n"
     try stdout().write(message)
-    return ok(unit)

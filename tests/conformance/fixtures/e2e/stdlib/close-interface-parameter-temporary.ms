@@ -11,7 +11,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         print("closed {self.name}")
-        return ok(unit)
 
 fn fails() Int!:
     return error(Error("later argument"))
@@ -25,7 +24,6 @@ fn look_later(c: Closeable, n: Int) Unit:
 fn attempt() Unit!:
     look(Door("direct"))
     look_later(Door("later"), try fails())
-    return ok(unit)
 
 fn main() Unit:
     let _ = attempt()

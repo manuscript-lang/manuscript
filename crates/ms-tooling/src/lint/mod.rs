@@ -223,6 +223,12 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `m[k] -= v` (or `+=`, `*=`, `/=`, `%=`)",
     },
+    Rule {
+        code: "MSL128",
+        family: "Final return the end of the function already makes",
+        severity: Severity::Warning,
+        repair: "delete the final `return ok(unit)` (`Unit!`) or `return` (`Unit`)",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.

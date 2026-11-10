@@ -31,7 +31,6 @@ export fn fresh_directory(path: String) Unit!:
     if exists(path): return invalid("{path} already exists")
 
     create_directory(path, recursive: true).get()
-    return ok(unit)
 
 // Trial order: rotated by the trial number and reversed on odd trials.
 export fn trial_order(labels: List[String], trial: Int) List[String]:

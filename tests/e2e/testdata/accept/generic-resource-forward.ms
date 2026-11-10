@@ -12,7 +12,6 @@ type Token:
 impl Closeable for Token:
     var fn close() Unit!:
         try append_file(self.log, "close {self.id}\n").wait()
-        return ok(unit)
 
 type Tokens:
     log: String
@@ -44,8 +43,6 @@ fn first_body(log: String) Unit!:
         let token = try item
         try append_file(log, "body {token.id}\n").wait()
         break
-
-    return ok(unit)
 
 fn events(log: String) String:
     if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")

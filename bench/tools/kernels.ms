@@ -24,7 +24,6 @@ fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]
     args = args.concat([source.clone(), "-o", out.clone()])
 
     let _ = try must("cc {source}", capture(env("CC", "cc"), args))
-    return ok(unit)
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
     let here = "bench/perf/{suite}"

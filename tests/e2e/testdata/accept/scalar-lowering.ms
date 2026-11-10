@@ -18,7 +18,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true).wait()
-        return ok(unit)
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
 

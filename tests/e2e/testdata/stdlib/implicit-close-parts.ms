@@ -12,7 +12,6 @@ type Tracked:
 impl Closeable for Tracked:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn track(log: String, id: Int) Tracked:
     return Tracked(log, id)
@@ -43,7 +42,6 @@ type Wrapper:
 impl Closeable for Wrapper:
     var fn close() Unit!:
         let _ = append_file(self.log, "wrapper,").wait()
-        return ok(unit)
 
 fn holds_fields(log: String) Int:
     let p = Pair(track(log.clone(), 1), track(log, 2))

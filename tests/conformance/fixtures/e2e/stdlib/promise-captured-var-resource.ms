@@ -9,7 +9,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         print("closed")
-        return ok(unit)
 
 impl Door:
     var fn swing() Int:

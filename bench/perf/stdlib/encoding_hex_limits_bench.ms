@@ -37,7 +37,6 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
         return keep(length)
 
     try measure(1, work)
-    return ok(unit)
 
 fn unicode_case(limit: Int) Unit!:
     let expected: Bytes! = error(
@@ -52,7 +51,6 @@ fn unicode_case(limit: Int) Unit!:
         return keep(2)
 
     try measure(1, work)
-    return ok(unit)
 
 fn neighbor(which: Int) Unit!:
     let data = zeros(if which == 3 or which == 4: 8192 else: 4096)
@@ -80,7 +78,6 @@ fn neighbor(which: Int) Unit!:
         return keep(4096)
 
     try measure(1, work)
-    return ok(unit)
 
 bench "hex.limit.empty.none":
     try decode_case(0, none, 0)

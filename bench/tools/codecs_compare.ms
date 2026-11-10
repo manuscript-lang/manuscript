@@ -135,8 +135,6 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
             .get()
         )
 
-    return ok(unit)
-
 fn json_failure(
     before: String,
     after: String,

@@ -241,7 +241,6 @@ fn run_all(here: String, seconds: Int) Unit!:
         port += 1
 
     tmp.close().get(unit)
-    return ok(unit)
 
 fn cell(p: Plan, argv: List[String]) String:
     return tail(raised(pinned(p.load_cpus.clone(), argv)).stdout)
@@ -329,7 +328,6 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 
     server.close().get(unit)
     tmp.close().get(unit)
-    return ok(unit)
 
 fn main() Int:
     let args = arguments()

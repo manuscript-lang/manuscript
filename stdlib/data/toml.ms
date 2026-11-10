@@ -210,14 +210,10 @@ fn allocate(var reader: Reader) Unit!:
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
-    return ok(unit)
-
 fn budget(reader: Reader, depth: Int) Unit!:
     if not within(depth, reader.options.max_depth): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
-
-    return ok(unit)
 
 // Whether a byte is a control character that a string may not contain unescaped.
 fn string_control(b: Int, multiline: Bool) Bool:

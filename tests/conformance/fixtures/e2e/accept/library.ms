@@ -57,7 +57,6 @@ fn verify_json() Unit!:
             ) == "\{\"large\":9007199254740993,\"ok\":true\}"
         )
     ) | try expect_false
-    return ok(unit)
 
 fn verify_encoding() Unit!:
     let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
@@ -69,19 +68,16 @@ fn verify_encoding() Unit!:
             ) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         )
     ) | try expect_false
-    return ok(unit)
 
 fn verify_url() Unit!:
     let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
     query.length() | try expect_equal(3)
     format_query(entries: query) | try expect_equal("a=1&a=2&space=hello+world")
-    return ok(unit)
 
 fn verify_binary() Unit!:
     var out = BytesBuilder()
     out.append_int16_be(-32768)
     (try out.build().int16_be(0)).to_int() | try expect_equal(-32768)
-    return ok(unit)
 
 fn verify_compression() Unit!:
     let compressed = try compress(
@@ -95,7 +91,6 @@ fn verify_compression() Unit!:
             ) == "hello hello hello".to_bytes()
         )
     ) | try expect_false
-    return ok(unit)
 
 fn verify_archive() Unit!:
     let entries = [
@@ -115,7 +110,6 @@ fn verify_archive() Unit!:
             ) == entries
         )
     ) | try expect_false
-    return ok(unit)
 
 test "expanded packages run through compiler":
     match verify_json():

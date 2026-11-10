@@ -18,7 +18,6 @@ fn expect_closed(path: String) Unit!:
     let seen = try read_file(path.clone(), none).wait()
     let _cleaned = remove(path, false)
     try expect_equal(seen.length(), 1)
-    return ok(unit)
 
 test "shared generic field types keep cleanup for each value":
     let root = try temporary_directory("ms-shared-classification")

@@ -13,7 +13,6 @@ impl Closeable for TextOwner:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
         self.text = "closed"
-        return ok(unit)
 
 impl TextOwner:
     fn read() String: self.text

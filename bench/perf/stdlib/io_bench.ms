@@ -23,7 +23,6 @@ impl Source[Bytes] for MemorySource:
 
     var fn close() Unit!:
         self.offset = self.data.length()
-        return ok(unit)
 
 fn source_text() String:
     var parts: List[String] = []

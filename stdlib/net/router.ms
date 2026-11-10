@@ -65,8 +65,6 @@ impl Closeable for Held[T]:
             if let value = self.items.pop():
                 put_slot(self.slot, value)
 
-        return ok(unit)
-
 // The values a matched pattern captured, by name.
 export type RouteParams:
     // Names in pattern order.
@@ -210,8 +208,6 @@ impl Router:
             try remount(var route, base, own, offset)
             try insert(var self.routes, route)
 
-        return ok(unit)
-
     // Adds middleware around every route and around the 404, 405 and OPTIONS answers.
     // It receives the exchange and a continuation that runs the rest of the chain with the exchange
     // it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
@@ -242,7 +238,6 @@ fn insert(var routes: List[Route], route: Route) Unit!:
                 )
             )
     routes.append(route)
-    return ok(unit)
 
 // Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
 // router's middleware group `own` outermost, and its own groups moved up by `offset`.
@@ -256,7 +251,6 @@ fn remount(var route: Route, base: String, own: Int, offset: Int) Unit!:
     for group in route.around:
         around.append(group + offset)
     route.around = around
-    return ok(unit)
 
 // Empties `from` into a new list, last element first; popping the result walks `from` in order.
 fn drain[T](var from: List[T]) List[T]:
@@ -626,7 +620,6 @@ impl HttpExchange for TestExchange:
         guard.items[0].status = status
         guard.items[0].head = headers.clone()
         guard.items[0].sent = true
-        return ok(unit)
 
     var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.send_headers(status, headers)
@@ -636,7 +629,6 @@ impl HttpExchange for TestExchange:
         if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
         guard.items[0].body.append_bytes(body)
-        return ok(unit)
 
     var fn upgrade(
         allowed_origins: List[String],
@@ -662,7 +654,6 @@ impl HttpExchange for TestExchange:
         if self.request.method.text() == "HEAD": return ok(unit)
 
         guard.items[0].body.append_bytes(data)
-        return ok(unit)
 
 // Whether a response with this status may carry a body.
 fn has_body(status: Int) Bool:
@@ -753,12 +744,10 @@ impl HttpExchange for Tap:
     var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
         try self.inner.send_headers(status, with_extra(headers, self.extra))
         counted(self.state, status, 0)
-        return ok(unit)
 
     var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
         try self.inner.send(status, with_extra(headers, self.extra), body)
         counted(self.state, status, self.sent_length(status, body.length()))
-        return ok(unit)
 
     var fn upgrade(
         allowed_origins: List[String],
@@ -772,12 +761,10 @@ impl HttpExchange for Tap:
         counted(
             self.state, 0, self.sent_length(self.status_so_far(), data.byte_length())
         )
-        return ok(unit)
 
     var fn write_bytes(data: Bytes) Unit!:
         try self.inner.write_bytes(data)
         counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
-        return ok(unit)
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
 // printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where

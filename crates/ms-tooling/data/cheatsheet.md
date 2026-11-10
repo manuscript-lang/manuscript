@@ -32,7 +32,7 @@ fn main() Unit:
 - Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
 - Be terse: `print(x)` (no import); `if c: return x`, no `else` after `return`; `any all count sum map filter fold`; `m.get_or(k, d)`; infer closure types.
-- `main`: `Unit`, `Unit!`, `Int?!` or `Int` status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
+- `Unit`/`Unit!` fns need no final `return`; `main` may be `Int?!` or `Int` status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "x.ms"`, `import (a from "x.ms", b from "y.ms")`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
@@ -51,7 +51,7 @@ fn main() Unit:
 - Borrow: `let b = a`, `let x = a.b`, `xs[i]`, arguments, loop variables and match payloads read the owner's value in place; while `b` is used, `a` cannot change. `var x = a.b` changes `a.b` through `x`.
 - Move: storing a value (`xs.append(s)`, a field, a list) gives it a new owner and kills the old name, so `xs.append(s.clone())` unless it is the last use. A borrowed part cannot be stored: `names.append(u.name.clone())`.
 - A fn returning part of a parameter or receiver returns a borrow, no `.clone()`: `fn name(u: User) String: return u.name`; the caller reads it in place, `.clone()` to keep it. A sibling path returning a new value needs `.clone()` on the borrowed path.
-- Avoid clones: pass borrows, move at the last use, mutate via `var` parameters, keep indices. Clone only for a second owner.
+- Avoid clones: borrow, move at the last use, `var` parameters, indices.
 - `export opaque type T:` hides fields; `export opaque enum T:` hides cases outside the file.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail (prefix `_`).

@@ -143,5 +143,3 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
         return fail(
             "check_reader: chunked reads returned {total} bytes, expected {expected.length()}"
         )
-
-    return ok(unit)

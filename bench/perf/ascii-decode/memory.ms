@@ -10,7 +10,6 @@ fn work() Unit!:
     for unused in 0..32:
         checksum += (try ascii_decode(data)).byte_length()
     try expect_equal(checksum, 33554432)
-    return ok(unit)
 
 fn main() Unit:
     work().get()

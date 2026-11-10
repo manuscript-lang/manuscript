@@ -24,7 +24,6 @@ fn compare_draws(weights: List[Float], ordinary: List[Float]) Unit!:
     let next = scaled.next_bits()
     try expect_equal(next, reference.next_bits())
     try expect_equal(next, draws.next_bits())
-    return ok(unit)
 
 test "seeded weighted choices retain ratios across the Float range":
     try compare_draws([max_float, max_float], [1.0, 1.0])

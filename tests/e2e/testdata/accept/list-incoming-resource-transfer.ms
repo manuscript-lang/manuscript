@@ -17,8 +17,6 @@ impl Closeable for Door:
             try append_file(self.log, "{self.id},").wait()
             if self.fail: return error(Error("close failed"))
 
-        return ok(unit)
-
 fn events(log: String) String!:
     return ok((try read_file(log).wait()).decode_utf8().get(""))
 
@@ -88,7 +86,6 @@ fn bad_index() Int!:
 fn later_try(log: String) Unit!:
     var items = [Door(1, log.clone())]
     items.set(value: Door(2, log), index: try bad_index())
-    return ok(unit)
 
 test "later named operand faults and try exits preserve incoming owner":
     let tmp = try temporary("list-later-fault-")
@@ -188,8 +185,6 @@ impl Closeable for PanicDoor:
             try append_file(self.log, "{self.id},").wait()
             if self.fail: panic("capture close panic")
 
-        return ok(unit)
-
 fn captured(log: String, id: Int, fail: Bool) fn() Int:
     let door = PanicDoor(id, log, fail)
     return fn: door.id
@@ -205,8 +200,6 @@ impl Closeable for Envelope:
         if not self.closed:
             self.closed = true
             try append_file(self.log, "{self.id},").wait()
-
-        return ok(unit)
 
 fn callback_drop(log: String) Unit:
     var items = [Envelope(1, log.clone(), captured(log.clone(), 3, true))]
@@ -258,7 +251,6 @@ fn valid_later() Int!: return ok(0)
 fn succeeding_try(log: String) Unit!:
     var items = [Door(1, log.clone())]
     items.set(value: Door(2, log), index: try valid_later())
-    return ok(unit)
 
 test "valid negative end and named owner transfers preserve single close":
     for op in [0, 1, 2]:

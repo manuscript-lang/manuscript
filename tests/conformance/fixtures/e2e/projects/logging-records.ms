@@ -24,4 +24,3 @@ export fn emit(logger: Logger) Unit!:
     try child.debug("filtered")
     try child.info("received \"payload\"\nnext", fields)
     try logger.warn("complete")
-    return ok(unit)

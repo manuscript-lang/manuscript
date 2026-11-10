@@ -76,7 +76,6 @@ fn checked_expansion() Unit!:
     (try common_result(result: "é".repeat(count: 3, max_bytes: 6))) | try expect_equal(
         "ééé"
     )
-    return ok(unit)
 
 test "list methods mutate explicit clones and remain typed":
     let original = [3, 1, 2, 1]
@@ -421,7 +420,6 @@ fn verify_text_and_numbers() Unit!:
     1.5.to_precision(precision: 4) | try expect_equal("1.500")
     12345.0.to_precision(precision: 3) | try expect_equal("1.23e+4")
     0.000001.to_precision(precision: 2) | try expect_equal("0.0000010")
-    return ok(unit)
 
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
@@ -476,7 +474,6 @@ fn verify_bigint_and_regex() Unit!:
             ) == "axbx"
         )
     ) | try expect_false
-    return ok(unit)
 
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():

@@ -406,8 +406,6 @@ impl Transform[Bytes, T] for JsonReading[T]:
 
             if let found = stepped.get(none): out.append(found)
 
-        return ok(unit)
-
     var fn finish(var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
         if let failure = self.failure: return error(failure.clone())
@@ -422,7 +420,6 @@ impl Transform[Bytes, T] for JsonReading[T]:
         if completed.is_error(): return self.fail(completed.err())
 
         out.append(try completed)
-        return ok(unit)
 
 // The error a negative limit reports on the first read, or none.
 fn invalid_limits(options: JsonOptions) Error?:

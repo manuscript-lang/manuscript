@@ -18,8 +18,6 @@ fn expect_limit(outcome: Unit!) Unit!:
     if not cause.message.starts_with("filesystem: limit exceeded"):
         return error(Error("wrong limit message: {cause.message}"))
 
-    return ok(unit)
-
 fn generic_write(path: String, data: String) Unit!:
     return write_file(path, data).wait()
 
@@ -39,8 +37,6 @@ fn rejected(result: Unit!) Unit!:
     match result:
         error(_): return ok(unit)
         ok(_): return error(Error("exclusive or nonrecursive operation succeeded"))
-
-    return ok(unit)
 
 fn text(path: String) String!:
     return ok((read_file(path).wait() | try expect_ok).decode_utf8().get())

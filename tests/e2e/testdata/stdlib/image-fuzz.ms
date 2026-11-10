@@ -148,7 +148,6 @@ fn expect_error(data: Bytes, kind: String) Unit!:
     if result.is_ok(): return fail("expected {kind}, decoded an image")
 
     try expect_equal(result.err().kind, kind)
-    return ok(unit)
 
 test "hostile headers fail before allocating":
     // PPM claiming 2^40 pixels with no raster.

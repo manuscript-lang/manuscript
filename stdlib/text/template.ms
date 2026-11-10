@@ -709,7 +709,6 @@ impl Run:
         )
 
         self.out.append(text)
-        return ok(unit)
 
     fn lookup(parts: List[String]) JsonValue?:
         var current: JsonValue? = none
@@ -786,7 +785,6 @@ impl Run:
     var fn nodes(items: List[TemplateNode], depth: Int) Unit!Error:
         for node in items:
             try self.node(node, depth)
-        return ok(unit)
 
     var fn node(node: TemplateNode, depth: Int) Unit!Error:
         match node:

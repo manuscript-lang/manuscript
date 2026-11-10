@@ -20,7 +20,6 @@ fn main() Unit!:
     )
     let contents = try pending.wait()
     print(contents.length())
-    return ok(unit)
 ```
 
 For a `config.json` containing exactly `{}` (two bytes), the program prints:

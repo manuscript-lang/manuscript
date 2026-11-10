@@ -1664,17 +1664,17 @@ impl<'a> FnLower<'a> {
                     // Falling off the end returns Unit.
                     let u = self.b.unit();
                     let ret = self.ret_ty;
-                    if c.kind == CallableKind::Test {
-                        // A test that finishes passes.
-                        let TyKind::Alt(a) = self.b.m.types.kind(ret).clone() else {
-                            return Err(Error::new("a test must return a Result"));
-                        };
-                        let ok = self.b.m.alts[a.index()]
-                            .ok_case()
-                            .ok_or_else(|| Error::new("a test must return a Result"))?;
+                    if let TyKind::Alt(a) = self.b.m.types.kind(ret).clone() {
+                        // A test, or a `Unit!` function, that finishes returns `ok(unit)`.
+                        let ok = self.b.m.alts[a.index()].ok_case().ok_or_else(|| {
+                            Error::new("a test or Unit! function must return a Result")
+                        })?;
                         let v = self.b.alt_new(a, ok as u32, &[u]);
                         self.emit_return(Some(Val { v, own: true }));
                         return Ok(());
+                    }
+                    if c.kind == CallableKind::Test {
+                        return Err(Error::new("a test must return a Result"));
                     }
                     if ret != MTy::UNIT {
                         return Err(Error::new(format!(

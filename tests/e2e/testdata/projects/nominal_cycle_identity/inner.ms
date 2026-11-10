@@ -9,7 +9,6 @@ export type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         try write_file(self.path, "1", true).wait()
-        return ok(unit)
 
 export type Node:
     door: Door

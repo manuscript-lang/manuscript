@@ -30,7 +30,6 @@ fn execute(binary: String, cpu: String) Result[Unit, Error]:
         return ok(unit)
 
     let _ = try must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))
-    return ok(unit)
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     let out = absolute(opts.get_or("output", ""))

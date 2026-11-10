@@ -27,7 +27,7 @@ The example treats nonpositive prices and percentages outside (0, 100) as faults
 
 ## Explicit faults
 
-`panic(message: message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a non-`Unit` function. See [Unit and Never](../functions/declarations-and-calls.md#unit-and-never).
+`panic(message: message)` raises a programming fault. Its type is `fn(String) Never`: it never completes normally and fits any result type, but it is not a catchable error and does not permit fallthrough in a function that does not return `Unit` or `Unit!`. See [Unit and Never](../functions/declarations-and-calls.md#unit-and-never).
 
 ```manuscript
 panic("Required invariant was violated.")

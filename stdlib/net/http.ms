@@ -154,7 +154,6 @@ impl Closeable for HttpClient:
     // Safe to call repeatedly; later requests return EBADF.
     var fn close() Unit!:
         msstd_http_client_close(self.native)
-        return ok(unit)
 
 impl HttpClient:
     // Sends the body (text or `Bytes`) and returns the response with its body as a stream.
@@ -301,7 +300,6 @@ impl Closeable for HttpServer:
     var fn close() Unit!:
         self.stopped = true
         self.accepting.cancel()
-        return ok(unit)
 
 impl HttpServer:
     // Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
@@ -350,7 +348,6 @@ impl Closeable for RawResponse:
     // Safe to call repeatedly; reads afterwards return EBADF. A fully read body lets the connection be reused.
     var fn close() Unit!:
         msstd_http_body_close(self.native)
-        return ok(unit)
 
 impl RawResponse:
     // Returns the response head (status and headers) without copying; it stays available after close.

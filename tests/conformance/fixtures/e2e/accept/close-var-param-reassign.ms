@@ -9,7 +9,6 @@ type R:
 impl Closeable for R:
     var fn close() Unit!:
         print("close {self.name}")
-        return ok(unit)
 
 fn replace(var r: R) Unit:
     r = R("new")

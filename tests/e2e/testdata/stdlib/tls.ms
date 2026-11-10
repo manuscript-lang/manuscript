@@ -22,7 +22,6 @@ fn hello(var exchange: HttpExchange) Unit!:
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
     let _written = (try http_result(exchange.write("secure")))
-    return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = (
@@ -113,7 +112,6 @@ fn report_protocol(var exchange: HttpExchange) Unit!:
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
     let _written = (try http_result(exchange.write(exchange.protocol())))
-    return ok(unit)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
     let server_options = HttpServerOptions(
