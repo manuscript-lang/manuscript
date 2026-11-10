@@ -478,11 +478,13 @@ fn decode_ppm(data: Bytes, max_pixels: Int?) Image!:
 	var pixels = List[UInt8](reserve: total)
 
 	for i in 0..total:
-		raw := data.get(start + i * sample).to_int()
+		at := start + i * sample
 
-		if sample == 2:
-			pixels.append(byte(raw))
-		else if maxval == 255:
+		// Two-byte samples are big-endian.
+		var raw = data.get(at).to_int()
+		if sample == 2: raw = raw * 256 + data.get(at + 1).to_int()
+
+		if maxval == 255:
 			pixels.append(byte(raw))
 		else:
 			pixels.append(byte((min_of(raw, maxval) * 255 + maxval / 2) / maxval))
@@ -520,6 +522,15 @@ fn le32(data: Bytes, at: Int) Int:
 fn signed32(value: Int) Int:
 	return if value >= 2147483648: value - 4294967296 else: value
 
+fn mask_shift(mask: Int) Int:
+	var shift = 0
+	while bit_and(shift_right_unsigned(mask, shift), 1) == 0: shift += 1
+	return shift
+
+// Scales a bit-field channel with maximum `peak` to eight bits.
+fn mask_channel(value: Int, shift: Int, peak: Int) Int:
+	return (bit_and(shift_right_unsigned(value, shift), peak) * 255 + peak / 2) / peak
+
 fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 	if data.length() < 26: return error(bad("truncated BMP header"))
 
@@ -555,7 +566,10 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 
 	top_down := height < 0
 	if top_down: height = 0 - height
-	if compression != 0: return error(unsupported("BMP compression {compression}"))
+
+	// BI_BITFIELDS (3) carries explicit channel masks and applies to 32-bit pixels only.
+	if compression != 0 and (compression != 3 or bits != 32):
+		return error(unsupported("BMP compression {compression}"))
 	if bits != 1 and bits != 4 and bits != 8 and bits != 24 and bits != 32:
 		return error(unsupported("BMP depth {bits}"))
 	if width < 1 or width > 2147483647 or height > 2147483647:
@@ -573,7 +587,12 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 			bad("BMP palette too large")
 		)
 
-	palette_at := 14 + header
+	// A 40-byte header stores its bit-field masks right after it; later headers include them.
+	bitfields := compression == 3
+	palette_at := 14 + header + (if bitfields and header == 40: 12 else: 0)
+	if bitfields and header < 40: return error(
+		unsupported("BMP bit fields in a {header}-byte header")
+	)
 	if palette_at + palette_size * entry > data.length():
 		return error(bad("truncated BMP palette"))
 
@@ -585,7 +604,38 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 		bad("truncated BMP pixel data")
 	)
 
-	alpha := bits == 32
+	// Masks in red, green, blue, alpha order; legacy 32-bit pixels are BGRA without a mask.
+	var masks = [0, 0, 0, 0]
+	if bitfields: masks = [
+		le32(data, 54), le32(data, 58), le32(data, 62),
+		if header >= 56: le32(data, 66) else: 0
+	]
+
+	var shifts = [0, 0, 0, 0]
+	var peaks = [0, 0, 0, 0]
+
+	for k in 0..4:
+		if masks[k] != 0:
+			shift := mask_shift(masks[k])
+			peak := shift_right_unsigned(masks[k], shift)
+			if bit_and(peak, peak + 1) != 0: return error(
+				unsupported("BMP non-contiguous bit field")
+			)
+
+			shifts[k] = shift
+			peaks[k] = peak
+
+	if bitfields and (masks[0] == 0 or masks[1] == 0 or masks[2] == 0):
+		return error(bad("BMP bit fields omit a color channel"))
+
+	// Each channel needs bits of its own.
+	for k in 1..4:
+		for j in 0..k:
+			if bit_and(masks[j], masks[k]) != 0: return error(
+				bad("BMP bit fields overlap")
+			)
+
+	alpha := bits == 32 and (not bitfields or masks[3] != 0)
 	mode := if alpha: ColorMode.Rgba else: ColorMode.Rgb
 	m := color_channels(mode)
 	var pixels = zeroed(count * m)
@@ -603,13 +653,21 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 
 			if bits == 24 or bits == 32:
 				at := base + x * (bits / 8)
-				b = data.get(at).to_int()
-				g = data.get(at + 1).to_int()
-				r = data.get(at + 2).to_int()
 
-				if alpha:
-					a = data.get(at + 3).to_int()
-					if a != 0: any_alpha = true
+				if bitfields:
+					v := le32(data, at)
+					r = mask_channel(v, shifts[0], peaks[0])
+					g = mask_channel(v, shifts[1], peaks[1])
+					b = mask_channel(v, shifts[2], peaks[2])
+					if alpha: a = mask_channel(v, shifts[3], peaks[3])
+				else:
+					b = data.get(at).to_int()
+					g = data.get(at + 1).to_int()
+					r = data.get(at + 2).to_int()
+
+					if alpha:
+						a = data.get(at + 3).to_int()
+						if a != 0: any_alpha = true
 			else:
 				bit := x * bits
 				shift := 8 - bits - bit % 8
@@ -634,8 +692,9 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 			pixels[out + 2] = byte(b)
 			if alpha: pixels[out + 3] = byte(a)
 
-	// 32-bit BMP alpha is often unused zero; treat an all-zero channel as opaque.
-	if alpha and not any_alpha:
+	// Legacy 32-bit BI_RGB alpha is often unused zero; treat an all-zero channel as
+	// opaque. An explicit alpha mask is always honored.
+	if alpha and not bitfields and not any_alpha:
 		for i in 0..count:
 			pixels[i * 4 + 3] = byte(255)
 	return ok(Image(width, height, mode, pixels))
@@ -654,8 +713,11 @@ fn encode_bmp(image: Image) Bytes!:
 
 	alpha := image.mode == ColorMode.Rgba or image.mode == ColorMode.GrayAlpha
 	bytes_per := if alpha: 4 else: 3
+
+	// Alpha uses a 108-byte BITMAPV4HEADER with explicit masks so other readers see it.
+	header := if alpha: 108 else: 40
 	row := ((image.width * bytes_per * 8 + 31) / 32) * 4
-	size := 54 + row * image.height
+	size := 14 + header + row * image.height
 	if size > 4294967295: return error(too_big("BMP is larger than 4 GiB"))
 
 	var out = BytesBuilder()
@@ -663,18 +725,27 @@ fn encode_bmp(image: Image) Bytes!:
 	out.append(byte(77))
 	put32(var out, size)
 	put32(var out, 0)
-	put32(var out, 54)
-	put32(var out, 40)
+	put32(var out, 14 + header)
+	put32(var out, header)
 	put32(var out, image.width)
 	put32(var out, image.height)
 	put16(var out, 1)
 	put16(var out, bytes_per * 8)
-	put32(var out, 0)
+	put32(var out, if alpha: 3 else: 0)
 	put32(var out, row * image.height)
 	put32(var out, 2835)
 	put32(var out, 2835)
 	put32(var out, 0)
 	put32(var out, 0)
+
+	if alpha:
+		// Red, green, blue and alpha masks, then the color space and its unused fields.
+		put32(var out, 16711680)
+		put32(var out, 65280)
+		put32(var out, 255)
+		put32(var out, 4278190080)
+		for _field in 0..13:
+			put32(var out, 0)
 
 	for y in 0..image.height:
 		sy := image.height - 1 - y
