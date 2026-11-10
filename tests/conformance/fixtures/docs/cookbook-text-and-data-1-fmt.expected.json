@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n    arguments from \"@std/os/env.ms\",\n    parse from \"@std/data/json.ms\",\n    stdout from \"@std/io/io.ms\",\n)\n\nfn run() Result[Unit, Error]:\n    let text = try parse[String](arguments().get(0, default: \"\\\"hello\\\"\"))\n    try stdout().write(\"{text}\\n\")\n    return stdout().flush()\n\nfn main() Unit!:\n    try run()\n    return ok(unit)\n"
+    "fmt": "import (\n    arguments from \"@std/os/env.ms\",\n    parse from \"@std/data/json.ms\",\n    stdout from \"@std/io/io.ms\",\n)\n\nfn run() Result[Unit, Error]:\n    let text = try parse[String](arguments().get(0, default: \"\\\"hello\\\"\"))\n    try stdout().write(\"{text}\\n\")\n    return stdout().flush()\n\nfn main() Unit!:\n    try run()\n"
   }
 }

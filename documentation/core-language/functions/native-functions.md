@@ -96,7 +96,6 @@ extern fn lib_disconnect(connection: Connection) Unit
 impl Closeable for Connection:
     var fn close() Unit!:
         lib_disconnect(self)
-        return ok(unit)
 ```
 
 ## Calling back into Manuscript

@@ -12,7 +12,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
-        return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
     return read_file("{dir}/{id}").wait().is_ok()

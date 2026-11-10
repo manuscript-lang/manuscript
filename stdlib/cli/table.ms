@@ -69,7 +69,6 @@ impl Table:
             self.widths[col] = max(self.widths[col], measured[col])
         self.cell_widths.append(measured)
         self.rows.append(row)
-        return ok(unit)
 
     // Lays out the rows added so far; the table is unchanged and can keep growing.
     fn render() String:

@@ -31,13 +31,11 @@ fn expect_syntax_error[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
     try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data: line ")
-    return ok(unit)
 
 fn expect_invalid_data[T](actual: T!) Unit!:
     let cause = try expect_error(actual)
     try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data")
-    return ok(unit)
 
 test "JSON decode errors name the failing path":
     let wrong = parse[Profile]("\{\"name\":1\}")

@@ -20,6 +20,13 @@ pub(super) fn lint(syms: ms_syntax::Names, module: &ModuleData, findings: &mut V
         file: &file,
         findings,
     };
+    for decl in &module.decls {
+        match &decl.decl().kind {
+            DeclKind::Fn(f) => scan.trailing_return(f),
+            DeclKind::Impl(i) => i.methods.iter().for_each(|m| scan.trailing_return(&m.func)),
+            _ => {}
+        }
+    }
     walk_module(module, &mut scan);
 }
 
@@ -538,6 +545,70 @@ impl Scan<'_> {
             to,
             text,
         );
+    }
+
+    /// A final `return ok(unit)` in a `Unit!` function, or `return` in a `Unit` one: the end of the
+    /// body already returns it.
+    fn trailing_return(&mut self, f: &Func) {
+        let TypeKind::Named { name, args } = &f.result.kind else {
+            return;
+        };
+        let unit = |t: &TypeRef| t.name(self.syms) == "Unit";
+        let result = self.syms.str(name) == "Result" && args.len() == 2 && unit(&args[0]);
+        if f.body.len() < 2 || !(result || unit(&f.result)) {
+            return;
+        }
+        let Some(last) = f.body.last() else {
+            return;
+        };
+        let StmtKind::Return(value) = &last.kind else {
+            return;
+        };
+        let redundant = match value {
+            None => !result,
+            Some(e) if matches!(e.kind, ExprKind::Unit) => !result,
+            Some(e) => result && self.ok_unit(e),
+        };
+        if !redundant {
+            return;
+        }
+        let end = value
+            .as_ref()
+            .map_or(last.pos.offset as usize + "return".len(), |e| {
+                e.end.offset as usize
+            });
+        let source = self.source();
+        let mut from = last.pos.offset as usize;
+        while from > 0 && source.as_bytes()[from - 1] == b' ' {
+            from -= 1;
+        }
+        let mut to = end;
+        if source.as_bytes().get(to) == Some(&b'\n') {
+            to += 1;
+        }
+        let Some(line) = self.span(from, to) else {
+            return;
+        };
+        if line.contains("//") || from == 0 || source.as_bytes()[from - 1] != b'\n' {
+            return;
+        }
+        self.report(
+            "MSL128",
+            "Drop the final return: the end of the function already returns it".to_string(),
+            last.pos,
+            from,
+            to,
+            String::new(),
+        );
+    }
+
+    /// `ok(unit)`.
+    fn ok_unit(&self, e: &Expr) -> bool {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        matches!(&callee.kind, ExprKind::Name(n) if self.syms.str(n) == "ok")
+            && matches!(args.as_slice(), [a] if a.name.is_none() && matches!(a.value.kind, ExprKind::Unit))
     }
 
     /// `let x = e` directly followed by `return x` is `return e`.

@@ -20,7 +20,6 @@ impl Closeable for Resource:
         self.done = true
 
         let _ = self.output.write(value: "close {self.label}\n")
-        return ok(unit)
 
 type Pair:
     first: Int

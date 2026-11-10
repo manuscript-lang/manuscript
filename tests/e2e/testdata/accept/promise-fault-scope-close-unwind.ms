@@ -25,7 +25,6 @@ type Wrapper:
 impl Closeable for Wrapper:
     var fn close() Unit!:
         self.input.close()
-        return ok(unit)
 
 impl Wrapper:
     var fn read() Int?!Error:

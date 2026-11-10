@@ -19,8 +19,6 @@ impl Closeable for Latch:
 
             let _ = append_file(self.log, "{self.id},").wait()
 
-        return ok(unit)
-
 fn latch(log: String, id: Int) Latch:
     return Latch(log, id, true)
 

@@ -88,7 +88,6 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let line = "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
     set_environment(measured_flag, "1").get()
-    return ok(unit)
 
 // Set once a body has timed its own work with `measure`.
 let measured_flag = "MS_BENCH_MEASURED"
@@ -110,5 +109,3 @@ export fn keep(checksum: Int) Unit!:
         return fail(
             "bench result is the smallest Int; the workload is probably degenerate"
         )
-
-    return ok(unit)

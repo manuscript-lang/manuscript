@@ -67,8 +67,6 @@ fn measure(item: Case) Unit!:
             "{item.name},{item.chunk},{item.data.length()},{item.operations},{sample},{ns},{checksum}"
         )
 
-    return ok(unit)
-
 fn main() Unit:
     for chunk in [1, 64, 1000000]:
         for length in [4096, 8192, 16384, 32768, 65536]:

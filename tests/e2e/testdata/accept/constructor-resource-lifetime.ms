@@ -19,8 +19,6 @@ impl Closeable for Token:
             try append_file(self.log, "close {self.id}\n").wait()
             if self.fail: return error(Error("close failed", kind: "ECLOSE"))
 
-        return ok(unit)
-
 fn token(log: String, id: Int, fail: Bool = false) Token:
     append_file(log, "acquire {id}\n").wait().get()
     return Token(log.clone(), id, fail: fail)
@@ -46,14 +44,12 @@ type Pair:
 fn direct(log: String, action: Int) Unit!:
     let value = Pair(token(log, 1), token(log, 2), try check(log, action))
     try append_file(log, "body {value.code}\n").wait()
-    return ok(unit)
 
 fn labeled(log: String, action: Int) Unit!:
     let value = Pair(
         second: token(log, 2), first: token(log, 1), code: try check(log, action)
     )
     try append_file(log, "body {value.code}\n").wait()
-    return ok(unit)
 
 type Wrapped:
     first: Token?
@@ -63,7 +59,6 @@ type Wrapped:
 fn wrapped(log: String, action: Int) Unit!:
     let value = Wrapped(token(log, 1), ok(token(log, 2)), try check(log, action))
     try append_file(log, "body {value.code}\n").wait()
-    return ok(unit)
 
 fn default_code(log: String, action: Int) Int:
     append_file(log, "default\n").wait().get()
@@ -80,7 +75,6 @@ type Defaulted:
 fn defaulted(log: String, action: Int) Unit!:
     let value = Defaulted(log.clone(), token(log, 1), action)
     try append_file(log, "body {value.code}\n").wait()
-    return ok(unit)
 
 type Nested:
     first: Pair
@@ -92,14 +86,12 @@ fn nested(log: String, action: Int) Unit!:
         Pair(token(log, 1), token(log, 2), 0), token(log, 3), try check(log, action)
     )
     try append_file(log, "body {value.code}\n").wait()
-    return ok(unit)
 
 fn moved_binding(log: String, action: Int) Unit!:
     let _outer = token(log, 0)
     let first = token(log, 1)
     let value = Pair(first, token(log, 2), try check(log, action))
     try append_file(log, "body {value.code}\n").wait()
-    return ok(unit)
 
 fn inspect(first: Token, value: Pair) Int:
     return first.id + value.code
@@ -113,7 +105,6 @@ fn outer_temporary(log: String) Int!:
 
 fn failing_cleanup(log: String) Unit!:
     let _value = Pair(token(log, 1), token(log, 2, fail: true), try check(log, 1))
-    return ok(unit)
 
 fn wait_for_check(log: String) Unit!:
     for attempt in 0..1000:

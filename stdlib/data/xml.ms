@@ -132,7 +132,6 @@ impl Reader:
         )
 
         self.at += literal.chars().length()
-        return ok(unit)
 
     // Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
     var fn take_until(stop: String) String!:
@@ -188,7 +187,6 @@ impl Reader:
         )
 
         let _data = try self.take_until("?>")
-        return ok(unit)
 
     // Declaration values are literals, not entity-decoded XML attribute values.
     var fn declaration_attribute() XmlAttribute!:
@@ -265,15 +263,12 @@ impl Reader:
         self.at += 1
 
         let _text = try self.take_until(quote)
-        return ok(unit)
 
     // Requires at least one whitespace scalar.
     var fn require_space() Unit!:
         let before = self.at
         self.skip_space()
         if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
-
-        return ok(unit)
 
     // XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and parameter
     // references, with quoted spans skipped so `]` and `>` inside them are plain text.
@@ -310,8 +305,6 @@ impl Reader:
             else:
                 return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-        return ok(unit)
-
     // XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
     var fn doctype() Unit!:
         try self.expect("<!DOCTYPE")
@@ -339,7 +332,6 @@ impl Reader:
             self.skip_space()
 
         try self.expect(">")
-        return ok(unit)
 
     // Only the prolog may have a declaration, before any whitespace or other markup.
     // The prolog may also hold one DOCTYPE; it is skipped, never expanded.

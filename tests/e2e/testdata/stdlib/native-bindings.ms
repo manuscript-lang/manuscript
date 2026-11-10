@@ -29,8 +29,6 @@ fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
         error(cause):
             if cause.kind != expected.kind: return error(Error("wrong process error"))
 
-    return ok(unit)
-
 fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
         ok(_): return error(Error("filesystem misuse succeeded"))
@@ -38,8 +36,6 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
             if cause.kind != expected.kind: return error(
                 Error("wrong filesystem error")
             )
-
-    return ok(unit)
 
 test "process usage records report this process":
     let cpu = try cpu_usage()

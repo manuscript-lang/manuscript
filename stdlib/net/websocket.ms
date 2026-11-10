@@ -56,7 +56,6 @@ impl Source[WebSocketMessage] for WebSocketSource:
 
     var fn close() Unit!:
         msstd_websocket_close_if_last(self.native)
-        return ok(unit)
 
 type WebSocketSink:
     native: NativeWebSocket
@@ -74,7 +73,6 @@ impl Sink[WebSocketMessage] for WebSocketSink:
 
     var fn close() Unit!:
         msstd_websocket_close_if_last(self.native)
-        return ok(unit)
 
 /*
 A WebSocket connection: `input` reads whole messages and `output` writes them. Move the streams to different tasks to

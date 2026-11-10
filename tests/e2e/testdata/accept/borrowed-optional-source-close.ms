@@ -10,7 +10,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         try append_file(self.path, "closed,").wait()
-        return ok(unit)
 
 fn observed(value: Resource?) Bool: value.is_some()
 
@@ -20,7 +19,6 @@ fn use_named(path: String) Unit!:
 
     let bytes = try read_file(path).wait()
     try expect_equal(bytes.decode_utf8().get(""), "")
-    return ok(unit)
 
 // A named resource borrowed through an implicit Optional stays open; its owner closes it once.
 test "borrowing through an Optional does not close the named owner":

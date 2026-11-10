@@ -411,8 +411,6 @@ impl Transform[Bytes, Part] for MultipartParts:
             )
             self.in_part = true
 
-        return ok(unit)
-
     var fn finish(var out: List[Part]) Unit!:
         if self.done: return ok(unit)
 

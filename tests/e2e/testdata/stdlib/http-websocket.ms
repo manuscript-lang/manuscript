@@ -53,7 +53,6 @@ fn echo(var exchange: HttpExchange) Unit!:
     let headers = (try list_headers(chain_1))
     let _started = try exchange.send_headers(status: 201, headers: headers)
     let _written = (try http_result(exchange.write("hello")))
-    return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
     let options = HttpServerOptions(
@@ -154,7 +153,6 @@ fn report_host(var exchange: HttpExchange) Unit!:
     let hosts = exchange.headers().values("Host")
     let _started = try exchange.send_headers(status: 200, headers: headers())
     let _written = (try http_result(exchange.write(hosts.join(","))))
-    return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":
     let options = HttpServerOptions(
@@ -192,7 +190,6 @@ fn silent(var exchange: HttpExchange) Unit!:
         )
     )
     let _ = sleep(30.seconds()).wait()
-    return ok(unit)
 
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
     let server = serve(address: "127.0.0.1:0", handler: silent) | try expect_ok

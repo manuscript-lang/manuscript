@@ -13,7 +13,6 @@ type Res:
 impl Closeable for Res:
     var fn close() Unit!:
         say("close {self.name}")
-        return ok(unit)
 
 fn maybe(name: String, present: Bool) Res?:
     return if present: Res(name) else: none

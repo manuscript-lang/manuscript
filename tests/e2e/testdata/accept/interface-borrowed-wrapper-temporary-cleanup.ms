@@ -14,7 +14,6 @@ impl Closeable for Resource:
         if self.id == 98: return error(Error("failed close"))
 
         self.path = "closed"
-        return ok(unit)
 
 interface Observer:
     fn observe(first: Resource?, second: Resource?, tail: Int? = none) Bool
@@ -34,8 +33,6 @@ impl Observer for Reader:
 
     fn reject(value: Resource?) Unit!:
         if value.is_some(): return error(Error("expected"))
-
-        return ok(unit)
 
     fn broken(value: Resource?) Unit:
         if value.is_some(): let _bad = [1].get(3)
@@ -67,11 +64,9 @@ fn faulted() Int: [1].get(3)
 
 fn later_error(reader: Observer, path: String) Unit!:
     let _used = reader.observe(present(path, 10), present(path, 11), try rejected())
-    return ok(unit)
 
 fn later_success(reader: Observer, path: String) Unit!:
     let _used = reader.observe(present(path, 12), present(path, 13), try accepted())
-    return ok(unit)
 
 fn later_fault(reader: Observer, path: String) Unit:
     let _used = reader.observe(present(path, 14), present(path, 15), faulted())

@@ -15,11 +15,9 @@ fn describe_error(cause: Error) String:
 
 fn decode_generically() Unit!:
     let _bytes = try hex_decode(text: "zz", max_bytes: 10)
-    return ok(unit)
 
 fn propagate_generic() Unit!:
     let _completed = try decode_generically()
-    return ok(unit)
 
 test "library errors carry a kind callers can branch on":
     let limits = JsonOptions(max_bytes: 100, max_depth: 8, max_values: 32)
@@ -63,7 +61,6 @@ fn failed_read() Unit!ReadError:
 
 fn propagate_read() Unit!ReadError:
     let _completed = try failed_read()
-    return ok(unit)
 
 test "a domain record is still a legal error value":
     let cause = match propagate_read():
@@ -84,8 +81,6 @@ fn general_read(cause: ReadError) Unit!:
                 "read failed", kind: "EIO", details: {"path": failed.err().path.clone()}
             )
         )
-
-    return ok(unit)
 
 test "a domain record converts to Error by an ordinary function":
     let outcome = general_read(ReadError("a.txt", 1, false))

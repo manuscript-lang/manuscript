@@ -383,7 +383,6 @@ impl Closeable for Directory:
     // Closes the directory; further reads fail with a closed error.
     var fn close() Unit!:
         msstd_fs_directory_close(self.native)
-        return ok(unit)
 
 impl Directory:
     // Returns the path this cursor was opened with.
@@ -405,7 +404,6 @@ impl Source[DirectoryEntry] for Directory:
     // Closes the directory; further reads fail with a closed error.
     var fn close() Unit!:
         msstd_fs_directory_close(self.native)
-        return ok(unit)
 
 // The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher
@@ -435,7 +433,6 @@ impl Source[FileEvent] for WatchSource:
     // Stops the watcher and waits for its worker to stop.
     var fn close() Unit!:
         msstd_fs_watch_close(self.watcher.native)
-        return ok(unit)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
     return ReadStream[FileEvent](WatchSource(watcher, []))
@@ -453,7 +450,6 @@ impl Closeable for TemporaryDirectory:
     // Safe to call repeatedly.
     var fn close() Unit!:
         let _ = msstd_fs_temporary_close(self.native)
-        return ok(unit)
 
 impl TemporaryDirectory:
     // Returns the absolute path of the directory, created under the host's temporary root.
@@ -648,8 +644,6 @@ impl Closeable for WritePermit:
         if self.held:
             self.held = false
             msstd_fs_release()
-
-        return ok(unit)
 
 fn already_exists() Error:
     return Error("filesystem: already exists", kind: "EEXIST")

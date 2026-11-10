@@ -36,15 +36,11 @@ fn check_round_trip(seed: Int, original: TomlValue) Unit!:
         "seed {seed}: changed\n{rendered}"
     )
 
-    return ok(unit)
-
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Unit!:
     let again = try stringify(first)
     if (try parse(again)) != first: return fail(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
-
-    return ok(unit)
 
 test "TOML stringify then parse preserves generated documents":
     for seed in 1..301:

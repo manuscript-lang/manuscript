@@ -12,7 +12,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         try append_file(self.log, "closed " + self.name + ";").wait()
-        return ok(unit)
 
 fn size(door: Door) Int!:
     return ok(door.name.length())

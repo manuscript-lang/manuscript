@@ -148,7 +148,6 @@ impl Closeable for RawTerminal:
     // Restores the terminal; closing again does nothing.
     var fn close() Unit!:
         msstd_terminal_raw_terminal_close(self.handle.native)
-        return ok(unit)
 
 impl RawTerminal:
     // Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and promise timeouts.

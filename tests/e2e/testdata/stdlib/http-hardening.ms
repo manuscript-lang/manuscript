@@ -95,8 +95,6 @@ fn expect_file_reply(var conn: Connection) Unit!:
         Error("file handler failed: {text}")
     )
 
-    return ok(unit)
-
 test "serve answers requests while handlers read and write files":
     var dir = temporary("ms-http-io") | try expect_ok
     let root = dir.path()

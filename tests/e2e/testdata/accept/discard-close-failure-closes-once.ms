@@ -14,8 +14,6 @@ impl Closeable for Item:
         try append_file(self.log, "{self.id},").wait()
         if self.fail: return error(Error("close failed"))
 
-        return ok(unit)
-
 fn events(log: String) String!:
     let bytes = try read_file(log).wait()
     return ok(bytes.decode_utf8().get(""))

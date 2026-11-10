@@ -17,8 +17,6 @@ impl Closeable for Door:
             try append_file(self.log, "{self.id},").wait()
             if self.fail: return error(Error("close failed"))
 
-        return ok(unit)
-
 fn replace(log: String) Unit:
     var doors = [Door(1, log.clone(), fail: true)]
     doors.set(0, Door(9, log))

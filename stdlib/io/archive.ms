@@ -117,15 +117,12 @@ impl Transform[Bytes, Bytes] for Compressing:
             let packed = msstd_compress_encoder_push(encoder, value)
             if not packed.is_empty(): out.append(packed)
 
-        return ok(unit)
-
     var fn finish(var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
         if let encoder = self.encoder:
             out.append(msstd_compress_encoder_end(encoder))
         self.encoder = none
-        return ok(unit)
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's window. `level` defaults to 6
 // and must be 0..9, otherwise reads fail with `EINVAL`. Closing the result closes `input`.
@@ -156,8 +153,6 @@ impl Transform[Bytes, Bytes] for Decompressing:
             let plain = try msstd_compress_decoder_push(decoder, value)
             if not plain.is_empty(): out.append(plain)
 
-        return ok(unit)
-
     var fn finish(var out: List[Bytes]) Unit!:
         if let failure = self.failure: return error(failure.clone())
 
@@ -166,7 +161,6 @@ impl Transform[Bytes, Bytes] for Decompressing:
             if not plain.is_empty(): out.append(plain)
 
         self.decoder = none
-        return ok(unit)
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated data, or bytes after the payload, fail the read with
 // `EBADMSG`; `max_bytes` bounds the total output and exceeding it fails with `EOVERFLOW`. Closing the
@@ -279,7 +273,6 @@ impl TarEntries:
             if size > most: return over
         if let most = self.options.max_bytes:
             if self.total + size > most: return over
-        return ok(unit)
 
     // Bytes of the member at the start of the buffer, or 0 while its end has not arrived. Once the input has
     // ended (`ended`), a final member whose data is complete but whose padding is short counts as whole,
@@ -360,7 +353,6 @@ impl TarEntries:
 
         if not directory: self.files.add(path.clone())
         self.names.add(path)
-        return ok(unit)
 
 impl TarEntries:
     // Emits the members the buffer holds completely; `ended` says no more input will come.
@@ -404,8 +396,6 @@ impl TarEntries:
                         "archive: limit exceeded", kind: "EOVERFLOW"
                     )
                 )
-
-        return ok(unit)
 
 impl Transform[Bytes, ArchiveEntry] for TarEntries:
     var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:

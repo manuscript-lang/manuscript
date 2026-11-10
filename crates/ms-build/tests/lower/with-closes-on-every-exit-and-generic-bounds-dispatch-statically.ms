@@ -10,7 +10,6 @@ type Res:
 impl Closeable for Res:
     fn close() Unit!:
         let _x = self.n
-        return ok(unit)
 
 fn run[T: Closeable](r: T, early: Bool) Int:
     var _it = r

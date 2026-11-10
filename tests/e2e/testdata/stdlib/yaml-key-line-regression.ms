@@ -11,7 +11,6 @@ fn invalid(source: String) Unit!:
     cause.details["reason"] | try expect_equal(
         "an implicit mapping key must stay on one line"
     )
-    return ok(unit)
 
 test "YAML plain implicit keys cannot span physical lines":
     for source in ["\{key\n next: value\}", "\{key\n: value\}"]:

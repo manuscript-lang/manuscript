@@ -21,7 +21,6 @@ impl Transform[Bytes, String] for Base64Encoding:
         if whole == 0: return ok(unit)
 
         out.append(base64_encode(try data.slice(0, whole), self.url_safe))
-        return ok(unit)
 
     var fn finish(var out: List[String]) Unit!:
         if self.tail.is_empty(): return ok(unit)
@@ -29,7 +28,6 @@ impl Transform[Bytes, String] for Base64Encoding:
         let last = self.tail.clone()
         self.tail = join([])
         out.append(base64_encode(last, self.url_safe))
-        return ok(unit)
 
 // Encodes a byte stream as Base64 text chunks that concatenate to the whole encoding, with padding at the end.
 // Set `url_safe: true` for the URL-safe alphabet. Closing the result closes `input`.
@@ -70,7 +68,6 @@ impl Transform[String, Bytes] for Base64Decoding:
                 return error(Error("encoding: invalid data", kind: "EBADMSG"))
 
         out.append(decoded)
-        return ok(unit)
 
     var fn finish(var out: List[Bytes]) Unit!:
         let last = self.tail.clone()
@@ -78,7 +75,6 @@ impl Transform[String, Bytes] for Base64Decoding:
         if last == "": return ok(unit)
 
         out.append(try base64_decode(last, self.url_safe))
-        return ok(unit)
 
 // Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`; text that ends
 // inside a group fails at the end of the stream. Closing the result closes `input`.
@@ -94,7 +90,6 @@ type HexEncoding:
 impl Transform[Bytes, String] for HexEncoding:
     var fn step(value: Bytes, var out: List[String]) Unit!:
         out.append(hex_encode(value))
-        return ok(unit)
 
     var fn finish(var out: List[String]) Unit!:
         return ok(unit)
@@ -115,7 +110,6 @@ impl Transform[String, Bytes] for HexDecoding:
         if whole == 0: return ok(unit)
 
         out.append(try hex_decode(text.slice(0, whole).get("")))
-        return ok(unit)
 
     var fn finish(var out: List[Bytes]) Unit!:
         let last = self.tail.clone()
@@ -123,7 +117,6 @@ impl Transform[String, Bytes] for HexDecoding:
         if last == "": return ok(unit)
 
         out.append(try hex_decode(last))
-        return ok(unit)
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside a pair, fails the
 // read with `EBADMSG`. Closing the result closes `input`.

@@ -108,7 +108,6 @@ fn exercise(path: String) Unit!:
     (memory.heap_system > 0) | try expect_true
 
     let _removed = try common_result(result: remove(path: path, recursive: false))
-    return ok(unit)
 
 export fn main() Int:
     let path = arguments().get(index: 0, default: "")

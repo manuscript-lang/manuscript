@@ -14,7 +14,6 @@ impl Closeable for Resource:
         if self.id == 98: return error(Error("failed close"))
 
         self.path = "closed"
-        return ok(unit)
 
 fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
 
@@ -35,11 +34,9 @@ fn faulted() Int: [1].get(3)
 
 fn later_error(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit!:
     let _used = reader(present(path, 10), present(path, 11), try rejected())
-    return ok(unit)
 
 fn later_success(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit!:
     let _used = reader(present(path, 12), present(path, 13), try accepted())
-    return ok(unit)
 
 fn later_fault(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit:
     let _used = reader(present(path, 14), present(path, 15), faulted())
@@ -161,7 +158,6 @@ fn named_conversion_calls(path: String) Unit!:
     try expect_equal(source(named, 1), true)
     try expect_equal(try log_text(path), "")
     try expect_equal(named.id, 110)
-    return ok(unit)
 
 test "function Optional transport from a named payload remains a borrow":
     let directory = try temporary("fn-wrapper-")

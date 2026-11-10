@@ -16,13 +16,10 @@ type Failure:
 impl Closeable for State:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true).wait()
-        return ok(unit)
 
 fn operation(var state: State, fail: Bool) Unit!Failure:
     state.calls += 1
     if fail: return error(Failure(42))
-
-    return ok(unit)
 
 fn exact(state: State, fail: Bool) String!Failure:
     let resource = state

@@ -171,8 +171,6 @@ fn endless(var out: WriteStream[Int]) Unit!:
         try out.write(i)
         i += 1
 
-    return ok(unit)
-
 fn sum_mod(var input: ReadStream[Int]) Int!:
     var n = 0
     for v in input:

@@ -11,7 +11,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn logged(path: String) String:
     let read = read_file(path).wait()

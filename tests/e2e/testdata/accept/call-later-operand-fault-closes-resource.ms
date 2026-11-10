@@ -11,7 +11,6 @@ type Item:
 impl Closeable for Item:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 interface Sink:
     fn put(item: Item, n: Int) Int

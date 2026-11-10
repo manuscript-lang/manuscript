@@ -10,8 +10,6 @@ impl Closeable for Res:
             self.open = false
             print("close {self.id}")
 
-        return ok(unit)
-
 fn borrowed(values: List[Int]) Int:
     let a = values
     let b = a

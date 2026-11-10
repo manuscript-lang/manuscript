@@ -98,7 +98,6 @@ fn stream_parts(var exchange: HttpExchange, params: RouteParams) Unit!:
     try exchange.send_headers(200, headers())
     try exchange.write("one")
     try exchange.write("two")
-    return ok(unit)
 
 test "a streaming GET route answers HEAD, dropping the body writes":
     var r = Router()
@@ -216,8 +215,6 @@ fn whole_response(var exchange: HttpExchange, params: RouteParams) Unit!:
         if written.err().kind != "EINVAL": return error(
             Error("wrong write error", kind: "EIO")
         )
-
-    return ok(unit)
 
 test "a whole in-process response rejects subsequent writes":
     var r = Router()

@@ -14,7 +14,6 @@ type Token:
 impl Closeable for Token:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 type Wrapped:
     first: Token?
@@ -29,7 +28,6 @@ fn check(fail: Bool) Int!:
 fn build(fail: Bool) Unit!:
     let value = Wrapped(Token(1), ok(Token(2)), try check(fail))
     print("body {value.code}")
-    return ok(unit)
 
 fn main() Unit:
     print(build(false).is_error())

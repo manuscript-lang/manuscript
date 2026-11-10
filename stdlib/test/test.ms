@@ -119,8 +119,6 @@ export fn expect_none[T](actual: T?, site: String = caller_site()) Unit!:
     if let value = actual:
         return error(failure("expected none, got {repr(value)}", site))
 
-    return ok(unit)
-
 // Requires ok and returns its original payload; reports an unexpected error.
 export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
     if actual.is_error(): return error(failure("expected ok, got {repr(actual)}", site))

@@ -12,7 +12,6 @@ type Tracked:
 impl Closeable for Tracked:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn track(log: String, id: Int) Tracked:
     return Tracked(log, id)

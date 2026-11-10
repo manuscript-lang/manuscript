@@ -26,7 +26,6 @@ fn main() Unit!:
     let server = try serve("127.0.0.1:0", buffered(handle))
     print("{server.address()}")
     try server.wait()
-    return ok(unit)
 ```
 
 HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this easy to hand to an agent.
