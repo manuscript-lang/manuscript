@@ -15,7 +15,7 @@ import lines, collect from "@std/io/streams.ms"
 fn count_orders(path: String) Int!:
     let file = try open(path)
     let rows = try collect(try file.reader() | lines)
-    if rows.length() == 0:
+    if rows.is_empty():
         return error(Error("{path} is empty", kind: "EBADMSG"))
     return ok(rows.length() - 1)
 

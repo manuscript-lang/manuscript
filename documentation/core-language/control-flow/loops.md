@@ -125,7 +125,6 @@ A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
 import Iterator from "@std/core.ms"
-import stdout from "@std/io/io.ms"
 
 type Countdown:
     left: Int
@@ -139,8 +138,7 @@ impl Iterator[Int] for Countdown:
 
 export fn main() Int:
     for n in Countdown(3):
-        if stdout().write("{n}\n").is_error():
-            return 1
+        print(n)
     return 0
 ```
 
@@ -160,15 +158,13 @@ A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn le
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript
 import Deque from "@std/collections/deque.ms"
-import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)
     for step in steps:
-        if stdout().write("{step}\n").is_error():
-            return 1
+        print(step)
     return 0
 ```
 
