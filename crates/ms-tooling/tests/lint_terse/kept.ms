@@ -25,7 +25,22 @@ fn keep(xs: List[Int], flag: Bool, n: Int) Int:
     var by_two = 0
     while by_two < n:
         by_two += 2
-    return after + skip + limit + run + mood + plain + by_two
+    return after + skip + limit + run + mood + plain + by_two + bumped(true) + restarted()
+
+fn bumped(flag: Bool) Int:
+    var x = 1
+    if flag:
+        x = x + 1
+    return x
+
+fn restarted() Int:
+    var i = 0
+    i = 2
+    var total = 0
+    while i < 4:
+        total += i
+        i += 1
+    return total
 
 export fn main() Int:
     return keep([1], true, 3)
