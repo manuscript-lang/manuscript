@@ -70,10 +70,12 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
     let mut files: Vec<DiffFile> = Vec::new();
     let mut have_current = false;
     let mut git = false;
+    let mut git_header = None;
     let mut i = 0;
     while i < lines.len() {
         let line = lines[i];
-        if line.starts_with("diff --git ") {
+        if let Some(fields) = line.strip_prefix("diff --git ") {
+            git_header = Some(fields);
             files.push(DiffFile::default());
             have_current = true;
             git = true;
@@ -109,6 +111,34 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
             files.last_mut().expect("have_current").hunks.push(hunk);
             i = next;
             continue;
+        } else if matches!(
+            line.as_bytes().first(),
+            Some(b'o' | b'n' | b'd' | b'B' | b'G')
+        ) && git
+            && have_current
+            && (line.starts_with("old mode ")
+                || line.starts_with("new mode ")
+                || line.starts_with("new file mode ")
+                || line.starts_with("deleted file mode ")
+                || line.starts_with("Binary files ")
+                || line == "GIT binary patch")
+        {
+            if line.starts_with("Binary files ") || line == "GIT binary patch" {
+                return Err("binary diff cannot reconstruct the base; produce a text diff with git diff --text --no-renames".to_string());
+            }
+            let current = files.last_mut().expect("have_current");
+            if current.old.is_empty()
+                && current.new.is_empty()
+                && let Some(path) = git_header.take().and_then(git_section_path)
+            {
+                current.old = path.clone();
+                current.new = path;
+            }
+            if line.starts_with("new file mode ") {
+                current.old.clear();
+            } else if line.starts_with("deleted file mode ") {
+                current.new.clear();
+            }
         }
         i += 1;
     }
@@ -127,6 +157,17 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
         }
     }
     Ok(files)
+}
+
+// A non-renamed Git section repeats the same path with a/ and b/ prefixes.
+// Those encoded fields have equal byte lengths, even when spaces are unquoted
+// or unusual bytes are quoted. Text headers, when present, remain authoritative.
+fn git_section_path(fields: &str) -> Option<String> {
+    let (old, new) = fields.split_at_checked(fields.len() / 2)?;
+    let new = new.strip_prefix(' ')?;
+    let old = diff_path(old, "a/", true).ok()?;
+    let new = diff_path(new, "b/", true).ok()?;
+    (old == new).then_some(old)
 }
 
 fn diff_path(field: &str, prefix: &str, git: bool) -> Result<String, String> {
