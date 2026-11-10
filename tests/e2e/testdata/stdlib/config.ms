@@ -129,3 +129,53 @@ test "ini preserves literal markers and quoted whitespace":
     values.get("quoted").get() | try expect_equal(" # text ; 界 ")
     values.get("single").get() | try expect_equal(" ; text # é ")
     values.get("empty").get() | try expect_equal("")
+
+test "ini quoted values keep literal markers before trailing comments":
+    for separator in ["=", ":"]:
+        for quote in ["\"", "'"]:
+            for marker in ["#", ";"]:
+                let ini = try parse_ini(
+                    "key{separator} {quote}  x # y ; 界  {quote}  {marker} comment\nempty{separator} {quote}{quote} {marker} comment"
+                )
+                let values = ini.get("").get()
+                values.get("key").get() | try expect_equal("  x # y ; 界  ")
+                values.get("empty").get() | try expect_equal("")
+
+test "ini quote suffixes keep existing unspaced and tab marker rules":
+    for quote in ["\"", "'"]:
+        for marker in ["#", ";"]:
+            let suffix = "key={quote}plain{quote}{marker}literal\nother={quote}plain{quote}\t{marker}literal"
+            let values = (try parse_ini(suffix)).get("").get()
+            (
+                values.get("key").get() | try expect_equal(
+                    "{quote}plain{quote}{marker}literal"
+                )
+            )
+            (
+                values.get("other").get() | try expect_equal(
+                    "{quote}plain{quote}\t{marker}literal"
+                )
+            )
+
+test "ini trailing comments can contain and end with quotes":
+    for quote in ["\"", "'"]:
+        for marker in ["#", ";"]:
+            let values = (
+                try parse_ini(
+                    "key={quote}x # y{quote} {marker} note {quote}\nplain={quote}a{quote}b{quote}"
+                )
+            ).get("").get()
+            values.get("key").get() | try expect_equal("x # y")
+            values.get("plain").get() | try expect_equal("a{quote}b")
+
+test "ini malformed quote-like values keep their existing literal fallback":
+    for quote in ["\"", "'"]:
+        for marker in ["#", ";"]:
+            let values = (
+                try parse_ini(
+                    "open={quote}open {marker} note\njunk={quote}x{quote} junk {marker} note\nwrapped={quote}x{quote} junk{quote}"
+                )
+            ).get("").get()
+            values.get("open").get() | try expect_equal("{quote}open")
+            values.get("junk").get() | try expect_equal("{quote}x{quote} junk")
+            values.get("wrapped").get() | try expect_equal("x{quote} junk")

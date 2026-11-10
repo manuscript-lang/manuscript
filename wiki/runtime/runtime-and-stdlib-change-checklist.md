@@ -27,6 +27,10 @@ Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or 
   can close the same resource repeatedly. `deque-resource-growth.ms` checks both
   ends, wrapped/unwrapped growth, optional payloads and error/fault cleanup (#3339).
 - Map and Set are hash-indexed and iterate in insertion order. Key and element types must be `Hashable`; an unhashable key type is a compile error, never a linear-scan fallback. `Equal` and `Hashable` are ordinary source interfaces.
+- INI quoted-value recognition precedes unquoted comment scanning even when a
+  trailing comment follows the closing quote. Otherwise an internal ` #` or
+  ` ;` truncates the quoted payload. Keep the existing ASCII-space markers,
+  quoted whitespace and literal unspaced/tab suffix controls (`config.ms`, #3411).
 - TOML dotted-key traversal defines existing implicit parents as well as new
   tables. Persist the `dotted` flag so a later header cannot redefine them;
   ordinary header traversal must still leave untouched implicit parents

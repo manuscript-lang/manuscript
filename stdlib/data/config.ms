@@ -153,15 +153,24 @@ fn first_assignment(entry: String) Int?:
 fn ini_value(value: String) String:
     let trimmed = value.trim()
     let quote = trimmed.take(1)
-    if (
-        trimmed.length() >= 2
-        and (quote == "\"" or quote == "'")
-        and trimmed.ends_with(quote)
-    ):
-        return trimmed.drop(1).take(trimmed.length() - 2)
 
-    var cut = value.length()
+    if quote == "\"" or quote == "'":
+        let body = trimmed.drop(1)
+
+        if let end = body.index_of(quote):
+            let trailing = body.drop(end + 1)
+            if let comment = ini_comment(trailing):
+                if trailing.take(comment).trim().is_empty(): return body.take(end)
+
+        if trimmed.length() >= 2 and trimmed.ends_with(quote):
+            return body.take(body.length() - 1)
+
+    return value.take(ini_comment(value).get(value.length())).trim()
+
+// Keep the documented ASCII-space markers; a tab alone does not start an INI comment.
+fn ini_comment(value: String) Int?:
+    var cut: Int? = none
     for marker in [" #", " ;"]:
         if let at = value.index_of(marker):
-            cut = cut.min(at)
-    return value.take(cut).trim()
+            cut = at.min(cut.get(at))
+    return cut
