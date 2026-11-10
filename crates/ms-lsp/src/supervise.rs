@@ -207,6 +207,10 @@ impl<W: Write> Supervisor<'_, W> {
                     .and_then(|p| p.get("contentChanges"))
                     .and_then(|c| c.as_array())
                     .unwrap_or(&[]);
+                if changes.is_empty() {
+                    // The worker ignores these without advancing its version.
+                    return;
+                }
                 let mut next = current.text.clone();
                 for change in changes {
                     let replacement = change.get("text").and_then(|t| t.as_str()).unwrap_or("");
@@ -333,5 +337,58 @@ impl<W: Write> Supervisor<'_, W> {
             }
             _ => Ok(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_changes_preserve_replay_version_and_later_edits() {
+        let (events, _) = channel();
+        let mut supervisor = Supervisor {
+            output: Vec::new(),
+            spawn: Box::new(|| Command::new("unused")),
+            events,
+            worker: None,
+            generation: 0,
+            inflight: BTreeMap::new(),
+            initialize: None,
+            initialized: false,
+            replay_pending: false,
+            docs: BTreeMap::new(),
+            restarts: VecDeque::new(),
+            exiting: false,
+        };
+        let uri = "file:///replay.txt";
+        let document = |version| obj([("uri", uri.into()), ("version", Json::from(version))]);
+        let mut opened = document(1i64);
+        opened.set("text", "original".into());
+        supervisor.track(
+            "textDocument/didOpen",
+            Some(&obj([("textDocument", opened)])),
+        );
+        for changes in [None, Some(Json::Arr(Vec::new()))] {
+            let mut params = obj([("textDocument", document(3))]);
+            if let Some(changes) = changes {
+                params.set("contentChanges", changes);
+            }
+            supervisor.track("textDocument/didChange", Some(&params));
+            assert_eq!(supervisor.docs[uri].version, 1);
+            assert_eq!(supervisor.docs[uri].text, "original");
+        }
+        supervisor.track(
+            "textDocument/didChange",
+            Some(&obj([
+                ("textDocument", document(2)),
+                (
+                    "contentChanges",
+                    Json::Arr(vec![obj([("text", "updated".into())])]),
+                ),
+            ])),
+        );
+        assert_eq!(supervisor.docs[uri].version, 2);
+        assert_eq!(supervisor.docs[uri].text, "updated");
     }
 }
