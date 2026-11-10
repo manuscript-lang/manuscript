@@ -3,6 +3,9 @@ import (
     parse_int from "@std/math/math.ms",
 )
 
+// An element with fewer attributes than this checks duplicate names by scanning them.
+let ATTRIBUTE_SCAN_LIMIT = 16
+
 /*
 XML documents as a tree of elements, text and comments, parsed and written in Manuscript.
 `parse` accepts well-formed XML 1.0 without DTD processing (a DOCTYPE is skipped, entities beyond
@@ -385,6 +388,7 @@ impl Reader:
 
         let name = try self.name()
         var attributes = List[XmlAttribute]()
+        var seen = Set[String]()
 
         while true:
             let before = self.at
@@ -422,10 +426,25 @@ impl Reader:
 
             // XML 1.0 section 3.3.3: literal tabs and line ends in a value become spaces; references are decoded afterwards.
             let raw = source.replace("\n", " ").replace("\t", " ")
-            for existing in attributes:
-                if existing.name == attribute_name: return error(
+
+            // A short list is scanned; a long one moves to a set so names are checked in constant time.
+            if attributes.length() < ATTRIBUTE_SCAN_LIMIT:
+                for existing in attributes:
+                    if existing.name == attribute_name: return error(
+                        Error(
+                            "XML: invalid data", kind: "EBADMSG"
+                        )
+                    )
+            else:
+                if seen.is_empty():
+                    for existing in attributes:
+                        seen.add(existing.name.clone())
+                if seen.contains(attribute_name): return error(
                     Error("XML: invalid data", kind: "EBADMSG")
                 )
+
+                seen.add(attribute_name.clone())
+
             attributes.append(
                 XmlAttribute(
                     name: attribute_name, value: try decode(raw)

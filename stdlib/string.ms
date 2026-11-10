@@ -127,7 +127,6 @@ impl String:
 interface StringTextOperations:
     fn fields_by(is_separator: fn(String) Bool) List[String]
     fn equal_fold(other: String) Bool
-    fn count(part: String) Int
     fn trim_chars(set: String) String
     fn trim_start_chars(set: String) String
     fn trim_end_chars(set: String) String
@@ -168,12 +167,6 @@ impl StringTextOperations for String:
     // the dotless "ı" (U+0131) uppercases to "I" and so compares equal to "i" and "I".
     fn equal_fold(other: String) Bool:
         return self.upper().lower() == other.upper().lower()
-
-    // Counts non-overlapping occurrences; an empty part counts the scalars plus one.
-    fn count(part: String) Int:
-        if part.is_empty(): return self.length() + 1
-
-        return self.split(part).length() - 1
 
     // Removes every leading and trailing scalar that occurs in set.
     fn trim_chars(set: String) String:

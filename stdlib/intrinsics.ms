@@ -103,6 +103,8 @@ interface StringOperations:
     fn get(index: Int, default: String?) String
     // Returns an integer scalar code point; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
     fn scalar_at(index: Int, default: Int?) Int
+    // Counts non-overlapping occurrences; an empty part counts the scalars plus one.
+    fn count(part: String) Int
     // Returns the first matching Unicode scalar index or none; empty value matches at zero.
     fn index_of(value: String) Int?
     // Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().
