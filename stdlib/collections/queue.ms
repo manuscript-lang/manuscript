@@ -1,5 +1,5 @@
 import (
-	Iterator, panic from "@std/core.ms",
+	panic from "@std/core.ms",
 	Iterable from "@std/collections/iterable.ms",
 )
 
@@ -89,7 +89,7 @@ impl PriorityQueue[T]:
 	// Reports whether the entry at `a` dequeues before the entry at `b`.
 	fn before(a: Int, b: Int) Bool:
 		order := order(self.heap.get(a), self.heap.get(b))
-		return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
+		return order < 0 or (order == 0 and self.orders[a] < self.orders[b])
 
 	// Exchanges the heap entries at `a` and `b`.
 	var fn swap_entries(a: Int, b: Int) Unit:

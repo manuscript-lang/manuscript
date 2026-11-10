@@ -195,9 +195,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
 
             toks.append(Tok(kind: 4, text: s, num: 0))
         else:
-            var two = ""
-            if i + 1 < n:
-                two = c + cs[i + 1]
+            two := if i + 1 < n: c + cs[i + 1] else: ""
 
             if two == "<>" or two == "<=" or two == ">=" or two == "||":
                 toks.append(Tok(kind: 5, text: two, num: 0))
@@ -295,13 +293,11 @@ fn expect_kw(var p: Parser, w: String) Result[Unit, String]:
     if not kw_at(p, w): return error("syntax error")
 
     adv(var p)
-    return ok(unit)
 
 fn expect_op(var p: Parser, s: String) Result[Unit, String]:
     if not op_at(p, s): return error("syntax error")
 
     adv(var p)
-    return ok(unit)
 
 fn ident(var p: Parser) Result[String, String]:
     if kind_at(p) != 1: return error("syntax error")
@@ -1262,7 +1258,7 @@ fn agg_eval(
 
         return ok(VInt(total))
 
-    if use.length() == 0: return ok(VNull)
+    if use.is_empty(): return ok(VNull)
 
     k0 := kind(use[0])
     if k0 != 1 and k0 != 2: return error("type error")
@@ -1486,7 +1482,6 @@ fn group_check(
     if aggq and not inagg and not gidx.contains(i):
         return error("column {shown} must appear in GROUP BY")
 
-    return ok(unit)
 
 fn bind_call(
     srcs: List[Src],
@@ -1654,7 +1649,7 @@ fn index_of_name(names: List[String], n: String) Int:
     return -1
 
 fn rep_of(u: List[List[Value]]) List[Value]:
-    if u.length() > 0: return u[0].clone()
+    if not u.is_empty(): return u[0].clone()
 
     empty: List[Value] = []
     return empty
@@ -1834,11 +1829,9 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
 
             if q.joins[jn].is_left and not matched:
                 var padded = r.clone()
-                var k = 0
 
-                while k < width:
+                for k in 0..width:
                     padded.append(VNull)
-                    k += 1
 
                 next.append(padded)
 
@@ -1863,7 +1856,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
     var units: List[List[List[Value]]] = []
 
     if aggq:
-        if gidx.length() == 0:
+        if gidx.is_empty():
             units.append(rows.clone())
         else:
             var gkeys: List[List[Value]] = []
@@ -1954,7 +1947,7 @@ fn exec_select(db: List[Table], q: Query) Result[String, String]:
         outrows = uniq
 
     // ORDER BY (stable).
-    if ord_desc.length() > 0:
+    if not ord_desc.is_empty():
         outrows.sort(fn(x: OutRow, y: OutRow) Int: cmp_out(x, y, ord_desc))
 
     // OFFSET / LIMIT.
@@ -1997,7 +1990,6 @@ fn check_coldefs(cols: List[ColDef]) Result[Unit, String]:
 
         i += 1
 
-    return ok(unit)
 
 fn pk_index(cols: List[ColDef]) Int:
     var i = 0
@@ -2024,23 +2016,18 @@ fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, String]:
 
         c += 1
 
-    return ok(unit)
 
 fn first_dup(rows: List[List[Value]], p: Int) Result[Unit, String]:
     var j = 0
 
     while j < rows.length():
-        var i = 0
 
-        while i < j:
+        for i in 0..j:
             if same(rows[i][p], rows[j][p]):
                 return error("duplicate primary key: {vstr(rows[j][p])}")
 
-            i += 1
-
         j += 1
 
-    return ok(unit)
 
 fn insert_rows(
     tbl: Table,
@@ -2059,11 +2046,9 @@ fn insert_rows(
 
             pos.append(j)
     else:
-        var j = 0
 
-        while j < ncols:
+        for j in 0..ncols:
             pos.append(j)
-            j += 1
 
     no_srcs: List[Src] = []
     no_g: List[Int] = []
@@ -2079,11 +2064,9 @@ fn insert_rows(
         if r.length() != pos.length(): return error("wrong number of values")
 
         var vals: List[Value] = []
-        var j = 0
 
-        while j < ncols:
+        for j in 0..ncols:
             vals.append(VNull)
-            j += 1
 
         var k = 0
 

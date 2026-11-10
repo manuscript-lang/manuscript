@@ -310,8 +310,7 @@ fn main() Int:
 
 	print_slowest(times)
 
-	var tail = ""
-	if skipped > 0: tail = ", {skipped} left to the corpus"
+	tail := if skipped > 0: ", {skipped} left to the corpus" else: ""
 	(
 		stdout()
 		.write("e2e: {count} fixtures, {failed} failed ({build_type}){tail}\n")

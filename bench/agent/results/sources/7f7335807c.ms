@@ -50,7 +50,7 @@ fn format_cents(d: List[Int]) String:
 // True when every scalar is an ASCII digit and there is at least one.
 fn all_digits(s: String) Bool:
     codes := s.scalar_values()
-    if codes.length() == 0: return false
+    if codes.is_empty(): return false
 
     for c in codes:
         if c < 48 or c > 57: return false
@@ -89,7 +89,7 @@ fn cents_of(amt: String) List[Int]:
     return out
 
 fn make_rec(cat: String, amt: String) Rec?:
-    if cat.length() == 0 or not is_amount(amt): return none
+    if cat.is_empty() or not is_amount(amt): return none
 
     return Rec(cat: cat.clone(), cents: cents_of(amt))
 

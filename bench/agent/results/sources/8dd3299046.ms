@@ -163,7 +163,7 @@ fn is_delim(c: String) Bool:
 
 fn is_int_text(t: String) Bool:
     cs := t.chars()
-    if cs.length() == 0: return false
+    if cs.is_empty(): return false
 
     var i = 0
     if cs[0] == "-":
@@ -254,7 +254,7 @@ impl Interp:
     // ---------- output ----------
 
     var fn emit(s: String) Unit:
-        if s.length() == 0: return
+        if s.is_empty(): return
 
         self.out.write(s).get()
         self.at_bol = s.ends_with("\n")
@@ -511,7 +511,7 @@ impl Interp:
                 return ok(self.build(items, NIL))
 
             if self.at_dot():
-                if items.length() == 0:
+                if items.is_empty():
                     return error(synerr("syntax error: bad dotted list"))
 
                 self.pos += 1
@@ -1460,14 +1460,12 @@ impl Interp:
             if k < 0: return error(rt("list-tail: index out of range"))
 
             var p = args[0]
-            var i = 0
 
-            while i < k:
+            for i in 0..k:
                 if self.hk[p] != K_PAIR:
                     return error(rt("list-tail: index out of range"))
 
                 p = self.hcd[p]
-                i += 1
 
             return ok(p)
 
@@ -1517,14 +1515,12 @@ impl Interp:
         nm := self.prim_name[pid].clone()
         f := try self.proc_of(nm, args[0])
         var cur: List[Int] = []
-        var i = 1
 
-        while i < n:
+        for i in 1..n:
             if not self.is_proper(args[i]):
                 return error(self.kind_err(nm, "list", args[i]))
 
             cur.append(args[i])
-            i += 1
 
         var results: List[Int] = []
 
@@ -1722,7 +1718,7 @@ impl Interp:
 
             var items: List[Int] = []
 
-            if s.length() == 0:
+            if s.is_empty():
                 items.append(self.mkstr(""))
             else:
                 for part in s.split(sep, none):
@@ -1757,11 +1753,9 @@ impl Interp:
 
         if pid == P_ERROR:
             var msg = try self.str_of("error", args[0])
-            var i = 1
 
-            while i < n:
+            for i in 1..n:
                 msg = msg + " " + self.to_text(args[i], true)
-                i += 1
 
             return error(rt(msg))
 

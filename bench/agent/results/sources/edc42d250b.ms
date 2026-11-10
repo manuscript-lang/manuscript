@@ -105,7 +105,7 @@ fn ident_len(cs: List[String]) Int:
 
 fn is_ident(s: String) Bool:
     cs := s.chars()
-    return cs.length() > 0 and ident_len(cs) == cs.length()
+    return not cs.is_empty() and ident_len(cs) == cs.length()
 
 fn reg_of(s: String) Int:
     names := ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
@@ -346,7 +346,7 @@ fn str_lit(s: String) SL:
 // Value of a non-negative decimal integer, capped; -1 if not all digits.
 fn decimal_value(s: String) Int:
     cs := s.chars()
-    if cs.length() == 0: return -1
+    if cs.is_empty(): return -1
 
     var acc = 0
 
@@ -539,7 +539,7 @@ fn arity(op: Int) Int:
 fn valid_classes(op: Int, cls: List[Int]) Bool:
     var c0 = 0
     var c1 = 0
-    if cls.length() > 0:
+    if not cls.is_empty():
         c0 = cls[0]
     if cls.length() > 1:
         c1 = cls[1]
@@ -579,9 +579,7 @@ fn pass1(
             if d := equs.get(lab):
                 if d.line < num: return perr("duplicate symbol '{lab}'", num)
 
-            var val = daddr
-            if sec == 0:
-                val = ninstr
+            val := if sec == 0: ninstr else: daddr
             labels[lab.clone()] = val
             if sec == 0 and lab == "main":
                 entry = ninstr
@@ -794,7 +792,7 @@ fn input_value(tok: String) Val:
     var i = 0
     var neg = false
 
-    if cs.length() > 0 and cs[0] == "-":
+    if not cs.is_empty() and cs[0] == "-":
         neg = true
         i = 1
 
@@ -835,11 +833,9 @@ fn ea(base: Int, c: Int, regs: List[Int]) Int:
 
 fn pow2(c: Int) Int:
     var p = 1
-    var i = 0
 
-    while i < c:
+    for i in 0..c:
         p *= 2
-        i += 1
 
     return p
 
@@ -852,11 +848,9 @@ fn run(
     chtab: List[String]
 ) String:
     var mem = List[Int]()
-    var i0 = 0
 
-    while i0 < 4096:
+    for i0 in 0..4096:
         mem.append(0)
-        i0 += 1
 
     var di = 0
 
@@ -865,11 +859,9 @@ fn run(
         di += 1
 
     var regs = List[Int]()
-    var i1 = 0
 
-    while i1 < 10:
+    for i1 in 0..10:
         regs.append(0)
-        i1 += 1
 
     regs[8] = 4096
 
@@ -1093,15 +1085,13 @@ fn run(
         pc = nxt
 
     var result = outs.join("")
-    if outs.length() > 0 and not last_nl:
+    if not outs.is_empty() and not last_nl:
         result += "\n"
 
     if halted:
         result += "-- halted after {steps} steps\n"
     else:
-        var where = "-"
-        if pc >= 0 and pc < n:
-            where = "{code[pc].line}"
+        where := if pc >= 0 and pc < n: "{code[pc].line}" else: "-"
         result += "-- trap: {trap} (pc={pc} line={where}) after {steps} steps\n"
 
     result = (
@@ -1167,11 +1157,9 @@ export fn main() Int:
             input.append(iv.v)
 
     var chtab = List[String]()
-    var cv = 0
 
-    while cv < 128:
+    for cv in 0..128:
         chtab.append(from_scalars([cv]).get())
-        cv += 1
 
     out := run(code, data, input, p1.budget, p1.entry, chtab)
     stdout().write(out).get()

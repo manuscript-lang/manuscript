@@ -36,7 +36,7 @@ fn amount_cents(s: String) String?:
         int_part += cs[i]
         i += 1
 
-    if int_part.length() == 0: return none
+    if int_part.is_empty(): return none
 
     var frac = ""
 
@@ -83,7 +83,7 @@ fn parse_line(line: String) Entry?:
         cat = join_range(cs, 0, k)
         amt_start = k + 1
 
-    if cat.length() == 0: return none
+    if cat.is_empty(): return none
 
     amount := join_range(cs, amt_start, n)
     if cents := amount_cents(amount): return Entry(cat: cat, cents: cents)
@@ -134,7 +134,7 @@ export fn main() Int:
         item := input.next().get()
 
         if line := item:
-            if line.trim().length() == 0: continue
+            if line.trim().is_empty(): continue
 
             if e := parse_line(line):
                 if cur := totals.get(e.cat):
@@ -151,7 +151,7 @@ export fn main() Int:
     var out = ""
 
     for cat in cats.sorted():
-        total := format_cents(totals.get(cat).get("0"))
+        total := format_cents(totals.get_or(cat, "0"))
         out += "{cat}: {total}\n"
 
     if skipped > 0:

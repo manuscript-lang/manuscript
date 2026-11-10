@@ -29,8 +29,8 @@ fn amount_cents(cs: List[Int]) List[Int]?:
         else:
             return none
 
-    if int_part.length() == 0: return none
-    if seen_dot and (frac.length() == 0 or frac.length() > 2): return none
+    if int_part.is_empty(): return none
+    if seen_dot and (frac.is_empty() or frac.length() > 2): return none
 
     var out = List[Int]()
 
@@ -60,38 +60,34 @@ fn parse_line(line: String) Record?:
     var amt_start = 0
 
     if n > 0 and cs[0] == 34:
-        var j = 1
         var close = -1
 
-        while j < n:
+        for j in 1..n:
             if cs[j] == 34:
                 close = j
                 break
 
             cat.append(cs[j])
-            j += 1
 
         if close < 0: return none
         if close + 1 >= n or cs[close + 1] != 44: return none
 
         amt_start = close + 2
     else:
-        var j = 0
         var comma = -1
 
-        while j < n:
+        for j in 0..n:
             if cs[j] == 44:
                 comma = j
                 break
 
             cat.append(cs[j])
-            j += 1
 
         if comma < 0: return none
 
         amt_start = comma + 1
 
-    if cat.length() == 0: return none
+    if cat.is_empty(): return none
 
     var amt = List[Int]()
     var k = amt_start
@@ -164,7 +160,7 @@ fn run() Int!:
     order.sort()
 
     for name in order:
-        idx := index.get(name).get(0)
+        idx := index.get_or(name, 0)
         print("{name}: {render(totals[idx])}")
 
     if skipped > 0:

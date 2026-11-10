@@ -28,12 +28,9 @@ fn amount_cents(s: String) String:
         int_len += 1
     if int_len == 0: return ""
 
-    var k = 0
 
-    while k < int_len:
+    for k in 0..int_len:
         if not is_digit(s.get(k)): return ""
-
-        k += 1
 
     if int_len == n: return "{s}00"
 
@@ -42,12 +39,9 @@ fn amount_cents(s: String) String:
     fl := frac.length()
     if fl == 0 or fl > 2: return ""
 
-    var m = 0
 
-    while m < fl:
+    for m in 0..fl:
         if not is_digit(frac.get(m)): return ""
-
-        m += 1
 
     var padded = "{frac}"
     if fl == 1:
@@ -82,10 +76,10 @@ fn parse_line(line: String) Record:
         category = line.slice(0, j).get()
         amount = line.slice(j + 1, n).get()
 
-    if category.length() == 0: return bad()
+    if category.is_empty(): return bad()
 
     cents := amount_cents(amount)
-    if cents.length() == 0: return bad()
+    if cents.is_empty(): return bad()
 
     return Record(ok: true, category: category, amount: cents)
 
@@ -137,7 +131,7 @@ export fn main() Int:
             skipped += 1
             continue
 
-        prev := totals.get(rec.category).get("0")
+        prev := totals.get_or(rec.category, "0")
         totals[rec.category] = add_digits(prev, rec.amount)
 
     for key in totals.keys().sorted():
