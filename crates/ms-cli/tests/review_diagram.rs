@@ -1152,3 +1152,107 @@ fn review_and_diagram_reject_mismatched_added_and_deleted_sources() {
     ));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn review_and_diagram_keep_in_root_two_dot_source_names() {
+    let dir = scratch("review-dot-paths");
+    let root = dir.join("checkout");
+    std::fs::create_dir(&root).unwrap();
+    for path in ["normal.ms", ".hidden.ms", "..hidden.ms", "..pkg/part.ms"] {
+        let source = root.join(path);
+        std::fs::create_dir_all(source.parent().unwrap()).unwrap();
+        std::fs::write(&source, include_str!("review_quoted/head.ms")).unwrap();
+        std::fs::write(
+            root.join("main.ms"),
+            include_str!("review_dot_paths/main.ms").replace("./module.ms", &format!("./{path}")),
+        )
+        .unwrap();
+        let patch = include_str!("review_dot_paths/change.patch").replace("module.ms", path);
+        std::fs::write(root.join("change.patch"), &patch).unwrap();
+        let report = json(&ms(
+            &root,
+            &["review", "main.ms", "--diff", "change.patch", "--json"],
+        ));
+        assert_eq!(
+            report.get("input").and_then(Json::as_str),
+            Some("diff (1 files, 1 source, +2 -2)"),
+            "{path}"
+        );
+        assert_eq!(
+            report.get("findings").unwrap().as_array().unwrap().len(),
+            1,
+            "{path}"
+        );
+        let diagram = json(&ms(
+            &root,
+            &[
+                "diagram",
+                "main.ms",
+                "--diff",
+                "change.patch",
+                "--view",
+                "calls",
+                "--json",
+            ],
+        ));
+        assert!(
+            diagram
+                .pretty(ms_json::Escape::Plain)
+                .contains("CONTRACT #1"),
+            "{path}: {diagram:?}"
+        );
+        std::fs::write(
+            root.join("change.patch"),
+            patch.replace("return \"new\"", "return \"absent\""),
+        )
+        .unwrap();
+        for command in ["review", "diagram"] {
+            let output = ms(
+                &root,
+                &[command, "main.ms", "--diff", "change.patch", "--json"],
+            );
+            assert_eq!(output.status.code(), Some(2), "{path}: {output:?}");
+            assert!(output.stdout.is_empty());
+        }
+    }
+    std::fs::write(dir.join("outside.ms"), "outside tree control\n").unwrap();
+    std::fs::write(
+        root.join("change.patch"),
+        "--- a/../outside.ms\n+++ b/../outside.ms\n@@ -1 +1 @@\n-old\n+unmatched\n",
+    )
+    .unwrap();
+    let report = json(&ms(
+        &root,
+        &["review", "main.ms", "--diff", "change.patch", "--json"],
+    ));
+    assert_eq!(
+        report.get("input").and_then(Json::as_str),
+        Some("diff (1 files, 0 source, +1 -1)")
+    );
+    assert!(
+        report
+            .get("findings")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    let diagram = json(&ms(
+        &root,
+        &[
+            "diagram",
+            "main.ms",
+            "--diff",
+            "change.patch",
+            "--view",
+            "calls",
+            "--json",
+        ],
+    ));
+    assert!(
+        !diagram
+            .pretty(ms_json::Escape::Plain)
+            .contains("CONTRACT #1")
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

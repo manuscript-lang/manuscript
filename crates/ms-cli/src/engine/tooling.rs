@@ -889,7 +889,7 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
         let Ok(relative) = pathops::rel(root, &absolute) else {
             continue;
         };
-        if relative.starts_with("..") {
+        if pathops::escapes(&relative) {
             continue;
         }
         input.sources += 1;
