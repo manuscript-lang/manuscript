@@ -10,6 +10,7 @@ mod patterns;
 mod promises;
 mod recursion;
 mod tasks;
+mod terse;
 mod text;
 
 use ms_check::{ModuleData, Program};
@@ -162,6 +163,18 @@ pub const RULES: &[Rule] = &[
         severity: Severity::Warning,
         repair: "write `\\{4\\}` for literal braces such as a regex quantifier, or put the pattern in `r\"\"\"` raw text; delete the braces to write the number",
     },
+    Rule {
+        code: "MSL118",
+        family: "Length compared with zero",
+        severity: Severity::Warning,
+        repair: "write `xs.is_empty()` or `not xs.is_empty()`; `ms lint --fix` does it",
+    },
+    Rule {
+        code: "MSL119",
+        family: "List read with get(i)",
+        severity: Severity::Warning,
+        repair: "write `xs[i]`; `ms lint --fix` does it",
+    },
 ];
 
 /// The rule for `code`, matched case-insensitively.
@@ -240,6 +253,7 @@ pub fn lint_program(syms: ms_syntax::Names, program: &Program) -> Vec<Finding> {
         tasks::lint(syms, module, &mut findings);
         promises::lint(syms, module, &mut findings);
         text::lint(syms, module, &mut findings);
+        terse::lint(syms, module, &mut findings);
     }
     effects::lint(syms, program, &mut findings);
     findings.sort_by(|a, b| {

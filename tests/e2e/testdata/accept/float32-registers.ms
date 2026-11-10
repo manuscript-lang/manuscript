@@ -12,7 +12,7 @@ fn dot(a: List[Float32], b: List[Float32]) Float32:
     var i = 0
 
     while i < a.length():
-        acc = acc + a[i] * b[i]
+        acc += a[i] * b[i]
         i += 1
 
     return acc

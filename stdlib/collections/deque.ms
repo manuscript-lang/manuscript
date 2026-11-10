@@ -38,8 +38,7 @@ impl Deque[T]:
     fn slot_of(offset: Int) Int:
         let at = self.start + offset
         let capacity = self.slots.length()
-        if at >= capacity:
-            return at - capacity
+        if at >= capacity: return at - capacity
 
         return at
 
@@ -62,8 +61,7 @@ impl Deque[T]:
 
     // Removes and returns the first value, or `none` when empty.
     var fn pop_front() T?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         let value = self.slots.replace(self.start, none)
         self.start += 1
@@ -74,8 +72,7 @@ impl Deque[T]:
 
     // Removes and returns the last value, or `none` when empty.
     var fn pop_back() T?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         let index = self.slot_of(self.size - 1)
         let value = self.slots.replace(index, none)
@@ -84,15 +81,13 @@ impl Deque[T]:
 
     // Returns the first value without removing it, or `none` when empty.
     fn front() T?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         return self.slots.get(self.start)
 
     // Returns the last value without removing it, or `none` when empty.
     fn back() T?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         return self.slots.get(self.slot_of(self.size - 1))
 
@@ -110,8 +105,7 @@ impl Deque[T]:
     Example: with 1, 2, 3, 4 queued, `rotate(1)` leaves 2, 3, 4, 1.
     */
     var fn rotate(count: Int) Unit:
-        if self.size < 2:
-            return
+        if self.size < 2: return
 
         var steps = count % self.size
 
@@ -152,7 +146,6 @@ impl Iterable[T] for Deque[T]:
     // Returns the value at `index` counted from the front, or `none` when out of range.
     // Negative indexes are out of range.
     fn at(index: Int) T?:
-        if index < 0 or index >= self.size:
-            return none
+        if index < 0 or index >= self.size: return none
 
         return self.slots.get(self.slot_of(index))

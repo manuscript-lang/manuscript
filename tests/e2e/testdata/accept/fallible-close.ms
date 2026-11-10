@@ -7,8 +7,7 @@ type Gate:
 
 impl Closeable for Gate:
     var fn close() Unit!:
-        if self.fails:
-            return error(Error("close {self.name}"))
+        if self.fails: return error(Error("close {self.name}"))
 
         return ok(unit)
 
@@ -29,8 +28,7 @@ fn explicit(fails: Bool) Result[Int, Error]:
 fn loop_exit() Result[Int, Error]:
     for i in [1, 2, 3]:
         let _gate = Gate("loop", i == 2)
-        if i == 2:
-            break
+        if i == 2: break
 
     return ok(0)
 

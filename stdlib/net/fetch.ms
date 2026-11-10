@@ -88,8 +88,7 @@ impl FetchResponse:
 
     // Decodes the body as UTF-8.
     fn text() String!:
-        if let text = self.body.decode_utf8():
-            return ok(text)
+        if let text = self.body.decode_utf8(): return ok(text)
 
         return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
@@ -165,14 +164,12 @@ type Outgoing:
     body: Bytes
 
 fn limit_exceeded(limit: Int?, total: Int) Bool:
-    if let max = limit:
-        return total > max
+    if let max = limit: return total > max
 
     return false
 
 fn expired(timeout: Duration?, started: Instant) Bool:
-    if let limit = timeout:
-        return monotonic().difference(started).compare(limit) >= 0
+    if let limit = timeout: return monotonic().difference(started).compare(limit) >= 0
 
     return false
 

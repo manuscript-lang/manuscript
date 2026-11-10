@@ -11,8 +11,7 @@ import (expect_equal, expect_error, expect_ok, expect_true) from "@std/test/test
 import milliseconds, nanoseconds, sleep from "@std/time.ms"
 
 fn report(reason: Error) String:
-    if reason.kind == "EIO":
-        return reason.details["report"].split("\n").get(0).clone()
+    if reason.kind == "EIO": return reason.details["report"].split("\n").get(0).clone()
 
     return reason.message.clone()
 

@@ -12,8 +12,7 @@ A missing golden file fails with the update hint; it is created only when updati
 */
 fn updating() Bool:
     let env = environment().get(Map[String, String]())
-    if let value = env.get("MS_UPDATE_GOLDEN"):
-        return value != "" and value != "0"
+    if let value = env.get("MS_UPDATE_GOLDEN"): return value != "" and value != "0"
 
     return false
 
@@ -52,8 +51,7 @@ export fn expect_golden(path: String, actual: String) Unit!:
     let expected = stored.get().decode_utf8()
     if expected.is_none():
         return fail("golden file {path} is not UTF-8; use expect_golden_bytes")
-    if expected.get() == actual:
-        return ok(unit)
+    if expected.get() == actual: return ok(unit)
 
     return fail(
         "{path} differs from the output at {first_difference(expected.get(), actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
@@ -73,8 +71,7 @@ export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
         )
 
     let expected = stored.get()
-    if expected == actual:
-        return ok(unit)
+    if expected == actual: return ok(unit)
 
     var offset = 0
     let shared = if expected.length() < actual.length(): expected.length() else: actual.length()

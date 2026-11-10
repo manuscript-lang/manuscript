@@ -23,8 +23,7 @@ fn latch(log: String, id: Int) Latch:
     return Latch(log, id, true)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -47,8 +46,7 @@ fn holder_part(log: String) Int:
 
 fn optional_part(log: String) Int:
     let maybe: Latch? = latch(log, 3)
-    if maybe.is_some():
-        return 1
+    if maybe.is_some(): return 1
 
     return 0
 
@@ -124,8 +122,7 @@ fn made_by_resource(log: String) Int:
 
 fn found_by_resource(log: String) Int:
     var maker = Maker(0)
-    if let found = maker.find(log, 17):
-        return found.id
+    if let found = maker.find(log, 17): return found.id
 
     return 0
 

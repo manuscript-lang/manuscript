@@ -1220,7 +1220,7 @@ fn build_huffman(counts: List[Int], values: List[Int]) JpegHuffman!:
             bad("oversubscribed Huffman table")
         )
 
-        code = code * 2
+        code *= 2
 
     return ok(JpegHuffman(true, mincode, maxcode, valptr, values))
 
@@ -2039,7 +2039,7 @@ fn jpeg_codes(counts: List[Int], values: List[Int]) JpegCodes:
             next += 1
             index += 1
 
-        next = next * 2
+        next *= 2
 
     return JpegCodes(code, size)
 
@@ -2071,7 +2071,7 @@ fn bit_length(value: Int) Int:
 
     while v > 0:
         n += 1
-        v = v / 2
+        v /= 2
 
     return n
 

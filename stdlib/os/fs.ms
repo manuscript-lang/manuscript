@@ -424,8 +424,7 @@ impl Source[FileEvent] for WatchSource:
     // Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
     var fn next() FileEvent?!:
         while true:
-            if let event = self.pending.pop():
-                return ok(event)
+            if let event = self.pending.pop(): return ok(event)
 
             var batch = try msstd_fs_watch_next(self.watcher.native)
             batch.reverse()

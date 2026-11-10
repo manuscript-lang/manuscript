@@ -19,8 +19,7 @@ impl Queue[T]:
                 panic(
                     "Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
                 )
-            if self.length() >= limit:
-                return false
+            if self.length() >= limit: return false
 
         let count = self.items.length()
 
@@ -36,8 +35,7 @@ impl Queue[T]:
 
     // Removes and returns the oldest value, or `none` when empty.
     var fn dequeue() T?:
-        if self.head >= self.items.length():
-            return none
+        if self.head >= self.items.length(): return none
 
         let value = self.items.replace(self.head, none)
         self.head += 1
@@ -50,8 +48,7 @@ impl Queue[T]:
 
     // Returns the oldest value without removing it, or none when the queue is empty.
     fn peek() T?:
-        if self.head >= self.items.length():
-            return none
+        if self.head >= self.items.length(): return none
 
         return self.items.get(self.head)
 
@@ -66,8 +63,7 @@ impl Iterable[T] for Queue[T]:
 
     // Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
     fn at(index: Int) T?:
-        if index < 0 or index >= self.length():
-            return none
+        if index < 0 or index >= self.length(): return none
 
         return self.items.get(self.head + index)
 
@@ -104,8 +100,7 @@ impl PriorityQueue[T]:
 
         while at > floor:
             let parent = (at - 1) / 2
-            if not self.before(at, parent):
-                break
+            if not self.before(at, parent): break
 
             self.swap_entries(at, parent)
             at = parent
@@ -140,8 +135,7 @@ impl PriorityQueue[T]:
                 panic(
                     "PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
                 )
-            if self.heap.length() >= limit:
-                return false
+            if self.heap.length() >= limit: return false
 
         self.heap.append(value)
         self.orders.append(self.next_order)
@@ -152,8 +146,7 @@ impl PriorityQueue[T]:
     // Removes and returns the next value by priority, or `none` when empty.
     var fn dequeue() T?:
         let count = self.heap.length()
-        if count == 0:
-            return none
+        if count == 0: return none
 
         self.swap_entries(0, count - 1)
         self.orders.pop()
@@ -164,8 +157,7 @@ impl PriorityQueue[T]:
 
     // Returns the next value by priority without removing it, or none when empty.
     fn peek() T?:
-        if self.heap.is_empty():
-            return none
+        if self.heap.is_empty(): return none
 
         return self.heap.get(0)
 
@@ -181,7 +173,6 @@ impl Iterable[T] for PriorityQueue[T]:
     // Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
     // Negative indexes are out of range.
     fn at(index: Int) T?:
-        if index < 0 or index >= self.heap.length():
-            return none
+        if index < 0 or index >= self.heap.length(): return none
 
         return self.heap.get(index)

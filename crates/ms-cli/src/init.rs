@@ -6,7 +6,7 @@ use ms_driver::project::pathops;
 use crate::backend::Io;
 
 const MAIN: &str = "import arguments from \"@std/os/env.ms\"\n\nexport fn main() Int:\n    print(\"Arguments: {arguments().length()}\")\n    return 0\n";
-const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5):\n        return panic(message: \"arithmetic failed\")\n";
+const TEST: &str = "import panic from \"@std/core.ms\"\n\ntest \"arithmetic\":\n    if not (2 + 3 == 5): return panic(message: \"arithmetic failed\")\n";
 const IGNORE: &str = ".ms-cache/\n";
 
 pub fn run_init(args: &[String], io: &mut Io) -> i32 {

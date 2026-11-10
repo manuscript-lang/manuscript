@@ -39,15 +39,13 @@ export fn catch_fault(operation: fn() Unit) String?:
 
 // Fails unless actual is True. `site` names the call in the failure and defaults to the caller's position.
 export fn expect_true(actual: Bool, site: String = caller_site()) Unit!:
-    if actual:
-        return ok(unit)
+    if actual: return ok(unit)
 
     return error(failure("expected true, got false", site))
 
 // Fails unless actual is False. `site` names the call in the failure and defaults to the caller's position.
 export fn expect_false(actual: Bool, site: String = caller_site()) Unit!:
-    if not actual:
-        return ok(unit)
+    if not actual: return ok(unit)
 
     return error(failure("expected false, got true", site))
 
@@ -57,8 +55,7 @@ export fn expect_equal[T: Equal](
     expected: T,
     site: String = caller_site()
 ) Unit!:
-    if actual == expected:
-        return ok(unit)
+    if actual == expected: return ok(unit)
 
     return error(failure("expected {repr(expected)}, got {repr(actual)}", site))
 
@@ -68,8 +65,7 @@ export fn expect_not_equal[T: Equal](
     expected: T,
     site: String = caller_site()
 ) Unit!:
-    if actual != expected:
-        return ok(unit)
+    if actual != expected: return ok(unit)
 
     return error(failure("expected different values, got {repr(actual)}", site))
 
@@ -86,14 +82,12 @@ export fn expect_close(
                 "expect_close: tolerance must be finite and nonnegative", site
             )
         )
-    if actual == expected:
-        return ok(unit)
+    if actual == expected: return ok(unit)
 
     var spread = actual - expected
     if spread < 0.0:
         spread = 0.0 - spread
-    if spread <= tolerance:
-        return ok(unit)
+    if spread <= tolerance: return ok(unit)
 
     return error(
         failure(
@@ -108,15 +102,13 @@ export fn expect_contains(
     expected: String,
     site: String = caller_site()
 ) Unit!:
-    if actual.contains(expected):
-        return ok(unit)
+    if actual.contains(expected): return ok(unit)
 
     return error(failure("expected {repr(actual)} to contain {repr(expected)}", site))
 
 // Requires some and returns its original payload; fails on none.
 export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
-    if let value = actual:
-        return ok(value)
+    if let value = actual: return ok(value)
 
     return error(failure("expected some, got none", site))
 
@@ -129,24 +121,20 @@ export fn expect_none[T](actual: T?, site: String = caller_site()) Unit!:
 
 // Requires ok and returns its original payload; reports an unexpected error.
 export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
-    if actual.is_error():
-        return error(failure("expected ok, got {repr(actual)}", site))
-    if let value = actual:
-        return ok(value)
+    if actual.is_error(): return error(failure("expected ok, got {repr(actual)}", site))
+    if let value = actual: return ok(value)
 
     return error(failure("expected ok, got an error", site))
 
 // Requires error and returns its original cause; fails on success.
 export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()) E!:
-    if actual.is_error():
-        return ok(actual.err().clone())
+    if actual.is_error(): return ok(actual.err().clone())
 
     return error(failure("expected error, got {repr(actual)}", site))
 
 // Calls operation once, requires a programming fault, and returns its message. Cancellation and skip propagate.
 export fn expect_fault(operation: fn() Unit, site: String = caller_site()) String!:
-    if let message = catch_fault(operation):
-        return ok(message)
+    if let message = catch_fault(operation): return ok(message)
 
     return error(
         failure(

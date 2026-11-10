@@ -126,8 +126,7 @@ fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
 // Computes the Poly1305 one-time authenticator (RFC 8439) of `data` with a 32-byte one-time key, returning 16 bytes.
 // Authenticate with a key used for one message only; use `chacha20poly1305_seal` unless implementing a protocol.
 export fn poly1305(key: Bytes, data: Bytes) Bytes!:
-    if key.length() != 32:
-        return error(Error("crypto: invalid input", kind: "EINVAL"))
+    if key.length() != 32: return error(Error("crypto: invalid input", kind: "EINVAL"))
 
     let mask = 67108863
     let r0 = bit_and(le32(key, 0), 67108863)

@@ -32,8 +32,7 @@ impl BitSet:
 
     // Removes an index; absent and out-of-range indexes change nothing.
     var fn remove(index: Int) Unit:
-        if index < 0 or index / 64 >= self.words.length():
-            return
+        if index < 0 or index / 64 >= self.words.length(): return
 
         let word = index / 64
         self.words.set(
@@ -45,8 +44,7 @@ impl BitSet:
 
     // Reports whether the index is a member; out-of-range indexes are not members.
     fn contains(index: Int) Bool:
-        if index < 0 or index / 64 >= self.words.length():
-            return false
+        if index < 0 or index / 64 >= self.words.length(): return false
 
         return bit_and(self.words.get(index / 64), shift_left(1, index % 64)) != 0
 
@@ -69,18 +67,15 @@ impl BitSet:
     fn next(from: Int = 0) Int?:
         let start = from.max(0)
         var word = start / 64
-        if word >= self.words.length():
-            return none
+        if word >= self.words.length(): return none
 
         var bits = bit_and(self.words.get(word), shift_left(-1, start % 64))
 
         while true:
-            if bits != 0:
-                return word * 64 + trailing_zeros(bits)
+            if bits != 0: return word * 64 + trailing_zeros(bits)
 
             word += 1
-            if word >= self.words.length():
-                return none
+            if word >= self.words.length(): return none
 
             bits = self.words.get(word)
 
@@ -139,8 +134,7 @@ impl BitSet:
     fn is_subset_of(other: BitSet) Bool:
         for word in 0..self.words.length():
             let right = other.words.get(word, 0)
-            if bit_and(self.words[word], bit_not(right)) != 0:
-                return false
+            if bit_and(self.words[word], bit_not(right)) != 0: return false
 
         return true
 
@@ -152,6 +146,5 @@ impl BitSet:
     fn is_disjoint_from(other: BitSet) Bool:
         let count = self.words.length().min(other.words.length())
         for word in 0..count:
-            if bit_and(self.words[word], other.words[word]) != 0:
-                return false
+            if bit_and(self.words[word], other.words[word]) != 0: return false
         return true

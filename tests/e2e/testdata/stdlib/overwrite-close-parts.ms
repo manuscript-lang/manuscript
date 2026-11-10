@@ -16,8 +16,7 @@ fn track(log: String, id: Int) Tracked:
     return Tracked(log, id)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 

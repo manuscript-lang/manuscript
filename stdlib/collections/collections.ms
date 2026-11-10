@@ -599,8 +599,7 @@ impl ListSearch[T] for List[T]:
     // Returns the first equal element's zero-based index, or none; elements require Equal.
     fn index_of(value: T) Int?:
         for i in 0..self.length():
-            if self[i].equals(value):
-                return i
+            if self[i].equals(value): return i
         return none
 
     // Returns the last equal element's zero-based index, or none; elements require Equal.
@@ -608,8 +607,7 @@ impl ListSearch[T] for List[T]:
         var i = self.length() - 1
 
         while i >= 0:
-            if self[i].equals(value):
-                return i
+            if self[i].equals(value): return i
 
             i -= 1
 
@@ -712,8 +710,7 @@ impl ListExtremes[T] for List[T]:
     // Returns a copy of the least element, or none for an empty list; the first of equal elements wins.
     // Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is `none`.
     fn min() T?:
-        if self.is_empty():
-            return none
+        if self.is_empty(): return none
 
         var at = 0
         for i in 1..self.length():
@@ -724,8 +721,7 @@ impl ListExtremes[T] for List[T]:
     // Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
     // Example: `[3, 1, 2].max()` is `3`.
     fn max() T?:
-        if self.is_empty():
-            return none
+        if self.is_empty(): return none
 
         var at = 0
         for i in 1..self.length():
@@ -744,8 +740,7 @@ impl ListKeyedExtremes[T] for List[T]:
     Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
     */
     fn max_by[K: Comparable](key: fn(T) K) T?:
-        if self.is_empty():
-            return none
+        if self.is_empty(): return none
 
         var at = 0
         var best = key(self[0])
@@ -765,8 +760,7 @@ impl ListKeyedExtremes[T] for List[T]:
     Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
     */
     fn min_by[K: Comparable](key: fn(T) K) T?:
-        if self.is_empty():
-            return none
+        if self.is_empty(): return none
 
         var at = 0
         var best = key(self[0])
@@ -819,8 +813,7 @@ impl ListReshape[T] for List[T]:
     Example: `var xs = [1, 1, 2, 1]` then `xs.compact_by(fn a, b: a == b)` leaves `[1, 2, 1]`.
     */
     var fn compact_by(same: fn(T, T) Bool) Unit:
-        if self.length() < 2:
-            return
+        if self.length() < 2: return
 
         var kept = 1
 
@@ -838,12 +831,10 @@ impl ListReshape[T] for List[T]:
     */
     var fn rotate(by: Int) Unit:
         let size = self.length()
-        if size < 2:
-            return
+        if size < 2: return
 
         let shift = (by % size + size) % size
-        if shift == 0:
-            return
+        if shift == 0: return
 
         reverse_span(var self, 0, shift)
         reverse_span(var self, shift, size)
@@ -853,8 +844,7 @@ impl ListReshape[T] for List[T]:
     // Empty and one-element lists are sorted.
     fn is_sorted_by(compare: fn(T, T) Int) Bool:
         for i in 1..self.length():
-            if compare(self[i - 1], self[i]) > 0:
-                return false
+            if compare(self[i - 1], self[i]) > 0: return false
         return true
 
 interface ListCompact[T: Equal]:
@@ -898,8 +888,7 @@ impl ListCopiesKeyed[T] for List[T]:
 
         // One element repeated is a native fill, as fast as `filled`; a native failure falls through to the loop below.
         if self.length() == 1:
-            if let same = msrt_list_filled(self[0].clone(), count, none):
-                return same
+            if let same = msrt_list_filled(self[0].clone(), count, none): return same
 
         var out = List[T](reserve: self.length() * count)
         for _round in 0..count:

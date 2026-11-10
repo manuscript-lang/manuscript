@@ -105,12 +105,10 @@ test "serve answers requests while handlers read and write files":
     fn io_route(request: HttpRequest) HttpResponse:
         let path = "{root}/slot{request.query}.bin"
         let wrote = write_file(path, payload.clone(), replace: true).wait()
-        if wrote.is_error():
-            return HttpResponse(500, headers(), "write".to_bytes())
+        if wrote.is_error(): return HttpResponse(500, headers(), "write".to_bytes())
 
         let read = read_file(path).wait()
-        if read.is_error():
-            return HttpResponse(500, headers(), "read".to_bytes())
+        if read.is_error(): return HttpResponse(500, headers(), "read".to_bytes())
 
         return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
 

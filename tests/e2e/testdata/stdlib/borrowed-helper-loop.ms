@@ -49,12 +49,10 @@ test "borrowed receiver iterable handles break and continue":
     var sum = 0
 
     for value in grid.first():
-        if value == 2:
-            continue
+        if value == 2: continue
 
         sum += value
-        if value == 3:
-            break
+        if value == 3: break
 
     try expect_equal(sum, 4)
     try expect_equal(grid.rows[0], [1, 2, 3, 4])

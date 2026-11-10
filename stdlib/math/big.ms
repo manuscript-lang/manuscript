@@ -29,8 +29,7 @@ fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
     if denominator.sign() == 0:
         return error(Error("bigrat: invalid input", kind: "EINVAL"))
-    if numerator.sign() == 0:
-        return ok(BigRat(num: big(0), den: big(1)))
+    if numerator.sign() == 0: return ok(BigRat(num: big(0), den: big(1)))
 
     return ok(reduced(numerator, denominator))
 
@@ -45,10 +44,8 @@ export fn rat_of_big_int(value: BigInt) BigRat:
 // Returns the exact value of a Float, such as 0.5 for 0.5 and 3602879701896397/36028797018963968 for 0.1.
 // Returns none for NaN and infinities.
 export fn rat_of_float(value: Float) BigRat?:
-    if not value.is_finite():
-        return none
-    if value == 0.0:
-        return rat_of_int(0)
+    if not value.is_finite(): return none
+    if value == 0.0: return rat_of_int(0)
 
     let parts = frexp(value)
     let mantissa = ldexp(parts.fraction, 53).truncate_to_int().get(0)
@@ -56,14 +53,12 @@ export fn rat_of_float(value: Float) BigRat?:
 
 // Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216 bits faults.
 export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
-    if exponent >= 0:
-        return BigRat(num: shl(mantissa, exponent), den: big(1))
+    if exponent >= 0: return BigRat(num: shl(mantissa, exponent), den: big(1))
 
     return reduced(mantissa.clone(), shl(big(1), -exponent))
 
 fn parse_digits(text: String) BigInt!:
-    if let value = parse_big(text):
-        return ok(value)
+    if let value = parse_big(text): return ok(value)
 
     return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
@@ -71,8 +66,7 @@ fn parse_digits(text: String) BigInt!:
 // A zero denominator returns EINVAL, malformed text EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
 export fn parse_rat(text: String) BigRat!:
     let slash = text.split("/")
-    if slash.length() > 2:
-        return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+    if slash.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
     if slash.length() == 2:
         let top = try parse_digits(slash[0])
@@ -92,8 +86,7 @@ export fn parse_rat(text: String) BigRat!:
             return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 
     let point = exponent_parts[0].split(".")
-    if point.length() > 2:
-        return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+    if point.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
     var fraction_digits = 0
     var joined = point[0].clone()
@@ -108,16 +101,14 @@ export fn parse_rat(text: String) BigRat!:
 
     let numerator = try parse_digits(joined)
     let scale = fraction_digits - exponent
-    if scale <= 0:
-        return ok(BigRat(num: numerator * pow10(-scale), den: big(1)))
+    if scale <= 0: return ok(BigRat(num: numerator * pow10(-scale), den: big(1)))
 
     return rat(numerator, pow10(scale))
 
 // Keep malformed decimal syntax distinct from an exponent exceeding the integer range.
 fn parse_exponent(text: String) Int!:
     let parsed = parse_int(text, 10)
-    if let value = parsed:
-        return ok(value)
+    if let value = parsed: return ok(value)
     if parsed.err().kind == "ERANGE":
         return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 
@@ -182,15 +173,13 @@ impl BigRat:
 
     // Returns the lesser value, or this value when they compare equal.
     fn min(other: BigRat) BigRat:
-        if other.compare(self) < 0:
-            return other.clone()
+        if other.compare(self) < 0: return other.clone()
 
         return self.clone()
 
     // Returns the greater value, or this value when they compare equal.
     fn max(other: BigRat) BigRat:
-        if other.compare(self) > 0:
-            return other.clone()
+        if other.compare(self) > 0: return other.clone()
 
         return self.clone()
 
@@ -200,8 +189,7 @@ impl BigRat:
         let count = exponent.abs()
         let top = try self.num.pow(count)
         let bottom = try self.den.pow(count)
-        if exponent >= 0:
-            return ok(BigRat(num: top, den: bottom))
+        if exponent >= 0: return ok(BigRat(num: top, den: bottom))
 
         return rat(bottom, top)
 
@@ -221,8 +209,7 @@ impl BigRat:
     fn round() BigInt:
         let twice = self.num.abs() * big(2) + self.den
         let magnitude = twice / (self.den * big(2))
-        if self.num.sign() < 0:
-            return -magnitude
+        if self.num.sign() < 0: return -magnitude
 
         return magnitude
 
@@ -234,8 +221,7 @@ impl BigRat:
     // Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
     // A negative digit count returns EINVAL; a result that rounds to zero has no minus sign.
     fn to_fixed(digits: Int) String!:
-        if digits < 0:
-            return error(Error("bigrat: invalid input", kind: "EINVAL"))
+        if digits < 0: return error(Error("bigrat: invalid input", kind: "EINVAL"))
 
         let scaled = self.num.abs() * pow10(digits)
         var quotient = scaled / self.den
@@ -243,7 +229,7 @@ impl BigRat:
         let order = twice.compare(self.den)
         let odd = quotient.bit_and(big(1)).sign() != 0
         if order > 0 or order == 0 and odd:
-            quotient = quotient + big(1)
+            quotient += big(1)
 
         var text = quotient.to_string_radix(10)
 
@@ -253,15 +239,13 @@ impl BigRat:
             let split_at = text.scalar_length() - digits
             text = "{text.slice(0, split_at).get("")}.{text.slice(split_at, text.scalar_length()).get("")}"
 
-        if self.num.sign() < 0 and quotient.sign() != 0:
-            return ok("-{text}")
+        if self.num.sign() < 0 and quotient.sign() != 0: return ok("-{text}")
 
         return ok(text)
 
     // Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
     fn format() String:
-        if self.is_integer():
-            return self.num.to_string_radix(10)
+        if self.is_integer(): return self.num.to_string_radix(10)
 
         return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
@@ -305,10 +289,8 @@ export fn big_float_of_int(value: Int, precision: Int) BigFloat:
 // Returns a Float rounded to `precision` bits (exact when precision is at least 53), or none for NaN and infinities.
 export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
     let bits = checked(precision)
-    if not value.is_finite():
-        return none
-    if value == 0.0:
-        return big_float_of_int(0, bits)
+    if not value.is_finite(): return none
+    if value == 0.0: return big_float_of_int(0, bits)
 
     let parts = frexp(value)
     let mantissa = ldexp(parts.fraction, 53).truncate_to_int().get(0)
@@ -325,8 +307,7 @@ export fn parse_big_float(text: String, precision: Int) BigFloat!:
     let bits = checked(precision)
     if text.contains("/"):
         return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
-    if let value = parse_rat(text):
-        return ok(big_float_of_rat(value, bits))
+    if let value = parse_rat(text): return ok(big_float_of_rat(value, bits))
 
     let too_large: BigRat! = error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
     if parse_rat(text) == too_large:
@@ -418,8 +399,7 @@ impl BigFloat:
     fn sqrt() BigFloat!:
         if self.mant.sign() < 0:
             return error(Error("bigfloat: invalid input", kind: "EINVAL"))
-        if self.mant.sign() == 0:
-            return ok(self.clone())
+        if self.mant.sign() == 0: return ok(self.clone())
 
         var padding = 0
         let wanted = 2 * (self.prec + 2)
@@ -444,29 +424,25 @@ impl BigFloat:
     fn compare(other: BigFloat) Int:
         if self.mant.sign() != other.mant.sign():
             return self.mant.sign().compare(other.mant.sign())
-        if self.mant.sign() == 0:
-            return 0
+        if self.mant.sign() == 0: return 0
 
         // The leading bit's position orders the magnitudes without aligning them across the exponent gap.
         let own_top = self.exp + bit_length(self.mant)
         let other_top = other.exp + bit_length(other.mant)
-        if own_top != other_top:
-            return own_top.compare(other_top) * self.mant.sign()
+        if own_top != other_top: return own_top.compare(other_top) * self.mant.sign()
 
         let low = smaller(self.exp, other.exp)
         return shl(self.mant, self.exp - low).compare(shl(other.mant, other.exp - low))
 
     // Returns the lesser value, or this value when they compare equal.
     fn min(other: BigFloat) BigFloat:
-        if other.compare(self) < 0:
-            return other.clone()
+        if other.compare(self) < 0: return other.clone()
 
         return self.clone()
 
     // Returns the greater value, or this value when they compare equal.
     fn max(other: BigFloat) BigFloat:
-        if other.compare(self) > 0:
-            return other.clone()
+        if other.compare(self) > 0: return other.clone()
 
         return self.clone()
 
@@ -476,12 +452,10 @@ impl BigFloat:
 
     // Discards the fraction toward zero.
     fn truncate() BigInt:
-        if self.exp >= 0:
-            return shl(self.mant, self.exp)
+        if self.exp >= 0: return shl(self.mant, self.exp)
 
         let magnitude = shr(self.mant.abs(), -self.exp)
-        if self.mant.sign() < 0:
-            return -magnitude
+        if self.mant.sign() < 0: return -magnitude
 
         return magnitude
 
@@ -492,20 +466,17 @@ impl BigFloat:
     // Prints plain decimal notation with exactly `digits` fractional digits, rounding ties to even.
     // A negative digit count returns EINVAL.
     fn to_fixed(digits: Int) String!:
-        if let text = self.to_rat().to_fixed(digits):
-            return ok(text)
+        if let text = self.to_rat().to_fixed(digits): return ok(text)
 
         return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
 fn larger(left: Int, right: Int) Int:
-    if left >= right:
-        return left
+    if left >= right: return left
 
     return right
 
 fn smaller(left: Int, right: Int) Int:
-    if left <= right:
-        return left
+    if left <= right: return left
 
     return right
 
@@ -531,41 +502,35 @@ fn big(value: Int) BigInt:
     return from_int(value)
 
 fn parse_big(text: String) BigInt?:
-    if let value = parse(text, 10):
-        return value
+    if let value = parse(text, 10): return value
 
     return none
 
 fn shl(value: BigInt, count: Int) BigInt:
-    if let result = value.shift_left(count):
-        return result
+    if let result = value.shift_left(count): return result
 
     panic("bigrat: shift count out of range")
 
 fn shr(value: BigInt, count: Int) BigInt:
-    if let result = value.shift_right(count):
-        return result
+    if let result = value.shift_right(count): return result
 
     panic("bigrat: shift count out of range")
 
 fn pow10(count: Int) BigInt:
-    if let result = from_int(10).pow(count):
-        return result
+    if let result = from_int(10).pow(count): return result
 
     panic("pow10: negative or oversized exponent")
 
 // Returns the number of bits in the magnitude, 0 for zero.
 fn bit_length(value: BigInt) Int:
-    if value.sign() == 0:
-        return 0
+    if value.sign() == 0: return 0
 
     return value.abs().to_string_radix(2).length()
 
 // Returns the floor of `numerator / denominator` for a positive denominator.
 fn floor_div(numerator: BigInt, denominator: BigInt) BigInt:
     let quotient = numerator / denominator
-    if (numerator % denominator).sign() < 0:
-        return quotient - from_int(1)
+    if (numerator % denominator).sign() < 0: return quotient - from_int(1)
 
     return quotient
 
@@ -574,8 +539,7 @@ fn floor_div(numerator: BigInt, denominator: BigInt) BigInt:
 fn round_to(mant: BigInt, exp: Int, sticky: Bool, prec: Int) Binary:
     let magnitude = mant.abs()
     let bits = bit_length(magnitude)
-    if bits <= prec:
-        return Binary(mant: mant.clone(), exp: exp)
+    if bits <= prec: return Binary(mant: mant.clone(), exp: exp)
 
     var shift = bits - prec
     var kept = shr(magnitude, shift)
@@ -584,7 +548,7 @@ fn round_to(mant: BigInt, exp: Int, sticky: Bool, prec: Int) Binary:
     let odd = kept.bit_and(from_int(1)).sign() != 0
 
     if order > 0 or order == 0 and (sticky or odd):
-        kept = kept + from_int(1)
+        kept += from_int(1)
 
         if bit_length(kept) > prec:
             kept = shr(kept, 1)
@@ -621,8 +585,7 @@ fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
 // binary64 grid: 53 significant bits for a normal result, fewer as the value falls into the subnormal range.
 // `sticky` says nonzero bits lie below `value`, which then must carry at least 55 bits.
 fn binary_to_float(value: Binary, sticky: Bool) Float?:
-    if value.mant.sign() == 0:
-        return 0.0
+    if value.mant.sign() == 0: return 0.0
 
     let magnitude = value.mant.abs()
     let bits = bit_length(magnitude)
@@ -643,13 +606,12 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
             let order = rest.compare(shl(from_int(1), shift - 1))
             let odd = kept.bit_and(from_int(1)).sign() != 0
             if order > 0 or order == 0 and (sticky or odd):
-                kept = kept + from_int(1)
+                kept += from_int(1)
 
     if let fraction = kept.to_float():
         var result = ldexp(fraction, exponent)
         if value.mant.sign() < 0:
             result = -result
-        if result.is_finite():
-            return result
+        if result.is_finite(): return result
 
     return none

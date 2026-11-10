@@ -189,8 +189,7 @@ fn filter_draw[T](gen: Gen[T], keep: fn(T) Bool, s: Source) Drawn[T]:
     while true:
         let {value, source} = gen.make(cursor)
         tries += 1
-        if keep(value):
-            return Drawn(value, source)
+        if keep(value): return Drawn(value, source)
 
         if tries >= 50:
             var rejected = source
@@ -215,8 +214,7 @@ export fn optionals[T](gen: Gen[T]) Gen[T?]:
 
 fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
     let {value: flag, source: middle} = draw(s, 3)
-    if flag == 0:
-        return Drawn(none, middle)
+    if flag == 0: return Drawn(none, middle)
 
     let {value, source} = gen.make(middle)
     return Drawn(value, source)
@@ -290,8 +288,7 @@ type Outcome:
 
 fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     let {value, source} = gen.make(s)
-    if source.invalid:
-        return Outcome(source, none)
+    if source.invalid: return Outcome(source, none)
 
     /*
     The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
@@ -299,12 +296,10 @@ fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     */
     let faulted = expect_fault(fn: run_property(property, value))
-    if faulted.is_error():
-        return Outcome(source, none)
+    if faulted.is_error(): return Outcome(source, none)
 
     let message = faulted.get("")
-    if message != property_failed:
-        return Outcome(source, Error("fault: {message}"))
+    if message != property_failed: return Outcome(source, Error("fault: {message}"))
 
     let replayed = Source(source.choices.take(source.pos), 0, 0, false, false)
     let {value: again} = gen.make(replayed)
@@ -323,8 +318,7 @@ fn simpler(candidate: List[Int], current: List[Int]) Bool:
         return candidate.length() < current.length()
 
     for i in 0..candidate.length():
-        if candidate[i] != current[i]:
-            return candidate[i] < current[i]
+        if candidate[i] != current[i]: return candidate[i] < current[i]
     return false
 
 fn replay[T](gen: Gen[T], property: fn(T) Unit!, choices: List[Int]) Outcome:
@@ -338,12 +332,10 @@ fn attempt[T](
     current: List[Int]
 ) List[Int]?:
     let outcome = replay(gen, property, candidate)
-    if outcome.failure.is_none():
-        return none
+    if outcome.failure.is_none(): return none
 
     let used = outcome.source.choices.take(outcome.source.pos)
-    if not simpler(used, current):
-        return none
+    if not simpler(used, current): return none
 
     return used
 
