@@ -89,11 +89,14 @@ fn extract_at(
     })();
     // Windows publication and cleanup require the owned handle to be closed on every path.
     drop(file);
-    let published = written.and_then(|()| std::fs::rename(&staged, &path));
-    published.map_err(|e| {
+    if let Err(error) = written.and_then(|()| std::fs::rename(&staged, &path)) {
         let _ = std::fs::remove_file(&staged);
-        failed("write", e)
-    })?;
+        // Windows refuses to replace a library another thread is publishing or loading right now.
+        // Every publisher writes the same bytes, so a complete library already in place is a success.
+        if !std::fs::metadata(&path).is_ok_and(|m| m.len() == len) {
+            return Err(failed("write", error));
+        }
+    }
     Ok(path)
 }
 
