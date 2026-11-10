@@ -188,9 +188,16 @@ impl BigRat:
 	// Returns the exact power. A negative exponent returns the reciprocal power, so zero with a negative exponent returns EINVAL.
 	// A numerator or denominator power above 16777216 bits returns EOVERFLOW.
 	fn pow(exponent: Int) BigRat!:
-		count := exponent.abs()
-		top := try self.num.pow(count)
-		bottom := try self.den.pow(count)
+		// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
+		extra := exponent == -9223372036854775807 - 1
+		count := if extra: 9223372036854775807 else: exponent.abs()
+		var top = try self.num.pow(count)
+		var bottom = try self.den.pow(count)
+
+		if extra:
+			top *= self.num
+			bottom *= self.den
+
 		if exponent >= 0: return ok(BigRat(num: top, den: bottom))
 
 		return rat(bottom, top)
