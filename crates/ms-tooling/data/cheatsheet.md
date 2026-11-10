@@ -32,7 +32,7 @@ fn main() Unit:
 - Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
 - Be terse: `print(x)` (no import); `if c: return x`, no `else` after `return`; `any all count sum map filter fold`; `m.get_or(k, d)`; infer closure types.
-- `main` returns `Unit`, `Unit!`, `Int?!` or `Int` (the status). `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
+- `main`: `Unit`, `Unit!`, `Int?!` or `Int` status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
