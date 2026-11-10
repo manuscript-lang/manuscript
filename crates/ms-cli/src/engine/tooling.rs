@@ -80,7 +80,11 @@ fn failure_status(failure: &Failure, json: bool, io: &mut Io) -> i32 {
 
 fn facts_of(syms: ms_syntax::Names, checked: &Checked) -> Facts {
     let program = checked.program.as_ref().expect("accepted program");
-    collect_facts(syms, &inspect(syms, program).rows(), program)
+    collect_facts(
+        syms,
+        &ms_tooling::inspect::collect(syms, program).rows(),
+        program,
+    )
 }
 
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
