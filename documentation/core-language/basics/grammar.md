@@ -27,7 +27,7 @@ unit var while
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
 - `//` starts a comment through the end of the line. `/* ... */` is a block comment: it starts its own line (after indentation), ends at the first `*/`, and only blanks or a `//` comment may follow the `*/`. Block comments do not nest (a `/*` inside one is an error), an unterminated block is an error at its opening `/*`, and the block counts as comment-only lines for layout, so its contents are free-form. `#` is not syntax.
-- Tabs in code are rejected (allowed in comments). Control characters in text are rejected; use [text escapes](text-and-bytes.md#string-literals). Semicolons and backslash continuation are rejected.
+- A tab is allowed only as leading indentation, where it is one level (four columns); a tab after spaces or between tokens is rejected. Tabs are allowed in text and comments. Control characters in text are rejected; use [text escapes](text-and-bytes.md#string-literals). Semicolons and backslash continuation are rejected.
 
 Numeric tokens:
 

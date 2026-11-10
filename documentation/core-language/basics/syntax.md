@@ -23,7 +23,7 @@ export fn welcome(customer: Customer) String:
 
 ## Blocks and layout
 
-Indentation defines blocks: exactly four extra spaces per level. Tabs and semicolons are rejected. Blank and comment-only lines do not affect blocks.
+Indentation defines blocks: one level is four spaces or one tab; a tab may not follow spaces in indentation. Semicolons and tabs between tokens are rejected. Blank and comment-only lines do not affect blocks.
 
 Calls take positional arguments, optional labels, or both; an unlabeled argument is always positional. See [declarations and calls](../functions/declarations-and-calls.md).
 

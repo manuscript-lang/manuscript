@@ -3075,7 +3075,7 @@ fn value() Int:
     return
 parse	1	7	6	unexpected source character 'é'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCIIfn value() Unit:
 	return
-parse	2	1	17	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)fn value() Unit:
+fn value() Unit:
         return
 parse	2	9	25	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn value() Int:
     return 03
@@ -3355,7 +3355,7 @@ type	14	9	171	local binding d is never read; remove it, use it, or name it with 
     return 1
 parse	1	11	10	the 'fn' block header on line 1 does not end with ':'; add ':' at the end of that line so the indented lines below become its bodyfn f() Int:
 	return 1
-parse	2	1	12	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)fn f() Int:
+fn f() Int:
   return 1
 parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4fn f() Int:
     return (1
@@ -5663,7 +5663,7 @@ type commonState struct {
 // TabStyle is used to select how tab completions are displayed.
 type TabStyle int
 
-parse	1	1	0	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)	needRefresh       bool
+parse	1	5	1	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it	needRefresh       bool
 }
 
 // WaitForInput joins prompt readers. The caller must first interrupt its owned
@@ -5673,7 +5673,7 @@ func (s *commonState) WaitForInput() { s.inputReaders.Wait() }
 // TabStyle is used to select how tab completions are displayed.
 type TabStyle int
 
-parse	1	1	0	tabs are not allowed in code; indent with four spaces per level (tabs may appear only inside text or comments)type Data:
+parse	1	5	1	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with ittype Data:
     count: Int = 3
 impl Data:
     fn read() Int: ...
