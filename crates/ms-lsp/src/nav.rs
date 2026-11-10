@@ -127,7 +127,7 @@ pub fn at(
     }
     let module = analysis.module(syms, d)?;
     let mut finder = Finder {
-        syms: ms_syntax::Names::global(),
+        syms,
         module: &module,
         source: &d.text,
         cursor: text::offset(&d.text, p).map_err(|_| p),

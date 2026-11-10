@@ -4,7 +4,7 @@
 
 use crate::analysis::Analysis;
 use ms_check::api::syntax::{DeclRef, FuncRef, Info, ModRef};
-use ms_check::api::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields, n};
+use ms_check::api::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields};
 use ms_syntax::Symbol;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -427,7 +427,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
                             continue;
                         }
                         let checked = Method {
-                            id: n(""),
+                            id: syms.intern(""),
                             module: m.file,
                             local: false,
                             receiver: ty.clone(),
@@ -473,7 +473,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
             } else {
                 symbols.clone()
             };
-            if let Some(symbol) = imported.get(&n(syms.str(imp.name))) {
+            if let Some(symbol) = imported.get(&imp.name) {
                 b.add(
                     symbol_key(syms, &b.root, Some(symbol)),
                     syms.str(imp.name),
@@ -494,7 +494,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
     // Bindings: patterns, parameters, lambda parameters, loops and arms.
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
         let mut walker = BindingWalker {
-            syms: ms_syntax::Names::global(),
+            syms,
             b: &mut b,
             module: m,
         };
@@ -556,7 +556,7 @@ pub fn build_index(syms: ms_syntax::Names, analysis: &Analysis, standard: bool) 
 
     for m in modules.iter().filter(|m| checked.contains(&m.file)) {
         let mut walker = UseWalker {
-            syms: ms_syntax::Names::global(),
+            syms,
             b: &mut b,
             module: m,
             hidden: HashMap::new(),

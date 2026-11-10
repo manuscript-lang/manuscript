@@ -210,7 +210,7 @@ pub fn semantic_tokens(
             && let Some(module) = analysis.module(syms, d)
         {
             let mut kinds = Kinds {
-                syms: ms_syntax::Names::global(),
+                syms,
                 module: &module,
                 resolved: &mut resolved,
             };
