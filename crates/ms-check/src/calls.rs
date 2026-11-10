@@ -870,12 +870,27 @@ impl Checker {
     /// then wraps only the supplied argument. Ordinary expression compatibility
     /// stays exact.
     pub(crate) fn argument_expression(&mut self, e: &Expr, expected: Option<&Ty>) -> Info {
+        let optional = expected.filter(|x| x.is(Builtin::Optional) && x.args.len() == 1);
+        let literal = optional.and_then(|t| {
+            let payload = &t.args[0];
+            let sized = (int_bits(payload).is_some() && !payload.is(Builtin::Int))
+                || (float_bits(payload).is_some() && !payload.is(Builtin::Float));
+            (is_plain_literal(self.syms, e) || (sized && self.literal_hint(e, payload).is_some()))
+                .then_some(payload)
+        });
         let checked = self
             .checked_arguments
             .as_ref()
             .and_then(|m| m.get(&e.id))
             .cloned();
         let mut info = checked.as_ref().and_then(|c| c.info.clone());
+        if let (Some(hint), Some(cached)) = (literal, &info)
+            && cached.ty.as_ref().is_none_or(|actual| !same(actual, hint))
+        {
+            // Constructor inference may have checked literal arithmetic without its sized
+            // optional payload context. Recheck it before replaying those diagnostics.
+            info = None;
+        }
         if matches!(e.kind, ExprKind::Lambda(_))
             && info
                 .as_ref()
@@ -888,7 +903,6 @@ impl Checker {
         {
             self.p.diagnostics.extend(c.diagnostics.iter().cloned());
         }
-        let optional = expected.filter(|x| x.is(Builtin::Optional) && x.args.len() == 1);
         let Some(expected_optional) = optional else {
             return match info {
                 Some(i) => self.check_expression(e, i, expected),
@@ -897,8 +911,7 @@ impl Checker {
         };
         let checkpoint = self.p.diagnostics.len();
         let payload = expected_optional.args[0].clone();
-        // A number literal takes a sized payload type; `some(x)` is not needed to pass it.
-        let literal = is_plain_literal(self.syms, e).then_some(&payload);
+        // Literal arithmetic takes the same sized payload context as a single number.
         let info = match info {
             Some(i) => i,
             None => self.infer(e, literal.or(expected)),
