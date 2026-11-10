@@ -1,0 +1,7 @@
+--- a/module.ms
++++ b/module.ms
+@@ -1,2 +1,2 @@
+-export fn value() Int:
+-    return 1
++export fn value() String:
++    return "new"
