@@ -190,6 +190,9 @@ fn describe_kind(kind: &str) -> String {
 /// Text interpolates by default, so Python's `f"..."` prefix is a stray name.
 const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by default, so write \"...{value}...\" and escape literal braces as \\{ and \\}";
 
+/// The unspellable name a destructuring `for` or lambda binds before its pattern.
+const HIDDEN_ITEM: &str = "for item";
+
 fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
         ":" => "; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body".into(),
@@ -1668,6 +1671,26 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// `let pattern = hidden`: the first statement of a `for` body or lambda whose
+    /// parameter is a pattern. Checking, ownership, and lowering see an ordinary
+    /// binding of the hidden name, which borrows the element.
+    fn destructure(&mut self, pattern: Pattern, hidden: Symbol) -> Stmt {
+        let pos = pattern.pos;
+        let value = self.mk(pos, ExprKind::Name(hidden));
+        let id = self.id();
+        Stmt {
+            id,
+            pos,
+            kind: StmtKind::Bind {
+                mutable: false,
+                pattern,
+                ty: None,
+                value,
+                group: None,
+            },
+        }
+    }
+
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
         self.no_ref()?;
@@ -1829,23 +1852,27 @@ impl<'a> Parser<'a> {
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
                 self.no_ref()?;
-                let name = self.need(Tok::Name)?;
+                let (name, pattern) = if matches!(self.kind(), Tok::LBracket | Tok::LBrace) {
+                    (self.names.intern(HIDDEN_ITEM), Some(self.pattern()?))
+                } else {
+                    let name = self.need(Tok::Name)?;
+                    (self.sym(name), None)
+                };
                 if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
                     let c = self.peek();
                     return self.fail(c, "for uses 'in', not 'of'; write 'for item in items:'");
                 }
                 if self.kind() == Tok::Comma {
                     let c = self.peek();
-                    return self.fail(c, "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)");
+                    return self.fail(c, "for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'");
                 }
                 self.need(Tok::In)?;
                 let iter = self.expression(0)?;
-                let body = self.suite()?;
-                StmtKind::For {
-                    name: self.sym(name),
-                    iter,
-                    body,
+                let mut body = self.suite()?;
+                if let Some(pattern) = pattern {
+                    body.insert(0, self.destructure(pattern, name));
                 }
+                StmtKind::For { name, iter, body }
             }
             _ => self.expression_statement(t, allow_value)?,
         };
@@ -2525,6 +2552,7 @@ impl<'a> Parser<'a> {
             }
             Tok::Fn => {
                 let mut result = None;
+                let mut destructured = Vec::new();
                 let params = if self.kind() == Tok::LParen {
                     let params = self.parameters(true, true)?;
                     if self.kind() == Tok::Arrow {
@@ -2537,9 +2565,30 @@ impl<'a> Parser<'a> {
                     params
                 } else {
                     let mut params = Vec::new();
-                    while self.kind() == Tok::Name
+                    while matches!(self.kind(), Tok::Name | Tok::LBracket | Tok::LBrace)
                         || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Name)
                     {
+                        if matches!(self.kind(), Tok::LBracket | Tok::LBrace) {
+                            // `fn [a, b]: ...` binds the pattern from a hidden parameter.
+                            let pattern = self.pattern()?;
+                            let hidden = self
+                                .names
+                                .intern(&format!("{HIDDEN_ITEM} {}", params.len()));
+                            let id = self.id();
+                            params.push(Param {
+                                id,
+                                pos: pattern.pos,
+                                name: hidden,
+                                ty: None,
+                                default: None,
+                                mutable: false,
+                            });
+                            destructured.push(self.destructure(pattern, hidden));
+                            if !self.take(Tok::Comma) {
+                                break;
+                            }
+                            continue;
+                        }
                         // `fn var exchange, next: ...`: a parameter the function changes in place.
                         let mutable = self.take(Tok::Var);
                         let name = self.next();
@@ -2558,7 +2607,8 @@ impl<'a> Parser<'a> {
                     }
                     params
                 };
-                let body = self.statement_suite(true, false)?;
+                let mut body = self.statement_suite(true, false)?;
+                body.splice(0..0, destructured);
                 self.mk(
                     t.pos,
                     ExprKind::Lambda(Lambda {
