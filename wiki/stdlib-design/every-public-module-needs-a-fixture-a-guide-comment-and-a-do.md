@@ -6,5 +6,5 @@ Verified: public modules have a fixture in `tests/e2e/testdata/stdlib/*.ms`, and
 
 
 Apply when: adding a module or public member.
-Evidence: [development checks](../../documentation/contributing/development.md), [runtime conventions](../../documentation/contributing/runtime-conventions.md), [docgen](../crates/ms-tooling/src/guide/src/docgen.rs).
+Evidence: [development checks](../../documentation/contributing/development.md), [runtime conventions](../../documentation/contributing/runtime-conventions.md), [docgen](../../crates/ms-tooling/src/guide/docgen.rs).
 Verify: `make docs-check` (add `make docs-coverage` for doc-comment coverage) and `make conform`.
