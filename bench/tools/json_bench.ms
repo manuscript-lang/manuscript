@@ -60,7 +60,6 @@ fn fetch_corpora() Unit!:
 
     // Small messages: the shape worker threads and RPC exchange.
     if not exists("{DATA}/small.json"): write_text("{DATA}/small.json", small())
-    return ok(unit)
 
 type Rate:
     nanos: Int

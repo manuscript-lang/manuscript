@@ -24,7 +24,6 @@ impl Source[Int] for Counter:
 
     var fn close() Unit!:
         try self.closes.write(self.at)
-        return ok(unit)
 
 test "a loop that breaks hands the source back to its stream":
     var closes = pipe[Int](capacity: 8)

@@ -187,7 +187,6 @@ import stdout from "@std/io/io.ms"
 fn main() Unit!:
     let message = "Arguments: {arguments().length()}\n"
     try stdout().write(message)
-    return ok(unit)
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 resolution	5	32	127	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
 
@@ -984,7 +983,7 @@ fn call() Int:
 fn call() Int:
     let copy: fn(Int) Int = f
     return copy()
-type	5	12	99	missing argument _0: Int in call to copy; add '_0: <Int>'fn f(value: Int = 1) Int:
+type	5	12	99	missing argument 1: Int in call to copy; pass it positionally, without a labelfn f(value: Int = 1) Int:
     return value
 fn g(value: Int) Int:
     return value
@@ -996,13 +995,13 @@ fn call() Int:
     return value
 fn apply(callback: fn(Int) Int) Int:
     return callback()
-type	4	12	91	missing argument _0: Int in call to callback; add '_0: <Int>'fn f(value: Int = 1) Int:
+type	4	12	91	missing argument 1: Int in call to callback; pass it positionally, without a labelfn f(value: Int = 1) Int:
     return value
 fn make() fn(Int) Int:
     return f
 fn call() Int:
     return make()()
-type	6	12	105	missing argument _0: Int; add '_0: <Int>'fn f(value: Int = 1) Int:
+type	6	12	105	missing argument 1: Int; pass it positionally, without a labelfn f(value: Int = 1) Int:
     return value
 fn forward[T](value: T) T:
     return value
@@ -2132,12 +2131,12 @@ fn first() Read: identity(Box(1))resolution	7	18	123	unknown binding identity; 
     return identity(callback)resolution	3	12	74	unknown binding identity; declare it with 'let identity = ...' before use, define 'fn identity(...) T:', or import it from a modulefn first() Unit:
     let callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
     callback()resolution	2	33	49	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
-type	3	5	98	missing argument _0: Int in call to callback; add '_0: <Int>'fn required(value: Int) Int: value
+type	3	5	98	missing argument 1: Int in call to callback; pass it positionally, without a labelfn required(value: Int) Int: value
 fn first() Unit:
     var callback: fn(Int) Int = from_callback(fn: fn(value: Int = 4): value)
     callback = required
     callback()resolution	3	33	84	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'fn from_callback(...) T:', or import it from a module
-type	5	5	157	missing argument _0: Int in call to callback; add '_0: <Int>'fn first() Unit:
+type	5	5	157	missing argument 1: Int in call to callback; pass it positionally, without a labelfn first() Unit:
     let value: fn(String) Result[Int, TextError] = failresolution	2	39	55	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	52	68	unknown binding fail; add: import fail from "@std/test/test.ms"fn cause(value: Int) String: "cause"
 fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)type	2	61	97	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest
@@ -3771,7 +3770,7 @@ impl Box:
 parse	1	7	6	every fn declares its result type after the parameter list, e.g. fn f() Unit:interface Read:
     fn read()
 parse	2	14	29	every fn declares its result type after the parameter list, e.g. fn f() Unit:fn f() Result[Unit, String]: ...
-    type	1	1	0	reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)
+    
 fn broken(
 parse	3	1	12	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the filefn choose(value: Int) Int:
     return value
@@ -4643,8 +4642,6 @@ impl T:
         return 1
 
 fn main() Unit!:
-
-    return ok(unit)
 parse	5	10	37	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodylet LIMIT = 10
 fn size() Int:
     return LIMIT
@@ -5826,7 +5823,6 @@ import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Result[Unit, Error]:
     try stdout().write(data: "{text}\n")
-    return ok(unit)
 
 fn exercise() Result[Int, Error]:
     let args = arguments()
@@ -5851,9 +5847,9 @@ test "unselected":
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 type	6	24	186	unknown argument data; parameters of write: value
 type	6	18	180	missing argument value: String in call to write; add 'value: <String>'
-resolution	10	16	274	unknown binding arguments; add: import arguments from "@std/os/env.ms"
-type	21	50	566	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
-type	28	5	679	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
+resolution	9	16	254	unknown binding arguments; add: import arguments from "@std/os/env.ms"
+type	20	50	546	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
+type	27	5	659	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefn f() Int:
     return 1
 let X = f()
 type	3	9	33	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn f() Int:

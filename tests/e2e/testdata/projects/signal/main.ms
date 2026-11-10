@@ -11,7 +11,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         let _ignored = self.output.write("close {self.label}\n")
-        return ok(unit)
 
 fn main() Unit:
     var output = stdout()

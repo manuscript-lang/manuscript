@@ -31,8 +31,6 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
                 or (cause.message != expected.message and not named)
             ): return error(Error("wrong filesystem error: {cause}"))
 
-    return ok(unit)
-
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let temporary = temporary("manuscript-glob-") | try expect_ok
     let root = temporary.path()

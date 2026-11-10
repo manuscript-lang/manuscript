@@ -14,7 +14,6 @@ impl Source[Int] for Counted:
 
     var fn close() Unit!:
         let _ = append_file(self.log, "r").wait()
-        return ok(unit)
 
 impl Sink[Int] for Counted:
     var fn write(value: Int) Unit!:
@@ -25,7 +24,6 @@ impl Sink[Int] for Counted:
 
     var fn close() Unit!:
         let _ = append_file(self.log, "w").wait()
-        return ok(unit)
 
 fn closes(log: String) String:
     if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")

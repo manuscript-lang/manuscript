@@ -252,7 +252,6 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
         if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
             Error("jwt: wrong audience", kind: "EBADMSG")
         )
-    return ok(unit)
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
 fn numeric_date(claim: JsonValue, name: String) Float!:

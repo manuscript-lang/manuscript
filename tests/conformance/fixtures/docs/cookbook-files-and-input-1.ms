@@ -12,4 +12,3 @@ fn run() Result[Unit, Error]:
 
 fn main() Unit!:
     try run()
-    return ok(unit)

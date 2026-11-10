@@ -25,7 +25,6 @@ type Marker:
 impl Closeable for Marker:
     var fn close() Unit!:
         print("closed-\{self.id\}")
-        return ok(unit)
 
 fn saw(m: Marker) Unit:
     print("saw-\{m.id\}")

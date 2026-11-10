@@ -27,7 +27,6 @@ fn run(paths: List[String]) Int!:
 fn main() Unit!:
     let rows = try run(["a.csv", "b.csv"])
     print("{rows} rows from 2 files")
-    return ok(unit)
 ```
 
 ```text

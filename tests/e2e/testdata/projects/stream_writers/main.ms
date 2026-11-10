@@ -43,7 +43,6 @@ fn run() Unit!:
     let data = try to_data({"points": [Point(1, "one"), Point(2, "two")]})
     var out = stdout()
     try render_to(page, data, var out)
-    return ok(unit)
 
 export fn main() Int:
     let result = run()

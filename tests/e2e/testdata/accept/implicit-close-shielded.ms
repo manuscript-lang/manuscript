@@ -27,7 +27,6 @@ impl Closeable for Holder:
         let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
         if self.breaks:
             panic("close fault")
-        return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
     return read_file("{dir}/{id}").wait().is_ok()
@@ -61,7 +60,6 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
 
 fn faulting_holder(dir: String, id: Int) Unit!:
     hold_and_fault(dir, id)
-    return ok(unit)
 
 test "cancellation closes the binding":
     let temporary = temporary("manuscript-shield-") | try expect_ok

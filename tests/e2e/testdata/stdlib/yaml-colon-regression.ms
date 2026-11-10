@@ -43,7 +43,6 @@ fn invalid(source: String) Unit!:
     if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
     cause.details["reason"] | try expect_equal("unexpected mapping colon")
-    return ok(unit)
 
 test "YAML flow scalar rejects a colon before tab":
     try invalid("\{a: x:\tb\}")

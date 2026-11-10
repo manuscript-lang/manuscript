@@ -16,8 +16,6 @@ fn faulting(var exchange: HttpExchange) Unit!:
     let n = xs[big.length()]
     if big.length() + n > 5: return ok(unit)
 
-    return ok(unit)
-
 test "a faulting handler releases the values its frames own":
     let server = serve(address: "127.0.0.1:0", handler: faulting) | try expect_ok
     let before = (memory_usage() | try expect_ok).resident
@@ -36,7 +34,6 @@ test "a faulting handler releases the values its frames own":
 
 fn hanging(var exchange: HttpExchange) Unit!:
     try sleep(30.seconds()).wait()
-    return ok(unit)
 
 test "a fetch cancelled by its timeout releases its read buffer":
     let server = serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok

@@ -40,7 +40,6 @@ fn run() Unit!:
     try b.wait()
     try st.wait()
     try stdout().write("{n} {sum}\n")
-    return ok(unit)
 
 fn main() Unit:
     run().get()

@@ -144,8 +144,6 @@ fn charge(var context: Context, size: Int) Unit!:
         Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
 
-    return ok(unit)
-
 fn count(var context: Context, depth: Int) Unit!:
     if not within(depth, context.max_depth): return error(
         Error("YAML limit exceeded", kind: "EOVERFLOW")
@@ -155,8 +153,6 @@ fn count(var context: Context, depth: Int) Unit!:
     if not within(context.values, context.max_values): return error(
         Error("YAML limit exceeded", kind: "EOVERFLOW")
     )
-
-    return ok(unit)
 
 fn source_line(context: Context, row: Int) Int:
     if context.split_line >= 0 and row > context.split_line: return row
@@ -1852,8 +1848,6 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
         ObjectValue(values):
             for entry in values: try validate(var context, entry.value, (depth + 1))
         _: unit
-
-    return ok(unit)
 
 // Parses a YAML document. Unsupported YAML features and invalid input include source locations.
 export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:

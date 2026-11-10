@@ -19,7 +19,7 @@ fn findings(source: &str) -> Vec<(String, String)> {
         .into_iter()
         .filter(|f| {
             [
-                "MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126", "MSL127",
+                "MSL118", "MSL119", "MSL120", "MSL121", "MSL122", "MSL126", "MSL127", "MSL128",
             ]
             .contains(&f.code)
         })
@@ -91,4 +91,16 @@ fn a_map_entry_rebuilt_from_its_lookup_is_updated_in_place() {
     let got = findings(include_str!("lint_terse/entries.ms"));
     let got: Vec<&str> = got.iter().map(|(_, b)| b.as_str()).collect();
     assert_eq!(got, ["stock[item.sku] -= item.qty"]);
+}
+
+#[test]
+fn a_final_return_the_end_already_makes_is_dropped() {
+    let got = findings(include_str!("lint_terse/endings.ms"));
+    let expected: Vec<(&str, &str)> = vec![("    return ok(unit)\n", ""), ("    return\n", "")];
+    assert_eq!(
+        got.iter()
+            .map(|(a, b)| (a.as_str(), b.as_str()))
+            .collect::<Vec<_>>(),
+        expected
+    );
 }

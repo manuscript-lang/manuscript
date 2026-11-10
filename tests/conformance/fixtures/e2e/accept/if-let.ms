@@ -18,7 +18,6 @@ fn total(items: List[Int?]) Int:
 
 fn check(value: Bool, message: String) Unit!:
     (value) | try expect_true
-    return ok(unit)
 
 test "if let unwraps a present optional":
     if let value = [4, 5].first():

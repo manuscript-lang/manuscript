@@ -31,8 +31,6 @@ impl Closeable for Marker:
             self.open = false
             print("closed-\{self.id\}")
 
-        return ok(unit)
-
 type Holder:
     m: Marker
 

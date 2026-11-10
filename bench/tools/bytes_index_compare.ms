@@ -147,7 +147,6 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
             "{expected.length()} cases, {orders.length()} orders, {out}/summary.csv\n"
         ).get()
     )
-    return ok(unit)
 
 fn main() Int:
     let args = arguments()

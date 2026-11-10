@@ -11,8 +11,6 @@ impl Closeable for Gate:
     var fn close() Unit!:
         if self.fails: return error(Error("close {self.name}"))
 
-        return ok(unit)
-
 fn use_gate(fails: Bool) Result[Int, Error]:
     let _gate = Gate("a", fails)
     return ok(7)

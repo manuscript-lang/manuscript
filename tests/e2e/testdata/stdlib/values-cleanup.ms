@@ -30,7 +30,6 @@ impl Closeable for Resource:
     var fn close() Unit!:
         let inner_closed = read_file("{self.dir}/2").wait().is_ok()
         let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
-        return ok(unit)
 
 fn leave(dir: String) Int:
     let _outer = Resource(dir.clone(), 1)

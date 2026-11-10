@@ -229,8 +229,6 @@ impl Transport for CaptureTransport:
             Error("logging: resource is closed", kind: "EBADF")
         )
 
-        return ok(unit)
-
     fn duplicate() Transport!:
         return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
 
@@ -289,7 +287,6 @@ test "unencodable fields are rejected and fields keep their shape under data":
 fn chatter(logger: Logger, name: String) Unit!:
     for n in 0..3:
         try logger.info("m", name)
-    return ok(unit)
 
 test "loggers on several threads never interleave a record":
     let directory = try temporary("manuscript-log-threads-")

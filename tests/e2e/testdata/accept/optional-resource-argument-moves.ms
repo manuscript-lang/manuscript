@@ -12,7 +12,6 @@ impl Closeable for Marker:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
         self.path = "closed"
-        return ok(unit)
 
 type Held:
     id: Int
@@ -23,7 +22,6 @@ impl Closeable for Held:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
         self.path = "closed"
-        return ok(unit)
 
 fn log_text(path: String) String!:
     let bytes = try read_file(path).wait()

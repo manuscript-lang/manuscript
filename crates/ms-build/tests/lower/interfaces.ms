@@ -30,7 +30,6 @@ fn twice(n: Int) Result[Int, Error]:
 fn show(n: Int) Result[Unit, Error]:
     try stdout().write("{n}\n")
     try stdout().flush()
-    return ok(unit)
 
 fn main() Unit:
     show(total(Sq(s: 4))).get()

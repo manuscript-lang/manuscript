@@ -9,7 +9,6 @@ fn check(expression: String, data: String, expected: String) Unit!:
         "\{\{ if {expression} \}\}yes\{\{ else \}\}no\{\{ end \}\}"
     )
     try expect_equal((try template.render(try parse(data))), expected)
-    return ok(unit)
 
 test "underflow is not zero":
     try check("value", "\{\"value\":1e-400\}", "yes")

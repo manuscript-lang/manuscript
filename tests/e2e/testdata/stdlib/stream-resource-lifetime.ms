@@ -18,8 +18,6 @@ impl Closeable for Token:
             self.closed = true
             try append_file(self.log, "close {self.id}\n").wait()
 
-        return ok(unit)
-
 type Tokens:
     log: String
     at: Int = 0
@@ -45,7 +43,6 @@ fn read_one(input: ReadStream[Token]) Unit!:
     var owned = input
     if let token = try owned.next():
         try use_token(token)
-    return ok(unit)
 
 fn wait_one(input: ReadStream[Token]) Unit!:
     var owned = input
@@ -54,8 +51,6 @@ fn wait_one(input: ReadStream[Token]) Unit!:
         let token = item
         try use_token(token)
         break
-
-    return ok(unit)
 
 test "direct read keeps resource open through the body and closes once":
     let dir = temporary("resource-read-") | try expect_ok
@@ -75,7 +70,6 @@ fn use_token(token: Token) Unit!:
     try expect_equal(token.closed, false)
     try expect_equal(events(token.log).contains("close {token.id}\n"), false)
     try append_file(token.log, "body {token.id}\n").wait()
-    return ok(unit)
 
 fn close_item(input: Token) Unit!:
     var token = input
@@ -99,8 +93,6 @@ fn walk(log: String, action: Int) Unit!:
 
         if action == 6:
             try input.close()
-
-    return ok(unit)
 
 test "exhaustion and continue close each item after its body":
     let dir = temporary("resource-exhaust-") | try expect_ok
@@ -137,8 +129,6 @@ fn source_error(log: String, fail_at: Int) Unit!:
         let token = item
         try use_token(token)
 
-    return ok(unit)
-
 test "a source error relays through try after closing earlier items":
     let dir = temporary("resource-error-") | try expect_ok
     let first = "{dir.path()}/first"
@@ -157,8 +147,6 @@ fn direct_next(log: String) Unit!:
     if let item = try input.next():
         let token = item
         try use_token(token)
-
-    return ok(unit)
 
 test "calling Waiting next directly transfers the item":
     let dir = temporary("resource-next-") | try expect_ok
@@ -180,7 +168,6 @@ impl Iterator[Token] for PlainTokens:
 fn plain(log: String) Unit!:
     for token in PlainTokens(log.clone()):
         try use_token(token)
-    return ok(unit)
 
 test "a custom Iterator transfers each freshly produced resource":
     let dir = temporary("resource-plain-") | try expect_ok
@@ -211,8 +198,6 @@ fn optional_payload(log: String) Unit!:
         if let token = maybe:
             try use_token(token)
 
-    return ok(unit)
-
 test "a nested optional payload transfers its resource":
     let dir = temporary("resource-optional-") | try expect_ok
     let log = "{dir.path()}/events"
@@ -241,8 +226,6 @@ fn result_payload(log: String) Unit!:
         let token = try item
         try use_token(token)
 
-    return ok(unit)
-
 test "a nested result payload transfers its resource":
     let dir = temporary("resource-result-") | try expect_ok
     let log = "{dir.path()}/events"
@@ -266,8 +249,6 @@ fn wait_cancelled(log: String) Unit!:
         try use_token(token)
 
         let _ = sleep(milliseconds(60000)).wait()
-
-    return ok(unit)
 
 test "cancelling an active body closes the delivered item once":
     let dir = temporary("resource-body-cancel-") | try expect_ok
@@ -301,8 +282,6 @@ fn next_cancelled(log: String) Unit!:
         let token = item
         try use_token(token)
 
-    return ok(unit)
-
 test "cancelling a source step closes its undelivered item once":
     let dir = temporary("resource-next-cancel-") | try expect_ok
     let log = "{dir.path()}/events"
@@ -324,7 +303,6 @@ fn resume_after_break(log: String) Unit!:
 
     if let token = try input.next():
         try use_token(token)
-    return ok(unit)
 
 test "breaking returns the source so its next resource can be read":
     let dir = temporary("resource-resume-") | try expect_ok

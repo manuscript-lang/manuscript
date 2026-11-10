@@ -22,7 +22,6 @@ fn count_orders(path: String) Int!:
 fn main() Unit!:
     let count = try count_orders("orders.csv")
     print("{count} orders")
-    return ok(unit)
 ```
 
 ```text

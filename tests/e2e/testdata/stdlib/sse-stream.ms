@@ -68,8 +68,6 @@ fn expect(source: String, want: String) Unit!:
             "{source.to_bytes().values()}: want {want}, got {got}"
         )
 
-    return ok(unit)
-
 test "LF CRLF and CR endings decode identically under every chunk split":
     let want = "message|a|-;message|b|-"
     try expect("data: a\n\ndata: b\n\n", want)

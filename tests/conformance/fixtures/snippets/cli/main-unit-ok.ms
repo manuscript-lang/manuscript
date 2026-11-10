@@ -2,4 +2,3 @@
 // conform: phase=run
 fn main() Unit!:
     print("hi")
-    return ok(unit)

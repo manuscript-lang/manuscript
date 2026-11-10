@@ -32,7 +32,6 @@ type Token:
 impl Closeable for Token:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 type NamedToken:
     id: Int
@@ -41,7 +40,6 @@ type NamedToken:
 impl Closeable for NamedToken:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 enum Choice:
     Full(first: Token, second: Token, third: Token, code: Int)

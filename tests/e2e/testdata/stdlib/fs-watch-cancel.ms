@@ -20,8 +20,6 @@ fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
         else:
             break
 
-    return ok(unit)
-
 // A cancelled read inside the native watcher must leave the watcher to the stream that owns it. The
 // frame of `WatchSource.next` held the source it took out of the stream, refilled after `pending.pop()`,
 // and unwinding dropped that copy too, so the watcher (and its map of watch descriptors) was freed twice.

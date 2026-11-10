@@ -32,8 +32,6 @@ fn scalar(text: String, expected: String) Unit!:
         Error("scalar folding: {text}")
     )
 
-    return ok(unit)
-
 test "YAML issue 133 folded paragraph":
     (try scalar(text: "a: >\n  x\n  y\n\n  z\n", expected: "x y\nz\n"))
 

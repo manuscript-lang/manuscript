@@ -12,7 +12,6 @@ impl Closeable for Resource:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
         self.path = "closed"
-        return ok(unit)
 
 fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
 
@@ -45,11 +44,9 @@ fn retained(path: String) Unit!:
     try expect_equal(mapped(value), 7)
     try expect_equal(observed(value), true)
     try expect_equal(try log_text(path), "")
-    return ok(unit)
 
 fn error_exit(path: String) Unit!:
     let _value = try checked(present(path, 8))
-    return ok(unit)
 
 test "borrowed source helpers close intact owned wrapper temporaries once":
     let directory = try temporary("source-wrapper-")
@@ -93,7 +90,6 @@ fn transfer_first(path: String) Unit!:
     let value = pick(present(path, 12), present(path, 13))
     try expect_equal(mapped(value), 12)
     try expect_equal(try log_text(path), "13,")
-    return ok(unit)
 
 test "whole transfer keeps newer argument cleanups active until statement end":
     let directory = try temporary("source-wrapper-")
@@ -127,8 +123,6 @@ fn branched_transfers(path: String) Unit!:
             present(path, 20 + i)
         )
         try expect_equal(mapped(value), 20 + i)
-
-    return ok(unit)
 
 test "nested whole transfers stay path local across branches and loops":
     let directory = try temporary("source-wrapper-")
@@ -211,7 +205,6 @@ fn number_failure() Int!: error(Error("expected operand error"))
 
 fn later_try_fails(path: String) Unit!:
     let _value = extra(present(path, 70), try number_failure())
-    return ok(unit)
 
 fn pair_observed(first: Resource?, second: Resource?) Bool:
     return first.is_some() and second.is_some()
@@ -291,7 +284,6 @@ fn borrowed_conversion_calls(path: String) Unit!:
     try expect_equal(pair(second: named, first: present(path, 122)), true)
     try expect_equal(try log_text(path), "121,122,")
     try expect_equal(named.id, 120)
-    return ok(unit)
 
 test "borrowed payload optional conversions do not acquire close duty":
     let directory = try temporary("source-wrapper-")
@@ -305,7 +297,6 @@ fn no_resource() Resource?!: error(Error("expected"))
 fn borrowed_conversion_error(path: String) Unit!:
     let named = Resource(123, path.clone())
     let _used = pair(named, try no_resource())
-    return ok(unit)
 
 fn borrowed_conversion_fault(path: String) Unit:
     let named = Resource(124, path.clone())
@@ -333,7 +324,6 @@ fn retained_conversion(path: String) Unit!:
     let retained = optional_identity(named)
     try expect_equal(observed(retained), true)
     try expect_equal(try log_text(path), "")
-    return ok(unit)
 
 fn borrowed_default_fault(path: String) Unit:
     let named = Resource(131, path.clone())
@@ -344,7 +334,6 @@ fn named_default_reads(path: String) Unit!:
     try expect_equal(with_borrowed_default(named), true)
     try expect_equal(with_borrowed_default(named), true)
     try expect_equal(try log_text(path), "130,131,")
-    return ok(unit)
 
 test "optional conversion provenance distinguishes retained moves from borrowed defaults":
     let directory = try temporary("source-wrapper-")

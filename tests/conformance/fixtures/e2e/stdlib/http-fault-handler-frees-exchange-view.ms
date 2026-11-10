@@ -10,8 +10,6 @@ fn faulting(var exchange: HttpExchange) Unit!:
     let n = xs[5]
     if n > 5: return ok(unit)
 
-    return ok(unit)
-
 // The thunk that calls the handler keeps the exchange in a stack slot; a fault in the handler still releases it.
 fn status() Int:
     let server = serve("127.0.0.1:0", faulting).get()

@@ -24,7 +24,6 @@ impl Lines:
         if let limit = self.max_bytes:
             if size > limit:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
-        return ok(unit)
 
     // Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line. The range is decoded in place, with no `Bytes` copy of the line first.
     fn decode(start: Int, stop: Int) String!:

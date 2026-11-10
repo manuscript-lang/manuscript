@@ -11,7 +11,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         try append_file(self.path, "{self.id},").wait()
-        return ok(unit)
 
 interface Observer:
     fn observe(value: Resource?) Bool

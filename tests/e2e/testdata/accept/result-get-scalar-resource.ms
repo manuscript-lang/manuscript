@@ -17,7 +17,6 @@ fn tag_log(id: Int) String!:
 impl Closeable for Tag:
     var fn close() Unit!:
         try append_file(try tag_log(self.id), "closed,").wait()
-        return ok(unit)
 
 fn success(id: Int) Tag!Int:
     return ok(Tag(id))

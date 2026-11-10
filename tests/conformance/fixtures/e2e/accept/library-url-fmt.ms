@@ -16,7 +16,6 @@ fn verify_url() Unit!:
     (try format(value: next)) | try expect_equal("https://example.com/next")
     encode_component(text: "a+b/@") | try expect_equal("a%2Bb%2F%40")
     (try decode_component(text: "%C3%A9")) | try expect_equal("é")
-    return ok(unit)
 
 test "URLs preserve escaped path structure":
     try verify_url()

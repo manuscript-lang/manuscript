@@ -6,7 +6,6 @@ type Gate:
 impl Closeable for Gate:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 type Holder:
     gate: Gate

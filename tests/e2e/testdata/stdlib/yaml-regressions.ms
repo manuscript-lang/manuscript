@@ -81,7 +81,6 @@ fn invalid_colon(source: String) Unit!:
     if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
     cause.details["reason"] | try expect_equal("unexpected mapping colon")
-    return ok(unit)
 
 test "YAML flow scalar rejects a colon before tab":
     try invalid_colon("\{a: x:\tb\}")
@@ -296,7 +295,6 @@ fn error_at(text: String, line: Int, column: Int) Unit!Error:
 
     try expect_equal(cause.details["line"], line.to_string())
     try expect_equal(cause.details["column"], column.to_string())
-    return ok(unit)
 
 test "YAML root EOF location control":
     try error_at("[one", 1, 5)
@@ -339,7 +337,6 @@ fn unsupported_at(text: String, line: Int) Unit!Error:
     if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
-    return ok(unit)
 
 test "YAML flow merge failures retain their source origin":
     try error_at("key: \{<<: 1\}", 1, 12)
@@ -385,7 +382,6 @@ fn invalid_key_line(source: String) Unit!:
     cause.details["reason"] | try expect_equal(
         "an implicit mapping key must stay on one line"
     )
-    return ok(unit)
 
 test "YAML plain implicit keys cannot span physical lines":
     for source in ["\{key\n next: value\}", "\{key\n: value\}"]:

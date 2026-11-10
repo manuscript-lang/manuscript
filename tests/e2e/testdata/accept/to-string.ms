@@ -32,8 +32,6 @@ fn bound_stringify[T: Named](value: T) String:
 fn check(value: String, expected: String) Unit!:
     if value != expected: return fail(message: "expected {expected}, received {value}")
 
-    return ok(unit)
-
 fn answer() Int:
     return 42
 

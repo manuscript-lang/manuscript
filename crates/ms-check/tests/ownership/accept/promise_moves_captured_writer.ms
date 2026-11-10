@@ -13,4 +13,3 @@ fn f() Unit!:
     let b = promise(fn: ok(try produce(var second, 2)))
     try a.wait()
     try b.wait()
-    return ok(unit)

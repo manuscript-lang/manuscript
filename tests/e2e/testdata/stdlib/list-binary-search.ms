@@ -16,7 +16,6 @@ fn check_search[T: Comparable](values: List[T], target: T) Unit!:
     let actual = values.binary_search(target)
     try expect_equal(actual.index, expected.index)
     try expect_equal(actual.found, expected.found)
-    return ok(unit)
 
 // Equality is by key, so equal keys can have different payloads.
 type Key:

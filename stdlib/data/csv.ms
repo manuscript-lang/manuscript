@@ -100,8 +100,6 @@ fn check_options(options: CsvOptions) Unit!:
         Error("CSV: invalid input", kind: "EINVAL")
     )
 
-    return ok(unit)
-
 // The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
 // after the cursor, or total when there is none; they are searched again only once passed.
 type Reader:
@@ -312,7 +310,6 @@ impl CsvRows:
             if size > limit: return error(
                 Error("CSV: limit exceeded", kind: "EOVERFLOW")
             )
-        return ok(unit)
 
 impl Transform[Bytes, List[String]] for CsvRows:
     var fn step(value: Bytes, var out: List[List[String]]) Unit!:
@@ -365,7 +362,6 @@ fn invalid_text() Unit!:
 
 fn write_rows(rows: List[List[String]], var out: List[List[String]]) Unit!:
     for row in rows: out.append(row)
-    return ok(unit)
 
 /*
 Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.

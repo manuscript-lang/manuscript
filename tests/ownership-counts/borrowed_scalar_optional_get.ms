@@ -11,7 +11,6 @@ type Marker:
 impl Closeable for Marker:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 fn inspect(value: Marker?) Unit:
     print("value {value.get().id}")

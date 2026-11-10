@@ -18,7 +18,6 @@ type Marker:
 impl Closeable for Marker:
     var fn close() Unit!:
         print("close {self.id}")
-        return ok(unit)
 
 impl Marker:
     fn status() Int: self.id

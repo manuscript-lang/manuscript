@@ -64,7 +64,6 @@ test "a read cancelled by its timeout leaves the stream closable":
 fn accept_all(listener: Listener) Unit!:
     while true:
         let _connection = try listener.accept().wait()
-    return ok(unit)
 
 test "a promise that accepts on a listener runs where the listener lives":
     let listener = try listen("127.0.0.1:0")
@@ -158,7 +157,6 @@ fn expect_ip_error(input: String) Unit!:
         (try expect_error(parse_ip(input))),
         Error("network: invalid data", kind: "EBADMSG")
     )
-    return ok(unit)
 
 fn accept_one(l: Listener) Int:
     let r = l.accept(2.seconds()).wait()

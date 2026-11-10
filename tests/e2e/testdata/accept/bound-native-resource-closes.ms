@@ -12,7 +12,6 @@ type Marker:
 impl Closeable for Marker:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 fn failed(id: Int, log: String) Int!Marker:
     return error(Marker(id, log))
@@ -25,7 +24,6 @@ fn call_twice(log: String) Unit!:
     try expect_equal(status(), true)
     try expect_equal(status(), true)
     try expect_equal(read_file(log).wait().is_error(), true)
-    return ok(unit)
 
 test "a bound native method owns its temporary receiver and closes it once":
     let tmp = temporary("bound-native-close-") | try expect_ok
@@ -37,7 +35,6 @@ fn named(log: String) Unit!:
     let held = failed(2, log.clone())
     let status = held.is_error
     try expect_equal(status(), true)
-    return ok(unit)
 
 test "a bound native method over a named receiver closes it once, not twice":
     let tmp = temporary("bound-native-named-") | try expect_ok
@@ -57,7 +54,6 @@ fn tag_log(id: Int) String!:
 impl Closeable for Tag:
     var fn close() Unit!:
         try append_file(try tag_log(self.id), "closed,").wait()
-        return ok(unit)
 
 fn borrowed_status(result: Int!Tag) Bool:
     let check = result.is_error
@@ -74,4 +70,3 @@ fn borrow_then_check(id: Int, log: String) Unit!:
     let result: Int!Tag = error(Tag(id))
     try expect_equal(borrowed_status(result), true)
     try expect_equal(read_file(log.clone()).wait().is_error(), true)
-    return ok(unit)

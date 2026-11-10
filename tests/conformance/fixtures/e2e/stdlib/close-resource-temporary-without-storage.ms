@@ -10,7 +10,6 @@ type Counter:
 impl Closeable for Counter:
     var fn close() Unit!:
         print("closed {self.id}")
-        return ok(unit)
 
 impl Counter:
     fn value() Int:

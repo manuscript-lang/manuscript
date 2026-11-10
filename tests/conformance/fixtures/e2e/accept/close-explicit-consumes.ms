@@ -17,13 +17,10 @@ fn handled() Unit!:
     if let _ok = r:
         return error(Error("close should have failed"))
 
-    return ok(unit)
-
 fn branchy(explicit: Bool) Unit!:
     var g = Gate(0)
     if explicit:
         let _ = g.close()
-    return ok(unit)
 
 fn relocked(second_fails: Bool) Unit!:
     var g = Gate(0)
@@ -33,7 +30,6 @@ fn relocked(second_fails: Bool) Unit!:
         return ok(unit)
 
     let _ = g.close()
-    return ok(unit)
 
 fn ok_of(r: Unit!) Bool:
     if let _ok = r:

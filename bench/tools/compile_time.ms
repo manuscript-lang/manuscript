@@ -348,8 +348,6 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
         try rust_timed("rust debug:  ", out, cargo, ["build"])
         try rust_timed("rust release:", out, cargo, ["build", "--release"])
 
-    return ok(unit)
-
 // Times one cargo build from a cold target directory.
 fn rust_timed(
     label: String,

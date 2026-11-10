@@ -50,7 +50,6 @@ type TailCleanup:
 impl Closeable for TailCleanup:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true).wait()
-        return ok(unit)
 
 fn tail_cleanup(result: Int!Error, var visits: List[Int], marker: String) Int!Error:
     let _resource = TailCleanup(marker)

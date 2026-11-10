@@ -39,7 +39,6 @@ fn stream_route(var exchange: HttpExchange) Unit!:
     let _written = (
         try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))
     )
-    return ok(unit)
 
 fn check_route(url: String, expected: String) Unit!:
     let response = request(
@@ -56,8 +55,6 @@ fn check_route(url: String, expected: String) Unit!:
         Error("#257 repeated cookies regressed")
     )
 
-    return ok(unit)
-
 fn check_rejected(url: String) Unit!:
     let response = request(
         method: HttpMethod.Get,
@@ -70,8 +67,6 @@ fn check_rejected(url: String) Unit!:
         Error("unsafe or invalid path was dispatched")
     )
 
-    return ok(unit)
-
 fn check_paths(base: String) Unit!:
     (try check_route(url: "{base}/a%20b", expected: "/a b|"))
     (try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
@@ -80,7 +75,6 @@ fn check_paths(base: String) Unit!:
     (try check_rejected("{base}/a%2Fb"))
     (try check_rejected("{base}/a%00b"))
     (try check_rejected("{base}/bad%ff/../x"))
-    return ok(unit)
 
 test "buffered routes validate original input and decode once":
     let server = serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok
@@ -100,8 +94,6 @@ fn expect_http_error[T](outcome: T!) Unit!:
             if cause.kind != "EINVAL": return error(
                 Error("malformed URL leaked transport error")
             )
-
-    return ok(unit)
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))

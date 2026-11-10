@@ -153,7 +153,6 @@ impl Source[Bytes] for DescriptorSource:
     // Releases the descriptor without waiting.
     var fn close() Unit!:
         msrt_streams_close(self.id)
-        return ok(unit)
 
 // Bytes a descriptor may hold queued before `write` waits for it to drain.
 let HIGH_WATER = 1048576
@@ -172,8 +171,6 @@ impl Sink[Bytes] for DescriptorSink:
             return error(Error("stream: closed", kind: "EBADF"))
         if msrt_streams_buffered(self.id) > HIGH_WATER:
             return adopt[Unit](msrt_streams_flush(self.id)).wait()
-
-        return ok(unit)
 
     // Waits until the queued bytes have been handed to the descriptor.
     var fn flush() Unit!:
@@ -202,11 +199,9 @@ type Stdout:
 impl Sink[String] for Stdout:
     var fn write(value: String) Unit!:
         msrt_io_write_stdout(value)
-        return ok(unit)
 
     var fn flush() Unit!:
         msrt_io_flush()
-        return ok(unit)
 
     var fn close() Unit!:
         return ok(unit)
@@ -214,11 +209,9 @@ impl Sink[String] for Stdout:
 impl Sink[Bytes] for Stdout:
     var fn write(value: Bytes) Unit!:
         msrt_io_write_bytes_stdout(value)
-        return ok(unit)
 
     var fn flush() Unit!:
         msrt_io_flush()
-        return ok(unit)
 
     var fn close() Unit!:
         return ok(unit)
@@ -230,7 +223,6 @@ type Stderr:
 impl Sink[String] for Stderr:
     var fn write(value: String) Unit!:
         msrt_io_write_stderr(value)
-        return ok(unit)
 
     var fn flush() Unit!:
         return ok(unit)
@@ -241,7 +233,6 @@ impl Sink[String] for Stderr:
 impl Sink[Bytes] for Stderr:
     var fn write(value: Bytes) Unit!:
         msrt_io_write_bytes_stderr(value)
-        return ok(unit)
 
     var fn flush() Unit!:
         return ok(unit)
@@ -295,7 +286,6 @@ impl Source[T] for PipeSource[T]:
     var fn close() Unit!:
         msrt_pipe_close_reader(self.id)
         self.id = 0
-        return ok(unit)
 
 // One writing end of a pipe; closing it releases that writer.
 type PipeSink[T: Clonable]:
@@ -310,8 +300,6 @@ impl Sink[T] for PipeSink[T]:
         // Back pressure: status 2 says the pipe is above its capacity; the writer waits for the reader to take it back down.
         if status == 2: return adopt[Unit](msrt_pipe_flush(self.id)).wait()
 
-        return ok(unit)
-
     var fn flush() Unit!:
         return adopt[Unit](msrt_pipe_flush(self.id)).wait()
 
@@ -319,7 +307,6 @@ impl Sink[T] for PipeSink[T]:
         // Closing again releases nothing: an owner that closed the writer by hand is closed again at scope end.
         msrt_pipe_close_writer(self.id)
         self.id = 0
-        return ok(unit)
 
 // An in-memory stream of whole values, in order: any number of writers and one reader. A write hands the pipe a copy
 // (the stream interface only lends the argument), so `T` must be `Clonable`; the copy then moves through by pointer.
@@ -358,7 +345,6 @@ impl Closeable for Pipe[T]:
     var fn close() Unit!:
         if not self.taken:
             msrt_pipe_close_reader(self.id)
-        return ok(unit)
 
 // Makes an in-memory pipe whose writers wait while more than `capacity` values are queued.
 export fn pipe[T: Clonable](capacity: Int) Pipe[T]:

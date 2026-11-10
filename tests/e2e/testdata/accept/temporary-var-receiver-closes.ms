@@ -12,7 +12,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         let _ = append_file(self.log, "{self.id},").wait()
-        return ok(unit)
 
 impl Door:
     var fn swing() Int:
