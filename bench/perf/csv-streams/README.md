@@ -41,7 +41,7 @@ The large quoted Unicode/multiline/escaped control improves from 5,373 to 1,355
 microseconds with one-byte chunks, and 196 to 125 with 64-byte chunks. Its
 whole-record control is 103 to 106 microseconds. Whole-record plain cases range
 from unchanged to 6% faster. Small valid, final-tail and malformed controls range
-from 9% faster to 5% slower; these small differences are within this shared host's
+from 10% faster to 5% slower; these small differences are within this shared host's
 observed variation. No cross-platform or instruction-count claim is made.
 
 [summary.csv](results-2026-11-10/summary.csv) contains every case, including all
@@ -56,7 +56,7 @@ producer and patch SHA-256 hashes, execution order and environment.
 
 Build a compiler at the baseline commit with `cargo xtask runtime` followed by
 `cargo build --release --locked -p ms-cli`; save the compiler as `ms-before`.
-Apply the retained implementation patch to that tree, rebuild `ms-cli` and save
+Apply the retained patch with `git apply --unidiff-zero` to that tree, rebuild `ms-cli` and save
 it as `ms-after`. The native archive is unchanged. Keep this producer identical
 for both compilers, and use a writable `XDG_CACHE_HOME` for both.
 

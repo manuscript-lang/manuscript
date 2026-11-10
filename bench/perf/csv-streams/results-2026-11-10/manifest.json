@@ -25,7 +25,7 @@
     "after_compiler": "e4f658467eb3c20fd33a07518f4bdba996a48194ecb1111b2b83021967206af3",
     "before_program": "d8d5f60579530f8d22071c0421bcb79c7a1cfb6830502d27d69b69436679b7a7",
     "after_program": "e9fba039d1ba50c03fc0ad5a20e42998a62a841497c1da66c0c7908c484d494e",
-    "implementation_patch": "85ffdb3869b4210f16b0b2bf63c596dea73b976aa32eb69d50fb280b660e25f2",
+    "implementation_patch": "4cde0455a81c206a2328a89d75a651400296543d12f21a8fc8d2af67ed147760",
     "producer": "5c4d78a64f41d11d1e35c2c6d9e31925ba5fb2f5687cab6cd5fc189c6f242afc"
   }
 }
