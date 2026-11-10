@@ -2,6 +2,7 @@ import expect_equal, fail from "@std/test/test.ms"
 import csv_rows, parse, CsvOptions from "@std/data/csv.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import ReadStream, Source from "@std/io/io.ms"
+import from_list, collect from "@std/io/streams.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -67,6 +68,33 @@ test "options apply":
     try expect_equal(
         try read_rows("a;b\n\"c;d\";e\n", 2, semicolons), [["a", "b"], ["c;d", "e"]]
     )
+
+test "empty CSV streams reject invalid options":
+    let invalid: List[List[String]]! = error(
+        Error("CSV: invalid input", kind: "EINVAL")
+    )
+
+    for options in [
+        CsvOptions(delimiter: ""), CsvOptions(delimiter: "::"),
+        CsvOptions(delimiter: "\""), CsvOptions(delimiter: "\n"),
+        CsvOptions(delimiter: "é"), CsvOptions(line_ending: "\r")
+    ]:
+        for text in ["", "a", "a\n"]:
+            try expect_equal(read_rows(text, 1, options.clone()), invalid)
+
+        let empty_chunks = from_list(["".to_bytes(), "".to_bytes()])
+        try expect_equal(
+            empty_chunks | csv_rows(options.clone()) | collect(none), invalid
+        )
+
+    let no_rows: List[List[String]] = []
+    try expect_equal(try read_rows("", 1), no_rows)
+    try expect_equal(
+        try read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n")), no_rows
+    )
+
+    let empty_chunks = from_list(["".to_bytes(), "".to_bytes()])
+    empty_chunks | csv_rows | try collect(none) | try expect_equal(no_rows)
 
 test "an unterminated quote is InvalidData at the end":
     let outcome = read_rows("a,\"open\nmore", 4)

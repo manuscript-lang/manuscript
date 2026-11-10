@@ -329,7 +329,7 @@ impl Transform[Bytes, List[String]] for CsvRows:
         let data = self.tail.clone()
         self.tail = join([])
         self.scanned = 0
-        if data.is_empty(): return ok(unit)
+        if data.is_empty(): return check_options(self.options)
 
         let decoded = data.decode_utf8()
         if decoded.is_none(): return invalid_text()
