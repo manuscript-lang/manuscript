@@ -1,5 +1,5 @@
 import (
-	compile, from_scalars from "@std/string.ms",
+	msstd_unicode_in_category from "@std/internal/string.ms",
 	msstd_unicode_is_alphabetic,
 	msstd_unicode_is_alphanumeric,
 	msstd_unicode_is_numeric,
@@ -65,10 +65,4 @@ export fn is_mark(scalar: Int) Bool:
 	return in_category(scalar, "M")
 
 fn in_category(scalar: Int, category: String) Bool:
-	if scalar < 0 or scalar > 1114111: return false
-	if is_ascii(scalar) and (is_digit(scalar) or is_alphanumeric(scalar)): return false
-
-	text := from_scalars([scalar])
-	if s := text:
-		if re := compile("^\\p\{" + category + "\}$"): return re.matches(s)
-	return false
+	return msstd_unicode_in_category(scalar, category)

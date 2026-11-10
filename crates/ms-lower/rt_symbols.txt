@@ -808,6 +808,7 @@ msstd_tls_parse_certificates(pem: *const StrVal, has_max: HasRaw, max: i64, out:
 msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8 @domain=TLS
 msstd_unicode_display_width(text: *const StrVal, out: *mut i64) -> u8 @domain=unicode
 msstd_unicode_fields(text: *const StrVal, out: *mut VecVal) @domain=unicode
+msstd_unicode_in_category(value: i64, category: *const StrVal) -> u8 @domain=regular expression @leaf
 msstd_unicode_is_alphabetic(value: i64) -> u8 @domain=unicode
 msstd_unicode_is_alphanumeric(value: i64) -> u8 @domain=unicode
 msstd_unicode_is_ascii(value: i64) -> u8 @domain=unicode
