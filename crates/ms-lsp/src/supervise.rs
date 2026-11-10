@@ -6,7 +6,6 @@
 
 use crate::analysis::Document;
 use crate::json::{Json, obj};
-use crate::text;
 use crate::transport::{FrameError, read_frame};
 use std::collections::{BTreeMap, VecDeque};
 use std::io::{BufReader, Read, Write};
@@ -171,62 +170,25 @@ impl<W: Write> Supervisor<'_, W> {
     }
 
     fn track(&mut self, method: &str, params: Option<&Json>) {
-        let Some(document) = params.and_then(|p| p.get("textDocument")) else {
+        let Some(params) = params else { return };
+        let Ok(params) = crate::server::Params::decode(params) else {
             return;
         };
-        let Some(uri) = document.get("uri").and_then(|u| u.as_str()) else {
-            return;
-        };
-        let version = document
-            .get("version")
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0);
+        let uri = &params.document.uri;
         match method {
             "textDocument/didClose" => {
                 self.docs.remove(uri);
             }
             "textDocument/didOpen" => {
-                let text = document.get("text").and_then(|t| t.as_str()).unwrap_or("");
-                self.docs.insert(
-                    uri.to_string(),
-                    Document {
-                        uri: uri.to_string(),
-                        text: text.to_string(),
-                        version,
-                    },
-                );
+                self.docs.insert(uri.clone(), params.document);
             }
             _ => {
                 let Some(current) = self.docs.get_mut(uri) else {
                     return;
                 };
-                if version <= current.version {
-                    return;
+                if let Some(changed) = params.changed_document(current) {
+                    *current = changed;
                 }
-                let changes = params
-                    .and_then(|p| p.get("contentChanges"))
-                    .and_then(|c| c.as_array())
-                    .unwrap_or(&[]);
-                let mut next = current.text.clone();
-                for change in changes {
-                    let replacement = change.get("text").and_then(|t| t.as_str()).unwrap_or("");
-                    let Some(range) = change.get("range").and_then(text::Range::from_json) else {
-                        next = replacement.to_string();
-                        continue;
-                    };
-                    let (Ok(start), Ok(end)) = (
-                        text::edit_offset(&next, range.start),
-                        text::edit_offset(&next, range.end),
-                    ) else {
-                        return;
-                    };
-                    if end < start {
-                        return;
-                    }
-                    next = format!("{}{}{}", &next[..start], replacement, &next[end..]);
-                }
-                current.text = next;
-                current.version = version;
             }
         }
     }
@@ -332,6 +294,111 @@ impl<W: Write> Supervisor<'_, W> {
                 Err(format!("worker exited with {status}"))
             }
             _ => Ok(()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod document_tests {
+    use super::*;
+
+    const URI: &str = "file:///tmp/recovery.ms";
+    const SOURCE: &str = "// 😀alpha\r\n// tail\r\n";
+
+    fn supervisor() -> Supervisor<'static, Vec<u8>> {
+        let (events, _) = channel();
+        let mut supervisor = Supervisor {
+            output: Vec::new(),
+            spawn: Box::new(|| Command::new("unused")),
+            events,
+            worker: None,
+            generation: 0,
+            inflight: BTreeMap::new(),
+            initialize: None,
+            initialized: false,
+            replay_pending: false,
+            docs: BTreeMap::new(),
+            restarts: VecDeque::new(),
+            exiting: false,
+        };
+        supervisor.track(
+            "textDocument/didOpen",
+            Some(&obj([(
+                "textDocument",
+                obj([
+                    ("uri", URI.into()),
+                    ("text", SOURCE.into()),
+                    ("version", 1usize.into()),
+                ]),
+            )])),
+        );
+        supervisor
+    }
+
+    fn change(supervisor: &mut Supervisor<'_, Vec<u8>>, changes: &str) {
+        let changes = crate::json::parse(changes.as_bytes()).unwrap();
+        supervisor.track(
+            "textDocument/didChange",
+            Some(&obj([
+                (
+                    "textDocument",
+                    obj([("uri", URI.into()), ("version", 2usize.into())]),
+                ),
+                ("contentChanges", changes),
+            ])),
+        );
+    }
+
+    #[test]
+    fn rejected_changes_preserve_the_recovery_snapshot_and_version() {
+        for changes in [
+            r#"[{"range":"invalid","text":"corrupted"}]"#,
+            r#"[{"text":42}]"#,
+            r#"[{"text":"discarded"},{"range":"invalid","text":"corrupted"}]"#,
+            r#"[{"range":{"start":{"line":1,"character":3},"end":{"line":1,"character":7}},"text":"changed"},{"range":{"start":{"line":0,"character":4},"end":{"line":0,"character":5}},"text":"split"}]"#,
+            r#"[{"range":{"start":{"line":0,"character":4},"end":{"line":0,"character":5}},"text":"split"}]"#,
+            r#"[{"range":{"start":{"line":0,"character":6},"end":{"line":0,"character":3}},"text":"reversed"}]"#,
+            "[]",
+        ] {
+            let mut supervisor = supervisor();
+            change(&mut supervisor, changes);
+            assert_eq!(supervisor.docs[URI].text, SOURCE, "{changes}");
+            assert_eq!(supervisor.docs[URI].version, 1, "{changes}");
+            // A rejected version must not suppress a later valid change.
+            change(&mut supervisor, r#"[{"text":"accepted"}]"#);
+            assert_eq!(supervisor.docs[URI].text, "accepted");
+            assert_eq!(supervisor.docs[URI].version, 2);
+        }
+    }
+
+    #[test]
+    fn recovery_snapshots_follow_ordered_utf16_edits_and_stale_versions() {
+        let mut supervisor = supervisor();
+        change(
+            &mut supervisor,
+            r#"[
+                {"range":{"start":{"line":0,"character":3},"end":{"line":0,"character":5}},"text":"é"},
+                {"range":{"start":{"line":0,"character":4},"end":{"line":0,"character":9}},"text":"βeta"},
+                {"range":{"start":{"line":1,"character":999},"end":{"line":1,"character":1000}},"text":"!"}
+            ]"#,
+        );
+        let expected = "// éβeta\r\n// tail!\r\n";
+        assert_eq!(supervisor.docs[URI].text, expected);
+        assert_eq!(supervisor.docs[URI].version, 2);
+        change(&mut supervisor, r#"[{"text":"stale"}]"#);
+        assert_eq!(supervisor.docs[URI].text, expected);
+    }
+
+    #[test]
+    fn recovery_snapshots_accept_full_replacements_and_default_coordinates() {
+        for changes in [
+            r#"[{"text":"discarded"},{"range":null,"text":"// 😀alpha\r\n// tail\r\n"},{"range":{"start":{"line":1},"end":{"line":1,"character":7}},"text":"// replaced"}]"#,
+            r#"[{"range":{"start":{"line":1,"character":0},"end":{"line":1,"character":7}},"text":"// replaced"}]"#,
+        ] {
+            let mut supervisor = supervisor();
+            change(&mut supervisor, changes);
+            assert_eq!(supervisor.docs[URI].text, "// 😀alpha\r\n// replaced\r\n");
+            assert_eq!(supervisor.docs[URI].version, 2);
         }
     }
 }

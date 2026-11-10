@@ -153,11 +153,11 @@ struct Request {
 
 /// The parameters any supported method reads.
 #[derive(Default)]
-struct Params {
+pub(crate) struct Params {
     query: String,
     range: Range,
     new_name: String,
-    document: Document,
+    pub(crate) document: Document,
     position: Position,
     only: Vec<String>,
     include_declaration: bool,
@@ -219,7 +219,40 @@ fn range_of(value: &Json) -> Result<Range, ()> {
 }
 
 impl Params {
-    fn decode(value: &Json) -> Result<Params, ()> {
+    /// Applies an ordered edit transaction identically in the worker and its
+    /// recovery snapshot. Rejected transactions preserve both text and version.
+    pub(crate) fn changed_document(&self, old: &Document) -> Option<Document> {
+        if self.document.version <= old.version || self.changes.is_empty() {
+            return None;
+        }
+        let mut document = self.document.clone();
+        document.text = old.text.clone();
+        for (replacement, range) in &self.changes {
+            let Some(range) = range else {
+                document.text = replacement.clone();
+                continue;
+            };
+            let start = text::edit_offset(&document.text, range.start).ok()?;
+            let end = text::edit_offset(&document.text, range.end).ok()?;
+            if end < start {
+                return None;
+            }
+            // Reuse the transactional copy when no capacity growth is needed.
+            if replacement.len() == end - start {
+                document.text.replace_range(start..end, replacement);
+            } else {
+                document.text = format!(
+                    "{}{}{}",
+                    &document.text[..start],
+                    replacement,
+                    &document.text[end..]
+                );
+            }
+        }
+        Some(document)
+    }
+
+    pub(crate) fn decode(value: &Json) -> Result<Params, ()> {
         let mut p = Params::default();
         match value {
             Json::Null => return Ok(p),
@@ -875,31 +908,10 @@ impl Server<'_> {
             let Some(old) = self.docs.get(&d.uri) else {
                 return Ok(());
             };
-            if d.version <= old.version || p.changes.is_empty() {
+            let Some(changed) = p.changed_document(old) else {
                 return Ok(());
-            }
-            d.text = old.text.clone();
-            for (text, range) in &p.changes {
-                let Some(range) = range else {
-                    d.text = text.clone();
-                    continue;
-                };
-                let (Ok(start), Ok(end)) = (
-                    text::edit_offset(&d.text, range.start),
-                    text::edit_offset(&d.text, range.end),
-                ) else {
-                    return Ok(());
-                };
-                if end < start {
-                    return Ok(());
-                }
-                // Reuse the transactional copy when no capacity growth is needed.
-                if text.len() == end - start {
-                    d.text.replace_range(start..end, text);
-                } else {
-                    d.text = format!("{}{}{}", &d.text[..start], text, &d.text[end..]);
-                }
-            }
+            };
+            d = changed;
         }
         self.docs.insert(d.uri.clone(), d.clone());
         self.invalidate_document(syms, &d);
