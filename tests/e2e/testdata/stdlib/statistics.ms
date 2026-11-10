@@ -508,3 +508,21 @@ test "correlation of large and tiny perfectly correlated values":
         1e-12
     )
     try expect_none(correlation([1e100, 1e100], [1e100, 2e100]))
+
+test "correlation keeps the variation under a large common offset":
+    try expect_close(
+        try expect_some(correlation([1e16, 1e16 + 2.0], [1e16 + 2.0, 1e16])), -1.0,
+        1e-12
+    )
+    try expect_close(
+        try expect_some(correlation([1e16, 1e16 + 2.0], [0.0, 1.0])), 1.0, 1e-12
+    )
+    try expect_close(try expect_some(correlation([0.0, 1.0], [1.0, 0.0])), -1.0, 1e-12)
+    try expect_close(
+        try expect_some(
+            correlation([1e16, 1e16 + 2.0, 1e16 + 4.0], [3.0, 5.0, 7.0])
+        ),
+        1.0,
+        1e-12
+    )
+    try expect_none(correlation([1e16, 1e16, 1e16], [1.0, 2.0, 3.0]))

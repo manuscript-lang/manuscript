@@ -450,6 +450,20 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 
     // Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
     if s := spread(unit_scaled(xs), unit_scaled(ys)):
+        if (
+            well_conditioned(s.mean_x, s.xx, xs.length(), false)
+            and well_conditioned(s.mean_y, s.yy, ys.length(), false)
+        ):
+            return s.xy / (sqrt(s.xx) * sqrt(s.yy))
+
+        if x_exponent := unit_exponent(xs):
+            if y_exponent := unit_exponent(ys):
+                sums := finite_sums(xs, ys, x_exponent, y_exponent)
+                if sums.xx == 0.0 or sums.yy == 0.0: return none
+
+                return sums.xy / (sqrt(sums.xx) * sqrt(sums.yy))
+
+        // Nonfinite input follows Float rules around the plain means.
         if s.xx == 0.0 or s.yy == 0.0: return none
 
         return s.xy / (sqrt(s.xx) * sqrt(s.yy))
@@ -539,38 +553,65 @@ fn centered(values: List[Float], exponent: Int) Centered:
         deviations.append((ldexp(value, -exponent) - origin) - center)
     return Centered(origin: origin, center: center, deviations: deviations)
 
+// Compensated sums of products of the unit-scaled deviations of two lists, with the units they were scaled by.
+type FiniteSums:
+    x: Centered
+    y: Centered
+    x_unit: Int
+    y_unit: Int
+    xx: Float
+    xy: Float
+    yy: Float
+
 /*
 Each list is scaled by its own power of two and measured from its first value, so squares and products stay in range and a large common
-offset keeps its variation; the deviations are then scaled again, summed with compensation, and the units are restored at the end.
+offset keeps its variation; the deviations are then scaled again and summed with compensation.
 */
-fn finite_regression(
+fn finite_sums(
     xs: List[Float],
     ys: List[Float],
     x_exponent: Int,
     y_exponent: Int
-) Regression?:
+) FiniteSums:
     x := centered(xs, x_exponent)
     y := centered(ys, y_exponent)
     x_unit := unit_exponent(x.deviations).get(0)
     y_unit := unit_exponent(y.deviations).get(0)
     var xx = DeviationSum()
     var xy = DeviationSum()
+    var yy = DeviationSum()
 
     for i in 0..xs.length():
         a := ldexp(x.deviations[i], -x_unit)
         b := ldexp(y.deviations[i], -y_unit)
         xx.add(a * a)
         xy.add(a * b)
+        yy.add(b * b)
 
-    if xx.value() == 0.0: return none
+    return FiniteSums(
+        x: x, y: y, x_unit: x_unit, y_unit: y_unit, xx: xx.value(), xy: xy.value(),
+        yy: yy.value()
+    )
 
-    ratio := xy.value() / xx.value()
-    scaled_slope := ldexp(ratio, y_unit - x_unit)
+// The regression through the compensated sums; the units are restored at the end.
+fn finite_regression(
+    xs: List[Float],
+    ys: List[Float],
+    x_exponent: Int,
+    y_exponent: Int
+) Regression?:
+    sums := finite_sums(xs, ys, x_exponent, y_exponent)
+    if sums.xx == 0.0: return none
+
+    ratio := sums.xy / sums.xx
+    scaled_slope := ldexp(ratio, sums.y_unit - sums.x_unit)
     scaled_intercept := (
-        (y.origin - scaled_slope * x.origin)
-        + (y.center - scaled_slope * x.center)
+        (sums.y.origin - scaled_slope * sums.x.origin)
+        + (sums.y.center - scaled_slope * sums.x.center)
     )
     return Regression(
-        slope: ldexp(ratio, y_unit - x_unit + y_exponent - x_exponent),
+        slope: ldexp(
+            ratio, sums.y_unit - sums.x_unit + y_exponent - x_exponent
+        ),
         intercept: ldexp(scaled_intercept, y_exponent)
     )
