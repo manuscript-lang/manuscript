@@ -13,5 +13,6 @@ membership probes return before hashing, so no member is copied. Its empty
 output must retain exactly the left stored creator descriptor, including null;
 using the resolved caller descriptor would change later insertions. Cover
 retained-storage empty sets and creator-sensitive insertion into the result.
-The [2026-11-10 investigation](../../bench/perf/map-runtime-audit/intersection-2026-11-10/README.md)
-records local measurements and remaining validation/publication blockers.
+The [reusable benchmark instructions](../../bench/perf/map-runtime-audit/README.md)
+preserve the workload controls and measurement caveats for the fix merged in
+[PR #3505](https://github.com/manuscript-lang/manuscript/pull/3505).
