@@ -185,8 +185,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 
     let chs = load_challenges(split_ids(o.challenges))
     let langs = load_languages(split_ids(o.languages))
-    let which = if oracle: "oracle" else: o.harness.clone()  // workaround for #3218; remove once fixed
-    let h = find(which).get()
+    let h = find(if oracle: "oracle" else: o.harness).get()
     var todo = List[Job]()
 
     for ch in chs:
